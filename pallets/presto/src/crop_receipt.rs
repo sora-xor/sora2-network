@@ -79,25 +79,25 @@ pub enum Country {
 
 #[allow(unused)] // TODO remove
 impl Country {
-    pub fn symbol(&self) -> &str {
+    pub fn symbol(&self) -> &[u8] {
         match self {
-            Self::Brazil => "BR",
-            Self::Indonesia => "ID",
-            Self::Nigeria => "NG",
-            Self::Ukraine => "UA",
-            Self::Usa => "US",
-            Self::Other => "RR",
+            Self::Brazil => b"BR",
+            Self::Indonesia => b"ID",
+            Self::Nigeria => b"NG",
+            Self::Ukraine => b"UA",
+            Self::Usa => b"US",
+            Self::Other => b"RR",
         }
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &[u8] {
         match self {
-            Self::Brazil => "Brazil",
-            Self::Indonesia => "Indonesia",
-            Self::Nigeria => "Nigeria",
-            Self::Ukraine => "Ukraine",
-            Self::Usa => "United States of America",
-            Self::Other => "Other",
+            Self::Brazil => b"Brazil",
+            Self::Indonesia => b"Indonesia",
+            Self::Nigeria => b"Nigeria",
+            Self::Ukraine => b"Ukraine",
+            Self::Usa => b"United States of America",
+            Self::Other => b"Other",
         }
     }
 }

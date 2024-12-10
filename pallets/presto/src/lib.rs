@@ -55,8 +55,8 @@ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 /// Buffer tech account for temp holding of withdraw request liquidity
 pub const TECH_ACCOUNT_BUFFER: &[u8] = b"buffer";
 
-const COUPON_SYMBOL: &str = "C";
-const COUPON_NAME: &str = "Coupon";
+const COUPON_SYMBOL: &[u8] = b"C";
+const COUPON_NAME: &[u8] = b"Coupon";
 
 #[frame_support::pallet]
 #[allow(clippy::too_many_arguments)]
@@ -65,11 +65,10 @@ pub mod pallet {
     use common::fixnum::ops::RoundMode;
     use common::prelude::BalanceUnit;
     use common::{
-        balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString, DEXId,
-        OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
+        balance, itoa, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString,
+        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
     };
     use core::fmt::Debug;
-    use core::str::FromStr;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeDisplay, Zero};
@@ -140,7 +139,8 @@ pub mod pallet {
             + PartialEq
             + Eq
             + MaxEncodedLen
-            + scale_info::TypeInfo;
+            + scale_info::TypeInfo
+            + ItoaInteger;
 
         #[pallet::constant]
         type MaxPrestoManagersCount: Get<u32>;
@@ -774,14 +774,11 @@ pub mod pallet {
                 &T::PrestoTechAccount::get(),
             )?;
 
-            let coupon_id = Self::next_coupon_id();
+            // use `itoa` to convert `CouponId` to Vec<u8> string in no-std env.
+            let coupon_id = itoa(Self::next_coupon_id());
 
-            let symbol =
-                AssetSymbol::from_str(&format!("{}{COUPON_SYMBOL}{coupon_id}", country.symbol()))
-                    .unwrap();
-            let name =
-                AssetName::from_str(&format!("{} {COUPON_NAME} {coupon_id}", country.name()))
-                    .unwrap();
+            let symbol = AssetSymbol([country.symbol(), COUPON_SYMBOL, &coupon_id].concat());
+            let name = AssetName([country.name(), COUPON_NAME, &coupon_id].join(&b' '));
 
             let coupon_asset_id = T::AssetManager::register_from(
                 &presto_tech_account_id,
