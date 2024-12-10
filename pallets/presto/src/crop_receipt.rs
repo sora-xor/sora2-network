@@ -96,7 +96,7 @@ impl Country {
             Self::Indonesia => b"Indonesia",
             Self::Nigeria => b"Nigeria",
             Self::Ukraine => b"Ukraine",
-            Self::Usa => b"United States of America",
+            Self::Usa => b"USA",
             Self::Other => b"Other",
         }
     }
