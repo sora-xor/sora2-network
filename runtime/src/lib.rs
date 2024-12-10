@@ -376,7 +376,8 @@ pub struct BaseCallFilter;
 
 impl Contains<RuntimeCall> for BaseCallFilter {
     fn contains(call: &RuntimeCall) -> bool {
-        if call.swap_count() > 1 {
+        let depth_result = call.swap_count_and_depth(0);
+        if depth_result.swap_count > 1 || depth_result.depth > 1 {
             return false;
         }
         if matches!(
