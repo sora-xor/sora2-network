@@ -415,7 +415,6 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -448,11 +447,10 @@
 
 </span><span class="kw">use crate</span>::{
     AggregatedAsks, AggregatedBids, Asks, Bids, Config, DataLayer, Error, LimitOrder, LimitOrders,
-    MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
+    MarketSide, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
 };
 <span class="kw">use </span>common::storage::DecodeIsFullDoubleMap;
-<span class="kw">use </span>common::AssetIdOf;
-<span class="kw">use </span>common::PriceVariant;
+<span class="kw">use </span>common::{AssetIdOf, OrderBookId, PriceVariant};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};

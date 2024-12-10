@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["Auditors","CropReceipts","CropReceiptsContent","LastCropReceiptId","LastRequestId","Managers","Module","Requests","UserCropReceipts","UserRequests"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["Auditors","Coupons","CropReceipts","CropReceiptsContent","LastCouponId","LastCropReceiptId","LastRequestId","Managers","Module","Requests","UserCropReceipts","UserRequests"]};

@@ -546,13 +546,13 @@
 
     <span class="kw">use </span>common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
-        TradingPairSourceManager,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, OrderBookId,
+        SyntheticInfoProvider, TradingPairSourceManager,
     };
     <span class="kw">use </span>frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>order_book::{MomentOf, OrderBookId};
+    <span class="kw">use </span>order_book::MomentOf;
     <span class="kw">use </span>pallet_tools::liquidity_proxy::liquidity_sources;
     <span class="kw">use </span>pallet_tools::pool_xyk::AssetPairInput;
     <span class="kw">use </span>pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};

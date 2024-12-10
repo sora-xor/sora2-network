@@ -420,6 +420,8 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -452,12 +454,14 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::Config;
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, TradingPairSourceManager};
+<span class="kw">use </span>common::{
+    balance, AssetIdOf, AssetManager, Balance, OrderBookId, PriceVariant, TradingPairSourceManager,
+};
 <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::Time;
 <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>order_book::DataLayer;
-<span class="kw">use </span>order_book::{MomentOf, OrderBook, OrderBookId, OrderPrice, OrderVolume};
+<span class="kw">use </span>order_book::{MomentOf, OrderBook, OrderPrice, OrderVolume};
 <span class="kw">use </span>rand::{Rng, RngCore, SeedableRng};
 <span class="kw">use </span>rand_chacha::ChaCha8Rng;
 <span class="kw">use </span>sp_std::iter::repeat;

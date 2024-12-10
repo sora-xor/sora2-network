@@ -1394,6 +1394,57 @@
 <a href="#1379" id="1379">1379</a>
 <a href="#1380" id="1380">1380</a>
 <a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
+<a href="#1397" id="1397">1397</a>
+<a href="#1398" id="1398">1398</a>
+<a href="#1399" id="1399">1399</a>
+<a href="#1400" id="1400">1400</a>
+<a href="#1401" id="1401">1401</a>
+<a href="#1402" id="1402">1402</a>
+<a href="#1403" id="1403">1403</a>
+<a href="#1404" id="1404">1404</a>
+<a href="#1405" id="1405">1405</a>
+<a href="#1406" id="1406">1406</a>
+<a href="#1407" id="1407">1407</a>
+<a href="#1408" id="1408">1408</a>
+<a href="#1409" id="1409">1409</a>
+<a href="#1410" id="1410">1410</a>
+<a href="#1411" id="1411">1411</a>
+<a href="#1412" id="1412">1412</a>
+<a href="#1413" id="1413">1413</a>
+<a href="#1414" id="1414">1414</a>
+<a href="#1415" id="1415">1415</a>
+<a href="#1416" id="1416">1416</a>
+<a href="#1417" id="1417">1417</a>
+<a href="#1418" id="1418">1418</a>
+<a href="#1419" id="1419">1419</a>
+<a href="#1420" id="1420">1420</a>
+<a href="#1421" id="1421">1421</a>
+<a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2688,6 +2739,49 @@
     <span class="kw">pub </span>description: <span class="prelude-ty">Option</span>&lt;Description&gt;,
 }
 
+<span class="attr">#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    Hash,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+#[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize))]
+</span><span class="kw">pub struct </span>OrderBookId&lt;AssetId, DEXId&gt; {
+    <span class="doccomment">/// DEX id
+    </span><span class="kw">pub </span>dex_id: DEXId,
+    <span class="doccomment">/// Base asset.
+    </span><span class="kw">pub </span>base: AssetId,
+    <span class="doccomment">/// Quote asset. It should be a base asset of DEX.
+    </span><span class="kw">pub </span>quote: AssetId,
+}
+
+<span class="kw">impl</span>&lt;AssetId, DEXId&gt; From&lt;OrderBookId&lt;AssetId, DEXId&gt;&gt; <span class="kw">for </span>TradingPair&lt;AssetId&gt; {
+    <span class="kw">fn </span>from(order_book_id: OrderBookId&lt;AssetId, DEXId&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            base_asset_id: order_book_id.quote,
+            target_asset_id: order_book_id.base,
+        }
+    }
+}
+
+<span class="kw">pub trait </span>ItoaInteger: itoa::Integer {}
+<span class="kw">impl</span>&lt;T: itoa::Integer&gt; ItoaInteger <span class="kw">for </span>T {}
+
+<span class="doccomment">/// Converts integer into Vec&lt;u8&gt; string.
+/// Works with no-std
+</span><span class="kw">pub fn </span>itoa(int: <span class="kw">impl </span>ItoaInteger) -&gt; Vec&lt;u8&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>buffer = itoa::Buffer::new();
+    buffer.format(int).as_bytes().to_vec()
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -2773,6 +2867,14 @@
                 <span class="string">&quot;030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000&quot;
             </span>))
         );
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>check_itoa() {
+        <span class="macro">assert_eq!</span>(itoa(<span class="number">10u8</span>), <span class="string">b&quot;10&quot;</span>);
+        <span class="macro">assert_eq!</span>(itoa(<span class="number">123u64</span>), <span class="string">b&quot;123&quot;</span>);
+        <span class="macro">assert_eq!</span>(itoa(-<span class="number">234i32</span>), <span class="string">b&quot;-234&quot;</span>);
+        <span class="macro">assert_eq!</span>(itoa(<span class="number">0</span>), <span class="string">b&quot;0&quot;</span>);
     }
 }
 </code></pre></div>

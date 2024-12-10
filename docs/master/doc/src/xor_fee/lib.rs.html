@@ -1378,6 +1378,18 @@
 <a href="#1363" id="1363">1363</a>
 <a href="#1364" id="1364">1364</a>
 <a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1721,11 +1733,8 @@
                         TransactionValidityError::Invalid(InvalidTransaction::Payment)
                     })<span class="question-mark">?</span>;
 
-                    <span class="kw">let </span>xor_id = T::XorId::get();
-
                     <span class="self">Self</span>::deposit_event(Event::FeeWithdrawn(
                         fee_source,
-                        xor_id,
                         adjusted_paid.peek().into(),
                     ));
 
@@ -1754,7 +1763,6 @@
                         <span class="self">Self</span>::deposit_event(Event::ReferrerRewarded(
                             who.clone(),
                             referrer,
-                            T::XorId::get(),
                             referrer_portion.into(),
                         ));
                     } <span class="kw">else </span>{
@@ -1792,11 +1800,12 @@
                     .same()
                     .map_err(|<span class="kw">_</span>| TransactionValidityError::Invalid(InvalidTransaction::Payment))<span class="question-mark">?</span>;
 
-                <span class="kw">let </span>xor_id = T::XorId::get();
-
-                <span class="self">Self</span>::deposit_event(Event::FeeWithdrawn(
+                <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))]
+                </span><span class="self">Self</span>::deposit_event(Event::FeeWithdrawn(fee_source, adjusted_paid.peek().into()));
+                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+                </span><span class="self">Self</span>::deposit_event(Event::FeeWithdrawn(
                     fee_source,
-                    xor_id,
+                    T::XorId::get(),
                     adjusted_paid.peek().into(),
                 ));
 
@@ -1822,10 +1831,17 @@
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                     <span class="kw">let </span>referrer_portion = referrer_xor.peek();
                     T::XorCurrency::resolve_creating(<span class="kw-2">&amp;</span>referrer, referrer_xor);
-                    <span class="self">Self</span>::deposit_event(Event::ReferrerRewarded(
+                    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)]
+                    </span><span class="self">Self</span>::deposit_event(Event::ReferrerRewarded(
                         who.clone(),
                         referrer,
                         T::XorId::get(),
+                        referrer_portion.into(),
+                    ));
+                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))]
+                    </span><span class="self">Self</span>::deposit_event(Event::ReferrerRewarded(
+                        who.clone(),
+                        referrer,
                         referrer_portion.into(),
                     ));
                 } <span class="kw">else </span>{
@@ -2644,10 +2660,18 @@
     <span class="attr">#[pallet::event]
     #[pallet::generate_deposit(<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deposit_event)]
     </span><span class="kw">pub enum </span>Event&lt;T: Config&gt; {
-        <span class="doccomment">/// Fee has been withdrawn from user. [Account Id to withdraw from, Asset Id to withdraw, Fee Amount]
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
+        </span><span class="doccomment">/// Fee has been withdrawn from user. [Account Id to withdraw from, Asset Id to withdraw, Fee Amount]
         </span>FeeWithdrawn(AccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, Balance),
-        <span class="doccomment">/// The portion of fee is sent to the referrer. [Referral, Referrer, AssetId, Amount]
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
+        </span><span class="doccomment">/// The portion of fee is sent to the referrer. [Referral, Referrer, AssetId, Amount]
         </span>ReferrerRewarded(AccountIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, AssetIdOf&lt;T&gt;, Balance),
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Xorless fee
+        </span><span class="doccomment">/// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
+        </span>FeeWithdrawn(AccountIdOf&lt;T&gt;, Balance),
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Xorless fee
+        </span><span class="doccomment">/// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
+        </span>ReferrerRewarded(AccountIdOf&lt;T&gt;, AccountIdOf&lt;T&gt;, Balance),
         <span class="doccomment">/// New multiplier for weight to fee conversion is set
         /// (*1_000_000_000_000_000_000). [New value]
         </span>WeightToFeeMultiplierUpdated(FixedU128),

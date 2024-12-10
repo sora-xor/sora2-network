@@ -3592,6 +3592,9 @@
 <a href="#3577" id="3577">3577</a>
 <a href="#3578" id="3578">3578</a>
 <a href="#3579" id="3579">3579</a>
+<a href="#3580" id="3580">3580</a>
+<a href="#3581" id="3581">3581</a>
+<a href="#3582" id="3582">3582</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -6121,11 +6124,14 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
 </span><span class="kw">impl </span>presto::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>OrderBookManager = OrderBook;
     <span class="kw">type </span>PrestoUsdAssetId = PrestoUsdAssetId;
     <span class="kw">type </span>PrestoTechAccount = PrestoTechAccountId;
     <span class="kw">type </span>PrestoBufferTechAccount = PrestoBufferTechAccountId;
     <span class="kw">type </span>RequestId = u64;
     <span class="kw">type </span>CropReceiptId = u64;
+    <span class="kw">type </span>CouponId = u64;
     <span class="kw">type </span>MaxPrestoManagersCount = ConstU32&lt;<span class="number">100</span>&gt;;
     <span class="kw">type </span>MaxPrestoAuditorsCount = ConstU32&lt;<span class="number">100</span>&gt;;
     <span class="kw">type </span>MaxUserRequestCount = ConstU32&lt;<span class="number">65536</span>&gt;;

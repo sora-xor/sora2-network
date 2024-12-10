@@ -724,10 +724,10 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">use </span>framenode_runtime::order_book_benchmarking <span class="kw">as </span>order_book_benchmarking_imported;
 
-<span class="kw">use </span>common::{AssetIdOf, DEXId};
+<span class="kw">use </span>common::{AssetIdOf, DEXId, OrderBookId};
 <span class="kw">use </span>frame_system::EventRecord;
 <span class="kw">use </span>order_book_imported::Pallet <span class="kw">as </span>OrderBookPallet;
-<span class="kw">use </span>order_book_imported::{LimitOrder, MomentOf, OrderBookId};
+<span class="kw">use </span>order_book_imported::{LimitOrder, MomentOf};
 
 <span class="kw">mod </span>periphery;
 <span class="attr">#[cfg(test)]
@@ -815,8 +815,8 @@
     <span class="kw">use </span>order_book_imported::test_utils::fill_tools::{AmountVariant, FillSettings};
     <span class="kw">use </span>order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     <span class="kw">use </span>order_book_imported::{
-        CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
-        OrderBookStatus, OrderPrice, OrderVolume,
+        CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookStatus,
+        OrderPrice, OrderVolume,
     };
     <span class="kw">use </span>periphery::presets::<span class="kw-2">*</span>;
 

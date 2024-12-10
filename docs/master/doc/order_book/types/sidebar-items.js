@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CancelReason","MarketRole","OrderAmount","OrderBookEvent","OrderBookStatus","OrderBookTechStatus"],"struct":["DealInfo","MarketChange","OrderBookId","Payment"],"type":["MarketSide","OrderPrice","OrderVolume","PriceOrders","UserOrders"]};
+window.SIDEBAR_ITEMS = {"enum":["CancelReason","MarketRole","OrderAmount","OrderBookEvent","OrderBookStatus","OrderBookTechStatus"],"struct":["DealInfo","MarketChange","Payment"],"type":["MarketSide","OrderPrice","OrderVolume","PriceOrders","UserOrders"]};

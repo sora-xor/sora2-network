@@ -1849,6 +1849,76 @@
 <a href="#1834" id="1834">1834</a>
 <a href="#1835" id="1835">1835</a>
 <a href="#1836" id="1836">1836</a>
+<a href="#1837" id="1837">1837</a>
+<a href="#1838" id="1838">1838</a>
+<a href="#1839" id="1839">1839</a>
+<a href="#1840" id="1840">1840</a>
+<a href="#1841" id="1841">1841</a>
+<a href="#1842" id="1842">1842</a>
+<a href="#1843" id="1843">1843</a>
+<a href="#1844" id="1844">1844</a>
+<a href="#1845" id="1845">1845</a>
+<a href="#1846" id="1846">1846</a>
+<a href="#1847" id="1847">1847</a>
+<a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
+<a href="#1858" id="1858">1858</a>
+<a href="#1859" id="1859">1859</a>
+<a href="#1860" id="1860">1860</a>
+<a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
+<a href="#1866" id="1866">1866</a>
+<a href="#1867" id="1867">1867</a>
+<a href="#1868" id="1868">1868</a>
+<a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1893,8 +1963,9 @@
 <span class="kw">use </span>common::LiquiditySourceType;
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
-    Description, DexInfoProvider, LiquiditySource, PriceVariant, RewardReason,
-    SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair, TradingPairSourceManager,
+    Description, DexInfoProvider, LiquiditySource, OrderBookId, OrderBookManager, PriceVariant,
+    RewardReason, SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair,
+    TradingPairSourceManager,
 };
 <span class="kw">use </span>core::fmt::Debug;
 <span class="kw">use </span>frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
@@ -1937,8 +2008,8 @@
 };
 <span class="kw">pub use </span>types::{
     CancelReason, DealInfo, MarketChange, MarketRole, MarketSide, OrderAmount, OrderBookEvent,
-    OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment,
-    PriceOrders, UserOrders,
+    OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Payment, PriceOrders,
+    UserOrders,
 };
 <span class="kw">pub use </span>weights::WeightInfo;
 
@@ -2445,8 +2516,7 @@
                 Either::Right(()) =&gt; <span class="prelude-val">None</span>,
             };
 
-            <span class="self">Self</span>::verify_create_orderbook_params(<span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::verify_orderbook_attributes(
+            <span class="self">Self</span>::inner_create_orderbook(
                 <span class="kw-2">&amp;</span>order_book_id,
                 tick_size,
                 step_lot_size,
@@ -2454,20 +2524,6 @@
                 max_lot_size,
             )<span class="question-mark">?</span>;
 
-            T::TradingPairSourceManager::enable_source_for_trading_pair(
-                <span class="kw-2">&amp;</span>order_book_id.dex_id,
-                <span class="kw-2">&amp;</span>order_book_id.quote,
-                <span class="kw-2">&amp;</span>order_book_id.base,
-                LiquiditySourceType::OrderBook,
-            )<span class="question-mark">?</span>;
-
-            <span class="self">Self</span>::create_orderbook_unchecked(
-                <span class="kw-2">&amp;</span>order_book_id,
-                tick_size,
-                step_lot_size,
-                min_lot_size,
-                max_lot_size,
-            )<span class="question-mark">?</span>;
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookCreated {
                 order_book_id,
                 creator: maybe_who,
@@ -2702,35 +2758,9 @@
             lifespan: <span class="prelude-ty">Option</span>&lt;MomentOf&lt;T&gt;&gt;,
         ) -&gt; DispatchResultWithPostInfo {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="kw">let </span><span class="kw-2">mut </span>order_book =
-                &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
-            <span class="kw">let </span>order_id = order_book.next_order_id();
-            <span class="kw">let </span>now = T::Time::now();
-            <span class="kw">let </span>current_block = frame_system::Pallet::&lt;T&gt;::block_number();
-            <span class="kw">let </span>lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
-            <span class="kw">let </span>amount = <span class="kw">if </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base)
-            {
-                OrderVolume::indivisible(amount)
-            } <span class="kw">else </span>{
-                OrderVolume::divisible(amount)
-            };
-            <span class="kw">let </span>order = LimitOrder::&lt;T&gt;::new(
-                order_id,
-                who,
-                side,
-                OrderPrice::divisible(price),
-                amount,
-                now,
-                lifespan,
-                current_block,
-            );
 
-            <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
-
-            <span class="kw">let </span>executed_orders_count = order_book.place_limit_order(order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
-
-            data.commit();
-            &lt;OrderBooks&lt;T&gt;&gt;::insert(order_book_id, order_book);
+            <span class="kw">let </span>executed_orders_count =
+                <span class="self">Self</span>::inner_place_limit_order(who, order_book_id, price, amount, side, lifespan)<span class="question-mark">?</span>;
 
             <span class="comment">// Note: be careful with changing the weight. The fee depends on it,
             // the market-maker fee is charged for some weight, and the regular fee for none weight
@@ -3231,6 +3261,78 @@
         &lt;OrderBooks&lt;T&gt;&gt;::insert(order_book_id, order_book);
         <span class="self">Self</span>::register_tech_account(<span class="kw-2">*</span>order_book_id)
     }
+
+    <span class="kw">pub fn </span>inner_create_orderbook(
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="self">Self</span>::verify_create_orderbook_params(order_book_id)<span class="question-mark">?</span>;
+        <span class="self">Self</span>::verify_orderbook_attributes(
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )<span class="question-mark">?</span>;
+
+        T::TradingPairSourceManager::enable_source_for_trading_pair(
+            <span class="kw-2">&amp;</span>order_book_id.dex_id,
+            <span class="kw-2">&amp;</span>order_book_id.quote,
+            <span class="kw-2">&amp;</span>order_book_id.base,
+            LiquiditySourceType::OrderBook,
+        )<span class="question-mark">?</span>;
+
+        <span class="self">Self</span>::create_orderbook_unchecked(
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )
+    }
+
+    <span class="kw">pub fn </span>inner_place_limit_order(
+        owner: T::AccountId,
+        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        price: Balance,
+        amount: Balance,
+        side: PriceVariant,
+        lifespan: <span class="prelude-ty">Option</span>&lt;MomentOf&lt;T&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, DispatchError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>order_book =
+            &lt;OrderBooks&lt;T&gt;&gt;::get(order_book_id).ok_or(Error::&lt;T&gt;::UnknownOrderBook)<span class="question-mark">?</span>;
+        <span class="kw">let </span>order_id = order_book.next_order_id();
+        <span class="kw">let </span>now = T::Time::now();
+        <span class="kw">let </span>current_block = frame_system::Pallet::&lt;T&gt;::block_number();
+        <span class="kw">let </span>lifespan = lifespan.unwrap_or(T::MAX_ORDER_LIFESPAN);
+        <span class="kw">let </span>amount = <span class="kw">if </span>&lt;T <span class="kw">as </span>Config&gt;::AssetInfoProvider::is_non_divisible(<span class="kw-2">&amp;</span>order_book_id.base) {
+            OrderVolume::indivisible(amount)
+        } <span class="kw">else </span>{
+            OrderVolume::divisible(amount)
+        };
+        <span class="kw">let </span>order = LimitOrder::&lt;T&gt;::new(
+            order_id,
+            owner,
+            side,
+            OrderPrice::divisible(price),
+            amount,
+            now,
+            lifespan,
+            current_block,
+        );
+
+        <span class="kw">let </span><span class="kw-2">mut </span>data = CacheDataLayer::&lt;T&gt;::new();
+
+        <span class="kw">let </span>executed_orders_count = order_book.place_limit_order(order, <span class="kw-2">&amp;mut </span>data)<span class="question-mark">?</span>;
+
+        data.commit();
+        &lt;OrderBooks&lt;T&gt;&gt;::insert(order_book_id, order_book);
+
+        <span class="prelude-val">Ok</span>(executed_orders_count)
+    }
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
@@ -3238,6 +3340,44 @@
     <span class="doccomment">/// Specifically created for `qa-tools` pallet
     </span><span class="kw">pub fn </span>deposit_event_exposed(event: Event&lt;T&gt;) {
         <span class="self">Self</span>::deposit_event(event)
+    }
+}
+
+<span class="kw">impl</span>&lt;T: Config&gt; OrderBookManager&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, MomentOf&lt;T&gt;&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
+    <span class="kw">fn </span>assemble_order_book_id(
+        dex_id: T::DEXId,
+        input_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+        output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;&gt; {
+        <span class="self">Self</span>::assemble_order_book_id(dex_id, input_asset_id, output_asset_id)
+    }
+
+    <span class="kw">fn </span>initialize_orderbook(
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        tick_size: Balance,
+        step_lot_size: Balance,
+        min_lot_size: Balance,
+        max_lot_size: Balance,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="self">Self</span>::inner_create_orderbook(
+            order_book_id,
+            tick_size,
+            step_lot_size,
+            min_lot_size,
+            max_lot_size,
+        )
+    }
+
+    <span class="kw">fn </span>place_limit_order(
+        owner: T::AccountId,
+        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        price: Balance,
+        amount: Balance,
+        side: PriceVariant,
+        lifespan: <span class="prelude-ty">Option</span>&lt;MomentOf&lt;T&gt;&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+        <span class="kw">let _ </span>= <span class="self">Self</span>::inner_place_limit_order(owner, order_book_id, price, amount, side, lifespan)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 }
 

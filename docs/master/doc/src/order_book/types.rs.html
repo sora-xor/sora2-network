@@ -519,39 +519,6 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -585,7 +552,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::traits::{CurrencyLocker, CurrencyUnlocker};
 <span class="kw">use </span>codec::{Decode, Encode, MaxEncodedLen};
 <span class="kw">use </span>common::prelude::BalanceUnit;
-<span class="kw">use </span>common::{PriceVariant, TradingPair};
+<span class="kw">use </span>common::{OrderBookId, PriceVariant};
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::{BoundedBTreeMap, BoundedVec};
 <span class="kw">use </span>sp_runtime::traits::{CheckedAdd, CheckedDiv, CheckedSub, Saturating, Zero};
@@ -741,39 +708,6 @@
 </span><span class="kw">pub enum </span>MarketRole {
     Maker,
     Taker,
-}
-
-<span class="attr">#[derive(
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    Copy,
-    Clone,
-    PartialOrd,
-    Ord,
-    Debug,
-    Hash,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-#[cfg_attr(feature = <span class="string">&quot;std&quot;</span>, derive(Serialize, Deserialize))]
-</span><span class="kw">pub struct </span>OrderBookId&lt;AssetId, DEXId&gt; {
-    <span class="doccomment">/// DEX id
-    </span><span class="kw">pub </span>dex_id: DEXId,
-    <span class="doccomment">/// Base asset.
-    </span><span class="kw">pub </span>base: AssetId,
-    <span class="doccomment">/// Quote asset. It should be a base asset of DEX.
-    </span><span class="kw">pub </span>quote: AssetId,
-}
-
-<span class="kw">impl</span>&lt;AssetId, DEXId&gt; From&lt;OrderBookId&lt;AssetId, DEXId&gt;&gt; <span class="kw">for </span>TradingPair&lt;AssetId&gt; {
-    <span class="kw">fn </span>from(order_book_id: OrderBookId&lt;AssetId, DEXId&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            base_asset_id: order_book_id.quote,
-            target_asset_id: order_book_id.base,
-        }
-    }
 }
 
 <span class="attr">#[derive(Eq, PartialEq, Clone, Debug)]

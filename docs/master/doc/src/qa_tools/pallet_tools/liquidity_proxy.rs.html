@@ -236,11 +236,11 @@
     <span class="kw">use </span><span class="kw">crate</span>::pallet_tools::mcbc::TbcdCollateralInput;
     <span class="kw">use </span><span class="kw">crate</span>::pallet_tools::price_tools::AssetPrices;
     <span class="kw">use </span><span class="kw">crate</span>::Config;
-    <span class="kw">use </span>common::{AssetIdOf, DexIdOf};
+    <span class="kw">use </span>common::{AssetIdOf, DexIdOf, OrderBookId};
     <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
     <span class="kw">use </span>frame_support::ensure;
     <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
-    <span class="kw">use </span>order_book::{MomentOf, OrderBookId};
+    <span class="kw">use </span>order_book::MomentOf;
     <span class="kw">use </span>pallet_tools::mcbc::{BaseSupply, OtherCollateralInput};
     <span class="kw">use </span>pallet_tools::pool_xyk::AssetPairInput;
     <span class="kw">use </span>pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};

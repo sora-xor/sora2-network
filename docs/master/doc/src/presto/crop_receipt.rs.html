@@ -311,25 +311,25 @@
 
 <span class="attr">#[allow(unused)] </span><span class="comment">// TODO remove
 </span><span class="kw">impl </span>Country {
-    <span class="kw">pub fn </span>symbol(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+    <span class="kw">pub fn </span>symbol(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Brazil =&gt; <span class="string">&quot;BR&quot;</span>,
-            <span class="self">Self</span>::Indonesia =&gt; <span class="string">&quot;ID&quot;</span>,
-            <span class="self">Self</span>::Nigeria =&gt; <span class="string">&quot;NG&quot;</span>,
-            <span class="self">Self</span>::Ukraine =&gt; <span class="string">&quot;UA&quot;</span>,
-            <span class="self">Self</span>::Usa =&gt; <span class="string">&quot;US&quot;</span>,
-            <span class="self">Self</span>::Other =&gt; <span class="string">&quot;RR&quot;</span>,
+            <span class="self">Self</span>::Brazil =&gt; <span class="string">b&quot;BR&quot;</span>,
+            <span class="self">Self</span>::Indonesia =&gt; <span class="string">b&quot;ID&quot;</span>,
+            <span class="self">Self</span>::Nigeria =&gt; <span class="string">b&quot;NG&quot;</span>,
+            <span class="self">Self</span>::Ukraine =&gt; <span class="string">b&quot;UA&quot;</span>,
+            <span class="self">Self</span>::Usa =&gt; <span class="string">b&quot;US&quot;</span>,
+            <span class="self">Self</span>::Other =&gt; <span class="string">b&quot;RR&quot;</span>,
         }
     }
 
-    <span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+    <span class="kw">pub fn </span>name(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[u8] {
         <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::Brazil =&gt; <span class="string">&quot;Brazil&quot;</span>,
-            <span class="self">Self</span>::Indonesia =&gt; <span class="string">&quot;Indonesia&quot;</span>,
-            <span class="self">Self</span>::Nigeria =&gt; <span class="string">&quot;Nigeria&quot;</span>,
-            <span class="self">Self</span>::Ukraine =&gt; <span class="string">&quot;Ukraine&quot;</span>,
-            <span class="self">Self</span>::Usa =&gt; <span class="string">&quot;United States of America&quot;</span>,
-            <span class="self">Self</span>::Other =&gt; <span class="string">&quot;Other&quot;</span>,
+            <span class="self">Self</span>::Brazil =&gt; <span class="string">b&quot;Brazil&quot;</span>,
+            <span class="self">Self</span>::Indonesia =&gt; <span class="string">b&quot;Indonesia&quot;</span>,
+            <span class="self">Self</span>::Nigeria =&gt; <span class="string">b&quot;Nigeria&quot;</span>,
+            <span class="self">Self</span>::Ukraine =&gt; <span class="string">b&quot;Ukraine&quot;</span>,
+            <span class="self">Self</span>::Usa =&gt; <span class="string">b&quot;United States of America&quot;</span>,
+            <span class="self">Self</span>::Other =&gt; <span class="string">b&quot;Other&quot;</span>,
         }
     }
 }
