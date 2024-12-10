@@ -1325,6 +1325,16 @@ impl<AssetId, DEXId> From<OrderBookId<AssetId, DEXId>> for TradingPair<AssetId> 
     }
 }
 
+pub trait ItoaInteger: itoa::Integer {}
+impl<T: itoa::Integer> ItoaInteger for T {}
+
+/// Converts integer into Vec<u8> string.
+/// Works with no-std
+pub fn itoa(int: impl ItoaInteger) -> Vec<u8> {
+    let mut buffer = itoa::Buffer::new();
+    buffer.format(int).as_bytes().to_vec()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1410,5 +1420,13 @@ mod tests {
                 "030029d608ae1fd6a2fb278d4b339633c8030000000000000000000000000000"
             ))
         );
+    }
+
+    #[test]
+    fn check_itoa() {
+        assert_eq!(itoa(10u8), b"10");
+        assert_eq!(itoa(123u64), b"123");
+        assert_eq!(itoa(-234i32), b"-234");
+        assert_eq!(itoa(0), b"0");
     }
 }

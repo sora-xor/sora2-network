@@ -65,8 +65,8 @@ pub mod pallet {
     use common::fixnum::ops::RoundMode;
     use common::prelude::BalanceUnit;
     use common::{
-        balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString, DEXId,
-        OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
+        balance, itoa, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString,
+        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
     };
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
@@ -140,7 +140,7 @@ pub mod pallet {
             + Eq
             + MaxEncodedLen
             + scale_info::TypeInfo
-            + itoa::Integer;
+            + ItoaInteger;
 
         #[pallet::constant]
         type MaxPrestoManagersCount: Get<u32>;
@@ -774,12 +774,11 @@ pub mod pallet {
                 &T::PrestoTechAccount::get(),
             )?;
 
-            // use `itoa` crate to convert `CouponId` to &str in no std env.
-            let mut coupon_id_buffer = itoa::Buffer::new();
-            let coupon_id = coupon_id_buffer.format(Self::next_coupon_id()).as_bytes();
+            // use `itoa` to convert `CouponId` to Vec<u8> string in no-std env.
+            let coupon_id = itoa(Self::next_coupon_id());
 
-            let symbol = AssetSymbol([country.symbol(), COUPON_SYMBOL, coupon_id].concat());
-            let name = AssetName([country.name(), COUPON_NAME, coupon_id].join(&b' '));
+            let symbol = AssetSymbol([country.symbol(), COUPON_SYMBOL, &coupon_id].concat());
+            let name = AssetName([country.name(), COUPON_NAME, &coupon_id].join(&b' '));
 
             let coupon_asset_id = T::AssetManager::register_from(
                 &presto_tech_account_id,
