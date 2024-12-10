@@ -1729,6 +1729,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "itoa",
  "libsecp256k1",
  "num-traits",
  "orml-currencies",

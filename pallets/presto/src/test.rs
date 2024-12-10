@@ -40,7 +40,8 @@ use crate::requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
 
 use common::prelude::BalanceUnit;
 use common::{
-    balance, AssetIdOf, AssetInfoProvider, Balance, BoundedString, DEXId, OrderBookId, PRUSD,
+    balance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, Balance, BoundedString, DEXId,
+    OrderBookId, PRUSD,
 };
 use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating, Score, Status};
 use frame_support::{assert_err, assert_ok};
@@ -1187,6 +1188,11 @@ fn should_publish_crop_receipt() {
             .first()
             .unwrap()
             .0;
+
+        let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(coupon_asset_id);
+
+        assert_eq!(coupon_asset_info.0, AssetSymbol(b"BRC1".to_vec()));
+        assert_eq!(coupon_asset_info.1, AssetName(b"Brazil Coupon 1".to_vec()));
 
         let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
             dex_id: DEXId::PolkaswapPresto,
