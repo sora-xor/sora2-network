@@ -30,6 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod crop_receipt;
 #[cfg(test)]
 mod mock;
@@ -66,7 +68,7 @@ pub mod pallet {
     use common::prelude::BalanceUnit;
     use common::{
         balance, itoa, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString,
-        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
+        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager,
     };
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
@@ -532,7 +534,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(9)]
-        #[pallet::weight(<T as Config>::WeightInfo::create_withdraw_request())]
+        #[pallet::weight(<T as Config>::WeightInfo::cancel_request())]
         pub fn cancel_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
@@ -803,13 +805,13 @@ pub mod pallet {
 
             T::TradingPairSourceManager::register_pair(
                 DEXId::PolkaswapPresto.into(),
-                PRUSD.into(),
+                T::PrestoUsdAssetId::get(),
                 coupon_asset_id,
             )?;
 
             let order_book_id = T::OrderBookManager::assemble_order_book_id(
                 DEXId::PolkaswapPresto.into(),
-                &PRUSD.into(),
+                &T::PrestoUsdAssetId::get(),
                 &coupon_asset_id,
             )
             .ok_or(Error::<T>::CouponOfferingFail)?;

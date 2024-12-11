@@ -37,8 +37,8 @@ use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_manager_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
     mock_permissions_config, mock_technical_config, mock_tokens_config, mock_trading_pair_config,
-    Amount, AssetId32, AssetName, AssetSymbol, BoundedString, DEXId, DEXInfo, FromGenericPair,
-    PredefinedAssetId, DEFAULT_BALANCE_PRECISION, KUSD, PRUSD, XOR, XST,
+    Amount, AssetId32, AssetName, AssetSymbol, DEXId, DEXInfo, FromGenericPair, PredefinedAssetId,
+    DEFAULT_BALANCE_PRECISION, KUSD, PRUSD, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, EitherOfDiverse, GenesisBuild};
@@ -288,10 +288,4 @@ pub fn ext() -> sp_io::TestExternalities {
         Timestamp::set_timestamp(0);
     });
     ext
-}
-
-pub fn crop_receipt_content_template(
-) -> BoundedString<<Runtime as presto::Config>::MaxCropReceiptContentSize> {
-    let content = include_str!("../crop_receipt_template.json");
-    BoundedString::truncate_from(content)
 }
