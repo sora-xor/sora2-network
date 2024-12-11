@@ -954,6 +954,8 @@
 <a href="#939" id="939">939</a>
 <a href="#940" id="940">940</a>
 <a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -986,7 +988,9 @@
 
 </span><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 
-</span><span class="kw">mod </span>crop_receipt;
+#[cfg(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>)]
+</span><span class="kw">mod </span>benchmarking;
+<span class="kw">mod </span>crop_receipt;
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>mock;
 <span class="kw">mod </span>requests;
@@ -1022,7 +1026,7 @@
     <span class="kw">use </span>common::prelude::BalanceUnit;
     <span class="kw">use </span>common::{
         balance, itoa, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString,
-        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager, PRUSD,
+        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager,
     };
     <span class="kw">use </span>core::fmt::Debug;
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
@@ -1488,7 +1492,7 @@
         }
 
         <span class="attr">#[pallet::call_index(<span class="number">9</span>)]
-        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::create_withdraw_request())]
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::cancel_request())]
         </span><span class="kw">pub fn </span>cancel_request(origin: OriginFor&lt;T&gt;, request_id: T::RequestId) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
 
@@ -1759,13 +1763,13 @@
 
             T::TradingPairSourceManager::register_pair(
                 DEXId::PolkaswapPresto.into(),
-                PRUSD.into(),
+                T::PrestoUsdAssetId::get(),
                 coupon_asset_id,
             )<span class="question-mark">?</span>;
 
             <span class="kw">let </span>order_book_id = T::OrderBookManager::assemble_order_book_id(
                 DEXId::PolkaswapPresto.into(),
-                <span class="kw-2">&amp;</span>PRUSD.into(),
+                <span class="kw-2">&amp;</span>T::PrestoUsdAssetId::get(),
                 <span class="kw-2">&amp;</span>coupon_asset_id,
             )
             .ok_or(Error::&lt;T&gt;::CouponOfferingFail)<span class="question-mark">?</span>;

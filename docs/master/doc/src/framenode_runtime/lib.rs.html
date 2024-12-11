@@ -3595,6 +3595,10 @@
 <a href="#3580" id="3580">3580</a>
 <a href="#3581" id="3581">3581</a>
 <a href="#3582" id="3582">3582</a>
+<a href="#3583" id="3583">3583</a>
+<a href="#3584" id="3584">3584</a>
+<a href="#3585" id="3585">3585</a>
+<a href="#3586" id="3586">3586</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -7009,6 +7013,8 @@
             <span class="macro">list_benchmark!</span>(list, extra, oracle_proxy, OracleProxy);
             <span class="macro">list_benchmark!</span>(list, extra, apollo_platform, ApolloPlatform);
             <span class="macro">list_benchmark!</span>(list, extra, order_book, OrderBookBench::&lt;Runtime&gt;);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+            </span><span class="macro">list_benchmark!</span>(list, extra, presto, Presto);
 
             <span class="comment">// Trustless bridge
             </span><span class="macro">list_benchmark!</span>(list, extra, bridge_inbound_channel, BridgeInboundChannel);
@@ -7105,6 +7111,8 @@
             <span class="macro">add_benchmark!</span>(params, batches, oracle_proxy, OracleProxy);
             <span class="macro">add_benchmark!</span>(params, batches, apollo_platform, ApolloPlatform);
             <span class="macro">add_benchmark!</span>(params, batches, order_book, OrderBookBench::&lt;Runtime&gt;);
+            <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+            </span><span class="macro">add_benchmark!</span>(params, batches, presto, Presto);
 
             <span class="comment">// Trustless bridge
             </span><span class="macro">add_benchmark!</span>(params, batches, bridge_inbound_channel, BridgeInboundChannel);
