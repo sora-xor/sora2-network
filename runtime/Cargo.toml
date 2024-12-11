@@ -363,6 +363,7 @@ runtime-benchmarks = [
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
     "pool-xyk-benchmarking/runtime-benchmarks",
+    "presto/runtime-benchmarks",
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "soratopia/runtime-benchmarks",
