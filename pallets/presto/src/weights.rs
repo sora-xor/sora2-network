@@ -42,11 +42,12 @@ pub trait WeightInfo {
     fn mint_presto_usd() -> Weight;
     fn burn_presto_usd() -> Weight;
     fn send_presto_usd() -> Weight;
+    fn create_deposit_request() -> Weight;
+    fn create_withdraw_request() -> Weight;
+    fn cancel_request() -> Weight;
     fn approve_deposit_request() -> Weight;
     fn approve_withdraw_request() -> Weight;
     fn decline_request() -> Weight;
-    fn create_deposit_request() -> Weight;
-    fn create_withdraw_request() -> Weight;
     fn create_crop_receipt() -> Weight;
     fn rate_crop_receipt() -> Weight;
     fn decline_crop_receipt() -> Weight;
@@ -83,6 +84,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
         Weight::zero()
     }
 
+    fn create_deposit_request() -> Weight {
+        Weight::zero()
+    }
+
+    fn create_withdraw_request() -> Weight {
+        Weight::zero()
+    }
+
+    fn cancel_request() -> Weight {
+        Weight::zero()
+    }
+
     fn approve_deposit_request() -> Weight {
         Weight::zero()
     }
@@ -92,14 +105,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     }
 
     fn decline_request() -> Weight {
-        Weight::zero()
-    }
-
-    fn create_deposit_request() -> Weight {
-        Weight::zero()
-    }
-
-    fn create_withdraw_request() -> Weight {
         Weight::zero()
     }
 
@@ -149,6 +154,18 @@ impl WeightInfo for () {
         Weight::zero()
     }
 
+    fn create_deposit_request() -> Weight {
+        Weight::zero()
+    }
+
+    fn create_withdraw_request() -> Weight {
+        Weight::zero()
+    }
+
+    fn cancel_request() -> Weight {
+        Weight::zero()
+    }
+
     fn approve_deposit_request() -> Weight {
         Weight::zero()
     }
@@ -158,14 +175,6 @@ impl WeightInfo for () {
     }
 
     fn decline_request() -> Weight {
-        Weight::zero()
-    }
-
-    fn create_deposit_request() -> Weight {
-        Weight::zero()
-    }
-
-    fn create_withdraw_request() -> Weight {
         Weight::zero()
     }
 

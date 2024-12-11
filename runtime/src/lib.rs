@@ -3412,6 +3412,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
+            #[cfg(feature = "wip")] // presto
+            list_benchmark!(list, extra, presto, Presto);
 
             // Trustless bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
@@ -3508,6 +3510,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
+            #[cfg(feature = "wip")] // presto
+            add_benchmark!(params, batches, presto, Presto);
 
             // Trustless bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);

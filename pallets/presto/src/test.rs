@@ -32,6 +32,9 @@
 
 use super::*;
 
+use crate::crop_receipt::{
+    crop_receipt_content_template, Country, CropReceipt, CropReceiptContent, Rating, Score, Status,
+};
 use crate::mock::{
     ext, AccountId, AssetId, PrestoBufferTechAccountId, PrestoTechAccountId, Runtime,
     RuntimeOrigin, TechAccountId,
@@ -43,7 +46,6 @@ use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, Balance, BoundedString, DEXId,
     OrderBookId, PRUSD,
 };
-use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating, Score, Status};
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
 
@@ -933,7 +935,7 @@ fn should_create_crop_receipt() {
         let debtor = BoundedString::truncate_from("debtor");
         let creditor = BoundedString::truncate_from("creditor");
         let perfomance_time = 345;
-        let data = mock::crop_receipt_content_template();
+        let data = crop_receipt_content_template::<Runtime>();
 
         assert_err!(
             PrestoPallet::create_crop_receipt(
@@ -1011,7 +1013,7 @@ fn should_rate_crop_receipt() {
             BoundedString::truncate_from("debtor"),
             BoundedString::truncate_from("creditor"),
             300,
-            mock::crop_receipt_content_template()
+            crop_receipt_content_template::<Runtime>()
         ));
 
         // test
@@ -1071,7 +1073,7 @@ fn should_decline_crop_receipt() {
             BoundedString::truncate_from("debtor"),
             BoundedString::truncate_from("creditor"),
             300,
-            mock::crop_receipt_content_template()
+            crop_receipt_content_template::<Runtime>()
         ));
 
         // test
@@ -1134,7 +1136,7 @@ fn should_publish_crop_receipt() {
             BoundedString::truncate_from("debtor"),
             BoundedString::truncate_from("creditor"),
             300,
-            mock::crop_receipt_content_template()
+            crop_receipt_content_template::<Runtime>()
         ));
 
         // test
