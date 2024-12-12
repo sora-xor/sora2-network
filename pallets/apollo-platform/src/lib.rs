@@ -195,7 +195,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultCollateralFactor<T: Config>() -> Balance {
-        balance!(0.01)
+        balance!(0.001)
     }
 
     /// Default borrowing factor

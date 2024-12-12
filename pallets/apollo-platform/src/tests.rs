@@ -1506,7 +1506,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(1000).try_into().unwrap()
+                balance!(10000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -1552,7 +1552,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(1000),
+                balance!(10000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1582,7 +1582,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(1000).try_into().unwrap()
+                balance!(10000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -1628,7 +1628,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(1000),
+                balance!(10000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1661,7 +1661,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(1000).try_into().unwrap()
+                balance!(10000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -1726,7 +1726,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(1000),
+                balance!(10000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1773,7 +1773,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(2010).try_into().unwrap()
+                balance!(20000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -1838,7 +1838,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(2000),
+                balance!(20000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1882,7 +1882,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(2000).try_into().unwrap()
+                balance!(20000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -1928,7 +1928,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(2000),
+                balance!(20000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1964,7 +1964,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(1000).try_into().unwrap()
+                balance!(10000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -2010,7 +2010,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(1000),
+                balance!(10000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -2031,7 +2031,7 @@ mod test {
                 ApolloPlatform::add_collateral(
                     RuntimeOrigin::signed(alice()),
                     KUSD,
-                    balance!(1),
+                    balance!(10),
                     XOR
                 ),
                 Error::<Runtime>::InvalidCollateralAmount
