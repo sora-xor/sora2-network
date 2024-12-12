@@ -29,11 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    Config, LimitOrder, MarketSide, OrderBookEvent, OrderBookId, OrderPrice, OrderVolume,
-    PriceOrders, UserOrders,
+    Config, LimitOrder, MarketSide, OrderBookEvent, OrderPrice, OrderVolume, PriceOrders,
+    UserOrders,
 };
-use common::AssetIdOf;
-use common::PriceVariant;
+use common::{AssetIdOf, OrderBookId, PriceVariant};
 use frame_support::sp_runtime::DispatchError;
 use frame_support::weights::WeightMeter;
 use sp_std::collections::btree_map::BTreeMap;

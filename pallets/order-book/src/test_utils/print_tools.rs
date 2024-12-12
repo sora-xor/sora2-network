@@ -31,11 +31,10 @@
 use super::order_book_imported;
 
 use common::prelude::FixedWrapper;
-use common::AssetIdOf;
-use common::PriceVariant;
+use common::{AssetIdOf, OrderBookId, PriceVariant};
 use order_book_imported::{
-    Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, OrderBookId, OrderPrice,
-    OrderVolume, PriceOrders,
+    Asks, Bids, Config, ExpirationsAgenda, LimitOrder, LimitOrders, OrderPrice, OrderVolume,
+    PriceOrders,
 };
 use sp_runtime::traits::{CheckedAdd, Zero};
 use sp_runtime::BoundedVec;

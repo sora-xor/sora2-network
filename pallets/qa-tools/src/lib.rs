@@ -58,13 +58,13 @@ pub mod pallet {
 
     use common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, SyntheticInfoProvider,
-        TradingPairSourceManager,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, OrderBookId,
+        SyntheticInfoProvider, TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use order_book::{MomentOf, OrderBookId};
+    use order_book::MomentOf;
     use pallet_tools::liquidity_proxy::liquidity_sources;
     use pallet_tools::pool_xyk::AssetPairInput;
     use pallet_tools::xst::{BaseInput, SyntheticInput, SyntheticOutput};

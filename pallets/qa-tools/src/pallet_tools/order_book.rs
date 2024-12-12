@@ -30,12 +30,14 @@
 
 use crate::Config;
 use codec::{Decode, Encode};
-use common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, TradingPairSourceManager};
+use common::{
+    balance, AssetIdOf, AssetManager, Balance, OrderBookId, PriceVariant, TradingPairSourceManager,
+};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use order_book::DataLayer;
-use order_book::{MomentOf, OrderBook, OrderBookId, OrderPrice, OrderVolume};
+use order_book::{MomentOf, OrderBook, OrderPrice, OrderVolume};
 use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use sp_std::iter::repeat;

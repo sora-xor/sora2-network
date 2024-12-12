@@ -38,11 +38,10 @@ use crate::traits::{AlignmentScheduler, ExpirationScheduler};
 use crate::weights::WeightInfo;
 use crate::{
     AlignmentCursor, CacheDataLayer, Config, DataLayer, Error, Event, ExpirationsAgenda,
-    IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookId, OrderBookTechStatus,
-    OrderBooks, Pallet,
+    IncompleteExpirationsSince, LimitOrder, LimitOrders, OrderBookTechStatus, OrderBooks, Pallet,
 };
 use common::weights::check_accrue_n;
-use common::AssetIdOf;
+use common::{AssetIdOf, OrderBookId};
 use frame_support::weights::WeightMeter;
 use sp_runtime::traits::{One, Zero};
 use sp_runtime::{DispatchError, Saturating};

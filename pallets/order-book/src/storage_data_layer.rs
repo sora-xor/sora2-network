@@ -30,11 +30,10 @@
 
 use crate::{
     AggregatedAsks, AggregatedBids, Asks, Bids, Config, DataLayer, Error, LimitOrder, LimitOrders,
-    MarketSide, OrderBookId, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
+    MarketSide, OrderPrice, OrderVolume, PriceOrders, UserLimitOrders, UserOrders,
 };
 use common::storage::DecodeIsFullDoubleMap;
-use common::AssetIdOf;
-use common::PriceVariant;
+use common::{AssetIdOf, OrderBookId, PriceVariant};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_runtime::traits::{CheckedAdd, CheckedSub, Zero};

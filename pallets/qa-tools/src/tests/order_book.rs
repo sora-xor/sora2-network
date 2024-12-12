@@ -31,8 +31,8 @@
 use super::{alice, bob, charlie, dave, FrameSystem, QaToolsPallet};
 use assets::AssetIdOf;
 use common::{
-    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, PredefinedAssetId,
-    PriceVariant, PSWAP, VAL, XOR,
+    balance, AssetId32, AssetName, AssetSymbol, Balance, DEXId, DexIdOf, OrderBookId,
+    PredefinedAssetId, PriceVariant, PSWAP, VAL, XOR,
 };
 use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::traits::Hooks;
@@ -41,7 +41,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
 use framenode_runtime::{Runtime, RuntimeOrigin};
-use order_book::{DataLayer, LimitOrder, MomentOf, OrderBookId, OrderPrice, OrderVolume};
+use order_book::{DataLayer, LimitOrder, MomentOf, OrderPrice, OrderVolume};
 use qa_tools::{pallet_tools, Error};
 use sp_runtime::traits::BadOrigin;
 use sp_runtime::DispatchErrorWithPostInfo;

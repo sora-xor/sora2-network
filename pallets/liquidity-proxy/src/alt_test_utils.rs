@@ -43,7 +43,7 @@ use qa_tools::pallet_tools::pool_xyk::AssetPairInput;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
 use sp_std::vec;
 
-pub type OrderBookId = order_book::OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>>;
+pub type OrderBookId = common::OrderBookId<AssetIdOf<Runtime>, DexIdOf<Runtime>>;
 pub const DEX: common::DEXId = common::DEXId::Polkaswap;
 
 pub fn alice() -> AccountIdOf<Runtime> {

@@ -341,11 +341,8 @@ where
                         TransactionValidityError::Invalid(InvalidTransaction::Payment)
                     })?;
 
-                    let xor_id = T::XorId::get();
-
                     Self::deposit_event(Event::FeeWithdrawn(
                         fee_source,
-                        xor_id,
                         adjusted_paid.peek().into(),
                     ));
 
@@ -374,7 +371,6 @@ where
                         Self::deposit_event(Event::ReferrerRewarded(
                             who.clone(),
                             referrer,
-                            T::XorId::get(),
                             referrer_portion.into(),
                         ));
                     } else {
@@ -412,11 +408,12 @@ where
                     .same()
                     .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
 
-                let xor_id = T::XorId::get();
-
+                #[cfg(not(feature = "wip"))]
+                Self::deposit_event(Event::FeeWithdrawn(fee_source, adjusted_paid.peek().into()));
+                #[cfg(feature = "wip")]
                 Self::deposit_event(Event::FeeWithdrawn(
                     fee_source,
-                    xor_id,
+                    T::XorId::get(),
                     adjusted_paid.peek().into(),
                 ));
 
@@ -442,10 +439,17 @@ where
                 if let Some(referrer) = T::ReferrerAccountProvider::get_referrer_account(who) {
                     let referrer_portion = referrer_xor.peek();
                     T::XorCurrency::resolve_creating(&referrer, referrer_xor);
+                    #[cfg(feature = "wip")]
                     Self::deposit_event(Event::ReferrerRewarded(
                         who.clone(),
                         referrer,
                         T::XorId::get(),
+                        referrer_portion.into(),
+                    ));
+                    #[cfg(not(feature = "wip"))]
+                    Self::deposit_event(Event::ReferrerRewarded(
+                        who.clone(),
+                        referrer,
                         referrer_portion.into(),
                     ));
                 } else {
@@ -1264,10 +1268,18 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
+        #[cfg(feature = "wip")] // Xorless fee
         /// Fee has been withdrawn from user. [Account Id to withdraw from, Asset Id to withdraw, Fee Amount]
         FeeWithdrawn(AccountIdOf<T>, AssetIdOf<T>, Balance),
+        #[cfg(feature = "wip")] // Xorless fee
         /// The portion of fee is sent to the referrer. [Referral, Referrer, AssetId, Amount]
         ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, AssetIdOf<T>, Balance),
+        #[cfg(not(feature = "wip"))] // Xorless fee
+        /// Fee has been withdrawn from user. [Account Id to withdraw from, Fee Amount]
+        FeeWithdrawn(AccountIdOf<T>, Balance),
+        #[cfg(not(feature = "wip"))] // Xorless fee
+        /// The portion of fee is sent to the referrer. [Referral, Referrer, Amount]
+        ReferrerRewarded(AccountIdOf<T>, AccountIdOf<T>, Balance),
         /// New multiplier for weight to fee conversion is set
         /// (*1_000_000_000_000_000_000). [New value]
         WeightToFeeMultiplierUpdated(FixedU128),

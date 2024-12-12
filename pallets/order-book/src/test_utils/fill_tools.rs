@@ -32,13 +32,12 @@
 
 use super::{accounts, order_book_imported};
 use order_book_imported::{
-    traits::DataLayer, Config, ExpirationsAgenda, LimitOrder, MarketRole, OrderBook, OrderBookId,
-    OrderPrice, OrderVolume, Pallet, Payment,
+    traits::DataLayer, Config, ExpirationsAgenda, LimitOrder, MarketRole, OrderBook, OrderPrice,
+    OrderVolume, Pallet, Payment,
 };
 
 use common::prelude::{Balance, BalanceUnit, Scalar};
-use common::PriceVariant;
-use common::{AssetIdOf, AssetManager};
+use common::{AssetIdOf, AssetManager, OrderBookId, PriceVariant};
 use frame_support::log::{debug, trace};
 use frame_support::traits::{Get, Time};
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};

@@ -43,7 +43,7 @@ use crate as order_book_benchmarking_imported;
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
 use common::prelude::{QuoteAmount, Scalar};
-use common::{balance, AssetIdOf, AssetManager, Balance, PriceVariant, ETH, VAL, XOR};
+use common::{balance, AssetIdOf, AssetManager, Balance, OrderBookId, PriceVariant, ETH, VAL, XOR};
 use frame_benchmarking::log::debug;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
@@ -55,7 +55,7 @@ use order_book_imported::test_utils::fill_tools::{
 };
 use order_book_imported::{
     cache_data_layer::CacheDataLayer, traits::DataLayer, DealInfo, LimitOrder, MomentOf, OrderBook,
-    OrderBookId, OrderBooks, OrderPrice, OrderVolume,
+    OrderBooks, OrderPrice, OrderVolume,
 };
 use sp_runtime::traits::{CheckedMul, SaturatedConversion};
 use sp_std::iter::Peekable;

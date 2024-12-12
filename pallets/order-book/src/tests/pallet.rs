@@ -33,7 +33,8 @@ use assets::AssetIdOf;
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, PriceVariant, VAL, XOR, XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, OrderBookId, PriceVariant, VAL, XOR,
+    XSTUSD,
 };
 use core::cmp::min;
 use frame_support::traits::Get;
@@ -42,7 +43,7 @@ use frame_system::RawOrigin;
 use framenode_chain_spec::ext;
 use framenode_runtime::order_book::{
     self, Config, CurrencyLocker, CurrencyUnlocker, ExpirationScheduler, LimitOrder, MarketRole,
-    OrderBook, OrderBookId, OrderBookStatus, OrderPrice, OrderVolume, WeightInfo,
+    OrderBook, OrderBookStatus, OrderPrice, OrderVolume, WeightInfo,
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_runtime::traits::UniqueSaturatedInto;

@@ -30,11 +30,9 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-use common::{balance, PriceVariant, VAL, XOR};
+use common::{balance, OrderBookId, PriceVariant, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
-use framenode_runtime::order_book::{
-    Config, LimitOrder, MarketOrder, MarketRole, OrderAmount, OrderBookId,
-};
+use framenode_runtime::order_book::{Config, LimitOrder, MarketOrder, MarketRole, OrderAmount};
 use framenode_runtime::Runtime;
 
 #[test]

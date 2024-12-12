@@ -57,10 +57,10 @@ use crate as order_book_benchmarking_imported;
 #[cfg(test)]
 use framenode_runtime::order_book_benchmarking as order_book_benchmarking_imported;
 
-use common::{AssetIdOf, DEXId};
+use common::{AssetIdOf, DEXId, OrderBookId};
 use frame_system::EventRecord;
 use order_book_imported::Pallet as OrderBookPallet;
-use order_book_imported::{LimitOrder, MomentOf, OrderBookId};
+use order_book_imported::{LimitOrder, MomentOf};
 
 mod periphery;
 #[cfg(test)]
@@ -148,8 +148,8 @@ mod benchmarks_inner {
     use order_book_imported::test_utils::fill_tools::{AmountVariant, FillSettings};
     use order_book_imported::test_utils::{accounts, create_and_fill_order_book};
     use order_book_imported::{
-        CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookId,
-        OrderBookStatus, OrderPrice, OrderVolume,
+        CancelReason, Event, ExpirationScheduler, MarketRole, OrderBook, OrderBookStatus,
+        OrderPrice, OrderVolume,
     };
     use periphery::presets::*;
 

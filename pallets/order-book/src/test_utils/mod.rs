@@ -35,12 +35,14 @@ use crate as order_book_imported;
 use framenode_runtime::order_book as order_book_imported;
 
 use order_book_imported::{
-    Config, OrderBook, OrderBookId, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume,
-    Pallet, PriceOrders,
+    Config, OrderBook, OrderBookStatus, OrderBookTechStatus, OrderPrice, OrderVolume, Pallet,
+    PriceOrders,
 };
 
-use common::AssetIdOf;
-use common::{balance, AssetInfoProvider, AssetManager, Balance, DexIdOf, PriceVariant};
+use common::{
+    balance, AssetIdOf, AssetInfoProvider, AssetManager, Balance, DexIdOf, OrderBookId,
+    PriceVariant,
+};
 use frame_support::assert_ok;
 use frame_support::dispatch::DispatchResult;
 use frame_system::RawOrigin;
