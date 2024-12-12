@@ -61,7 +61,7 @@ pub mod pallet {
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
         balance, AssetIdOf, AssetManager, DEXId, LiquiditySourceFilter, PriceVariant,
-        CERES_ASSET_ID, DAI,
+        CERES_ASSET_ID, DAI, KUSD,
     };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
     use frame_support::log::{debug, warn};
@@ -194,6 +194,17 @@ pub mod pallet {
         StorageValue<_, Balance, ValueQuery, FixedBorrowingRewards<T>>;
 
     #[pallet::type_value]
+    pub fn DefaultCollateralFactor<T: Config>() -> Balance {
+        balance!(0.01)
+    }
+
+    /// Default borrowing factor
+    #[pallet::storage]
+    #[pallet::getter(fn collateral_factor)]
+    pub type CollateralFactor<T: Config> =
+        StorageValue<_, Balance, ValueQuery, DefaultCollateralFactor<T>>;
+
+    #[pallet::type_value]
     pub fn FixedLendingRewardsPerBlock<T: Config>() -> Balance {
         balance!(0.03805175)
     }
@@ -236,6 +247,8 @@ pub mod pallet {
         ChangedRewardsAmount(AccountIdOf<T>, bool, Balance),
         //// ChangedRewardsAmountPerBlock [who, is_lending, amount]
         ChangedRewardsAmountPerBlock(AccountIdOf<T>, bool, Balance),
+        /// Changed Borrowing factor [who, amount]
+        ChangedCollateralFactorAmount(AccountIdOf<T>, Balance),
         /// Liquidated [who, asset_id]
         Liquidated(AccountIdOf<T>, AssetIdOf<T>),
         /// Pool removed [who, asset_id]
@@ -542,13 +555,36 @@ pub mod pallet {
             .try_into_balance()
             .unwrap_or(0);
 
+            let mut borrow_info =
+                <UserBorrowingInfo<T>>::get(borrowing_asset, user.clone()).unwrap_or_default();
+
+            if collateral_asset == KUSD.into() {
+                let factor = <CollateralFactor<T>>::get();
+
+                let total_existing_collateral =
+                    Self::calculate_total_existing_collateral(&user, &collateral_asset);
+
+                // Calculate the maximum allowed collateral for KUSD
+                let max_allowed_collateral = Self::calculate_max_allowed_collateral(
+                    user_lending_info
+                        .lending_amount
+                        .saturating_add(total_existing_collateral),
+                    factor,
+                )?;
+
+                let new_total_collateral =
+                    total_existing_collateral.saturating_add(collateral_amount);
+
+                ensure!(
+                    new_total_collateral <= max_allowed_collateral,
+                    Error::<T>::InvalidCollateralAmount
+                );
+            }
+
             ensure!(
                 collateral_amount <= user_lending_info.lending_amount,
                 Error::<T>::InvalidCollateralAmount
             );
-
-            let mut borrow_info =
-                <UserBorrowingInfo<T>>::get(borrowing_asset, user.clone()).unwrap_or_default();
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise create new user
             if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
@@ -1225,6 +1261,28 @@ pub mod pallet {
             let mut borrow_info =
                 <UserBorrowingInfo<T>>::get(borrowing_asset, user.clone()).unwrap_or_default();
 
+            if collateral_asset == KUSD.into() {
+                let factor = <CollateralFactor<T>>::get();
+                let total_existing_collateral =
+                    Self::calculate_total_existing_collateral(&user, &collateral_asset);
+
+                // Calculate the maximum allowed collateral for KUSD
+                let max_allowed_collateral = Self::calculate_max_allowed_collateral(
+                    user_lending_info
+                        .lending_amount
+                        .saturating_add(total_existing_collateral),
+                    factor,
+                )?;
+
+                let new_total_collateral =
+                    total_existing_collateral.saturating_add(collateral_amount);
+
+                ensure!(
+                    new_total_collateral <= max_allowed_collateral,
+                    Error::<T>::InvalidCollateralAmount
+                );
+            }
+
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise return error
             if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
                 let block_number = <frame_system::Pallet<T>>::block_number();
@@ -1271,6 +1329,25 @@ pub mod pallet {
                 borrowing_asset,
             ));
 
+            Ok(().into())
+        }
+
+        /// Change rewards amount
+        #[pallet::call_index(12)]
+        #[pallet::weight(<T as Config>::WeightInfo::change_collateral_factor())]
+        pub fn change_collateral_factor(
+            origin: OriginFor<T>,
+            amount: Balance,
+        ) -> DispatchResultWithPostInfo {
+            let user = ensure_signed(origin)?;
+
+            if user != AuthorityAccount::<T>::get() {
+                return Err(Error::<T>::Unauthorized.into());
+            }
+
+            <CollateralFactor<T>>::put(amount);
+
+            Self::deposit_event(Event::ChangedCollateralFactorAmount(user, amount));
             Ok(().into())
         }
     }
@@ -1563,6 +1640,33 @@ pub mod pallet {
             )?;
 
             Ok(().into())
+        }
+
+        fn calculate_max_allowed_collateral(
+            lending_amount: Balance,
+            factor: Balance,
+        ) -> Result<Balance, DispatchError> {
+            Ok(
+                (FixedWrapper::from(lending_amount) * FixedWrapper::from(factor))
+                    .try_into_balance()
+                    .unwrap_or(0),
+            )
+        }
+
+        /// Calculate the total existing collateral for a specific user and asset
+        fn calculate_total_existing_collateral(
+            user: &AccountIdOf<T>,
+            collateral_asset: &AssetIdOf<T>,
+        ) -> Balance {
+            <UserBorrowingInfo<T>>::iter()
+                .filter(|(_, stored_user, _)| stored_user == user)
+                .fold(Zero::zero(), |acc, (_, _, user_borrows)| {
+                    user_borrows
+                        .get(collateral_asset)
+                        .map_or(acc, |collateral_info| {
+                            acc.saturating_add(collateral_info.collateral_amount)
+                        })
+                })
         }
 
         fn update_interests(block_number: BlockNumberFor<T>) -> Weight {

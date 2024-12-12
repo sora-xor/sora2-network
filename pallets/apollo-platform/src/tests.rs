@@ -5,6 +5,7 @@ mod test {
     use common::prelude::FixedWrapper;
     use common::APOLLO_ASSET_ID;
     use common::CERES_ASSET_ID;
+    use common::KUSD;
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
@@ -189,6 +190,7 @@ mod test {
         init_pool(Polkaswap, XOR, DOT);
         init_pool(Polkaswap, XOR, KSM);
         init_pool(Polkaswap, XOR, APOLLO_ASSET_ID);
+        init_pool(Polkaswap, XOR, KUSD);
 
         assert_ok!(assets::Pallet::<Runtime>::mint_to(
             &APOLLO_ASSET_ID,
@@ -1489,6 +1491,550 @@ mod test {
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
                 calculated_borrowing_interest_first.1 + calculated_borrowing_interest.1,
+            );
+        });
+    }
+
+    #[test]
+    fn borrow_kusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(1000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(1000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                XOR,
+                balance!(10),
+                balance!(1)
+            ));
+        });
+    }
+
+    #[test]
+    fn borrow_kusd_invalid_collateral_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(1000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(1000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_err!(
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    KUSD,
+                    XOR,
+                    balance!(20),
+                    balance!(1)
+                ),
+                Error::<Runtime>::InvalidCollateralAmount
+            );
+        });
+    }
+
+    #[test]
+    fn borrow_kusd_multi_pool_invalid_collateral_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(1000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                DOT,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(1000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                DOT,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                DOT,
+                balance!(10),
+                balance!(1)
+            ));
+
+            assert_err!(
+                ApolloPlatform::borrow(
+                    RuntimeOrigin::signed(alice()),
+                    KUSD,
+                    XOR,
+                    balance!(10),
+                    balance!(1)
+                ),
+                Error::<Runtime>::InvalidCollateralAmount
+            );
+        });
+    }
+
+    #[test]
+    fn borrow_kusd_multi_pool_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(2010).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                DOT,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(2000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                DOT,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                DOT,
+                balance!(10),
+                balance!(1)
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                XOR,
+                balance!(10),
+                balance!(1)
+            ));
+        });
+    }
+
+    #[test]
+    fn add_collateral_kusd_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(2000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(2000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                XOR,
+                balance!(10),
+                balance!(1)
+            ));
+            assert_ok!(ApolloPlatform::add_collateral(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(10),
+                XOR
+            ));
+        });
+    }
+
+    #[test]
+    fn add_collateral_kusd_invalid_collateral_amount() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(1000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(1000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                XOR,
+                balance!(10),
+                balance!(1)
+            ));
+
+            assert_err!(
+                ApolloPlatform::add_collateral(
+                    RuntimeOrigin::signed(alice()),
+                    KUSD,
+                    balance!(1),
+                    XOR
+                ),
+                Error::<Runtime>::InvalidCollateralAmount
             );
         });
     }
@@ -3534,6 +4080,31 @@ mod test {
     }
 
     #[test]
+    fn change_collateral_factor_unauthorized() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_err!(
+                ApolloPlatform::change_collateral_factor(
+                    RuntimeOrigin::signed(alice()),
+                    balance!(1)
+                ),
+                Error::<Runtime>::Unauthorized
+            );
+        });
+    }
+
+    #[test]
+    fn change_collateral_factor() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::change_collateral_factor(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                balance!(1)
+            ));
+        });
+    }
+
+    #[test]
     fn get_price_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -3541,11 +4112,13 @@ mod test {
             let dot_price = ApolloPlatform::get_price(DOT);
             let dai_price = ApolloPlatform::get_price(DAI);
             let ksm_price = ApolloPlatform::get_price(KSM);
+            let kusd_price = ApolloPlatform::get_price(KUSD);
 
             assert_eq!(xor_price, balance!(1));
             assert_eq!(dot_price, balance!(1));
             assert_eq!(dai_price, balance!(0.1));
             assert_eq!(ksm_price, balance!(1));
+            assert_eq!(kusd_price, balance!(1));
         });
     }
 

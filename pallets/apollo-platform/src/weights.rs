@@ -67,6 +67,7 @@ pub trait WeightInfo {
 	fn withdraw() -> Weight;
 	fn repay() -> Weight;
 	fn change_rewards_amount() -> Weight;
+	fn change_collateral_factor() -> Weight;
 	fn change_rewards_per_block() -> Weight;
 	fn liquidate() -> Weight;
 	fn remove_pool() -> Weight;
@@ -240,6 +241,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: ApolloPlatform LendingRewards (r:0 w:1)
 	/// Proof Skipped: ApolloPlatform LendingRewards (max_values: Some(1), max_size: None, mode: Measured)
 	fn change_rewards_amount() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `114`
+		//  Estimated: `723`
+		// Minimum execution time: 21_704_000 picoseconds.
+		Weight::from_parts(22_211_000, 723)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform CollateralFactor (r:0 w:1)
+	/// Proof Skipped: ApolloPlatform CollateralFactor (max_values: Some(1), max_size: None, mode: Measured)
+	fn change_collateral_factor() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `114`
 		//  Estimated: `723`
@@ -522,6 +536,19 @@ impl WeightInfo for () {
 	/// Storage: ApolloPlatform LendingRewards (r:0 w:1)
 	/// Proof Skipped: ApolloPlatform LendingRewards (max_values: Some(1), max_size: None, mode: Measured)
 	fn change_rewards_amount() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `114`
+		//  Estimated: `723`
+		// Minimum execution time: 21_704_000 picoseconds.
+		Weight::from_parts(22_211_000, 723)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform CollateralFactor (r:0 w:1)
+	/// Proof Skipped: ApolloPlatform CollateralFactor (max_values: Some(1), max_size: None, mode: Measured)
+	fn change_collateral_factor() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `114`
 		//  Estimated: `723`
