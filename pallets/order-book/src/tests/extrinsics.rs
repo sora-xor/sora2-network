@@ -30,7 +30,7 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-#[cfg(feature = "wip")] // presto
+#[cfg(feature = "stage")] // presto
 use common::PRUSD;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, OrderBookId, PriceVariant,
@@ -188,7 +188,7 @@ fn should_create_order_book_with_correct_dex_id_polkaswap_vxor() {
     });
 }
 
-#[cfg(feature = "wip")] // presto
+#[cfg(feature = "stage")] // presto
 #[test]
 fn should_create_order_book_with_correct_dex_id_polkaswap_prusd() {
     ext().execute_with(|| {
@@ -286,7 +286,7 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
             E::NotAllowedQuoteAsset
         );
 
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         {
             let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
                 dex_id: common::DEXId::PolkaswapPresto.into(),

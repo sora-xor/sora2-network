@@ -312,15 +312,17 @@ wip = [
     "beefy-light-client",
     "beefy-light-client-runtime-api",
     "evm-fungible-app",
-    "order-book/wip",
     "pallet-beefy",
     "pallet-beefy-mmr",
-    "presto/wip",
     "xor-fee/wip",
     "vested-rewards/wip",
 ]
 
-stage = ["framenode-chain-spec/stage"]
+stage = [
+    "framenode-chain-spec/stage",
+    "order-book/stage",
+    "presto/stage",
+]
 
 runtime-benchmarks = [
     "apollo-platform/runtime-benchmarks",

@@ -216,7 +216,7 @@ impl<T: Config> CropReceipt<T> {
     }
 }
 
-#[cfg(any(feature = "runtime-benchmarks", test))]
+#[cfg(any(feature = "runtime-benchmarks", all(feature = "stage", test)))] // presto
 pub fn crop_receipt_content_template<T: Config>() -> BoundedString<T::MaxCropReceiptContentSize> {
     let content = include_str!("../crop_receipt_template.json");
     BoundedString::truncate_from(content)
