@@ -70,4 +70,4 @@ try-runtime = [
     "frame-support/try-runtime",
 ]
 
-wip = []
+stage = []

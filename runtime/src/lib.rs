@@ -62,7 +62,7 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-#[cfg(feature = "wip")] // presto
+#[cfg(feature = "stage")] // presto
 use common::PRUSD;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
 use constants::currency::deposit;
@@ -2507,7 +2507,7 @@ impl extended_assets::Config for Runtime {
     type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "wip")] // presto
+#[cfg(feature = "stage")] // presto
 parameter_types! {
     pub const PrestoUsdAssetId: AssetId = PRUSD;
     pub PrestoTechAccountId: TechAccountId = {
@@ -2524,7 +2524,7 @@ parameter_types! {
     };
 }
 
-#[cfg(feature = "wip")] // presto
+#[cfg(feature = "stage")] // presto
 impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
@@ -2622,7 +2622,7 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
 
         // Leaf provider should be placed before any pallet which is uses it
@@ -3412,7 +3412,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
-            #[cfg(feature = "wip")] // presto
+            #[cfg(feature = "stage")] // presto
             list_benchmark!(list, extra, presto, Presto);
 
             // Trustless bridge
@@ -3510,7 +3510,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
-            #[cfg(feature = "wip")] // presto
+            #[cfg(feature = "stage")] // presto
             add_benchmark!(params, batches, presto, Presto);
 
             // Trustless bridge
