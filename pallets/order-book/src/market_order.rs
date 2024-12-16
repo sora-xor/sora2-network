@@ -28,10 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Error, OrderBookId, OrderVolume};
+use crate::{Error, OrderVolume};
 use codec::{Decode, Encode, MaxEncodedLen};
-use common::AssetIdOf;
-use common::PriceVariant;
+use common::{AssetIdOf, OrderBookId, PriceVariant};
 use core::fmt::Debug;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;

@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "4.5.0"
+version = "4.5.2"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -363,6 +363,7 @@ runtime-benchmarks = [
     "pallet-collective/runtime-benchmarks",
     "pool-xyk-benchmarking",
     "pool-xyk-benchmarking/runtime-benchmarks",
+    "presto/runtime-benchmarks",
     "referrals/runtime-benchmarks",
     "rewards/runtime-benchmarks",
     "soratopia/runtime-benchmarks",

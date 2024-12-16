@@ -1729,6 +1729,7 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
+ "itoa",
  "libsecp256k1",
  "num-traits",
  "orml-currencies",
@@ -3559,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.5.0"
+version = "4.5.2"
 dependencies = [
  "ahash 0.8.5",
  "assert_cmd",
@@ -3643,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.5.0"
+version = "4.5.2"
 dependencies = [
  "common",
  "faucet",
@@ -3669,7 +3670,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.5.0"
+version = "4.5.2"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -7753,8 +7754,12 @@ dependencies = [
  "assets",
  "common",
  "derivative",
+ "dex-manager",
+ "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "hex-literal",
+ "order-book",
  "orml-currencies",
  "orml-tokens",
  "pallet-balances",
@@ -7767,6 +7772,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "technical",
+ "trading-pair",
 ]
 
 [[package]]

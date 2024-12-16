@@ -32,18 +32,25 @@
 
 use super::*;
 
+use crate::crop_receipt::{
+    crop_receipt_content_template, Country, CropReceipt, CropReceiptContent, Rating, Score, Status,
+};
 use crate::mock::{
     ext, AccountId, AssetId, PrestoBufferTechAccountId, PrestoTechAccountId, Runtime,
     RuntimeOrigin, TechAccountId,
 };
 use crate::requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
 
-use common::{balance, AssetInfoProvider, Balance, BoundedString, PRUSD};
-use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating, Score, Status};
+use common::prelude::BalanceUnit;
+use common::{
+    balance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, Balance, BoundedString, DEXId,
+    OrderBookId, PRUSD,
+};
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
 
 type PrestoPallet = Pallet<Runtime>;
+type OrderBookPallet = order_book::Pallet<Runtime>;
 type E = Error<Runtime>;
 
 fn alice() -> AccountId {
@@ -928,7 +935,7 @@ fn should_create_crop_receipt() {
         let debtor = BoundedString::truncate_from("debtor");
         let creditor = BoundedString::truncate_from("creditor");
         let perfomance_time = 345;
-        let data = mock::crop_receipt_content_template();
+        let data = crop_receipt_content_template::<Runtime>();
 
         assert_err!(
             PrestoPallet::create_crop_receipt(
@@ -1006,7 +1013,7 @@ fn should_rate_crop_receipt() {
             BoundedString::truncate_from("debtor"),
             BoundedString::truncate_from("creditor"),
             300,
-            mock::crop_receipt_content_template()
+            crop_receipt_content_template::<Runtime>()
         ));
 
         // test
@@ -1066,7 +1073,7 @@ fn should_decline_crop_receipt() {
             BoundedString::truncate_from("debtor"),
             BoundedString::truncate_from("creditor"),
             300,
-            mock::crop_receipt_content_template()
+            crop_receipt_content_template::<Runtime>()
         ));
 
         // test
@@ -1106,5 +1113,115 @@ fn should_decline_crop_receipt() {
             PrestoPallet::decline_crop_receipt(RuntimeOrigin::signed(bob()), 1),
             E::CropReceiptAlreadyHasDecision
         );
+    });
+}
+
+#[test]
+fn should_publish_crop_receipt() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(100000),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            crop_receipt_content_template::<Runtime>()
+        ));
+
+        // test
+
+        let supply = 10000;
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(bob()), 1, 0),
+            E::AmountIsZero
+        );
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(bob()), 2, supply),
+            E::CropReceiptIsNotExists
+        );
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(charlie()), 1, supply),
+            E::CallerIsNotCropReceiptOwner
+        );
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(bob()), 1, 1000000),
+            E::TooBigCouponSupply
+        );
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(bob()), 1, supply),
+            E::CropReceiptWaitingForRate
+        );
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        assert_ok!(PrestoPallet::publish_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1,
+            supply
+        ));
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(bob()), 1, supply),
+            E::CropReceiptAlreadyHasDecision
+        );
+
+        let coupon_asset_id = Coupons::<Runtime>::iter()
+            .collect::<Vec<_>>()
+            .first()
+            .unwrap()
+            .0;
+
+        let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(coupon_asset_id);
+
+        assert_eq!(coupon_asset_info.0, AssetSymbol(b"BRC1".to_vec()));
+        assert_eq!(coupon_asset_info.1, AssetName(b"Brazil Coupon 1".to_vec()));
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEXId::PolkaswapPresto,
+            base: coupon_asset_id,
+            quote: PRUSD,
+        };
+
+        let order_book = OrderBookPallet::order_books(order_book_id).unwrap();
+
+        assert_eq!(order_book.tick_size, BalanceUnit::divisible(balance!(0.01)));
+        assert_eq!(order_book.step_lot_size, BalanceUnit::indivisible(1));
+        assert_eq!(order_book.min_lot_size, BalanceUnit::indivisible(1));
+        assert_eq!(order_book.max_lot_size, BalanceUnit::indivisible(1000));
+
+        let price = BalanceUnit::divisible(balance!(10));
+
+        let volume = *OrderBookPallet::aggregated_asks(order_book_id)
+            .get(&price)
+            .unwrap();
+        assert_eq!(volume, BalanceUnit::indivisible(supply));
+
+        let ids = OrderBookPallet::asks(order_book_id, price).unwrap();
+        assert_eq!(ids.len(), 10);
+
+        for id in ids {
+            let order = OrderBookPallet::limit_orders(order_book_id, id).unwrap();
+            assert_eq!(order.owner, bob());
+        }
     });
 }

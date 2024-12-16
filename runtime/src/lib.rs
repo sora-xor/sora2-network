@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 106,
+    spec_version: 108,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 106,
+    transaction_version: 108,
     state_version: 0,
 };
 
@@ -1857,7 +1857,7 @@ impl vested_rewards::Config for Runtime {
     type WeightInfo = vested_rewards::weights::SubstrateWeight<Runtime>;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type MaxVestingSchedules = MaxVestingSchedules;
-    type Currency = Tokens;
+    type Currency = Currencies;
     type MinVestedTransfer = MinVestedTransfer;
     type MaxWeightForAutoClaim = MaxWeightForAutoClaim;
 }
@@ -2528,11 +2528,14 @@ parameter_types! {
 #[cfg(feature = "wip")] // presto
 impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type OrderBookManager = OrderBook;
     type PrestoUsdAssetId = PrestoUsdAssetId;
     type PrestoTechAccount = PrestoTechAccountId;
     type PrestoBufferTechAccount = PrestoBufferTechAccountId;
     type RequestId = u64;
     type CropReceiptId = u64;
+    type CouponId = u64;
     type MaxPrestoManagersCount = ConstU32<100>;
     type MaxPrestoAuditorsCount = ConstU32<100>;
     type MaxUserRequestCount = ConstU32<65536>;
@@ -3410,6 +3413,8 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
+            #[cfg(feature = "wip")] // presto
+            list_benchmark!(list, extra, presto, Presto);
 
             // Trustless bridge
             list_benchmark!(list, extra, bridge_inbound_channel, BridgeInboundChannel);
@@ -3506,6 +3511,8 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
+            #[cfg(feature = "wip")] // presto
+            add_benchmark!(params, batches, presto, Presto);
 
             // Trustless bridge
             add_benchmark!(params, batches, bridge_inbound_channel, BridgeInboundChannel);
