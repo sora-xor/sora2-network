@@ -598,8 +598,8 @@ mod tests {
         xor_fee_impls::{CallDepth, CustomFeeDetails, CustomFees},
         *,
     };
+    use common::OrderBookId;
     use common::{balance, PriceVariant, VAL, XOR};
-    use order_book::OrderBookId;
     use xor_fee::ApplyCustomFees;
 
     #[test]
