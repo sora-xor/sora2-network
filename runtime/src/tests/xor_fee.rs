@@ -316,8 +316,9 @@ fn fail_on_withdraw() {
 
 #[cfg(feature = "wip")] // Xorless fee
 #[test]
-fn end_session_for_xorless_works() {
+fn remint_for_xorless_works() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
 
         Staking::on_finalize(0);
@@ -438,7 +439,7 @@ fn end_session_for_xorless_works() {
             asset_fee_in_xor,
         );
 
-        xor_fee::Pallet::<Runtime>::on_initialize(0);
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
         assert!(xor_fee::BurntForFee::<Runtime>::iter().next().is_none());
 
         let val_burned = calc_xyk_swap_result(
@@ -489,8 +490,9 @@ fn end_session_for_xorless_works() {
 
 #[cfg(feature = "wip")] // Xorless fee
 #[test]
-fn end_session_for_xorless_fails_right() {
+fn remint_for_xorless_fails_right() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
 
         Staking::on_finalize(0);
@@ -558,7 +560,7 @@ fn end_session_for_xorless_fails_right() {
             INITIAL_RESERVES,
             INITIAL_RESERVES,
         ));
-        xor_fee::Pallet::<Runtime>::on_initialize(0);
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
         assert!(xor_fee::BurntForFee::<Runtime>::iter().next().is_some());
     });
 }
@@ -658,6 +660,7 @@ fn referrer_gets_bonus_from_tx_fee() {
 #[test]
 fn notify_val_burned_works() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
         increase_balance(alice(), XOR.into(), INITIAL_RESERVES);
 
@@ -732,7 +735,7 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
 
-        xor_fee::Pallet::<Runtime>::on_initialize(0);
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
 
         let val_burned = calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, total_xor_to_val);
         let remint_buy_back_percent =
@@ -1150,7 +1153,7 @@ fn reminting_for_sora_parliament_works() {
             RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
         let expected_balance = FixedWrapper::from(remint_buy_back_percent * val_burned);
 
-        xor_fee::Pallet::<Runtime>::on_initialize(0);
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
 
         // Mock uses MockLiquiditySource that doesn't exchange.
         assert!(
@@ -1917,6 +1920,7 @@ fn right_custom_fee_for_vested_transfer_err() {
 #[test]
 fn random_remint_works() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
         increase_balance(alice(), XOR.into(), INITIAL_RESERVES);
 

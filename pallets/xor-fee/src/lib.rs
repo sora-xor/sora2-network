@@ -766,12 +766,14 @@ where
 
 impl<T: Config> Pallet<T> {
     pub fn random_remint() -> Weight {
-        let period = RemintPeriod::<T>::get();
         let mut weight = Weight::default();
+        weight.saturating_accrue(T::DbWeight::get().reads(3));
+        let period = RemintPeriod::<T>::get();
         let (randomness, _) = T::Randomness::random(&b"xor-fee"[..]);
         match u32::decode(&mut randomness.as_ref()) {
             Ok(random_number) => {
                 if random_number % period == 0 {
+                    weight.saturating_accrue(T::DbWeight::get().reads(2));
                     let mut xor_to_val = Balance::zero();
                     let mut xor_to_buy_back = Balance::zero();
 
@@ -1390,7 +1392,7 @@ pub mod pallet {
         100
     }
 
-    // Multiplier used in WeightToFee conversion
+    // Average period for random remint
     #[pallet::storage]
     #[pallet::getter(fn remint_period)]
     pub type RemintPeriod<T> = StorageValue<_, u32, ValueQuery, DefaultForRemintPeriod<T>>;
