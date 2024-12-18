@@ -667,12 +667,6 @@
 <a href="#652" id="652">652</a>
 <a href="#653" id="653">653</a>
 <a href="#654" id="654">654</a>
-<a href="#655" id="655">655</a>
-<a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -719,7 +713,6 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Dynamic fee
 </span><span class="kw">use </span>sp_runtime::FixedU128;
 <span class="kw">use </span>vested_rewards::vesting_currencies::VestingSchedule;
-<span class="kw">use </span>vested_rewards::{Config, WeightInfo};
 
 <span class="kw">impl </span>RuntimeCall {
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// EVM bridge
@@ -865,7 +858,8 @@
             | RuntimeCall::Council(
                 pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
             )
-            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. }) =&gt; {
+            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_unlocked { .. }) =&gt; {
                 <span class="prelude-val">Some</span>(SMALL_FEE)
             }
             RuntimeCall::Band(..) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
@@ -909,16 +903,10 @@
             RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
                 schedule, ..
             }) =&gt; {
-                <span class="kw">let </span>claim_fee = pallet_transaction_payment::Pallet::&lt;Runtime&gt;::weight_to_fee(
-                    &lt;Runtime <span class="kw">as </span>Config&gt;::WeightInfo::claim_unlocked(),
-                );
-                <span class="kw">let </span>whole_claims_fee = claim_fee.saturating_mul(schedule.claims_count() <span class="kw">as </span>Balance);
-                <span class="kw">let </span>fee_vested_transfer_weight =
-                    pallet_transaction_payment::Pallet::&lt;Runtime&gt;::weight_to_fee(
-                        &lt;Runtime <span class="kw">as </span>Config&gt;::WeightInfo::vested_transfer(),
-                    );
-                <span class="kw">let </span>fee_without_claims = fee.saturating_add(fee_vested_transfer_weight);
-                fee = fee_without_claims.saturating_add(whole_claims_fee);
+                <span class="comment">// claim fee = SMALL_FEE
+                </span><span class="kw">let </span>whole_claims_fee = SMALL_FEE.saturating_mul(schedule.claims_count() <span class="kw">as </span>Balance);
+                <span class="kw">let </span>fee_without_claims = fee;
+                fee = fee.saturating_add(whole_claims_fee);
                 CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
             }
             <span class="kw">_ </span>=&gt; CustomFeeDetails::Regular(fee),
