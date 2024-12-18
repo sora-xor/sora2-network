@@ -44,7 +44,6 @@ use sp_runtime::traits::Zero;
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_runtime::FixedU128;
 use vested_rewards::vesting_currencies::VestingSchedule;
-use vested_rewards::{Config, WeightInfo};
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
