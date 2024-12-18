@@ -234,8 +234,8 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
             RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
                 schedule, ..
             }) => {
-                let claim_fee = fee;
-                let whole_claims_fee = claim_fee.saturating_mul(schedule.claims_count() as Balance);
+                // claim fee = SMALL_FEE
+                let whole_claims_fee = SMALL_FEE.saturating_mul(schedule.claims_count() as Balance);
                 let fee_without_claims = fee;
                 fee = fee.saturating_add(whole_claims_fee);
                 CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
