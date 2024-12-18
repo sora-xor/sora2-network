@@ -44,7 +44,6 @@ use sp_runtime::traits::Zero;
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_runtime::FixedU128;
 use vested_rewards::vesting_currencies::VestingSchedule;
-use vested_rewards::{Config, WeightInfo};
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
@@ -190,7 +189,8 @@ impl CustomFees {
             | RuntimeCall::Council(
                 pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
             )
-            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => {
+            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_unlocked { .. }) => {
                 Some(SMALL_FEE)
             }
             RuntimeCall::Band(..) => Some(MINIMAL_FEE),
@@ -234,16 +234,10 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
             RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
                 schedule, ..
             }) => {
-                let claim_fee = pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
-                    <Runtime as Config>::WeightInfo::claim_unlocked(),
-                );
-                let whole_claims_fee = claim_fee.saturating_mul(schedule.claims_count() as Balance);
-                let fee_vested_transfer_weight =
-                    pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
-                        <Runtime as Config>::WeightInfo::vested_transfer(),
-                    );
-                let fee_without_claims = fee.saturating_add(fee_vested_transfer_weight);
-                fee = fee_without_claims.saturating_add(whole_claims_fee);
+                // claim fee = SMALL_FEE
+                let whole_claims_fee = SMALL_FEE.saturating_mul(schedule.claims_count() as Balance);
+                let fee_without_claims = fee;
+                fee = fee.saturating_add(whole_claims_fee);
                 CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
             }
             _ => CustomFeeDetails::Regular(fee),
