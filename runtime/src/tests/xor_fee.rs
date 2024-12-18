@@ -60,11 +60,8 @@ use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 
-use vested_rewards::vesting_currencies::{
-    LinearVestingSchedule, VestingSchedule, VestingScheduleVariant,
-};
+use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 
-use vested_rewards::{Config, WeightInfo};
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToBuyBack, XorToVal};
 
