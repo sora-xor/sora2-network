@@ -61,11 +61,8 @@ use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 
-use vested_rewards::vesting_currencies::{
-    LinearVestingSchedule, VestingSchedule, VestingScheduleVariant,
-};
+use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 
-use vested_rewards::{Config, WeightInfo};
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToBuyBack, XorToVal};
 
@@ -1845,24 +1842,11 @@ fn right_custom_fee_for_vested_transfer_ok() {
         .is_ok());
 
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
-        let claim_fee = multiplier.saturating_mul_int(
-            pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
-                <Runtime as Config>::WeightInfo::claim_unlocked(),
-            ),
-        );
-        let transaction_fee = multiplier.saturating_mul_int(pallet_transaction_payment::Pallet::<
-            Runtime,
-        >::weight_to_fee(
-            <Runtime as Config>::WeightInfo::vested_transfer(),
-        ));
-        let fee_per_all_claims = claim_fee.saturating_mul(schedule.claims_count() as Balance);
+        let transaction_fee = multiplier.saturating_mul_int(3 * SMALL_FEE);
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
-            initial_balance
-                - multiplier.saturating_mul_int(SMALL_FEE)
-                - fee_per_all_claims
-                - transaction_fee
+            initial_balance - transaction_fee
         );
     });
 }
@@ -1905,14 +1889,9 @@ fn right_custom_fee_for_vested_transfer_err() {
         .is_ok());
 
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
-        let transaction_fee = multiplier.saturating_mul_int(pallet_transaction_payment::Pallet::<
-            Runtime,
-        >::weight_to_fee(
-            <Runtime as Config>::WeightInfo::vested_transfer(),
-        ));
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
-            initial_balance - multiplier.saturating_mul_int(SMALL_FEE) - transaction_fee
+            initial_balance - multiplier.saturating_mul_int(SMALL_FEE)
         );
     });
 }
