@@ -108,5 +108,12 @@ benchmarks! {
         }
     }
 
+    set_random_remint_period {
+        let new_period = 500_u32;
+    }: _(RawOrigin::Root, new_period)
+    verify {
+        assert_eq!(<RemintPeriod<T>>::get(), new_period);
+    }
+
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
 }
