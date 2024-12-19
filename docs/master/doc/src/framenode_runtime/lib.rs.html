@@ -4193,7 +4193,7 @@
 }
 
 <span class="kw">impl </span>pallet_session::Config <span class="kw">for </span>Runtime {
-    <span class="kw">type </span>SessionManager = pallet_session::historical::NoteHistoricalRoot&lt;<span class="self">Self</span>, XorFee&gt;;
+    <span class="kw">type </span>SessionManager = pallet_session::historical::NoteHistoricalRoot&lt;<span class="self">Self</span>, Staking&gt;;
     <span class="kw">type </span>Keys = opaque::SessionKeys;
     <span class="kw">type </span>ShouldEndSession = Babe;
     <span class="kw">type </span>SessionHandler = &lt;opaque::SessionKeys <span class="kw">as </span>OpaqueKeys&gt;::KeyTypeIdProviders;
@@ -4952,7 +4952,6 @@
     <span class="kw">type </span>CustomFees = xor_fee_impls::CustomFees;
     <span class="kw">type </span>GetTechnicalAccountId = GetXorFeeAccountId;
     <span class="kw">type </span>FullIdentification = pallet_staking::Exposure&lt;AccountId, Balance&gt;;
-    <span class="kw">type </span>SessionManager = Staking;
     <span class="kw">type </span>ReferrerAccountProvider = Referrals;
     <span class="kw">type </span>BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler&lt;Runtime, GetBuyBackDexId&gt;;
     <span class="kw">type </span>WeightInfo = xor_fee::weights::SubstrateWeight&lt;Runtime&gt;;
@@ -4963,6 +4962,7 @@
     <span class="kw">type </span>WhiteListOrigin = EitherOfDiverse&lt;AtLeastHalfCouncil, EnsureRoot&lt;AccountId&gt;&gt;;
     <span class="kw">type </span>PriceTools = price_tools::FastPriceTools&lt;Runtime&gt;;
     <span class="kw">type </span>MinimalFeeInAsset = MinimalFeeInAsset;
+    <span class="kw">type </span>Randomness = RandomnessCollectiveFlip;
 }
 
 <span class="kw">pub struct </span>ConstantFeeMultiplier;
@@ -5678,7 +5678,7 @@
 
 <span class="kw">impl </span>kensetsu::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
-    <span class="kw">type </span>Randomness = pallet_babe::ParentBlockRandomness&lt;<span class="self">Self</span>&gt;;
+    <span class="kw">type </span>Randomness = RandomnessCollectiveFlip;
     <span class="kw">type </span>AssetInfoProvider = Assets;
     <span class="kw">type </span>PriceTools = price_tools::FastPriceTools&lt;Runtime&gt;;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;

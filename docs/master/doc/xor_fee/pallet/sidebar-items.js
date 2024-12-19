@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_for_fee_multiplier"],"struct":["DefaultForFeeMultiplier","Pallet"],"trait":["Config"],"type":["Module","Multiplier","XorToBuyBack","XorToVal"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"fn":["__type_value_for_default_for_fee_multiplier","__type_value_for_default_for_remint_period"],"struct":["DefaultForFeeMultiplier","DefaultForRemintPeriod","Pallet"],"trait":["Config"],"type":["Module","Multiplier","RemintPeriod","XorToBuyBack","XorToVal"]};

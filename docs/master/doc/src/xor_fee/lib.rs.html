@@ -1390,6 +1390,44 @@
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
+<a href="#1397" id="1397">1397</a>
+<a href="#1398" id="1398">1398</a>
+<a href="#1399" id="1399">1399</a>
+<a href="#1400" id="1400">1400</a>
+<a href="#1401" id="1401">1401</a>
+<a href="#1402" id="1402">1402</a>
+<a href="#1403" id="1403">1403</a>
+<a href="#1404" id="1404">1404</a>
+<a href="#1405" id="1405">1405</a>
+<a href="#1406" id="1406">1406</a>
+<a href="#1407" id="1407">1407</a>
+<a href="#1408" id="1408">1408</a>
+<a href="#1409" id="1409">1409</a>
+<a href="#1410" id="1410">1410</a>
+<a href="#1411" id="1411">1411</a>
+<a href="#1412" id="1412">1412</a>
+<a href="#1413" id="1413">1413</a>
+<a href="#1414" id="1414">1414</a>
+<a href="#1415" id="1415">1415</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1435,10 +1473,12 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
 </span><span class="kw">use </span>frame_support::dispatch::extract_actual_weight;
 <span class="kw">use </span>frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
-<span class="kw">use </span>frame_support::log::error;
+<span class="kw">use </span>frame_support::log::{error, warn};
 <span class="kw">use </span>frame_support::pallet_prelude::{DispatchResultWithPostInfo, InvalidTransaction};
+<span class="kw">use </span>frame_support::traits::Randomness;
 <span class="kw">use </span>frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 <span class="kw">use </span>frame_support::unsigned::TransactionValidityError;
+<span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -1453,9 +1493,7 @@
     Saturating, UniqueSaturatedInto, Zero,
 };
 <span class="kw">use </span>sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
-<span class="kw">use </span>sp_staking::SessionIndex;
 <span class="kw">use </span>sp_std::boxed::Box;
-<span class="kw">use </span>sp_std::vec::Vec;
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
 </span><span class="kw">use </span>traits::MultiCurrency;
 
@@ -1863,71 +1901,6 @@
     }
 }
 
-<span class="kw">impl</span>&lt;T: Config&gt; pallet_session::SessionManager&lt;T::AccountId&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
-    <span class="kw">fn </span>new_session(new_index: SessionIndex) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;T::AccountId&gt;&gt; {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::SessionManager&lt;<span class="kw">_</span>&gt;&gt;::new_session(new_index)
-    }
-
-    <span class="kw">fn </span>end_session(end_index: SessionIndex) {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::SessionManager&lt;<span class="kw">_</span>&gt;&gt;::end_session(end_index)
-    }
-
-    <span class="kw">fn </span>start_session(start_index: SessionIndex) {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::SessionManager&lt;<span class="kw">_</span>&gt;&gt;::start_session(
-            start_index,
-        )
-    }
-
-    <span class="kw">fn </span>new_session_genesis(new_index: SessionIndex) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;T::AccountId&gt;&gt; {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::SessionManager&lt;<span class="kw">_</span>&gt;&gt;::new_session_genesis(
-            new_index,
-        )
-    }
-}
-
-<span class="kw">impl</span>&lt;T: Config&gt; pallet_session::historical::SessionManager&lt;T::AccountId, T::FullIdentification&gt;
-    <span class="kw">for </span>Pallet&lt;T&gt;
-{
-    <span class="kw">fn </span>new_session(new_index: SessionIndex) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;(T::AccountId, T::FullIdentification)&gt;&gt; {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::historical::SessionManager&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::new_session(new_index)
-    }
-
-    <span class="kw">fn </span>end_session(end_index: SessionIndex) {
-        <span class="kw">let </span><span class="kw-2">mut </span>xor_to_val = Balance::zero();
-        <span class="kw">let </span><span class="kw-2">mut </span>xor_to_buy_back = Balance::zero();
-
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
-        </span><span class="self">Self</span>::remint_fee_asset(<span class="kw-2">&amp;mut </span>xor_to_val, <span class="kw-2">&amp;mut </span>xor_to_buy_back);
-
-        xor_to_val = xor_to_val.saturating_add(XorToVal::&lt;T&gt;::take());
-        <span class="kw">if </span>xor_to_val != <span class="number">0 </span>{
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">Self</span>::remint_val(xor_to_val) {
-                <span class="macro">error!</span>(<span class="string">&quot;xor fee remint failed: {:?}&quot;</span>, e);
-            }
-        }
-
-        xor_to_buy_back = xor_to_buy_back.saturating_add(XorToBuyBack::&lt;T&gt;::take());
-
-        <span class="kw">if </span>xor_to_buy_back != <span class="number">0 </span>{
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">Self</span>::remint_buy_back(xor_to_buy_back) {
-                <span class="macro">error!</span>(<span class="string">&quot;XOR remint buy back failed: {:?}&quot;</span>, e);
-            }
-        }
-
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::historical::SessionManager&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::end_session(end_index)
-    }
-
-    <span class="kw">fn </span>start_session(start_index: SessionIndex) {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::historical::SessionManager&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::start_session(start_index)
-    }
-
-    <span class="kw">fn </span>new_session_genesis(
-        new_index: SessionIndex,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;(T::AccountId, T::FullIdentification)&gt;&gt; {
-        &lt;&lt;T <span class="kw">as </span>Config&gt;::SessionManager <span class="kw">as </span>pallet_session::historical::SessionManager&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;::new_session_genesis(new_index)
-    }
-}
-
 <span class="kw">pub type </span>CustomFeeDetailsOf&lt;T&gt; =
     &lt;&lt;T <span class="kw">as </span>Config&gt;::CustomFees <span class="kw">as </span>ApplyCustomFees&lt;CallOf&lt;T&gt;, AccountIdOf&lt;T&gt;&gt;&gt;::FeeDetails;
 
@@ -2222,7 +2195,45 @@
 }
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
-    <span class="kw">pub fn </span>remint_val(xor_to_val: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+    <span class="kw">pub fn </span>random_remint() -&gt; Weight {
+        <span class="kw">let </span><span class="kw-2">mut </span>weight = Weight::default();
+        weight.saturating_accrue(T::DbWeight::get().reads(<span class="number">3</span>));
+        <span class="kw">let </span>period = RemintPeriod::&lt;T&gt;::get();
+        <span class="kw">let </span>(randomness, <span class="kw">_</span>) = T::Randomness::random(<span class="kw-2">&amp;</span><span class="string">b&quot;xor-fee&quot;</span>[..]);
+        <span class="kw">match </span>u32::decode(<span class="kw-2">&amp;mut </span>randomness.as_ref()) {
+            <span class="prelude-val">Ok</span>(random_number) =&gt; {
+                <span class="kw">if </span>random_number % period == <span class="number">0 </span>{
+                    weight.saturating_accrue(T::DbWeight::get().reads(<span class="number">2</span>));
+                    <span class="kw">let </span><span class="kw-2">mut </span>xor_to_val = Balance::zero();
+                    <span class="kw">let </span><span class="kw-2">mut </span>xor_to_buy_back = Balance::zero();
+
+                    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
+                    </span><span class="self">Self</span>::remint_fee_asset(<span class="kw-2">&amp;mut </span>weight, <span class="kw-2">&amp;mut </span>xor_to_val, <span class="kw-2">&amp;mut </span>xor_to_buy_back);
+
+                    xor_to_val = xor_to_val.saturating_add(XorToVal::&lt;T&gt;::take());
+                    <span class="kw">if </span>xor_to_val != <span class="number">0 </span>{
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">Self</span>::remint_val(<span class="kw-2">&amp;mut </span>weight, xor_to_val) {
+                            <span class="macro">error!</span>(<span class="string">&quot;xor fee remint failed: {:?}&quot;</span>, e);
+                        }
+                    }
+
+                    xor_to_buy_back = xor_to_buy_back.saturating_add(XorToBuyBack::&lt;T&gt;::take());
+
+                    <span class="kw">if </span>xor_to_buy_back != <span class="number">0 </span>{
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">Self</span>::remint_buy_back(<span class="kw-2">&amp;mut </span>weight, xor_to_buy_back) {
+                            <span class="macro">error!</span>(<span class="string">&quot;XOR remint buy back failed: {:?}&quot;</span>, e);
+                        }
+                    }
+                }
+            }
+            <span class="prelude-val">Err</span>(error) =&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;Failed to get randomness for xor-fee: {}&quot;</span>, error);
+            }
+        }
+        weight
+    }
+
+    <span class="kw">pub fn </span>remint_val(weight: <span class="kw-2">&amp;mut </span>Weight, xor_to_val: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account_id = &lt;T <span class="kw">as </span>Config&gt;::GetTechnicalAccountId::get();
         <span class="kw">let </span>xor = T::XorId::get();
         <span class="kw">let </span>val = T::ValId::get();
@@ -2231,10 +2242,12 @@
 
         <span class="comment">// Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
-        </span>T::AssetManager::mint_to(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
+        </span>weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">2</span>, <span class="number">1</span>));
+        T::AssetManager::mint_to(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
         <span class="comment">// Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
-        </span><span class="kw">match </span>T::LiquidityProxy::exchange(
+        </span>weight.saturating_accrue(T::PoolXyk::exchange_weight());
+        <span class="kw">match </span>T::LiquidityProxy::exchange(
             T::DEXIdValue::get(),
             <span class="kw-2">&amp;</span>tech_account_id,
             <span class="kw-2">&amp;</span>tech_account_id,
@@ -2255,6 +2268,11 @@
                 <span class="kw">let </span>kusd_buy_back = T::RemintKusdBuyBackPercent::get() * val_to_burn;
 
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = common::with_transaction(|| {
+                    weight.saturating_accrue(
+                        T::DbWeight::get()
+                            .reads_writes(<span class="number">2</span>, <span class="number">1</span>)
+                            .saturating_add(T::PoolXyk::exchange_weight()),
+                    );
                     T::BuyBackHandler::buy_back_and_burn(
                         <span class="kw-2">&amp;</span>tech_account_id,
                         <span class="kw-2">&amp;</span>val,
@@ -2268,6 +2286,11 @@
                 }
 
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = common::with_transaction(|| {
+                    weight.saturating_accrue(
+                        T::DbWeight::get()
+                            .reads_writes(<span class="number">2</span>, <span class="number">1</span>)
+                            .saturating_add(T::PoolXyk::exchange_weight()),
+                    );
                     T::BuyBackHandler::buy_back_and_burn(
                         <span class="kw-2">&amp;</span>tech_account_id,
                         <span class="kw-2">&amp;</span>val,
@@ -2280,7 +2303,9 @@
                     val_to_burn = val_to_burn.saturating_sub(kusd_buy_back);
                 }
 
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">1</span>, <span class="number">1</span>));
                 T::OnValBurned::on_val_burned(val_to_burn);
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">2</span>, <span class="number">1</span>));
                 T::AssetManager::burn_from(<span class="kw-2">&amp;</span>val, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, val_to_burn)<span class="question-mark">?</span>;
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
@@ -2288,6 +2313,7 @@
                     <span class="string">&quot;failed to exchange xor to val, burning {} XOR, e: {:?}&quot;</span>,
                     xor_to_val, e
                 );
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">2</span>, <span class="number">1</span>));
                 T::AssetManager::burn_from(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, xor_to_val)<span class="question-mark">?</span>;
             }
         }
@@ -2295,10 +2321,18 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub fn </span>remint_buy_back(xor_to_buy_back: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+    <span class="kw">pub fn </span>remint_buy_back(
+        weight: <span class="kw-2">&amp;mut </span>Weight,
+        xor_to_buy_back: Balance,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>xor = T::XorId::get();
         <span class="kw">let </span>kusd = T::KusdId::get();
         common::with_transaction(|| {
+            weight.saturating_accrue(
+                T::DbWeight::get()
+                    .reads_writes(<span class="number">4</span>, <span class="number">2</span>)
+                    .saturating_add(T::PoolXyk::exchange_weight()),
+            );
             T::BuyBackHandler::mint_buy_back_and_burn(<span class="kw-2">&amp;</span>xor, <span class="kw-2">&amp;</span>kusd, xor_to_buy_back)
         })<span class="question-mark">?</span>;
 
@@ -2306,13 +2340,18 @@
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
-    </span><span class="kw">pub fn </span>remint_fee_asset(xor_to_val: <span class="kw-2">&amp;mut </span>Balance, xor_to_buy_back: <span class="kw-2">&amp;mut </span>Balance) {
+    </span><span class="kw">pub fn </span>remint_fee_asset(
+        weight: <span class="kw-2">&amp;mut </span>Weight,
+        xor_to_val: <span class="kw-2">&amp;mut </span>Balance,
+        xor_to_buy_back: <span class="kw-2">&amp;mut </span>Balance,
+    ) {
         BurntForFee::&lt;T&gt;::iter().for_each(|(asset_id, asset_fee)| {
+            weight.saturating_accrue(T::DbWeight::get().reads(<span class="number">1</span>));
             <span class="kw">let </span><span class="kw-2">mut </span>process_fee = |fee: Balance, additional_weight: u32| -&gt; <span class="prelude-ty">Result</span>&lt;(), ()&gt; {
                 <span class="kw">if </span>fee.is_zero() {
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 };
-                <span class="kw">match </span><span class="self">Self</span>::remint_asset(asset_id, fee) {
+                <span class="kw">match </span><span class="self">Self</span>::remint_asset(weight, asset_id, fee) {
                     <span class="prelude-val">Ok</span>(burnt_xor) =&gt; {
                         <span class="kw-2">*</span>xor_to_val =
                             xor_to_val.saturating_add(<span class="self">Self</span>::calculate_portion_fee_from_weight(
@@ -2352,14 +2391,21 @@
                 }
                 <span class="kw">_ </span>=&gt; {}
             }
+            weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">1</span>, <span class="number">1</span>));
         });
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
-    </span><span class="kw">pub fn </span>remint_asset(asset_id: AssetIdOf&lt;T&gt;, amount: Balance) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
+    </span><span class="kw">pub fn </span>remint_asset(
+        weight: <span class="kw-2">&amp;mut </span>Weight,
+        asset_id: AssetIdOf&lt;T&gt;,
+        amount: Balance,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="kw">let </span>tech_account_id = &lt;T <span class="kw">as </span>Config&gt;::GetTechnicalAccountId::get();
         <span class="kw">let </span>xor = T::XorId::get();
+        weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">2</span>, <span class="number">1</span>));
         T::AssetManager::mint_to(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, amount)<span class="question-mark">?</span>;
+        weight.saturating_accrue(T::PoolXyk::exchange_weight());
         <span class="kw">match </span>T::PoolXyk::exchange(
             <span class="kw-2">&amp;</span>tech_account_id,
             <span class="kw-2">&amp;</span>tech_account_id,
@@ -2372,6 +2418,7 @@
             },
         ) {
             <span class="prelude-val">Ok</span>(xor_to_burn) =&gt; {
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">2</span>, <span class="number">1</span>));
                 T::AssetManager::burn_from(
                     <span class="kw-2">&amp;</span>xor,
                     <span class="kw-2">&amp;</span>tech_account_id,
@@ -2385,6 +2432,7 @@
                     <span class="string">&quot;failed to exchange asset {:?} to xor, burning {} asset, e: {:?}&quot;</span>,
                     asset_id, amount, e
                 );
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(<span class="number">2</span>, <span class="number">1</span>));
                 T::AssetManager::burn_from(<span class="kw-2">&amp;</span>asset_id, <span class="kw-2">&amp;</span>tech_account_id, <span class="kw-2">&amp;</span>tech_account_id, amount)<span class="question-mark">?</span>;
                 <span class="prelude-val">Err</span>(e)
             }
@@ -2442,7 +2490,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::{AssetIdOf, PriceToolsProvider};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
-    <span class="kw">use </span>frame_support::traits::StorageVersion;
+    <span class="kw">use </span>frame_support::traits::{Randomness, StorageVersion};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
 
     <span class="attr">#[pallet::config]
@@ -2470,10 +2518,6 @@
         <span class="kw">type </span>CustomFees: ApplyCustomFees&lt;CallOf&lt;<span class="self">Self</span>&gt;, <span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>GetTechnicalAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>FullIdentification;
-        <span class="kw">type </span>SessionManager: pallet_session::historical::SessionManager&lt;
-            <span class="self">Self</span>::AccountId,
-            <span class="self">Self</span>::FullIdentification,
-        &gt;;
         <span class="kw">type </span>ReferrerAccountProvider: ReferrerAccountProvider&lt;<span class="self">Self</span>::AccountId&gt;;
         <span class="kw">type </span>BuyBackHandler: BuyBackHandler&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="doccomment">/// Weight information for extrinsics in this pallet.
@@ -2495,6 +2539,7 @@
         <span class="kw">type </span>PriceTools: PriceToolsProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="doccomment">/// Main goal of the constant is to prevent zero fees
         </span><span class="kw">type </span>MinimalFeeInAsset: Get&lt;Balance&gt;;
+        <span class="kw">type </span>Randomness: Randomness&lt;<span class="self">Self</span>::Hash, <span class="self">Self</span>::BlockNumber&gt;;
     }
 
     <span class="doccomment">/// The current storage version.
@@ -2529,6 +2574,7 @@
                     }
                 }
             }
+            weight.saturating_accrue(<span class="self">Self</span>::random_remint());
             weight
         }
     }
@@ -2655,6 +2701,22 @@
             <span class="attr">#[cfg(not(feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// Xorless fee
             </span><span class="prelude-val">Ok</span>(().into())
         }
+
+        <span class="attr">#[pallet::call_index(<span class="number">6</span>)]
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::remove_asset_from_white_list())]
+        </span><span class="kw">pub fn </span>set_random_remint_period(
+            origin: OriginFor&lt;T&gt;,
+            period: u32,
+        ) -&gt; DispatchResultWithPostInfo {
+            ensure_root(origin)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(
+                !period.is_zero() &amp;&amp; period &lt;= <span class="number">600</span>,
+                Error::&lt;T&gt;::WrongRemintPeriod
+            );
+            RemintPeriod::&lt;T&gt;::set(period);
+            <span class="self">Self</span>::deposit_event(Event::RemintPeriodUpdated(period));
+            <span class="prelude-val">Ok</span>(().into())
+        }
     }
 
     <span class="attr">#[pallet::event]
@@ -2685,6 +2747,8 @@
         </span>AssetRemovedFromWhiteList(AssetIdOf&lt;T&gt;),
         <span class="doccomment">/// White list updated: [Asset added]
         </span>AssetAddedToWhiteList(AssetIdOf&lt;T&gt;),
+        <span class="doccomment">/// Average remint period updated: [Period]
+        </span>RemintPeriodUpdated(u32),
     }
     <span class="attr">#[pallet::error]
     </span><span class="kw">pub enum </span>Error&lt;T&gt; {
@@ -2700,6 +2764,8 @@
         </span>WhitelistFull,
         <span class="doccomment">/// Failed to calculate fee in white listed asset
         </span>FeeCalculationFailed,
+        <span class="doccomment">/// Remint period should not be 0 or to be greater than 600
+        </span>WrongRemintPeriod,
     }
 
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
@@ -2750,6 +2816,16 @@
     </span><span class="attr">#[pallet::storage]
     #[pallet::getter(<span class="kw">fn </span>multiplier)]
     </span><span class="kw">pub type </span>Multiplier&lt;T&gt; = StorageValue&lt;<span class="kw">_</span>, FixedU128, ValueQuery, DefaultForFeeMultiplier&lt;T&gt;&gt;;
+
+    <span class="attr">#[pallet::type_value]
+    </span><span class="kw">pub fn </span>DefaultForRemintPeriod&lt;T: Config&gt;() -&gt; u32 {
+        <span class="number">100
+    </span>}
+
+    <span class="comment">// Average period for random remint
+    </span><span class="attr">#[pallet::storage]
+    #[pallet::getter(<span class="kw">fn </span>remint_period)]
+    </span><span class="kw">pub type </span>RemintPeriod&lt;T&gt; = StorageValue&lt;<span class="kw">_</span>, u32, ValueQuery, DefaultForRemintPeriod&lt;T&gt;&gt;;
 
     <span class="comment">// This affects `base_fee` and `weight_fee`. `length_fee` is too small
     // in comparison to them, so we should be fine multiplying only this parts.
