@@ -82,10 +82,8 @@ pub mod add_white_listed_assets_for_xorless_fee {
     where
         T: Config,
     {
-        // TODO: change assets
         fn on_runtime_upgrade() -> Weight {
             let assets: Vec<AssetIdOf<T>> = vec![
-                KXOR.into(),
                 ETH.into(),
                 KUSD.into(),
                 APOLLO_ASSET_ID.into(),
@@ -97,20 +95,10 @@ pub mod add_white_listed_assets_for_xorless_fee {
                 PSWAP.into(),
                 DAI.into(),
                 AssetId32::from_bytes(hex!(
-                    "002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142"
-                ))
-                .into(), // HMX
-                XSTUSD.into(),
-                AssetId32::from_bytes(hex!(
                     "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
                 ))
                 .into(), //DOT
-                AssetId32::from_bytes(hex!(
-                    "00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674"
-                ))
-                .into(), //DEO
                 KSM.into(),
-                TBCD.into(),
                 AssetId32::from_bytes(hex!(
                     "00ab83f36ff0cbbdd12fd88a094818820eaf155c08c4159969f1fb21534c1eb0"
                 ))
