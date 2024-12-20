@@ -33,23 +33,23 @@
 //! THIS FILE WAS AUTO-GENERATED USING THE SUBSTRATE BENCHMARK CLI VERSION 4.0.0-dev
 //! DATE: 2024-12-20, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
-//! HOSTNAME: `X670`, CPU: `AMD Ryzen 9 7950X 16-Core Processor`
+//! HOSTNAME: `587b4c89f56b`, CPU: `Intel(R) Xeon(R) CPU E3-1240 v6 @ 3.70GHz`
 //! EXECUTION: Some(Wasm), WASM-EXECUTION: Compiled, CHAIN: Some("local"), DB CACHE: 1024
 
 // Executed Command:
-// ./target/release/framenode
+// /usr/local/bin/framenode
 // benchmark
 // pallet
 // --chain=local
-// --execution=wasm
-// --wasm-execution=compiled
-// --pallet=xor_fee
-// --extrinsic=*
 // --steps=50
 // --repeat=20
-// --output=./
+// --pallet=xor_fee
+// --extrinsic=*
+// --execution=wasm
+// --wasm-execution=compiled
 // --header=./misc/file_header.txt
 // --template=./misc/pallet-weight-template.hbs
+// --output=./pallets/xor-fee/src/weights.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
@@ -78,44 +78,44 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 5_010_000 picoseconds.
-		Weight::from_parts(5_180_000, 0)
+		// Minimum execution time: 15_924_000 picoseconds.
+		Weight::from_parts(16_247_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	fn set_fee_update_period() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_340_000 picoseconds.
-		Weight::from_parts(1_470_000, 0)
+		// Minimum execution time: 4_514_000 picoseconds.
+		Weight::from_parts(4_699_000, 0)
 	}
 	fn set_small_reference_amount() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_340_000 picoseconds.
-		Weight::from_parts(1_420_000, 0)
+		// Minimum execution time: 4_478_000 picoseconds.
+		Weight::from_parts(4_644_000, 0)
 	}
 	fn xorless_call() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 110_000 picoseconds.
-		Weight::from_parts(150_000, 0)
+		// Minimum execution time: 408_000 picoseconds.
+		Weight::from_parts(420_000, 0)
 	}
 	fn add_asset_to_white_list() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_320_000 picoseconds.
-		Weight::from_parts(1_441_000, 0)
+		// Minimum execution time: 4_918_000 picoseconds.
+		Weight::from_parts(5_145_000, 0)
 	}
 	fn remove_asset_from_white_list() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_370_000 picoseconds.
-		Weight::from_parts(1_440_000, 0)
+		// Minimum execution time: 4_930_000 picoseconds.
+		Weight::from_parts(4_997_000, 0)
 	}
 	/// Storage: XorFee RemintPeriod (r:0 w:1)
 	/// Proof Skipped: XorFee RemintPeriod (max_values: Some(1), max_size: None, mode: Measured)
@@ -123,8 +123,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 5_030_000 picoseconds.
-		Weight::from_parts(5_170_000, 0)
+		// Minimum execution time: 15_756_000 picoseconds.
+		Weight::from_parts(15_986_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 }
@@ -137,44 +137,44 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 5_010_000 picoseconds.
-		Weight::from_parts(5_180_000, 0)
+		// Minimum execution time: 15_924_000 picoseconds.
+		Weight::from_parts(16_247_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	fn set_fee_update_period() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_340_000 picoseconds.
-		Weight::from_parts(1_470_000, 0)
+		// Minimum execution time: 4_514_000 picoseconds.
+		Weight::from_parts(4_699_000, 0)
 	}
 	fn set_small_reference_amount() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_340_000 picoseconds.
-		Weight::from_parts(1_420_000, 0)
+		// Minimum execution time: 4_478_000 picoseconds.
+		Weight::from_parts(4_644_000, 0)
 	}
 	fn xorless_call() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 110_000 picoseconds.
-		Weight::from_parts(150_000, 0)
+		// Minimum execution time: 408_000 picoseconds.
+		Weight::from_parts(420_000, 0)
 	}
 	fn add_asset_to_white_list() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_320_000 picoseconds.
-		Weight::from_parts(1_441_000, 0)
+		// Minimum execution time: 4_918_000 picoseconds.
+		Weight::from_parts(5_145_000, 0)
 	}
 	fn remove_asset_from_white_list() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_370_000 picoseconds.
-		Weight::from_parts(1_440_000, 0)
+		// Minimum execution time: 4_930_000 picoseconds.
+		Weight::from_parts(4_997_000, 0)
 	}
 	/// Storage: XorFee RemintPeriod (r:0 w:1)
 	/// Proof Skipped: XorFee RemintPeriod (max_values: Some(1), max_size: None, mode: Measured)
@@ -182,8 +182,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 5_030_000 picoseconds.
-		Weight::from_parts(5_170_000, 0)
+		// Minimum execution time: 15_756_000 picoseconds.
+		Weight::from_parts(15_986_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
