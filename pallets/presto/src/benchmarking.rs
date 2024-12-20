@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![cfg(feature = "wip")] // presto
 
 use crate::crop_receipt::{crop_receipt_content_template, Country, Rating};
 use crate::{Config, Coupons, Event, Pallet};

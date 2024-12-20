@@ -1123,24 +1123,30 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        #[cfg(feature = "wip")] // Dynamic fee
+        #[allow(unused_variables)]
         fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
-            let update_period = Self::update_period(); // 1 read
-            let mut weight: Weight = T::DbWeight::get().reads(1);
-            if !update_period.is_zero()
-                && current_block % update_period == BlockNumberFor::<T>::zero()
+            let mut weight: Weight = Default::default();
+            #[cfg(feature = "wip")] // Dynamic fee
             {
-                match T::DynamicMultiplier::calculate_multiplier(
-                    &common::XOR.into(),
-                    &common::DAI.into(),
-                ) {
-                    Ok(new_multiplier) => {
-                        <Multiplier<T>>::put(new_multiplier); // 1 write
-                        Self::deposit_event(Event::WeightToFeeMultiplierUpdated(new_multiplier));
-                        weight += T::DbWeight::get().writes(1);
-                    }
-                    Err(e) => {
-                        frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                let update_period = Self::update_period(); // 1 read
+                weight.saturating_accrue(T::DbWeight::get().reads(1));
+                if !update_period.is_zero()
+                    && current_block % update_period == BlockNumberFor::<T>::zero()
+                {
+                    match T::DynamicMultiplier::calculate_multiplier(
+                        &common::XOR.into(),
+                        &common::DAI.into(),
+                    ) {
+                        Ok(new_multiplier) => {
+                            <Multiplier<T>>::put(new_multiplier); // 1 write
+                            Self::deposit_event(Event::WeightToFeeMultiplierUpdated(
+                                new_multiplier,
+                            ));
+                            weight += T::DbWeight::get().writes(1);
+                        }
+                        Err(e) => {
+                            frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                        }
                     }
                 }
             }
