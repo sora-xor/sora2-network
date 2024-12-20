@@ -3560,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.5.2"
+version = "4.5.3"
 dependencies = [
  "ahash 0.8.5",
  "assert_cmd",
@@ -3644,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.5.2"
+version = "4.5.3"
 dependencies = [
  "common",
  "faucet",
@@ -3670,7 +3670,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.5.2"
+version = "4.5.3"
 dependencies = [
  "apollo-platform",
  "assets",
