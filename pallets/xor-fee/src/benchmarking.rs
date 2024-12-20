@@ -80,7 +80,10 @@ benchmarks! {
         <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1))?;
         let call: Box<<T as Config>::RuntimeCall> = Box::new(frame_system::Call::remark { remark: vec![] }.into());
         let asset_id: AssetIdOf<T> = XOR.into();
-    }: _(RawOrigin::Signed(caller), call, Some(asset_id))
+    }: {
+        #[cfg(feature = "wip")] // Xorless fee
+        crate::Pallet::<T>::xorless_call(RawOrigin::Signed(caller).into(), call, Some(asset_id)).unwrap()
+    }
 
     add_asset_to_white_list {}: _(RawOrigin::Root, VAL.into())
     verify {
