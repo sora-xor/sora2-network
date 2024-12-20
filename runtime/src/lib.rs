@@ -257,10 +257,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 108,
+    spec_version: 109,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 108,
+    transaction_version: 109,
     state_version: 0,
 };
 
@@ -593,7 +593,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, XorFee>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
@@ -1352,7 +1352,6 @@ impl xor_fee::Config for Runtime {
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type SessionManager = Staking;
     type ReferrerAccountProvider = Referrals;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
@@ -1363,6 +1362,7 @@ impl xor_fee::Config for Runtime {
     type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
     type PriceTools = price_tools::FastPriceTools<Runtime>;
     type MinimalFeeInAsset = MinimalFeeInAsset;
+    type Randomness = RandomnessCollectiveFlip;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -2078,7 +2078,7 @@ parameter_types! {
 
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Randomness = pallet_babe::ParentBlockRandomness<Self>;
+    type Randomness = RandomnessCollectiveFlip;
     type AssetInfoProvider = Assets;
     type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxy = LiquidityProxy;

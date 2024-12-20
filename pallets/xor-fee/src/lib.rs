@@ -43,10 +43,12 @@ use common::{PriceToolsProvider, PriceVariant};
 #[cfg(feature = "wip")] // Xorless fee
 use frame_support::dispatch::extract_actual_weight;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
-use frame_support::log::error;
+use frame_support::log::{error, warn};
 use frame_support::pallet_prelude::{DispatchResultWithPostInfo, InvalidTransaction};
+use frame_support::traits::Randomness;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
 use frame_support::unsigned::TransactionValidityError;
+use frame_support::weights::Weight;
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -61,9 +63,7 @@ use sp_runtime::traits::{
     Saturating, UniqueSaturatedInto, Zero,
 };
 use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
-use sp_staking::SessionIndex;
 use sp_std::boxed::Box;
-use sp_std::vec::Vec;
 #[cfg(feature = "wip")] // Xorless fee
 use traits::MultiCurrency;
 
@@ -471,71 +471,6 @@ where
     }
 }
 
-impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
-    fn new_session(new_index: SessionIndex) -> Option<Vec<T::AccountId>> {
-        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::new_session(new_index)
-    }
-
-    fn end_session(end_index: SessionIndex) {
-        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::end_session(end_index)
-    }
-
-    fn start_session(start_index: SessionIndex) {
-        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::start_session(
-            start_index,
-        )
-    }
-
-    fn new_session_genesis(new_index: SessionIndex) -> Option<Vec<T::AccountId>> {
-        <<T as Config>::SessionManager as pallet_session::SessionManager<_>>::new_session_genesis(
-            new_index,
-        )
-    }
-}
-
-impl<T: Config> pallet_session::historical::SessionManager<T::AccountId, T::FullIdentification>
-    for Pallet<T>
-{
-    fn new_session(new_index: SessionIndex) -> Option<Vec<(T::AccountId, T::FullIdentification)>> {
-        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::new_session(new_index)
-    }
-
-    fn end_session(end_index: SessionIndex) {
-        let mut xor_to_val = Balance::zero();
-        let mut xor_to_buy_back = Balance::zero();
-
-        #[cfg(feature = "wip")] // Xorless fee
-        Self::remint_fee_asset(&mut xor_to_val, &mut xor_to_buy_back);
-
-        xor_to_val = xor_to_val.saturating_add(XorToVal::<T>::take());
-        if xor_to_val != 0 {
-            if let Err(e) = Self::remint_val(xor_to_val) {
-                error!("xor fee remint failed: {:?}", e);
-            }
-        }
-
-        xor_to_buy_back = xor_to_buy_back.saturating_add(XorToBuyBack::<T>::take());
-
-        if xor_to_buy_back != 0 {
-            if let Err(e) = Self::remint_buy_back(xor_to_buy_back) {
-                error!("XOR remint buy back failed: {:?}", e);
-            }
-        }
-
-        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::end_session(end_index)
-    }
-
-    fn start_session(start_index: SessionIndex) {
-        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::start_session(start_index)
-    }
-
-    fn new_session_genesis(
-        new_index: SessionIndex,
-    ) -> Option<Vec<(T::AccountId, T::FullIdentification)>> {
-        <<T as Config>::SessionManager as pallet_session::historical::SessionManager<_, _>>::new_session_genesis(new_index)
-    }
-}
-
 pub type CustomFeeDetailsOf<T> =
     <<T as Config>::CustomFees as ApplyCustomFees<CallOf<T>, AccountIdOf<T>>>::FeeDetails;
 
@@ -830,7 +765,45 @@ where
 }
 
 impl<T: Config> Pallet<T> {
-    pub fn remint_val(xor_to_val: Balance) -> Result<(), DispatchError> {
+    pub fn random_remint() -> Weight {
+        let mut weight = Weight::default();
+        weight.saturating_accrue(T::DbWeight::get().reads(3));
+        let period = RemintPeriod::<T>::get();
+        let (randomness, _) = T::Randomness::random(&b"xor-fee"[..]);
+        match u32::decode(&mut randomness.as_ref()) {
+            Ok(random_number) => {
+                if random_number % period == 0 {
+                    weight.saturating_accrue(T::DbWeight::get().reads(2));
+                    let mut xor_to_val = Balance::zero();
+                    let mut xor_to_buy_back = Balance::zero();
+
+                    #[cfg(feature = "wip")] // Xorless fee
+                    Self::remint_fee_asset(&mut weight, &mut xor_to_val, &mut xor_to_buy_back);
+
+                    xor_to_val = xor_to_val.saturating_add(XorToVal::<T>::take());
+                    if xor_to_val != 0 {
+                        if let Err(e) = Self::remint_val(&mut weight, xor_to_val) {
+                            error!("xor fee remint failed: {:?}", e);
+                        }
+                    }
+
+                    xor_to_buy_back = xor_to_buy_back.saturating_add(XorToBuyBack::<T>::take());
+
+                    if xor_to_buy_back != 0 {
+                        if let Err(e) = Self::remint_buy_back(&mut weight, xor_to_buy_back) {
+                            error!("XOR remint buy back failed: {:?}", e);
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                warn!("Failed to get randomness for xor-fee: {}", error);
+            }
+        }
+        weight
+    }
+
+    pub fn remint_val(weight: &mut Weight, xor_to_val: Balance) -> Result<(), DispatchError> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
         let val = T::ValId::get();
@@ -839,9 +812,11 @@ impl<T: Config> Pallet<T> {
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
+        weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
         T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
+        weight.saturating_accrue(T::PoolXyk::exchange_weight());
         match T::LiquidityProxy::exchange(
             T::DEXIdValue::get(),
             &tech_account_id,
@@ -863,6 +838,11 @@ impl<T: Config> Pallet<T> {
                 let kusd_buy_back = T::RemintKusdBuyBackPercent::get() * val_to_burn;
 
                 if let Err(e) = common::with_transaction(|| {
+                    weight.saturating_accrue(
+                        T::DbWeight::get()
+                            .reads_writes(2, 1)
+                            .saturating_add(T::PoolXyk::exchange_weight()),
+                    );
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
                         &val,
@@ -876,6 +856,11 @@ impl<T: Config> Pallet<T> {
                 }
 
                 if let Err(e) = common::with_transaction(|| {
+                    weight.saturating_accrue(
+                        T::DbWeight::get()
+                            .reads_writes(2, 1)
+                            .saturating_add(T::PoolXyk::exchange_weight()),
+                    );
                     T::BuyBackHandler::buy_back_and_burn(
                         &tech_account_id,
                         &val,
@@ -888,7 +873,9 @@ impl<T: Config> Pallet<T> {
                     val_to_burn = val_to_burn.saturating_sub(kusd_buy_back);
                 }
 
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
                 T::OnValBurned::on_val_burned(val_to_burn);
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
@@ -896,6 +883,7 @@ impl<T: Config> Pallet<T> {
                     "failed to exchange xor to val, burning {} XOR, e: {:?}",
                     xor_to_val, e
                 );
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
         }
@@ -903,10 +891,18 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub fn remint_buy_back(xor_to_buy_back: Balance) -> Result<(), DispatchError> {
+    pub fn remint_buy_back(
+        weight: &mut Weight,
+        xor_to_buy_back: Balance,
+    ) -> Result<(), DispatchError> {
         let xor = T::XorId::get();
         let kusd = T::KusdId::get();
         common::with_transaction(|| {
+            weight.saturating_accrue(
+                T::DbWeight::get()
+                    .reads_writes(4, 2)
+                    .saturating_add(T::PoolXyk::exchange_weight()),
+            );
             T::BuyBackHandler::mint_buy_back_and_burn(&xor, &kusd, xor_to_buy_back)
         })?;
 
@@ -914,13 +910,18 @@ impl<T: Config> Pallet<T> {
     }
 
     #[cfg(feature = "wip")] // Xorless fee
-    pub fn remint_fee_asset(xor_to_val: &mut Balance, xor_to_buy_back: &mut Balance) {
+    pub fn remint_fee_asset(
+        weight: &mut Weight,
+        xor_to_val: &mut Balance,
+        xor_to_buy_back: &mut Balance,
+    ) {
         BurntForFee::<T>::iter().for_each(|(asset_id, asset_fee)| {
+            weight.saturating_accrue(T::DbWeight::get().reads(1));
             let mut process_fee = |fee: Balance, additional_weight: u32| -> Result<(), ()> {
                 if fee.is_zero() {
                     return Ok(());
                 };
-                match Self::remint_asset(asset_id, fee) {
+                match Self::remint_asset(weight, asset_id, fee) {
                     Ok(burnt_xor) => {
                         *xor_to_val =
                             xor_to_val.saturating_add(Self::calculate_portion_fee_from_weight(
@@ -960,14 +961,21 @@ impl<T: Config> Pallet<T> {
                 }
                 _ => {}
             }
+            weight.saturating_accrue(T::DbWeight::get().reads_writes(1, 1));
         });
     }
 
     #[cfg(feature = "wip")] // Xorless fee
-    pub fn remint_asset(asset_id: AssetIdOf<T>, amount: Balance) -> Result<Balance, DispatchError> {
+    pub fn remint_asset(
+        weight: &mut Weight,
+        asset_id: AssetIdOf<T>,
+        amount: Balance,
+    ) -> Result<Balance, DispatchError> {
         let tech_account_id = <T as Config>::GetTechnicalAccountId::get();
         let xor = T::XorId::get();
+        weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
         T::AssetManager::mint_to(&asset_id, &tech_account_id, &tech_account_id, amount)?;
+        weight.saturating_accrue(T::PoolXyk::exchange_weight());
         match T::PoolXyk::exchange(
             &tech_account_id,
             &tech_account_id,
@@ -980,6 +988,7 @@ impl<T: Config> Pallet<T> {
             },
         ) {
             Ok(xor_to_burn) => {
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(
                     &xor,
                     &tech_account_id,
@@ -993,6 +1002,7 @@ impl<T: Config> Pallet<T> {
                     "failed to exchange asset {:?} to xor, burning {} asset, e: {:?}",
                     asset_id, amount, e
                 );
+                weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&asset_id, &tech_account_id, &tech_account_id, amount)?;
                 Err(e)
             }
@@ -1050,7 +1060,7 @@ pub mod pallet {
     use super::*;
     use common::{AssetIdOf, PriceToolsProvider};
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::StorageVersion;
+    use frame_support::traits::{Randomness, StorageVersion};
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
@@ -1078,10 +1088,6 @@ pub mod pallet {
         type CustomFees: ApplyCustomFees<CallOf<Self>, Self::AccountId>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
         type FullIdentification;
-        type SessionManager: pallet_session::historical::SessionManager<
-            Self::AccountId,
-            Self::FullIdentification,
-        >;
         type ReferrerAccountProvider: ReferrerAccountProvider<Self::AccountId>;
         type BuyBackHandler: BuyBackHandler<Self::AccountId, AssetIdOf<Self>>;
         /// Weight information for extrinsics in this pallet.
@@ -1103,6 +1109,7 @@ pub mod pallet {
         type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
         /// Main goal of the constant is to prevent zero fees
         type MinimalFeeInAsset: Get<Balance>;
+        type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
     }
 
     /// The current storage version.
@@ -1137,6 +1144,7 @@ pub mod pallet {
                     }
                 }
             }
+            weight.saturating_accrue(Self::random_remint());
             weight
         }
     }
@@ -1263,6 +1271,22 @@ pub mod pallet {
             #[cfg(not(feature = "wip"))] // Xorless fee
             Ok(().into())
         }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_asset_from_white_list())]
+        pub fn set_random_remint_period(
+            origin: OriginFor<T>,
+            period: u32,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(
+                !period.is_zero() && period <= 600,
+                Error::<T>::WrongRemintPeriod
+            );
+            RemintPeriod::<T>::set(period);
+            Self::deposit_event(Event::RemintPeriodUpdated(period));
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -1293,6 +1317,8 @@ pub mod pallet {
         AssetRemovedFromWhiteList(AssetIdOf<T>),
         /// White list updated: [Asset added]
         AssetAddedToWhiteList(AssetIdOf<T>),
+        /// Average remint period updated: [Period]
+        RemintPeriodUpdated(u32),
     }
     #[pallet::error]
     pub enum Error<T> {
@@ -1308,6 +1334,8 @@ pub mod pallet {
         WhitelistFull,
         /// Failed to calculate fee in white listed asset
         FeeCalculationFailed,
+        /// Remint period should not be 0 or to be greater than 600
+        WrongRemintPeriod,
     }
 
     #[cfg(feature = "wip")] // Xorless fee
@@ -1358,6 +1386,16 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn multiplier)]
     pub type Multiplier<T> = StorageValue<_, FixedU128, ValueQuery, DefaultForFeeMultiplier<T>>;
+
+    #[pallet::type_value]
+    pub fn DefaultForRemintPeriod<T: Config>() -> u32 {
+        100
+    }
+
+    // Average period for random remint
+    #[pallet::storage]
+    #[pallet::getter(fn remint_period)]
+    pub type RemintPeriod<T> = StorageValue<_, u32, ValueQuery, DefaultForRemintPeriod<T>>;
 
     // This affects `base_fee` and `weight_fee`. `length_fee` is too small
     // in comparison to them, so we should be fine multiplying only this parts.
