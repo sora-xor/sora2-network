@@ -71,6 +71,7 @@ pub trait WeightInfo {
 	fn change_total_tokens() -> Weight;
 	fn change_info() -> Weight;
 	fn change_token_info() -> Weight;
+	fn activate_removed_pool() -> Weight;
 }
 
 /// Weights for demeter_farming_platform using the Substrate node and recommended hardware.
@@ -249,6 +250,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	/// Storage: DemeterFarmingPlatform AuthorityAccount (r:1 w:0)
+	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
+	fn activate_removed_pool() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `268`
+		//  Estimated: `3506`
+		// Minimum execution time: 30_569_000 picoseconds.
+		Weight::from_parts(35_731_000, 3370)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -422,6 +436,19 @@ impl WeightInfo for () {
 		//  Measured:  `200`
 		//  Estimated: `3370`
 		// Minimum execution time: 28_426_000 picoseconds.
+		Weight::from_parts(35_731_000, 3370)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: DemeterFarmingPlatform AuthorityAccount (r:1 w:0)
+	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
+	fn activate_removed_pool() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `268`
+		//  Estimated: `3506`
+		// Minimum execution time: 30_569_000 picoseconds.
 		Weight::from_parts(35_731_000, 3370)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
