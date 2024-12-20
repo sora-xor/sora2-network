@@ -195,18 +195,6 @@
 <a href="#180" id="180">180</a>
 <a href="#181" id="181">181</a>
 <a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -291,10 +279,8 @@
     <span class="kw">where
         </span>T: Config,
     {
-        <span class="comment">// TODO: change assets
-        </span><span class="kw">fn </span>on_runtime_upgrade() -&gt; Weight {
+        <span class="kw">fn </span>on_runtime_upgrade() -&gt; Weight {
             <span class="kw">let </span>assets: Vec&lt;AssetIdOf&lt;T&gt;&gt; = <span class="macro">vec!</span>[
-                KXOR.into(),
                 ETH.into(),
                 KUSD.into(),
                 APOLLO_ASSET_ID.into(),
@@ -306,20 +292,10 @@
                 </span>PSWAP.into(),
                 DAI.into(),
                 AssetId32::from_bytes(<span class="macro">hex!</span>(
-                    <span class="string">&quot;002d4e9e03f192cc33b128319a049f353db98fbf4d98f717fd0b7f66a0462142&quot;
-                </span>))
-                .into(), <span class="comment">// HMX
-                </span>XSTUSD.into(),
-                AssetId32::from_bytes(<span class="macro">hex!</span>(
                     <span class="string">&quot;0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b&quot;
                 </span>))
                 .into(), <span class="comment">//DOT
-                </span>AssetId32::from_bytes(<span class="macro">hex!</span>(
-                    <span class="string">&quot;00f2f4fda40a4bf1fc3769d156fa695532eec31e265d75068524462c0b80f674&quot;
-                </span>))
-                .into(), <span class="comment">//DEO
                 </span>KSM.into(),
-                TBCD.into(),
                 AssetId32::from_bytes(<span class="macro">hex!</span>(
                     <span class="string">&quot;00ab83f36ff0cbbdd12fd88a094818820eaf155c08c4159969f1fb21534c1eb0&quot;
                 </span>))

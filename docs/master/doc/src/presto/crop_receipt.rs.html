@@ -454,7 +454,7 @@
     }
 }
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;runtime-benchmarks&quot;</span>, all(feature = <span class="string">&quot;wip&quot;</span>, test)))] </span><span class="comment">// presto
+<span class="attr">#[cfg(all(any(test, feature = <span class="string">&quot;runtime-benchmarks&quot;</span>), feature = <span class="string">&quot;wip&quot;</span>))] </span><span class="comment">// presto
 </span><span class="kw">pub fn </span>crop_receipt_content_template&lt;T: Config&gt;() -&gt; BoundedString&lt;T::MaxCropReceiptContentSize&gt; {
     <span class="kw">let </span>content = <span class="macro">include_str!</span>(<span class="string">&quot;../crop_receipt_template.json&quot;</span>);
     BoundedString::truncate_from(content)

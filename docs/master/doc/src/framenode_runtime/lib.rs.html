@@ -3599,6 +3599,7 @@
 <a href="#3584" id="3584">3584</a>
 <a href="#3585" id="3585">3585</a>
 <a href="#3586" id="3586">3586</a>
+<a href="#3587" id="3587">3587</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3977,7 +3978,8 @@
 
 <span class="kw">impl </span>Contains&lt;RuntimeCall&gt; <span class="kw">for </span>BaseCallFilter {
     <span class="kw">fn </span>contains(call: <span class="kw-2">&amp;</span>RuntimeCall) -&gt; bool {
-        <span class="kw">if </span>call.swap_count() &gt; <span class="number">1 </span>{
+        <span class="kw">let </span>depth_result = call.swap_count_and_depth(<span class="number">0</span>);
+        <span class="kw">if </span>depth_result.swap_count &gt; <span class="number">1 </span>|| depth_result.depth &gt; <span class="number">1 </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
         <span class="kw">if </span><span class="macro">matches!</span>(
