@@ -59,7 +59,7 @@ use common::{
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::BoundedBTreeSet;
-use sp_core::Get;
+use sp_core::{Get, TryCollect};
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -71,11 +71,11 @@ pub use pallet::*;
 #[scale_info(skip_type_params(MaxRegulatedAssetsPerSBT))]
 pub struct SoulboundTokenMetadata<Moment, AssetId, MaxRegulatedAssetsPerSBT: Get<u32>> {
     /// External link of issued place
-    external_url: Option<ContentSource>,
+    pub external_url: Option<ContentSource>,
     /// Issuance Timestamp
-    issued_at: Moment,
+    pub issued_at: Moment,
     /// List of regulated assets permissioned by this token
-    regulated_assets: BoundedBTreeSet<AssetId, MaxRegulatedAssetsPerSBT>,
+    pub regulated_assets: BoundedBTreeSet<AssetId, MaxRegulatedAssetsPerSBT>,
 }
 
 #[frame_support::pallet]
@@ -450,6 +450,40 @@ pub mod pallet {
     #[pallet::getter(fn sbt_asset_expiration)]
     pub type SBTExpiration<T: Config> =
         StorageDoubleMap<_, Identity, T::AccountId, Identity, AssetIdOf<T>, T::Moment, OptionQuery>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub assets_metadata: Vec<(AssetIdOf<T>, Option<ContentSource>, Vec<AssetIdOf<T>>)>,
+    }
+
+    #[cfg(feature = "std")]
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                assets_metadata: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+        fn build(&self) {
+            self.assets_metadata.iter().cloned().for_each(
+                |(sbt_asset_id, external_url, regulated_assets)| {
+                    let metadata = SoulboundTokenMetadata {
+                        external_url,
+                        issued_at: Timestamp::<T>::now(),
+                        regulated_assets: regulated_assets
+                            .into_iter()
+                            .try_collect()
+                            .expect("Failed to bind regulated assets with soulbound asset."),
+                    };
+
+                    <SoulboundAsset<T>>::insert(sbt_asset_id, metadata);
+                },
+            );
+        }
+    }
 }
 
 impl<T: Config> Pallet<T> {

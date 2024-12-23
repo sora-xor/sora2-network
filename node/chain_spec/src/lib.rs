@@ -40,8 +40,9 @@
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,
-    SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, ETH, HERMES_ASSET_ID,
-    KARMA, KEN, KGOLD, KUSD, KXOR, PRUSD, PSWAP, SB, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
+    PredefinedAssetId, SymbolName, TechPurpose, APOLLO_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION,
+    ETH, HERMES_ASSET_ID, KARMA, KEN, KGOLD, KUSD, KXOR, PRUSD, PSWAP, SB, SBT_PRACS, SBT_PRCRDT,
+    SBT_PRINVST, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use frame_support::sp_runtime::Percent;
 use framenode_runtime::eth_bridge::{AssetConfig, BridgeAssetData, NetworkConfig};
@@ -1415,7 +1416,7 @@ fn testnet_genesis(
                     None,
                 ),
                 (
-                    common::AssetId32::from_bytes(hex!(
+                    common::AssetId32::<PredefinedAssetId>::from_bytes(hex!(
                         "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
                     ))
                     .into(),
@@ -1505,6 +1506,8 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
+            ],
+            regulated_assets: vec![
                 #[cfg(feature = "wip")] // presto
                 (
                     PRUSD,
@@ -1512,6 +1515,44 @@ fn testnet_genesis(
                     AssetSymbol(b"PRUSD".to_vec()),
                     AssetName(b"Presto USD".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+            ],
+            sbt_assets: vec![
+                #[cfg(feature = "wip")] // presto
+                (
+                    SBT_PRACS.into_predefined(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"PRACS".to_vec()),
+                    AssetName(b"Presto Access".to_vec()),
+                    0,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    SBT_PRINVST.into_predefined(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"PRINVST".to_vec()),
+                    AssetName(b"Presto Investor".to_vec()),
+                    0,
+                    Balance::zero(),
+                    true,
+                    None,
+                    None,
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    SBT_PRCRDT.into_predefined(),
+                    assets_and_permissions_account_id.clone(),
+                    AssetSymbol(b"PRCRDT".to_vec()),
+                    AssetName(b"Presto Creditor".to_vec()),
+                    0,
                     Balance::zero(),
                     true,
                     None,
@@ -1598,6 +1639,24 @@ fn testnet_genesis(
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&PRUSD)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&SBT_PRACS)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&SBT_PRINVST)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
@@ -2219,7 +2278,7 @@ fn mainnet_genesis(
             None,
         ),
         (
-            common::AssetId32::from_bytes(hex!(
+            common::AssetId32::<PredefinedAssetId>::from_bytes(hex!(
                 "008bcfd2387d3fc453333557eecb0efe59fcba128769b2feefdd306e98e66440"
             ))
             .into(),
@@ -2298,6 +2357,9 @@ fn mainnet_genesis(
             None,
             None,
         ),
+    ];
+
+    let regulated_assets = vec![
         #[cfg(feature = "wip")] // presto
         (
             PRUSD,
@@ -2311,6 +2373,46 @@ fn mainnet_genesis(
             None,
         ),
     ];
+
+    let sbt_assets = vec![
+        #[cfg(feature = "wip")] // presto
+        (
+            SBT_PRACS.into_predefined(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PRACS".to_vec()),
+            AssetName(b"Presto Access".to_vec()),
+            0,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        #[cfg(feature = "wip")] // presto
+        (
+            SBT_PRINVST.into_predefined(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PRINVST".to_vec()),
+            AssetName(b"Presto Investor".to_vec()),
+            0,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+        #[cfg(feature = "wip")] // presto
+        (
+            SBT_PRCRDT.into_predefined(),
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PRCRDT".to_vec()),
+            AssetName(b"Presto Creditor".to_vec()),
+            0,
+            Balance::zero(),
+            true,
+            None,
+            None,
+        ),
+    ];
+
     let bridge_assets_data: Vec<BridgeAssetData<Runtime>> = Vec::new();
     bridge_assets.extend(bridge_assets_data.iter().map(|x| {
         AssetConfig::sidechain(
@@ -2400,7 +2502,9 @@ fn mainnet_genesis(
             ..Default::default()
         },
         assets: AssetsConfig {
-            endowed_assets: endowed_assets,
+            endowed_assets,
+            regulated_assets,
+            sbt_assets,
         },
         permissions: PermissionsConfig {
             initial_permission_owners: vec![
@@ -2481,6 +2585,24 @@ fn mainnet_genesis(
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&PRUSD)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&SBT_PRACS)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&SBT_PRINVST)),
+                    vec![permissions::MINT, permissions::BURN],
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
             ],
