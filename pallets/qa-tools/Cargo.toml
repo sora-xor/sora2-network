@@ -71,10 +71,5 @@ private-net = [
     "framenode-runtime/private-net",
     "order-book/private-net",
 ]
-wip = [
-    "framenode-chain-spec/wip",
-    "framenode-runtime/wip",
-    "order-book/wip",
-]
 
 try-runtime = ["frame-support/try-runtime"]
