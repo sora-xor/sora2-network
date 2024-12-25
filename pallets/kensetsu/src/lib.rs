@@ -285,13 +285,11 @@ pub mod pallet {
                 // known problem. The purpose of the code is not to protect from the attack but to
                 // make choosing of CDP to liquidate more 'fair' then incremental order.
                 let (randomness, _) = T::Randomness::random(&b"kensetsu"[..]);
-                match randomness {
-                    Some(randomness) => {
-                        match u32::decode(&mut randomness.as_ref()) {
-                            Ok(random_number) => {
-                                // Random bias by modulus operation is acceptable here
-                                let random_id = random_number as usize % unsafe_cdp_ids.len();
-                                unsafe_cdp_ids
+                match u32::decode(&mut randomness.as_ref()) {
+                    Ok(random_number) => {
+                        // Random bias by modulus operation is acceptable here
+                        let random_id = random_number as usize % unsafe_cdp_ids.len();
+                        unsafe_cdp_ids
                                     .get(random_id)
                                     .map_or_else(
                                         || {
@@ -311,14 +309,9 @@ pub mod pallet {
                                             );
                                         }
                                     });
-                            }
-                            Err(error) => {
-                                warn!("Failed to get randomness during liquidation: {}", error);
-                            }
-                        }
                     }
-                    None => {
-                        warn!("No randomness provided.");
+                    Err(error) => {
+                        warn!("Failed to get randomness during liquidation: {}", error);
                     }
                 }
             }
@@ -333,7 +326,7 @@ pub mod pallet {
         + SendTransactionTypes<Call<Self>>
     {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: Randomness<Option<Self::Hash>, Self::BlockNumber>;
+        type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
             Self::AccountId,

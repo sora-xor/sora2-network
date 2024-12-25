@@ -53,14 +53,16 @@ use sp_arithmetic::FixedU128;
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
-use frame_support::traits::{Currency, ExistenceRequirement, GenesisBuild, WithdrawReasons};
+use frame_support::traits::{
+    Currency, ExistenceRequirement, GenesisBuild, Randomness, WithdrawReasons,
+};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
+use sp_core::H256;
 use sp_runtime::{AccountId32, DispatchError, Percent};
-use sp_staking::SessionIndex;
 use traits::MultiCurrency;
 
 pub use crate::{self as xor_fee, Config, Pallet};
@@ -247,6 +249,17 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     }
 }
 
+pub struct MockRandomness;
+
+impl Randomness<H256, BlockNumber> for MockRandomness {
+    fn random(_subject: &[u8]) -> (H256, BlockNumber) {
+        (
+            H256::from_low_u64_be(System::block_number()),
+            System::block_number(),
+        )
+    }
+}
+
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type XorCurrency = Balances;
@@ -265,7 +278,6 @@ impl Config for Runtime {
     type OnValBurned = ValBurnedAggregator;
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
-    type SessionManager = MockSessionManager;
     type WithdrawFee = WithdrawFee;
     type FullIdentification = ();
     type BuyBackHandler = ();
@@ -282,6 +294,7 @@ impl Config for Runtime {
     type WhiteListOrigin = EnsureRoot<AccountId>;
     type PriceTools = price_tools::FastPriceTools<Runtime>;
     type MinimalFeeInAsset = ();
+    type Randomness = MockRandomness;
 }
 
 #[cfg(feature = "wip")] // Dynamic fee
@@ -314,32 +327,6 @@ impl ReferrerAccountProvider<AccountId> for MockReferrerAccountProvider {
             None
         }
     }
-}
-
-pub struct MockSessionManager;
-
-impl pallet_session::SessionManager<AccountId> for MockSessionManager {
-    fn new_session(_new_index: SessionIndex) -> Option<Vec<AccountId>> {
-        None
-    }
-
-    fn end_session(_end_index: SessionIndex) {}
-
-    fn start_session(_start_index: SessionIndex) {}
-
-    fn new_session_genesis(_new_index: SessionIndex) -> Option<Vec<AccountId>> {
-        None
-    }
-}
-
-impl pallet_session::historical::SessionManager<AccountId, ()> for MockSessionManager {
-    fn new_session(_new_index: SessionIndex) -> Option<Vec<(AccountId, ())>> {
-        None
-    }
-
-    fn start_session(_start_index: SessionIndex) {}
-
-    fn end_session(_end_index: SessionIndex) {}
 }
 
 pub struct MockLiquidityProxy;

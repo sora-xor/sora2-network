@@ -663,6 +663,48 @@ benchmarks! {
         assert_last_event::<T>(demeter_farming_platform::Event::<T>::TokenInfoChanged(caller, CERES_ASSET_ID.into()).into());
     }
 
+    activate_removed_pool {
+        let caller = AuthorityAccount::<T>::get();
+        frame_system::Pallet::<T>::inc_providers(&caller);
+        let is_farm = true;
+        let deposit_fee = balance!(0.6);
+        let team_account = alice::<T>();
+
+        // Register token
+        let _ = DemeterFarmingPlatform::<T>::register_token(
+            RawOrigin::Signed(caller.clone()).into(),
+            CERES_ASSET_ID.into(),
+            balance!(1),
+            balance!(0.6),
+            balance!(0.2),
+            balance!(0.2),
+            team_account
+        );
+
+        // Add pool
+        let _ = DemeterFarmingPlatform::<T>::add_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            true,
+            2,
+            balance!(0.4),
+            true,
+        );
+    }: {
+        DemeterFarmingPlatform::<T>::activate_removed_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            is_farm,
+        ).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(demeter_farming_platform::Event::<T>::RemovedPoolActivated(caller, XOR.into(), XOR.into(), CERES_ASSET_ID.into(), is_farm).into());
+    }
+
     impl_benchmark_test_suite!(
         Pallet,
         crate::mock::ExtBuilder::default().build(),

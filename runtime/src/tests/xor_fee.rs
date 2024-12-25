@@ -56,15 +56,13 @@ use framenode_chain_spec::ext;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
+use sp_core::twox_128;
 use sp_runtime::traits::{Dispatchable, SignedExtension};
 use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 
-use vested_rewards::vesting_currencies::{
-    LinearVestingSchedule, VestingSchedule, VestingScheduleVariant,
-};
+use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 
-use vested_rewards::{Config, WeightInfo};
 use xor_fee::extension::ChargeTransactionPayment;
 use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToBuyBack, XorToVal};
 
@@ -315,8 +313,9 @@ fn fail_on_withdraw() {
 
 #[cfg(feature = "wip")] // Xorless fee
 #[test]
-fn end_session_for_xorless_works() {
+fn remint_for_xorless_works() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
 
         Staking::on_finalize(0);
@@ -437,9 +436,7 @@ fn end_session_for_xorless_works() {
             asset_fee_in_xor,
         );
 
-        <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
-            0,
-        );
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
         assert!(xor_fee::BurntForFee::<Runtime>::iter().next().is_none());
 
         let val_burned = calc_xyk_swap_result(
@@ -490,8 +487,9 @@ fn end_session_for_xorless_works() {
 
 #[cfg(feature = "wip")] // Xorless fee
 #[test]
-fn end_session_for_xorless_fails_right() {
+fn remint_for_xorless_fails_right() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
 
         Staking::on_finalize(0);
@@ -559,9 +557,7 @@ fn end_session_for_xorless_fails_right() {
             INITIAL_RESERVES,
             INITIAL_RESERVES,
         ));
-        <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
-            0,
-        );
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
         assert!(xor_fee::BurntForFee::<Runtime>::iter().next().is_some());
     });
 }
@@ -661,6 +657,7 @@ fn referrer_gets_bonus_from_tx_fee() {
 #[test]
 fn notify_val_burned_works() {
     ext().execute_with(|| {
+        System::set_block_number(1);
         set_weight_to_fee_multiplier(1);
         increase_balance(alice(), XOR.into(), INITIAL_RESERVES);
 
@@ -735,9 +732,7 @@ fn notify_val_burned_works() {
             0_u128.into()
         );
 
-        <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
-            0,
-        );
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
 
         let val_burned = calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, total_xor_to_val);
         let remint_buy_back_percent =
@@ -1155,9 +1150,7 @@ fn reminting_for_sora_parliament_works() {
             RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
         let expected_balance = FixedWrapper::from(remint_buy_back_percent * val_burned);
 
-        <xor_fee::Pallet<Runtime> as pallet_session::historical::SessionManager<_, _>>::end_session(
-            0,
-        );
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
 
         // Mock uses MockLiquiditySource that doesn't exchange.
         assert!(
@@ -1849,24 +1842,11 @@ fn right_custom_fee_for_vested_transfer_ok() {
         .is_ok());
 
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
-        let claim_fee = multiplier.saturating_mul_int(
-            pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
-                <Runtime as Config>::WeightInfo::claim_unlocked(),
-            ),
-        );
-        let transaction_fee = multiplier.saturating_mul_int(pallet_transaction_payment::Pallet::<
-            Runtime,
-        >::weight_to_fee(
-            <Runtime as Config>::WeightInfo::vested_transfer(),
-        ));
-        let fee_per_all_claims = claim_fee.saturating_mul(schedule.claims_count() as Balance);
+        let transaction_fee = multiplier.saturating_mul_int(3 * SMALL_FEE);
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
-            initial_balance
-                - multiplier.saturating_mul_int(SMALL_FEE)
-                - fee_per_all_claims
-                - transaction_fee
+            initial_balance - transaction_fee
         );
     });
 }
@@ -1909,14 +1889,151 @@ fn right_custom_fee_for_vested_transfer_err() {
         .is_ok());
 
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
-        let transaction_fee = multiplier.saturating_mul_int(pallet_transaction_payment::Pallet::<
-            Runtime,
-        >::weight_to_fee(
-            <Runtime as Config>::WeightInfo::vested_transfer(),
-        ));
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
-            initial_balance - multiplier.saturating_mul_int(SMALL_FEE) - transaction_fee
+            initial_balance - multiplier.saturating_mul_int(SMALL_FEE)
+        );
+    });
+}
+
+#[test]
+fn random_remint_works() {
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        set_weight_to_fee_multiplier(1);
+        increase_balance(alice(), XOR.into(), INITIAL_RESERVES);
+
+        Staking::on_finalize(0);
+
+        increase_balance(bob(), XOR.into(), 3 * INITIAL_RESERVES);
+
+        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), KUSD.into())
+            .unwrap();
+
+        for target in [VAL, KUSD, TBCD] {
+            increase_balance(bob(), target.into(), 2 * INITIAL_RESERVES);
+            ensure_pool_initialized(XOR.into(), target.into());
+            PoolXYK::deposit_liquidity(
+                RuntimeOrigin::signed(bob()),
+                0,
+                XOR.into(),
+                target.into(),
+                INITIAL_RESERVES,
+                INITIAL_RESERVES,
+                INITIAL_RESERVES,
+                INITIAL_RESERVES,
+            )
+            .unwrap();
+        }
+
+        fill_spot_price();
+
+        assert_eq!(
+            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            0_u128.into()
+        );
+
+        let mut total_xor_to_val = 0;
+        let mut total_xor_to_buy_back = 0;
+        for _ in 0..3 {
+            let call: &<Runtime as frame_system::Config>::RuntimeCall =
+                &RuntimeCall::Assets(assets::Call::transfer {
+                    asset_id: VAL.into(),
+                    to: bob(),
+                    amount: TRANSFER_AMOUNT,
+                });
+
+            let len = 10;
+            let dispatch_info = info_from_weight(MOCK_WEIGHT);
+            let pre = ChargeTransactionPayment::<Runtime>::new()
+                .pre_dispatch(&alice(), call, &dispatch_info, len)
+                .unwrap();
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            let weights_sum = FeeReferrerWeight::get() as u128
+                + FeeXorBurnedWeight::get() as u128
+                + FeeValBurnedWeight::get() as u128
+                + FeeKusdBurnedWeight::get() as u128;
+            total_xor_to_val += SMALL_FEE * FeeValBurnedWeight::get() as u128 / weights_sum;
+            total_xor_to_buy_back += SMALL_FEE
+                * (FeeKusdBurnedWeight::get() + FeeReferrerWeight::get()) as u128
+                / weights_sum;
+        }
+
+        // The correct answer is 3E-13 away
+        assert_eq!(XorToVal::<Runtime>::get(), total_xor_to_val);
+        assert_eq!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back);
+        assert_eq!(
+            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            0_u128.into()
+        );
+
+        pallet_randomness_collective_flip::Pallet::<Runtime>::on_initialize(1);
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
+
+        assert_eq!(pallet_staking::Pallet::<Runtime>::era_val_burned(), 0);
+        assert_eq!(
+            crate::Assets::total_issuance(&KUSD.into()).unwrap(),
+            balance!(20000)
+        );
+        assert_eq!(
+            crate::Assets::total_issuance(&TBCD.into()).unwrap(),
+            balance!(20000)
+        );
+
+        frame_system::Pallet::<Runtime>::kill_prefix(
+            frame_system::RawOrigin::Root.into(),
+            twox_128(b"RandomnessCollectiveFlip").to_vec(),
+            100,
+        )
+        .unwrap();
+
+        xor_fee::Pallet::<Runtime>::on_initialize(1);
+
+        let val_burned = calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, total_xor_to_val);
+        let remint_buy_back_percent =
+            RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
+        let xor_to_remint_buy_back = calc_xyk_swap_result(
+            INITIAL_RESERVES - val_burned,
+            INITIAL_RESERVES + total_xor_to_val,
+            remint_buy_back_percent * val_burned,
+        );
+
+        assert_approx_eq_abs!(
+            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            val_burned - remint_buy_back_percent * val_burned,
+            balance!(0.000000001)
+        );
+
+        let kusd_burned =
+            calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, total_xor_to_buy_back);
+        let kusd_burned_remint = calc_xyk_swap_result(
+            INITIAL_RESERVES + total_xor_to_buy_back,
+            INITIAL_RESERVES - kusd_burned,
+            (RemintKusdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
+        );
+        let tbcd_burned_remint = calc_xyk_swap_result(
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            (RemintTbcdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
+        );
+
+        assert_approx_eq_abs!(
+            crate::Assets::total_issuance(&KUSD.into()).unwrap(),
+            balance!(20000) - kusd_burned - kusd_burned_remint,
+            balance!(0.00001)
+        );
+
+        assert_approx_eq_abs!(
+            crate::Assets::total_issuance(&TBCD.into()).unwrap(),
+            balance!(20000) - tbcd_burned_remint,
+            balance!(0.00001)
         );
     });
 }
