@@ -53,13 +53,13 @@ pub mod weights;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
-    permissions::{PermissionId, TRANSFER},
+    permissions::{PermissionId, BURN, MINT, TRANSFER},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol, AssetType,
     BalancePrecision, ContentSource, Description, IsValid,
 };
 use frame_support::sp_runtime::DispatchError;
 use frame_support::BoundedBTreeSet;
-use sp_core::{Get, TryCollect};
+use sp_core::Get;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -86,6 +86,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_core::TryCollect;
 
     #[pallet::config]
     pub trait Config:
@@ -453,7 +454,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub assets_metadata: Vec<(AssetIdOf<T>, Option<ContentSource>, Vec<AssetIdOf<T>>)>,
+        pub assets_metadata: Vec<(AssetIdOf<T>, Option<ContentSource>, AssetIdOf<T>)>,
     }
 
     #[cfg(feature = "std")]
@@ -469,17 +470,18 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             self.assets_metadata.iter().cloned().for_each(
-                |(sbt_asset_id, external_url, regulated_assets)| {
+                |(sbt_asset_id, external_url, regulated_asset)| {
                     let metadata = SoulboundTokenMetadata {
                         external_url,
                         issued_at: Timestamp::<T>::now(),
-                        regulated_assets: regulated_assets
+                        regulated_assets: vec![regulated_asset]
                             .into_iter()
                             .try_collect()
                             .expect("Failed to bind regulated assets with soulbound asset."),
                     };
 
                     <SoulboundAsset<T>>::insert(sbt_asset_id, metadata);
+                    <RegulatedAssetToSoulboundAsset<T>>::set(regulated_asset, sbt_asset_id);
                 },
             );
         }
@@ -551,9 +553,12 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
 
             if is_asset_owner {
                 // Asset owner of the SBT can do all asset operations except transfer
-                if permission_id == &TRANSFER {
+                if *permission_id == TRANSFER {
                     return Err(Error::<T>::SoulboundAssetNotTransferable.into());
                 }
+                return Ok(());
+            } else if *permission_id == MINT || *permission_id == BURN {
+                // These persmissions are checked in `permissions` pallet
                 return Ok(());
             } else {
                 return Err(Error::<T>::SoulboundAssetNotOperationable.into());

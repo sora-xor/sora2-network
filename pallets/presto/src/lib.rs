@@ -41,11 +41,13 @@ mod test;
 mod treasury;
 pub mod weights;
 
-use common::{AccountIdOf, Balance};
+use common::{AccountIdOf, AssetInfoProvider, Balance};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Time;
-use sp_runtime::traits::{One, Saturating};
+use sp_core::Get;
+use sp_runtime::traits::{One, Saturating, Zero};
+use sp_std::vec::Vec;
 
 pub use pallet::*;
 
@@ -99,6 +101,9 @@ pub mod pallet {
             MomentOf<Self>,
         >;
         type PrestoUsdAssetId: Get<AssetIdOf<Self>>;
+        type PrestoKycAssetId: Get<AssetIdOf<Self>>;
+        type PrestoKycInvestorAssetId: Get<AssetIdOf<Self>>;
+        type PrestoKycCreditorAssetId: Get<AssetIdOf<Self>>;
         type PrestoTechAccount: Get<Self::TechAccountId>;
         type PrestoBufferTechAccount: Get<Self::TechAccountId>;
         type RequestId: Parameter
@@ -324,6 +329,16 @@ pub mod pallet {
         CallerIsNotManager,
         /// This account is not an auditor
         CallerIsNotAuditor,
+        /// Account already passed KYC
+        KycAlreadyPassed,
+        /// Account not passed KYC
+        KycNotPassed,
+        /// Account not passed KYC as investor
+        InvestorKycNotPassed,
+        /// Account not passed KYC as creditor
+        CreditorKycNotPassed,
+        /// Account has any Presto asset
+        AccountHasPrestoAssets,
         /// Zero amount doesn't make sense
         AmountIsZero,
         /// This account has reached the max count of requests
@@ -435,6 +450,138 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::apply_investor_kyc())]
+        pub fn apply_investor_kyc(
+            origin: OriginFor<T>,
+            investor: AccountIdOf<T>,
+        ) -> DispatchResult {
+            let manager = ensure_signed(origin)?;
+            Self::ensure_is_manager(&manager)?;
+
+            Self::ensure_no_kyc(&investor)?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            T::AssetManager::mint_to(
+                &T::PrestoKycAssetId::get(),
+                &presto_tech_account_id,
+                &investor,
+                1,
+            )?;
+
+            T::AssetManager::mint_to(
+                &T::PrestoKycInvestorAssetId::get(),
+                &presto_tech_account_id,
+                &investor,
+                1,
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::apply_creditor_kyc())]
+        pub fn apply_creditor_kyc(
+            origin: OriginFor<T>,
+            creditor: AccountIdOf<T>,
+        ) -> DispatchResult {
+            let manager = ensure_signed(origin)?;
+            Self::ensure_is_manager(&manager)?;
+
+            Self::ensure_no_kyc(&creditor)?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            T::AssetManager::mint_to(
+                &T::PrestoKycAssetId::get(),
+                &presto_tech_account_id,
+                &creditor,
+                1,
+            )?;
+
+            T::AssetManager::mint_to(
+                &T::PrestoKycCreditorAssetId::get(),
+                &presto_tech_account_id,
+                &creditor,
+                1,
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_investor_kyc())]
+        pub fn remove_investor_kyc(
+            origin: OriginFor<T>,
+            investor: AccountIdOf<T>,
+        ) -> DispatchResult {
+            let manager = ensure_signed(origin)?;
+            Self::ensure_is_manager(&manager)?;
+
+            let kyc_amount = Self::ensure_has_kyc(&investor)?;
+            let investor_kyc_amount = Self::ensure_has_investor_kyc(&investor)?;
+            Self::ensure_no_presto_assets(&investor)?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            T::AssetManager::burn_from(
+                &T::PrestoKycAssetId::get(),
+                &presto_tech_account_id,
+                &investor,
+                kyc_amount,
+            )?;
+
+            T::AssetManager::burn_from(
+                &T::PrestoKycInvestorAssetId::get(),
+                &presto_tech_account_id,
+                &investor,
+                investor_kyc_amount,
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_creditor_kyc())]
+        pub fn remove_creditor_kyc(
+            origin: OriginFor<T>,
+            creditor: AccountIdOf<T>,
+        ) -> DispatchResult {
+            let manager = ensure_signed(origin)?;
+            Self::ensure_is_manager(&manager)?;
+
+            let kyc_amount = Self::ensure_has_kyc(&creditor)?;
+            let creditor_kyc_amount = Self::ensure_has_creditor_kyc(&creditor)?;
+            Self::ensure_no_presto_assets(&creditor)?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            T::AssetManager::burn_from(
+                &T::PrestoKycAssetId::get(),
+                &presto_tech_account_id,
+                &creditor,
+                kyc_amount,
+            )?;
+
+            T::AssetManager::burn_from(
+                &T::PrestoKycCreditorAssetId::get(),
+                &presto_tech_account_id,
+                &creditor,
+                creditor_kyc_amount,
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::mint_presto_usd())]
         pub fn mint_presto_usd(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -447,7 +594,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(5)]
+        #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::burn_presto_usd())]
         pub fn burn_presto_usd(origin: OriginFor<T>, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -460,7 +607,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(6)]
+        #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::send_presto_usd())]
         pub fn send_presto_usd(
             origin: OriginFor<T>,
@@ -475,7 +622,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(7)]
+        #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::create_deposit_request())]
         pub fn create_deposit_request(
             origin: OriginFor<T>,
@@ -486,6 +633,7 @@ pub mod pallet {
             let owner = ensure_signed(origin)?;
 
             ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
+            Self::ensure_has_kyc(&owner)?;
             let id = Self::next_request_id();
 
             let request = Request::Deposit(DepositRequest::new(
@@ -507,7 +655,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(8)]
+        #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::create_withdraw_request())]
         pub fn create_withdraw_request(
             origin: OriginFor<T>,
@@ -517,6 +665,7 @@ pub mod pallet {
             let owner = ensure_signed(origin)?;
 
             ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
+            Self::ensure_has_kyc(&owner)?;
             let id = Self::next_request_id();
 
             let request = Request::Withdraw(WithdrawRequest::new(owner.clone(), amount, details)?);
@@ -533,10 +682,11 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(9)]
+        #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::cancel_request())]
         pub fn cancel_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            Self::ensure_has_kyc(&who)?;
 
             Requests::<T>::try_mutate(request_id, |request| {
                 let request = request.as_mut().ok_or(Error::<T>::RequestIsNotExists)?;
@@ -556,7 +706,7 @@ pub mod pallet {
             })
         }
 
-        #[pallet::call_index(10)]
+        #[pallet::call_index(14)]
         #[pallet::weight(<T as Config>::WeightInfo::approve_deposit_request())]
         pub fn approve_deposit_request(
             origin: OriginFor<T>,
@@ -588,7 +738,7 @@ pub mod pallet {
             })
         }
 
-        #[pallet::call_index(11)]
+        #[pallet::call_index(15)]
         #[pallet::weight(<T as Config>::WeightInfo::approve_withdraw_request())]
         pub fn approve_withdraw_request(
             origin: OriginFor<T>,
@@ -621,7 +771,7 @@ pub mod pallet {
             })
         }
 
-        #[pallet::call_index(12)]
+        #[pallet::call_index(16)]
         #[pallet::weight(<T as Config>::WeightInfo::decline_request())]
         pub fn decline_request(origin: OriginFor<T>, request_id: T::RequestId) -> DispatchResult {
             let manager = ensure_signed(origin)?;
@@ -646,7 +796,7 @@ pub mod pallet {
             })
         }
 
-        #[pallet::call_index(13)]
+        #[pallet::call_index(17)]
         #[pallet::weight(<T as Config>::WeightInfo::create_crop_receipt())]
         pub fn create_crop_receipt(
             origin: OriginFor<T>,
@@ -662,6 +812,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let owner = ensure_signed(origin)?;
             ensure!(!amount.is_zero(), Error::<T>::AmountIsZero);
+            Self::ensure_has_creditor_kyc(&owner)?;
             let id = Self::next_crop_receipt_id();
 
             let crop_receipt = CropReceipt::<T>::new(
@@ -692,7 +843,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(14)]
+        #[pallet::call_index(18)]
         #[pallet::weight(<T as Config>::WeightInfo::rate_crop_receipt())]
         pub fn rate_crop_receipt(
             origin: OriginFor<T>,
@@ -718,13 +869,14 @@ pub mod pallet {
             })
         }
 
-        #[pallet::call_index(15)]
+        #[pallet::call_index(19)]
         #[pallet::weight(<T as Config>::WeightInfo::decline_crop_receipt())]
         pub fn decline_crop_receipt(
             origin: OriginFor<T>,
             crop_receipt_id: T::CropReceiptId,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            Self::ensure_has_creditor_kyc(&who)?;
 
             CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
                 let crop_receipt = crop_receipt
@@ -742,7 +894,7 @@ pub mod pallet {
             })
         }
 
-        #[pallet::call_index(16)]
+        #[pallet::call_index(20)]
         #[pallet::weight(<T as Config>::WeightInfo::publish_crop_receipt())]
         pub fn publish_crop_receipt(
             origin: OriginFor<T>,
@@ -751,6 +903,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(!supply.is_zero(), Error::<T>::AmountIsZero);
+            Self::ensure_has_creditor_kyc(&who)?;
 
             let coupon_supply = BalanceUnit::indivisible(supply);
 
@@ -789,7 +942,7 @@ pub mod pallet {
                 0,
                 supply,
                 false,
-                AssetType::Regular,
+                AssetType::Regular, // todo regulated
                 None,
                 None,
             )?;
@@ -869,6 +1022,13 @@ pub mod pallet {
                 max_lot_size,
             )?;
 
+            // TODO:
+            // send KYC SBT to order book tech acc
+            // check place limit order & execute market order caller for KYC
+            // forbid to register trading pairs with Presto USD & Presto Dex for users
+            // extended-assets trait to bind regulated & sbt
+            // presto trait to check KYC
+
             // place all supply in order book in according with `max_lot_size` limitation
             let mut remaining_amount = supply;
             while !remaining_amount.is_zero() {
@@ -939,5 +1099,46 @@ impl<T: Config> Pallet<T> {
         ensure!(tick_size != 0, Error::<T>::CalculationError);
         let steps = price.saturating_div(tick_size);
         Ok(tick_size.saturating_mul(steps))
+    }
+
+    pub fn ensure_no_kyc(account: &AccountIdOf<T>) -> Result<(), DispatchError> {
+        ensure!(
+            T::AssetInfoProvider::free_balance(&T::PrestoKycAssetId::get(), &account)?.is_zero(),
+            Error::<T>::KycAlreadyPassed
+        );
+        Ok(())
+    }
+
+    pub fn ensure_has_kyc(account: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
+        let amount = T::AssetInfoProvider::free_balance(&T::PrestoKycAssetId::get(), &account)?;
+        ensure!(amount > Zero::zero(), Error::<T>::KycNotPassed);
+        Ok(amount)
+    }
+
+    pub fn ensure_has_investor_kyc(account: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
+        let amount =
+            T::AssetInfoProvider::free_balance(&T::PrestoKycInvestorAssetId::get(), &account)?;
+        ensure!(amount > Zero::zero(), Error::<T>::InvestorKycNotPassed);
+        Ok(amount)
+    }
+
+    pub fn ensure_has_creditor_kyc(account: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
+        let amount =
+            T::AssetInfoProvider::free_balance(&T::PrestoKycCreditorAssetId::get(), &account)?;
+        ensure!(amount > Zero::zero(), Error::<T>::CreditorKycNotPassed);
+        Ok(amount)
+    }
+
+    pub fn ensure_no_presto_assets(account: &AccountIdOf<T>) -> Result<(), DispatchError> {
+        let mut presto_assets = Coupons::<T>::iter_keys().collect::<Vec<_>>();
+        presto_assets.push(T::PrestoUsdAssetId::get());
+
+        for asset in presto_assets {
+            ensure!(
+                T::AssetInfoProvider::free_balance(&asset, &account)?.is_zero(),
+                Error::<T>::AccountHasPrestoAssets
+            );
+        }
+        Ok(())
     }
 }

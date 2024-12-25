@@ -54,9 +54,9 @@ use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig,
     BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
-    EthBridgeConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
-    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
-    IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
+    EthBridgeConfig, ExtendedAssetsConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId,
+    GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
+    ImOnlineId, IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
     MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
     RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
     SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
@@ -1193,6 +1193,8 @@ fn testnet_genesis(
             VAL,
             parliament_investment_fund_balance,
         ),
+        #[cfg(feature = "wip")] // presto
+        (presto_account_id.clone(), SBT_PRACS.into(), 1),
     ];
     let faucet_config = {
         let initial_faucet_balance = balance!(6000000000);
@@ -1705,6 +1707,12 @@ fn testnet_genesis(
                         is_public: true,
                     },
                 ),
+            ],
+        },
+        extended_assets: ExtendedAssetsConfig {
+            assets_metadata: vec![
+                #[cfg(feature = "wip")] // presto
+                (SBT_PRACS.into(), None, PRUSD),
             ],
         },
         faucet: faucet_config,
@@ -2695,6 +2703,12 @@ fn mainnet_genesis(
                 ),
             ],
         },
+        extended_assets: ExtendedAssetsConfig {
+            assets_metadata: vec![
+                #[cfg(feature = "wip")] // presto
+                (SBT_PRACS.into(), None, PRUSD),
+            ],
+        },
         tokens: TokensConfig {
             balances: vec![
                 (
@@ -2724,6 +2738,12 @@ fn mainnet_genesis(
                     market_maker_rewards_account_id.clone(),
                     PSWAP,
                     initial_pswap_market_maker_rewards,
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id,
+                    SBT_PRACS.into(),
+                    1,
                 ),
             ],
         },

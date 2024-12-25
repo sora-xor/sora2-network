@@ -495,6 +495,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
             ),
         ],
+        regulated_assets: Default::default(),
+        sbt_assets: Default::default(),
     }
     .assimilate_storage(&mut storage)
     .unwrap();

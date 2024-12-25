@@ -7755,6 +7755,7 @@ dependencies = [
  "common",
  "derivative",
  "dex-manager",
+ "extended-assets",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

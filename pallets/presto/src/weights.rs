@@ -80,6 +80,10 @@ pub trait WeightInfo {
     fn rate_crop_receipt() -> Weight;
     fn decline_crop_receipt() -> Weight;
     fn publish_crop_receipt() -> Weight;
+	fn apply_investor_kyc() -> Weight;
+	fn apply_creditor_kyc() -> Weight;
+	fn remove_investor_kyc() -> Weight;
+	fn remove_creditor_kyc() -> Weight;
 }
 
 /// Weight functions for `presto`.
@@ -402,6 +406,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(28))
 			.saturating_add(T::DbWeight::get().writes(24))
 	}
+
+	fn apply_investor_kyc() -> Weight {
+		Weight::zero()
+	}
+
+	fn apply_creditor_kyc() -> Weight {
+		Weight::zero()
+	}
+
+	fn remove_investor_kyc() -> Weight {
+		Weight::zero()
+	}
+
+	fn remove_creditor_kyc() -> Weight {
+		Weight::zero()
+	}
 }
 
 // For backwards compatibility and tests
@@ -722,5 +742,21 @@ impl WeightInfo for () {
 		Weight::from_parts(226_387_000, 618782)
 			.saturating_add(RocksDbWeight::get().reads(28))
 			.saturating_add(RocksDbWeight::get().writes(24))
+	}
+
+	fn apply_investor_kyc() -> Weight {
+		Weight::zero()
+	}
+
+	fn apply_creditor_kyc() -> Weight {
+		Weight::zero()
+	}
+
+	fn remove_investor_kyc() -> Weight {
+		Weight::zero()
+	}
+
+	fn remove_creditor_kyc() -> Weight {
+		Weight::zero()
 	}
 }
