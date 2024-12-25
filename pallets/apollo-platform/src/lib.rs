@@ -14,6 +14,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+/// Storage version.
+#[derive(Encode, Decode, Eq, PartialEq, Debug, scale_info::TypeInfo)]
+pub enum StorageVersion {
+    /// Initial version
+    V1,
+    /// After migrating to timestamp calculation
+    V2,
+    /// After migrating to open governance
+    V3,
+}
+
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct LendingPosition<BlockNumberFor> {
@@ -54,17 +65,20 @@ pub struct PoolInfo {
 }
 
 pub use pallet::*;
+pub mod migrations;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
+    use crate::{
+        migrations, BorrowingPosition, LendingPosition, PoolInfo, StorageVersion, WeightInfo,
+    };
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
         balance, AssetIdOf, AssetManager, DEXId, LiquiditySourceFilter, PriceVariant,
         CERES_ASSET_ID, DAI, KUSD,
     };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
-    use frame_support::log::{debug, warn};
+    use frame_support::log::{debug, info, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::PalletId;
@@ -113,6 +127,17 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
+    #[pallet::type_value]
+    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
+        StorageVersion::V1
+    }
+
+    /// Pallet storage version
+    #[pallet::storage]
+    #[pallet::getter(fn pallet_storage_version)]
+    pub type PalletStorageVersion<T: Config> =
+        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
+
     /// Lent asset -> AccountId -> LendingPosition
     #[pallet::storage]
     #[pallet::getter(fn user_lending_info)]
@@ -138,6 +163,12 @@ pub mod pallet {
         BTreeMap<AssetIdOf<T>, BorrowingPosition<BlockNumberFor<T>>>,
         OptionQuery,
     >;
+
+    /// User AccountId -> Collateral Asset -> Total Collateral Amount
+    #[pallet::storage]
+    #[pallet::getter(fn user_total_collateral)]
+    pub type UserTotalCollateral<T: Config> =
+        StorageDoubleMap<_, Identity, AccountIdOf<T>, Identity, AssetIdOf<T>, Balance, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn pool_info)]
@@ -561,8 +592,10 @@ pub mod pallet {
             if collateral_asset == KUSD.into() {
                 let factor = <CollateralFactor<T>>::get();
 
+                // To get total collateral for a user
                 let total_existing_collateral =
-                    Self::calculate_total_existing_collateral(&user, &collateral_asset);
+                    <UserTotalCollateral<T>>::get(user.clone(), collateral_asset)
+                        .unwrap_or(Zero::zero());
 
                 // Calculate the maximum allowed collateral for KUSD
                 let max_allowed_collateral = Self::calculate_max_allowed_collateral(
@@ -637,6 +670,9 @@ pub mod pallet {
 
             <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
             <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
+
+            // Update the total collateral
+            Self::update_total_collateral(&user, &collateral_asset, collateral_amount)?;
 
             // Transfer borrowing amount to user
             T::AssetManager::transfer_from(
@@ -909,6 +945,13 @@ pub mod pallet {
                 <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
                 <PoolData<T>>::insert(borrowing_asset, borrow_pool_info);
 
+                // Update the total collateral
+                Self::decrease_total_collateral(
+                    &user,
+                    &collateral_asset,
+                    user_info.collateral_amount,
+                )?;
+
                 // Transfer borrowing amount and borrowing interest to pallet
                 T::AssetManager::transfer_from(
                     &borrowing_asset,
@@ -1047,7 +1090,7 @@ pub mod pallet {
             // Calculate total borrow and total collateral in dollars
             let mut total_borrowed: Balance = 0;
 
-            // Distributing and calculating total borrwed
+            // Distributing and calculating total borrowed
             for (collateral_asset, user_info) in user_infos.iter() {
                 // Calculate collateral in dollars
                 let collateral_asset_price = Self::get_price(*collateral_asset);
@@ -1102,6 +1145,13 @@ pub mod pallet {
                 collateral_pool_info.total_collateral = collateral_pool_info
                     .total_collateral
                     .saturating_sub(user_info.collateral_amount);
+
+                // Update the total collateral
+                Self::decrease_total_collateral(
+                    &user,
+                    collateral_asset,
+                    user_info.collateral_amount,
+                )?;
 
                 <PoolData<T>>::insert(*collateral_asset, collateral_pool_info);
                 // Add user's borrowed amount tied with this asset to total_borrowed in given asset
@@ -1263,8 +1313,10 @@ pub mod pallet {
 
             if collateral_asset == KUSD.into() {
                 let factor = <CollateralFactor<T>>::get();
+                // To get total collateral for a user
                 let total_existing_collateral =
-                    Self::calculate_total_existing_collateral(&user, &collateral_asset);
+                    <UserTotalCollateral<T>>::get(user.clone(), collateral_asset)
+                        .unwrap_or(Zero::zero());
 
                 // Calculate the maximum allowed collateral for KUSD
                 let max_allowed_collateral = Self::calculate_max_allowed_collateral(
@@ -1319,6 +1371,9 @@ pub mod pallet {
                 .total_liquidity
                 .saturating_sub(collateral_amount);
             collateral_pool_info.total_collateral += collateral_amount;
+
+            // Update the total collateral
+            Self::update_total_collateral(&user, &collateral_asset, collateral_amount)?;
 
             <PoolData<T>>::insert(collateral_asset, collateral_pool_info);
 
@@ -1400,6 +1455,22 @@ pub mod pallet {
                     .reads(4)
                     .saturating_add(T::DbWeight::get().writes(2)),
             )
+        }
+
+        fn on_runtime_upgrade() -> Weight {
+            if Self::pallet_storage_version() == StorageVersion::V1 {
+                sp_runtime::runtime_logger::RuntimeLogger::init();
+                info!("Applying migration to version 2: Migrating to open governance - version 3");
+
+                if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
+                    warn!("Failed to migrate: {}", err);
+                } else {
+                    PalletStorageVersion::<T>::put(StorageVersion::V2);
+                }
+                <T as frame_system::Config>::BlockWeights::get().max_block
+            } else {
+                Weight::zero()
+            }
         }
 
         /// Off-chain worker procedure - calls liquidations
@@ -1552,6 +1623,47 @@ pub mod pallet {
             )
         }
 
+        /// Increase total collateral amount for a user and asset
+        fn update_total_collateral(
+            user: &AccountIdOf<T>,
+            collateral_asset: &AssetIdOf<T>,
+            amount_to_add: Balance,
+        ) -> DispatchResult {
+            <UserTotalCollateral<T>>::mutate(user, collateral_asset, |current_collateral| {
+                // If no existing collateral, start with the new amount
+                // Otherwise, add the new amount
+                *current_collateral = Some(
+                    current_collateral
+                        .unwrap_or(Zero::zero())
+                        .saturating_add(amount_to_add),
+                )
+            });
+
+            Ok(())
+        }
+
+        /// Decrease total collateral amount for a user and asset
+        fn decrease_total_collateral(
+            user: &AccountIdOf<T>,
+            collateral_asset: &AssetIdOf<T>,
+            amount_to_remove: Balance,
+        ) -> DispatchResult {
+            <UserTotalCollateral<T>>::mutate(user, collateral_asset, |current_collateral| {
+                if let Some(current) = *current_collateral {
+                    let new_amount = current.saturating_sub(amount_to_remove);
+
+                    // Remove the entry if it reaches zero, otherwise update
+                    if new_amount == Zero::zero() {
+                        *current_collateral = None;
+                    } else {
+                        *current_collateral = Some(new_amount);
+                    }
+                }
+            });
+
+            Ok(())
+        }
+
         pub fn distribute_protocol_interest(
             asset_id: AssetIdOf<T>,
             amount: Balance,
@@ -1651,22 +1763,6 @@ pub mod pallet {
                     .try_into_balance()
                     .unwrap_or(0),
             )
-        }
-
-        /// Calculate the total existing collateral for a specific user and asset
-        fn calculate_total_existing_collateral(
-            user: &AccountIdOf<T>,
-            collateral_asset: &AssetIdOf<T>,
-        ) -> Balance {
-            <UserBorrowingInfo<T>>::iter()
-                .filter(|(_, stored_user, _)| stored_user == user)
-                .fold(Zero::zero(), |acc, (_, _, user_borrows)| {
-                    user_borrows
-                        .get(collateral_asset)
-                        .map_or(acc, |collateral_info| {
-                            acc.saturating_add(collateral_info.collateral_amount)
-                        })
-                })
         }
 
         fn update_interests(block_number: BlockNumberFor<T>) -> Weight {
