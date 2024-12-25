@@ -1,4 +1,6 @@
 mod test {
+    use crate::UserBorrowingInfo;
+    use crate::*;
     use crate::{mock::*, PoolInfo};
     use crate::{pallet, Error};
     use codec::Decode;
@@ -9,10 +11,13 @@ mod test {
     use common::{
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
+    use frame_support::pallet_prelude::Weight;
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
+
+    use frame_support::traits::Hooks;
 
     fn get_pallet_account() -> AccountId {
         PalletId(*b"apollolb").into_account_truncating()
@@ -1882,7 +1887,7 @@ mod test {
                 RuntimeOrigin::root(),
                 alice(),
                 KUSD,
-                balance!(20000).try_into().unwrap()
+                balance!(30000).try_into().unwrap()
             ));
 
             assert_ok!(assets::Pallet::<Runtime>::mint_to(
@@ -1928,7 +1933,7 @@ mod test {
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
                 KUSD,
-                balance!(20000),
+                balance!(30000),
             ));
 
             assert_ok!(ApolloPlatform::lend(
@@ -1943,6 +1948,12 @@ mod test {
                 XOR,
                 balance!(10),
                 balance!(1)
+            ));
+            assert_ok!(ApolloPlatform::add_collateral(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(10),
+                XOR
             ));
             assert_ok!(ApolloPlatform::add_collateral(
                 RuntimeOrigin::signed(alice()),
@@ -6070,6 +6081,201 @@ mod test {
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
                 calculated_borrowing_interest_first.1 + calculated_borrowing_interest.1,
+            );
+        });
+    }
+
+    #[test]
+    fn migration_change_storage_version_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            run_to_block(1);
+            static_set_dex();
+            assert_eq!(
+                pallet::Pallet::<Runtime>::pallet_storage_version(),
+                crate::StorageVersion::V1
+            );
+            pallet::Pallet::<Runtime>::on_runtime_upgrade();
+            assert_eq!(
+                pallet::Pallet::<Runtime>::pallet_storage_version(),
+                crate::StorageVersion::V2
+            );
+        });
+    }
+
+    #[test]
+    fn migration_skips_when_already_applied() {
+        // Build the test externalities
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Simulate that the migration has already been applied by setting the storage version to V2
+            PalletStorageVersion::<Runtime>::put(StorageVersion::V2);
+
+            // Run the migration logic
+            let weight = pallet::Pallet::<Runtime>::on_runtime_upgrade();
+
+            // The returned weight should be zero, indicating no operations were performed
+            assert_eq!(
+                weight,
+                Weight::zero(),
+                "Weight should be zero when migration is already applied"
+            );
+
+            // Check that no changes were made to the new storage
+            let total_entries = <UserTotalCollateral<Runtime>>::iter().count();
+            assert_eq!(
+                total_entries, 0,
+                "No entries should be created in UserTotalCollateral when migration is skipped"
+            );
+        });
+    }
+
+    #[test]
+    fn migration_change_updated_values_ok() {
+        // Build the test externalities
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Simulate block execution to initialize runtime
+            run_to_block(1);
+
+            // Initialize any required state
+            static_set_dex();
+
+            // Update balances for Alice and Bob
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(30000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            // Add pools for XOR and KUSD
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            // Lend amounts for Alice and Bob
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(30000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(300000),
+            ));
+
+            // Alice borrows XOR using KUSD as collateral
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                XOR,
+                balance!(10),
+                balance!(1)
+            ));
+
+            // Manually modify UserBorrowingInfo
+            let mut borrow_info =
+                <UserBorrowingInfo<Runtime>>::get(XOR, alice()).unwrap_or_default();
+            let collateral_amount = balance!(1000);
+
+            borrow_info.insert(
+                KUSD,
+                BorrowingPosition {
+                    collateral_amount,
+                    ..Default::default()
+                },
+            );
+            let total_collateral_before_migration =
+                <UserTotalCollateral<Runtime>>::get(alice(), KUSD);
+            assert_eq!(
+                total_collateral_before_migration.unwrap(),
+                balance!(10),
+                "Total collateral amount should match the migrated value"
+            );
+
+            <UserBorrowingInfo<Runtime>>::insert(XOR, alice(), borrow_info);
+
+            // Run migration
+            pallet::Pallet::<Runtime>::on_runtime_upgrade();
+
+            // Post-migration assertions
+
+            // Assert the UserBorrowingInfo is still present
+            let updated_borrow_info = <UserBorrowingInfo<Runtime>>::get(XOR, alice());
+
+            assert!(
+                updated_borrow_info.is_some(),
+                "Borrowing info should exist after migration"
+            );
+
+            // Check the specific borrowing position for KUSD
+            let borrow_info_map = updated_borrow_info.unwrap();
+            let borrow_position = borrow_info_map
+                .get(&KUSD)
+                .expect("KUSD borrowing info should exist");
+
+            assert_eq!(
+                borrow_position.collateral_amount, collateral_amount,
+                "Collateral amount should match the pre-migration value"
+            );
+
+            // Check UserTotalCollateral has the correct value
+            let total_collateral = <UserTotalCollateral<Runtime>>::get(alice(), KUSD);
+            assert!(
+                total_collateral.is_some(),
+                "Total collateral for user and KUSD should exist in new storage"
+            );
+
+            assert_eq!(
+                total_collateral.unwrap(),
+                collateral_amount,
+                "Total collateral amount should match the migrated value"
+            );
+
+            // Verify the migration logs
+            let total_migrated_entries = <UserTotalCollateral<Runtime>>::iter().count();
+            assert_eq!(
+                total_migrated_entries, 1,
+                "Expected one migrated entry for user total collateral"
             );
         });
     }
