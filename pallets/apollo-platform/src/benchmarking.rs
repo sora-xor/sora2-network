@@ -576,6 +576,17 @@ benchmarks! {
         assert_last_event::<T>(Event::ChangedRewardsAmount(caller, true, balance!(1)).into());
     }
 
+    change_collateral_factor {
+        let caller = pallet::AuthorityAccount::<T>::get();
+    }: {
+        ApolloPlatform::<T>::change_collateral_factor(
+            RawOrigin::Signed(caller.clone()).into(),
+            balance!(1)
+        ).unwrap()
+    } verify {
+        assert_last_event::<T>(Event::ChangedCollateralFactorAmount(caller,balance!(1)).into());
+    }
+
     change_rewards_per_block {
         let caller = pallet::AuthorityAccount::<T>::get();
         let asset_id_xor = XOR;
