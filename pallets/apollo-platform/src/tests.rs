@@ -6225,6 +6225,14 @@ mod test {
                 },
             );
 
+            // Clear UserTotalCollateral before running migration
+            let _ = <UserTotalCollateral<Runtime>>::clear(10, None);
+            assert_eq!(
+                <UserTotalCollateral<Runtime>>::iter().count(),
+                0,
+                "UserTotalCollateral storage should be empty before migration"
+            );
+
             <UserBorrowingInfo<Runtime>>::insert(XOR, alice(), borrow_info);
 
             // Run migration
@@ -6260,8 +6268,7 @@ mod test {
 
             assert_eq!(
                 total_collateral.unwrap(),
-                // Adding 10 since the first borrow actually updates the storage for the user total collateral, which gets re updated during migrations which will not happen in real world since migrations run before any entry to new storage
-                collateral_amount.saturating_add(balance!(10)),
+                collateral_amount,
                 "Total collateral amount should match the migrated value"
             );
 
@@ -6404,6 +6411,14 @@ mod test {
                 balance!(1)
             ));
 
+            // Clear UserTotalCollateral before running migration
+            let _ = <UserTotalCollateral<Runtime>>::clear(10, None);
+            assert_eq!(
+                <UserTotalCollateral<Runtime>>::iter().count(),
+                0,
+                "UserTotalCollateral storage should be empty before migration"
+            );
+
             // Run migration
             pallet::Pallet::<Runtime>::on_runtime_upgrade();
 
@@ -6441,11 +6456,11 @@ mod test {
                 "Total collateral for user and XOR should exist in new storage"
             );
 
-            // Checking if total collateral equals the double the added amounts that user borrowed since it counts it before migration and during the migration
+            // Checking if total collateral equals the collateral given before the executing migrations
             assert_eq!(
                 total_collateral.unwrap(),
-                balance!(40),
-                "Total collateral for user and XOR should exist in new storage"
+                balance!(20),
+                "Total collateral for user should be equal the one he provided during the borrowing operations"
             );
 
             // Verify the migration logs
