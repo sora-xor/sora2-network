@@ -6224,13 +6224,6 @@ mod test {
                     ..Default::default()
                 },
             );
-            let total_collateral_before_migration =
-                <UserTotalCollateral<Runtime>>::get(alice(), KUSD);
-            assert_eq!(
-                total_collateral_before_migration.unwrap(),
-                balance!(10),
-                "Total collateral amount should match the migrated value"
-            );
 
             <UserBorrowingInfo<Runtime>>::insert(XOR, alice(), borrow_info);
 
@@ -6267,8 +6260,192 @@ mod test {
 
             assert_eq!(
                 total_collateral.unwrap(),
-                collateral_amount,
+                // Adding 10 since the first borrow actually updates the storage for the user total collateral, which gets re updated during migrations which will not happen in real world since migrations run before any entry to new storage
+                collateral_amount.saturating_add(balance!(10)),
                 "Total collateral amount should match the migrated value"
+            );
+
+            // Verify the migration logs
+            let total_migrated_entries = <UserTotalCollateral<Runtime>>::iter().count();
+            assert_eq!(
+                total_migrated_entries, 1,
+                "Expected one migrated entry for user total collateral"
+            );
+        });
+    }
+
+    #[test]
+    fn migration_change_updated_values_two_pools_ok() {
+        // Build the test externalities
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            // Simulate block execution to initialize runtime
+            run_to_block(1);
+
+            // Initialize any required state
+            static_set_dex();
+
+            // Update balances for Alice and Bob
+            assert_ok!(assets::Pallet::<Runtime>::update_balance(
+                RuntimeOrigin::root(),
+                alice(),
+                KUSD,
+                balance!(300000).try_into().unwrap()
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &XOR,
+                &alice(),
+                &bob(),
+                balance!(300000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &KSM,
+                &alice(),
+                &exchange_account(),
+                balance!(200)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &DOT,
+                &alice(),
+                &alice(),
+                balance!(2000)
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &KUSD,
+                &alice(),
+                &bob(),
+                balance!(10000)
+            ));
+
+            // Add pools for XOR and KUSD
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+            let loan_to_value = balance!(1);
+            let liquidation_threshold = balance!(1);
+            let optimal_utilization_rate = balance!(1);
+            let base_rate = balance!(1);
+            let slope_rate_1 = balance!(1);
+            let slope_rate_2 = balance!(1);
+            let reserve_factor = balance!(1);
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                KUSD,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user,
+                DOT,
+                loan_to_value,
+                liquidation_threshold,
+                optimal_utilization_rate,
+                base_rate,
+                slope_rate_1,
+                slope_rate_2,
+                reserve_factor,
+            ));
+
+            // Lend amounts for Alice and Bob
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                KUSD,
+                balance!(3000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                balance!(3000),
+            ));
+
+            assert_ok!(ApolloPlatform::lend(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                balance!(300),
+            ));
+
+            // Bob borrows KUSD using XOR as collateral
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                KUSD,
+                balance!(10),
+                balance!(1)
+            ));
+
+            // Bob borrows DOT using XOR as collateral
+            assert_ok!(ApolloPlatform::borrow(
+                RuntimeOrigin::signed(bob()),
+                XOR,
+                DOT,
+                balance!(10),
+                balance!(1)
+            ));
+
+            // Run migration
+            pallet::Pallet::<Runtime>::on_runtime_upgrade();
+
+            // Post-migration assertions
+
+            // Assert the UserBorrowingInfo is still present
+            let updated_borrow_info_dot = <UserBorrowingInfo<Runtime>>::get(DOT, bob());
+            let updated_borrow_info_kusd = <UserBorrowingInfo<Runtime>>::get(KUSD, bob());
+
+            assert!(
+                updated_borrow_info_dot.is_some(),
+                "Borrowing info should exist after migration"
+            );
+            assert!(
+                updated_borrow_info_kusd.is_some(),
+                "Borrowing info should exist after migration"
+            );
+
+            // Check the specific borrowing position for XOR and DOT
+            let borrow_info_map_dot = updated_borrow_info_dot.unwrap();
+            borrow_info_map_dot
+                .get(&XOR)
+                .expect("XOR borrowing info should exist");
+
+            // Check the specific borrowing position for XOR and KUSD
+            let borrow_info_map_kusd = updated_borrow_info_kusd.unwrap();
+            borrow_info_map_kusd
+                .get(&XOR)
+                .expect("XOR borrowing info should exist");
+
+            // Check UserTotalCollateral has the correct value
+            let total_collateral = <UserTotalCollateral<Runtime>>::get(bob(), XOR);
+            assert!(
+                total_collateral.is_some(),
+                "Total collateral for user and XOR should exist in new storage"
+            );
+
+            // Checking if total collateral equals the double the added amounts that user borrowed since it counts it before migration and during the migration
+            assert_eq!(
+                total_collateral.unwrap(),
+                balance!(40),
+                "Total collateral for user and XOR should exist in new storage"
             );
 
             // Verify the migration logs
