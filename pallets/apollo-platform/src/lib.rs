@@ -19,10 +19,8 @@ mod tests;
 pub enum StorageVersion {
     /// Initial version
     V1,
-    /// After migrating to timestamp calculation
+    /// After migration
     V2,
-    /// After migrating to open governance
-    V3,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -224,12 +222,12 @@ pub mod pallet {
     pub type BorrowingRewards<T: Config> =
         StorageValue<_, Balance, ValueQuery, FixedBorrowingRewards<T>>;
 
+    /// Default collateral factor
     #[pallet::type_value]
     pub fn DefaultCollateralFactor<T: Config>() -> Balance {
         balance!(0.001)
     }
 
-    /// Default borrowing factor
     #[pallet::storage]
     #[pallet::getter(fn collateral_factor)]
     pub type CollateralFactor<T: Config> =
@@ -1460,7 +1458,7 @@ pub mod pallet {
         fn on_runtime_upgrade() -> Weight {
             if Self::pallet_storage_version() == StorageVersion::V1 {
                 sp_runtime::runtime_logger::RuntimeLogger::init();
-                info!("Applying migration to version 2: Migrating to open governance - version 3");
+                info!("Applying migration on version 1: Migrating to version 2");
 
                 if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
                     warn!("Failed to migrate: {}", err);
