@@ -235,6 +235,11 @@ pub fn ext() -> sp_io::TestExternalities {
                 Scope::Unlimited,
                 vec![assets_and_permissions_account_id.clone()],
             ),
+            (
+                permissions::MANAGE_DEX,
+                Scope::Unlimited,
+                vec![assets_and_permissions_account_id.clone()],
+            ),
         ],
         initial_permissions: vec![
             (
@@ -261,6 +266,11 @@ pub fn ext() -> sp_io::TestExternalities {
                 PrestoAccountId::get(),
                 Scope::Limited(hash(&SBT_PRCRDT)),
                 vec![permissions::MINT, permissions::BURN],
+            ),
+            (
+                PrestoAccountId::get(),
+                Scope::Limited(hash(&DEXId::PolkaswapPresto)),
+                vec![permissions::MANAGE_DEX],
             ),
         ],
     }
@@ -344,7 +354,7 @@ pub fn ext() -> sp_io::TestExternalities {
                 DEXInfo {
                     base_asset_id: PRUSD,
                     synthetic_base_asset_id: XST,
-                    is_public: true,
+                    is_public: false,
                 },
             ),
         ],
@@ -354,6 +364,15 @@ pub fn ext() -> sp_io::TestExternalities {
 
     ExtendedAssetsConfig {
         assets_metadata: vec![(SBT_PRACS.into(), None, PRUSD)],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    TokensConfig {
+        balances: vec![
+            (PrestoAccountId::get(), SBT_PRACS.into(), 1),
+            (PrestoBufferAccountId::get(), SBT_PRACS.into(), 1),
+        ],
     }
     .assimilate_storage(&mut storage)
     .unwrap();

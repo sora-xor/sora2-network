@@ -38,7 +38,7 @@ use common::{
 use extended_assets::SoulboundTokenMetadata;
 use frame_support::sp_runtime::{DispatchError, DispatchResult};
 use frame_support::BoundedBTreeSet;
-use permissions::{Scope, BURN, MINT};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 use sp_std::collections::btree_set::BTreeSet;
 
 fn system_asset_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> {
@@ -59,9 +59,19 @@ fn presto_main_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> 
     technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)
 }
 
+fn presto_buffer_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> {
+    let tech_account_id = T::TechAccountId::from_generic_pair(
+        presto::TECH_ACCOUNT_PREFIX.to_vec(),
+        presto::TECH_ACCOUNT_BUFFER.to_vec(),
+    );
+
+    technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)
+}
+
 pub fn register_presto_assets<T: Config>() -> DispatchResult {
     let system_account_id = system_asset_account_id::<T>()?;
     let presto_account_id = presto_main_account_id::<T>()?;
+    let presto_buffer_account_id = presto_buffer_account_id::<T>()?;
 
     let now = pallet_timestamp::Pallet::<T>::now();
 
@@ -106,6 +116,19 @@ pub fn register_presto_assets<T: Config>() -> DispatchResult {
         PRUSD.into(),
         SBT_PRACS.into_predefined().into(),
     );
+
+    T::AssetManager::mint_to(
+        &SBT_PRACS.into_predefined().into(),
+        &system_account_id,
+        &presto_account_id,
+        1,
+    )?;
+    T::AssetManager::mint_to(
+        &SBT_PRACS.into_predefined().into(),
+        &system_account_id,
+        &presto_buffer_account_id,
+        1,
+    )?;
 
     T::AssetManager::register_asset_id(
         system_account_id.clone(),
@@ -183,10 +206,17 @@ pub fn register_presto_assets<T: Config>() -> DispatchResult {
             DEXInfo {
                 base_asset_id: PRUSD.into(),
                 synthetic_base_asset_id: XST.into(),
-                is_public: true,
+                is_public: false,
             },
         );
     }
+
+    permissions::Pallet::<T>::assign_permission(
+        system_account_id,
+        &presto_account_id,
+        MANAGE_DEX,
+        Scope::Limited(common::hash(&DEXId::PolkaswapPresto)),
+    )?;
 
     Ok(())
 }

@@ -1034,7 +1034,6 @@ pub mod pallet {
             )?;
 
             // TODO:
-            // forbid to register trading pairs with Presto USD & Presto Dex for users
             // extended-assets trait to bind regulated & sbt
 
             // place all supply in order book in according with `max_lot_size` limitation

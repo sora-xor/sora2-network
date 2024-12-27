@@ -1195,6 +1195,8 @@ fn testnet_genesis(
         ),
         #[cfg(feature = "wip")] // presto
         (presto_account_id.clone(), SBT_PRACS.into(), 1),
+        #[cfg(feature = "wip")] // presto
+        (presto_buffer_account_id.clone(), SBT_PRACS.into(), 1),
     ];
     let faucet_config = {
         let initial_faucet_balance = balance!(6000000000);
@@ -1566,7 +1568,7 @@ fn testnet_genesis(
             initial_permission_owners: vec![
                 (
                     permissions::MANAGE_DEX,
-                    Scope::Limited(hash(&0u32)),
+                    Scope::Unlimited,
                     vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
@@ -1661,6 +1663,12 @@ fn testnet_genesis(
                     Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&4u32)),
+                    vec![permissions::MANAGE_DEX],
+                ),
             ],
         },
         balances: BalancesConfig { balances },
@@ -1704,7 +1712,7 @@ fn testnet_genesis(
                     DEXInfo {
                         base_asset_id: PRUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
-                        is_public: true,
+                        is_public: false,
                     },
                 ),
             ],
@@ -2518,7 +2526,7 @@ fn mainnet_genesis(
             initial_permission_owners: vec![
                 (
                     permissions::MANAGE_DEX,
-                    Scope::Limited(hash(&0u32)),
+                    Scope::Unlimited,
                     vec![assets_and_permissions_account_id.clone()],
                 ),
                 (
@@ -2613,6 +2621,12 @@ fn mainnet_genesis(
                     Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_account_id.clone(),
+                    Scope::Limited(hash(&4u32)),
+                    vec![permissions::MANAGE_DEX],
+                ),
             ],
         },
         balances: BalancesConfig {
@@ -2698,7 +2712,7 @@ fn mainnet_genesis(
                     DEXInfo {
                         base_asset_id: PRUSD,
                         synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
-                        is_public: true,
+                        is_public: false,
                     },
                 ),
             ],
@@ -2744,6 +2758,12 @@ fn mainnet_genesis(
                     presto_account_id,
                     SBT_PRACS.into(),
                     1,
+                ),
+                #[cfg(feature = "wip")] // presto
+                (
+                    presto_buffer_account_id,
+                    SBT_PRACS.into(),
+                    1
                 ),
             ],
         },
