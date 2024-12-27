@@ -1022,12 +1022,20 @@ pub mod pallet {
                 max_lot_size,
             )?;
 
+            let order_book_account_id =
+                T::OrderBookManager::tech_account_id_for_order_book(&order_book_id)?;
+
+            // Presto KYC SBT for order book tech account
+            T::AssetManager::mint_to(
+                &T::PrestoKycAssetId::get(),
+                &presto_tech_account_id,
+                &order_book_account_id,
+                1,
+            )?;
+
             // TODO:
-            // send KYC SBT to order book tech acc
-            // check place limit order & execute market order caller for KYC
             // forbid to register trading pairs with Presto USD & Presto Dex for users
             // extended-assets trait to bind regulated & sbt
-            // presto trait to check KYC
 
             // place all supply in order book in according with `max_lot_size` limitation
             let mut remaining_amount = supply;

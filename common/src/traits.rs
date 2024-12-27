@@ -1563,6 +1563,10 @@ pub trait OrderBookManager<AccountId, AssetId, DEXId, Moment> {
         output_asset_id: &AssetId,
     ) -> Option<OrderBookId<AssetId, DEXId>>;
 
+    fn tech_account_id_for_order_book(
+        order_book_id: &OrderBookId<AssetId, DEXId>,
+    ) -> Result<AccountId, DispatchError>;
+
     fn initialize_orderbook(
         order_book_id: &OrderBookId<AssetId, DEXId>,
         tick_size: Balance,
@@ -1588,6 +1592,12 @@ impl<AccountId, AssetId, DEXId, Moment> OrderBookManager<AccountId, AssetId, DEX
         _output_asset_id: &AssetId,
     ) -> Option<OrderBookId<AssetId, DEXId>> {
         None
+    }
+
+    fn tech_account_id_for_order_book(
+        _order_book_id: &OrderBookId<AssetId, DEXId>,
+    ) -> Result<AccountId, DispatchError> {
+        unimplemented!()
     }
 
     fn initialize_orderbook(

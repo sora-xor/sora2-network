@@ -194,7 +194,7 @@ pub trait CurrencyLocker<AccountId, AssetId, DEXId, Error> {
     /// The assets are taken from `account`.
     fn lock_liquidity(
         account: &AccountId,
-        order_book_id: OrderBookId<AssetId, DEXId>,
+        order_book_id: &OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         amount: OrderVolume,
     ) -> Result<(), Error>;
@@ -205,13 +205,13 @@ pub trait CurrencyUnlocker<AccountId, AssetId, DEXId, Error> {
     /// The assets are taken from `account`.
     fn unlock_liquidity(
         account: &AccountId,
-        order_book_id: OrderBookId<AssetId, DEXId>,
+        order_book_id: &OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         amount: OrderVolume,
     ) -> Result<(), Error>;
 
     fn unlock_liquidity_batch(
-        order_book_id: OrderBookId<AssetId, DEXId>,
+        order_book_id: &OrderBookId<AssetId, DEXId>,
         asset_id: &AssetId,
         receivers: &BTreeMap<AccountId, OrderVolume>,
     ) -> Result<(), Error>;
