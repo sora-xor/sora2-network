@@ -55,8 +55,9 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{
     permissions::{PermissionId, BURN, MINT, TRANSFER},
     AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetRegulator, AssetSymbol, AssetType,
-    BalancePrecision, ContentSource, Description, IsValid,
+    BalancePrecision, ContentSource, Description, ExtendedAssetsManager, IsValid,
 };
+use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::BoundedBTreeSet;
 use sp_core::Get;
@@ -219,13 +220,7 @@ pub mod pallet {
                 description.clone(),
             )?;
 
-            let metadata = SoulboundTokenMetadata {
-                external_url: external_url.clone(),
-                issued_at: now_timestamp,
-                regulated_assets: Default::default(),
-            };
-
-            <SoulboundAsset<T>>::insert(sbt_asset_id, metadata);
+            Self::set_metadata(&sbt_asset_id, external_url.clone(), now_timestamp);
 
             Self::deposit_event(Event::SoulboundTokenIssued {
                 asset_id: sbt_asset_id,
@@ -301,39 +296,18 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            // Ensure the asset exists and is an SBT
-            Self::soulbound_asset(sbt_asset_id).ok_or(Error::<T>::SBTNotFound)?;
-
             // Ensure the caller is the owner of the SBT
             ensure!(
                 <T as Config>::AssetInfoProvider::is_asset_owner(&sbt_asset_id, &who),
                 Error::<T>::NotSBTOwner
             );
 
-            Self::check_regulated_assets_for_binding(&regulated_asset_id, &who)?;
+            ensure!(
+                <T as Config>::AssetInfoProvider::is_asset_owner(&regulated_asset_id, &who),
+                Error::<T>::RegulatedAssetNoOwnedBySBTIssuer
+            );
 
-            // In case the regulated asset is already bound to another SBT, we need to unbind it
-            // by removing it from the previous SBT's regulated assets list.
-            if <RegulatedAssetToSoulboundAsset<T>>::contains_key(regulated_asset_id) {
-                let previous_sbt = Self::regulated_asset_to_sbt(regulated_asset_id);
-                <SoulboundAsset<T>>::mutate(previous_sbt, |metadata| {
-                    if let Some(metadata) = metadata {
-                        metadata.regulated_assets.remove(&regulated_asset_id);
-                    }
-                });
-            }
-
-            // Bind the regulated asset to the SBT and update the SBT's metadata
-            <RegulatedAssetToSoulboundAsset<T>>::set(regulated_asset_id, sbt_asset_id);
-            <SoulboundAsset<T>>::try_mutate(sbt_asset_id, |metadata| -> DispatchResult {
-                if let Some(metadata) = metadata {
-                    metadata
-                        .regulated_assets
-                        .try_insert(regulated_asset_id)
-                        .map_err(|_| Error::<T>::RegulatedAssetsPerSBTExceeded)?;
-                }
-                Ok(())
-            })?;
+            Self::bind_regulated_asset_to_sbt_asset(&sbt_asset_id, &regulated_asset_id)?;
 
             Self::deposit_event(Event::RegulatedAssetBoundToSBT {
                 regulated_asset_id,
@@ -489,24 +463,6 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    pub fn check_regulated_assets_for_binding(
-        regulated_asset_id: &AssetIdOf<T>,
-        sbt_issuer: &T::AccountId,
-    ) -> Result<(), Error<T>> {
-        let is_asset_owner =
-            <T as Config>::AssetInfoProvider::is_asset_owner(regulated_asset_id, sbt_issuer);
-
-        if !is_asset_owner {
-            return Err(Error::<T>::RegulatedAssetNoOwnedBySBTIssuer);
-        }
-
-        if !Self::is_asset_regulated(regulated_asset_id) {
-            return Err(Error::<T>::AssetNotRegulated);
-        }
-
-        Ok(())
-    }
-
     pub fn check_account_has_valid_sbt_for_regulated_asset(
         account_id: &T::AccountId,
         regulated_asset_id: &AssetIdOf<T>,
@@ -529,6 +485,58 @@ impl<T: Config> Pallet<T> {
     pub fn is_asset_regulated(asset_id: &AssetIdOf<T>) -> bool {
         let asset_type = <T as Config>::AssetInfoProvider::get_asset_type(asset_id);
         asset_type == AssetType::Regulated
+    }
+
+    pub fn set_metadata(
+        sbt_asset_id: &AssetIdOf<T>,
+        external_url: Option<ContentSource>,
+        issued_at: T::Moment,
+    ) {
+        let metadata = SoulboundTokenMetadata {
+            external_url,
+            issued_at,
+            regulated_assets: Default::default(),
+        };
+
+        <SoulboundAsset<T>>::insert(sbt_asset_id, metadata);
+    }
+
+    pub fn bind_regulated_asset_to_sbt_asset(
+        sbt_asset_id: &AssetIdOf<T>,
+        regulated_asset_id: &AssetIdOf<T>,
+    ) -> Result<(), DispatchError> {
+        // Ensure the asset exists and is an SBT
+        Self::soulbound_asset(sbt_asset_id).ok_or(Error::<T>::SBTNotFound)?;
+
+        ensure!(
+            Self::is_asset_regulated(regulated_asset_id),
+            Error::<T>::AssetNotRegulated
+        );
+
+        // In case the regulated asset is already bound to another SBT, we need to unbind it
+        // by removing it from the previous SBT's regulated assets list.
+        if <RegulatedAssetToSoulboundAsset<T>>::contains_key(regulated_asset_id) {
+            let previous_sbt = Self::regulated_asset_to_sbt(regulated_asset_id);
+            <SoulboundAsset<T>>::mutate(previous_sbt, |metadata| {
+                if let Some(metadata) = metadata {
+                    metadata.regulated_assets.remove(regulated_asset_id);
+                }
+            });
+        }
+
+        // Bind the regulated asset to the SBT and update the SBT's metadata
+        <RegulatedAssetToSoulboundAsset<T>>::set(regulated_asset_id, *sbt_asset_id);
+        <SoulboundAsset<T>>::try_mutate(sbt_asset_id, |metadata| -> Result<(), DispatchError> {
+            if let Some(metadata) = metadata {
+                metadata
+                    .regulated_assets
+                    .try_insert(*regulated_asset_id)
+                    .map_err(|_| Error::<T>::RegulatedAssetsPerSBTExceeded)?;
+            }
+            Ok(())
+        })?;
+
+        Ok(())
     }
 }
 
@@ -591,5 +599,22 @@ impl<T: Config> AssetRegulator<AccountIdOf<T>, AssetIdOf<T>> for Pallet<T> {
         }
 
         Ok(())
+    }
+}
+
+impl<T: Config> ExtendedAssetsManager<AssetIdOf<T>, T::Moment, ContentSource> for Pallet<T> {
+    fn set_metadata(
+        sbt_asset_id: &AssetIdOf<T>,
+        external_url: Option<ContentSource>,
+        issued_at: T::Moment,
+    ) {
+        Self::set_metadata(sbt_asset_id, external_url, issued_at);
+    }
+
+    fn bind_regulated_asset_to_sbt_asset(
+        sbt_asset_id: &AssetIdOf<T>,
+        regulated_asset_id: &AssetIdOf<T>,
+    ) -> Result<(), DispatchError> {
+        Self::bind_regulated_asset_to_sbt_asset(sbt_asset_id, regulated_asset_id)
     }
 }

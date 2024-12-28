@@ -70,7 +70,8 @@ pub mod pallet {
     use common::prelude::BalanceUnit;
     use common::{
         balance, itoa, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, BoundedString,
-        DEXId, ItoaInteger, OrderBookManager, PriceVariant, TradingPairSourceManager,
+        ContentSource, DEXId, ExtendedAssetsManager, ItoaInteger, OrderBookManager, PriceVariant,
+        TradingPairSourceManager,
     };
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
@@ -99,6 +100,11 @@ pub mod pallet {
             AssetIdOf<Self>,
             Self::DEXId,
             MomentOf<Self>,
+        >;
+        type ExtendedAssetsManager: ExtendedAssetsManager<
+            AssetIdOf<Self>,
+            MomentOf<Self>,
+            ContentSource,
         >;
         type PrestoUsdAssetId: Get<AssetIdOf<Self>>;
         type PrestoKycAssetId: Get<AssetIdOf<Self>>;
@@ -942,9 +948,14 @@ pub mod pallet {
                 0,
                 supply,
                 false,
-                AssetType::Regular, // todo regulated
+                AssetType::Regulated,
                 None,
                 None,
+            )?;
+
+            T::ExtendedAssetsManager::bind_regulated_asset_to_sbt_asset(
+                &T::PrestoKycAssetId::get(),
+                &coupon_asset_id,
             )?;
 
             Coupons::<T>::insert(coupon_asset_id, crop_receipt_id);
@@ -1033,9 +1044,6 @@ pub mod pallet {
                 1,
             )?;
 
-            // TODO:
-            // extended-assets trait to bind regulated & sbt
-
             // place all supply in order book in according with `max_lot_size` limitation
             let mut remaining_amount = supply;
             while !remaining_amount.is_zero() {
@@ -1110,28 +1118,28 @@ impl<T: Config> Pallet<T> {
 
     pub fn ensure_no_kyc(account: &AccountIdOf<T>) -> Result<(), DispatchError> {
         ensure!(
-            T::AssetInfoProvider::free_balance(&T::PrestoKycAssetId::get(), &account)?.is_zero(),
+            T::AssetInfoProvider::free_balance(&T::PrestoKycAssetId::get(), account)?.is_zero(),
             Error::<T>::KycAlreadyPassed
         );
         Ok(())
     }
 
     pub fn ensure_has_kyc(account: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
-        let amount = T::AssetInfoProvider::free_balance(&T::PrestoKycAssetId::get(), &account)?;
+        let amount = T::AssetInfoProvider::free_balance(&T::PrestoKycAssetId::get(), account)?;
         ensure!(amount > Zero::zero(), Error::<T>::KycNotPassed);
         Ok(amount)
     }
 
     pub fn ensure_has_investor_kyc(account: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
         let amount =
-            T::AssetInfoProvider::free_balance(&T::PrestoKycInvestorAssetId::get(), &account)?;
+            T::AssetInfoProvider::free_balance(&T::PrestoKycInvestorAssetId::get(), account)?;
         ensure!(amount > Zero::zero(), Error::<T>::InvestorKycNotPassed);
         Ok(amount)
     }
 
     pub fn ensure_has_creditor_kyc(account: &AccountIdOf<T>) -> Result<Balance, DispatchError> {
         let amount =
-            T::AssetInfoProvider::free_balance(&T::PrestoKycCreditorAssetId::get(), &account)?;
+            T::AssetInfoProvider::free_balance(&T::PrestoKycCreditorAssetId::get(), account)?;
         ensure!(amount > Zero::zero(), Error::<T>::CreditorKycNotPassed);
         Ok(amount)
     }
@@ -1142,7 +1150,7 @@ impl<T: Config> Pallet<T> {
 
         for asset in presto_assets {
             ensure!(
-                T::AssetInfoProvider::free_balance(&asset, &account)?.is_zero(),
+                T::AssetInfoProvider::free_balance(&asset, account)?.is_zero(),
                 Error::<T>::AccountHasPrestoAssets
             );
         }

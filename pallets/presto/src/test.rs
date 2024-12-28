@@ -48,6 +48,7 @@ use common::{
 };
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
+use sp_std::collections::btree_set::BTreeSet;
 
 type PrestoPallet = Pallet<Runtime>;
 type OrderBookPallet = order_book::Pallet<Runtime>;
@@ -1493,6 +1494,17 @@ fn should_publish_crop_receipt() {
 
         // test
 
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::soulbound_asset(SBT_PRACS.into_predefined())
+                .unwrap()
+                .regulated_assets,
+            BTreeSet::from([PRUSD])
+        );
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::regulated_asset_to_sbt(PRUSD),
+            SBT_PRACS.into()
+        );
+
         let supply = 10000;
 
         assert_err!(
@@ -1575,5 +1587,20 @@ fn should_publish_crop_receipt() {
             let order = OrderBookPallet::limit_orders(order_book_id, id).unwrap();
             assert_eq!(order.owner, bob());
         }
+
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::soulbound_asset(SBT_PRACS.into_predefined())
+                .unwrap()
+                .regulated_assets,
+            BTreeSet::from([PRUSD, coupon_asset_id])
+        );
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::regulated_asset_to_sbt(PRUSD),
+            SBT_PRACS.into()
+        );
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::regulated_asset_to_sbt(coupon_asset_id),
+            SBT_PRACS.into()
+        );
     });
 }

@@ -25,7 +25,6 @@ frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 band = { path = "../band", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
-extended-assets = { path = "../extended-assets", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 oracle-proxy = { path = "../oracle-proxy", default-features = false }
 order-book = { path = "../order-book", default-features = false }
@@ -54,7 +53,6 @@ std = [
     "band/std",
     "codec/std",
     "common/std",
-    "extended-assets/std",
     "frame-support/std",
     "frame-system/std",
     "oracle-proxy/std",

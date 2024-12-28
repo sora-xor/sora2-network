@@ -1621,3 +1621,28 @@ impl<AccountId, AssetId, DEXId, Moment> OrderBookManager<AccountId, AssetId, DEX
         Ok(())
     }
 }
+
+pub trait ExtendedAssetsManager<AssetId, Moment, ContentSource> {
+    fn set_metadata(sbt_asset_id: &AssetId, external_url: Option<ContentSource>, issued_at: Moment);
+
+    fn bind_regulated_asset_to_sbt_asset(
+        sbt_asset_id: &AssetId,
+        regulated_asset_id: &AssetId,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<AssetId, Moment, ContentSource> ExtendedAssetsManager<AssetId, Moment, ContentSource> for () {
+    fn set_metadata(
+        _sbt_asset_id: &AssetId,
+        _external_url: Option<ContentSource>,
+        _issued_at: Moment,
+    ) {
+    }
+
+    fn bind_regulated_asset_to_sbt_asset(
+        _sbt_asset_id: &AssetId,
+        _regulated_asset_id: &AssetId,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}

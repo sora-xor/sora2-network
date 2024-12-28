@@ -1557,6 +1557,7 @@ impl qa_tools::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type SyntheticInfoProvider = XSTPool;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type ExtendedAssetsManager = ExtendedAssets;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
 }
@@ -2533,6 +2534,7 @@ impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type OrderBookManager = OrderBook;
+    type ExtendedAssetsManager = ExtendedAssets;
     type PrestoUsdAssetId = PrestoUsdAssetId;
     type PrestoKycAssetId = PrestoKycAssetId;
     type PrestoKycInvestorAssetId = PrestoKycInvestorAssetId;

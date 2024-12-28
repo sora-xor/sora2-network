@@ -58,8 +58,8 @@ pub mod pallet {
 
     use common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, OrderBookId,
-        SyntheticInfoProvider, TradingPairSourceManager,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, ExtendedAssetsManager,
+        OrderBookId, SyntheticInfoProvider, TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -85,7 +85,6 @@ pub mod pallet {
         + band::Config
         + oracle_proxy::Config
         + multicollateral_bonding_curve_pool::Config
-        + extended_assets::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -101,6 +100,11 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<AssetIdOf<Self>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type ExtendedAssetsManager: ExtendedAssetsManager<
+            AssetIdOf<Self>,
+            Self::Moment,
+            ContentSource,
+        >;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>

@@ -8090,7 +8090,6 @@ dependencies = [
  "band",
  "common",
  "dex-manager",
- "extended-assets",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",

@@ -171,6 +171,7 @@ impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type OrderBookManager = order_book::Pallet<Runtime>;
+    type ExtendedAssetsManager = extended_assets::Pallet<Runtime>;
     type PrestoUsdAssetId = PrestoUsdAssetId;
     type PrestoKycAssetId = PrestoKycAssetId;
     type PrestoKycInvestorAssetId = PrestoKycInvestorAssetId;
@@ -325,7 +326,7 @@ pub fn ext() -> sp_io::TestExternalities {
             ),
             (
                 SBT_PRCRDT.into_predefined(),
-                assets_and_permissions_account_id.clone(),
+                assets_and_permissions_account_id,
                 AssetSymbol(b"PRCRDT".to_vec()),
                 AssetName(b"Presto Creditor".to_vec()),
                 0,

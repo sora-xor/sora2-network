@@ -28,18 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{Config, Error};
+use crate::Config;
 
 use common::{
-    AccountIdOf, AssetIdOf, AssetManager, AssetName, AssetSymbol, AssetType, DEXId, DEXInfo,
-    DexIdOf, FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST,
-    XST,
+    AccountIdOf, AssetManager, AssetName, AssetSymbol, AssetType, DEXId, DEXInfo, DexIdOf,
+    ExtendedAssetsManager, FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, SBT_PRACS,
+    SBT_PRCRDT, SBT_PRINVST, XST,
 };
-use extended_assets::SoulboundTokenMetadata;
 use frame_support::sp_runtime::{DispatchError, DispatchResult};
-use frame_support::BoundedBTreeSet;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
-use sp_std::collections::btree_set::BTreeSet;
 
 fn system_asset_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> {
     let assets_and_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
@@ -102,20 +99,11 @@ pub fn register_presto_assets<T: Config>() -> DispatchResult {
         None,
         None,
     )?;
-    let metadata = SoulboundTokenMetadata {
-        external_url: None,
-        issued_at: now,
-        regulated_assets: BoundedBTreeSet::try_from(BTreeSet::from([PRUSD.into()]))
-            .map_err(|_| Error::<T>::FailToInitializeRegulatedAssets)?,
-    };
-    extended_assets::SoulboundAsset::<T>::insert::<AssetIdOf<T>, _>(
-        SBT_PRACS.into_predefined().into(),
-        metadata,
-    );
-    extended_assets::RegulatedAssetToSoulboundAsset::<T>::set::<AssetIdOf<T>>(
-        PRUSD.into(),
-        SBT_PRACS.into_predefined().into(),
-    );
+    T::ExtendedAssetsManager::set_metadata(&SBT_PRACS.into_predefined().into(), None, now);
+    T::ExtendedAssetsManager::bind_regulated_asset_to_sbt_asset(
+        &SBT_PRACS.into_predefined().into(),
+        &PRUSD.into(),
+    )?;
 
     T::AssetManager::mint_to(
         &SBT_PRACS.into_predefined().into(),
@@ -142,15 +130,7 @@ pub fn register_presto_assets<T: Config>() -> DispatchResult {
         None,
         None,
     )?;
-    let metadata = SoulboundTokenMetadata {
-        external_url: None,
-        issued_at: now,
-        regulated_assets: Default::default(),
-    };
-    extended_assets::SoulboundAsset::<T>::insert::<AssetIdOf<T>, _>(
-        SBT_PRINVST.into_predefined().into(),
-        metadata,
-    );
+    T::ExtendedAssetsManager::set_metadata(&SBT_PRINVST.into_predefined().into(), None, now);
 
     T::AssetManager::register_asset_id(
         system_account_id.clone(),
@@ -164,15 +144,7 @@ pub fn register_presto_assets<T: Config>() -> DispatchResult {
         None,
         None,
     )?;
-    let metadata = SoulboundTokenMetadata {
-        external_url: None,
-        issued_at: now,
-        regulated_assets: Default::default(),
-    };
-    extended_assets::SoulboundAsset::<T>::insert::<AssetIdOf<T>, _>(
-        SBT_PRCRDT.into_predefined().into(),
-        metadata,
-    );
+    T::ExtendedAssetsManager::set_metadata(&SBT_PRCRDT.into_predefined().into(), None, now);
 
     let scopes = [
         Scope::Limited(common::hash(&PRUSD)),
