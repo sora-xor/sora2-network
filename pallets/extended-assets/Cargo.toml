@@ -1,10 +1,10 @@
 [package]
-authors = ["Polka Biome Ltd. <jihoon@tutanota.de>"]
+name = "extended-assets"
+authors = ["Soramitsu"]
 license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 edition = "2021"
-name = "extended-assets"
 version = "1.0.0"
 
 [package.metadata.docs.rs]
@@ -42,13 +42,19 @@ technical = { path = "../technical" }
 default = ["std"]
 
 std = [
-    "scale-info/std",
+    "codec/std",
+    "common/std",
     "frame-support/std",
     "frame-benchmarking/std",
     "frame-system/std",
+    "pallet-balances/std",
     "pallet-timestamp/std",
+    "permissions/std",
+    "scale-info/std",
     "sp-core/std",
+    "sp-runtime/std",
     "sp-std/std",
+    "technical/std",
 ]
 
 runtime-benchmarks = [

@@ -299,7 +299,7 @@ where
     {
         for (asset_id, from_whom) in self.to_lock.iter() {
             for (account, amount) in from_whom.iter() {
-                Locker::lock_liquidity(account, self.order_book_id, asset_id, *amount)?;
+                Locker::lock_liquidity(account, &self.order_book_id, asset_id, *amount)?;
             }
         }
 
@@ -311,7 +311,7 @@ where
         Unlocker: CurrencyUnlocker<AccountId, AssetId, DEXId, DispatchError>,
     {
         for (asset_id, to_whom) in self.to_unlock.iter() {
-            Unlocker::unlock_liquidity_batch(self.order_book_id, asset_id, to_whom)?;
+            Unlocker::unlock_liquidity_batch(&self.order_book_id, asset_id, to_whom)?;
         }
 
         Ok(())

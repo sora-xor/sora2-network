@@ -1563,6 +1563,10 @@ pub trait OrderBookManager<AccountId, AssetId, DEXId, Moment> {
         output_asset_id: &AssetId,
     ) -> Option<OrderBookId<AssetId, DEXId>>;
 
+    fn tech_account_id_for_order_book(
+        order_book_id: &OrderBookId<AssetId, DEXId>,
+    ) -> Result<AccountId, DispatchError>;
+
     fn initialize_orderbook(
         order_book_id: &OrderBookId<AssetId, DEXId>,
         tick_size: Balance,
@@ -1590,6 +1594,12 @@ impl<AccountId, AssetId, DEXId, Moment> OrderBookManager<AccountId, AssetId, DEX
         None
     }
 
+    fn tech_account_id_for_order_book(
+        _order_book_id: &OrderBookId<AssetId, DEXId>,
+    ) -> Result<AccountId, DispatchError> {
+        unimplemented!()
+    }
+
     fn initialize_orderbook(
         _order_book_id: &OrderBookId<AssetId, DEXId>,
         _tick_size: Balance,
@@ -1607,6 +1617,31 @@ impl<AccountId, AssetId, DEXId, Moment> OrderBookManager<AccountId, AssetId, DEX
         _amount: Balance,
         _side: PriceVariant,
         _lifespan: Option<Moment>,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+}
+
+pub trait ExtendedAssetsManager<AssetId, Moment, ContentSource> {
+    fn set_metadata(sbt_asset_id: &AssetId, external_url: Option<ContentSource>, issued_at: Moment);
+
+    fn bind_regulated_asset_to_sbt_asset(
+        sbt_asset_id: &AssetId,
+        regulated_asset_id: &AssetId,
+    ) -> Result<(), DispatchError>;
+}
+
+impl<AssetId, Moment, ContentSource> ExtendedAssetsManager<AssetId, Moment, ContentSource> for () {
+    fn set_metadata(
+        _sbt_asset_id: &AssetId,
+        _external_url: Option<ContentSource>,
+        _issued_at: Moment,
+    ) {
+    }
+
+    fn bind_regulated_asset_to_sbt_asset(
+        _sbt_asset_id: &AssetId,
+        _regulated_asset_id: &AssetId,
     ) -> Result<(), DispatchError> {
         Ok(())
     }

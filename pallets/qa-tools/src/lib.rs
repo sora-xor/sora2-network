@@ -58,8 +58,8 @@ pub mod pallet {
 
     use common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, OrderBookId,
-        SyntheticInfoProvider, TradingPairSourceManager,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, ExtendedAssetsManager,
+        OrderBookId, SyntheticInfoProvider, TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -100,6 +100,11 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<AssetIdOf<Self>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type ExtendedAssetsManager: ExtendedAssetsManager<
+            AssetIdOf<Self>,
+            Self::Moment,
+            ContentSource,
+        >;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
@@ -181,6 +186,10 @@ pub mod pallet {
         /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         /// You can use `price_tools_set_asset_price` extrinsic to set its price.
         ReferenceAssetPriceNotFound,
+
+        // presto errors
+        /// Cannot initialize SBT metadata with the list of regulated assets
+        FailToInitializeRegulatedAssets,
     }
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -460,7 +469,7 @@ pub mod pallet {
         pub fn presto_initialize_assets(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            pallet_tools::presto::register_presto_usd::<T>()?;
+            pallet_tools::presto::register_presto_assets::<T>()?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.

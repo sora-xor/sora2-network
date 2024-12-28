@@ -28,6 +28,7 @@ dex-manager = { path = "../dex-manager", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 oracle-proxy = { path = "../oracle-proxy", default-features = false }
 order-book = { path = "../order-book", default-features = false }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 presto = { path = "../presto", default-features = false }
@@ -56,6 +57,7 @@ std = [
     "frame-system/std",
     "oracle-proxy/std",
     "order-book/std",
+    "pallet-timestamp/std",
     "pool-xyk/std",
     "price-tools/std",
     "scale-info/std",

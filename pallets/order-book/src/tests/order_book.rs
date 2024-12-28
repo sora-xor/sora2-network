@@ -217,7 +217,7 @@ fn should_place_nft_limit_order() {
             OrderVolume::indivisible(1000),
         );
 
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         let order_id = 11;
         let price = balance!(10).into();
@@ -652,7 +652,7 @@ fn should_not_place_limit_order_when_status_doesnt_allow() {
             OrderVolume::divisible(balance!(1)),
             OrderVolume::divisible(balance!(1000)),
         );
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
@@ -834,7 +834,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_user() {
             OrderVolume::divisible(balance!(1)),
             OrderVolume::divisible(balance!(1000)),
         );
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
 
@@ -899,7 +899,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_orders_in_pric
             OrderVolume::divisible(balance!(1000)),
         );
 
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
         let max_orders_for_price: u32 = <Runtime as Config>::MaxLimitOrdersForPrice::get();
 
         let mut buy_order = LimitOrder::<Runtime>::new(
@@ -976,7 +976,7 @@ fn should_not_place_limit_order_that_doesnt_meet_restrictions_for_side() {
             OrderVolume::divisible(balance!(1)),
             OrderVolume::divisible(balance!(1000)),
         );
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
         let max_prices_for_side: u32 = <Runtime as Config>::MaxSidePriceCount::get();
 
         let mut buy_order = LimitOrder::<Runtime>::new(
@@ -1236,7 +1236,7 @@ fn should_cancel_all_limit_orders() {
         let order_book = create_and_fill_order_book::<Runtime>(order_book_id);
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(order_book_id),
+            &OrderBookPallet::tech_account_for_order_book(&order_book_id),
         )
         .unwrap();
 

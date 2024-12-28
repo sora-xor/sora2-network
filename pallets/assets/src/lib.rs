@@ -602,6 +602,28 @@ pub mod pallet {
             Option<ContentSource>,
             Option<Description>,
         )>,
+        pub regulated_assets: Vec<(
+            T::AssetId,
+            T::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            Balance,
+            bool,
+            Option<ContentSource>,
+            Option<Description>,
+        )>,
+        pub sbt_assets: Vec<(
+            T::AssetId,
+            T::AccountId,
+            AssetSymbol,
+            AssetName,
+            BalancePrecision,
+            Balance,
+            bool,
+            Option<ContentSource>,
+            Option<Description>,
+        )>,
     }
 
     #[cfg(feature = "std")]
@@ -609,6 +631,8 @@ pub mod pallet {
         fn default() -> Self {
             Self {
                 endowed_assets: Default::default(),
+                regulated_assets: Default::default(),
+                sbt_assets: Default::default(),
             }
         }
     }
@@ -640,9 +664,63 @@ pub mod pallet {
                         content_source,
                         description,
                     )
-                    .expect("Failed to register asset.");
+                    .expect("Failed to register regular asset.");
                 },
-            )
+            );
+            self.regulated_assets.iter().cloned().for_each(
+                |(
+                    asset_id,
+                    account_id,
+                    symbol,
+                    name,
+                    precision,
+                    initial_supply,
+                    is_mintable,
+                    content_source,
+                    description,
+                )| {
+                    Pallet::<T>::register_asset_id(
+                        account_id,
+                        asset_id,
+                        symbol,
+                        name,
+                        precision,
+                        initial_supply,
+                        is_mintable,
+                        AssetType::Regulated,
+                        content_source,
+                        description,
+                    )
+                    .expect("Failed to register regulated asset.");
+                },
+            );
+            self.sbt_assets.iter().cloned().for_each(
+                |(
+                    asset_id,
+                    account_id,
+                    symbol,
+                    name,
+                    precision,
+                    initial_supply,
+                    is_mintable,
+                    content_source,
+                    description,
+                )| {
+                    Pallet::<T>::register_asset_id(
+                        account_id,
+                        asset_id,
+                        symbol,
+                        name,
+                        precision,
+                        initial_supply,
+                        is_mintable,
+                        AssetType::Soulbound,
+                        content_source,
+                        description,
+                    )
+                    .expect("Failed to register soulbound asset.");
+                },
+            );
         }
     }
 }

@@ -491,6 +491,8 @@ impl ExtBuilder {
 
         AssetsConfig {
             endowed_assets: self.endowed_assets,
+            regulated_assets: Default::default(),
+            sbt_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();
