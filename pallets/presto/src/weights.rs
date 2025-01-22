@@ -65,10 +65,10 @@ pub trait WeightInfo {
     fn remove_presto_manager() -> Weight;
     fn add_presto_auditor() -> Weight;
     fn remove_presto_auditor() -> Weight;
-	fn apply_investor_kyc() -> Weight;
-	fn apply_creditor_kyc() -> Weight;
-	fn remove_investor_kyc() -> Weight;
-	fn remove_creditor_kyc() -> Weight;
+    fn apply_investor_kyc() -> Weight;
+    fn apply_creditor_kyc() -> Weight;
+    fn remove_investor_kyc() -> Weight;
+    fn remove_creditor_kyc() -> Weight;
     fn mint_presto_usd() -> Weight;
     fn burn_presto_usd() -> Weight;
     fn send_presto_usd() -> Weight;
@@ -87,926 +87,926 @@ pub trait WeightInfo {
 /// Weight functions for `presto`.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: Presto Managers (r:1 w:1)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn add_presto_manager() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `76`
-		//  Estimated: `3697`
-		// Minimum execution time: 6_489 nanoseconds.
-		Weight::from_parts(6_937_000, 3697)
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Presto Managers (r:1 w:1)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn remove_presto_manager() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `167`
-		//  Estimated: `3697`
-		// Minimum execution time: 7_453 nanoseconds.
-		Weight::from_parts(7_787_000, 3697)
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Presto Auditors (r:1 w:1)
-	/// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn add_presto_auditor() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `76`
-		//  Estimated: `3697`
-		// Minimum execution time: 6_514 nanoseconds.
-		Weight::from_parts(6_769_000, 3697)
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Presto Auditors (r:1 w:1)
-	/// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn remove_presto_auditor() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `167`
-		//  Estimated: `3697`
-		// Minimum execution time: 7_613 nanoseconds.
-		Weight::from_parts(7_935_000, 3697)
-			.saturating_add(T::DbWeight::get().reads(1))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:1 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:2 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn apply_investor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3116`
-		//  Estimated: `687439`
-		// Minimum execution time: 61_406 nanoseconds.
-		Weight::from_parts(65_447_000, 687439)
-			.saturating_add(T::DbWeight::get().reads(13))
-			.saturating_add(T::DbWeight::get().writes(5))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:1 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:2 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn apply_creditor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3143`
-		//  Estimated: `687520`
-		// Minimum execution time: 64_817 nanoseconds.
-		Weight::from_parts(69_972_000, 687520)
-			.saturating_add(T::DbWeight::get().reads(13))
-			.saturating_add(T::DbWeight::get().writes(5))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:3 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto Coupons (r:1 w:0)
-	/// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:2 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	fn remove_investor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3261`
-		//  Estimated: `690405`
-		// Minimum execution time: 62_887 nanoseconds.
-		Weight::from_parts(66_677_000, 690405)
-			.saturating_add(T::DbWeight::get().reads(14))
-			.saturating_add(T::DbWeight::get().writes(4))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:3 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto Coupons (r:1 w:0)
-	/// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:2 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	fn remove_creditor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3264`
-		//  Estimated: `690414`
-		// Minimum execution time: 64_141 nanoseconds.
-		Weight::from_parts(66_715_000, 690414)
-			.saturating_add(T::DbWeight::get().reads(14))
-			.saturating_add(T::DbWeight::get().writes(4))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:1 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:1)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:1 w:1)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn mint_presto_usd() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2864`
-		//  Estimated: `354886`
-		// Minimum execution time: 50_228 nanoseconds.
-		Weight::from_parts(53_612_000, 354886)
-			.saturating_add(T::DbWeight::get().reads(11))
-			.saturating_add(T::DbWeight::get().writes(3))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:1)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:1 w:1)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	fn burn_presto_usd() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2302`
-		//  Estimated: `346382`
-		// Minimum execution time: 40_654 nanoseconds.
-		Weight::from_parts(41_964_000, 346382)
-			.saturating_add(T::DbWeight::get().reads(9))
-			.saturating_add(T::DbWeight::get().writes(2))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn send_presto_usd() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2605`
-		//  Estimated: `357129`
-		// Minimum execution time: 53_156 nanoseconds.
-		Weight::from_parts(56_088_000, 357129)
-			.saturating_add(T::DbWeight::get().reads(13))
-			.saturating_add(T::DbWeight::get().writes(3))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto LastRequestId (r:1 w:1)
-	/// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Presto UserRequests (r:1 w:1)
-	/// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:0 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	fn create_deposit_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `876`
-		//  Estimated: `530424`
-		// Minimum execution time: 18_148 nanoseconds.
-		Weight::from_parts(19_552_000, 530424)
-			.saturating_add(T::DbWeight::get().reads(4))
-			.saturating_add(T::DbWeight::get().writes(3))
-	}
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto LastRequestId (r:1 w:1)
-	/// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	/// Storage: Presto UserRequests (r:1 w:1)
-	/// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:0 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	fn create_withdraw_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2617`
-		//  Estimated: `880754`
-		// Minimum execution time: 61_425 nanoseconds.
-		Weight::from_parts(63_450_000, 880754)
-			.saturating_add(T::DbWeight::get().reads(14))
-			.saturating_add(T::DbWeight::get().writes(6))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	fn cancel_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `913`
-		//  Estimated: `5506`
-		// Minimum execution time: 15_114 nanoseconds.
-		Weight::from_parts(15_987_000, 5506)
-			.saturating_add(T::DbWeight::get().reads(2))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn approve_deposit_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2823`
-		//  Estimated: `360242`
-		// Minimum execution time: 60_904 nanoseconds.
-		Weight::from_parts(63_373_000, 360242)
-			.saturating_add(T::DbWeight::get().reads(14))
-			.saturating_add(T::DbWeight::get().writes(4))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:0)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn approve_withdraw_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2829`
-		//  Estimated: `357645`
-		// Minimum execution time: 57_031 nanoseconds.
-		Weight::from_parts(60_629_000, 357645)
-			.saturating_add(T::DbWeight::get().reads(13))
-			.saturating_add(T::DbWeight::get().writes(3))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	fn decline_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `565`
-		//  Estimated: `7095`
-		// Minimum execution time: 13_619 nanoseconds.
-		Weight::from_parts(15_023_000, 7095)
-			.saturating_add(T::DbWeight::get().reads(3))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto LastCropReceiptId (r:1 w:1)
-	/// Proof: Presto LastCropReceiptId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Presto UserCropReceipts (r:1 w:1)
-	/// Proof: Presto UserCropReceipts (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceiptsContent (r:0 w:1)
-	/// Proof: Presto CropReceiptsContent (max_values: None, max_size: Some(30740), added: 33215, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:0 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	fn create_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `876`
-		//  Estimated: `530424`
-		// Minimum execution time: 22_650 nanoseconds.
-		Weight::from_parts(23_812_000, 530424)
-			.saturating_add(T::DbWeight::get().reads(4))
-			.saturating_add(T::DbWeight::get().writes(4))
-	}
-	/// Storage: Presto Auditors (r:1 w:0)
-	/// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:1 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	fn rate_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `462`
-		//  Estimated: `6570`
-		// Minimum execution time: 12_201 nanoseconds.
-		Weight::from_parts(12_933_000, 6570)
-			.saturating_add(T::DbWeight::get().reads(2))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:1 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	fn decline_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1023`
-		//  Estimated: `5484`
-		// Minimum execution time: 15_763 nanoseconds.
-		Weight::from_parts(16_970_000, 5484)
-			.saturating_add(T::DbWeight::get().reads(2))
-			.saturating_add(T::DbWeight::get().writes(1))
-	}
-	/// Storage: Tokens Accounts (r:7 w:4)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:1 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	/// Storage: Presto LastCouponId (r:1 w:1)
-	/// Proof: Presto LastCouponId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: System Account (r:3 w:3)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:3 w:1)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Owners (r:2 w:2)
-	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:7 w:1)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:1)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:1)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:3 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: TradingPair EnabledSources (r:1 w:1)
-	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
-	/// Storage: OrderBook OrderBooks (r:1 w:1)
-	/// Proof: OrderBook OrderBooks (max_values: None, max_size: Some(238), added: 2713, mode: MaxEncodedLen)
-	/// Storage: Technical TechAccounts (r:1 w:1)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:1 w:1)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: OrderBook UserLimitOrders (r:1 w:1)
-	/// Proof: OrderBook UserLimitOrders (max_values: None, max_size: Some(16518), added: 18993, mode: MaxEncodedLen)
-	/// Storage: OrderBook Asks (r:1 w:1)
-	/// Proof: OrderBook Asks (max_values: None, max_size: Some(16503), added: 18978, mode: MaxEncodedLen)
-	/// Storage: OrderBook AggregatedAsks (r:1 w:1)
-	/// Proof: OrderBook AggregatedAsks (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
-	/// Storage: OrderBook AggregatedBids (r:1 w:0)
-	/// Proof: OrderBook AggregatedBids (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
-	/// Storage: OrderBook LimitOrders (r:1 w:1)
-	/// Proof: OrderBook LimitOrders (max_values: None, max_size: Some(236), added: 2711, mode: MaxEncodedLen)
-	/// Storage: OrderBook ExpirationsAgenda (r:1 w:1)
-	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(86022), added: 88497, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfos (r:0 w:1)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Presto Coupons (r:0 w:1)
-	/// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
-	fn publish_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `6885`
-		//  Estimated: `995665`
-		// Minimum execution time: 305_880 nanoseconds.
-		Weight::from_parts(312_918_000, 995665)
-			.saturating_add(T::DbWeight::get().reads(44))
-			.saturating_add(T::DbWeight::get().writes(28))
-	}
+    /// Storage: Presto Managers (r:1 w:1)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn add_presto_manager() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `76`
+        //  Estimated: `3697`
+        // Minimum execution time: 6_489 nanoseconds.
+        Weight::from_parts(6_937_000, 3697)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Presto Managers (r:1 w:1)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn remove_presto_manager() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `167`
+        //  Estimated: `3697`
+        // Minimum execution time: 7_453 nanoseconds.
+        Weight::from_parts(7_787_000, 3697)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Presto Auditors (r:1 w:1)
+    /// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn add_presto_auditor() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `76`
+        //  Estimated: `3697`
+        // Minimum execution time: 6_514 nanoseconds.
+        Weight::from_parts(6_769_000, 3697)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Presto Auditors (r:1 w:1)
+    /// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn remove_presto_auditor() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `167`
+        //  Estimated: `3697`
+        // Minimum execution time: 7_613 nanoseconds.
+        Weight::from_parts(7_935_000, 3697)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:1 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Assets AssetInfosV2 (r:2 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn apply_investor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3116`
+        //  Estimated: `687439`
+        // Minimum execution time: 61_406 nanoseconds.
+        Weight::from_parts(65_447_000, 687439)
+            .saturating_add(T::DbWeight::get().reads(13))
+            .saturating_add(T::DbWeight::get().writes(5))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:1 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Assets AssetInfosV2 (r:2 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn apply_creditor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3143`
+        //  Estimated: `687520`
+        // Minimum execution time: 64_817 nanoseconds.
+        Weight::from_parts(69_972_000, 687520)
+            .saturating_add(T::DbWeight::get().reads(13))
+            .saturating_add(T::DbWeight::get().writes(5))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:3 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto Coupons (r:1 w:0)
+    /// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:2 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    fn remove_investor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3261`
+        //  Estimated: `690405`
+        // Minimum execution time: 62_887 nanoseconds.
+        Weight::from_parts(66_677_000, 690405)
+            .saturating_add(T::DbWeight::get().reads(14))
+            .saturating_add(T::DbWeight::get().writes(4))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:3 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto Coupons (r:1 w:0)
+    /// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:2 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    fn remove_creditor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3264`
+        //  Estimated: `690414`
+        // Minimum execution time: 64_141 nanoseconds.
+        Weight::from_parts(66_715_000, 690414)
+            .saturating_add(T::DbWeight::get().reads(14))
+            .saturating_add(T::DbWeight::get().writes(4))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:1 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:1)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:1 w:1)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn mint_presto_usd() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2864`
+        //  Estimated: `354886`
+        // Minimum execution time: 50_228 nanoseconds.
+        Weight::from_parts(53_612_000, 354886)
+            .saturating_add(T::DbWeight::get().reads(11))
+            .saturating_add(T::DbWeight::get().writes(3))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:1)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:1 w:1)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    fn burn_presto_usd() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2302`
+        //  Estimated: `346382`
+        // Minimum execution time: 40_654 nanoseconds.
+        Weight::from_parts(41_964_000, 346382)
+            .saturating_add(T::DbWeight::get().reads(9))
+            .saturating_add(T::DbWeight::get().writes(2))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:2 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn send_presto_usd() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2605`
+        //  Estimated: `357129`
+        // Minimum execution time: 53_156 nanoseconds.
+        Weight::from_parts(56_088_000, 357129)
+            .saturating_add(T::DbWeight::get().reads(13))
+            .saturating_add(T::DbWeight::get().writes(3))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto LastRequestId (r:1 w:1)
+    /// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Presto UserRequests (r:1 w:1)
+    /// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:0 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    fn create_deposit_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `876`
+        //  Estimated: `530424`
+        // Minimum execution time: 18_148 nanoseconds.
+        Weight::from_parts(19_552_000, 530424)
+            .saturating_add(T::DbWeight::get().reads(4))
+            .saturating_add(T::DbWeight::get().writes(3))
+    }
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto LastRequestId (r:1 w:1)
+    /// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:2 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    /// Storage: Presto UserRequests (r:1 w:1)
+    /// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:0 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    fn create_withdraw_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2617`
+        //  Estimated: `880754`
+        // Minimum execution time: 61_425 nanoseconds.
+        Weight::from_parts(63_450_000, 880754)
+            .saturating_add(T::DbWeight::get().reads(14))
+            .saturating_add(T::DbWeight::get().writes(6))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    fn cancel_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `913`
+        //  Estimated: `5506`
+        // Minimum execution time: 15_114 nanoseconds.
+        Weight::from_parts(15_987_000, 5506)
+            .saturating_add(T::DbWeight::get().reads(2))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:2 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn approve_deposit_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2823`
+        //  Estimated: `360242`
+        // Minimum execution time: 60_904 nanoseconds.
+        Weight::from_parts(63_373_000, 360242)
+            .saturating_add(T::DbWeight::get().reads(14))
+            .saturating_add(T::DbWeight::get().writes(4))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:0)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn approve_withdraw_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2829`
+        //  Estimated: `357645`
+        // Minimum execution time: 57_031 nanoseconds.
+        Weight::from_parts(60_629_000, 357645)
+            .saturating_add(T::DbWeight::get().reads(13))
+            .saturating_add(T::DbWeight::get().writes(3))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    fn decline_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `565`
+        //  Estimated: `7095`
+        // Minimum execution time: 13_619 nanoseconds.
+        Weight::from_parts(15_023_000, 7095)
+            .saturating_add(T::DbWeight::get().reads(3))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto LastCropReceiptId (r:1 w:1)
+    /// Proof: Presto LastCropReceiptId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Presto UserCropReceipts (r:1 w:1)
+    /// Proof: Presto UserCropReceipts (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceiptsContent (r:0 w:1)
+    /// Proof: Presto CropReceiptsContent (max_values: None, max_size: Some(30740), added: 33215, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:0 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    fn create_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `876`
+        //  Estimated: `530424`
+        // Minimum execution time: 22_650 nanoseconds.
+        Weight::from_parts(23_812_000, 530424)
+            .saturating_add(T::DbWeight::get().reads(4))
+            .saturating_add(T::DbWeight::get().writes(4))
+    }
+    /// Storage: Presto Auditors (r:1 w:0)
+    /// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:1 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    fn rate_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `462`
+        //  Estimated: `6570`
+        // Minimum execution time: 12_201 nanoseconds.
+        Weight::from_parts(12_933_000, 6570)
+            .saturating_add(T::DbWeight::get().reads(2))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:1 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    fn decline_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `1023`
+        //  Estimated: `5484`
+        // Minimum execution time: 15_763 nanoseconds.
+        Weight::from_parts(16_970_000, 5484)
+            .saturating_add(T::DbWeight::get().reads(2))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+    /// Storage: Tokens Accounts (r:7 w:4)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:1 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    /// Storage: Presto LastCouponId (r:1 w:1)
+    /// Proof: Presto LastCouponId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: System Account (r:3 w:3)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:3 w:1)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Owners (r:2 w:2)
+    /// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:7 w:1)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:1)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:1)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:3 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: DEXManager DEXInfos (r:1 w:0)
+    /// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+    /// Storage: TradingPair EnabledSources (r:1 w:1)
+    /// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
+    /// Storage: OrderBook OrderBooks (r:1 w:1)
+    /// Proof: OrderBook OrderBooks (max_values: None, max_size: Some(238), added: 2713, mode: MaxEncodedLen)
+    /// Storage: Technical TechAccounts (r:1 w:1)
+    /// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Assets AssetInfosV2 (r:1 w:1)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: OrderBook UserLimitOrders (r:1 w:1)
+    /// Proof: OrderBook UserLimitOrders (max_values: None, max_size: Some(16518), added: 18993, mode: MaxEncodedLen)
+    /// Storage: OrderBook Asks (r:1 w:1)
+    /// Proof: OrderBook Asks (max_values: None, max_size: Some(16503), added: 18978, mode: MaxEncodedLen)
+    /// Storage: OrderBook AggregatedAsks (r:1 w:1)
+    /// Proof: OrderBook AggregatedAsks (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
+    /// Storage: OrderBook AggregatedBids (r:1 w:0)
+    /// Proof: OrderBook AggregatedBids (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
+    /// Storage: OrderBook LimitOrders (r:1 w:1)
+    /// Proof: OrderBook LimitOrders (max_values: None, max_size: Some(236), added: 2711, mode: MaxEncodedLen)
+    /// Storage: OrderBook ExpirationsAgenda (r:1 w:1)
+    /// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(86022), added: 88497, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfos (r:0 w:1)
+    /// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Presto Coupons (r:0 w:1)
+    /// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
+    fn publish_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `6885`
+        //  Estimated: `995665`
+        // Minimum execution time: 305_880 nanoseconds.
+        Weight::from_parts(312_918_000, 995665)
+            .saturating_add(T::DbWeight::get().reads(44))
+            .saturating_add(T::DbWeight::get().writes(28))
+    }
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	/// Storage: Presto Managers (r:1 w:1)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn add_presto_manager() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `76`
-		//  Estimated: `3697`
-		// Minimum execution time: 6_489 nanoseconds.
-		Weight::from_parts(6_937_000, 3697)
-			.saturating_add(RocksDbWeight::get().reads(1))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Presto Managers (r:1 w:1)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn remove_presto_manager() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `167`
-		//  Estimated: `3697`
-		// Minimum execution time: 7_453 nanoseconds.
-		Weight::from_parts(7_787_000, 3697)
-			.saturating_add(RocksDbWeight::get().reads(1))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Presto Auditors (r:1 w:1)
-	/// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn add_presto_auditor() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `76`
-		//  Estimated: `3697`
-		// Minimum execution time: 6_514 nanoseconds.
-		Weight::from_parts(6_769_000, 3697)
-			.saturating_add(RocksDbWeight::get().reads(1))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Presto Auditors (r:1 w:1)
-	/// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	fn remove_presto_auditor() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `167`
-		//  Estimated: `3697`
-		// Minimum execution time: 7_613 nanoseconds.
-		Weight::from_parts(7_935_000, 3697)
-			.saturating_add(RocksDbWeight::get().reads(1))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:1 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:2 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn apply_investor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3116`
-		//  Estimated: `687439`
-		// Minimum execution time: 61_406 nanoseconds.
-		Weight::from_parts(65_447_000, 687439)
-			.saturating_add(RocksDbWeight::get().reads(13))
-			.saturating_add(RocksDbWeight::get().writes(5))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:1 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:2 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn apply_creditor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3143`
-		//  Estimated: `687520`
-		// Minimum execution time: 64_817 nanoseconds.
-		Weight::from_parts(69_972_000, 687520)
-			.saturating_add(RocksDbWeight::get().reads(13))
-			.saturating_add(RocksDbWeight::get().writes(5))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:3 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto Coupons (r:1 w:0)
-	/// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:2 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	fn remove_investor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3261`
-		//  Estimated: `690405`
-		// Minimum execution time: 62_887 nanoseconds.
-		Weight::from_parts(66_677_000, 690405)
-			.saturating_add(RocksDbWeight::get().reads(14))
-			.saturating_add(RocksDbWeight::get().writes(4))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:3 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto Coupons (r:1 w:0)
-	/// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:2 w:0)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:2 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	fn remove_creditor_kyc() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3264`
-		//  Estimated: `690414`
-		// Minimum execution time: 64_141 nanoseconds.
-		Weight::from_parts(66_715_000, 690414)
-			.saturating_add(RocksDbWeight::get().reads(14))
-			.saturating_add(RocksDbWeight::get().writes(4))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:1 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:1)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:1 w:1)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn mint_presto_usd() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2864`
-		//  Estimated: `354886`
-		// Minimum execution time: 50_228 nanoseconds.
-		Weight::from_parts(53_612_000, 354886)
-			.saturating_add(RocksDbWeight::get().reads(11))
-			.saturating_add(RocksDbWeight::get().writes(3))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:2 w:1)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: Tokens TotalIssuance (r:1 w:1)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	fn burn_presto_usd() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2302`
-		//  Estimated: `346382`
-		// Minimum execution time: 40_654 nanoseconds.
-		Weight::from_parts(41_964_000, 346382)
-			.saturating_add(RocksDbWeight::get().reads(9))
-			.saturating_add(RocksDbWeight::get().writes(2))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn send_presto_usd() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2605`
-		//  Estimated: `357129`
-		// Minimum execution time: 53_156 nanoseconds.
-		Weight::from_parts(56_088_000, 357129)
-			.saturating_add(RocksDbWeight::get().reads(13))
-			.saturating_add(RocksDbWeight::get().writes(3))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto LastRequestId (r:1 w:1)
-	/// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Presto UserRequests (r:1 w:1)
-	/// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:0 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	fn create_deposit_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `876`
-		//  Estimated: `530424`
-		// Minimum execution time: 18_148 nanoseconds.
-		Weight::from_parts(19_552_000, 530424)
-			.saturating_add(RocksDbWeight::get().reads(4))
-			.saturating_add(RocksDbWeight::get().writes(3))
-	}
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto LastRequestId (r:1 w:1)
-	/// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	/// Storage: Presto UserRequests (r:1 w:1)
-	/// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:0 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	fn create_withdraw_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2617`
-		//  Estimated: `880754`
-		// Minimum execution time: 61_425 nanoseconds.
-		Weight::from_parts(63_450_000, 880754)
-			.saturating_add(RocksDbWeight::get().reads(14))
-			.saturating_add(RocksDbWeight::get().writes(6))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	fn cancel_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `913`
-		//  Estimated: `5506`
-		// Minimum execution time: 15_114 nanoseconds.
-		Weight::from_parts(15_987_000, 5506)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:2 w:1)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn approve_deposit_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2823`
-		//  Estimated: `360242`
-		// Minimum execution time: 60_904 nanoseconds.
-		Weight::from_parts(63_373_000, 360242)
-			.saturating_add(RocksDbWeight::get().reads(14))
-			.saturating_add(RocksDbWeight::get().writes(4))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfosV2 (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Tokens Accounts (r:4 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:0)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn approve_withdraw_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2829`
-		//  Estimated: `357645`
-		// Minimum execution time: 57_031 nanoseconds.
-		Weight::from_parts(60_629_000, 357645)
-			.saturating_add(RocksDbWeight::get().reads(13))
-			.saturating_add(RocksDbWeight::get().writes(3))
-	}
-	/// Storage: Presto Managers (r:1 w:0)
-	/// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto Requests (r:1 w:1)
-	/// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	fn decline_request() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `565`
-		//  Estimated: `7095`
-		// Minimum execution time: 13_619 nanoseconds.
-		Weight::from_parts(15_023_000, 7095)
-			.saturating_add(RocksDbWeight::get().reads(3))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto LastCropReceiptId (r:1 w:1)
-	/// Proof: Presto LastCropReceiptId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: Presto UserCropReceipts (r:1 w:1)
-	/// Proof: Presto UserCropReceipts (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceiptsContent (r:0 w:1)
-	/// Proof: Presto CropReceiptsContent (max_values: None, max_size: Some(30740), added: 33215, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:0 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	fn create_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `876`
-		//  Estimated: `530424`
-		// Minimum execution time: 22_650 nanoseconds.
-		Weight::from_parts(23_812_000, 530424)
-			.saturating_add(RocksDbWeight::get().reads(4))
-			.saturating_add(RocksDbWeight::get().writes(4))
-	}
-	/// Storage: Presto Auditors (r:1 w:0)
-	/// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:1 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	fn rate_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `462`
-		//  Estimated: `6570`
-		// Minimum execution time: 12_201 nanoseconds.
-		Weight::from_parts(12_933_000, 6570)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Tokens Accounts (r:1 w:0)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:1 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	fn decline_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1023`
-		//  Estimated: `5484`
-		// Minimum execution time: 15_763 nanoseconds.
-		Weight::from_parts(16_970_000, 5484)
-			.saturating_add(RocksDbWeight::get().reads(2))
-			.saturating_add(RocksDbWeight::get().writes(1))
-	}
-	/// Storage: Tokens Accounts (r:7 w:4)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: Presto CropReceipts (r:1 w:1)
-	/// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
-	/// Storage: Presto LastCouponId (r:1 w:1)
-	/// Proof: Presto LastCouponId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: System Account (r:3 w:3)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	/// Storage: Assets AssetOwners (r:3 w:1)
-	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Owners (r:2 w:2)
-	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:7 w:1)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Tokens TotalIssuance (r:2 w:2)
-	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SoulboundAsset (r:2 w:1)
-	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:1)
-	/// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
-	/// Storage: Timestamp Now (r:1 w:0)
-	/// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
-	/// Storage: ExtendedAssets SBTExpiration (r:3 w:0)
-	/// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
-	/// Storage: DEXManager DEXInfos (r:1 w:0)
-	/// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: TradingPair EnabledSources (r:1 w:1)
-	/// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
-	/// Storage: OrderBook OrderBooks (r:1 w:1)
-	/// Proof: OrderBook OrderBooks (max_values: None, max_size: Some(238), added: 2713, mode: MaxEncodedLen)
-	/// Storage: Technical TechAccounts (r:1 w:1)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfosV2 (r:1 w:1)
-	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: OrderBook UserLimitOrders (r:1 w:1)
-	/// Proof: OrderBook UserLimitOrders (max_values: None, max_size: Some(16518), added: 18993, mode: MaxEncodedLen)
-	/// Storage: OrderBook Asks (r:1 w:1)
-	/// Proof: OrderBook Asks (max_values: None, max_size: Some(16503), added: 18978, mode: MaxEncodedLen)
-	/// Storage: OrderBook AggregatedAsks (r:1 w:1)
-	/// Proof: OrderBook AggregatedAsks (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
-	/// Storage: OrderBook AggregatedBids (r:1 w:0)
-	/// Proof: OrderBook AggregatedBids (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
-	/// Storage: OrderBook LimitOrders (r:1 w:1)
-	/// Proof: OrderBook LimitOrders (max_values: None, max_size: Some(236), added: 2711, mode: MaxEncodedLen)
-	/// Storage: OrderBook ExpirationsAgenda (r:1 w:1)
-	/// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(86022), added: 88497, mode: MaxEncodedLen)
-	/// Storage: Assets AssetInfos (r:0 w:1)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Presto Coupons (r:0 w:1)
-	/// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
-	fn publish_crop_receipt() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `6885`
-		//  Estimated: `995665`
-		// Minimum execution time: 305_880 nanoseconds.
-		Weight::from_parts(312_918_000, 995665)
-			.saturating_add(RocksDbWeight::get().reads(44))
-			.saturating_add(RocksDbWeight::get().writes(28))
-	}
+    /// Storage: Presto Managers (r:1 w:1)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn add_presto_manager() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `76`
+        //  Estimated: `3697`
+        // Minimum execution time: 6_489 nanoseconds.
+        Weight::from_parts(6_937_000, 3697)
+            .saturating_add(RocksDbWeight::get().reads(1))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Presto Managers (r:1 w:1)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn remove_presto_manager() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `167`
+        //  Estimated: `3697`
+        // Minimum execution time: 7_453 nanoseconds.
+        Weight::from_parts(7_787_000, 3697)
+            .saturating_add(RocksDbWeight::get().reads(1))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Presto Auditors (r:1 w:1)
+    /// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn add_presto_auditor() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `76`
+        //  Estimated: `3697`
+        // Minimum execution time: 6_514 nanoseconds.
+        Weight::from_parts(6_769_000, 3697)
+            .saturating_add(RocksDbWeight::get().reads(1))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Presto Auditors (r:1 w:1)
+    /// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    fn remove_presto_auditor() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `167`
+        //  Estimated: `3697`
+        // Minimum execution time: 7_613 nanoseconds.
+        Weight::from_parts(7_935_000, 3697)
+            .saturating_add(RocksDbWeight::get().reads(1))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:1 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Assets AssetInfosV2 (r:2 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn apply_investor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3116`
+        //  Estimated: `687439`
+        // Minimum execution time: 61_406 nanoseconds.
+        Weight::from_parts(65_447_000, 687439)
+            .saturating_add(RocksDbWeight::get().reads(13))
+            .saturating_add(RocksDbWeight::get().writes(5))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:1 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Assets AssetInfosV2 (r:2 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn apply_creditor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3143`
+        //  Estimated: `687520`
+        // Minimum execution time: 64_817 nanoseconds.
+        Weight::from_parts(69_972_000, 687520)
+            .saturating_add(RocksDbWeight::get().reads(13))
+            .saturating_add(RocksDbWeight::get().writes(5))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:3 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto Coupons (r:1 w:0)
+    /// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:2 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    fn remove_investor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3261`
+        //  Estimated: `690405`
+        // Minimum execution time: 62_887 nanoseconds.
+        Weight::from_parts(66_677_000, 690405)
+            .saturating_add(RocksDbWeight::get().reads(14))
+            .saturating_add(RocksDbWeight::get().writes(4))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:3 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto Coupons (r:1 w:0)
+    /// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:2 w:0)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:2 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    fn remove_creditor_kyc() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `3264`
+        //  Estimated: `690414`
+        // Minimum execution time: 64_141 nanoseconds.
+        Weight::from_parts(66_715_000, 690414)
+            .saturating_add(RocksDbWeight::get().reads(14))
+            .saturating_add(RocksDbWeight::get().writes(4))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:1 w:0)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:1)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:1 w:1)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn mint_presto_usd() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2864`
+        //  Estimated: `354886`
+        // Minimum execution time: 50_228 nanoseconds.
+        Weight::from_parts(53_612_000, 354886)
+            .saturating_add(RocksDbWeight::get().reads(11))
+            .saturating_add(RocksDbWeight::get().writes(3))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:2 w:1)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:1 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: Tokens TotalIssuance (r:1 w:1)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    fn burn_presto_usd() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2302`
+        //  Estimated: `346382`
+        // Minimum execution time: 40_654 nanoseconds.
+        Weight::from_parts(41_964_000, 346382)
+            .saturating_add(RocksDbWeight::get().reads(9))
+            .saturating_add(RocksDbWeight::get().writes(2))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:2 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn send_presto_usd() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2605`
+        //  Estimated: `357129`
+        // Minimum execution time: 53_156 nanoseconds.
+        Weight::from_parts(56_088_000, 357129)
+            .saturating_add(RocksDbWeight::get().reads(13))
+            .saturating_add(RocksDbWeight::get().writes(3))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto LastRequestId (r:1 w:1)
+    /// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Presto UserRequests (r:1 w:1)
+    /// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:0 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    fn create_deposit_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `876`
+        //  Estimated: `530424`
+        // Minimum execution time: 18_148 nanoseconds.
+        Weight::from_parts(19_552_000, 530424)
+            .saturating_add(RocksDbWeight::get().reads(4))
+            .saturating_add(RocksDbWeight::get().writes(3))
+    }
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto LastRequestId (r:1 w:1)
+    /// Proof: Presto LastRequestId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:2 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    /// Storage: Presto UserRequests (r:1 w:1)
+    /// Proof: Presto UserRequests (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:0 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    fn create_withdraw_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2617`
+        //  Estimated: `880754`
+        // Minimum execution time: 61_425 nanoseconds.
+        Weight::from_parts(63_450_000, 880754)
+            .saturating_add(RocksDbWeight::get().reads(14))
+            .saturating_add(RocksDbWeight::get().writes(6))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    fn cancel_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `913`
+        //  Estimated: `5506`
+        // Minimum execution time: 15_114 nanoseconds.
+        Weight::from_parts(15_987_000, 5506)
+            .saturating_add(RocksDbWeight::get().reads(2))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:2 w:1)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn approve_deposit_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2823`
+        //  Estimated: `360242`
+        // Minimum execution time: 60_904 nanoseconds.
+        Weight::from_parts(63_373_000, 360242)
+            .saturating_add(RocksDbWeight::get().reads(14))
+            .saturating_add(RocksDbWeight::get().writes(4))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfosV2 (r:1 w:0)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:0)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Tokens Accounts (r:4 w:2)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:2 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: System Account (r:1 w:0)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    fn approve_withdraw_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `2829`
+        //  Estimated: `357645`
+        // Minimum execution time: 57_031 nanoseconds.
+        Weight::from_parts(60_629_000, 357645)
+            .saturating_add(RocksDbWeight::get().reads(13))
+            .saturating_add(RocksDbWeight::get().writes(3))
+    }
+    /// Storage: Presto Managers (r:1 w:0)
+    /// Proof: Presto Managers (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto Requests (r:1 w:1)
+    /// Proof: Presto Requests (max_values: None, max_size: Some(420), added: 2895, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    fn decline_request() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `565`
+        //  Estimated: `7095`
+        // Minimum execution time: 13_619 nanoseconds.
+        Weight::from_parts(15_023_000, 7095)
+            .saturating_add(RocksDbWeight::get().reads(3))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto LastCropReceiptId (r:1 w:1)
+    /// Proof: Presto LastCropReceiptId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: Presto UserCropReceipts (r:1 w:1)
+    /// Proof: Presto UserCropReceipts (max_values: None, max_size: Some(524332), added: 526807, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceiptsContent (r:0 w:1)
+    /// Proof: Presto CropReceiptsContent (max_values: None, max_size: Some(30740), added: 33215, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:0 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    fn create_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `876`
+        //  Estimated: `530424`
+        // Minimum execution time: 22_650 nanoseconds.
+        Weight::from_parts(23_812_000, 530424)
+            .saturating_add(RocksDbWeight::get().reads(4))
+            .saturating_add(RocksDbWeight::get().writes(4))
+    }
+    /// Storage: Presto Auditors (r:1 w:0)
+    /// Proof: Presto Auditors (max_values: Some(1), max_size: Some(3202), added: 3697, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:1 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    fn rate_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `462`
+        //  Estimated: `6570`
+        // Minimum execution time: 12_201 nanoseconds.
+        Weight::from_parts(12_933_000, 6570)
+            .saturating_add(RocksDbWeight::get().reads(2))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Tokens Accounts (r:1 w:0)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:1 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    fn decline_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `1023`
+        //  Estimated: `5484`
+        // Minimum execution time: 15_763 nanoseconds.
+        Weight::from_parts(16_970_000, 5484)
+            .saturating_add(RocksDbWeight::get().reads(2))
+            .saturating_add(RocksDbWeight::get().writes(1))
+    }
+    /// Storage: Tokens Accounts (r:7 w:4)
+    /// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+    /// Storage: Presto CropReceipts (r:1 w:1)
+    /// Proof: Presto CropReceipts (max_values: None, max_size: Some(398), added: 2873, mode: MaxEncodedLen)
+    /// Storage: Presto LastCouponId (r:1 w:1)
+    /// Proof: Presto LastCouponId (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: System Account (r:3 w:3)
+    /// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+    /// Storage: Assets AssetOwners (r:3 w:1)
+    /// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Owners (r:2 w:2)
+    /// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Permissions Permissions (r:7 w:1)
+    /// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Tokens TotalIssuance (r:2 w:2)
+    /// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SoulboundAsset (r:2 w:1)
+    /// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets RegulatedAssetToSoulboundAsset (r:1 w:1)
+    /// Proof: ExtendedAssets RegulatedAssetToSoulboundAsset (max_values: None, max_size: Some(64), added: 2539, mode: MaxEncodedLen)
+    /// Storage: Timestamp Now (r:1 w:0)
+    /// Proof: Timestamp Now (max_values: Some(1), max_size: Some(8), added: 503, mode: MaxEncodedLen)
+    /// Storage: ExtendedAssets SBTExpiration (r:3 w:0)
+    /// Proof: ExtendedAssets SBTExpiration (max_values: None, max_size: Some(72), added: 2547, mode: MaxEncodedLen)
+    /// Storage: DEXManager DEXInfos (r:1 w:0)
+    /// Proof Skipped: DEXManager DEXInfos (max_values: None, max_size: None, mode: Measured)
+    /// Storage: TradingPair EnabledSources (r:1 w:1)
+    /// Proof Skipped: TradingPair EnabledSources (max_values: None, max_size: None, mode: Measured)
+    /// Storage: OrderBook OrderBooks (r:1 w:1)
+    /// Proof: OrderBook OrderBooks (max_values: None, max_size: Some(238), added: 2713, mode: MaxEncodedLen)
+    /// Storage: Technical TechAccounts (r:1 w:1)
+    /// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Assets AssetInfosV2 (r:1 w:1)
+    /// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+    /// Storage: OrderBook UserLimitOrders (r:1 w:1)
+    /// Proof: OrderBook UserLimitOrders (max_values: None, max_size: Some(16518), added: 18993, mode: MaxEncodedLen)
+    /// Storage: OrderBook Asks (r:1 w:1)
+    /// Proof: OrderBook Asks (max_values: None, max_size: Some(16503), added: 18978, mode: MaxEncodedLen)
+    /// Storage: OrderBook AggregatedAsks (r:1 w:1)
+    /// Proof: OrderBook AggregatedAsks (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
+    /// Storage: OrderBook AggregatedBids (r:1 w:0)
+    /// Proof: OrderBook AggregatedBids (max_values: None, max_size: Some(34902), added: 37377, mode: MaxEncodedLen)
+    /// Storage: OrderBook LimitOrders (r:1 w:1)
+    /// Proof: OrderBook LimitOrders (max_values: None, max_size: Some(236), added: 2711, mode: MaxEncodedLen)
+    /// Storage: OrderBook ExpirationsAgenda (r:1 w:1)
+    /// Proof: OrderBook ExpirationsAgenda (max_values: None, max_size: Some(86022), added: 88497, mode: MaxEncodedLen)
+    /// Storage: Assets AssetInfos (r:0 w:1)
+    /// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+    /// Storage: Presto Coupons (r:0 w:1)
+    /// Proof: Presto Coupons (max_values: None, max_size: Some(48), added: 2523, mode: MaxEncodedLen)
+    fn publish_crop_receipt() -> Weight {
+        // Proof Size summary in bytes:
+        //  Measured:  `6885`
+        //  Estimated: `995665`
+        // Minimum execution time: 305_880 nanoseconds.
+        Weight::from_parts(312_918_000, 995665)
+            .saturating_add(RocksDbWeight::get().reads(44))
+            .saturating_add(RocksDbWeight::get().writes(28))
+    }
 }
