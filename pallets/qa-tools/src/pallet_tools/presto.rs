@@ -32,10 +32,11 @@ use crate::Config;
 
 use common::{
     AccountIdOf, AssetManager, AssetName, AssetSymbol, AssetType, DEXId, DEXInfo, DexIdOf,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, XST,
+    ExtendedAssetsManager, FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, SBT_PRACS,
+    SBT_PRCRDT, SBT_PRINVST, XST,
 };
 use frame_support::sp_runtime::{DispatchError, DispatchResult};
-use permissions::{Scope, BURN, MINT};
+use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 
 fn system_asset_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> {
     let assets_and_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
@@ -55,9 +56,21 @@ fn presto_main_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> 
     technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)
 }
 
-pub fn register_presto_usd<T: Config>() -> DispatchResult {
+fn presto_buffer_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> {
+    let tech_account_id = T::TechAccountId::from_generic_pair(
+        presto::TECH_ACCOUNT_PREFIX.to_vec(),
+        presto::TECH_ACCOUNT_BUFFER.to_vec(),
+    );
+
+    technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account_id)
+}
+
+pub fn register_presto_assets<T: Config>() -> DispatchResult {
     let system_account_id = system_asset_account_id::<T>()?;
     let presto_account_id = presto_main_account_id::<T>()?;
+    let presto_buffer_account_id = presto_buffer_account_id::<T>()?;
+
+    let now = pallet_timestamp::Pallet::<T>::now();
 
     frame_system::Pallet::<T>::inc_providers(&presto_account_id);
 
@@ -69,25 +82,92 @@ pub fn register_presto_usd<T: Config>() -> DispatchResult {
         DEFAULT_BALANCE_PRECISION,
         0,
         true,
-        AssetType::Regular, // TODO change to Regulated after adding of KYC SB token
+        AssetType::Regulated,
         None,
         None,
     )?;
 
-    let scope = Scope::Limited(common::hash(&PRUSD));
+    T::AssetManager::register_asset_id(
+        system_account_id.clone(),
+        SBT_PRACS.into_predefined().into(),
+        AssetSymbol(b"PRACS".to_vec()),
+        AssetName(b"Presto Access".to_vec()),
+        0,
+        0,
+        true,
+        AssetType::Soulbound,
+        None,
+        None,
+    )?;
+    T::ExtendedAssetsManager::set_metadata(&SBT_PRACS.into_predefined().into(), None, now);
+    T::ExtendedAssetsManager::bind_regulated_asset_to_sbt_asset(
+        &SBT_PRACS.into_predefined().into(),
+        &PRUSD.into(),
+    )?;
+
+    T::AssetManager::mint_to(
+        &SBT_PRACS.into_predefined().into(),
+        &system_account_id,
+        &presto_account_id,
+        1,
+    )?;
+    T::AssetManager::mint_to(
+        &SBT_PRACS.into_predefined().into(),
+        &system_account_id,
+        &presto_buffer_account_id,
+        1,
+    )?;
+
+    T::AssetManager::register_asset_id(
+        system_account_id.clone(),
+        SBT_PRINVST.into_predefined().into(),
+        AssetSymbol(b"PRINVST".to_vec()),
+        AssetName(b"Presto Investor".to_vec()),
+        0,
+        0,
+        true,
+        AssetType::Soulbound,
+        None,
+        None,
+    )?;
+    T::ExtendedAssetsManager::set_metadata(&SBT_PRINVST.into_predefined().into(), None, now);
+
+    T::AssetManager::register_asset_id(
+        system_account_id.clone(),
+        SBT_PRCRDT.into_predefined().into(),
+        AssetSymbol(b"PRCRDT".to_vec()),
+        AssetName(b"Presto Creditor".to_vec()),
+        0,
+        0,
+        true,
+        AssetType::Soulbound,
+        None,
+        None,
+    )?;
+    T::ExtendedAssetsManager::set_metadata(&SBT_PRCRDT.into_predefined().into(), None, now);
+
+    let scopes = [
+        Scope::Limited(common::hash(&PRUSD)),
+        Scope::Limited(common::hash(&SBT_PRACS)),
+        Scope::Limited(common::hash(&SBT_PRINVST)),
+        Scope::Limited(common::hash(&SBT_PRCRDT)),
+    ];
+
     let permission_ids = [MINT, BURN];
 
-    for permission_id in &permission_ids {
-        let permission_owner = permissions::Owners::<T>::get(permission_id, scope)
-            .pop()
-            .unwrap_or(system_account_id.clone());
+    for scope in scopes {
+        for permission_id in &permission_ids {
+            let permission_owner = permissions::Owners::<T>::get(permission_id, scope)
+                .pop()
+                .unwrap_or(system_account_id.clone());
 
-        permissions::Pallet::<T>::grant_permission_with_scope(
-            permission_owner,
-            presto_account_id.clone(),
-            *permission_id,
-            scope,
-        )?;
+            permissions::Pallet::<T>::grant_permission_with_scope(
+                permission_owner,
+                presto_account_id.clone(),
+                *permission_id,
+                scope,
+            )?;
+        }
     }
 
     let dex_id: DexIdOf<T> = DEXId::PolkaswapPresto.into();
@@ -98,10 +178,17 @@ pub fn register_presto_usd<T: Config>() -> DispatchResult {
             DEXInfo {
                 base_asset_id: PRUSD.into(),
                 synthetic_base_asset_id: XST.into(),
-                is_public: true,
+                is_public: false,
             },
         );
     }
+
+    permissions::Pallet::<T>::assign_permission(
+        system_account_id,
+        &presto_account_id,
+        MANAGE_DEX,
+        Scope::Limited(common::hash(&DEXId::PolkaswapPresto)),
+    )?;
 
     Ok(())
 }
