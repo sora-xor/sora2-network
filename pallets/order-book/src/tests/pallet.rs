@@ -84,12 +84,12 @@ fn should_register_technical_account() {
 
         // register (on order book creation)
         for order_book_id in order_books {
-            assert_ok!(OrderBookPallet::register_tech_account(order_book_id));
+            assert_ok!(OrderBookPallet::register_tech_account(&order_book_id));
         }
 
         // deregister (on order book removal)
         for order_book_id in order_books {
-            assert_ok!(OrderBookPallet::deregister_tech_account(order_book_id));
+            assert_ok!(OrderBookPallet::deregister_tech_account(&order_book_id));
         }
     });
 }
@@ -104,7 +104,7 @@ fn test_lock_unlock_same_account(
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         account,
-        order_book_id,
+        &order_book_id,
         asset_id,
         amount_to_lock.into()
     ));
@@ -114,7 +114,7 @@ fn test_lock_unlock_same_account(
 
     assert_ok!(OrderBookPallet::unlock_liquidity(
         account,
-        order_book_id,
+        &order_book_id,
         asset_id,
         amount_to_lock.into()
     ));
@@ -135,7 +135,7 @@ fn test_lock_unlock_other_account(
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         lock_account,
-        order_book_id,
+        &order_book_id,
         asset_id,
         amount_to_lock.into()
     ));
@@ -148,7 +148,7 @@ fn test_lock_unlock_other_account(
 
     assert_ok!(OrderBookPallet::unlock_liquidity(
         unlock_account,
-        order_book_id,
+        &order_book_id,
         asset_id,
         amount_to_lock.into()
     ));
@@ -174,7 +174,7 @@ fn test_lock_unlock_other_accounts(
 
     assert_ok!(OrderBookPallet::lock_liquidity(
         lock_account,
-        order_book_id,
+        &order_book_id,
         asset_id,
         amount_to_lock.into()
     ));
@@ -194,7 +194,7 @@ fn test_lock_unlock_other_accounts(
     ]);
 
     assert_ok!(OrderBookPallet::unlock_liquidity_batch(
-        order_book_id,
+        &order_book_id,
         asset_id,
         &unlocks
     ));
@@ -229,7 +229,7 @@ fn should_lock_unlock_base_asset() {
             base: VAL,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
         test_lock_unlock_same_account(
@@ -277,7 +277,7 @@ fn should_lock_unlock_other_asset() {
             base: VAL,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
         test_lock_unlock_same_account(
@@ -323,7 +323,7 @@ fn should_lock_unlock_indivisible_nft() {
             base: nft,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         // Alice -> Alice (expected on order cancellation)
         test_lock_unlock_same_account(order_book_id, &nft, 1, &accounts::alice::<Runtime>());
@@ -364,7 +364,7 @@ fn should_lock_unlock_multiple_indivisible_nfts() {
             base: nft,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         // Alice -> Bob & Charlie
         test_lock_unlock_other_accounts(
@@ -395,12 +395,12 @@ fn should_not_lock_insufficient_base_asset() {
             base: VAL,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         assert_err!(
             OrderBookPallet::lock_liquidity(
                 &accounts::alice::<Runtime>(),
-                order_book_id,
+                &order_book_id,
                 &XOR,
                 amount_to_lock.into()
             ),
@@ -426,12 +426,12 @@ fn should_not_lock_insufficient_other_asset() {
             base: VAL,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         assert_err!(
             OrderBookPallet::lock_liquidity(
                 &accounts::alice::<Runtime>(),
-                order_book_id,
+                &order_book_id,
                 &VAL,
                 amount_to_lock.into()
             ),
@@ -465,12 +465,12 @@ fn should_not_lock_insufficient_nft() {
             base: nft,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         assert_err!(
             OrderBookPallet::lock_liquidity(
                 &caller,
-                order_book_id,
+                &order_book_id,
                 &nft,
                 OrderVolume::indivisible(1)
             ),
@@ -497,11 +497,11 @@ fn should_not_unlock_more_base_that_tech_account_has() {
             base: VAL,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         assert_ok!(OrderBookPallet::lock_liquidity(
             &accounts::alice::<Runtime>(),
-            order_book_id,
+            &order_book_id,
             &XOR,
             amount_to_lock.into()
         ));
@@ -509,7 +509,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
         assert_err!(
             OrderBookPallet::unlock_liquidity(
                 &accounts::alice::<Runtime>(),
-                order_book_id,
+                &order_book_id,
                 &XOR,
                 amount_to_try_unlock.into()
             ),
@@ -536,11 +536,11 @@ fn should_not_unlock_more_other_that_tech_account_has() {
             base: VAL,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         assert_ok!(OrderBookPallet::lock_liquidity(
             &accounts::alice::<Runtime>(),
-            order_book_id,
+            &order_book_id,
             &VAL,
             amount_to_lock.into()
         ));
@@ -548,7 +548,7 @@ fn should_not_unlock_more_other_that_tech_account_has() {
         assert_err!(
             OrderBookPallet::unlock_liquidity(
                 &accounts::alice::<Runtime>(),
-                order_book_id,
+                &order_book_id,
                 &VAL,
                 amount_to_try_unlock.into()
             ),
@@ -582,12 +582,12 @@ fn should_not_unlock_more_nft_that_tech_account_has() {
             base: nft,
             quote: XOR,
         };
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         assert_err!(
             OrderBookPallet::unlock_liquidity(
                 &accounts::alice::<Runtime>(),
-                order_book_id,
+                &order_book_id,
                 &nft,
                 OrderVolume::indivisible(1)
             ),

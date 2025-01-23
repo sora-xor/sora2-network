@@ -62,9 +62,9 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-#[cfg(feature = "wip")] // presto
-use common::PRUSD;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
+#[cfg(feature = "wip")] // presto
+use common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -1557,6 +1557,7 @@ impl qa_tools::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type SyntheticInfoProvider = XSTPool;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type ExtendedAssetsManager = ExtendedAssets;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
 }
@@ -2512,6 +2513,9 @@ impl extended_assets::Config for Runtime {
 #[cfg(feature = "wip")] // presto
 parameter_types! {
     pub const PrestoUsdAssetId: AssetId = PRUSD;
+    pub PrestoKycAssetId: AssetId = SBT_PRACS.into_predefined();
+    pub PrestoKycInvestorAssetId: AssetId = SBT_PRINVST.into_predefined();
+    pub PrestoKycCreditorAssetId: AssetId = SBT_PRCRDT.into_predefined();
     pub PrestoTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             presto::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -2531,7 +2535,11 @@ impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type OrderBookManager = OrderBook;
+    type ExtendedAssetsManager = ExtendedAssets;
     type PrestoUsdAssetId = PrestoUsdAssetId;
+    type PrestoKycAssetId = PrestoKycAssetId;
+    type PrestoKycInvestorAssetId = PrestoKycInvestorAssetId;
+    type PrestoKycCreditorAssetId = PrestoKycCreditorAssetId;
     type PrestoTechAccount = PrestoTechAccountId;
     type PrestoBufferTechAccount = PrestoBufferTechAccountId;
     type RequestId = u64;
@@ -2675,7 +2683,7 @@ construct_runtime! {
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
-        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>, Config<T>} = 115,
 
         Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
     }

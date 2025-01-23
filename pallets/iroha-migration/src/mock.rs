@@ -146,6 +146,8 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
             None,
             None,
         )],
+        regulated_assets: Default::default(),
+        sbt_assets: Default::default(),
     }
     .assimilate_storage(&mut t)
     .unwrap();

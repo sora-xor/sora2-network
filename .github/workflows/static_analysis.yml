@@ -24,6 +24,8 @@ jobs:
         run: |
           sudo rm -rf /usr/local/share/boost
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get update 
+          sudo apt-get install protobuf-compiler -y
       
       # v2.7.1
       - uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
