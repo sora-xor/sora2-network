@@ -54,7 +54,7 @@ where
         );
 
         // Update storage version
-        StorageVersion::new(2).put::<Pallet<T>>();
+        StorageVersion::new(1).put::<Pallet<T>>();
 
         // Calculate and return weight
         <T as frame_system::Config>::DbWeight::get().reads_writes(
@@ -66,7 +66,7 @@ where
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
         ensure!(
-            Pallet::<T>::on_chain_storage_version() == 1,
+            Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0),
             "must upgrade linearly"
         );
         Ok(Vec::new()) // No state needed for pre-upgrade check
@@ -81,8 +81,8 @@ where
         );
 
         ensure!(
-            Pallet::<T>::on_chain_storage_version() == 2,
-            "should be upgraded to version 2"
+            Pallet::<T>::on_chain_storage_version() == StorageVersion::new(1),
+            "should be upgraded to version 1"
         );
         Ok(())
     }

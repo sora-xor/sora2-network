@@ -6100,7 +6100,7 @@ mod test {
             MigrateToV1::<Runtime>::on_runtime_upgrade();
             assert_eq!(
                 pallet::Pallet::<Runtime>::on_chain_storage_version(),
-                StorageVersion::new(2)
+                StorageVersion::new(1)
             );
         });
     }
@@ -6115,6 +6115,11 @@ mod test {
 
             // Run the migration logic
             let weight = MigrateToV1::<Runtime>::on_runtime_upgrade();
+
+            assert_eq!(
+                pallet::Pallet::<Runtime>::on_chain_storage_version(),
+                StorageVersion::new(1)
+            );
 
             // The returned weight should be zero, indicating no operations were performed
             assert_eq!(
