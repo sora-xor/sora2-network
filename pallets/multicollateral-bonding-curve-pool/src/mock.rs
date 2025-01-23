@@ -386,7 +386,6 @@ impl MockDEXApi {
                 )?;
                 let reserves_account_id =
                     &Technical::tech_account_id_to_account_id(&ReservesAccount::get())?;
-                println!("In: {desired_amount_in}");
                 assert_ne!(desired_amount_in, 0);
                 let old = Assets::total_balance(input_asset_id, sender)?;
                 Assets::transfer_from(
