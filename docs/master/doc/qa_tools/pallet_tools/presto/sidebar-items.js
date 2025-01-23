@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["register_presto_usd"]};
+window.SIDEBAR_ITEMS = {"fn":["register_presto_assets"]};

@@ -120,6 +120,93 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -154,10 +241,11 @@
 
 <span class="kw">use </span>common::{
     AccountIdOf, AssetManager, AssetName, AssetSymbol, AssetType, DEXId, DEXInfo, DexIdOf,
-    FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, XST,
+    ExtendedAssetsManager, FromGenericPair, DEFAULT_BALANCE_PRECISION, PRUSD, SBT_PRACS,
+    SBT_PRCRDT, SBT_PRINVST, XST,
 };
 <span class="kw">use </span>frame_support::sp_runtime::{DispatchError, DispatchResult};
-<span class="kw">use </span>permissions::{Scope, BURN, MINT};
+<span class="kw">use </span>permissions::{Scope, BURN, MANAGE_DEX, MINT};
 
 <span class="kw">fn </span>system_asset_account_id&lt;T: Config&gt;() -&gt; <span class="prelude-ty">Result</span>&lt;AccountIdOf&lt;T&gt;, DispatchError&gt; {
     <span class="kw">let </span>assets_and_permissions_tech_account_id = T::TechAccountId::from_generic_pair(
@@ -177,9 +265,21 @@
     technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_account_id)
 }
 
-<span class="kw">pub fn </span>register_presto_usd&lt;T: Config&gt;() -&gt; DispatchResult {
+<span class="kw">fn </span>presto_buffer_account_id&lt;T: Config&gt;() -&gt; <span class="prelude-ty">Result</span>&lt;AccountIdOf&lt;T&gt;, DispatchError&gt; {
+    <span class="kw">let </span>tech_account_id = T::TechAccountId::from_generic_pair(
+        presto::TECH_ACCOUNT_PREFIX.to_vec(),
+        presto::TECH_ACCOUNT_BUFFER.to_vec(),
+    );
+
+    technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_account_id)
+}
+
+<span class="kw">pub fn </span>register_presto_assets&lt;T: Config&gt;() -&gt; DispatchResult {
     <span class="kw">let </span>system_account_id = system_asset_account_id::&lt;T&gt;()<span class="question-mark">?</span>;
     <span class="kw">let </span>presto_account_id = presto_main_account_id::&lt;T&gt;()<span class="question-mark">?</span>;
+    <span class="kw">let </span>presto_buffer_account_id = presto_buffer_account_id::&lt;T&gt;()<span class="question-mark">?</span>;
+
+    <span class="kw">let </span>now = pallet_timestamp::Pallet::&lt;T&gt;::now();
 
     frame_system::Pallet::&lt;T&gt;::inc_providers(<span class="kw-2">&amp;</span>presto_account_id);
 
@@ -191,25 +291,92 @@
         DEFAULT_BALANCE_PRECISION,
         <span class="number">0</span>,
         <span class="bool-val">true</span>,
-        AssetType::Regular, <span class="comment">// TODO change to Regulated after adding of KYC SB token
-        </span><span class="prelude-val">None</span>,
+        AssetType::Regulated,
+        <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
     )<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>scope = Scope::Limited(common::hash(<span class="kw-2">&amp;</span>PRUSD));
+    T::AssetManager::register_asset_id(
+        system_account_id.clone(),
+        SBT_PRACS.into_predefined().into(),
+        AssetSymbol(<span class="string">b&quot;PRACS&quot;</span>.to_vec()),
+        AssetName(<span class="string">b&quot;Presto Access&quot;</span>.to_vec()),
+        <span class="number">0</span>,
+        <span class="number">0</span>,
+        <span class="bool-val">true</span>,
+        AssetType::Soulbound,
+        <span class="prelude-val">None</span>,
+        <span class="prelude-val">None</span>,
+    )<span class="question-mark">?</span>;
+    T::ExtendedAssetsManager::set_metadata(<span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(), <span class="prelude-val">None</span>, now);
+    T::ExtendedAssetsManager::bind_regulated_asset_to_sbt_asset(
+        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
+        <span class="kw-2">&amp;</span>PRUSD.into(),
+    )<span class="question-mark">?</span>;
+
+    T::AssetManager::mint_to(
+        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
+        <span class="kw-2">&amp;</span>system_account_id,
+        <span class="kw-2">&amp;</span>presto_account_id,
+        <span class="number">1</span>,
+    )<span class="question-mark">?</span>;
+    T::AssetManager::mint_to(
+        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
+        <span class="kw-2">&amp;</span>system_account_id,
+        <span class="kw-2">&amp;</span>presto_buffer_account_id,
+        <span class="number">1</span>,
+    )<span class="question-mark">?</span>;
+
+    T::AssetManager::register_asset_id(
+        system_account_id.clone(),
+        SBT_PRINVST.into_predefined().into(),
+        AssetSymbol(<span class="string">b&quot;PRINVST&quot;</span>.to_vec()),
+        AssetName(<span class="string">b&quot;Presto Investor&quot;</span>.to_vec()),
+        <span class="number">0</span>,
+        <span class="number">0</span>,
+        <span class="bool-val">true</span>,
+        AssetType::Soulbound,
+        <span class="prelude-val">None</span>,
+        <span class="prelude-val">None</span>,
+    )<span class="question-mark">?</span>;
+    T::ExtendedAssetsManager::set_metadata(<span class="kw-2">&amp;</span>SBT_PRINVST.into_predefined().into(), <span class="prelude-val">None</span>, now);
+
+    T::AssetManager::register_asset_id(
+        system_account_id.clone(),
+        SBT_PRCRDT.into_predefined().into(),
+        AssetSymbol(<span class="string">b&quot;PRCRDT&quot;</span>.to_vec()),
+        AssetName(<span class="string">b&quot;Presto Creditor&quot;</span>.to_vec()),
+        <span class="number">0</span>,
+        <span class="number">0</span>,
+        <span class="bool-val">true</span>,
+        AssetType::Soulbound,
+        <span class="prelude-val">None</span>,
+        <span class="prelude-val">None</span>,
+    )<span class="question-mark">?</span>;
+    T::ExtendedAssetsManager::set_metadata(<span class="kw-2">&amp;</span>SBT_PRCRDT.into_predefined().into(), <span class="prelude-val">None</span>, now);
+
+    <span class="kw">let </span>scopes = [
+        Scope::Limited(common::hash(<span class="kw-2">&amp;</span>PRUSD)),
+        Scope::Limited(common::hash(<span class="kw-2">&amp;</span>SBT_PRACS)),
+        Scope::Limited(common::hash(<span class="kw-2">&amp;</span>SBT_PRINVST)),
+        Scope::Limited(common::hash(<span class="kw-2">&amp;</span>SBT_PRCRDT)),
+    ];
+
     <span class="kw">let </span>permission_ids = [MINT, BURN];
 
-    <span class="kw">for </span>permission_id <span class="kw">in </span><span class="kw-2">&amp;</span>permission_ids {
-        <span class="kw">let </span>permission_owner = permissions::Owners::&lt;T&gt;::get(permission_id, scope)
-            .pop()
-            .unwrap_or(system_account_id.clone());
+    <span class="kw">for </span>scope <span class="kw">in </span>scopes {
+        <span class="kw">for </span>permission_id <span class="kw">in </span><span class="kw-2">&amp;</span>permission_ids {
+            <span class="kw">let </span>permission_owner = permissions::Owners::&lt;T&gt;::get(permission_id, scope)
+                .pop()
+                .unwrap_or(system_account_id.clone());
 
-        permissions::Pallet::&lt;T&gt;::grant_permission_with_scope(
-            permission_owner,
-            presto_account_id.clone(),
-            <span class="kw-2">*</span>permission_id,
-            scope,
-        )<span class="question-mark">?</span>;
+            permissions::Pallet::&lt;T&gt;::grant_permission_with_scope(
+                permission_owner,
+                presto_account_id.clone(),
+                <span class="kw-2">*</span>permission_id,
+                scope,
+            )<span class="question-mark">?</span>;
+        }
     }
 
     <span class="kw">let </span>dex_id: DexIdOf&lt;T&gt; = DEXId::PolkaswapPresto.into();
@@ -220,10 +387,17 @@
             DEXInfo {
                 base_asset_id: PRUSD.into(),
                 synthetic_base_asset_id: XST.into(),
-                is_public: <span class="bool-val">true</span>,
+                is_public: <span class="bool-val">false</span>,
             },
         );
     }
+
+    permissions::Pallet::&lt;T&gt;::assign_permission(
+        system_account_id,
+        <span class="kw-2">&amp;</span>presto_account_id,
+        MANAGE_DEX,
+        Scope::Limited(common::hash(<span class="kw-2">&amp;</span>DEXId::PolkaswapPresto)),
+    )<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }

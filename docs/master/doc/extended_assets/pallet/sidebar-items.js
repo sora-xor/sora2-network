@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["Pallet"],"trait":["Config"],"type":["Module","RegulatedAssetToSoulboundAsset","SBTExpiration","SoulboundAsset"]};
+window.SIDEBAR_ITEMS = {"enum":["Call","Error","Event"],"struct":["GenesisConfig","Pallet"],"trait":["Config"],"type":["Module","RegulatedAssetToSoulboundAsset","SBTExpiration","SoulboundAsset"]};

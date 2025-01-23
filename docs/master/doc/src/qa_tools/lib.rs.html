@@ -486,6 +486,15 @@
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -546,8 +555,8 @@
 
     <span class="kw">use </span>common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, OrderBookId,
-        SyntheticInfoProvider, TradingPairSourceManager,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, ExtendedAssetsManager,
+        OrderBookId, SyntheticInfoProvider, TradingPairSourceManager,
     };
     <span class="kw">use </span>frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
@@ -588,6 +597,11 @@
         <span class="kw">type </span>DexInfoProvider: DexInfoProvider&lt;<span class="self">Self</span>::DEXId, DEXInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;&gt;;
         <span class="kw">type </span>SyntheticInfoProvider: SyntheticInfoProvider&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>ExtendedAssetsManager: ExtendedAssetsManager&lt;
+            AssetIdOf&lt;<span class="self">Self</span>&gt;,
+            <span class="self">Self</span>::Moment,
+            ContentSource,
+        &gt;;
         <span class="kw">type </span>Symbol: From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>band::Config&gt;::Symbol&gt;
             + From&lt;&lt;<span class="self">Self </span><span class="kw">as </span>xst::Config&gt;::Symbol&gt;
             + Into&lt;&lt;<span class="self">Self </span><span class="kw">as </span>xst::Config&gt;::Symbol&gt;
@@ -669,6 +683,10 @@
         </span><span class="doccomment">/// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         /// You can use `price_tools_set_asset_price` extrinsic to set its price.
         </span>ReferenceAssetPriceNotFound,
+
+        <span class="comment">// presto errors
+        </span><span class="doccomment">/// Cannot initialize SBT metadata with the list of regulated assets
+        </span>FailToInitializeRegulatedAssets,
     }
 
     <span class="attr">#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -948,7 +966,7 @@
         </span><span class="kw">pub fn </span>presto_initialize_assets(origin: OriginFor&lt;T&gt;) -&gt; DispatchResultWithPostInfo {
             ensure_root(origin)<span class="question-mark">?</span>;
 
-            pallet_tools::presto::register_presto_usd::&lt;T&gt;()<span class="question-mark">?</span>;
+            pallet_tools::presto::register_presto_assets::&lt;T&gt;()<span class="question-mark">?</span>;
 
             <span class="comment">// Extrinsic is only for testing, so we return all fees
             // for simplicity.

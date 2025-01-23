@@ -3600,6 +3600,14 @@
 <a href="#3585" id="3585">3585</a>
 <a href="#3586" id="3586">3586</a>
 <a href="#3587" id="3587">3587</a>
+<a href="#3588" id="3588">3588</a>
+<a href="#3589" id="3589">3589</a>
+<a href="#3590" id="3590">3590</a>
+<a href="#3591" id="3591">3591</a>
+<a href="#3592" id="3592">3592</a>
+<a href="#3593" id="3593">3593</a>
+<a href="#3594" id="3594">3594</a>
+<a href="#3595" id="3595">3595</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3664,9 +3672,9 @@
 </span><span class="kw">use </span>bridge_types::U256;
 <span class="kw">use </span>common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
-</span><span class="kw">use </span>common::PRUSD;
 <span class="kw">use </span>common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
+<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+</span><span class="kw">use </span>common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::EitherOf;
@@ -5159,6 +5167,7 @@
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>SyntheticInfoProvider = XSTPool;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>ExtendedAssetsManager = ExtendedAssets;
     <span class="kw">type </span>WeightInfo = qa_tools::weights::SubstrateWeight&lt;Runtime&gt;;
     <span class="kw">type </span>Symbol = &lt;Runtime <span class="kw">as </span>band::Config&gt;::Symbol;
 }
@@ -6113,6 +6122,9 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
 </span><span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>PrestoUsdAssetId: AssetId = PRUSD;
+    <span class="kw">pub </span>PrestoKycAssetId: AssetId = SBT_PRACS.into_predefined();
+    <span class="kw">pub </span>PrestoKycInvestorAssetId: AssetId = SBT_PRINVST.into_predefined();
+    <span class="kw">pub </span>PrestoKycCreditorAssetId: AssetId = SBT_PRCRDT.into_predefined();
     <span class="kw">pub </span>PrestoTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             presto::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -6132,7 +6144,11 @@
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>OrderBookManager = OrderBook;
+    <span class="kw">type </span>ExtendedAssetsManager = ExtendedAssets;
     <span class="kw">type </span>PrestoUsdAssetId = PrestoUsdAssetId;
+    <span class="kw">type </span>PrestoKycAssetId = PrestoKycAssetId;
+    <span class="kw">type </span>PrestoKycInvestorAssetId = PrestoKycInvestorAssetId;
+    <span class="kw">type </span>PrestoKycCreditorAssetId = PrestoKycCreditorAssetId;
     <span class="kw">type </span>PrestoTechAccount = PrestoTechAccountId;
     <span class="kw">type </span>PrestoBufferTechAccount = PrestoBufferTechAccountId;
     <span class="kw">type </span>RequestId = u64;
@@ -6276,7 +6292,7 @@
         </span>QaTools: qa_tools::{Pallet, Call, Event&lt;T&gt;} = <span class="number">112</span>,
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">114</span>,
-        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">115</span>,
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event&lt;T&gt;, Config&lt;T&gt;} = <span class="number">115</span>,
 
         Soratopia: soratopia::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">116</span>,
     }

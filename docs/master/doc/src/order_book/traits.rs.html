@@ -461,7 +461,7 @@
     /// The assets are taken from `account`.
     </span><span class="kw">fn </span>lock_liquidity(
         account: <span class="kw-2">&amp;</span>AccountId,
-        order_book_id: OrderBookId&lt;AssetId, DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetId, DEXId&gt;,
         asset_id: <span class="kw-2">&amp;</span>AssetId,
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
@@ -472,13 +472,13 @@
     /// The assets are taken from `account`.
     </span><span class="kw">fn </span>unlock_liquidity(
         account: <span class="kw-2">&amp;</span>AccountId,
-        order_book_id: OrderBookId&lt;AssetId, DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetId, DEXId&gt;,
         asset_id: <span class="kw-2">&amp;</span>AssetId,
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;
 
     <span class="kw">fn </span>unlock_liquidity_batch(
-        order_book_id: OrderBookId&lt;AssetId, DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetId, DEXId&gt;,
         asset_id: <span class="kw-2">&amp;</span>AssetId,
         receivers: <span class="kw-2">&amp;</span>BTreeMap&lt;AccountId, OrderVolume&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt;;

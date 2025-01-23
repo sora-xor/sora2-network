@@ -1919,6 +1919,14 @@
 <a href="#1904" id="1904">1904</a>
 <a href="#1905" id="1905">1905</a>
 <a href="#1906" id="1906">1906</a>
+<a href="#1907" id="1907">1907</a>
+<a href="#1908" id="1908">1908</a>
+<a href="#1909" id="1909">1909</a>
+<a href="#1910" id="1910">1910</a>
+<a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
+<a href="#1913" id="1913">1913</a>
+<a href="#1914" id="1914">1914</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2575,7 +2583,7 @@
                 LiquiditySourceType::OrderBook,
             )<span class="question-mark">?</span>;
 
-            <span class="self">Self</span>::deregister_tech_account(order_book_id)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::deregister_tech_account(<span class="kw-2">&amp;</span>order_book_id)<span class="question-mark">?</span>;
             &lt;OrderBooks&lt;T&gt;&gt;::remove(order_book_id);
 
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::OrderBookDeleted { order_book_id });
@@ -2913,7 +2921,7 @@
 <span class="kw">impl</span>&lt;T: Config&gt; CurrencyLocker&lt;T::AccountId, AssetIdOf&lt;T&gt;, T::DEXId, DispatchError&gt; <span class="kw">for </span>Pallet&lt;T&gt; {
     <span class="kw">fn </span>lock_liquidity(
         account: <span class="kw-2">&amp;</span>T::AccountId,
-        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
@@ -2927,7 +2935,7 @@
 {
     <span class="kw">fn </span>unlock_liquidity(
         account: <span class="kw-2">&amp;</span>T::AccountId,
-        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         amount: OrderVolume,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
@@ -2936,7 +2944,7 @@
     }
 
     <span class="kw">fn </span>unlock_liquidity_batch(
-        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
         asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
         receivers: <span class="kw-2">&amp;</span>BTreeMap&lt;T::AccountId, OrderVolume&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
@@ -3073,9 +3081,9 @@
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="kw">pub fn </span>tech_account_for_order_book(
-        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
     ) -&gt; &lt;T <span class="kw">as </span>technical::Config&gt;::TechAccountId {
-        <span class="kw">let </span>trading_pair: TradingPair&lt;AssetIdOf&lt;T&gt;&gt; = order_book_id.into();
+        <span class="kw">let </span>trading_pair: TradingPair&lt;AssetIdOf&lt;T&gt;&gt; = (<span class="kw-2">*</span>order_book_id).into();
         <span class="comment">// Same as in xyk accounts
         </span><span class="kw">let </span>tech_pair = trading_pair.map(|a| a.into());
         &lt;T <span class="kw">as </span>technical::Config&gt;::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
@@ -3087,7 +3095,7 @@
     <span class="doccomment">/// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
     </span><span class="kw">pub fn </span>register_tech_account(
-        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
         technical::Pallet::&lt;T&gt;::register_tech_account_id(tech_account)
@@ -3096,7 +3104,7 @@
     <span class="doccomment">/// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
     </span><span class="kw">pub fn </span>deregister_tech_account(
-        order_book_id: OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
         <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
         technical::Pallet::&lt;T&gt;::deregister_tech_account_id(tech_account)
@@ -3259,7 +3267,7 @@
             )
         };
         &lt;OrderBooks&lt;T&gt;&gt;::insert(order_book_id, order_book);
-        <span class="self">Self</span>::register_tech_account(<span class="kw-2">*</span>order_book_id)
+        <span class="self">Self</span>::register_tech_account(order_book_id)
     }
 
     <span class="kw">pub fn </span>inner_create_orderbook(
@@ -3350,6 +3358,14 @@
         output_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;&gt; {
         <span class="self">Self</span>::assemble_order_book_id(dex_id, input_asset_id, output_asset_id)
+    }
+
+    <span class="kw">fn </span>tech_account_id_for_order_book(
+        order_book_id: <span class="kw-2">&amp;</span>OrderBookId&lt;AssetIdOf&lt;T&gt;, T::DEXId&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;T::AccountId, DispatchError&gt; {
+        <span class="kw">let </span>tech_account = <span class="self">Self</span>::tech_account_for_order_book(order_book_id);
+        <span class="kw">let </span>account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>tech_account)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(account_id)
     }
 
     <span class="kw">fn </span>initialize_orderbook(
