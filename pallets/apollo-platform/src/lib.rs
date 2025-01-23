@@ -14,15 +14,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-/// Storage version.
-#[derive(Encode, Decode, Eq, PartialEq, Debug, scale_info::TypeInfo)]
-pub enum StorageVersion {
-    /// Initial version
-    V1,
-    /// After migration
-    V2,
-}
-
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 pub struct LendingPosition<BlockNumberFor> {
@@ -67,18 +58,17 @@ pub mod migrations;
 
 #[frame_support::pallet]
 pub mod pallet {
-    use crate::{
-        migrations, BorrowingPosition, LendingPosition, PoolInfo, StorageVersion, WeightInfo,
-    };
+    use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
         balance, AssetIdOf, AssetManager, DEXId, LiquiditySourceFilter, PriceVariant,
         CERES_ASSET_ID, DAI, KUSD,
     };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
-    use frame_support::log::{debug, info, warn};
+    use frame_support::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
+    use frame_support::traits::StorageVersion;
     use frame_support::PalletId;
     use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
     use frame_system::pallet_prelude::*;
@@ -120,21 +110,14 @@ pub mod pallet {
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
+    /// The current storage version.
+    pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::type_value]
-    pub fn DefaultForPalletStorageVersion<T: Config>() -> StorageVersion {
-        StorageVersion::V1
-    }
-
-    /// Pallet storage version
-    #[pallet::storage]
-    #[pallet::getter(fn pallet_storage_version)]
-    pub type PalletStorageVersion<T: Config> =
-        StorageValue<_, StorageVersion, ValueQuery, DefaultForPalletStorageVersion<T>>;
 
     /// Lent asset -> AccountId -> LendingPosition
     #[pallet::storage]
@@ -1453,22 +1436,6 @@ pub mod pallet {
                     .reads(4)
                     .saturating_add(T::DbWeight::get().writes(2)),
             )
-        }
-
-        fn on_runtime_upgrade() -> Weight {
-            if Self::pallet_storage_version() == StorageVersion::V1 {
-                sp_runtime::runtime_logger::RuntimeLogger::init();
-                info!("Applying migration on version 1: Migrating to version 2");
-
-                if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
-                    warn!("Failed to migrate: {}", err);
-                } else {
-                    PalletStorageVersion::<T>::put(StorageVersion::V2);
-                }
-                <T as frame_system::Config>::BlockWeights::get().max_block
-            } else {
-                Weight::zero()
-            }
         }
 
         /// Off-chain worker procedure - calls liquidations

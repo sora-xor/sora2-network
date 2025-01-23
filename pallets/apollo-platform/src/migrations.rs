@@ -1,44 +1,89 @@
-use crate::{Config, UserBorrowingInfo, UserTotalCollateral};
+use crate::{Config, Pallet, UserBorrowingInfo, UserTotalCollateral};
 use common::prelude::Balance;
-use frame_support::log;
+use frame_support::log::{error, info};
+use frame_support::pallet_prelude::*;
+use frame_support::traits::OnRuntimeUpgrade;
+use frame_support::traits::StorageVersion;
 use sp_runtime::traits::Zero;
 
-/// Migration to convert existing borrowing information to the new UserTotalCollateral storage
-pub fn migrate<T: Config>() -> Result<(), &'static str> {
-    // Create a new storage for total collateral
-    <UserBorrowingInfo<T>>::iter().for_each(|(_, user, old_borrowing_map)| {
-        old_borrowing_map
-            .iter()
-            .for_each(|(collateral_asset, borrow_info)| {
-                // Calculate total collateral for this user and asset
-                let additional_collateral = borrow_info.collateral_amount;
+pub struct MigrateToV1<T>(core::marker::PhantomData<T>);
 
-                // Skip if there's no additional collateral amount
-                if additional_collateral > Balance::zero() {
-                    // Retrieve the current total collateral if it exists
-                    let current_total_collateral =
-                        <UserTotalCollateral<T>>::get(&user, collateral_asset)
-                            .unwrap_or_else(Zero::zero);
+impl<T> OnRuntimeUpgrade for MigrateToV1<T>
+where
+    T: Config,
+{
+    fn on_runtime_upgrade() -> frame_support::weights::Weight {
+        if Pallet::<T>::on_chain_storage_version() != StorageVersion::new(0) {
+            error!(
+                "Runtime upgrade executed with wrong storage version, expected 0, got {:?}",
+                Pallet::<T>::on_chain_storage_version()
+            );
+            return <T as frame_system::Config>::DbWeight::get().reads(1);
+        }
 
-                    // Add the additional collateral to the current total
-                    let updated_total_collateral =
-                        current_total_collateral.saturating_add(additional_collateral);
+        info!("Applying migration to version 2: Convert borrowing info to total collateral");
 
-                    // Update or insert the new total collateral amount
-                    <UserTotalCollateral<T>>::insert(
-                        user.clone(),
-                        collateral_asset,
-                        updated_total_collateral,
-                    );
-                }
-            });
-    });
+        // Perform migration
+        <UserBorrowingInfo<T>>::iter().for_each(|(_, user, old_borrowing_map)| {
+            old_borrowing_map
+                .iter()
+                .for_each(|(collateral_asset, borrow_info)| {
+                    let additional_collateral = borrow_info.collateral_amount;
 
-    let total_migrated_entries = <UserTotalCollateral<T>>::iter().count();
-    log::info!(
-        "Migrated {} user total collateral entries",
-        total_migrated_entries
-    );
+                    if additional_collateral > Balance::zero() {
+                        let current_total_collateral =
+                            <UserTotalCollateral<T>>::get(&user, collateral_asset)
+                                .unwrap_or_else(Zero::zero);
 
-    Ok(())
+                        let updated_total_collateral =
+                            current_total_collateral.saturating_add(additional_collateral);
+
+                        <UserTotalCollateral<T>>::insert(
+                            user.clone(),
+                            collateral_asset,
+                            updated_total_collateral,
+                        );
+                    }
+                });
+        });
+
+        let total_migrated_entries = <UserTotalCollateral<T>>::iter().count();
+        info!(
+            "Migrated {} user total collateral entries",
+            total_migrated_entries
+        );
+
+        // Update storage version
+        StorageVersion::new(2).put::<Pallet<T>>();
+
+        // Calculate and return weight
+        <T as frame_system::Config>::DbWeight::get().reads_writes(
+            total_migrated_entries as u64 * 2, // read old and new storage
+            total_migrated_entries as u64,     // write new storage
+        )
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        ensure!(
+            Pallet::<T>::on_chain_storage_version() == 1,
+            "must upgrade linearly"
+        );
+        Ok(Vec::new()) // No state needed for pre-upgrade check
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        let total_migrated_entries = <UserTotalCollateral<T>>::iter().count();
+        ensure!(
+            total_migrated_entries > 0,
+            "No entries migrated during upgrade"
+        );
+
+        ensure!(
+            Pallet::<T>::on_chain_storage_version() == 2,
+            "should be upgraded to version 2"
+        );
+        Ok(())
+    }
 }

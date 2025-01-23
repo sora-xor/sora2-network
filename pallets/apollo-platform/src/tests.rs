@@ -1,4 +1,5 @@
 mod test {
+    use crate::migrations::MigrateToV1;
     use crate::UserBorrowingInfo;
     use crate::*;
     use crate::{mock::*, PoolInfo};
@@ -12,12 +13,13 @@ mod test {
         balance, AssetInfoProvider, Balance, DEXId, DEXId::Polkaswap, DAI, DOT, KSM, XOR,
     };
     use frame_support::pallet_prelude::Weight;
+    use frame_support::traits::GetStorageVersion;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::traits::StorageVersion;
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
     use sp_runtime::traits::AccountIdConversion;
-
-    use frame_support::traits::Hooks;
 
     fn get_pallet_account() -> AccountId {
         PalletId(*b"apollolb").into_account_truncating()
@@ -6092,13 +6094,13 @@ mod test {
             run_to_block(1);
             static_set_dex();
             assert_eq!(
-                pallet::Pallet::<Runtime>::pallet_storage_version(),
-                crate::StorageVersion::V1
+                pallet::Pallet::<Runtime>::on_chain_storage_version(),
+                StorageVersion::new(0)
             );
-            pallet::Pallet::<Runtime>::on_runtime_upgrade();
+            MigrateToV1::<Runtime>::on_runtime_upgrade();
             assert_eq!(
-                pallet::Pallet::<Runtime>::pallet_storage_version(),
-                crate::StorageVersion::V2
+                pallet::Pallet::<Runtime>::on_chain_storage_version(),
+                StorageVersion::new(2)
             );
         });
     }
@@ -6108,11 +6110,11 @@ mod test {
         // Build the test externalities
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            // Simulate that the migration has already been applied by setting the storage version to V2
-            PalletStorageVersion::<Runtime>::put(StorageVersion::V2);
+            // Simulate that the migration to V2
+            MigrateToV1::<Runtime>::on_runtime_upgrade();
 
             // Run the migration logic
-            let weight = pallet::Pallet::<Runtime>::on_runtime_upgrade();
+            let weight = MigrateToV1::<Runtime>::on_runtime_upgrade();
 
             // The returned weight should be zero, indicating no operations were performed
             assert_eq!(
@@ -6236,7 +6238,7 @@ mod test {
             <UserBorrowingInfo<Runtime>>::insert(XOR, alice(), borrow_info);
 
             // Run migration
-            pallet::Pallet::<Runtime>::on_runtime_upgrade();
+            MigrateToV1::<Runtime>::on_runtime_upgrade();
 
             // Post-migration assertions
 
@@ -6420,7 +6422,7 @@ mod test {
             );
 
             // Run migration
-            pallet::Pallet::<Runtime>::on_runtime_upgrade();
+            MigrateToV1::<Runtime>::on_runtime_upgrade();
 
             // Post-migration assertions
 
