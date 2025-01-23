@@ -72,6 +72,9 @@ pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_SORA: u8 = 4;
 /// Kensetsu asset ids pegged to oracle start with 0x05...
 pub const ASSET_ID_PREFIX_KENSETSU_PEGGED_TO_ORACLE: u8 = 5;
 
+/// Predefined SBT asset ids start with 0x06...
+pub const ASSET_ID_PREFIX_SBT_PREDEFINED: u8 = 6;
+
 /// Wrapper type which extends Balance serialization, used for json in RPC's.
 #[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BalanceWrapper(pub Balance);
@@ -270,6 +273,41 @@ impl Default for PredefinedAssetId {
     }
 }
 
+/// Predefined SBT asset identifier.
+#[derive(
+    Encode,
+    Decode,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+#[repr(u8)]
+pub enum PredefinedSbtAssetId {
+    PRACS = 0,
+    PRINVST = 1,
+    PRCRDT = 2,
+}
+
+pub const SBT_PRACS: AssetId32<PredefinedSbtAssetId> =
+    AssetId32::from_sbt_asset_id(PredefinedSbtAssetId::PRACS);
+pub const SBT_PRINVST: AssetId32<PredefinedSbtAssetId> =
+    AssetId32::from_sbt_asset_id(PredefinedSbtAssetId::PRINVST);
+pub const SBT_PRCRDT: AssetId32<PredefinedSbtAssetId> =
+    AssetId32::from_sbt_asset_id(PredefinedSbtAssetId::PRCRDT);
+
+impl IsRepresentation for PredefinedSbtAssetId {
+    fn is_representation(&self) -> bool {
+        false
+    }
+}
+
 /// This code is H256 like.
 pub type AssetId32Code = [u8; 32];
 
@@ -373,6 +411,13 @@ impl<AssetId> AssetId32<AssetId> {
         Self::from_bytes(bytes)
     }
 
+    pub const fn from_sbt_asset_id(asset_id: PredefinedSbtAssetId) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[0] = ASSET_ID_PREFIX_SBT_PREDEFINED;
+        bytes[2] = asset_id as u8;
+        Self::from_bytes(bytes)
+    }
+
     /// Construct asset id for synthetic asset using its `reference_symbol`
     pub fn from_synthetic_reference_symbol<Symbol>(reference_symbol: &Symbol) -> Self
     where
@@ -425,6 +470,12 @@ impl<AssetId> From<AssetId32<AssetId>> for AssetId32Code {
     }
 }
 
+impl<AssetId> From<AssetId32Code> for AssetId32<AssetId> {
+    fn from(value: AssetId32Code) -> Self {
+        AssetId32::new(value, Default::default())
+    }
+}
+
 impl<AssetId: Default> Default for AssetId32<AssetId>
 where
     AssetId32<AssetId>: From<TechAssetId<AssetId>>,
@@ -452,6 +503,18 @@ where
             Ok(v) => v,
             Err(_) => TechAssetId::<AssetId>::Escaped(compat.code),
         }
+    }
+}
+
+impl From<AssetId32<PredefinedSbtAssetId>> for AssetId32<PredefinedAssetId> {
+    fn from(value: AssetId32<PredefinedSbtAssetId>) -> Self {
+        AssetId32::new(value.code, Default::default())
+    }
+}
+
+impl AssetId32<PredefinedSbtAssetId> {
+    pub fn into_predefined(self) -> AssetId32<PredefinedAssetId> {
+        self.into()
     }
 }
 

@@ -109,6 +109,48 @@ benchmarks! {
         assert_last_event::<T>(Event::<T>::AuditorRemoved { auditor: alice::<T>() }.into());
     }
 
+    apply_investor_kyc {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+    }: {
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+    }
+    verify {
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycAssetId::get(), &bob::<T>()).unwrap(), 1);
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycInvestorAssetId::get(), &bob::<T>()).unwrap(), 1);
+    }
+
+    apply_creditor_kyc {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+    }: {
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+    }
+    verify {
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycAssetId::get(), &bob::<T>()).unwrap(), 1);
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycCreditorAssetId::get(), &bob::<T>()).unwrap(), 1);
+    }
+
+    remove_investor_kyc {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+    }: {
+        Pallet::<T>::remove_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+    }
+    verify {
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycAssetId::get(), &bob::<T>()).unwrap(), 0);
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycInvestorAssetId::get(), &bob::<T>()).unwrap(), 0);
+    }
+
+    remove_creditor_kyc {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+    }: {
+        Pallet::<T>::remove_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+    }
+    verify {
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycAssetId::get(), &bob::<T>()).unwrap(), 0);
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoKycCreditorAssetId::get(), &bob::<T>()).unwrap(), 0);
+    }
+
     mint_presto_usd {
         Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
         let amount = balance!(1000);
@@ -135,6 +177,7 @@ benchmarks! {
 
     send_presto_usd {
         Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         let mint_amount = balance!(1000);
         Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), mint_amount).unwrap();
         let send_amount = balance!(200);
@@ -147,6 +190,8 @@ benchmarks! {
     }
 
     create_deposit_request {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         let request_id = 1u32.into();
     }: {
         Pallet::<T>::create_deposit_request(RawOrigin::Signed(bob::<T>()).into(), balance!(10000), BoundedString::truncate_from("payment reference"), Some(BoundedString::truncate_from("details"))).unwrap();
@@ -157,6 +202,7 @@ benchmarks! {
 
     create_withdraw_request {
         Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), balance!(10000)).unwrap();
         let send_amount = balance!(2000);
         Pallet::<T>::send_presto_usd(RawOrigin::Signed(alice::<T>()).into(), send_amount, bob::<T>()).unwrap();
@@ -172,6 +218,8 @@ benchmarks! {
     }
 
     cancel_request {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         Pallet::<T>::create_deposit_request(RawOrigin::Signed(bob::<T>()).into(), balance!(10000), BoundedString::truncate_from("payment reference"), Some(BoundedString::truncate_from("details"))).unwrap();
         let request_id = 1u32.into();
     }: {
@@ -183,6 +231,7 @@ benchmarks! {
 
     approve_deposit_request {
         Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         let mint_amount = balance!(100000);
         Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), mint_amount).unwrap();
         let deposit_amount = balance!(10000);
@@ -199,6 +248,7 @@ benchmarks! {
 
     approve_withdraw_request {
         Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         let mint_amount = balance!(10000);
         Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), mint_amount).unwrap();
         let send_amount = balance!(2000);
@@ -218,6 +268,7 @@ benchmarks! {
 
     decline_request {
         Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
         Pallet::<T>::create_deposit_request(RawOrigin::Signed(bob::<T>()).into(), balance!(10000), BoundedString::truncate_from("payment reference"), Some(BoundedString::truncate_from("details"))).unwrap();
         let request_id = 1u32.into();
     }: {
@@ -228,6 +279,9 @@ benchmarks! {
     }
 
     create_crop_receipt {
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+
         let amount = balance!(10000);
         let close_initial_period = 123u32.into();
         let date_of_issue = 234u32.into();
@@ -247,6 +301,8 @@ benchmarks! {
 
     rate_crop_receipt {
         Pallet::<T>::add_presto_auditor(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
         let close_initial_period = 123u32.into();
@@ -268,6 +324,8 @@ benchmarks! {
 
     decline_crop_receipt {
         Pallet::<T>::add_presto_auditor(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
         let close_initial_period = 123u32.into();
@@ -291,6 +349,8 @@ benchmarks! {
 
     publish_crop_receipt {
         Pallet::<T>::add_presto_auditor(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
         let close_initial_period = 123u32.into();
