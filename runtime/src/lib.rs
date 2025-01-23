@@ -1783,6 +1783,7 @@ parameter_types! {
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
+    const SPLIT_FAILED_DISTRIBUTION_COUNT: u32 = 10;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
