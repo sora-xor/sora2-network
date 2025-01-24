@@ -765,6 +765,7 @@ macro_rules! mock_multicollateral_bonding_curve_pool_config {
         }
         impl multicollateral_bonding_curve_pool::Config for $runtime {
             const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
+            const SPLIT_FAILED_DISTRIBUTION_COUNT: u32 = 10;
             type AssetInfoProvider = assets::Pallet<$runtime>;
             type BuyBackHandler = $buy_back_handler;
             type GetBuyBackAssetId = GetTBCBuyBackAssetId;
