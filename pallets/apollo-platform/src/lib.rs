@@ -111,7 +111,7 @@ pub mod pallet {
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     /// The current storage version.
-    pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+    pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub (super) trait Store)]
