@@ -192,6 +192,7 @@ pub mod pallet {
         frame_system::Config + common::Config + technical::Config + permissions::Config
     {
         const RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor<Self>;
+        const SPLIT_FAILED_DISTRIBUTION_COUNT: u32;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -773,13 +774,18 @@ impl<T: Config> Pallet<T> {
             count += 1;
         }
         if !failed_to_distribute.is_empty() {
-            let block_number = now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY);
-            PendingFreeReserves::<T>::mutate(block_number, |map| {
-                for (collateral_asset_id, amount) in failed_to_distribute {
-                    let current_amount = map.entry(collateral_asset_id).or_default();
-                    *current_amount = current_amount.saturating_add(amount);
-                }
-            });
+            for i in 1..=T::SPLIT_FAILED_DISTRIBUTION_COUNT {
+                let i = BlockNumberFor::<T>::from(i);
+                let block_number =
+                    now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY * i + One::one());
+                PendingFreeReserves::<T>::mutate(block_number, |map| {
+                    for (collateral_asset_id, amount) in failed_to_distribute.iter() {
+                        let current_amount = map.entry(collateral_asset_id.clone()).or_default();
+                        *current_amount = current_amount
+                            .saturating_add(amount / T::SPLIT_FAILED_DISTRIBUTION_COUNT as Balance);
+                    }
+                });
+            }
         }
         Ok(count)
     }
