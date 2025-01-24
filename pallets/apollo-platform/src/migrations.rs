@@ -58,7 +58,7 @@ where
 
         // Calculate and return weight
         <T as frame_system::Config>::DbWeight::get().reads_writes(
-            total_migrated_entries as u64 * 2, // read old and new storage
+            total_migrated_entries as u64 * 3, // read old and new storage
             total_migrated_entries as u64,     // write new storage
         )
     }
