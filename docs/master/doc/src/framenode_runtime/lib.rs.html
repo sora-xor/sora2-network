@@ -3608,6 +3608,7 @@
 <a href="#3593" id="3593">3593</a>
 <a href="#3594" id="3594">3594</a>
 <a href="#3595" id="3595">3595</a>
+<a href="#3596" id="3596">3596</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -5394,6 +5395,7 @@
 
 <span class="kw">impl </span>multicollateral_bonding_curve_pool::Config <span class="kw">for </span>Runtime {
     <span class="kw">const </span>RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = <span class="number">1000</span>;
+    <span class="kw">const </span>SPLIT_FAILED_DISTRIBUTION_COUNT: u32 = <span class="number">10</span>;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>LiquidityProxy = LiquidityProxy;
     <span class="kw">type </span>EnsureDEXManager = DEXManager;

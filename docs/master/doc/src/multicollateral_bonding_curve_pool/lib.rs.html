@@ -2041,6 +2041,12 @@
 <a href="#2026" id="2026">2026</a>
 <a href="#2027" id="2027">2027</a>
 <a href="#2028" id="2028">2028</a>
+<a href="#2029" id="2029">2029</a>
+<a href="#2030" id="2030">2030</a>
+<a href="#2031" id="2031">2031</a>
+<a href="#2032" id="2032">2032</a>
+<a href="#2033" id="2033">2033</a>
+<a href="#2034" id="2034">2034</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2235,6 +2241,7 @@
         frame_system::Config + common::Config + technical::Config + permissions::Config
     {
         <span class="kw">const </span>RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor&lt;<span class="self">Self</span>&gt;;
+        <span class="kw">const </span>SPLIT_FAILED_DISTRIBUTION_COUNT: u32;
         <span class="kw">type </span>RuntimeEvent: From&lt;Event&lt;<span class="self">Self</span>&gt;&gt; + IsType&lt;&lt;<span class="self">Self </span><span class="kw">as </span>frame_system::Config&gt;::RuntimeEvent&gt;;
         <span class="kw">type </span>LiquidityProxy: LiquidityProxyTrait&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>EnsureDEXManager: EnsureDEXManager&lt;<span class="self">Self</span>::DEXId, <span class="self">Self</span>::AccountId, DispatchError&gt;;
@@ -2816,13 +2823,18 @@
             count += <span class="number">1</span>;
         }
         <span class="kw">if </span>!failed_to_distribute.is_empty() {
-            <span class="kw">let </span>block_number = now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY);
-            PendingFreeReserves::&lt;T&gt;::mutate(block_number, |map| {
-                <span class="kw">for </span>(collateral_asset_id, amount) <span class="kw">in </span>failed_to_distribute {
-                    <span class="kw">let </span>current_amount = map.entry(collateral_asset_id).or_default();
-                    <span class="kw-2">*</span>current_amount = current_amount.saturating_add(amount);
-                }
-            });
+            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=T::SPLIT_FAILED_DISTRIBUTION_COUNT {
+                <span class="kw">let </span>i = BlockNumberFor::&lt;T&gt;::from(i);
+                <span class="kw">let </span>block_number =
+                    now.saturating_add(T::RETRY_DISTRIBUTION_FREQUENCY * i + One::one());
+                PendingFreeReserves::&lt;T&gt;::mutate(block_number, |map| {
+                    <span class="kw">for </span>(collateral_asset_id, amount) <span class="kw">in </span>failed_to_distribute.iter() {
+                        <span class="kw">let </span>current_amount = map.entry(collateral_asset_id.clone()).or_default();
+                        <span class="kw-2">*</span>current_amount = current_amount
+                            .saturating_add(amount / T::SPLIT_FAILED_DISTRIBUTION_COUNT <span class="kw">as </span>Balance);
+                    }
+                });
+            }
         }
         <span class="prelude-val">Ok</span>(count)
     }
