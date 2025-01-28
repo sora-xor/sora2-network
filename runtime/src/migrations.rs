@@ -28,7 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-pub type Migrations = (WipMigrations,);
+pub type Migrations = (
+    WipMigrations,
+    apollo_platform::migrations::MigrateToV1<crate::Runtime>,
+);
 
 #[cfg(feature = "wip")]
 pub type WipMigrations =
