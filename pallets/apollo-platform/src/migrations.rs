@@ -5,6 +5,7 @@ use frame_support::pallet_prelude::*;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::traits::StorageVersion;
 use sp_runtime::traits::Zero;
+use sp_std::prelude::*;
 
 pub struct MigrateToV1<T>(core::marker::PhantomData<T>);
 
