@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["pallet","weights"],"struct":["BorrowingPosition","LendingPosition","PoolInfo"]};
+window.SIDEBAR_ITEMS = {"mod":["migrations","pallet","weights"],"struct":["BorrowingPosition","LendingPosition","PoolInfo"]};

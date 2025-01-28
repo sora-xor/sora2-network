@@ -653,6 +653,33 @@
 <a href="#638" id="638">638</a>
 <a href="#639" id="639">639</a>
 <a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -722,6 +749,7 @@
 	<span class="kw">fn </span>withdraw() -&gt; Weight;
 	<span class="kw">fn </span>repay() -&gt; Weight;
 	<span class="kw">fn </span>change_rewards_amount() -&gt; Weight;
+	<span class="kw">fn </span>change_collateral_factor() -&gt; Weight;
 	<span class="kw">fn </span>change_rewards_per_block() -&gt; Weight;
 	<span class="kw">fn </span>liquidate() -&gt; Weight;
 	<span class="kw">fn </span>remove_pool() -&gt; Weight;
@@ -900,6 +928,19 @@
 		//  Estimated: `723`
 		// Minimum execution time: 21_434_000 picoseconds.
 		</span>Weight::from_parts(<span class="number">21_762_000</span>, <span class="number">723</span>)
+			.saturating_add(T::DbWeight::get().reads(<span class="number">1_u64</span>))
+			.saturating_add(T::DbWeight::get().writes(<span class="number">1_u64</span>))
+	}
+	<span class="doccomment">/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform CollateralFactor (r:0 w:1)
+	/// Proof Skipped: ApolloPlatform CollateralFactor (max_values: Some(1), max_size: None, mode: Measured)
+	</span><span class="kw">fn </span>change_collateral_factor() -&gt; Weight {
+		<span class="comment">// Proof Size summary in bytes:
+		//  Measured:  `114`
+		//  Estimated: `723`
+		// Minimum execution time: 21_704_000 picoseconds.
+		</span>Weight::from_parts(<span class="number">22_211_000</span>, <span class="number">723</span>)
 			.saturating_add(T::DbWeight::get().reads(<span class="number">1_u64</span>))
 			.saturating_add(T::DbWeight::get().writes(<span class="number">1_u64</span>))
 	}
@@ -1182,6 +1223,19 @@
 		//  Estimated: `723`
 		// Minimum execution time: 21_434_000 picoseconds.
 		</span>Weight::from_parts(<span class="number">21_762_000</span>, <span class="number">723</span>)
+			.saturating_add(RocksDbWeight::get().reads(<span class="number">1_u64</span>))
+			.saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
+	}
+	<span class="doccomment">/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform CollateralFactor (r:0 w:1)
+	/// Proof Skipped: ApolloPlatform CollateralFactor (max_values: Some(1), max_size: None, mode: Measured)
+	</span><span class="kw">fn </span>change_collateral_factor() -&gt; Weight {
+		<span class="comment">// Proof Size summary in bytes:
+		//  Measured:  `114`
+		//  Estimated: `723`
+		// Minimum execution time: 21_704_000 picoseconds.
+		</span>Weight::from_parts(<span class="number">22_211_000</span>, <span class="number">723</span>)
 			.saturating_add(RocksDbWeight::get().reads(<span class="number">1_u64</span>))
 			.saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
 	}
