@@ -46,6 +46,7 @@ use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, Balance, BoundedString, DEXId,
     OrderBookId, PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST,
 };
+use frame_support::sp_runtime::Permill;
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
 use sp_std::collections::btree_set::BTreeSet;
@@ -1211,6 +1212,7 @@ fn should_create_crop_receipt() {
         assert_eq!(PrestoPallet::user_crop_receipts(bob()), vec![]);
 
         let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
         let close_initial_period = 123;
         let date_of_issue = 234;
         let place_of_issue = BoundedString::truncate_from("place of issue");
@@ -1223,6 +1225,7 @@ fn should_create_crop_receipt() {
             PrestoPallet::create_crop_receipt(
                 RuntimeOrigin::signed(bob()),
                 balance!(0),
+                profit,
                 Country::Brazil,
                 close_initial_period,
                 date_of_issue,
@@ -1239,6 +1242,7 @@ fn should_create_crop_receipt() {
             PrestoPallet::create_crop_receipt(
                 RuntimeOrigin::signed(bob()),
                 amount,
+                profit,
                 Country::Brazil,
                 close_initial_period,
                 date_of_issue,
@@ -1264,6 +1268,7 @@ fn should_create_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             amount,
+            profit,
             Country::Brazil,
             close_initial_period,
             date_of_issue,
@@ -1281,6 +1286,7 @@ fn should_create_crop_receipt() {
                 time: 0,
                 status: Status::Rating,
                 amount,
+                profit,
                 country: Country::Brazil,
                 score: None,
                 close_initial_period,
@@ -1329,6 +1335,7 @@ fn should_rate_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(10000),
+            Permill::from_percent(5),
             Country::Brazil,
             100,
             200,
@@ -1404,6 +1411,7 @@ fn should_decline_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(10000),
+            Permill::from_percent(5),
             Country::Brazil,
             100,
             200,
@@ -1482,6 +1490,7 @@ fn should_publish_crop_receipt() {
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(100000),
+            Permill::from_percent(5),
             Country::Brazil,
             100,
             200,

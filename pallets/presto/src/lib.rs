@@ -32,6 +32,7 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod coupon_info;
 mod crop_receipt;
 #[cfg(test)]
 mod mock;
@@ -75,10 +76,12 @@ pub mod pallet {
     };
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Permill;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
 
+    use coupon_info::CouponInfo;
     use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
     use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
     use treasury::Treasury;
@@ -260,7 +263,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn coupons)]
     pub type Coupons<T: Config> =
-        StorageMap<_, Twox64Concat, AssetIdOf<T>, T::CropReceiptId, OptionQuery>;
+        StorageMap<_, Twox64Concat, AssetIdOf<T>, CouponInfo<T>, OptionQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -369,6 +372,10 @@ pub mod pallet {
         CropReceiptWaitingForRate,
         /// The crop receipt already has a decision
         CropReceiptAlreadyHasDecision,
+        /// The crop receipt has been closed
+        CropReceiptHasBeenClosed,
+        /// The crop receipt cannot be closed
+        CropReceiptCannotBeClosed,
         /// Coupon supply cannot be bigger than requested amount in crop receipt
         TooBigCouponSupply,
         /// Fail of coupon public offering
@@ -807,6 +814,7 @@ pub mod pallet {
         pub fn create_crop_receipt(
             origin: OriginFor<T>,
             amount: Balance,
+            profit: Permill,
             country: Country,
             close_initial_period: MomentOf<T>,
             date_of_issue: MomentOf<T>,
@@ -824,6 +832,7 @@ pub mod pallet {
             let crop_receipt = CropReceipt::<T>::new(
                 owner.clone(),
                 amount,
+                profit,
                 country,
                 close_initial_period,
                 date_of_issue,
@@ -958,7 +967,13 @@ pub mod pallet {
                 &coupon_asset_id,
             )?;
 
-            Coupons::<T>::insert(coupon_asset_id, crop_receipt_id);
+            Coupons::<T>::insert(
+                coupon_asset_id,
+                CouponInfo {
+                    crop_receipt_id,
+                    supply: coupon_supply,
+                },
+            );
 
             T::AssetManager::transfer_from(
                 &coupon_asset_id,
