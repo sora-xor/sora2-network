@@ -62,6 +62,9 @@ mod traits;
 pub mod utils;
 pub mod weights;
 
+pub mod arithmetic;
+pub mod fixed;
+
 use codec::Encode;
 use sp_core::hash::H512;
 use sp_runtime::traits::UniqueSaturatedInto;
