@@ -23,8 +23,10 @@ sp-arithmetic = { git = "https://github.com/sora-xor/substrate.git", branch = "p
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+assets = { path = "../assets" }
 band = { path = "../band", default-features = false }
 dex-manager = { path = "../dex-manager", default-features = false }
+extended-assets = { path = "../extended-assets", default-features = false }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool", default-features = false }
 oracle-proxy = { path = "../oracle-proxy", default-features = false }
 order-book = { path = "../order-book", default-features = false }
@@ -45,7 +47,6 @@ pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = 
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-assets = { path = "../assets" }
 
 [features]
 default = ["std"]
@@ -53,6 +54,8 @@ std = [
     "band/std",
     "codec/std",
     "common/std",
+    "assets/std",
+    "extended-assets/std",
     "frame-support/std",
     "frame-system/std",
     "oracle-proxy/std",
