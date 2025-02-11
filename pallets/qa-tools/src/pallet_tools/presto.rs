@@ -279,7 +279,7 @@ pub fn clear_presto<T: Config>() -> DispatchResult {
 fn delete_asset<T: Config>(asset_id: T::AssetId, owner: &AccountIdOf<T>) {
     let permission_ids = [MINT, BURN];
     for permission_id in permission_ids {
-        revoke_permission::<T>(&owner, permission_id, Scope::Limited(hash(&asset_id)));
+        revoke_permission::<T>(owner, permission_id, Scope::Limited(hash(&asset_id)));
     }
 
     if assets::AssetInfosV2::<T>::contains_key(asset_id) {
@@ -292,7 +292,7 @@ fn delete_asset<T: Config>(asset_id: T::AssetId, owner: &AccountIdOf<T>) {
         assets::AssetOwners::<T>::remove(asset_id);
     }
 
-    frame_system::Pallet::<T>::dec_consumers(&owner);
+    frame_system::Pallet::<T>::dec_consumers(owner);
 }
 
 fn revoke_permission<T: Config>(
