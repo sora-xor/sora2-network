@@ -32,6 +32,7 @@
 
 use super::*;
 
+use crate::coupon_info::CouponInfo;
 use crate::crop_receipt::{
     crop_receipt_content_template, Country, CropReceipt, CropReceiptContent, Rating, Score, Status,
 };
@@ -1558,11 +1559,23 @@ fn should_publish_crop_receipt() {
             E::CropReceiptAlreadyHasDecision
         );
 
-        let coupon_asset_id = Coupons::<Runtime>::iter()
+        let crop_receipt = PrestoPallet::crop_receipts(1).unwrap();
+        assert_eq!(crop_receipt.status, Status::Published);
+
+        let (coupon_asset_id, coupon_info) = Coupons::<Runtime>::iter()
             .collect::<Vec<_>>()
             .first()
-            .unwrap()
-            .0;
+            .cloned()
+            .unwrap();
+
+        assert_eq!(
+            coupon_info,
+            CouponInfo {
+                crop_receipt_id: 1,
+                supply: BalanceUnit::indivisible(supply),
+                refund_price: balance!(10.5)
+            }
+        );
 
         let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(coupon_asset_id);
 

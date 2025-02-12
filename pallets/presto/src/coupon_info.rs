@@ -32,10 +32,12 @@ use crate::Config;
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::BalanceUnit;
+use common::Balance;
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct CouponInfo<T: Config> {
     pub crop_receipt_id: T::CropReceiptId,
     pub supply: BalanceUnit,
+    pub refund_price: Balance,
 }

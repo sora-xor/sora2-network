@@ -924,6 +924,7 @@ pub mod pallet {
 
             let mut country = Country::Other;
             let mut amount = BalanceUnit::default();
+            let mut profit = Permill::default();
             CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
                 let crop_receipt = crop_receipt
                     .as_mut()
@@ -932,6 +933,7 @@ pub mod pallet {
                 crop_receipt.ensure_is_owner(&who)?;
                 country = crop_receipt.country;
                 amount = BalanceUnit::divisible(crop_receipt.amount);
+                profit = crop_receipt.profit;
 
                 // The initial price (amount / supply) must be >= 1.00
                 ensure!(coupon_supply <= amount, Error::<T>::TooBigCouponSupply);
@@ -966,14 +968,6 @@ pub mod pallet {
                 &T::PrestoKycAssetId::get(),
                 &coupon_asset_id,
             )?;
-
-            Coupons::<T>::insert(
-                coupon_asset_id,
-                CouponInfo {
-                    crop_receipt_id,
-                    supply: coupon_supply,
-                },
-            );
 
             T::AssetManager::transfer_from(
                 &coupon_asset_id,
@@ -1031,13 +1025,26 @@ pub mod pallet {
                     )
                 };
 
-            let price = *amount
+            let offer_price = *amount
                 .checked_div(&coupon_supply)
                 .ok_or(Error::<T>::CalculationError)?
                 .into_divisible()
                 .ok_or(Error::<T>::CalculationError)?
                 .balance();
-            let price = Self::align_price(price, tick_size)?;
+            let offer_price = Self::align_price(offer_price, tick_size)?;
+
+            let refund_price = offer_price
+                .checked_add(profit * offer_price)
+                .ok_or(Error::<T>::CalculationError)?;
+
+            Coupons::<T>::insert(
+                coupon_asset_id,
+                CouponInfo {
+                    crop_receipt_id,
+                    supply: coupon_supply,
+                    refund_price,
+                },
+            );
 
             // create order book
             T::OrderBookManager::initialize_orderbook(
@@ -1071,7 +1078,7 @@ pub mod pallet {
                 T::OrderBookManager::place_limit_order(
                     who.clone(),
                     order_book_id,
-                    price,
+                    offer_price,
                     qty,
                     PriceVariant::Sell,
                     None,
