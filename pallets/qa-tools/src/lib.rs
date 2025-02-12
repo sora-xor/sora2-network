@@ -76,10 +76,13 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
+        + assets::Config
         + common::Config
         + dex_manager::Config
+        + extended_assets::Config
         + order_book::Config
         + pool_xyk::Config
+        + presto::Config
         + xst::Config
         + price_tools::Config
         + band::Config
@@ -460,16 +463,35 @@ pub mod pallet {
             })
         }
 
-        /// Allows to initialize necessary Presto assets in testnet without migration.
+        /// Allows to initialize necessary Presto data (assets, DEX etc.) in testnet without migration.
         ///
         /// Parameters:
         /// - `origin`: Root
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::presto_initialize_assets())]
-        pub fn presto_initialize_assets(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+        #[pallet::weight(<T as Config>::WeightInfo::presto_initialize())]
+        pub fn presto_initialize(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            pallet_tools::presto::register_presto_assets::<T>()?;
+            pallet_tools::presto::fill_presto::<T>()?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Allows to clear all Presto data (assets, DEX etc.) in testnet without migration.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::presto_clear())]
+        pub fn presto_clear(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            pallet_tools::presto::clear_presto::<T>()?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.
