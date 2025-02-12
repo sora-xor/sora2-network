@@ -64,6 +64,7 @@ pub mod weights;
 
 pub mod arithmetic;
 pub mod fixed;
+pub mod fixed_wrapper_u256;
 
 use codec::Encode;
 use sp_core::hash::H512;

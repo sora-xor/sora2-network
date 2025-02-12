@@ -1,5 +1,35 @@
-//! Some helper functions to work with 128bit numbers. Note that the functionality provided here is
-//! only sensible to use with 128bit numbers because for smaller sizes, you can always rely on
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//! Some helper functions to work with 256bit numbers. Note that the functionality provided here is
+//! only sensible to use with 256bit numbers because for smaller sizes, you can always rely on
 //! assumptions of a bigger type (U256) being available, or simply create a per-thing and use the
 //! multiplication implementation provided there.
 
@@ -189,31 +219,10 @@ mod double256 {
 
             (x.add(Self::from_low(low_result)), remainder)
         }
-
-        // pub fn div(mut self, rhs: U256) -> (Self, U256) {
-        //     if rhs.is_zero() {
-        //         return (self, U256::zero());
-        //     }
-        //
-        //     let mut quotient = Self::zero();
-        //
-        //     // Step 1: Divide high part
-        //     quotient.high = self.high / rhs;
-        //     let remainder_high = self.high % rhs;  // Capture remainder
-        //
-        //     // Step 2: Merge remainder from high into low part
-        //     let combined_low = (remainder_high << 256) | self.low;
-        //
-        //     // Step 3: Perform final division on the combined value
-        //     quotient.low = combined_low / rhs;
-        //     let remainder = combined_low % rhs;
-        //
-        //     (quotient, remainder)
-        // }
     }
 }
 
-/// Returns `a * b / c` and `(a * b) % c` (wrapping to 128 bits) or `None` in the case of
+/// Returns `a * b / c` and `(a * b) % c` (wrapping to 256 bits) or `None` in the case of
 /// overflow and c = 0.
 pub fn multiply_by_rational_with_rounding(a: U256, b: U256, c: U256, r: Rounding) -> Option<U256> {
     use double256::Double256;
