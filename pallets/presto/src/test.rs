@@ -1573,8 +1573,13 @@ fn should_publish_crop_receipt() {
             CouponInfo {
                 crop_receipt_id: 1,
                 supply: BalanceUnit::indivisible(supply),
-                refund_price: balance!(10.5)
+                refund_price: BalanceUnit::divisible(balance!(10.5))
             }
+        );
+
+        assert_eq!(
+            PrestoPallet::crop_receipt_to_coupon(1).unwrap(),
+            coupon_asset_id
         );
 
         let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(coupon_asset_id);

@@ -327,4 +327,5 @@ fn clear_presto_storages<T: Config>() {
     let _ = presto::UserRequests::<T>::clear(u32::MAX, None);
     presto::LastCouponId::<T>::kill();
     let _ = presto::Coupons::<T>::clear(u32::MAX, None);
+    let _ = presto::CropReceiptToCoupon::<T>::clear(u32::MAX, None);
 }

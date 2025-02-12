@@ -28,16 +28,36 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::Config;
+use crate::{Config, Error};
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use common::prelude::BalanceUnit;
 use common::Balance;
+use sp_runtime::traits::CheckedMul;
+use sp_runtime::DispatchError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct CouponInfo<T: Config> {
     pub crop_receipt_id: T::CropReceiptId,
     pub supply: BalanceUnit,
-    pub refund_price: Balance,
+    pub refund_price: BalanceUnit,
+}
+
+impl<T: Config> CouponInfo<T> {
+    pub fn total_debt_cost(&self) -> Result<Balance, DispatchError> {
+        let cost = self
+            .supply
+            .checked_mul(&self.refund_price)
+            .ok_or(Error::<T>::CalculationError)?;
+        Ok(*cost.balance())
+    }
+
+    pub fn coupons_cost(&self, coupons_amount: Balance) -> Result<Balance, DispatchError> {
+        let coupons_amount = BalanceUnit::indivisible(coupons_amount);
+        let cost = coupons_amount
+            .checked_mul(&self.refund_price)
+            .ok_or(Error::<T>::CalculationError)?;
+        Ok(*cost.balance())
+    }
 }

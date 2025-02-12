@@ -82,6 +82,8 @@ pub trait WeightInfo {
     fn rate_crop_receipt() -> Weight;
     fn decline_crop_receipt() -> Weight;
     fn publish_crop_receipt() -> Weight;
+    fn pay_off_crop_receipt() -> Weight;
+    fn claim_refund() -> Weight;
 }
 
 /// Weight functions for `presto`.
@@ -546,6 +548,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
             .saturating_add(T::DbWeight::get().reads(44))
             .saturating_add(T::DbWeight::get().writes(28))
     }
+
+    fn pay_off_crop_receipt() -> Weight {
+        Weight::zero()
+    }
+
+    fn claim_refund() -> Weight {
+        Weight::zero()
+    }
 }
 
 // For backwards compatibility and tests
@@ -1008,5 +1018,13 @@ impl WeightInfo for () {
         Weight::from_parts(312_918_000, 995665)
             .saturating_add(RocksDbWeight::get().reads(44))
             .saturating_add(RocksDbWeight::get().writes(28))
+    }
+
+    fn pay_off_crop_receipt() -> Weight {
+        Weight::zero()
+    }
+
+    fn claim_refund() -> Weight {
+        Weight::zero()
     }
 }
