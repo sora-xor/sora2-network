@@ -1971,3 +1971,132 @@ fn should_pay_off_crop_receipt_without_debt() {
         assert_eq!(crop_receipt.status, Status::Closed);
     });
 }
+
+#[test]
+fn should_claim_refund() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(100000),
+            Permill::from_percent(5),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            crop_receipt_content_template::<Runtime>()
+        ));
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        let supply = 10000;
+        assert_ok!(PrestoPallet::publish_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1,
+            supply
+        ));
+
+        let debt = balance!(105000);
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            bob(),
+            PRUSD,
+            debt as i128
+        ));
+
+        assert_ok!(PrestoPallet::pay_off_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1
+        ));
+
+        // investor buys coupons
+
+        let (coupon_asset_id, _) = Coupons::<Runtime>::iter()
+            .collect::<Vec<_>>()
+            .first()
+            .cloned()
+            .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEXId::PolkaswapPresto,
+            base: coupon_asset_id,
+            quote: PRUSD,
+        };
+
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            charlie(),
+            PRUSD,
+            balance!(20000) as i128
+        ));
+
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 0);
+
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RuntimeOrigin::signed(charlie()),
+            order_book_id,
+            common::PriceVariant::Buy,
+            1000
+        ));
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RuntimeOrigin::signed(charlie()),
+            order_book_id,
+            common::PriceVariant::Buy,
+            1000
+        ));
+
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 2000);
+        assert_eq!(free_balance(&PRUSD, &charlie()), 0);
+
+        // test
+
+        assert_err!(
+            PrestoPallet::claim_refund(RuntimeOrigin::signed(charlie()), coupon_asset_id, 3000),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+
+        assert_ok!(PrestoPallet::claim_refund(
+            RuntimeOrigin::signed(charlie()),
+            coupon_asset_id,
+            500
+        ));
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 1500);
+        assert_eq!(free_balance(&PRUSD, &charlie()), balance!(5250));
+
+        assert_ok!(PrestoPallet::claim_refund(
+            RuntimeOrigin::signed(charlie()),
+            coupon_asset_id,
+            1500
+        ));
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 0);
+        assert_eq!(free_balance(&PRUSD, &charlie()), balance!(21000));
+    });
+}
