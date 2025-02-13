@@ -229,6 +229,10 @@ impl<T: Config> CropReceipt<T> {
     }
 
     pub fn close(&mut self) -> DispatchResult {
+        if self.status == Status::Closed {
+            return Err(Error::<T>::CropReceiptHasBeenClosed.into());
+        }
+
         ensure!(
             self.status == Status::Published,
             Error::<T>::CropReceiptCannotBeClosed
