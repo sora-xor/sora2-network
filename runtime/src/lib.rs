@@ -119,6 +119,7 @@ use traits::{parameter_type_with_key, MultiCurrency};
 use xor_fee::extension::ChargeTransactionPayment;
 
 // A few exports that help ease life for downstream crates.
+pub use common::fixed::FixedU256;
 pub use common::prelude::{
     Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
 };
@@ -1017,6 +1018,7 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.006);
+    pub GetFee256: FixedU256 = FixedU256::try_from(0.006).unwrap();
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
@@ -1053,7 +1055,7 @@ impl pool_xyk::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
-    type GetFee = GetFee;
+    type GetFee = GetFee256;
     type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;

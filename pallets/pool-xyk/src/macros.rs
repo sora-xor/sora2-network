@@ -44,3 +44,10 @@ macro_rules! to_fixed_wrapper(
         FixedWrapper::from($a.clone())
     })
 );
+
+#[macro_export]
+macro_rules! to_fixed_wrapper_256(
+    ($a: expr) => ({
+        FixedWrapper256::from($a.clone())
+    })
+);

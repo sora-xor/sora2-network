@@ -38,6 +38,8 @@ use sp_core::U256;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::arithmetic::checked::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
+#[cfg(not(feature = "test"))]
+use crate::arithmetic::saturating::SaturatedConversion;
 use crate::fixed::FixedU256;
 use crate::Balance;
 
@@ -108,7 +110,6 @@ impl FixedWrapper256 {
         }
     }
 
-    #[allow(unused_imports)]
     pub fn into_balance(self) -> Balance {
         #[cfg(feature = "test")]
         {
@@ -116,7 +117,6 @@ impl FixedWrapper256 {
         }
         #[cfg(not(feature = "test"))]
         {
-            use crate::arithmetic::saturating::UniqueSaturatedInto;
             self.inner
                 .map(|v| v.into_inner().saturated_into())
                 .unwrap_or(0)
