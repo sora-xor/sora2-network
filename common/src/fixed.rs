@@ -431,7 +431,7 @@ macro_rules! impl_from_for_fixed {
                 if value < <$T>::zero() {
                     return Err(ArithmeticError::DomainViolation)
                 } else {
-                    Ok(Self(U256::from(value).cmul(&Self::accuracy())?))
+                    Ok(Self(U256::from(value)))
                 }
             }
         }
@@ -1322,7 +1322,7 @@ mod fixed_u256_test {
     #[test]
     fn op_checked_mul_overflow_works() {
         let a = FixedU256::max_value();
-        let b = 2.try_into().unwrap();
+        let b = FixedU256::try_from(2).unwrap().fixed().unwrap();
         assert!(a.checked_mul(&b).is_none());
     }
 
@@ -1770,21 +1770,21 @@ mod fixed_u256_test {
         let b = FixedU256::from_inner(inner_max - 1);
 
         assert_eq!(
-            a.checked_mul(&(b / FixedU256::try_from(2).unwrap())),
+            a.checked_mul(&(b / FixedU256::try_from(2).unwrap().fixed().unwrap())),
             Some(b)
         );
 
         // Max.
         let c = FixedU256::from_inner(inner_max);
         assert_eq!(
-            a.checked_mul(&(c / FixedU256::try_from(2).unwrap())),
+            a.checked_mul(&(c / FixedU256::try_from(2).unwrap().fixed().unwrap())),
             Some(b)
         );
 
         // Max + 1 => None.
         let e = FixedU256::from_inner(U256::one());
         assert_eq!(
-            a.checked_mul(&(c / FixedU256::try_from(2).unwrap() + e)),
+            a.checked_mul(&(c / FixedU256::try_from(2).unwrap().fixed().unwrap() + e)),
             None
         );
 
@@ -1832,11 +1832,11 @@ mod fixed_u256_test {
         assert_eq!(c.checked_mul(&FixedU256::max_value()), None);
         assert_eq!(
             a.checked_mul(&FixedU256::max_value()),
-            FixedU256::max_value().checked_div(&2.try_into().unwrap())
+            FixedU256::max_value().checked_div(&FixedU256::try_from(2).unwrap().fixed().unwrap())
         );
         assert_eq!(
             a.checked_mul(&FixedU256::min_value()),
-            FixedU256::min_value().checked_div(&2.try_into().unwrap())
+            FixedU256::min_value().checked_div(&FixedU256::try_from(2).unwrap().fixed().unwrap())
         );
     }
 
@@ -1850,21 +1850,21 @@ mod fixed_u256_test {
         // Max - 1.
         let b = FixedU256::from_inner(inner_max - 1);
         assert_eq!(
-            a.const_checked_mul(b / FixedU256::try_from(2).unwrap()),
+            a.const_checked_mul(b / FixedU256::try_from(2).unwrap().fixed().unwrap()),
             Some(b)
         );
 
         // Max.
         let c = FixedU256::from_inner(inner_max);
         assert_eq!(
-            a.const_checked_mul(c / FixedU256::try_from(2).unwrap()),
+            a.const_checked_mul(c / FixedU256::try_from(2).unwrap().fixed().unwrap()),
             Some(b)
         );
 
         // Max + 1 => None.
         let e = FixedU256::from_inner(U256::one());
         assert_eq!(
-            a.const_checked_mul(c / FixedU256::try_from(2).unwrap() + e),
+            a.const_checked_mul(c / FixedU256::try_from(2).unwrap().fixed().unwrap() + e),
             None
         );
 
@@ -1917,7 +1917,7 @@ mod fixed_u256_test {
         assert_eq!(c.const_checked_mul(FixedU256::max_value()), None);
         assert_eq!(
             a.const_checked_mul(FixedU256::max_value()),
-            FixedU256::max_value().checked_div(&2.try_into().unwrap())
+            FixedU256::max_value().checked_div(&FixedU256::try_from(2).unwrap().fixed().unwrap())
         );
         assert_eq!(
             a.const_checked_mul(FixedU256::min_value()),

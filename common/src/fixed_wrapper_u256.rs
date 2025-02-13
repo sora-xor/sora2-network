@@ -310,16 +310,34 @@ impl_fixed_wrapper_for_type!(FixedU256);
 impl_fixed_wrapper_for_type!(u128);
 
 #[macro_export]
-macro_rules! fixed_u256 {
+macro_rules! fixed_u256_int {
+    ($val:literal) => {
+        $crate::fixed::FixedU256::try_from($val)
+            .unwrap()
+            .fixed()
+            .unwrap()
+    };
+}
+
+#[macro_export]
+macro_rules! fixed_wrapper_u256_int {
+    ($val:literal) => {{
+        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256_int!($val).into();
+        val
+    }};
+}
+
+#[macro_export]
+macro_rules! fixed_u256_float {
     ($val:literal) => {
         $crate::fixed::FixedU256::try_from($val).unwrap()
     };
 }
 
 #[macro_export]
-macro_rules! fixed_wrapper_u256 {
+macro_rules! fixed_wrapper_u256_float {
     ($val:literal) => {{
-        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256!($val).into();
+        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256_float!($val).into();
         val
     }};
 }
@@ -333,16 +351,16 @@ mod wrapper {
     fn fixed_wrapper_sqrt_small_sanity_check() {
         // basic
         assert_eq!(
-            fixed_wrapper_u256!(4).sqrt_accurate(),
-            fixed_wrapper_u256!(2)
+            fixed_wrapper_u256_int!(4).sqrt_accurate(),
+            fixed_wrapper_u256_int!(2)
         );
         // zero
         assert_eq!(
-            fixed_wrapper_u256!(0).sqrt_accurate(),
-            fixed_wrapper_u256!(0)
+            fixed_wrapper_u256_int!(0).sqrt_accurate(),
+            fixed_wrapper_u256_int!(0)
         );
         // negative
-        assert!((fixed_wrapper_u256!(0) - fixed_wrapper_u256!(4))
+        assert!((fixed_wrapper_u256_int!(0) - fixed_wrapper_u256_int!(4))
             .sqrt_accurate()
             .get()
             .is_err());
