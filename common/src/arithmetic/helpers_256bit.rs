@@ -35,7 +35,6 @@
 
 use sp_arithmetic::{biguint, Rounding};
 use sp_core::U256;
-use sp_std::cmp::{max, min};
 
 /// Helper gcd function used in Rational128 implementation.
 // pub fn gcd(a: U256, b: U256) -> U256 {
@@ -110,6 +109,7 @@ mod double256 {
     }
 
     impl Double256 {
+        #[allow(unused)]
         pub fn new(high: U256, low: U256) -> Self {
             Double256 { high, low }
         }
@@ -174,13 +174,10 @@ mod double256 {
             let high: U256 = a_high * b_high;
 
             // Convert to Double256 and shift appropriately
-            let product = Self {
-                low: low.into(),
-                high: high.into(),
-            };
+            let product = Self { low, high };
 
-            let mid1_shifted = Self::left_shift_128(mid1.into());
-            let mid2_shifted = Self::left_shift_128(mid2.into());
+            let mid1_shifted = Self::left_shift_128(mid1);
+            let mid2_shifted = Self::left_shift_128(mid2);
 
             product.add(mid1_shifted).add(mid2_shifted)
         }
@@ -269,9 +266,9 @@ pub fn sqrt(mut n: U256) -> U256 {
             n -= result + bit;
             result = (result >> 1) + bit;
         } else {
-            result = result >> 1;
+            result >>= 1;
         }
-        bit = bit >> 2;
+        bit >>= 2;
     }
     result
 }

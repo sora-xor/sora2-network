@@ -202,7 +202,7 @@ pub trait FixedPointNumber:
     /// Returns `None` if `int` exceeds accuracy.
     fn checked_from_integer<N: UniqueSaturatedInto<Self::Inner>>(int: N) -> Option<Self> {
         let int: Self::Inner = int.unique_saturated_into();
-        int.checked_mul(&Self::DIV.into()).map(Self::from_inner)
+        int.checked_mul(&Self::DIV).map(Self::from_inner)
     }
 
     /// Creates `self` from a rational number. Equal to `n / d`.
@@ -339,9 +339,9 @@ pub trait FixedPointNumber:
     /// Returns the integer part.
     fn trunc(self) -> Self {
         self.into_inner()
-            .checked_div(&Self::DIV.into())
+            .checked_div(&Self::DIV)
             .expect("panics only if DIV is zero, DIV is not zero; qed")
-            .checked_mul(&Self::DIV.into())
+            .checked_mul(&Self::DIV)
             .map(Self::from_inner)
             .expect("can not overflow since fixed number is >= integer part")
     }
@@ -1142,6 +1142,7 @@ mod fixed_u256_test {
         FixedU256::min_value()
     }
 
+    #[allow(unused)]
     fn precision() -> usize {
         (FixedU256::accuracy().as_u128() as f64).log10() as usize
     }
@@ -1762,7 +1763,7 @@ mod fixed_u256_test {
     #[test]
     fn checked_mul_works() {
         let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
-        let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
+        // let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
 
         let a = FixedU256::saturating_from_integer(2);
 
@@ -1843,7 +1844,7 @@ mod fixed_u256_test {
     #[test]
     fn const_checked_mul_works() {
         let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
-        let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
+        // let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
 
         let a = FixedU256::saturating_from_integer(2u32);
 
@@ -2001,7 +2002,7 @@ mod fixed_u256_test {
 
     #[test]
     fn saturating_div_int_works() {
-        let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
+        // let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
         let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
         let accuracy = FixedU256::accuracy();
 
@@ -2023,7 +2024,7 @@ mod fixed_u256_test {
     #[test]
     fn saturating_abs_works() {
         let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
-        let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
+        // let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
 
         assert_eq!(
             FixedU256::from_inner(inner_max).saturating_abs(),

@@ -87,6 +87,7 @@ pub mod prelude {
 }
 use sp_core::crypto::AccountId32;
 
+pub use fixed_wrapper_u256::*;
 pub use macros::*;
 pub use primitives::*;
 pub use traits::*;

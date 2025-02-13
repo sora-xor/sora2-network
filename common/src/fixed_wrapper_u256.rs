@@ -32,19 +32,14 @@ use core::convert::TryInto;
 use core::ops::*;
 use core::result::Result;
 
-use fixnum::ops::RoundMode::*;
-use fixnum::ops::{RoundingDiv, RoundingMul, RoundingSqrt};
 use fixnum::ArithmeticError;
 use frame_support::RuntimeDebug;
-use num_traits::real::Real;
-use sp_arithmetic::traits::UniqueSaturatedInto;
 use sp_core::U256;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::arithmetic::checked::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
-use crate::arithmetic::saturating::SaturatedConversion;
 use crate::fixed::FixedU256;
-use crate::{fixed, pow, Balance, FixedInner, FIXED_PRECISION};
+use crate::Balance;
 
 /// A convenient wrapper around `FixedU256` type for safe math.
 ///
@@ -101,6 +96,7 @@ impl FixedWrapper256 {
         }
     }
 
+    #[cfg(feature = "std")]
     pub fn to_fraction(&self) -> Result<f64, ArithmeticError> {
         self.inner.clone().map(FixedU256::to_float)
     }
@@ -112,6 +108,7 @@ impl FixedWrapper256 {
         }
     }
 
+    #[allow(unused_imports)]
     pub fn into_balance(self) -> Balance {
         #[cfg(feature = "test")]
         {

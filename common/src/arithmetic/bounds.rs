@@ -126,6 +126,7 @@ macro_rules! for_each_tuple {
     };
 }
 
+#[allow(clippy::all)]
 macro_rules! bounded_tuple {
     ( $($name:ident)* ) => (
         impl<$($name: Bounded,)*> Bounded for ($($name,)*) {
