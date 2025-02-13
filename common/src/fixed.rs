@@ -465,9 +465,7 @@ impl<N: FixedPointOperand, D: FixedPointOperand> From<(N, D)> for FixedU256 {
 impl FixedPointNumber for FixedU256 {
     type Inner = U256;
 
-    const DIV: Self::Inner = Self::Inner {
-        0: [1_000_000_000_000_000_000, 0, 0, 0],
-    };
+    const DIV: Self::Inner = U256([1_000_000_000_000_000_000, 0, 0, 0]);
     const SIGNED: bool = false;
 
     fn from_inner(inner: Self::Inner) -> Self {
@@ -642,50 +640,6 @@ impl FixedU256 {
         Some(Self(r))
     }
 
-    /// Add a value and return the result.
-    ///
-    /// WARNING: This function designed for convenient use at build time and
-    /// will panic on overflow. Ensure that any inputs are sensible.
-    pub fn add(self, rhs: Self) -> Self {
-        Self(self.0 + rhs.0)
-    }
-
-    /// Subtract a value and return the result.
-    ///
-    /// WARNING: This function designed for convenient use at build time and
-    /// will panic on overflow. Ensure that any inputs are sensible.
-    pub fn sub(self, rhs: Self) -> Self {
-        Self(self.0 - rhs.0)
-    }
-
-    /// Multiply by a value and return the result.
-    ///
-    /// Result will be rounded to the nearest representable value, rounding down if it is
-    /// equidistant between two neighbours.
-    ///
-    /// WARNING: This function designed for convenient use at build time and
-    /// will panic on overflow. Ensure that any inputs are sensible.
-    pub fn mul(self, rhs: Self) -> Self {
-        match FixedU256::const_checked_mul(self, rhs) {
-            Some(v) => v,
-            None => panic!("attempt to multiply with overflow"),
-        }
-    }
-
-    /// Divide by a value and return the result.
-    ///
-    /// Result will be rounded to the nearest representable value, rounding down if it is
-    /// equidistant between two neighbours.
-    ///
-    /// WARNING: This function designed for convenient use at build time and
-    /// will panic on overflow. Ensure that any inputs are sensible.
-    pub fn div(self, rhs: Self) -> Self {
-        match FixedU256::const_checked_div(self, rhs) {
-            Some(v) => v,
-            None => panic!("attempt to divide with overflow or NaN"),
-        }
-    }
-
     /// Convert into an `I257` format value.
     ///
     /// WARNING: This function designed for convenient use at build time and
@@ -714,7 +668,7 @@ impl FixedU256 {
         let inner = if n.negative && U256::min_value() < U256::zero() && n.value == max_plus_one {
             U256::min_value()
         } else {
-            let unsigned_inner = U256::from(n.value);
+            let unsigned_inner = n.value;
             if unsigned_inner != n.value
                 || (unsigned_inner > U256::zero()) != (n.value > U256::zero())
             {
@@ -1939,8 +1893,8 @@ mod fixed_u256_test {
         let e = FixedU256::saturating_from_integer(6);
         let f = FixedU256::saturating_from_integer(5);
 
-        assert_eq!(e.checked_div_int(2.into()), Some(3));
-        assert_eq!(f.checked_div_int(2.into()), Some(2));
+        assert_eq!(e.checked_div_int(2), Some(3));
+        assert_eq!(f.checked_div_int(2), Some(2));
 
         assert_eq!(a.checked_div_int(U256::MAX), Some(U256::zero()));
         assert_eq!(
