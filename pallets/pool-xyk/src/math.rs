@@ -28,15 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::prelude::{Balance, Fixed, FixedWrapper};
-use common::{fixed_wrapper, AssetIdOf, TradingPair};
+use crate::{to_balance, to_fixed_wrapper, to_fixed_wrapper_256};
+use crate::{Config, Error, Pallet};
+use common::fixed::FixedU256;
+use common::fixed_wrapper_u256::FixedWrapper256;
+use common::prelude::{Balance, FixedWrapper};
+use common::{fixed_u256_int, fixed_wrapper_u256_int, AssetIdOf, TradingPair};
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use sp_runtime::traits::Zero;
-
-use crate::{to_balance, to_fixed_wrapper};
-use crate::{Config, Error, Pallet};
 
 impl<T: Config> Pallet<T> {
     // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36
@@ -49,8 +50,8 @@ impl<T: Config> Pallet<T> {
         reserve_b: &Balance,
     ) -> Result<Balance, DispatchError> {
         Ok(to_balance!(
-            (to_fixed_wrapper!(amount_a) * to_fixed_wrapper!(reserve_b))
-                / to_fixed_wrapper!(reserve_a)
+            (to_fixed_wrapper_256!(amount_a) * to_fixed_wrapper_256!(reserve_b))
+                / to_fixed_wrapper_256!(reserve_a)
         ))
     }
 
@@ -111,12 +112,12 @@ impl<T: Config> Pallet<T> {
             amount_b_min,
         )?;
         let lhs = to_balance!(
-            to_fixed_wrapper!(am_a_des) * to_fixed_wrapper!(total_supply)
-                / to_fixed_wrapper!(reserve_a)
+            to_fixed_wrapper_256!(am_a_des) * to_fixed_wrapper_256!(total_supply)
+                / to_fixed_wrapper_256!(reserve_a)
         );
         let rhs = to_balance!(
-            to_fixed_wrapper!(am_b_des) * to_fixed_wrapper!(total_supply)
-                / to_fixed_wrapper!(reserve_b)
+            to_fixed_wrapper_256!(am_b_des) * to_fixed_wrapper_256!(total_supply)
+                / to_fixed_wrapper_256!(reserve_b)
         );
         let min_value = lhs.min(rhs);
         Ok((am_a_des, am_b_des, min_value))
@@ -125,16 +126,16 @@ impl<T: Config> Pallet<T> {
     /// Calulate (y_output,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and output is
     /// without fee.
     pub fn calc_output_for_exact_input(
-        fee_fraction: Fixed,
+        fee_fraction: FixedU256,
         get_fee_from_destination: bool,
         x: &Balance,
         y: &Balance,
         x_in: &Balance,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let fxw_x = FixedWrapper::from(x.clone());
-        let fxw_y = FixedWrapper::from(y.clone());
-        let fxw_x_in = FixedWrapper::from(x_in.clone());
+        let fxw_x = FixedWrapper256::from(x.clone());
+        let fxw_y = FixedWrapper256::from(y.clone());
+        let fxw_x_in = FixedWrapper256::from(x_in.clone());
         if get_fee_from_destination {
             // output token is xor, user indicates desired input amount
             // y_1 = (x_in * y) / (x + x_in)
@@ -143,7 +144,7 @@ impl<T: Config> Pallet<T> {
             let denominator = fxw_x + fxw_x_in;
             let y_out_with_fee = nominator / denominator;
             let y_out = if deduce_fee {
-                y_out_with_fee.clone() * (fixed_wrapper!(1) - fee_fraction)
+                y_out_with_fee.clone() * (fixed_wrapper_u256_int!(1) - fee_fraction)
             } else {
                 y_out_with_fee.clone()
             };
@@ -156,7 +157,7 @@ impl<T: Config> Pallet<T> {
             // x_1 = x_in * (1 - fee)
             // y_out = (x_1 * y) / (x + x_1)
             let x_in_without_fee = if deduce_fee {
-                fxw_x_in.clone() * (fixed_wrapper!(1) - fee_fraction)
+                fxw_x_in.clone() * (fixed_wrapper_u256_int!(1) - fee_fraction)
             } else {
                 fxw_x_in.clone()
             };
@@ -170,23 +171,23 @@ impl<T: Config> Pallet<T> {
     /// Calculates (x_input,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and input is
     /// without fee.
     pub fn calc_input_for_exact_output(
-        fee_fraction: Fixed,
+        fee_fraction: FixedU256,
         get_fee_from_destination: bool,
         x: &Balance,
         y: &Balance,
         y_out: &Balance,
         deduce_fee: bool,
     ) -> Result<(Balance, Balance), DispatchError> {
-        let fxw_x = FixedWrapper::from(x.clone());
-        let fxw_y = FixedWrapper::from(y.clone());
-        let fxw_y_out = FixedWrapper::from(y_out.clone());
+        let fxw_x = FixedWrapper256::from(x.clone());
+        let fxw_y = FixedWrapper256::from(y.clone());
+        let fxw_y_out = FixedWrapper256::from(y_out.clone());
         if get_fee_from_destination {
             // output token is xor, user indicates desired output amount:
             // y_1 = y_out / (1 - fee)
             // x_in = (x * y_1) / (y - y_1)
-            let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
+            let fxw_y_out = fxw_y_out.clone() + FixedU256::try_from(1).unwrap(); // by 1 correction to overestimate required input
             let y_out_with_fee = if deduce_fee {
-                fxw_y_out.clone() / (fixed_wrapper!(1) - fee_fraction)
+                fxw_y_out.clone() / (fixed_wrapper_u256_int!(1) - fee_fraction)
             } else {
                 fxw_y_out.clone()
             };
@@ -197,12 +198,12 @@ impl<T: Config> Pallet<T> {
         } else {
             // input token is xor, user indicates desired output amount:
             // x_in * (1 - fee) = (x * y_out) / (y - y_out)
-            let fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(1); // by 1 correction to overestimate required input
+            let fxw_y_out = fxw_y_out.clone() + FixedU256::try_from(1).unwrap(); // by 1 correction to overestimate required input
             let nominator = fxw_x * fxw_y_out.clone();
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
             let x_in = if deduce_fee {
-                x_in_without_fee.clone() / (fixed_wrapper!(1) - fee_fraction)
+                x_in_without_fee.clone() / (fixed_wrapper_u256_int!(1) - fee_fraction)
             } else {
                 x_in_without_fee.clone()
             };
@@ -215,7 +216,7 @@ impl<T: Config> Pallet<T> {
 
     /// Calculates max amount of output asset for swap with desired output.
     pub fn calc_max_output(
-        fee_fraction: Fixed,
+        fee_fraction: FixedU256,
         get_fee_from_destination: bool,
         reserve_output: Balance,
         deduce_fee: bool,
@@ -225,7 +226,9 @@ impl<T: Config> Pallet<T> {
         }
 
         let mut max_output = if get_fee_from_destination && deduce_fee {
-            to_balance!(FixedWrapper::from(reserve_output) * (fixed_wrapper!(1) - fee_fraction))
+            to_balance!(
+                FixedWrapper256::from(reserve_output) * (fixed_wrapper_u256_int!(1) - fee_fraction)
+            )
         } else {
             reserve_output
         };
