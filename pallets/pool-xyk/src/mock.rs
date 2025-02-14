@@ -249,6 +249,14 @@ impl Default for ExtBuilder {
                         is_public: true,
                     },
                 ),
+                (
+                    256,
+                    DEXInfo {
+                        base_asset_id: MichaelJacksonCD.into(),
+                        synthetic_base_asset_id: JesterMarotte.into(),
+                        is_public: true,
+                    },
+                ),
             ],
             endowed_accounts: vec![
                 (ALICE(), RedPepper.into(), balance!(99000)),

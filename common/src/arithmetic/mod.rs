@@ -28,26 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// Quick alias for better looking code.
-#[macro_export]
-macro_rules! to_balance(
-    ($a: expr) => ({
-        $a.try_into_balance()
-          .map_err(|_| Error::<T>::FixedWrapperCalculationFailed)?
-    })
-);
+// inspired by polkadot-sdk (https://github.com/paritytech/polkadot-sdk/blob/master/substrate/primitives/arithmetic/src/lib.rs)
+// and num-traits (https://github.com/rust-num/num-traits)
 
-/// Quick macro for better looking code, rust compiler is clever to optimize this.
-#[macro_export]
-macro_rules! to_fixed_wrapper(
-    ($a: expr) => ({
-        FixedWrapper::from($a.clone())
-    })
-);
-
-#[macro_export]
-macro_rules! to_fixed_wrapper_256(
-    ($a: expr) => ({
-        FixedWrapper256::from($a.clone())
-    })
-);
+pub mod bounds;
+pub mod checked;
+pub mod helpers_256bit;
+pub mod identities;
+pub mod saturating;
+pub mod sp_saturating;

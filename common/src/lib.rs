@@ -62,6 +62,10 @@ mod traits;
 pub mod utils;
 pub mod weights;
 
+pub mod arithmetic;
+pub mod fixed;
+pub mod fixed_wrapper_u256;
+
 use codec::Encode;
 use sp_core::hash::H512;
 use sp_runtime::traits::UniqueSaturatedInto;
@@ -83,6 +87,7 @@ pub mod prelude {
 }
 use sp_core::crypto::AccountId32;
 
+pub use fixed_wrapper_u256::*;
 pub use macros::*;
 pub use primitives::*;
 pub use traits::*;
