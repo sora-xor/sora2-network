@@ -28,6 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// inspired by polkadot-sdk (https://github.com/paritytech/polkadot-sdk/blob/master/substrate/primitives/arithmetic/src/lib.rs)
+// and num-traits (https://github.com/rust-num/num-traits)
+
 use crate::arithmetic::helpers_256bit::sqrt;
 use codec::{CompactAs, Decode, Encode};
 use fixnum::ArithmeticError;
