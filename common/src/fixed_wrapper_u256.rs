@@ -136,12 +136,6 @@ impl From<FixedU256> for FixedWrapper256 {
     }
 }
 
-// impl From<f64> for FixedWrapper256 {
-//     fn from(value: f64) -> Self {
-//         Self::from(FixedU256::from_float(value))
-//     }
-// }
-
 macro_rules! impl_from_for_fixed_wrapper {
     ($( $T:ty ),+) => {
         $( impl_from_for_fixed_wrapper!(@single $T); )*
@@ -215,25 +209,6 @@ impl_assign_op_for_fixed_wrapper!(SubAssign, sub_assign, csub);
 
 impl_assign_op_for_fixed_wrapper!(MulAssign, mul_assign, cmul);
 impl_assign_op_for_fixed_wrapper!(DivAssign, div_assign, cdiv);
-
-// macro_rules! impl_lossless_op_for_fixed_wrapper {
-//     (
-//         $op_fn:ident,
-//         $lossless_op_fn:ident
-//     ) => {
-//         impl FixedWrapper256 {
-//             pub fn $op_fn(self, rhs: Self) -> Option<Self> {
-//                 zip(&self.inner, &rhs.inner)
-//                     .and_then(|(lhs, &rhs)| lhs.$lossless_op_fn(rhs))
-//                     .transpose()
-//                     .map(|result| result.into())
-//             }
-//         }
-//     };
-// }
-//
-// impl_lossless_op_for_fixed_wrapper!(lossless_mul, lossless_mul);
-// impl_lossless_op_for_fixed_wrapper!(lossless_div, lossless_div);
 
 impl PartialEq for FixedWrapper256 {
     fn eq(&self, other: &Self) -> bool {
@@ -375,10 +350,5 @@ mod wrapper {
                 .get()
                 .is_err()
         );
-        // normal large
-        // assert_eq!(
-        //     fixed_wrapper_u256!(3743450969434.400440997399628828).sqrt_accurate(),
-        //     fixed_wrapper_u256!(1934799.981764110013554299)
-        // )
     }
 }

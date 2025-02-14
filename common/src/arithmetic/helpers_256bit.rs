@@ -36,21 +36,6 @@
 use sp_arithmetic::{biguint, Rounding};
 use sp_core::U256;
 
-/// Helper gcd function used in Rational128 implementation.
-// pub fn gcd(a: U256, b: U256) -> U256 {
-//     match ((a, b), (a & U256::one(), b & U256::one())) {
-//         ((x, y), _) if x == y => y,
-//         ((U256::zero(), x), _) | ((x, U256::zero()), _) => x,
-//         ((x, y), (U256::zero(), U256::one())) | ((y, x), (U256::one(), U256::zero())) => gcd(x >> U256::one(), y),
-//         ((x, y), (U256::zero(), U256::zero())) => gcd(x >> 1, y >> 1) << 1,
-//         ((x, y), (U256::one(), U256::one())) => {
-//             let (x, y) = (min(x, y), max(x, y));
-//             gcd((y - x) >> 1, x)
-//         },
-//         _ => unreachable!(),
-//     }
-// }
-
 /// Split a U256 into four u64 limbs (from least significant to most significant).
 pub fn split(a: U256) -> (u64, u64, u64, u64) {
     (a.0[0], a.0[1], a.0[2], a.0[3])

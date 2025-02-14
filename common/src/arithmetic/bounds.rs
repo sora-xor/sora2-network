@@ -111,39 +111,6 @@ impl<T: Bounded> Bounded for Wrapping<T> {
 
 bounded_impl!(f32, f32::MIN, f32::MAX);
 
-// Todo: check if clippy not error
-// macro_rules! for_each_tuple_ {
-//     ( $m:ident !! ) => (
-//         $m! { }
-//     );
-//     ( $m:ident !! $h:ident, $($t:ident,)* ) => (
-//         $m! { $h $($t)* }
-//         for_each_tuple_! { $m !! $($t,)* }
-//     );
-// }
-// macro_rules! for_each_tuple {
-//     ($m:ident) => {
-//         for_each_tuple_! { $m !! A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, }
-//     };
-// }
-
-// #[allow(clippy::all)]
-// macro_rules! bounded_tuple {
-//     ( $($name:ident)* ) => (
-//         impl<$($name: Bounded,)*> Bounded for ($($name,)*) {
-//             #[inline]
-//             fn min_value() -> Self {
-//                 ($($name::min_value(),)*)
-//             }
-//             #[inline]
-//             fn max_value() -> Self {
-//                 ($($name::max_value(),)*)
-//             }
-//         }
-//     );
-// }
-
-// for_each_tuple!(bounded_tuple);
 bounded_impl!(f64, f64::MIN, f64::MAX);
 
 #[test]

@@ -34,13 +34,7 @@
 use crate::arithmetic::helpers_256bit::sqrt;
 use codec::{CompactAs, Decode, Encode};
 use fixnum::ArithmeticError;
-// use num_traits::Signed;
-use sp_arithmetic::{
-    // PerThing,
-    // Perbill,
-    Rounding,
-    SignedRounding,
-};
+use sp_arithmetic::{Rounding, SignedRounding};
 use sp_core::U256;
 use sp_std::{
     fmt::Debug,
@@ -525,39 +519,6 @@ impl FixedU256 {
         }
     }
 
-    // /// Convert from a `Perbill` value.
-    // pub const fn from_perbill(n: Perbill) -> Self {
-    //     Self::from_rational(n.deconstruct() as u128, 1_000_000_000)
-    // }
-    //
-    // /// Convert into a `Perbill` value. Will saturate if above one or below zero.
-    // pub const fn into_perbill(self) -> Perbill {
-    //     if self.0 <= U256::zero() {
-    //         Perbill::zero()
-    //     } else if self.0 >= Self::DIV {
-    //         Perbill::one()
-    //     } else {
-    //         match multiply_by_rational_with_rounding(
-    //             self.0.as_u128(),
-    //             1_000_000_000,
-    //             Self::DIV.as_u128(),
-    //             Rounding::NearestPrefDown,
-    //         ) {
-    //             Some(value) => {
-    //                 if value > (u32::max_value() as u128) {
-    //                     panic!(
-    //                         "prior logic ensures 0<self.0<DIV; \
-    //                         multiply ensures 0<self.0<1000000000; \
-    //                         qed"
-    //                     );
-    //                 }
-    //                 Perbill::from_parts(value as u32)
-    //             },
-    //             None => Perbill::zero(),
-    //         }
-    //     }
-    // }
-
     /// Convert into a `float` value.
     #[cfg(any(feature = "std", test))]
     pub fn to_float(self) -> f64 {
@@ -571,39 +532,6 @@ impl FixedU256 {
             Ok(self.0.low_u128())
         }
     }
-
-    // /// Attempt to convert into a `PerThing`. This will succeed iff `self` is at least zero
-    // /// and at most one. If it is out of bounds, it will result in an error returning the
-    // /// clamped value.
-    // pub fn try_into_perthing<P: PerThing>(self) -> Result<P, P> {
-    //     if self < Self::zero() {
-    //         Err(P::zero())
-    //     } else if self > Self::one() {
-    //         Err(P::one())
-    //     } else {
-    //         Ok(P::from_rational(self.0, Self::DIV))
-    //     }
-    // }
-
-    // /// Attempt to convert into a `PerThing`. This will always succeed resulting in a
-    // /// clamped value if `self` is less than zero or greater than one.
-    // pub fn into_clamped_perthing<P: PerThing>(self) -> P {
-    //     if self < Self::zero() {
-    //         P::zero()
-    //     } else if self > Self::one() {
-    //         P::one()
-    //     } else {
-    //         P::from_rational(self.0, Self::DIV)
-    //     }
-    // }
-
-    // /// Negate the value.
-    // ///
-    // /// WARNING: This is a `const` function designed for convenient use at build time and
-    // /// will panic on overflow. Ensure that any inputs are sensible.
-    // pub const fn neg(self) -> Self {
-    //     Self(U256::zero() - self.0)
-    // }
 
     /// Take the square root of a positive value.
     ///
@@ -648,18 +576,10 @@ impl FixedU256 {
     /// WARNING: This function designed for convenient use at build time and
     /// will panic on overflow. Ensure that any inputs are sensible.
     const fn into_i257(self) -> I257 {
-        // if self.0 < U256::zero() {
-        //     let value = match self.0.checked_neg() {
-        //         Some(n) => n.as_u128(),
-        //         None => u128::saturating_add(U256::max_value().as_u128(), 1),
-        //     };
-        //     I257 { value, negative: true }
-        // } else {
         I257 {
             value: self.0,
             negative: false,
         }
-        // }
     }
 
     /// Convert from an `I257` format value.
@@ -1029,17 +949,6 @@ impl Debug for FixedU256 {
     }
 }
 
-// impl<P: PerThing> From<P> for FixedU256
-// where
-// 	P::Inner: FixedPointOperand,
-// {
-// 	fn from(p: P) -> Self {
-// 		let accuracy = P::ACCURACY;
-// 		let value = p.deconstruct();
-// 		FixedU256::saturating_from_rational(value, accuracy)
-// 	}
-// }
-
 #[cfg(feature = "std")]
 impl sp_std::fmt::Display for FixedU256 {
     fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
@@ -1211,32 +1120,6 @@ mod fixed_u256_test {
 
         // Zero.
         assert_eq!(a, b);
-
-        // if FixedU256::SIGNED {
-        //     let a = FixedU256::saturating_from_integer(5);
-        //     let b = -a;
-        //
-        //     // Positive.
-        //     assert_eq!(FixedU256::saturating_from_integer(-5), b);
-        //
-        //     let a = FixedU256::saturating_from_integer(-5);
-        //     let b = -a;
-        //
-        //     // Negative
-        //     assert_eq!(FixedU256::saturating_from_integer(5), b);
-        //
-        //     let a = FixedU256::max_value();
-        //     let b = -a;
-        //
-        //     // Max.
-        //     assert_eq!(FixedU256::min_value() + FixedU256::from_inner(U256::one()), b);
-        //
-        //     let a = FixedU256::min_value() + FixedU256::from_inner(U256::one());
-        //     let b = -a;
-        //
-        //     // Min.
-        //     assert_eq!(FixedU256::max_value(), b);
-        // }
     }
 
     #[test]
@@ -1253,12 +1136,6 @@ mod fixed_u256_test {
 
         // Positive case: 6/2 = 3.
         assert_eq!(FixedU256::saturating_from_integer(3), a + b);
-
-        // if FixedU256::SIGNED {
-        //     // Negative case: 4/2 = 2.
-        //     let b = FixedU256::saturating_from_rational(1, -2);
-        //     assert_eq!(FixedU256::saturating_from_integer(2), a + b);
-        // }
     }
 
     #[test]
@@ -1303,15 +1180,6 @@ mod fixed_u256_test {
         let _c = a / b;
     }
 
-    // #[test]
-    // fn op_checked_div_overflow_works() {
-    //     if FixedU256::SIGNED {
-    //         let a = FixedU256::min_value();
-    //         let b = FixedU256::zero().saturating_sub(FixedU256::one());
-    //         assert!(a.checked_div(&b).is_none());
-    //     }
-    // }
-
     #[test]
     fn op_sqrt_works() {
         for i in 1..1_000i64 {
@@ -1327,12 +1195,6 @@ mod fixed_u256_test {
         let a = FixedU256::saturating_from_integer(42);
         let b = FixedU256::saturating_from_integer(2);
         assert_eq!(FixedU256::saturating_from_integer(21), a / b);
-
-        // if FixedU256::SIGNED {
-        //     let a = FixedU256::saturating_from_integer(42);
-        //     let b = FixedU256::saturating_from_integer(-2);
-        //     assert_eq!(FixedU256::saturating_from_integer(-21), a / b);
-        // }
     }
 
     #[test]
@@ -1386,22 +1248,6 @@ mod fixed_u256_test {
         // Case where integer doesn't fit, so it returns `None`.
         let a = FixedU256::checked_from_integer(inner_max / accuracy + 1);
         assert_eq!(a, None);
-
-        // if FixedU256::SIGNED {
-        //     // Case where integer fits.
-        //     let a = FixedU256::checked_from_integer::<U256>(U256::zero().saturating_sub(42.unique_saturated_into()))
-        //         .expect("-42 * accuracy >= inner_min; qed");
-        //     assert_eq!(a.into_inner(), 0 - 42 * accuracy);
-        //
-        //     // Min integer that fit.
-        //     let a = FixedU256::checked_from_integer::<U256>(inner_min / accuracy)
-        //         .expect("(inner_min / accuracy) * accuracy <= inner_min; qed");
-        //     assert_eq!(a.into_inner(), (inner_min / accuracy) * accuracy);
-        //
-        //     // Case where integer doesn't fit, so it returns `None`.
-        //     let a = FixedU256::checked_from_integer::<U256>(inner_min / accuracy - 1);
-        //     assert_eq!(a, None);
-        // }
     }
 
     #[test]
@@ -1449,65 +1295,6 @@ mod fixed_u256_test {
         // Zero.
         let a = FixedU256::saturating_from_rational(0, 1);
         assert_eq!(a.into_inner(), U256::zero());
-
-        // if FixedU256::SIGNED {
-        //     // Negative case: -2.5
-        //     let a = FixedU256::saturating_from_rational(-5, 2);
-        //     assert_eq!(a.into_inner(), 0 - 25.unique_saturated_into() * accuracy / 10);
-        //
-        //     // Other negative case: -2.5
-        //     let a = FixedU256::saturating_from_rational(5, -2);
-        //     assert_eq!(a.into_inner(), 0 - 25.unique_saturated_into() * accuracy / 10);
-        //
-        //     // Other positive case: 2.5
-        //     let a = FixedU256::saturating_from_rational(-5, -2);
-        //     assert_eq!(a.into_inner(), 25.unique_saturated_into() * accuracy / 10);
-        //
-        //     // Max + 1, saturates.
-        //     let a = FixedU256::saturating_from_rational(inner_max as U256 + 1, accuracy);
-        //     assert_eq!(a.into_inner(), inner_max);
-        //
-        //     // Min - 1, saturates.
-        //     let a = FixedU256::saturating_from_rational(inner_max as U256 + 2, 0 - accuracy);
-        //     assert_eq!(a.into_inner(), inner_min);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_max, 0 - accuracy);
-        //     assert_eq!(a.into_inner(), 0 - inner_max);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_min, 0 - accuracy);
-        //     assert_eq!(a.into_inner(), inner_max);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_min + 1, 0 - accuracy);
-        //     assert_eq!(a.into_inner(), inner_max);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_min, 0 - 1);
-        //     assert_eq!(a.into_inner(), inner_max);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_max, 0 - 1);
-        //     assert_eq!(a.into_inner(), inner_min);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_max, 0 - inner_max);
-        //     assert_eq!(a.into_inner(), 0 - accuracy);
-        //
-        //     let a = FixedU256::saturating_from_rational(0 - inner_max, inner_max);
-        //     assert_eq!(a.into_inner(), 0 - accuracy);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_max, 0 - 3 * accuracy);
-        //     assert_eq!(a.into_inner(), 0 - inner_max / 3);
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_min, 0 - accuracy / 3);
-        //     assert_eq!(a.into_inner(), inner_max);
-        //
-        //     let a = FixedU256::saturating_from_rational(1, 0 - accuracy);
-        //     assert_eq!(a.into_inner(), 0.saturating_sub(1));
-        //
-        //     let a = FixedU256::saturating_from_rational(inner_min, inner_min);
-        //     assert_eq!(a.into_inner(), accuracy);
-        //
-        //     // Out of accuracy.
-        //     let a = FixedU256::saturating_from_rational(1, 0 - accuracy - 1);
-        //     assert_eq!(a.into_inner(), 0);
-        // }
 
         let a = FixedU256::saturating_from_rational(inner_max - 1, accuracy);
         assert_eq!(a.into_inner(), inner_max - 1);
@@ -1571,30 +1358,6 @@ mod fixed_u256_test {
         let a = FixedU256::checked_from_rational(inner_min, U256::zero().saturating_sub(accuracy));
         assert_eq!(a, None);
 
-        // if FixedU256::SIGNED {
-        //     // Min - 1 => Underflow => None.
-        //     let a = FixedU256::checked_from_rational(
-        //         inner_max as U256 + 2,
-        //         0.saturating_sub(accuracy),
-        //     );
-        //     assert_eq!(a, None);
-        //
-        //     let a = FixedU256::checked_from_rational(inner_max, 0 - 3 * accuracy).unwrap();
-        //     assert_eq!(a.into_inner(), 0 - inner_max / 3);
-        //
-        //     let a = FixedU256::checked_from_rational(inner_min, 0 - accuracy / 3);
-        //     assert_eq!(a, None);
-        //
-        //     let a = FixedU256::checked_from_rational(1, 0 - accuracy).unwrap();
-        //     assert_eq!(a.into_inner(), 0.saturating_sub(1));
-        //
-        //     let a = FixedU256::checked_from_rational(1, 0 - accuracy - 1).unwrap();
-        //     assert_eq!(a.into_inner(), 0);
-        //
-        //     let a = FixedU256::checked_from_rational(inner_min, accuracy / 3);
-        //     assert_eq!(a, None);
-        // }
-
         let a = FixedU256::checked_from_rational(inner_max, U256::from(3) * accuracy).unwrap();
         assert_eq!(a.into_inner(), inner_max / 3);
 
@@ -1653,21 +1416,6 @@ mod fixed_u256_test {
         // Max + 1 => None.
         assert_eq!(a.checked_mul_int(i128::MAX / 2 + 1), None);
 
-        // if FixedU256::SIGNED {
-        //     // Min - 1.
-        //     assert_eq!(a.checked_mul_int((i128::MIN + 1) / 2), Some(i128::MIN + 2));
-        //     // Min.
-        //     assert_eq!(a.checked_mul_int(i128::MIN / 2), Some(i128::MIN));
-        //     // Min + 1 => None.
-        //     assert_eq!(a.checked_mul_int(i128::MIN / 2 - 1), None);
-        //
-        //     let b = FixedU256::saturating_from_rational(1, -2);
-        //     assert_eq!(b.checked_mul_int(42i128), Some(-21));
-        //     assert_eq!(b.checked_mul_int(u128::MAX), None);
-        //     assert_eq!(b.checked_mul_int(i128::MAX), Some(i128::MAX / -2));
-        //     assert_eq!(b.checked_mul_int(i128::MIN), Some(i128::MIN / -2));
-        // }
-
         let a = FixedU256::saturating_from_rational(1, 2);
         assert_eq!(a.checked_mul_int(42i128), Some(21));
         assert_eq!(a.checked_mul_int(i128::MAX), Some(i128::MAX / 2));
@@ -1697,14 +1445,6 @@ mod fixed_u256_test {
         // Min + 1 => saturates to min.
         assert_eq!(a.saturating_mul_int(i128::MIN / 2 - 1), i128::MIN);
 
-        // if FixedU256::SIGNED {
-        //     let b = FixedU256::saturating_from_rational(1, -2);
-        //     assert_eq!(b.saturating_mul_int(42i32), -21);
-        //     assert_eq!(b.saturating_mul_int(i128::MAX), i128::MAX / -2);
-        //     assert_eq!(b.saturating_mul_int(i128::MIN), i128::MIN / -2);
-        //     assert_eq!(b.saturating_mul_int(u128::MAX), u128::MIN);
-        // }
-
         let a = FixedU256::saturating_from_rational(1, 2);
         assert_eq!(a.saturating_mul_int(42i32), 21);
         assert_eq!(a.saturating_mul_int(i128::MAX), i128::MAX / 2);
@@ -1720,7 +1460,6 @@ mod fixed_u256_test {
     #[test]
     fn checked_mul_works() {
         let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
-        // let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
 
         let a = FixedU256::saturating_from_integer(2);
 
@@ -1745,36 +1484,6 @@ mod fixed_u256_test {
             a.checked_mul(&(c / FixedU256::try_from(2).unwrap().fixed().unwrap() + e)),
             None
         );
-
-        // if FixedU256::SIGNED {
-        //     // Min + 1.
-        //     let b = FixedU256::from_inner(inner_min + 1) / 2.into();
-        //     let c = FixedU256::from_inner(inner_min + 2);
-        //     assert_eq!(a.checked_mul(&b), Some(c));
-        //
-        //     // Min.
-        //     let b = FixedU256::from_inner(inner_min) / 2.into();
-        //     let c = FixedU256::from_inner(inner_min);
-        //     assert_eq!(a.checked_mul(&b), Some(c));
-        //
-        //     // Min - 1 => None.
-        //     let b = FixedU256::from_inner(inner_min) / 2.into() - FixedU256::from_inner(U256::one());
-        //     assert_eq!(a.checked_mul(&b), None);
-        //
-        //     let c = FixedU256::saturating_from_integer(255);
-        //     let b = FixedU256::saturating_from_rational(1, -2);
-        //
-        //     assert_eq!(b.checked_mul(&42.into()), Some(0.saturating_sub(21).into()));
-        //     assert_eq!(
-        //         b.checked_mul(&FixedU256::max_value()),
-        //         FixedU256::max_value().checked_div(&0.saturating_sub(2).into())
-        //     );
-        //     assert_eq!(
-        //         b.checked_mul(&FixedU256::min_value()),
-        //         FixedU256::min_value().checked_div(&0.saturating_sub(2).into())
-        //     );
-        //     assert_eq!(c.checked_mul(&FixedU256::min_value()), None);
-        // }
 
         let a = FixedU256::saturating_from_rational(1, 2);
         let c = FixedU256::saturating_from_integer(255);
@@ -1825,41 +1534,6 @@ mod fixed_u256_test {
             a.const_checked_mul(c / FixedU256::try_from(2).unwrap().fixed().unwrap() + e),
             None
         );
-
-        // if FixedU256::SIGNED {
-        //     // Min + 1.
-        //     let b = FixedU256::from_inner(inner_min + 1) / 2.into();
-        //     let c = FixedU256::from_inner(inner_min + 2);
-        //     assert_eq!(a.const_checked_mul(b), Some(c));
-        //
-        //     // Min.
-        //     let b = FixedU256::from_inner(inner_min) / 2.into();
-        //     let c = FixedU256::from_inner(inner_min);
-        //     assert_eq!(a.const_checked_mul(b), Some(c));
-        //
-        //     // Min - 1 => None.
-        //     let b = FixedU256::from_inner(inner_min) / 2.into() - FixedU256::from_inner(1);
-        //     assert_eq!(a.const_checked_mul(b), None);
-        //
-        //     let b = FixedU256::saturating_from_rational(1i32, -2i32);
-        //     let c = FixedU256::saturating_from_integer(-21i32);
-        //     let d = FixedU256::saturating_from_integer(42);
-        //
-        //     assert_eq!(b.const_checked_mul(d), Some(c));
-        //
-        //     let minus_two = FixedU256::saturating_from_integer(-2i32);
-        //     assert_eq!(
-        //         b.const_checked_mul(FixedU256::max_value()),
-        //         FixedU256::max_value().const_checked_div(minus_two)
-        //     );
-        //     assert_eq!(
-        //         b.const_checked_mul(FixedU256::min_value()),
-        //         FixedU256::min_value().const_checked_div(minus_two)
-        //     );
-        //
-        //     let c = FixedU256::saturating_from_integer(255u32);
-        //     assert_eq!(c.const_checked_mul(FixedU256::min_value()), None);
-        // }
 
         let a = FixedU256::saturating_from_rational(1i32, 2i32);
         let c = FixedU256::saturating_from_integer(255i32);
@@ -1968,385 +1642,16 @@ mod fixed_u256_test {
 
         let a = FixedU256::min_value();
         assert_eq!(a.saturating_div_int(U256::from(1)), inner_min / accuracy);
-
-        // if FixedU256::SIGNED {
-        //     let a = FixedU256::saturating_from_integer(5);
-        //     assert_eq!(a.saturating_div_int(-2), -2);
-        //
-        //     let a = FixedU256::min_value();
-        //     assert_eq!(a.saturating_div_int(-1i128), (inner_max / accuracy) as i128);
-        // }
     }
 
     #[test]
     fn saturating_abs_works() {
         let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
-        // let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
 
         assert_eq!(
             FixedU256::from_inner(inner_max).saturating_abs(),
             FixedU256::max_value()
         );
         assert_eq!(FixedU256::zero().saturating_abs(), 0.try_into().unwrap());
-
-        // if FixedU256::SIGNED {
-        //     assert_eq!(FixedU256::from_inner(inner_min).saturating_abs(), FixedU256::max_value());
-        //     assert_eq!(
-        //         FixedU256::saturating_from_rational(-1, 2).saturating_abs(),
-        //         (1, 2).into()
-        //     );
-        // }
     }
-
-    // #[test]
-    // fn saturating_mul_acc_int_works() {
-    //     assert_eq!(FixedU256::zero().saturating_mul_acc_int(42i8), 42i8);
-    //     assert_eq!(FixedU256::one().saturating_mul_acc_int(42i8), 2 * 42i8);
-    //
-    //     assert_eq!(FixedU256::one().saturating_mul_acc_int(i128::MAX), i128::MAX);
-    //     assert_eq!(FixedU256::one().saturating_mul_acc_int(i128::MIN), i128::MIN);
-    //
-    //     assert_eq!(FixedU256::one().saturating_mul_acc_int(u128::MAX / 2), u128::MAX - 1);
-    //     assert_eq!(FixedU256::one().saturating_mul_acc_int(u128::MIN), u128::MIN);
-    //
-    //     if FixedU256::SIGNED {
-    //         let a = FixedU256::saturating_from_rational(-1, 2);
-    //         assert_eq!(a.saturating_mul_acc_int(42i8), 21i8);
-    //         assert_eq!(a.saturating_mul_acc_int(42u8), 21u8);
-    //         assert_eq!(a.saturating_mul_acc_int(u128::MAX - 1), u128::MAX / 2);
-    //     }
-    // }
-    //
-    // #[test]
-    // fn saturating_pow_should_work() {
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(2).saturating_pow(0),
-    //         FixedU256::saturating_from_integer(1)
-    //     );
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(2).saturating_pow(1),
-    //         FixedU256::saturating_from_integer(2)
-    //     );
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(2).saturating_pow(2),
-    //         FixedU256::saturating_from_integer(4)
-    //     );
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(2).saturating_pow(3),
-    //         FixedU256::saturating_from_integer(8)
-    //     );
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(2).saturating_pow(50),
-    //         FixedU256::saturating_from_integer(1125899906842624i64)
-    //     );
-    //
-    //     assert_eq!(FixedU256::saturating_from_integer(1).saturating_pow(1000), (1).into());
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(1).saturating_pow(usize::MAX),
-    //         (1).into()
-    //     );
-    //
-    //     if FixedU256::SIGNED {
-    //         // Saturating.
-    //         assert_eq!(
-    //             FixedU256::saturating_from_integer(2).saturating_pow(68),
-    //             FixedU256::max_value()
-    //         );
-    //
-    //         assert_eq!(FixedU256::saturating_from_integer(-1).saturating_pow(1000), (1).into());
-    //         assert_eq!(
-    //             FixedU256::saturating_from_integer(-1).saturating_pow(1001),
-    //             0.saturating_sub(1).into()
-    //         );
-    //         assert_eq!(
-    //             FixedU256::saturating_from_integer(-1).saturating_pow(usize::MAX),
-    //             0.saturating_sub(1).into()
-    //         );
-    //         assert_eq!(
-    //             FixedU256::saturating_from_integer(-1).saturating_pow(usize::MAX - 1),
-    //             (1).into()
-    //         );
-    //     }
-    //
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(114209).saturating_pow(5),
-    //         FixedU256::max_value()
-    //     );
-    //
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(1).saturating_pow(usize::MAX),
-    //         (1).into()
-    //     );
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(0).saturating_pow(usize::MAX),
-    //         (0).into()
-    //     );
-    //     assert_eq!(
-    //         FixedU256::saturating_from_integer(2).saturating_pow(usize::MAX),
-    //         FixedU256::max_value()
-    //     );
-    // }
-    //
-    // #[test]
-    // fn checked_div_works() {
-    //     let inner_max = <FixedU256 as FixedPointNumber>::Inner::max_value();
-    //     let inner_min = <FixedU256 as FixedPointNumber>::Inner::min_value();
-    //
-    //     let a = FixedU256::from_inner(inner_max);
-    //     let b = FixedU256::from_inner(inner_min);
-    //     let c = FixedU256::zero();
-    //     let d = FixedU256::one();
-    //     let e = FixedU256::saturating_from_integer(6);
-    //     let f = FixedU256::saturating_from_integer(5);
-    //
-    //     assert_eq!(e.checked_div(&2.into()), Some(3.into()));
-    //     assert_eq!(f.checked_div(&2.into()), Some((5, 2).into()));
-    //
-    //     assert_eq!(a.checked_div(&inner_max.into()), Some(1.into()));
-    //     assert_eq!(a.checked_div(&2.into()), Some(FixedU256::from_inner(inner_max / 2)));
-    //     assert_eq!(a.checked_div(&FixedU256::max_value()), Some(1.into()));
-    //     assert_eq!(a.checked_div(&d), Some(a));
-    //
-    //     if b < c {
-    //         // Not executed by unsigned inners.
-    //         assert_eq!(
-    //             a.checked_div(&0.saturating_sub(2).into()),
-    //             Some(FixedU256::from_inner(0.saturating_sub(inner_max / 2)))
-    //         );
-    //         assert_eq!(
-    //             a.checked_div(&-FixedU256::max_value()),
-    //             Some(0.saturating_sub(1).into())
-    //         );
-    //         assert_eq!(
-    //             b.checked_div(&0.saturating_sub(2).into()),
-    //             Some(FixedU256::from_inner(0.saturating_sub(inner_min / 2)))
-    //         );
-    //         assert_eq!(c.checked_div(&FixedU256::max_value()), Some(0.into()));
-    //         assert_eq!(b.checked_div(&b), Some(FixedU256::one()));
-    //     }
-    //
-    //     assert_eq!(b.checked_div(&2.into()), Some(FixedU256::from_inner(inner_min / 2)));
-    //     assert_eq!(b.checked_div(&a), Some(0.saturating_sub(1).into()));
-    //     assert_eq!(c.checked_div(&1.into()), Some(0.into()));
-    //     assert_eq!(d.checked_div(&1.into()), Some(1.into()));
-    //
-    //     assert_eq!(a.checked_div(&FixedU256::one()), Some(a));
-    //     assert_eq!(b.checked_div(&FixedU256::one()), Some(b));
-    //     assert_eq!(c.checked_div(&FixedU256::one()), Some(c));
-    //     assert_eq!(d.checked_div(&FixedU256::one()), Some(d));
-    //
-    //     assert_eq!(a.checked_div(&FixedU256::zero()), None);
-    //     assert_eq!(b.checked_div(&FixedU256::zero()), None);
-    //     assert_eq!(c.checked_div(&FixedU256::zero()), None);
-    //     assert_eq!(d.checked_div(&FixedU256::zero()), None);
-    // }
-    //
-    // #[test]
-    // fn is_positive_negative_works() {
-    //     let one = FixedU256::one();
-    //     assert!(one.is_positive());
-    //     assert!(!one.is_negative());
-    //
-    //     let zero = FixedU256::zero();
-    //     assert!(!zero.is_positive());
-    //     assert!(!zero.is_negative());
-    //
-    //     if $signed {
-    //         let minus_one = FixedU256::saturating_from_integer(-1);
-    //         assert!(minus_one.is_negative());
-    //         assert!(!minus_one.is_positive());
-    //     }
-    // }
-    //
-    // #[test]
-    // fn trunc_works() {
-    //     let n = FixedU256::saturating_from_rational(5, 2).trunc();
-    //     assert_eq!(n, FixedU256::saturating_from_integer(2));
-    //
-    //     if FixedU256::SIGNED {
-    //         let n = FixedU256::saturating_from_rational(-5, 2).trunc();
-    //         assert_eq!(n, FixedU256::saturating_from_integer(-2));
-    //     }
-    // }
-    //
-    // #[test]
-    // fn frac_works() {
-    //     let n = FixedU256::saturating_from_rational(5, 2);
-    //     let i = n.trunc();
-    //     let f = n.frac();
-    //
-    //     assert_eq!(n, i + f);
-    //
-    //     let n = FixedU256::saturating_from_rational(5, 2).frac().saturating_mul(10.into());
-    //     assert_eq!(n, 5.into());
-    //
-    //     let n = FixedU256::saturating_from_rational(1, 2).frac().saturating_mul(10.into());
-    //     assert_eq!(n, 5.into());
-    //
-    //     if FixedU256::SIGNED {
-    //         let n = FixedU256::saturating_from_rational(-5, 2);
-    //         let i = n.trunc();
-    //         let f = n.frac();
-    //         assert_eq!(n, i - f);
-    //
-    //         // The sign is attached to the integer part unless it is zero.
-    //         let n = FixedU256::saturating_from_rational(-5, 2).frac().saturating_mul(10.into());
-    //         assert_eq!(n, 5.into());
-    //
-    //         let n = FixedU256::saturating_from_rational(-1, 2).frac().saturating_mul(10.into());
-    //         assert_eq!(n, 0.saturating_sub(5).into());
-    //     }
-    // }
-    //
-    // #[test]
-    // fn ceil_works() {
-    //     let n = FixedU256::saturating_from_rational(5, 2);
-    //     assert_eq!(n.ceil(), 3.into());
-    //
-    //     let n = FixedU256::saturating_from_rational(-5, 2);
-    //     assert_eq!(n.ceil(), 0.saturating_sub(2).into());
-    //
-    //     // On the limits:
-    //     let n = FixedU256::max_value();
-    //     assert_eq!(n.ceil(), n.trunc());
-    //
-    //     let n = FixedU256::min_value();
-    //     assert_eq!(n.ceil(), n.trunc());
-    // }
-    //
-    // #[test]
-    // fn floor_works() {
-    //     let n = FixedU256::saturating_from_rational(5, 2);
-    //     assert_eq!(n.floor(), 2.into());
-    //
-    //     let n = FixedU256::saturating_from_rational(-5, 2);
-    //     assert_eq!(n.floor(), 0.saturating_sub(3).into());
-    //
-    //     // On the limits:
-    //     let n = FixedU256::max_value();
-    //     assert_eq!(n.floor(), n.trunc());
-    //
-    //     let n = FixedU256::min_value();
-    //     assert_eq!(n.floor(), n.trunc());
-    // }
-    //
-    // #[test]
-    // fn round_works() {
-    //     let n = FixedU256::zero();
-    //     assert_eq!(n.round(), n);
-    //
-    //     let n = FixedU256::one();
-    //     assert_eq!(n.round(), n);
-    //
-    //     let n = FixedU256::saturating_from_rational(5, 2);
-    //     assert_eq!(n.round(), 3.into());
-    //
-    //     let n = FixedU256::saturating_from_rational(-5, 2);
-    //     assert_eq!(n.round(), 0.saturating_sub(3).into());
-    //
-    //     // Saturating:
-    //     let n = FixedU256::max_value();
-    //     assert_eq!(n.round(), n.trunc());
-    //
-    //     let n = FixedU256::min_value();
-    //     assert_eq!(n.round(), n.trunc());
-    //
-    //     // On the limit:
-    //
-    //     // floor(max - 1) + 0.33..
-    //     let n = FixedU256::max_value()
-    //         .saturating_sub(1.into())
-    //         .trunc()
-    //         .saturating_add((1, 3).into());
-    //
-    //     assert_eq!(n.round(), (FixedU256::max_value() - 1.into()).trunc());
-    //
-    //     // floor(max - 1) + 0.5
-    //     let n = FixedU256::max_value()
-    //         .saturating_sub(1.into())
-    //         .trunc()
-    //         .saturating_add((1, 2).into());
-    //
-    //     assert_eq!(n.round(), FixedU256::max_value().trunc());
-    //
-    //     if FixedU256::SIGNED {
-    //         // floor(min + 1) - 0.33..
-    //         let n = FixedU256::min_value()
-    //             .saturating_add(1.into())
-    //             .trunc()
-    //             .saturating_sub((1, 3).into());
-    //
-    //         assert_eq!(n.round(), (FixedU256::min_value() + 1.into()).trunc());
-    //
-    //         // floor(min + 1) - 0.5
-    //         let n = FixedU256::min_value()
-    //             .saturating_add(1.into())
-    //             .trunc()
-    //             .saturating_sub((1, 2).into());
-    //
-    //         assert_eq!(n.round(), FixedU256::min_value().trunc());
-    //     }
-    // }
-    //
-    // #[test]
-    // fn perthing_into_works() {
-    //     let ten_percent_percent: FixedU256 = Percent::from_percent(10).into();
-    //     assert_eq!(ten_percent_percent.into_inner(), FixedU256::accuracy() / 10);
-    //
-    //     let ten_percent_permill: FixedU256 = Permill::from_percent(10).into();
-    //     assert_eq!(ten_percent_permill.into_inner(), FixedU256::accuracy() / 10);
-    //
-    //     let ten_percent_perbill: FixedU256 = Perbill::from_percent(10).into();
-    //     assert_eq!(ten_percent_perbill.into_inner(), FixedU256::accuracy() / 10);
-    //
-    //     let ten_percent_perquintill: FixedU256 = Perquintill::from_percent(10).into();
-    //     assert_eq!(ten_percent_perquintill.into_inner(), FixedU256::accuracy() / 10);
-    // }
-    //
-    // #[test]
-    // fn fmt_should_work() {
-    //     let zero = FixedU256::zero();
-    //     assert_eq!(
-    //         format!("{:?}", zero),
-    //         format!("{}(0.{:0>weight$})", stringify!(FixedU256), 0, weight = precision())
-    //     );
-    //
-    //     let one = FixedU256::one();
-    //     assert_eq!(
-    //         format!("{:?}", one),
-    //         format!("{}(1.{:0>weight$})", stringify!(FixedU256), 0, weight = precision())
-    //     );
-    //
-    //     let frac = FixedU256::saturating_from_rational(1, 2);
-    //     assert_eq!(
-    //         format!("{:?}", frac),
-    //         format!("{}(0.{:0<weight$})", stringify!(FixedU256), 5, weight = precision())
-    //     );
-    //
-    //     let frac = FixedU256::saturating_from_rational(5, 2);
-    //     assert_eq!(
-    //         format!("{:?}", frac),
-    //         format!("{}(2.{:0<weight$})", stringify!(FixedU256), 5, weight = precision())
-    //     );
-    //
-    //     let frac = FixedU256::saturating_from_rational(314, 100);
-    //     assert_eq!(
-    //         format!("{:?}", frac),
-    //         format!("{}(3.{:0<weight$})", stringify!(FixedU256), 14, weight = precision())
-    //     );
-    //
-    //     if FixedU256::SIGNED {
-    //         let neg = -FixedU256::one();
-    //         assert_eq!(
-    //             format!("{:?}", neg),
-    //             format!("{}(-1.{:0>weight$})", stringify!(FixedU256), 0, weight = precision())
-    //         );
-    //
-    //         let frac = FixedU256::saturating_from_rational(-314, 100);
-    //         assert_eq!(
-    //             format!("{:?}", frac),
-    //             format!("{}(-3.{:0<weight$})", stringify!(FixedU256), 14, weight = precision())
-    //         );
-    //     }
-    // }
 }
