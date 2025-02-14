@@ -34,8 +34,9 @@
 use crate::crop_receipt::{crop_receipt_content_template, Country, Rating};
 use crate::{Config, Coupons, Event, Pallet};
 use codec::Decode;
-use common::{balance, AssetIdOf, AssetInfoProvider, BoundedString};
+use common::{balance, AssetIdOf, AssetInfoProvider, BoundedString, DexIdOf};
 use frame_benchmarking::benchmarks;
+use frame_support::sp_runtime::Permill;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_core::Get;
@@ -54,6 +55,11 @@ fn bob<T: Config>() -> T::AccountId {
     T::AccountId::decode(&mut &bytes[..]).unwrap()
 }
 
+fn charlie<T: Config>() -> T::AccountId {
+    let bytes = hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a49");
+    T::AccountId::decode(&mut &bytes[..]).unwrap()
+}
+
 fn tech_account_id_to_account_id<T: Config>(tech: &T::TechAccountId) -> T::AccountId {
     technical::Pallet::<T>::tech_account_id_to_account_id(tech).unwrap()
 }
@@ -68,7 +74,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     where_clause {
-        where T: assets::Config<AssetId = AssetIdOf<T>>,
+        where T: assets::Config<AssetId = AssetIdOf<T>> + order_book::Config,
     }
 
     add_presto_manager {
@@ -283,6 +289,7 @@ benchmarks! {
         Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
         let close_initial_period = 123u32.into();
         let date_of_issue = 234u32.into();
         let place_of_issue = BoundedString::truncate_from("place of issue");
@@ -293,7 +300,7 @@ benchmarks! {
 
         let crop_receipt_id = 1u32.into();
     }: {
-        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
+        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, profit, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
     }
     verify {
         assert_last_event::<T>(Event::<T>::CropReceiptCreated { id: crop_receipt_id, by: bob::<T>() }.into());
@@ -305,6 +312,7 @@ benchmarks! {
         Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
         let close_initial_period = 123u32.into();
         let date_of_issue = 234u32.into();
         let place_of_issue = BoundedString::truncate_from("place of issue");
@@ -312,7 +320,7 @@ benchmarks! {
         let creditor = BoundedString::truncate_from("creditor");
         let perfomance_time = 345u32.into();
         let data = crop_receipt_content_template::<T>();
-        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
+        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, profit, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
 
         let crop_receipt_id = 1u32.into();
     }: {
@@ -328,6 +336,7 @@ benchmarks! {
         Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
         let close_initial_period = 123u32.into();
         let date_of_issue = 234u32.into();
         let place_of_issue = BoundedString::truncate_from("place of issue");
@@ -335,7 +344,7 @@ benchmarks! {
         let creditor = BoundedString::truncate_from("creditor");
         let perfomance_time = 345u32.into();
         let data = crop_receipt_content_template::<T>();
-        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
+        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, profit, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
 
         let crop_receipt_id = 1u32.into();
 
@@ -353,6 +362,7 @@ benchmarks! {
         Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
 
         let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
         let close_initial_period = 123u32.into();
         let date_of_issue = 234u32.into();
         let place_of_issue = BoundedString::truncate_from("place of issue");
@@ -360,7 +370,7 @@ benchmarks! {
         let creditor = BoundedString::truncate_from("creditor");
         let perfomance_time = 345u32.into();
         let data = crop_receipt_content_template::<T>();
-        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
+        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, profit, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
 
         let crop_receipt_id = 1u32.into();
 
@@ -373,6 +383,91 @@ benchmarks! {
     verify {
         let coupon_asset_id = Coupons::<T>::iter().collect::<Vec<_>>().first().unwrap().0;
         assert_last_event::<T>(Event::<T>::CropReceiptPublished { id: crop_receipt_id, coupon_asset_id }.into());
+    }
+
+    pay_off_crop_receipt {
+        Pallet::<T>::add_presto_auditor(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+
+        let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
+        let close_initial_period = 123u32.into();
+        let date_of_issue = 234u32.into();
+        let place_of_issue = BoundedString::truncate_from("place of issue");
+        let debtor = BoundedString::truncate_from("debtor");
+        let creditor = BoundedString::truncate_from("creditor");
+        let perfomance_time = 345u32.into();
+        let data = crop_receipt_content_template::<T>();
+        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, profit, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
+
+        let crop_receipt_id = 1u32.into();
+
+        Pallet::<T>::rate_crop_receipt(RawOrigin::Signed(alice::<T>()).into(), crop_receipt_id, Rating::AA).unwrap();
+
+        let supply = 1000;
+        Pallet::<T>::publish_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), crop_receipt_id, supply).unwrap();
+
+        let debt = balance!(10500);
+        Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), debt).unwrap();
+        Pallet::<T>::send_presto_usd(RawOrigin::Signed(alice::<T>()).into(), debt, bob::<T>()).unwrap();
+    }: {
+        Pallet::<T>::pay_off_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), crop_receipt_id).unwrap();
+    }
+    verify {
+        assert_last_event::<T>(Event::<T>::CropReceiptClosed { id: crop_receipt_id }.into());
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoUsdAssetId::get(), &bob::<T>()).unwrap(), 0);
+    }
+
+    claim_refund {
+        Pallet::<T>::add_presto_auditor(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::add_presto_manager(RawOrigin::Root.into(), alice::<T>()).unwrap();
+        Pallet::<T>::apply_creditor_kyc(RawOrigin::Signed(alice::<T>()).into(), bob::<T>()).unwrap();
+        Pallet::<T>::apply_investor_kyc(RawOrigin::Signed(alice::<T>()).into(), charlie::<T>()).unwrap();
+
+        let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
+        let close_initial_period = 123u32.into();
+        let date_of_issue = 234u32.into();
+        let place_of_issue = BoundedString::truncate_from("place of issue");
+        let debtor = BoundedString::truncate_from("debtor");
+        let creditor = BoundedString::truncate_from("creditor");
+        let perfomance_time = 345u32.into();
+        let data = crop_receipt_content_template::<T>();
+        Pallet::<T>::create_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), amount, profit, Country::Brazil, close_initial_period, date_of_issue, place_of_issue, debtor, creditor, perfomance_time, data).unwrap();
+
+        let crop_receipt_id = 1u32.into();
+
+        Pallet::<T>::rate_crop_receipt(RawOrigin::Signed(alice::<T>()).into(), crop_receipt_id, Rating::AA).unwrap();
+
+        let supply = 1000;
+        Pallet::<T>::publish_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), crop_receipt_id, supply).unwrap();
+
+        let debt = balance!(10500);
+        Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), debt).unwrap();
+        Pallet::<T>::send_presto_usd(RawOrigin::Signed(alice::<T>()).into(), debt, bob::<T>()).unwrap();
+
+        Pallet::<T>::pay_off_crop_receipt(RawOrigin::Signed(bob::<T>()).into(), crop_receipt_id).unwrap();
+
+        let money = balance!(2000);
+        Pallet::<T>::mint_presto_usd(RawOrigin::Signed(alice::<T>()).into(), money).unwrap();
+        Pallet::<T>::send_presto_usd(RawOrigin::Signed(alice::<T>()).into(), money, charlie::<T>()).unwrap();
+
+        let coupon_asset_id = Coupons::<T>::iter().collect::<Vec<_>>().first().unwrap().0;
+
+        let order_book_id = common::OrderBookId::<AssetIdOf<T>, DexIdOf<T>> {
+            dex_id: common::DEXId::PolkaswapPresto.into(),
+            base: coupon_asset_id,
+            quote: T::PrestoUsdAssetId::get(),
+        };
+
+        order_book::Pallet::<T>::execute_market_order(RawOrigin::Signed(charlie::<T>()).into(), order_book_id, common::PriceVariant::Buy, 200).unwrap();
+    }: {
+        Pallet::<T>::claim_refund(RawOrigin::Signed(charlie::<T>()).into(), coupon_asset_id, 200).unwrap();
+    }
+    verify {
+        assert_eq!(Assets::<T>::free_balance(&coupon_asset_id, &charlie::<T>()).unwrap(), 0);
+        assert_eq!(Assets::<T>::free_balance(&T::PrestoUsdAssetId::get(), &charlie::<T>()).unwrap(), balance!(2100));
     }
 
     impl_benchmark_test_suite!(
