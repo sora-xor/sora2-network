@@ -33,8 +33,9 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
 
-use crate::to_fixed_wrapper;
-use common::prelude::{AssetIdOf, Balance, FixedWrapper};
+use crate::to_fixed_wrapper_256;
+use common::fixed_wrapper_u256::FixedWrapper256;
+use common::prelude::{AssetIdOf, Balance};
 use common::{balance, AssetInfoProvider, AssetManager, DexInfoProvider};
 use sp_runtime::traits::Zero;
 
@@ -306,10 +307,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
         // check if k has not turned to 0
         let pool_is_valid_after_op_test = {
-            let fxw_x =
-                to_fixed_wrapper!(balance_st) + to_fixed_wrapper!(self.source.amount.unwrap());
-            let fxw_y =
-                to_fixed_wrapper!(balance_tt) - to_fixed_wrapper!(self.destination.amount.unwrap());
+            let fxw_x = to_fixed_wrapper_256!(balance_st)
+                + to_fixed_wrapper_256!(self.source.amount.unwrap());
+            let fxw_y = to_fixed_wrapper_256!(balance_tt)
+                - to_fixed_wrapper_256!(self.destination.amount.unwrap());
             fxw_x.try_into_balance().unwrap_or(balance!(0)) != balance!(0)
                 && fxw_y.try_into_balance().unwrap_or(balance!(0)) != balance!(0)
         };
