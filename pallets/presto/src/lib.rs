@@ -32,6 +32,7 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod coupon_info;
 mod crop_receipt;
 #[cfg(test)]
 mod mock;
@@ -75,11 +76,13 @@ pub mod pallet {
     };
     use core::fmt::Debug;
     use frame_support::pallet_prelude::*;
+    use frame_support::sp_runtime::Permill;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{AtLeast32BitUnsigned, CheckedDiv, MaybeDisplay, Zero};
     use sp_runtime::BoundedVec;
 
-    use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating};
+    use coupon_info::CouponInfo;
+    use crop_receipt::{Country, CropReceipt, CropReceiptContent, Rating, Status};
     use requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
     use treasury::Treasury;
     use weights::WeightInfo;
@@ -260,7 +263,13 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn coupons)]
     pub type Coupons<T: Config> =
-        StorageMap<_, Twox64Concat, AssetIdOf<T>, T::CropReceiptId, OptionQuery>;
+        StorageMap<_, Twox64Concat, AssetIdOf<T>, CouponInfo<T>, OptionQuery>;
+
+    /// Index to map Crop Receipt with emitted Coupon
+    #[pallet::storage]
+    #[pallet::getter(fn crop_receipt_to_coupon)]
+    pub type CropReceiptToCoupon<T: Config> =
+        StorageMap<_, Twox64Concat, T::CropReceiptId, AssetIdOf<T>, OptionQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -314,6 +323,9 @@ pub mod pallet {
         CropReceiptPublished {
             id: T::CropReceiptId,
             coupon_asset_id: AssetIdOf<T>,
+        },
+        CropReceiptClosed {
+            id: T::CropReceiptId,
         },
     }
 
@@ -369,12 +381,20 @@ pub mod pallet {
         CropReceiptWaitingForRate,
         /// The crop receipt already has a decision
         CropReceiptAlreadyHasDecision,
+        /// The crop receipt has been closed
+        CropReceiptHasBeenClosed,
+        /// The crop receipt cannot be closed
+        CropReceiptCannotBeClosed,
+        /// The crop receipt is not closed yet
+        CropReceiptIsNotClosedYet,
         /// Coupon supply cannot be bigger than requested amount in crop receipt
         TooBigCouponSupply,
         /// Fail of coupon public offering
         CouponOfferingFail,
         /// Error during calculations
         CalculationError,
+        /// There is no data about emitted coupon for the crop receipt
+        NoCouponData,
     }
 
     #[pallet::call]
@@ -807,6 +827,7 @@ pub mod pallet {
         pub fn create_crop_receipt(
             origin: OriginFor<T>,
             amount: Balance,
+            profit: Permill,
             country: Country,
             close_initial_period: MomentOf<T>,
             date_of_issue: MomentOf<T>,
@@ -824,6 +845,7 @@ pub mod pallet {
             let crop_receipt = CropReceipt::<T>::new(
                 owner.clone(),
                 amount,
+                profit,
                 country,
                 close_initial_period,
                 date_of_issue,
@@ -915,6 +937,7 @@ pub mod pallet {
 
             let mut country = Country::Other;
             let mut amount = BalanceUnit::default();
+            let mut profit = Permill::default();
             CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
                 let crop_receipt = crop_receipt
                     .as_mut()
@@ -923,6 +946,7 @@ pub mod pallet {
                 crop_receipt.ensure_is_owner(&who)?;
                 country = crop_receipt.country;
                 amount = BalanceUnit::divisible(crop_receipt.amount);
+                profit = crop_receipt.profit;
 
                 // The initial price (amount / supply) must be >= 1.00
                 ensure!(coupon_supply <= amount, Error::<T>::TooBigCouponSupply);
@@ -957,8 +981,6 @@ pub mod pallet {
                 &T::PrestoKycAssetId::get(),
                 &coupon_asset_id,
             )?;
-
-            Coupons::<T>::insert(coupon_asset_id, crop_receipt_id);
 
             T::AssetManager::transfer_from(
                 &coupon_asset_id,
@@ -1016,13 +1038,29 @@ pub mod pallet {
                     )
                 };
 
-            let price = *amount
+            let offer_price = *amount
                 .checked_div(&coupon_supply)
                 .ok_or(Error::<T>::CalculationError)?
                 .into_divisible()
                 .ok_or(Error::<T>::CalculationError)?
                 .balance();
-            let price = Self::align_price(price, tick_size)?;
+            let offer_price = Self::align_price(offer_price, tick_size)?;
+
+            let refund_price = offer_price
+                .checked_add(profit * offer_price)
+                .ok_or(Error::<T>::CalculationError)?;
+            let refund_price = BalanceUnit::divisible(refund_price);
+
+            Coupons::<T>::insert(
+                coupon_asset_id,
+                CouponInfo {
+                    crop_receipt_id,
+                    supply: coupon_supply,
+                    refund_price,
+                },
+            );
+
+            CropReceiptToCoupon::<T>::insert(crop_receipt_id, coupon_asset_id);
 
             // create order book
             T::OrderBookManager::initialize_orderbook(
@@ -1056,7 +1094,7 @@ pub mod pallet {
                 T::OrderBookManager::place_limit_order(
                     who.clone(),
                     order_book_id,
-                    price,
+                    offer_price,
                     qty,
                     PriceVariant::Sell,
                     None,
@@ -1069,6 +1107,96 @@ pub mod pallet {
                 id: crop_receipt_id,
                 coupon_asset_id,
             });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(21)]
+        #[pallet::weight(<T as Config>::WeightInfo::publish_crop_receipt())]
+        pub fn pay_off_crop_receipt(
+            origin: OriginFor<T>,
+            crop_receipt_id: T::CropReceiptId,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::ensure_has_creditor_kyc(&who)?;
+
+            CropReceipts::<T>::try_mutate(crop_receipt_id, |crop_receipt| {
+                let crop_receipt = crop_receipt
+                    .as_mut()
+                    .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+
+                crop_receipt.ensure_is_owner(&who)?;
+                crop_receipt.close()
+            })?;
+
+            let coupon_asset_id =
+                CropReceiptToCoupon::<T>::get(crop_receipt_id).ok_or(Error::<T>::NoCouponData)?;
+
+            let coupon_info = Coupons::<T>::get(coupon_asset_id).ok_or(Error::<T>::NoCouponData)?;
+
+            let mut total_debt = coupon_info.total_debt_cost()?;
+
+            // if creditor has any amount of coupons - they are burned, but the total pay off debt is reduced by the coupons cost
+            let coupon_amount = T::AssetInfoProvider::free_balance(&coupon_asset_id, &who)?;
+            if coupon_amount > Balance::zero() {
+                let coupons_cost = coupon_info.coupons_cost(coupon_amount)?;
+                total_debt = total_debt
+                    .checked_sub(coupons_cost)
+                    .ok_or(Error::<T>::CalculationError)?;
+
+                let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                    &T::PrestoTechAccount::get(),
+                )?;
+
+                T::AssetManager::burn_from(
+                    &coupon_asset_id,
+                    &presto_tech_account_id,
+                    &who,
+                    coupon_amount,
+                )?;
+            }
+
+            Treasury::<T>::transfer_to_buffer(total_debt, &who)?;
+
+            Self::deposit_event(Event::<T>::CropReceiptClosed {
+                id: crop_receipt_id,
+            });
+
+            Ok(())
+        }
+
+        #[pallet::call_index(22)]
+        #[pallet::weight(<T as Config>::WeightInfo::claim_refund())]
+        pub fn claim_refund(
+            origin: OriginFor<T>,
+            coupon_asset_id: AssetIdOf<T>,
+            coupon_amount: Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::ensure_has_investor_kyc(&who)?;
+
+            let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
+                &T::PrestoTechAccount::get(),
+            )?;
+
+            T::AssetManager::burn_from(
+                &coupon_asset_id,
+                &presto_tech_account_id,
+                &who,
+                coupon_amount,
+            )?;
+
+            let coupon_info = Coupons::<T>::get(coupon_asset_id).ok_or(Error::<T>::NoCouponData)?;
+
+            let crop_receipt = CropReceipts::<T>::get(coupon_info.crop_receipt_id)
+                .ok_or(Error::<T>::CropReceiptIsNotExists)?;
+            ensure!(
+                crop_receipt.status == Status::Closed,
+                Error::<T>::CropReceiptIsNotClosedYet
+            );
+
+            let refund_amount = coupon_info.coupons_cost(coupon_amount)?;
+            Treasury::<T>::transfer_from_buffer(refund_amount, &who)?;
 
             Ok(())
         }

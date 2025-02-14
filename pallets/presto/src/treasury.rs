@@ -98,7 +98,7 @@ impl<T: Config> Treasury<T> {
         Ok(())
     }
 
-    pub fn return_from_buffer(amount: Balance, to: &AccountIdOf<T>) -> DispatchResult {
+    pub fn transfer_from_buffer(amount: Balance, to: &AccountIdOf<T>) -> DispatchResult {
         let presto_buffer_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
             &T::PrestoBufferTechAccount::get(),
         )?;
@@ -113,7 +113,7 @@ impl<T: Config> Treasury<T> {
         Ok(())
     }
 
-    pub fn collect_to_buffer(amount: Balance, from: &AccountIdOf<T>) -> DispatchResult {
+    pub fn transfer_to_buffer(amount: Balance, from: &AccountIdOf<T>) -> DispatchResult {
         let presto_buffer_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
             &T::PrestoBufferTechAccount::get(),
         )?;
