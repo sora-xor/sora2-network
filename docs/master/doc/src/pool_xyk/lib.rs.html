@@ -1461,6 +1461,7 @@
 <a href="#1446" id="1446">1446</a>
 <a href="#1447" id="1447">1447</a>
 <a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1505,14 +1506,13 @@
 
 <span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::prelude::{
-    Balance, EnsureDEXManager, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome,
-    SwapVariant,
+    Balance, EnsureDEXManager, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 <span class="kw">use </span>common::{
-    fixed_wrapper, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
-    EnsureTradingPairExists, GetPoolReserves, LiquiditySource, LiquiditySourceType, ManagementMode,
-    OnPoolReservesChanged, RewardReason, TechAccountId, TechPurpose, ToFeeAccount, TradingPair,
-    TradingPairSourceManager, XykPool,
+    fixed_u256_int, fixed_wrapper_u256_int, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo,
+    DexInfoProvider, EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
+    LiquiditySourceType, ManagementMode, OnPoolReservesChanged, RewardReason, TechAccountId,
+    TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager, XykPool,
 };
 
 <span class="kw">mod </span>aliases;
@@ -2282,11 +2282,11 @@
             output_asset_id,
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>input_price_wrt_output = FixedWrapper::from(reserve_output) / reserve_input;
+        <span class="kw">let </span>input_price_wrt_output = FixedWrapper256::from(reserve_output) / reserve_input;
         <span class="kw">let </span>fee_fraction = <span class="kw">if </span>deduce_fee {
             T::GetFee::get()
         } <span class="kw">else </span>{
-            common::Fixed::default()
+            FixedU256::default()
         };
         <span class="kw">let </span>(calculated, fee_amount) = <span class="kw">match </span>amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } =&gt; {
@@ -2294,20 +2294,19 @@
                     <span class="comment">// output token is xor, user indicates desired input amount
                     // y_1 = x_in * y / x
                     // y_out = y_1 * (1 - fee)
-                    </span><span class="kw">let </span>out_with_fee =
-                        FixedWrapper::from(desired_amount_in) * input_price_wrt_output;
-                    <span class="kw">let </span>output = FixedWrapper::from(out_with_fee.clone())
-                        * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction);
+                    </span><span class="kw">let </span>out_with_fee: FixedWrapper256 =
+                        FixedWrapper256::from(desired_amount_in) * input_price_wrt_output;
+                    <span class="kw">let </span>output = out_with_fee.clone() * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction);
                     <span class="kw">let </span>fee_amount = out_with_fee - output.clone();
                     (output, fee_amount)
                 } <span class="kw">else </span>{
                     <span class="comment">// input token is xor, user indicates desired input amount
                     // x_1 = x_in * (1 - fee)
                     // y_out = x_1 * y / x
-                    </span><span class="kw">let </span>input_without_fee = FixedWrapper::from(desired_amount_in.clone())
-                        * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction);
+                    </span><span class="kw">let </span>input_without_fee = FixedWrapper256::from(desired_amount_in.clone())
+                        * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction);
                     <span class="kw">let </span>output = input_without_fee.clone() * input_price_wrt_output;
-                    <span class="kw">let </span>fee_amount = FixedWrapper::from(desired_amount_in) - input_without_fee;
+                    <span class="kw">let </span>fee_amount = FixedWrapper256::from(desired_amount_in) - input_without_fee;
                     (output, fee_amount)
                 };
 
@@ -2325,18 +2324,19 @@
                     <span class="comment">// output token is xor, user indicates desired output amount:
                     // y_1 = y_out / (1 - fee)
                     // x_in = y_1 / y / x
-                    </span><span class="kw">let </span>output_with_fee = FixedWrapper::from(desired_amount_out.clone())
-                        / (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction);
+                    </span><span class="kw">let </span>output_with_fee = FixedWrapper256::from(desired_amount_out.clone())
+                        / (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction);
                     <span class="kw">let </span>fee_amount =
-                        output_with_fee.clone() - FixedWrapper::from(desired_amount_out);
+                        output_with_fee.clone() - FixedWrapper256::from(desired_amount_out);
                     <span class="kw">let </span>input = output_with_fee / input_price_wrt_output;
                     (input, fee_amount)
                 } <span class="kw">else </span>{
                     <span class="comment">// input token is xor, user indicates desired output amount:
                     // x_in = (y_out / y / x) / (1 - fee)
                     </span><span class="kw">let </span>input_without_fee =
-                        FixedWrapper::from(desired_amount_out) / input_price_wrt_output;
-                    <span class="kw">let </span>input = input_without_fee.clone() / (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction);
+                        FixedWrapper256::from(desired_amount_out) / input_price_wrt_output;
+                    <span class="kw">let </span>input =
+                        input_without_fee.clone() / (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction);
                     <span class="kw">let </span>fee_amount = input.clone() - input_without_fee;
                     (input, fee_amount)
                 };
@@ -2383,12 +2383,14 @@
     }
 }
 
+<span class="kw">use </span>common::fixed::FixedU256;
 <span class="kw">pub use </span>pallet::<span class="kw-2">*</span>;
 <span class="kw">use </span>sp_runtime::traits::Zero;
 
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::fixed::FixedU256;
     <span class="kw">use </span>common::{
         AccountIdOf, AssetName, AssetRegulator, AssetSymbol, BalancePrecision, ContentSource,
         Description, EnabledSourcesManager, Fixed, GetMarketInfo, OnPoolCreated,
@@ -2435,7 +2437,7 @@
             DispatchError,
         &gt;;
         <span class="kw">type </span>XSTMarketInfo: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>GetFee: Get&lt;Fixed&gt;;
+        <span class="kw">type </span>GetFee: Get&lt;FixedU256&gt;;
         <span class="doccomment">/// Maximum allowed ratio between real and current issuance in pool
         </span><span class="kw">type </span>GetMaxIssuanceRatio: Get&lt;Fixed&gt;;
         <span class="kw">type </span>OnPoolCreated: OnPoolCreated&lt;AccountId = AccountIdOf&lt;<span class="self">Self</span>&gt;, DEXId = DEXIdOf&lt;<span class="self">Self</span>&gt;&gt;;

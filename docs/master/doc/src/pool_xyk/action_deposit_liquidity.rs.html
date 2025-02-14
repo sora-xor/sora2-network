@@ -350,13 +350,6 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -387,8 +380,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use crate</span>::{to_balance, to_fixed_wrapper, AccountPools, PoolProviders, TotalIssuances};
-<span class="kw">use </span>common::prelude::{AssetIdOf, AssetInfoProvider, Balance, FixedWrapper};
+</span><span class="kw">use crate</span>::{to_balance, AccountPools, PoolProviders, TotalIssuances};
+<span class="kw">use </span>common::fixed_wrapper_u256::FixedWrapper256;
+<span class="kw">use </span>common::prelude::{AssetIdOf, AssetInfoProvider, Balance};
 <span class="kw">use </span>frame_support::dispatch::DispatchResult;
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{dispatch, ensure};
@@ -502,9 +496,8 @@
             }
         }
 
-        <span class="comment">// FixedWrapper version of variables.
-        </span><span class="kw">let </span>fxw_balance_bp = FixedWrapper::from(balance_bp);
-        <span class="kw">let </span>fxw_balance_tp = FixedWrapper::from(balance_tp);
+        <span class="kw">let </span>fxw_balance_bp = FixedWrapper256::from(balance_bp);
+        <span class="kw">let </span>fxw_balance_tp = FixedWrapper256::from(balance_tp);
 
         <span class="comment">// Product of pool pair amounts to get k value.
         </span><span class="kw">let </span>pool_k = {
@@ -512,21 +505,14 @@
                 <span class="kw">if </span>abstract_checking {
                     <span class="prelude-val">None
                 </span>} <span class="kw">else </span>{
-                    <span class="kw">let </span>fxw_init_x = <span class="macro">to_fixed_wrapper!</span>(init_x);
-                    <span class="kw">let </span>fxw_init_y = <span class="macro">to_fixed_wrapper!</span>(init_y);
+                    <span class="kw">let </span>fxw_init_x = FixedWrapper256::from(init_x);
+                    <span class="kw">let </span>fxw_init_y = FixedWrapper256::from(init_y);
                     <span class="kw">let </span>fxw_value = fxw_init_x.multiply_and_sqrt(<span class="kw-2">&amp;</span>fxw_init_y);
-                    <span class="macro">ensure!</span>(
-                        !((fxw_value.clone() * fxw_init_x.clone())
-                            .try_into_balance()
-                            .is_err()
-                            || (fxw_value.clone() * fxw_init_y).try_into_balance().is_err()),
-                        Error::&lt;T&gt;::CalculatedValueIsOutOfDesiredBounds
-                    );
                     <span class="kw">let </span>value = <span class="macro">to_balance!</span>(fxw_value.clone());
                     <span class="prelude-val">Some</span>(value)
                 }
             } <span class="kw">else </span>{
-                <span class="kw">let </span>fxw_value: FixedWrapper = fxw_balance_bp.multiply_and_sqrt(<span class="kw-2">&amp;</span>fxw_balance_tp);
+                <span class="kw">let </span>fxw_value: FixedWrapper256 = fxw_balance_bp.multiply_and_sqrt(<span class="kw-2">&amp;</span>fxw_balance_tp);
                 <span class="kw">let </span>value = <span class="macro">to_balance!</span>(fxw_value.clone());
                 <span class="prelude-val">Some</span>(value)
             }

@@ -278,6 +278,9 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -308,15 +311,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-</span><span class="kw">use </span>common::prelude::{Balance, Fixed, FixedWrapper};
-<span class="kw">use </span>common::{fixed_wrapper, AssetIdOf, TradingPair};
+</span><span class="kw">use crate</span>::{to_balance, to_fixed_wrapper, to_fixed_wrapper_256};
+<span class="kw">use crate</span>::{Config, Error, Pallet};
+<span class="kw">use </span>common::fixed::FixedU256;
+<span class="kw">use </span>common::fixed_wrapper_u256::FixedWrapper256;
+<span class="kw">use </span>common::prelude::{Balance, FixedWrapper};
+<span class="kw">use </span>common::{fixed_u256_int, fixed_wrapper_u256_int, AssetIdOf, TradingPair};
 <span class="kw">use </span>frame_support::dispatch::DispatchError;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>sp_runtime::traits::Zero;
-
-<span class="kw">use crate</span>::{to_balance, to_fixed_wrapper};
-<span class="kw">use crate</span>::{Config, Error, Pallet};
 
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="comment">// https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36
@@ -329,8 +333,8 @@
         reserve_b: <span class="kw-2">&amp;</span>Balance,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, DispatchError&gt; {
         <span class="prelude-val">Ok</span>(<span class="macro">to_balance!</span>(
-            (<span class="macro">to_fixed_wrapper!</span>(amount_a) * <span class="macro">to_fixed_wrapper!</span>(reserve_b))
-                / <span class="macro">to_fixed_wrapper!</span>(reserve_a)
+            (<span class="macro">to_fixed_wrapper_256!</span>(amount_a) * <span class="macro">to_fixed_wrapper_256!</span>(reserve_b))
+                / <span class="macro">to_fixed_wrapper_256!</span>(reserve_a)
         ))
     }
 
@@ -391,12 +395,12 @@
             amount_b_min,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>lhs = <span class="macro">to_balance!</span>(
-            <span class="macro">to_fixed_wrapper!</span>(am_a_des) * <span class="macro">to_fixed_wrapper!</span>(total_supply)
-                / <span class="macro">to_fixed_wrapper!</span>(reserve_a)
+            <span class="macro">to_fixed_wrapper_256!</span>(am_a_des) * <span class="macro">to_fixed_wrapper_256!</span>(total_supply)
+                / <span class="macro">to_fixed_wrapper_256!</span>(reserve_a)
         );
         <span class="kw">let </span>rhs = <span class="macro">to_balance!</span>(
-            <span class="macro">to_fixed_wrapper!</span>(am_b_des) * <span class="macro">to_fixed_wrapper!</span>(total_supply)
-                / <span class="macro">to_fixed_wrapper!</span>(reserve_b)
+            <span class="macro">to_fixed_wrapper_256!</span>(am_b_des) * <span class="macro">to_fixed_wrapper_256!</span>(total_supply)
+                / <span class="macro">to_fixed_wrapper_256!</span>(reserve_b)
         );
         <span class="kw">let </span>min_value = lhs.min(rhs);
         <span class="prelude-val">Ok</span>((am_a_des, am_b_des, min_value))
@@ -405,16 +409,16 @@
     <span class="doccomment">/// Calulate (y_output,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and output is
     /// without fee.
     </span><span class="kw">pub fn </span>calc_output_for_exact_input(
-        fee_fraction: Fixed,
+        fee_fraction: FixedU256,
         get_fee_from_destination: bool,
         x: <span class="kw-2">&amp;</span>Balance,
         y: <span class="kw-2">&amp;</span>Balance,
         x_in: <span class="kw-2">&amp;</span>Balance,
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Balance, Balance), DispatchError&gt; {
-        <span class="kw">let </span>fxw_x = FixedWrapper::from(x.clone());
-        <span class="kw">let </span>fxw_y = FixedWrapper::from(y.clone());
-        <span class="kw">let </span>fxw_x_in = FixedWrapper::from(x_in.clone());
+        <span class="kw">let </span>fxw_x = FixedWrapper256::from(x.clone());
+        <span class="kw">let </span>fxw_y = FixedWrapper256::from(y.clone());
+        <span class="kw">let </span>fxw_x_in = FixedWrapper256::from(x_in.clone());
         <span class="kw">if </span>get_fee_from_destination {
             <span class="comment">// output token is xor, user indicates desired input amount
             // y_1 = (x_in * y) / (x + x_in)
@@ -423,7 +427,7 @@
             <span class="kw">let </span>denominator = fxw_x + fxw_x_in;
             <span class="kw">let </span>y_out_with_fee = nominator / denominator;
             <span class="kw">let </span>y_out = <span class="kw">if </span>deduce_fee {
-                y_out_with_fee.clone() * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction)
+                y_out_with_fee.clone() * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 y_out_with_fee.clone()
             };
@@ -436,7 +440,7 @@
             // x_1 = x_in * (1 - fee)
             // y_out = (x_1 * y) / (x + x_1)
             </span><span class="kw">let </span>x_in_without_fee = <span class="kw">if </span>deduce_fee {
-                fxw_x_in.clone() * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction)
+                fxw_x_in.clone() * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 fxw_x_in.clone()
             };
@@ -450,23 +454,23 @@
     <span class="doccomment">/// Calculates (x_input,fee) pair where fee can be fee_of_y1 or fee_of_x_in, and input is
     /// without fee.
     </span><span class="kw">pub fn </span>calc_input_for_exact_output(
-        fee_fraction: Fixed,
+        fee_fraction: FixedU256,
         get_fee_from_destination: bool,
         x: <span class="kw-2">&amp;</span>Balance,
         y: <span class="kw-2">&amp;</span>Balance,
         y_out: <span class="kw-2">&amp;</span>Balance,
         deduce_fee: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Balance, Balance), DispatchError&gt; {
-        <span class="kw">let </span>fxw_x = FixedWrapper::from(x.clone());
-        <span class="kw">let </span>fxw_y = FixedWrapper::from(y.clone());
-        <span class="kw">let </span>fxw_y_out = FixedWrapper::from(y_out.clone());
+        <span class="kw">let </span>fxw_x = FixedWrapper256::from(x.clone());
+        <span class="kw">let </span>fxw_y = FixedWrapper256::from(y.clone());
+        <span class="kw">let </span>fxw_y_out = FixedWrapper256::from(y_out.clone());
         <span class="kw">if </span>get_fee_from_destination {
             <span class="comment">// output token is xor, user indicates desired output amount:
             // y_1 = y_out / (1 - fee)
             // x_in = (x * y_1) / (y - y_1)
-            </span><span class="kw">let </span>fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(<span class="number">1</span>); <span class="comment">// by 1 correction to overestimate required input
+            </span><span class="kw">let </span>fxw_y_out = fxw_y_out.clone() + FixedU256::try_from(<span class="number">1</span>).unwrap(); <span class="comment">// by 1 correction to overestimate required input
             </span><span class="kw">let </span>y_out_with_fee = <span class="kw">if </span>deduce_fee {
-                fxw_y_out.clone() / (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction)
+                fxw_y_out.clone() / (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 fxw_y_out.clone()
             };
@@ -477,12 +481,12 @@
         } <span class="kw">else </span>{
             <span class="comment">// input token is xor, user indicates desired output amount:
             // x_in * (1 - fee) = (x * y_out) / (y - y_out)
-            </span><span class="kw">let </span>fxw_y_out = fxw_y_out.clone() + Fixed::from_bits(<span class="number">1</span>); <span class="comment">// by 1 correction to overestimate required input
+            </span><span class="kw">let </span>fxw_y_out = fxw_y_out.clone() + FixedU256::try_from(<span class="number">1</span>).unwrap(); <span class="comment">// by 1 correction to overestimate required input
             </span><span class="kw">let </span>nominator = fxw_x * fxw_y_out.clone();
             <span class="kw">let </span>denominator = fxw_y - fxw_y_out;
             <span class="kw">let </span>x_in_without_fee = nominator / denominator;
             <span class="kw">let </span>x_in = <span class="kw">if </span>deduce_fee {
-                x_in_without_fee.clone() / (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction)
+                x_in_without_fee.clone() / (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 x_in_without_fee.clone()
             };
@@ -495,7 +499,7 @@
 
     <span class="doccomment">/// Calculates max amount of output asset for swap with desired output.
     </span><span class="kw">pub fn </span>calc_max_output(
-        fee_fraction: Fixed,
+        fee_fraction: FixedU256,
         get_fee_from_destination: bool,
         reserve_output: Balance,
         deduce_fee: bool,
@@ -505,7 +509,9 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>max_output = <span class="kw">if </span>get_fee_from_destination &amp;&amp; deduce_fee {
-            <span class="macro">to_balance!</span>(FixedWrapper::from(reserve_output) * (<span class="macro">fixed_wrapper!</span>(<span class="number">1</span>) - fee_fraction))
+            <span class="macro">to_balance!</span>(
+                FixedWrapper256::from(reserve_output) * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
+            )
         } <span class="kw">else </span>{
             reserve_output
         };

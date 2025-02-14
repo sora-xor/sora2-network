@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"trait":["SaturatedConversion","Saturating","SaturatingAdd","SaturatingMul","SaturatingSub","UniqueSaturatedFrom","UniqueSaturatedInto"]};

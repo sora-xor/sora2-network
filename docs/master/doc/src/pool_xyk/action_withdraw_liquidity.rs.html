@@ -302,7 +302,6 @@
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -338,10 +337,9 @@
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>sp_runtime::traits::Zero;
 
-<span class="kw">use </span>common::prelude::FixedWrapper;
-<span class="kw">use </span>common::AssetIdOf;
-
 <span class="kw">use crate</span>::{to_balance, AccountPools, PoolProviders, TotalIssuances};
+<span class="kw">use </span>common::fixed_wrapper_u256::FixedWrapper256;
+<span class="kw">use </span>common::AssetIdOf;
 
 <span class="kw">use </span><span class="kw">crate</span>::aliases::{AccountIdOf, TechAccountIdOf};
 <span class="kw">use </span><span class="kw">crate</span>::bounds::<span class="kw-2">*</span>;
@@ -420,13 +418,13 @@
             <span class="prelude-val">Err</span>(Error::&lt;T&gt;::PoolIsInvalid)<span class="question-mark">?</span>;
         }
 
-        <span class="kw">let </span>fxw_balance_bp = FixedWrapper::from(balance_bp);
-        <span class="kw">let </span>fxw_balance_tp = FixedWrapper::from(balance_tp);
+        <span class="kw">let </span>fxw_balance_bp = FixedWrapper256::from(balance_bp);
+        <span class="kw">let </span>fxw_balance_tp = FixedWrapper256::from(balance_tp);
 
         <span class="kw">let </span>total_iss =
             TotalIssuances::&lt;T&gt;::get(<span class="kw-2">&amp;</span>pool_account_repr_sys).ok_or(Error::&lt;T&gt;::PoolIsInvalid)<span class="question-mark">?</span>;
         <span class="comment">// Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
-        </span><span class="kw">let </span>fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
+        </span><span class="kw">let </span>fxw_total_iss = FixedWrapper256::from(total_iss) + MIN_LIQUIDITY;
 
         <span class="kw">let </span>tpair = Pallet::&lt;T&gt;::get_trading_pair(
             base_asset_id,
@@ -465,7 +463,7 @@
         }
 
         <span class="kw">let </span>(recom_x, recom_y) = <span class="kw">if </span><span class="self">self</span>.pool_tokens != total_iss {
-            <span class="kw">let </span>fxw_source_k = FixedWrapper::from(<span class="self">self</span>.pool_tokens);
+            <span class="kw">let </span>fxw_source_k = FixedWrapper256::from(<span class="self">self</span>.pool_tokens);
             <span class="kw">let </span>fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
             <span class="kw">let </span>fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
             (<span class="macro">to_balance!</span>(fxw_recom_x), <span class="macro">to_balance!</span>(fxw_recom_y))

@@ -454,6 +454,7 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -489,8 +490,9 @@
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{dispatch, ensure};
 
-<span class="kw">use </span><span class="kw">crate</span>::to_fixed_wrapper;
-<span class="kw">use </span>common::prelude::{AssetIdOf, Balance, FixedWrapper};
+<span class="kw">use </span><span class="kw">crate</span>::to_fixed_wrapper_256;
+<span class="kw">use </span>common::fixed_wrapper_u256::FixedWrapper256;
+<span class="kw">use </span>common::prelude::{AssetIdOf, Balance};
 <span class="kw">use </span>common::{balance, AssetInfoProvider, AssetManager, DexInfoProvider};
 <span class="kw">use </span>sp_runtime::traits::Zero;
 
@@ -762,10 +764,10 @@
         }
         <span class="comment">// check if k has not turned to 0
         </span><span class="kw">let </span>pool_is_valid_after_op_test = {
-            <span class="kw">let </span>fxw_x =
-                <span class="macro">to_fixed_wrapper!</span>(balance_st) + <span class="macro">to_fixed_wrapper!</span>(<span class="self">self</span>.source.amount.unwrap());
-            <span class="kw">let </span>fxw_y =
-                <span class="macro">to_fixed_wrapper!</span>(balance_tt) - <span class="macro">to_fixed_wrapper!</span>(<span class="self">self</span>.destination.amount.unwrap());
+            <span class="kw">let </span>fxw_x = <span class="macro">to_fixed_wrapper_256!</span>(balance_st)
+                + <span class="macro">to_fixed_wrapper_256!</span>(<span class="self">self</span>.source.amount.unwrap());
+            <span class="kw">let </span>fxw_y = <span class="macro">to_fixed_wrapper_256!</span>(balance_tt)
+                - <span class="macro">to_fixed_wrapper_256!</span>(<span class="self">self</span>.destination.amount.unwrap());
             fxw_x.try_into_balance().unwrap_or(<span class="macro">balance!</span>(<span class="number">0</span>)) != <span class="macro">balance!</span>(<span class="number">0</span>)
                 &amp;&amp; fxw_y.try_into_balance().unwrap_or(<span class="macro">balance!</span>(<span class="number">0</span>)) != <span class="macro">balance!</span>(<span class="number">0</span>)
         };

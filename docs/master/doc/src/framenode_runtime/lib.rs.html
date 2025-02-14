@@ -3609,6 +3609,8 @@
 <a href="#3594" id="3594">3594</a>
 <a href="#3595" id="3595">3595</a>
 <a href="#3596" id="3596">3596</a>
+<a href="#3597" id="3597">3597</a>
+<a href="#3598" id="3598">3598</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3730,7 +3732,8 @@
 <span class="kw">use </span>xor_fee::extension::ChargeTransactionPayment;
 
 <span class="comment">// A few exports that help ease life for downstream crates.
-</span><span class="kw">pub use </span>common::prelude::{
+</span><span class="kw">pub use </span>common::fixed::FixedU256;
+<span class="kw">pub use </span>common::prelude::{
     Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
 };
 <span class="kw">pub use </span>common::weights::{BlockLength, BlockWeights, TransactionByteFee};
@@ -4628,6 +4631,7 @@
 
 <span class="macro">parameter_types! </span>{
     <span class="kw">pub </span>GetFee: Fixed = <span class="macro">fixed!</span>(<span class="number">0.006</span>);
+    <span class="kw">pub </span>GetFee256: FixedU256 = FixedU256::try_from(<span class="number">0.006</span>).unwrap();
     <span class="kw">pub </span>GetXykMaxIssuanceRatio: Fixed = <span class="macro">fixed!</span>(<span class="number">1.5</span>);
     <span class="kw">pub </span>GetXykIrreducibleReservePercent: Percent = Percent::from_percent(<span class="number">1</span>);
     <span class="kw">pub </span>GetXykPoolAdjustPeriod: BlockNumber = <span class="number">1 </span>* HOURS;
@@ -4664,7 +4668,7 @@
     <span class="kw">type </span>DexInfoProvider = dex_manager::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>EnsureTradingPairExists = trading_pair::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>EnabledSourcesManager = trading_pair::Pallet&lt;Runtime&gt;;
-    <span class="kw">type </span>GetFee = GetFee;
+    <span class="kw">type </span>GetFee = GetFee256;
     <span class="kw">type </span>GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     <span class="kw">type </span>OnPoolCreated = (PswapDistribution, Farming);
     <span class="kw">type </span>OnPoolReservesChanged = PriceTools;
