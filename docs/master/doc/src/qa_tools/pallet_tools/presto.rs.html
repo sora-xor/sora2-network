@@ -344,6 +344,7 @@
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -571,6 +572,20 @@
         dex_manager::DEXInfos::&lt;T&gt;::remove(dex_id);
     }
 
+    <span class="comment">// try to burn access tokens if exist
+    </span><span class="kw">let _ </span>= T::AssetManager::burn_from(
+        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
+        <span class="kw-2">&amp;</span>system_account_id,
+        <span class="kw-2">&amp;</span>presto_buffer_account_id,
+        <span class="number">1</span>,
+    );
+    <span class="kw">let _ </span>= T::AssetManager::burn_from(
+        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
+        <span class="kw-2">&amp;</span>system_account_id,
+        <span class="kw-2">&amp;</span>presto_account_id,
+        <span class="number">1</span>,
+    );
+
     <span class="kw">let </span>scopes = [
         Scope::Limited(common::hash(<span class="kw-2">&amp;</span>PRUSD)),
         Scope::Limited(common::hash(<span class="kw-2">&amp;</span>SBT_PRACS)),
@@ -595,19 +610,6 @@
         SBT_PRINVST.into_predefined().into(),
     );
     delete_asset::&lt;T&gt;(SBT_PRINVST.into_predefined().into(), <span class="kw-2">&amp;</span>system_account_id);
-
-    T::AssetManager::burn_from(
-        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
-        <span class="kw-2">&amp;</span>system_account_id,
-        <span class="kw-2">&amp;</span>presto_buffer_account_id,
-        <span class="number">1</span>,
-    )<span class="question-mark">?</span>;
-    T::AssetManager::burn_from(
-        <span class="kw-2">&amp;</span>SBT_PRACS.into_predefined().into(),
-        <span class="kw-2">&amp;</span>system_account_id,
-        <span class="kw-2">&amp;</span>presto_account_id,
-        <span class="number">1</span>,
-    )<span class="question-mark">?</span>;
 
     extended_assets::RegulatedAssetToSoulboundAsset::&lt;T&gt;::remove::&lt;AssetIdOf&lt;T&gt;&gt;(PRUSD.into());
     extended_assets::SoulboundAsset::&lt;T&gt;::remove::&lt;AssetIdOf&lt;T&gt;&gt;(
