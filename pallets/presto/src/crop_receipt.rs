@@ -34,6 +34,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
 use derivative::Derivative;
 use frame_support::ensure;
+use frame_support::sp_runtime::Permill;
 use frame_support::traits::Time;
 use sp_runtime::DispatchResult;
 
@@ -45,6 +46,7 @@ pub enum Status {
     Decision,
     Declined,
     Published,
+    Closed,
 }
 
 #[allow(clippy::upper_case_acronyms)]
@@ -77,7 +79,6 @@ pub enum Country {
     Other,
 }
 
-#[allow(unused)] // TODO remove
 impl Country {
     pub fn symbol(&self) -> &[u8] {
         match self {
@@ -124,6 +125,7 @@ pub struct CropReceipt<T: Config> {
     pub time: MomentOf<T>,
     pub status: Status,
     pub amount: Balance,
+    pub profit: Permill,
     pub country: Country,
     pub score: Option<Score<T>>,
     pub close_initial_period: MomentOf<T>,
@@ -139,6 +141,7 @@ impl<T: Config> CropReceipt<T> {
     pub fn new(
         owner: AccountIdOf<T>,
         amount: Balance,
+        profit: Permill,
         country: Country,
         close_initial_period: MomentOf<T>,
         date_of_issue: MomentOf<T>,
@@ -154,6 +157,7 @@ impl<T: Config> CropReceipt<T> {
             time,
             status: Status::Rating,
             amount,
+            profit,
             country,
             score: None,
             close_initial_period,
@@ -171,6 +175,9 @@ impl<T: Config> CropReceipt<T> {
     }
 
     pub fn rate(&mut self, rating: Rating, auditor: AccountIdOf<T>) -> DispatchResult {
+        if self.status == Status::Closed {
+            return Err(Error::<T>::CropReceiptHasBeenClosed.into());
+        }
         ensure!(
             self.status == Status::Rating,
             Error::<T>::CropReceiptAlreadyRated
@@ -189,6 +196,9 @@ impl<T: Config> CropReceipt<T> {
         if self.status == Status::Rating {
             return Err(Error::<T>::CropReceiptWaitingForRate.into());
         }
+        if self.status == Status::Closed {
+            return Err(Error::<T>::CropReceiptHasBeenClosed.into());
+        }
 
         ensure!(
             self.status == Status::Decision,
@@ -204,6 +214,9 @@ impl<T: Config> CropReceipt<T> {
         if self.status == Status::Rating {
             return Err(Error::<T>::CropReceiptWaitingForRate.into());
         }
+        if self.status == Status::Closed {
+            return Err(Error::<T>::CropReceiptHasBeenClosed.into());
+        }
 
         ensure!(
             self.status == Status::Decision,
@@ -214,9 +227,24 @@ impl<T: Config> CropReceipt<T> {
 
         Ok(())
     }
+
+    pub fn close(&mut self) -> DispatchResult {
+        if self.status == Status::Closed {
+            return Err(Error::<T>::CropReceiptHasBeenClosed.into());
+        }
+
+        ensure!(
+            self.status == Status::Published,
+            Error::<T>::CropReceiptCannotBeClosed
+        );
+
+        self.status = Status::Closed;
+
+        Ok(())
+    }
 }
 
-#[cfg(any(feature = "runtime-benchmarks", all(feature = "stage", test)))] // presto
+#[cfg(all(any(test, feature = "runtime-benchmarks"), feature = "stage"))] // presto
 pub fn crop_receipt_content_template<T: Config>() -> BoundedString<T::MaxCropReceiptContentSize> {
     let content = include_str!("../crop_receipt_template.json");
     BoundedString::truncate_from(content)

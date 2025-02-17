@@ -28,8 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{to_balance, to_fixed_wrapper, AccountPools, PoolProviders, TotalIssuances};
-use common::prelude::{AssetIdOf, AssetInfoProvider, Balance, FixedWrapper};
+use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
+use common::fixed_wrapper_u256::FixedWrapper256;
+use common::prelude::{AssetIdOf, AssetInfoProvider, Balance};
 use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{dispatch, ensure};
@@ -143,9 +144,8 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             }
         }
 
-        // FixedWrapper version of variables.
-        let fxw_balance_bp = FixedWrapper::from(balance_bp);
-        let fxw_balance_tp = FixedWrapper::from(balance_tp);
+        let fxw_balance_bp = FixedWrapper256::from(balance_bp);
+        let fxw_balance_tp = FixedWrapper256::from(balance_tp);
 
         // Product of pool pair amounts to get k value.
         let pool_k = {
@@ -153,21 +153,14 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 if abstract_checking {
                     None
                 } else {
-                    let fxw_init_x = to_fixed_wrapper!(init_x);
-                    let fxw_init_y = to_fixed_wrapper!(init_y);
+                    let fxw_init_x = FixedWrapper256::from(init_x);
+                    let fxw_init_y = FixedWrapper256::from(init_y);
                     let fxw_value = fxw_init_x.multiply_and_sqrt(&fxw_init_y);
-                    ensure!(
-                        !((fxw_value.clone() * fxw_init_x.clone())
-                            .try_into_balance()
-                            .is_err()
-                            || (fxw_value.clone() * fxw_init_y).try_into_balance().is_err()),
-                        Error::<T>::CalculatedValueIsOutOfDesiredBounds
-                    );
                     let value = to_balance!(fxw_value.clone());
                     Some(value)
                 }
             } else {
-                let fxw_value: FixedWrapper = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
+                let fxw_value: FixedWrapper256 = fxw_balance_bp.multiply_and_sqrt(&fxw_balance_tp);
                 let value = to_balance!(fxw_value.clone());
                 Some(value)
             }

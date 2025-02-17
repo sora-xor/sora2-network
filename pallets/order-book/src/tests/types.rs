@@ -661,7 +661,7 @@ fn check_payment_execute_all() {
             quote: XOR,
         };
 
-        OrderBookPallet::register_tech_account(order_book_id).unwrap();
+        OrderBookPallet::register_tech_account(&order_book_id).unwrap();
 
         fill_balance::<Runtime>(accounts::alice::<Runtime>(), order_book_id);
         fill_balance::<Runtime>(accounts::bob::<Runtime>(), order_book_id);

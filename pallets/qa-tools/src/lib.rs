@@ -58,8 +58,8 @@ pub mod pallet {
 
     use common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, OrderBookId,
-        SyntheticInfoProvider, TradingPairSourceManager,
+        ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, ExtendedAssetsManager,
+        OrderBookId, SyntheticInfoProvider, TradingPairSourceManager,
     };
     use frame_support::dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
@@ -76,10 +76,13 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config:
         frame_system::Config
+        + assets::Config
         + common::Config
         + dex_manager::Config
+        + extended_assets::Config
         + order_book::Config
         + pool_xyk::Config
+        + presto::Config
         + xst::Config
         + price_tools::Config
         + band::Config
@@ -100,6 +103,11 @@ pub mod pallet {
         type DexInfoProvider: DexInfoProvider<Self::DEXId, DEXInfo<AssetIdOf<Self>>>;
         type SyntheticInfoProvider: SyntheticInfoProvider<AssetIdOf<Self>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
+        type ExtendedAssetsManager: ExtendedAssetsManager<
+            AssetIdOf<Self>,
+            Self::Moment,
+            ContentSource,
+        >;
         type Symbol: From<<Self as band::Config>::Symbol>
             + From<<Self as xst::Config>::Symbol>
             + Into<<Self as xst::Config>::Symbol>
@@ -181,6 +189,10 @@ pub mod pallet {
         /// Cannot deduce price of synthetic base asset because there is no existing price for reference asset.
         /// You can use `price_tools_set_asset_price` extrinsic to set its price.
         ReferenceAssetPriceNotFound,
+
+        // presto errors
+        /// Cannot initialize SBT metadata with the list of regulated assets
+        FailToInitializeRegulatedAssets,
     }
 
     #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
@@ -451,16 +463,35 @@ pub mod pallet {
             })
         }
 
-        /// Allows to initialize necessary Presto assets in testnet without migration.
+        /// Allows to initialize necessary Presto data (assets, DEX etc.) in testnet without migration.
         ///
         /// Parameters:
         /// - `origin`: Root
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::presto_initialize_assets())]
-        pub fn presto_initialize_assets(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+        #[pallet::weight(<T as Config>::WeightInfo::presto_initialize())]
+        pub fn presto_initialize(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
 
-            pallet_tools::presto::register_presto_usd::<T>()?;
+            pallet_tools::presto::fill_presto::<T>()?;
+
+            // Extrinsic is only for testing, so we return all fees
+            // for simplicity.
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::No,
+            })
+        }
+
+        /// Allows to clear all Presto data (assets, DEX etc.) in testnet without migration.
+        ///
+        /// Parameters:
+        /// - `origin`: Root
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::presto_clear())]
+        pub fn presto_clear(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+
+            pallet_tools::presto::clear_presto::<T>()?;
 
             // Extrinsic is only for testing, so we return all fees
             // for simplicity.

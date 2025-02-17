@@ -80,7 +80,10 @@ benchmarks! {
         <T as common::Config>::MultiCurrency::deposit(XOR.into(), &caller, balance!(1))?;
         let call: Box<<T as Config>::RuntimeCall> = Box::new(frame_system::Call::remark { remark: vec![] }.into());
         let asset_id: AssetIdOf<T> = XOR.into();
-    }: _(RawOrigin::Signed(caller), call, Some(asset_id))
+    }: {
+        #[cfg(feature = "wip")] // Xorless fee
+        crate::Pallet::<T>::xorless_call(RawOrigin::Signed(caller).into(), call, Some(asset_id)).unwrap()
+    }
 
     add_asset_to_white_list {}: _(RawOrigin::Root, VAL.into())
     verify {
@@ -106,6 +109,13 @@ benchmarks! {
             let white_list: BoundedVec<AssetIdOf<T>, T::MaxWhiteListTokens> = BoundedVec::default();
             assert_eq!(<WhitelistTokensForFee<T>>::get(), white_list)
         }
+    }
+
+    set_random_remint_period {
+        let new_period = 500_u32;
+    }: _(RawOrigin::Root, new_period)
+    verify {
+        assert_eq!(<RemintPeriod<T>>::get(), new_period);
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);

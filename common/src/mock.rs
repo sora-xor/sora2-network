@@ -765,6 +765,7 @@ macro_rules! mock_multicollateral_bonding_curve_pool_config {
         }
         impl multicollateral_bonding_curve_pool::Config for $runtime {
             const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
+            const SPLIT_FAILED_DISTRIBUTION_COUNT: u32 = 10;
             type AssetInfoProvider = assets::Pallet<$runtime>;
             type BuyBackHandler = $buy_back_handler;
             type GetBuyBackAssetId = GetTBCBuyBackAssetId;
@@ -976,7 +977,7 @@ macro_rules! mock_pool_xyk_config {
         $min_xor:expr
     ) => {
         frame_support::parameter_types! {
-            pub GetXykFee: common::Fixed = common::fixed!(0.006);
+            pub GetXykFee256: common::fixed::FixedU256 = common::fixed::FixedU256::try_from(0.006).unwrap();
             pub GetXykIrreducibleReservePercent: sp_runtime::Percent = sp_runtime::Percent::from_percent(1);
             pub GetXykMaxIssuanceRatio: common::Fixed = common::fixed!(1.5);
         }
@@ -991,7 +992,7 @@ macro_rules! mock_pool_xyk_config {
             type EnsureDEXManager = dex_manager::Pallet<$runtime>;
             type EnsureTradingPairExists = $enabled_sources;
             type GetChameleonPools = $chameleon_pools;
-            type GetFee = GetXykFee;
+            type GetFee = GetXykFee256;
             type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
             type GetTradingPairRestrictedFlag = $trading_pair_restricted_flag;
             type IrreducibleReserve = GetXykIrreducibleReservePercent;

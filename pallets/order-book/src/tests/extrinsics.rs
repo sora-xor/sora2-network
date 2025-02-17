@@ -30,8 +30,6 @@
 
 use crate::test_utils::*;
 use assets::AssetIdOf;
-#[cfg(feature = "stage")] // presto
-use common::PRUSD;
 use common::{
     balance, AssetId32, AssetName, AssetSymbol, Balance, OrderBookId, PriceVariant,
     DEFAULT_BALANCE_PRECISION, ETH, KUSD, PSWAP, VAL, VXOR, XOR, XST, XSTUSD,
@@ -188,45 +186,6 @@ fn should_create_order_book_with_correct_dex_id_polkaswap_vxor() {
     });
 }
 
-#[cfg(feature = "stage")] // presto
-#[test]
-fn should_create_order_book_with_correct_dex_id_polkaswap_prusd() {
-    ext().execute_with(|| {
-        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-            dex_id: common::DEXId::PolkaswapPresto.into(),
-            base: VAL,
-            quote: PRUSD,
-        };
-
-        assert_ok!(TradingPair::register(
-            RawOrigin::Signed(accounts::alice::<Runtime>()).into(),
-            order_book_id.dex_id,
-            order_book_id.quote,
-            order_book_id.base
-        ));
-
-        assert_ok!(OrderBookPallet::create_orderbook(
-            RawOrigin::Root.into(),
-            order_book_id,
-            balance!(0.00001),
-            balance!(0.00001),
-            balance!(1),
-            balance!(1000)
-        ));
-
-        assert_eq!(
-            OrderBookPallet::order_books(order_book_id).unwrap(),
-            OrderBook::new(
-                order_book_id,
-                OrderPrice::divisible(balance!(0.00001)),
-                OrderVolume::divisible(balance!(0.00001)),
-                OrderVolume::divisible(balance!(1)),
-                OrderVolume::divisible(balance!(1000))
-            )
-        );
-    });
-}
-
 #[test]
 fn should_not_create_order_book_with_same_assets() {
     ext().execute_with(|| {
@@ -285,27 +244,6 @@ fn should_not_create_order_book_with_wrong_quote_asset() {
             OrderBookPallet::create_orderbook(RawOrigin::Root.into(), order_book_id, 0, 0, 0, 0),
             E::NotAllowedQuoteAsset
         );
-
-        #[cfg(feature = "stage")] // presto
-        {
-            let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
-                dex_id: common::DEXId::PolkaswapPresto.into(),
-                base: VAL,
-                quote: XOR,
-            };
-
-            assert_err!(
-                OrderBookPallet::create_orderbook(
-                    RawOrigin::Root.into(),
-                    order_book_id,
-                    0,
-                    0,
-                    0,
-                    0
-                ),
-                E::NotAllowedQuoteAsset
-            );
-        }
     });
 }
 
@@ -827,7 +765,7 @@ fn should_delete_order_book() {
         let owner = accounts::bob::<Runtime>();
 
         let tech_account = technical::Pallet::<Runtime>::tech_account_id_to_account_id(
-            &OrderBookPallet::tech_account_for_order_book(order_book_id),
+            &OrderBookPallet::tech_account_for_order_book(&order_book_id),
         )
         .unwrap();
 

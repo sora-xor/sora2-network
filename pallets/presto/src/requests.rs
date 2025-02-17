@@ -170,7 +170,7 @@ impl<T: Config> WithdrawRequest<T> {
         amount: Balance,
         details: Option<BoundedString<T::MaxRequestDetailsSize>>,
     ) -> Result<Self, DispatchError> {
-        Treasury::<T>::collect_to_buffer(amount, &owner)?;
+        Treasury::<T>::transfer_to_buffer(amount, &owner)?;
 
         let time = T::Time::now();
         Ok(Self {
@@ -198,7 +198,7 @@ impl<T: Config> WithdrawRequest<T> {
     }
 
     pub fn decline(&mut self, manager: AccountIdOf<T>) -> DispatchResult {
-        Treasury::<T>::return_from_buffer(self.amount, &self.owner)?;
+        Treasury::<T>::transfer_from_buffer(self.amount, &self.owner)?;
 
         let time = T::Time::now();
         self.status = RequestStatus::Declined { by: manager, time };
@@ -207,7 +207,7 @@ impl<T: Config> WithdrawRequest<T> {
     }
 
     pub fn cancel(&mut self) -> DispatchResult {
-        Treasury::<T>::return_from_buffer(self.amount, &self.owner)?;
+        Treasury::<T>::transfer_from_buffer(self.amount, &self.owner)?;
 
         self.status = RequestStatus::Cancelled;
 

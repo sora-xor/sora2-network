@@ -3560,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.5.2"
+version = "4.5.5"
 dependencies = [
  "ahash 0.8.5",
  "assert_cmd",
@@ -3644,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.5.2"
+version = "4.5.5"
 dependencies = [
  "common",
  "faucet",
@@ -3670,7 +3670,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.5.2"
+version = "4.5.5"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -7755,6 +7755,7 @@ dependencies = [
  "common",
  "derivative",
  "dex-manager",
+ "extended-assets",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -8089,6 +8090,7 @@ dependencies = [
  "band",
  "common",
  "dex-manager",
+ "extended-assets",
  "frame-support",
  "frame-system",
  "framenode-chain-spec",
@@ -8097,6 +8099,7 @@ dependencies = [
  "oracle-proxy",
  "order-book",
  "pallet-balances",
+ "pallet-timestamp",
  "parity-scale-codec",
  "permissions",
  "pool-xyk",

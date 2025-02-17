@@ -32,6 +32,7 @@
 
 use super::*;
 
+use crate::coupon_info::CouponInfo;
 use crate::crop_receipt::{
     crop_receipt_content_template, Country, CropReceipt, CropReceiptContent, Rating, Score, Status,
 };
@@ -44,10 +45,12 @@ use crate::requests::{DepositRequest, Request, RequestStatus, WithdrawRequest};
 use common::prelude::BalanceUnit;
 use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, Balance, BoundedString, DEXId,
-    OrderBookId, PRUSD,
+    OrderBookId, PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST,
 };
+use frame_support::sp_runtime::Permill;
 use frame_support::{assert_err, assert_ok};
 use sp_runtime::DispatchError::BadOrigin;
+use sp_std::collections::btree_set::BTreeSet;
 
 type PrestoPallet = Pallet<Runtime>;
 type OrderBookPallet = order_book::Pallet<Runtime>;
@@ -68,6 +71,10 @@ fn dave() -> AccountId {
 
 fn free_balance(asset: &AssetId, account: &AccountId) -> Balance {
     assets::Pallet::<Runtime>::free_balance(asset, account).unwrap()
+}
+
+fn burn_balance(asset: &AssetId, issuer: &AccountId, account: &AccountId, amount: Balance) {
+    assets::Pallet::<Runtime>::burn_from(asset, issuer, account, amount).unwrap()
 }
 
 fn tech_account_id_to_account_id(tech: &TechAccountId) -> AccountId {
@@ -282,6 +289,194 @@ fn should_burn_presto_usd() {
 }
 
 #[test]
+fn should_apply_investor_kyc() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_eq!(free_balance(&SBT_PRACS.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRINVST.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRCRDT.into(), &bob()), balance!(0));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::apply_investor_kyc(RuntimeOrigin::signed(charlie()), bob()),
+            E::CallerIsNotManager
+        );
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_eq!(free_balance(&SBT_PRACS.into(), &bob()), 1);
+        assert_eq!(free_balance(&SBT_PRINVST.into(), &bob()), 1);
+        assert_eq!(free_balance(&SBT_PRCRDT.into(), &bob()), balance!(0));
+
+        assert_err!(
+            PrestoPallet::apply_investor_kyc(RuntimeOrigin::signed(alice()), bob()),
+            E::KycAlreadyPassed
+        );
+    });
+}
+
+#[test]
+fn should_apply_creditor_kyc() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_eq!(free_balance(&SBT_PRACS.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRINVST.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRCRDT.into(), &bob()), balance!(0));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::apply_creditor_kyc(RuntimeOrigin::signed(charlie()), bob()),
+            E::CallerIsNotManager
+        );
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_eq!(free_balance(&SBT_PRACS.into(), &bob()), 1);
+        assert_eq!(free_balance(&SBT_PRINVST.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRCRDT.into(), &bob()), 1);
+
+        assert_err!(
+            PrestoPallet::apply_creditor_kyc(RuntimeOrigin::signed(alice()), bob()),
+            E::KycAlreadyPassed
+        );
+    });
+}
+
+#[test]
+fn should_remove_investor_kyc() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::mint_presto_usd(
+            RuntimeOrigin::signed(alice()),
+            balance!(1000)
+        ));
+
+        assert_ok!(PrestoPallet::send_presto_usd(
+            RuntimeOrigin::signed(alice()),
+            balance!(200),
+            bob()
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::remove_investor_kyc(RuntimeOrigin::signed(charlie()), bob()),
+            E::CallerIsNotManager
+        );
+
+        assert_err!(
+            PrestoPallet::remove_investor_kyc(RuntimeOrigin::signed(alice()), bob()),
+            E::AccountHasPrestoAssets
+        );
+
+        let main_tech_account = tech_account_id_to_account_id(&PrestoTechAccountId::get());
+        burn_balance(&PRUSD, &main_tech_account, &bob(), balance!(200));
+
+        assert_ok!(PrestoPallet::remove_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_eq!(free_balance(&SBT_PRACS.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRINVST.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRCRDT.into(), &bob()), balance!(0));
+
+        assert_err!(
+            PrestoPallet::remove_investor_kyc(RuntimeOrigin::signed(alice()), bob()),
+            E::KycNotPassed
+        );
+    });
+}
+
+#[test]
+fn should_remove_creditor_kyc() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::mint_presto_usd(
+            RuntimeOrigin::signed(alice()),
+            balance!(1000)
+        ));
+
+        assert_ok!(PrestoPallet::send_presto_usd(
+            RuntimeOrigin::signed(alice()),
+            balance!(200),
+            bob()
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::remove_creditor_kyc(RuntimeOrigin::signed(charlie()), bob()),
+            E::CallerIsNotManager
+        );
+
+        assert_err!(
+            PrestoPallet::remove_creditor_kyc(RuntimeOrigin::signed(alice()), bob()),
+            E::AccountHasPrestoAssets
+        );
+
+        let main_tech_account = tech_account_id_to_account_id(&PrestoTechAccountId::get());
+        burn_balance(&PRUSD, &main_tech_account, &bob(), balance!(200));
+
+        assert_ok!(PrestoPallet::remove_creditor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_eq!(free_balance(&SBT_PRACS.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRINVST.into(), &bob()), balance!(0));
+        assert_eq!(free_balance(&SBT_PRCRDT.into(), &bob()), balance!(0));
+
+        assert_err!(
+            PrestoPallet::remove_creditor_kyc(RuntimeOrigin::signed(alice()), bob()),
+            E::KycNotPassed
+        );
+    });
+}
+
+#[test]
 fn should_send_presto_usd() {
     ext().execute_with(|| {
         // prepare
@@ -296,6 +491,11 @@ fn should_send_presto_usd() {
         assert_ok!(PrestoPallet::mint_presto_usd(
             RuntimeOrigin::signed(alice()),
             balance!(1000)
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            dave()
         ));
 
         assert_eq!(free_balance(&PRUSD, &main_tech_account), balance!(1000));
@@ -334,6 +534,11 @@ fn should_create_deposit_request() {
             alice()
         ));
 
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
         // test
 
         assert_eq!(PrestoPallet::requests(1), None);
@@ -367,6 +572,21 @@ fn should_create_deposit_request() {
                 status: RequestStatus::Pending
             })
         );
+
+        assert_err!(
+            PrestoPallet::create_deposit_request(
+                RuntimeOrigin::signed(charlie()),
+                balance!(200),
+                BoundedString::truncate_from("payment reference"),
+                None
+            ),
+            E::KycNotPassed
+        );
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            charlie()
+        ));
 
         assert_ok!(PrestoPallet::create_deposit_request(
             RuntimeOrigin::signed(charlie()),
@@ -402,6 +622,11 @@ fn should_create_withdraw_request() {
             alice()
         ));
 
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
         assert_ok!(PrestoPallet::mint_presto_usd(
             RuntimeOrigin::signed(alice()),
             balance!(1000)
@@ -428,6 +653,15 @@ fn should_create_withdraw_request() {
                 Some(BoundedString::truncate_from("details"))
             ),
             E::AmountIsZero
+        );
+
+        assert_err!(
+            PrestoPallet::create_withdraw_request(
+                RuntimeOrigin::signed(charlie()),
+                balance!(200),
+                Some(BoundedString::truncate_from("details"))
+            ),
+            E::KycNotPassed
         );
 
         assert_ok!(PrestoPallet::create_withdraw_request(
@@ -465,6 +699,16 @@ fn should_cancel_request() {
         assert_ok!(PrestoPallet::add_presto_manager(
             RuntimeOrigin::root(),
             alice()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            charlie()
         ));
 
         assert_ok!(PrestoPallet::mint_presto_usd(
@@ -517,6 +761,16 @@ fn should_cancel_request() {
         );
 
         // test
+
+        assert_err!(
+            PrestoPallet::cancel_request(RuntimeOrigin::signed(dave()), 1),
+            E::KycNotPassed
+        );
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            dave()
+        ));
 
         assert_err!(
             PrestoPallet::cancel_request(RuntimeOrigin::signed(dave()), 1),
@@ -576,6 +830,16 @@ fn should_approve_deposit_request() {
         assert_ok!(PrestoPallet::add_presto_manager(
             RuntimeOrigin::root(),
             alice()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            charlie()
         ));
 
         assert_ok!(PrestoPallet::mint_presto_usd(
@@ -686,6 +950,16 @@ fn should_approve_withdraw_request() {
         assert_ok!(PrestoPallet::add_presto_manager(
             RuntimeOrigin::root(),
             alice()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            charlie()
         ));
 
         assert_ok!(PrestoPallet::mint_presto_usd(
@@ -819,6 +1093,16 @@ fn should_decline_request() {
             alice()
         ));
 
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(alice()),
+            charlie()
+        ));
+
         assert_ok!(PrestoPallet::mint_presto_usd(
             RuntimeOrigin::signed(alice()),
             balance!(1000)
@@ -929,6 +1213,7 @@ fn should_create_crop_receipt() {
         assert_eq!(PrestoPallet::user_crop_receipts(bob()), vec![]);
 
         let amount = balance!(10000);
+        let profit = Permill::from_percent(5);
         let close_initial_period = 123;
         let date_of_issue = 234;
         let place_of_issue = BoundedString::truncate_from("place of issue");
@@ -941,6 +1226,7 @@ fn should_create_crop_receipt() {
             PrestoPallet::create_crop_receipt(
                 RuntimeOrigin::signed(bob()),
                 balance!(0),
+                profit,
                 Country::Brazil,
                 close_initial_period,
                 date_of_issue,
@@ -953,9 +1239,37 @@ fn should_create_crop_receipt() {
             E::AmountIsZero
         );
 
+        assert_err!(
+            PrestoPallet::create_crop_receipt(
+                RuntimeOrigin::signed(bob()),
+                amount,
+                profit,
+                Country::Brazil,
+                close_initial_period,
+                date_of_issue,
+                place_of_issue.clone(),
+                debtor.clone(),
+                creditor.clone(),
+                perfomance_time,
+                data.clone()
+            ),
+            E::CreditorKycNotPassed
+        );
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(alice()),
+            bob()
+        ));
+
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             amount,
+            profit,
             Country::Brazil,
             close_initial_period,
             date_of_issue,
@@ -973,6 +1287,7 @@ fn should_create_crop_receipt() {
                 time: 0,
                 status: Status::Rating,
                 amount,
+                profit,
                 country: Country::Brazil,
                 score: None,
                 close_initial_period,
@@ -1003,9 +1318,25 @@ fn should_rate_crop_receipt() {
             alice()
         ));
 
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(10000),
+            Permill::from_percent(5),
             Country::Brazil,
             100,
             200,
@@ -1063,9 +1394,25 @@ fn should_decline_crop_receipt() {
             alice()
         ));
 
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(10000),
+            Permill::from_percent(5),
             Country::Brazil,
             100,
             200,
@@ -1126,9 +1473,25 @@ fn should_publish_crop_receipt() {
             alice()
         ));
 
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
         assert_ok!(PrestoPallet::create_crop_receipt(
             RuntimeOrigin::signed(bob()),
             balance!(100000),
+            Permill::from_percent(5),
             Country::Brazil,
             100,
             200,
@@ -1140,6 +1503,17 @@ fn should_publish_crop_receipt() {
         ));
 
         // test
+
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::soulbound_asset(SBT_PRACS.into_predefined())
+                .unwrap()
+                .regulated_assets,
+            BTreeSet::from([PRUSD])
+        );
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::regulated_asset_to_sbt(PRUSD),
+            SBT_PRACS.into()
+        );
 
         let supply = 10000;
 
@@ -1185,11 +1559,28 @@ fn should_publish_crop_receipt() {
             E::CropReceiptAlreadyHasDecision
         );
 
-        let coupon_asset_id = Coupons::<Runtime>::iter()
+        let crop_receipt = PrestoPallet::crop_receipts(1).unwrap();
+        assert_eq!(crop_receipt.status, Status::Published);
+
+        let (coupon_asset_id, coupon_info) = Coupons::<Runtime>::iter()
             .collect::<Vec<_>>()
             .first()
-            .unwrap()
-            .0;
+            .cloned()
+            .unwrap();
+
+        assert_eq!(
+            coupon_info,
+            CouponInfo {
+                crop_receipt_id: 1,
+                supply: BalanceUnit::indivisible(supply),
+                refund_price: BalanceUnit::divisible(balance!(10.5))
+            }
+        );
+
+        assert_eq!(
+            PrestoPallet::crop_receipt_to_coupon(1).unwrap(),
+            coupon_asset_id
+        );
 
         let coupon_asset_info = assets::Pallet::<Runtime>::asset_infos(coupon_asset_id);
 
@@ -1223,5 +1614,489 @@ fn should_publish_crop_receipt() {
             let order = OrderBookPallet::limit_orders(order_book_id, id).unwrap();
             assert_eq!(order.owner, bob());
         }
+
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::soulbound_asset(SBT_PRACS.into_predefined())
+                .unwrap()
+                .regulated_assets,
+            BTreeSet::from([PRUSD, coupon_asset_id])
+        );
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::regulated_asset_to_sbt(PRUSD),
+            SBT_PRACS.into()
+        );
+        assert_eq!(
+            extended_assets::Pallet::<Runtime>::regulated_asset_to_sbt(coupon_asset_id),
+            SBT_PRACS.into()
+        );
+    });
+}
+
+#[test]
+fn should_pay_off_crop_receipt_full_debt() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(100000),
+            Permill::from_percent(5),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            crop_receipt_content_template::<Runtime>()
+        ));
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(charlie()), 1),
+            E::CallerIsNotCropReceiptOwner
+        );
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptCannotBeClosed
+        );
+
+        let supply = 10000;
+        assert_ok!(PrestoPallet::publish_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1,
+            supply
+        ));
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+
+        let debt = balance!(105000);
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            bob(),
+            PRUSD,
+            debt as i128
+        ));
+        assert_eq!(free_balance(&PRUSD, &bob()), debt);
+
+        assert_ok!(PrestoPallet::pay_off_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1
+        ));
+
+        assert_eq!(free_balance(&PRUSD, &bob()), 0);
+
+        let crop_receipt = PrestoPallet::crop_receipts(1).unwrap();
+        assert_eq!(crop_receipt.status, Status::Closed);
+
+        assert_err!(
+            PrestoPallet::rate_crop_receipt(RuntimeOrigin::signed(alice()), 1, Rating::AA),
+            E::CropReceiptHasBeenClosed
+        );
+
+        assert_err!(
+            PrestoPallet::decline_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptHasBeenClosed
+        );
+
+        assert_err!(
+            PrestoPallet::publish_crop_receipt(RuntimeOrigin::signed(bob()), 1, supply),
+            E::CropReceiptHasBeenClosed
+        );
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptHasBeenClosed
+        );
+    });
+}
+
+#[test]
+fn should_pay_off_crop_receipt_part_debt() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(100000),
+            Permill::from_percent(5),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            crop_receipt_content_template::<Runtime>()
+        ));
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(charlie()), 1),
+            E::CallerIsNotCropReceiptOwner
+        );
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptCannotBeClosed
+        );
+
+        let supply = 4000;
+        assert_ok!(PrestoPallet::publish_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1,
+            supply
+        ));
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+
+        let debt = balance!(105000);
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            bob(),
+            PRUSD,
+            debt as i128
+        ));
+        assert_eq!(free_balance(&PRUSD, &bob()), debt);
+
+        let (coupon_asset_id, _) = Coupons::<Runtime>::iter()
+            .collect::<Vec<_>>()
+            .first()
+            .cloned()
+            .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEXId::PolkaswapPresto,
+            base: coupon_asset_id,
+            quote: PRUSD,
+        };
+
+        assert_eq!(free_balance(&coupon_asset_id, &bob()), 0);
+
+        // return 1/4 of coupons back to owner
+        assert_ok!(OrderBookPallet::cancel_limit_order(
+            RuntimeOrigin::signed(bob()),
+            order_book_id,
+            1
+        ));
+
+        assert_eq!(free_balance(&coupon_asset_id, &bob()), supply / 4);
+
+        assert_ok!(PrestoPallet::pay_off_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1
+        ));
+
+        // debt is 3/4 of total debt because owner has 1/4 of coupons supply
+        assert_eq!(free_balance(&PRUSD, &bob()), debt / 4);
+        assert_eq!(free_balance(&coupon_asset_id, &bob()), 0);
+
+        let crop_receipt = PrestoPallet::crop_receipts(1).unwrap();
+        assert_eq!(crop_receipt.status, Status::Closed);
+    });
+}
+
+#[test]
+fn should_pay_off_crop_receipt_without_debt() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(100000),
+            Permill::from_percent(5),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            crop_receipt_content_template::<Runtime>()
+        ));
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        // test
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(charlie()), 1),
+            E::CallerIsNotCropReceiptOwner
+        );
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            E::CropReceiptCannotBeClosed
+        );
+
+        let supply = 1000;
+        assert_ok!(PrestoPallet::publish_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1,
+            supply
+        ));
+
+        assert_err!(
+            PrestoPallet::pay_off_crop_receipt(RuntimeOrigin::signed(bob()), 1),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+
+        let debt = balance!(105000);
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            bob(),
+            PRUSD,
+            debt as i128
+        ));
+        assert_eq!(free_balance(&PRUSD, &bob()), debt);
+
+        let (coupon_asset_id, _) = Coupons::<Runtime>::iter()
+            .collect::<Vec<_>>()
+            .first()
+            .cloned()
+            .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEXId::PolkaswapPresto,
+            base: coupon_asset_id,
+            quote: PRUSD,
+        };
+
+        assert_eq!(free_balance(&coupon_asset_id, &bob()), 0);
+
+        // return coupons back to owner
+        assert_ok!(OrderBookPallet::cancel_limit_order(
+            RuntimeOrigin::signed(bob()),
+            order_book_id,
+            1
+        ));
+
+        assert_eq!(free_balance(&coupon_asset_id, &bob()), supply);
+
+        assert_ok!(PrestoPallet::pay_off_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1
+        ));
+
+        // debt is 0 PRUSD because owner has all coupons supply
+        assert_eq!(free_balance(&PRUSD, &bob()), debt);
+        assert_eq!(free_balance(&coupon_asset_id, &bob()), 0);
+
+        let crop_receipt = PrestoPallet::crop_receipts(1).unwrap();
+        assert_eq!(crop_receipt.status, Status::Closed);
+    });
+}
+
+#[test]
+fn should_claim_refund() {
+    ext().execute_with(|| {
+        // prepare
+
+        assert_ok!(PrestoPallet::add_presto_auditor(
+            RuntimeOrigin::root(),
+            alice()
+        ));
+
+        assert_ok!(PrestoPallet::add_presto_manager(
+            RuntimeOrigin::root(),
+            dave()
+        ));
+
+        assert_ok!(PrestoPallet::apply_creditor_kyc(
+            RuntimeOrigin::signed(dave()),
+            bob()
+        ));
+
+        assert_ok!(PrestoPallet::apply_investor_kyc(
+            RuntimeOrigin::signed(dave()),
+            charlie()
+        ));
+
+        assert_ok!(PrestoPallet::create_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            balance!(100000),
+            Permill::from_percent(5),
+            Country::Brazil,
+            100,
+            200,
+            BoundedString::truncate_from("place of issue"),
+            BoundedString::truncate_from("debtor"),
+            BoundedString::truncate_from("creditor"),
+            300,
+            crop_receipt_content_template::<Runtime>()
+        ));
+
+        assert_ok!(PrestoPallet::rate_crop_receipt(
+            RuntimeOrigin::signed(alice()),
+            1,
+            Rating::AA
+        ));
+
+        let supply = 10000;
+        assert_ok!(PrestoPallet::publish_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1,
+            supply
+        ));
+
+        let debt = balance!(105000);
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            bob(),
+            PRUSD,
+            debt as i128
+        ));
+
+        assert_ok!(PrestoPallet::pay_off_crop_receipt(
+            RuntimeOrigin::signed(bob()),
+            1
+        ));
+
+        // investor buys coupons
+
+        let (coupon_asset_id, _) = Coupons::<Runtime>::iter()
+            .collect::<Vec<_>>()
+            .first()
+            .cloned()
+            .unwrap();
+
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEXId::PolkaswapPresto,
+            base: coupon_asset_id,
+            quote: PRUSD,
+        };
+
+        assert_ok!(<Runtime as common::Config>::AssetManager::update_balance(
+            RuntimeOrigin::root(),
+            charlie(),
+            PRUSD,
+            balance!(20000) as i128
+        ));
+
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 0);
+
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RuntimeOrigin::signed(charlie()),
+            order_book_id,
+            common::PriceVariant::Buy,
+            1000
+        ));
+        assert_ok!(OrderBookPallet::execute_market_order(
+            RuntimeOrigin::signed(charlie()),
+            order_book_id,
+            common::PriceVariant::Buy,
+            1000
+        ));
+
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 2000);
+        assert_eq!(free_balance(&PRUSD, &charlie()), 0);
+
+        // test
+
+        assert_err!(
+            PrestoPallet::claim_refund(RuntimeOrigin::signed(charlie()), coupon_asset_id, 3000),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+
+        assert_ok!(PrestoPallet::claim_refund(
+            RuntimeOrigin::signed(charlie()),
+            coupon_asset_id,
+            500
+        ));
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 1500);
+        assert_eq!(free_balance(&PRUSD, &charlie()), balance!(5250));
+
+        assert_ok!(PrestoPallet::claim_refund(
+            RuntimeOrigin::signed(charlie()),
+            coupon_asset_id,
+            1500
+        ));
+        assert_eq!(free_balance(&coupon_asset_id, &charlie()), 0);
+        assert_eq!(free_balance(&PRUSD, &charlie()), balance!(21000));
     });
 }

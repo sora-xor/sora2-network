@@ -62,9 +62,9 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-#[cfg(feature = "stage")] // presto
-use common::PRUSD;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
+#[cfg(feature = "stage")] // presto
+use common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
 use constants::currency::deposit;
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -119,6 +119,7 @@ use traits::{parameter_type_with_key, MultiCurrency};
 use xor_fee::extension::ChargeTransactionPayment;
 
 // A few exports that help ease life for downstream crates.
+pub use common::fixed::FixedU256;
 pub use common::prelude::{
     Balance, BalanceWrapper, PresetWeightInfo, SwapAmount, SwapOutcome, SwapVariant,
 };
@@ -257,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 109,
+    spec_version: 111,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 109,
+    transaction_version: 111,
     state_version: 0,
 };
 
@@ -376,7 +377,8 @@ pub struct BaseCallFilter;
 
 impl Contains<RuntimeCall> for BaseCallFilter {
     fn contains(call: &RuntimeCall) -> bool {
-        if call.swap_count() > 1 {
+        let depth_result = call.swap_count_and_depth(0);
+        if depth_result.swap_count > 1 || depth_result.depth > 1 {
             return false;
         }
         if matches!(
@@ -592,7 +594,7 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, XorFee>;
+    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
@@ -1016,6 +1018,7 @@ impl technical::Config for Runtime {
 
 parameter_types! {
     pub GetFee: Fixed = fixed!(0.006);
+    pub GetFee256: FixedU256 = FixedU256::try_from(0.006).unwrap();
     pub GetXykMaxIssuanceRatio: Fixed = fixed!(1.5);
     pub GetXykIrreducibleReservePercent: Percent = Percent::from_percent(1);
     pub GetXykPoolAdjustPeriod: BlockNumber = 1 * HOURS;
@@ -1052,7 +1055,7 @@ impl pool_xyk::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type EnsureTradingPairExists = trading_pair::Pallet<Runtime>;
     type EnabledSourcesManager = trading_pair::Pallet<Runtime>;
-    type GetFee = GetFee;
+    type GetFee = GetFee256;
     type GetMaxIssuanceRatio = GetXykMaxIssuanceRatio;
     type OnPoolCreated = (PswapDistribution, Farming);
     type OnPoolReservesChanged = PriceTools;
@@ -1351,7 +1354,6 @@ impl xor_fee::Config for Runtime {
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type SessionManager = Staking;
     type ReferrerAccountProvider = Referrals;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type WeightInfo = xor_fee::weights::SubstrateWeight<Runtime>;
@@ -1362,6 +1364,7 @@ impl xor_fee::Config for Runtime {
     type WhiteListOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
     type PriceTools = price_tools::FastPriceTools<Runtime>;
     type MinimalFeeInAsset = MinimalFeeInAsset;
+    type Randomness = RandomnessCollectiveFlip;
 }
 
 pub struct ConstantFeeMultiplier;
@@ -1556,6 +1559,7 @@ impl qa_tools::Config for Runtime {
     type DexInfoProvider = dex_manager::Pallet<Runtime>;
     type SyntheticInfoProvider = XSTPool;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
+    type ExtendedAssetsManager = ExtendedAssets;
     type WeightInfo = qa_tools::weights::SubstrateWeight<Runtime>;
     type Symbol = <Runtime as band::Config>::Symbol;
 }
@@ -1782,6 +1786,7 @@ parameter_types! {
 
 impl multicollateral_bonding_curve_pool::Config for Runtime {
     const RETRY_DISTRIBUTION_FREQUENCY: BlockNumber = 1000;
+    const SPLIT_FAILED_DISTRIBUTION_COUNT: u32 = 10;
     type RuntimeEvent = RuntimeEvent;
     type LiquidityProxy = LiquidityProxy;
     type EnsureDEXManager = DEXManager;
@@ -2077,7 +2082,7 @@ parameter_types! {
 
 impl kensetsu::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type Randomness = pallet_babe::ParentBlockRandomness<Self>;
+    type Randomness = RandomnessCollectiveFlip;
     type AssetInfoProvider = Assets;
     type PriceTools = price_tools::FastPriceTools<Runtime>;
     type LiquidityProxy = LiquidityProxy;
@@ -2510,6 +2515,9 @@ impl extended_assets::Config for Runtime {
 #[cfg(feature = "stage")] // presto
 parameter_types! {
     pub const PrestoUsdAssetId: AssetId = PRUSD;
+    pub PrestoKycAssetId: AssetId = SBT_PRACS.into_predefined();
+    pub PrestoKycInvestorAssetId: AssetId = SBT_PRINVST.into_predefined();
+    pub PrestoKycCreditorAssetId: AssetId = SBT_PRCRDT.into_predefined();
     pub PrestoTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             presto::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -2529,7 +2537,11 @@ impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type OrderBookManager = OrderBook;
+    type ExtendedAssetsManager = ExtendedAssets;
     type PrestoUsdAssetId = PrestoUsdAssetId;
+    type PrestoKycAssetId = PrestoKycAssetId;
+    type PrestoKycInvestorAssetId = PrestoKycInvestorAssetId;
+    type PrestoKycCreditorAssetId = PrestoKycCreditorAssetId;
     type PrestoTechAccount = PrestoTechAccountId;
     type PrestoBufferTechAccount = PrestoBufferTechAccountId;
     type RequestId = u64;
@@ -2673,7 +2685,7 @@ construct_runtime! {
         QaTools: qa_tools::{Pallet, Call, Event<T>} = 112,
 
         ApolloPlatform: apollo_platform::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 114,
-        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>} = 115,
+        ExtendedAssets: extended_assets::{Pallet, Call, Storage, Event<T>, Config<T>} = 115,
 
         Soratopia: soratopia::{Pallet, Call, Storage, Event<T>} = 116,
     }

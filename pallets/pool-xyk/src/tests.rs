@@ -220,6 +220,141 @@ impl<'a> crate::Pallet<Runtime> {
         });
     }
 
+    fn preset_initial_max(tests: Vec<PresetFunction<'a>>) {
+        let mut ext = ExtBuilder::default().build();
+        let mj: AssetId = MichaelJacksonCD.into();
+        let jm: AssetId = JesterMarotte.into();
+        let dex_id = 256;
+        ext.execute_with(|| {
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+                ALICE(),
+                MichaelJacksonCD.into(),
+                AssetSymbol(b"MJ".to_vec()),
+                AssetName(b"MichaelJacksonCD".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::MAX,
+                true,
+                common::AssetType::Regular,
+                None,
+                None,
+            ));
+
+            assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
+                ALICE(),
+                JesterMarotte.into(),
+                AssetSymbol(b"JM".to_vec()),
+                AssetName(b"JesterMarotte".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::MAX,
+                true,
+                common::AssetType::Regular,
+                None,
+                None,
+            ));
+
+            assert_ok!(trading_pair::Pallet::<Runtime>::register(
+                RuntimeOrigin::signed(BOB()),
+                dex_id.clone(),
+                MichaelJacksonCD.into(),
+                JesterMarotte.into(),
+            ));
+
+            assert_ok!(crate::Pallet::<Runtime>::initialize_pool(
+                RuntimeOrigin::signed(BOB()),
+                dex_id.clone(),
+                MichaelJacksonCD.into(),
+                JesterMarotte.into(),
+            ));
+
+            assert!(
+                trading_pair::Pallet::<Runtime>::is_source_enabled_for_trading_pair(
+                    &dex_id,
+                    &MichaelJacksonCD.into(),
+                    &JesterMarotte.into(),
+                    LiquiditySourceType::XYKPool,
+                )
+                .expect("Failed to query trading pair status.")
+            );
+
+            assert_ok!(crate::Pallet::<Runtime>::deposit_liquidity(
+                RuntimeOrigin::signed(ALICE()),
+                dex_id,
+                MichaelJacksonCD.into(),
+                JesterMarotte.into(),
+                Balance::MAX - balance!(10),
+                Balance::MAX - balance!(10),
+                Balance::MAX - balance!(10),
+                Balance::MAX - balance!(10)
+            ));
+
+            let (tpair, tech_acc_id) =
+                crate::Pallet::<Runtime>::tech_account_from_dex_and_asset_pair(
+                    dex_id.clone(),
+                    mj,
+                    jm,
+                )
+                .unwrap();
+
+            let fee_acc = tech_acc_id.clone().to_fee_account().unwrap();
+            let repr: AccountId =
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&tech_acc_id).unwrap();
+            let fee_repr: AccountId =
+                technical::Pallet::<Runtime>::tech_account_id_to_account_id(&fee_acc).unwrap();
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&mj, &ALICE()).unwrap(),
+                balance!(10)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&jm, &ALICE()).unwrap(),
+                balance!(10)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&mj, &repr.clone()).unwrap(),
+                Balance::MAX - balance!(10)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&jm, &repr.clone()).unwrap(),
+                Balance::MAX - balance!(10)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&jm, &fee_repr.clone()).unwrap(),
+                0
+            );
+
+            let base_asset: AssetId = MichaelJacksonCD.into();
+            let target_asset: AssetId = JesterMarotte.into();
+            assert_eq!(
+                crate::Pallet::<Runtime>::properties(base_asset, target_asset),
+                Some((repr.clone(), fee_repr.clone()))
+            );
+            assert_eq!(
+                pswap_distribution::Pallet::<Runtime>::subscribed_accounts(&fee_repr),
+                Some((
+                    dex_id.clone(),
+                    repr.clone(),
+                    GetDefaultSubscriptionFrequency::get(),
+                    0
+                ))
+            );
+
+            for test in &tests {
+                test(
+                    dex_id.clone(),
+                    mj.clone(),
+                    jm.clone(),
+                    AssetId::default(),
+                    tpair.clone(),
+                    tech_acc_id.clone(),
+                    fee_acc.clone(),
+                    repr.clone(),
+                    fee_repr.clone(),
+                );
+            }
+        })
+    }
+
     fn preset_custom_deposited_pool(
         with_chameleon: bool,
         base_amount: Balance,
@@ -382,6 +517,91 @@ macro_rules! simplify_swap_outcome(
      }
  })
 );
+
+#[test]
+fn can_withdraw_from_max() {
+    crate::Pallet::<Runtime>::preset_initial_max(vec![Rc::new(
+        |dex_id, _, _, _, _, _, _, _, _| {
+            assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(
+                RuntimeOrigin::signed(ALICE()),
+                dex_id,
+                MichaelJacksonCD.into(),
+                JesterMarotte.into(),
+                (Balance::MAX - balance!(10)) / 2,
+                (Balance::MAX - balance!(10)) / 2,
+                (Balance::MAX - balance!(10)) / 2,
+            ),);
+        },
+    )]);
+}
+
+#[test]
+fn can_quote_from_max() {
+    crate::Pallet::<Runtime>::preset_initial_max(vec![Rc::new(
+        |dex_id, mj, jm, _, _, _, _, _, _| {
+            assert_eq!(
+                simplify_swap_outcome!(crate::Pallet::<Runtime>::quote(
+                    &dex_id,
+                    &mj,
+                    &jm,
+                    QuoteAmount::WithDesiredInput {
+                        desired_amount_in: Balance::MAX / 2
+                    },
+                    true
+                )
+                .unwrap()),
+                (
+                    112972836579630204635702841131250448005,
+                    OutcomeFee::from_asset(
+                        MichaelJacksonCD.into(),
+                        1020847100762815390390123822295304635
+                    )
+                )
+            );
+        },
+    )]);
+}
+
+#[test]
+fn can_exchange_from_max() {
+    crate::Pallet::<Runtime>::preset_initial_max(vec![Rc::new(
+        |dex_id, mj, jm, _, _, _, _, repr: AccountId, fee_repr: AccountId| {
+            let mj_balance = assets::Pallet::<Runtime>::free_balance(&mj, &ALICE()).unwrap();
+            let jm_balance = assets::Pallet::<Runtime>::free_balance(&jm, &ALICE()).unwrap();
+            assert_ok!(crate::Pallet::<Runtime>::exchange(
+                &ALICE(),
+                &ALICE(),
+                &dex_id,
+                &MichaelJacksonCD.into(),
+                &JesterMarotte.into(),
+                SwapAmount::WithDesiredOutput {
+                    desired_amount_out: balance!(9),
+                    max_amount_in: balance!(10),
+                }
+            ));
+            assert_eq!(
+                mj_balance - assets::Pallet::<Runtime>::free_balance(&mj, &ALICE()).unwrap(),
+                9054325955734406439 // balance!(107673.065419544292783733)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&jm, &ALICE()).unwrap() - jm_balance,
+                balance!(9)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&mj, &repr.clone()).unwrap(),
+                Balance::MAX - balance!(1) + 1
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&jm, &repr.clone()).unwrap(),
+                Balance::MAX - balance!(19)
+            );
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&mj, &fee_repr.clone()).unwrap(),
+                54325955734406438
+            );
+        },
+    )]);
+}
 
 #[test]
 fn can_exchange_all_directions() {

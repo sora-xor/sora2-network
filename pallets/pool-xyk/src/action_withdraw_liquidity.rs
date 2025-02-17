@@ -33,10 +33,9 @@ use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_runtime::traits::Zero;
 
-use common::prelude::FixedWrapper;
-use common::AssetIdOf;
-
 use crate::{to_balance, AccountPools, PoolProviders, TotalIssuances};
+use common::fixed_wrapper_u256::FixedWrapper256;
+use common::AssetIdOf;
 
 use crate::aliases::{AccountIdOf, TechAccountIdOf};
 use crate::bounds::*;
@@ -115,13 +114,13 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             Err(Error::<T>::PoolIsInvalid)?;
         }
 
-        let fxw_balance_bp = FixedWrapper::from(balance_bp);
-        let fxw_balance_tp = FixedWrapper::from(balance_tp);
+        let fxw_balance_bp = FixedWrapper256::from(balance_bp);
+        let fxw_balance_tp = FixedWrapper256::from(balance_tp);
 
         let total_iss =
             TotalIssuances::<T>::get(&pool_account_repr_sys).ok_or(Error::<T>::PoolIsInvalid)?;
         // Adding min liquidity to pretend that initial provider has locked amount, which actually is not reflected in total supply.
-        let fxw_total_iss = FixedWrapper::from(total_iss) + MIN_LIQUIDITY;
+        let fxw_total_iss = FixedWrapper256::from(total_iss) + MIN_LIQUIDITY;
 
         let tpair = Pallet::<T>::get_trading_pair(
             base_asset_id,
@@ -160,7 +159,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
 
         let (recom_x, recom_y) = if self.pool_tokens != total_iss {
-            let fxw_source_k = FixedWrapper::from(self.pool_tokens);
+            let fxw_source_k = FixedWrapper256::from(self.pool_tokens);
             let fxw_recom_x = fxw_balance_bp * fxw_source_k.clone() / fxw_total_iss.clone();
             let fxw_recom_y = fxw_balance_tp * fxw_source_k / fxw_total_iss;
             (to_balance!(fxw_recom_x), to_balance!(fxw_recom_y))

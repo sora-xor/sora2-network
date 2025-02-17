@@ -15,7 +15,7 @@ use {
         AssetId32, AssetName, AssetSymbol, BalancePrecision, ContentSource,
         DEXId::Polkaswap,
         DEXInfo, Description, FromGenericPair, LiquidityProxyTrait, PriceToolsProvider,
-        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, VXOR, XOR, XST,
+        PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, KUSD, VXOR, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
     frame_support::{
@@ -167,6 +167,12 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
                 (&KSM, &DAI) => Ok(balance!(1)),
                 (&DOT, &KSM) => Ok(balance!(1)),
                 (&KSM, &DOT) => Ok(balance!(1)),
+                (&KUSD, &DOT) => Ok(balance!(1)),
+                (&DOT, &KUSD) => Ok(balance!(1)),
+                (&XOR, &KUSD) => Ok(balance!(1)),
+                (&KUSD, &XOR) => Ok(balance!(1)),
+                (&DAI, &KUSD) => Ok(balance!(1)),
+                (&KUSD, &DAI) => Ok(balance!(1)),
                 _ => Ok(balance!(0)),
             },
             PriceVariant::Sell => match (input_asset_id, output_asset_id) {
@@ -183,6 +189,12 @@ impl PriceToolsProvider<AssetId> for MockPriceTools {
                 (&KSM, &DAI) => Ok(balance!(1)),
                 (&DOT, &KSM) => Ok(balance!(1)),
                 (&KSM, &DOT) => Ok(balance!(1)),
+                (&KUSD, &DOT) => Ok(balance!(1)),
+                (&DOT, &KUSD) => Ok(balance!(1)),
+                (&XOR, &KUSD) => Ok(balance!(1)),
+                (&KUSD, &XOR) => Ok(balance!(1)),
+                (&DAI, &KUSD) => Ok(balance!(1)),
+                (&KUSD, &DAI) => Ok(balance!(1)),
                 _ => Ok(balance!(0)),
             },
         }
@@ -351,6 +363,17 @@ impl Default for ExtBuilder {
                     None,
                     None,
                 ),
+                (
+                    KUSD,
+                    alice(),
+                    AssetSymbol(b"KUSD".to_vec()),
+                    AssetName(b"Kensetsu Stable Dollar".to_vec()),
+                    18,
+                    Balance::from(0u32),
+                    true,
+                    None,
+                    None,
+                ),
             ],
             endowed_accounts: vec![
                 (alice(), APOLLO_ASSET_ID, balance!(300000)),
@@ -397,6 +420,8 @@ impl ExtBuilder {
 
         assets::GenesisConfig::<Runtime> {
             endowed_assets: self.endowed_assets,
+            regulated_assets: Default::default(),
+            sbt_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

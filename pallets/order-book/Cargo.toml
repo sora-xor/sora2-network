@@ -67,8 +67,3 @@ private-net = [
 ]
 
 test = []
-
-stage = [
-    "framenode-chain-spec/stage",
-    "framenode-runtime/stage",
-]

@@ -654,7 +654,7 @@ pub mod pallet {
                 LiquiditySourceType::OrderBook,
             )?;
 
-            Self::deregister_tech_account(order_book_id)?;
+            Self::deregister_tech_account(&order_book_id)?;
             <OrderBooks<T>>::remove(order_book_id);
 
             Self::deposit_event(Event::<T>::OrderBookDeleted { order_book_id });
@@ -992,7 +992,7 @@ pub mod pallet {
 impl<T: Config> CurrencyLocker<T::AccountId, AssetIdOf<T>, T::DEXId, DispatchError> for Pallet<T> {
     fn lock_liquidity(
         account: &T::AccountId,
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         asset_id: &AssetIdOf<T>,
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
@@ -1006,7 +1006,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, AssetIdOf<T>, T::DEXId, DispatchE
 {
     fn unlock_liquidity(
         account: &T::AccountId,
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         asset_id: &AssetIdOf<T>,
         amount: OrderVolume,
     ) -> Result<(), DispatchError> {
@@ -1015,7 +1015,7 @@ impl<T: Config> CurrencyUnlocker<T::AccountId, AssetIdOf<T>, T::DEXId, DispatchE
     }
 
     fn unlock_liquidity_batch(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
         asset_id: &AssetIdOf<T>,
         receivers: &BTreeMap<T::AccountId, OrderVolume>,
     ) -> Result<(), DispatchError> {
@@ -1152,9 +1152,9 @@ impl<T: Config> Delegate<T::AccountId, AssetIdOf<T>, T::OrderId, T::DEXId, Momen
 
 impl<T: Config> Pallet<T> {
     pub fn tech_account_for_order_book(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> <T as technical::Config>::TechAccountId {
-        let trading_pair: TradingPair<AssetIdOf<T>> = order_book_id.into();
+        let trading_pair: TradingPair<AssetIdOf<T>> = (*order_book_id).into();
         // Same as in xyk accounts
         let tech_pair = trading_pair.map(|a| a.into());
         <T as technical::Config>::TechAccountId::to_order_tech_unit_from_dex_and_trading_pair(
@@ -1166,7 +1166,7 @@ impl<T: Config> Pallet<T> {
     /// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
     pub fn register_tech_account(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
         technical::Pallet::<T>::register_tech_account_id(tech_account)
@@ -1175,7 +1175,7 @@ impl<T: Config> Pallet<T> {
     /// Validity of asset ids (for example, to have the same base asset
     /// for dex and pair) should be done beforehand
     pub fn deregister_tech_account(
-        order_book_id: OrderBookId<AssetIdOf<T>, T::DEXId>,
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> Result<(), DispatchError> {
         let tech_account = Self::tech_account_for_order_book(order_book_id);
         technical::Pallet::<T>::deregister_tech_account_id(tech_account)
@@ -1338,7 +1338,7 @@ impl<T: Config> Pallet<T> {
             )
         };
         <OrderBooks<T>>::insert(order_book_id, order_book);
-        Self::register_tech_account(*order_book_id)
+        Self::register_tech_account(order_book_id)
     }
 
     pub fn inner_create_orderbook(
@@ -1429,6 +1429,14 @@ impl<T: Config> OrderBookManager<T::AccountId, AssetIdOf<T>, T::DEXId, MomentOf<
         output_asset_id: &AssetIdOf<T>,
     ) -> Option<OrderBookId<AssetIdOf<T>, T::DEXId>> {
         Self::assemble_order_book_id(dex_id, input_asset_id, output_asset_id)
+    }
+
+    fn tech_account_id_for_order_book(
+        order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
+    ) -> Result<T::AccountId, DispatchError> {
+        let tech_account = Self::tech_account_for_order_book(order_book_id);
+        let account_id = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account)?;
+        Ok(account_id)
     }
 
     fn initialize_orderbook(

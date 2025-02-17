@@ -174,6 +174,8 @@ impl ExtBuilder {
                     None,
                 ),
             ],
+            regulated_assets: Default::default(),
+            sbt_assets: Default::default(),
         }
         .assimilate_storage(&mut t)
         .unwrap();

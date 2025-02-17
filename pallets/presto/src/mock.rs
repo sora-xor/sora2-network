@@ -34,11 +34,12 @@ use crate as presto;
 
 use common::mock::ExistentialDeposits;
 use common::{
-    mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_manager_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_technical_config, mock_tokens_config, mock_trading_pair_config,
-    Amount, AssetId32, AssetName, AssetSymbol, DEXId, DEXInfo, FromGenericPair, PredefinedAssetId,
-    DEFAULT_BALANCE_PRECISION, KUSD, PRUSD, XOR, XST,
+    hash, mock_assets_config, mock_common_config, mock_currencies_config, mock_dex_manager_config,
+    mock_extended_assets_config, mock_frame_system_config, mock_pallet_balances_config,
+    mock_pallet_timestamp_config, mock_permissions_config, mock_technical_config,
+    mock_tokens_config, mock_trading_pair_config, Amount, AssetId32, AssetName, AssetSymbol, DEXId,
+    DEXInfo, FromGenericPair, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, KUSD, PRUSD, SBT_PRACS,
+    SBT_PRCRDT, SBT_PRINVST, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::traits::{ConstU32, EitherOfDiverse, GenesisBuild};
@@ -74,6 +75,7 @@ construct_runtime! {
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ExtendedAssets: extended_assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>},
@@ -90,9 +92,16 @@ parameter_types! {
 }
 
 mock_common_config!(Runtime);
-mock_assets_config!(Runtime);
+mock_assets_config!(
+    Runtime,
+    (
+        permissions::Pallet<Runtime>,
+        extended_assets::Pallet<Runtime>,
+    )
+);
 mock_currencies_config!(Runtime);
 mock_dex_manager_config!(Runtime);
+mock_extended_assets_config!(Runtime);
 mock_tokens_config!(Runtime);
 mock_pallet_balances_config!(Runtime);
 mock_frame_system_config!(Runtime);
@@ -133,6 +142,9 @@ impl order_book::Config for Runtime {
 
 parameter_types! {
     pub const PrestoUsdAssetId: AssetId = PRUSD;
+    pub PrestoKycAssetId: AssetId = SBT_PRACS.into_predefined();
+    pub PrestoKycInvestorAssetId: AssetId = SBT_PRINVST.into_predefined();
+    pub PrestoKycCreditorAssetId: AssetId = SBT_PRCRDT.into_predefined();
     pub PrestoTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             presto::TECH_ACCOUNT_PREFIX.to_vec(),
@@ -159,7 +171,11 @@ impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
     type OrderBookManager = order_book::Pallet<Runtime>;
+    type ExtendedAssetsManager = extended_assets::Pallet<Runtime>;
     type PrestoUsdAssetId = PrestoUsdAssetId;
+    type PrestoKycAssetId = PrestoKycAssetId;
+    type PrestoKycInvestorAssetId = PrestoKycInvestorAssetId;
+    type PrestoKycCreditorAssetId = PrestoKycCreditorAssetId;
     type PrestoTechAccount = PrestoTechAccountId;
     type PrestoBufferTechAccount = PrestoBufferTechAccountId;
     type RequestId = u64;
@@ -220,35 +236,100 @@ pub fn ext() -> sp_io::TestExternalities {
                 Scope::Unlimited,
                 vec![assets_and_permissions_account_id.clone()],
             ),
+            (
+                permissions::MANAGE_DEX,
+                Scope::Unlimited,
+                vec![assets_and_permissions_account_id.clone()],
+            ),
         ],
-        initial_permissions: vec![(
-            assets_and_permissions_account_id.clone(),
-            Scope::Unlimited,
-            vec![permissions::MINT, permissions::BURN],
-        )],
+        initial_permissions: vec![
+            (
+                assets_and_permissions_account_id.clone(),
+                Scope::Unlimited,
+                vec![permissions::MINT, permissions::BURN],
+            ),
+            (
+                PrestoAccountId::get(),
+                Scope::Limited(hash(&PRUSD)),
+                vec![permissions::MINT, permissions::BURN],
+            ),
+            (
+                PrestoAccountId::get(),
+                Scope::Limited(hash(&SBT_PRACS)),
+                vec![permissions::MINT, permissions::BURN],
+            ),
+            (
+                PrestoAccountId::get(),
+                Scope::Limited(hash(&SBT_PRINVST)),
+                vec![permissions::MINT, permissions::BURN],
+            ),
+            (
+                PrestoAccountId::get(),
+                Scope::Limited(hash(&SBT_PRCRDT)),
+                vec![permissions::MINT, permissions::BURN],
+            ),
+            (
+                PrestoAccountId::get(),
+                Scope::Limited(hash(&DEXId::PolkaswapPresto)),
+                vec![permissions::MANAGE_DEX],
+            ),
+        ],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
 
     AssetsConfig {
-        endowed_assets: vec![
+        endowed_assets: vec![(
+            XOR,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"XOR".to_vec()),
+            AssetName(b"SORA".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            0,
+            true,
+            None,
+            None,
+        )],
+        regulated_assets: vec![(
+            PRUSD,
+            assets_and_permissions_account_id.clone(),
+            AssetSymbol(b"PRUSD".to_vec()),
+            AssetName(b"Presto USD".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            0,
+            true,
+            None,
+            None,
+        )],
+        sbt_assets: vec![
             (
-                XOR,
-                assets_and_permissions_account_id,
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"SORA".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
+                SBT_PRACS.into_predefined(),
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"PRACS".to_vec()),
+                AssetName(b"Presto Access".to_vec()),
+                0,
                 0,
                 true,
                 None,
                 None,
             ),
             (
-                PRUSD,
-                PrestoAccountId::get(),
-                AssetSymbol(b"PRUSD".to_vec()),
-                AssetName(b"Presto USD".to_vec()),
-                DEFAULT_BALANCE_PRECISION,
+                SBT_PRINVST.into_predefined(),
+                assets_and_permissions_account_id.clone(),
+                AssetSymbol(b"PRINVST".to_vec()),
+                AssetName(b"Presto Investor".to_vec()),
+                0,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                SBT_PRCRDT.into_predefined(),
+                assets_and_permissions_account_id,
+                AssetSymbol(b"PRCRDT".to_vec()),
+                AssetName(b"Presto Creditor".to_vec()),
+                0,
                 0,
                 true,
                 None,
@@ -274,9 +355,24 @@ pub fn ext() -> sp_io::TestExternalities {
                 DEXInfo {
                     base_asset_id: PRUSD,
                     synthetic_base_asset_id: XST,
-                    is_public: true,
+                    is_public: false,
                 },
             ),
+        ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    ExtendedAssetsConfig {
+        assets_metadata: vec![(SBT_PRACS.into(), None, PRUSD)],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
+    TokensConfig {
+        balances: vec![
+            (PrestoAccountId::get(), SBT_PRACS.into(), 1),
+            (PrestoBufferAccountId::get(), SBT_PRACS.into(), 1),
         ],
     }
     .assimilate_storage(&mut storage)

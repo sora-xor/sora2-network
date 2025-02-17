@@ -44,7 +44,18 @@ use sp_runtime::traits::Zero;
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_runtime::FixedU128;
 use vested_rewards::vesting_currencies::VestingSchedule;
-use vested_rewards::{Config, WeightInfo};
+
+#[derive(Debug, PartialEq)]
+pub struct CallDepth {
+    pub swap_count: u32,
+    pub depth: u32,
+}
+
+impl From<(u32, u32)> for CallDepth {
+    fn from((swap_count, depth): (u32, u32)) -> Self {
+        CallDepth { swap_count, depth }
+    }
+}
 
 impl RuntimeCall {
     #[cfg(feature = "wip")] // EVM bridge
@@ -92,20 +103,49 @@ impl RuntimeCall {
         Ok(())
     }
 
-    pub fn swap_count(&self) -> u32 {
+    /// `vested_transfer` may be called only through `xorless_call` or manually
+    /// so for other extrinsics depth is 2 or more
+    pub fn swap_count_and_depth(&self, depth: u32) -> CallDepth {
         match self {
             Self::Multisig(pallet_multisig::Call::as_multi_threshold_1 { call, .. })
             | Self::Multisig(pallet_multisig::Call::as_multi { call, .. })
-            | Self::Utility(UtilityCall::as_derivative { call, .. }) => call.swap_count(),
+            | Self::Utility(UtilityCall::as_derivative { call, .. }) => {
+                call.swap_count_and_depth(depth.saturating_add(2))
+            }
             Self::Utility(UtilityCall::batch { calls })
             | Self::Utility(UtilityCall::batch_all { calls })
-            | Self::Utility(UtilityCall::force_batch { calls }) => {
-                calls.iter().map(|call| call.swap_count()).sum()
-            }
+            | Self::Utility(UtilityCall::force_batch { calls }) => calls
+                .iter()
+                .map(|call| call.swap_count_and_depth(depth.saturating_add(2)))
+                .fold(
+                    CallDepth {
+                        swap_count: 0,
+                        depth: 0,
+                    },
+                    |acc, call_depth| CallDepth {
+                        swap_count: acc.swap_count.saturating_add(call_depth.swap_count),
+                        depth: acc.depth.max(call_depth.depth),
+                    },
+                ),
             Self::LiquidityProxy(liquidity_proxy::Call::swap { .. })
             | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer { .. })
-            | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch { .. }) => 1,
-            _ => 0,
+            | Self::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch { .. }) => {
+                CallDepth {
+                    depth: 0,
+                    swap_count: 1,
+                }
+            }
+            Self::XorFee(xor_fee::Call::xorless_call { call, .. }) => {
+                call.swap_count_and_depth(depth.saturating_add(1))
+            }
+            Self::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => CallDepth {
+                depth,
+                swap_count: 0,
+            },
+            _ => CallDepth {
+                depth: 0,
+                swap_count: 0,
+            },
         }
     }
 
@@ -190,7 +230,8 @@ impl CustomFees {
             | RuntimeCall::Council(
                 pallet_collective::Call::close { .. } | pallet_collective::Call::propose { .. },
             )
-            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. }) => {
+            | RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer { .. })
+            | RuntimeCall::VestedRewards(vested_rewards::Call::claim_unlocked { .. }) => {
                 Some(SMALL_FEE)
             }
             RuntimeCall::Band(..) => Some(MINIMAL_FEE),
@@ -227,26 +268,29 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
         let mut fee = Self::base_fee(call)?;
 
+        let mut compute_details = |call: &RuntimeCall| -> CustomFeeDetails {
+            match call {
+                RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+                    lifespan, ..
+                }) => CustomFeeDetails::LimitOrderLifetime(*lifespan),
+                RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+                    schedule,
+                    ..
+                }) => {
+                    // claim fee = SMALL_FEE
+                    let whole_claims_fee =
+                        SMALL_FEE.saturating_mul(schedule.claims_count() as Balance);
+                    let fee_without_claims = fee;
+                    fee = fee.saturating_add(whole_claims_fee);
+                    CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
+                }
+                _ => CustomFeeDetails::Regular(fee),
+            }
+        };
+
         let details = match call {
-            RuntimeCall::OrderBook(order_book::Call::place_limit_order { lifespan, .. }) => {
-                CustomFeeDetails::LimitOrderLifetime(*lifespan)
-            }
-            RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
-                schedule, ..
-            }) => {
-                let claim_fee = pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
-                    <Runtime as Config>::WeightInfo::claim_unlocked(),
-                );
-                let whole_claims_fee = claim_fee.saturating_mul(schedule.claims_count() as Balance);
-                let fee_vested_transfer_weight =
-                    pallet_transaction_payment::Pallet::<Runtime>::weight_to_fee(
-                        <Runtime as Config>::WeightInfo::vested_transfer(),
-                    );
-                let fee_without_claims = fee.saturating_add(fee_vested_transfer_weight);
-                fee = fee_without_claims.saturating_add(whole_claims_fee);
-                CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
-            }
-            _ => CustomFeeDetails::Regular(fee),
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => compute_details(call),
+            call => compute_details(call),
         };
 
         Some((fee, details))
@@ -413,13 +457,19 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     }
 
     fn get_fee_source(who: &AccountId, call: &RuntimeCall, _fee: Balance) -> AccountId {
-        match call {
-            RuntimeCall::Referrals(referrals::Call::set_referrer { .. })
-                if Referrals::can_set_referrer(who) =>
-            {
-                ReferralsReservesAcc::get()
+        let fee_source = |call: &RuntimeCall| -> AccountId {
+            match call {
+                RuntimeCall::Referrals(referrals::Call::set_referrer { .. })
+                    if Referrals::can_set_referrer(who) =>
+                {
+                    ReferralsReservesAcc::get()
+                }
+                _ => who.clone(),
             }
-            _ => who.clone(),
+        };
+        match call {
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call { call, .. }) => fee_source(call),
+            call => fee_source(call),
         }
     }
 }
@@ -441,7 +491,6 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         DispatchError,
     > {
         match call {
-            // TODO: remake for xorless
             RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
                 // Fee source should be set to referrer by `get_fee_source` method, if not 
                 // it means that user can't set referrer
@@ -450,38 +499,48 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                 Referrals::withdraw_fee(referrer, fee)?;
             }
             #[allow(unused_variables)] // Xorless fee
-            RuntimeCall::XorFee(xor_fee::Call::xorless_call {call: _, asset_id}) => {
+            RuntimeCall::XorFee(xor_fee::Call::xorless_call {call, asset_id}) => {
                 #[cfg(feature = "wip")] // Xorless fee
-                match *asset_id {
-                    None => {},
-                    Some(asset_id) if XorFee::whitelist_tokens().contains(&asset_id) => {
-                        let asset_fee = FixedWrapper::from(
-                            PriceTools::get_average_price(
-                                &GetXorAssetId::get(),
-                                &asset_id,
-                                PriceVariant::Buy)?
-                        ) * fee;
-                        let asset_fee = asset_fee.into_balance();
-                        if asset_fee.lt(&MinimalFeeInAsset::get()) {
-                            return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into())
-                        };
-                        return Ok((
-                            fee_source.clone(),
-                            Some(Tokens::withdraw(
-                                asset_id,
-                                fee_source,
-                                asset_fee,
-                            ).map(|_| {
-                                NegativeImbalanceOf::<Runtime>::new(asset_fee)
-                            })?),
-                            Some(asset_id),
-                        ))
+                match call.as_ref() {
+                    RuntimeCall::Referrals(referrals::Call::set_referrer { referrer })
+                    // Fee source should be set to referrer by `get_fee_source` method, if not
+                    // it means that user can't set referrer
+                    if Referrals::can_set_referrer(who) =>
+                        {
+                            Referrals::withdraw_fee(referrer, fee)?;
+                        }
+                    _ => {
+                        match *asset_id {
+                            None => {},
+                            Some(asset_id) if XorFee::whitelist_tokens().contains(&asset_id) => {
+                                let asset_fee = FixedWrapper::from(
+                                    PriceTools::get_average_price(
+                                        &GetXorAssetId::get(),
+                                        &asset_id,
+                                        PriceVariant::Buy)?
+                                ) * fee;
+                                let asset_fee = asset_fee.into_balance();
+                                if asset_fee.lt(&MinimalFeeInAsset::get()) {
+                                    return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into())
+                                };
+                                return Ok((
+                                    fee_source.clone(),
+                                    Some(Tokens::withdraw(
+                                        asset_id,
+                                        fee_source,
+                                        asset_fee,
+                                    ).map(|_| {
+                                        NegativeImbalanceOf::<Runtime>::new(asset_fee)
+                                    })?),
+                                    Some(asset_id),
+                                ))
+                            }
+                            _ => { return Err(xor_fee::Error::<Runtime>::AssetNotFound.into()) }
+                        }
                     }
-                    _ => { return Err(xor_fee::Error::<Runtime>::AssetNotFound.into()) }
                 }
             }
-            _ => {
-            }
+            _ => {}
         }
         #[cfg(feature = "wip")] // EVM bridge
         call.withdraw_evm_fee_nested(who)?;
@@ -524,10 +583,14 @@ mod tests {
     use pallet_utility::Call as UtilityCall;
     use sp_core::H256;
     use sp_runtime::AccountId32;
+    use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 
-    use common::{balance, VAL, XOR};
-
-    use crate::{xor_fee_impls::CustomFees, *};
+    use crate::{
+        xor_fee_impls::{CallDepth, CustomFeeDetails, CustomFees},
+        *,
+    };
+    use common::OrderBookId;
+    use common::{balance, PriceVariant, VAL, XOR};
     use xor_fee::ApplyCustomFees;
 
     #[test]
@@ -569,7 +632,63 @@ mod tests {
             amount: balance!(100),
         });
 
-        assert_eq!(call.swap_count(), 0);
+        assert_eq!(
+            call.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: From::from([1; 32]),
+            schedule: schedule.clone(),
+        });
+
+        assert_eq!(
+            call.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn xorless_call_vesting_should_pass() {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(RuntimeCall::VestedRewards(
+                vested_rewards::Call::vested_transfer {
+                    dest: From::from([1; 32]),
+                    schedule: schedule.clone(),
+                },
+            )),
+            asset_id: None,
+        });
+
+        assert_eq!(
+            call.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 1,
+            }
+        );
     }
 
     #[test]
@@ -594,8 +713,93 @@ mod tests {
         });
         let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
-        assert_eq!(call_batch.swap_count(), 0);
-        assert_eq!(call_batch_all.swap_count(), 0);
+        assert_eq!(
+            call_batch.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+        assert_eq!(
+            call_batch_all.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 0,
+            }
+        );
+    }
+
+    #[test]
+    fn regular_batch_should_not_pass_for_vesting() {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: From::from([1; 32]),
+            schedule: schedule.clone(),
+        });
+        let batch_calls = vec![
+            call,
+            assets::Call::transfer {
+                asset_id: GetBaseAssetId::get(),
+                to: From::from([1; 32]),
+                amount: balance!(100),
+            }
+            .into(),
+        ];
+
+        let call_batch = RuntimeCall::Utility(UtilityCall::batch {
+            calls: batch_calls.clone(),
+        });
+        let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
+
+        assert_eq!(
+            call_batch.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 2,
+            }
+        );
+        assert_eq!(
+            call_batch_all.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 0,
+                depth: 2,
+            }
+        );
+    }
+
+    #[test]
+    fn no_direct_call_not_work_for_vesting() {
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+        let call = Box::new(RuntimeCall::VestedRewards(
+            vested_rewards::Call::vested_transfer {
+                dest: From::from([1; 32]),
+                schedule: schedule.clone(),
+            },
+        ));
+
+        let utility_call = RuntimeCall::Utility(UtilityCall::as_derivative { index: 0, call });
+
+        assert_eq!(
+            utility_call.swap_count_and_depth(0),
+            CallDepth {
+                depth: 2,
+                swap_count: 0
+            }
+        );
     }
 
     fn test_swap_in_batch(call: RuntimeCall) {
@@ -614,8 +818,20 @@ mod tests {
         });
         let call_batch_all = RuntimeCall::Utility(UtilityCall::batch_all { calls: batch_calls });
 
-        assert_eq!(call_batch.swap_count(), 1);
-        assert_eq!(call_batch_all.swap_count(), 1);
+        assert_eq!(
+            call_batch.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 1,
+                depth: 0,
+            }
+        );
+        assert_eq!(
+            call_batch_all.swap_count_and_depth(0),
+            CallDepth {
+                swap_count: 1,
+                depth: 0,
+            }
+        );
 
         assert!(crate::BaseCallFilter::contains(&call_batch));
         assert!(crate::BaseCallFilter::contains(&call_batch_all));
@@ -656,5 +872,102 @@ mod tests {
             }
             .into(),
         );
+    }
+
+    #[test]
+    fn compute_fee_works_fine() {
+        // compute fee works fine for vested transfer
+
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: DOT,
+            start: 0u32,
+            period: 10u32,
+            period_count: 2u32,
+            per_period: 10,
+            remainder_amount: 0,
+        });
+
+        let fee = 3 * SMALL_FEE;
+        let fee_without_claims = SMALL_FEE;
+
+        let vesting_call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
+            dest: From::from([1; 32]),
+            schedule,
+        });
+        let xorless_call_vesting = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(vesting_call.clone()),
+            asset_id: None,
+        });
+        assert_eq!(
+            CustomFees::compute_fee(&xorless_call_vesting),
+            Some((
+                fee,
+                CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
+            ))
+        );
+        assert_eq!(
+            CustomFees::compute_fee(&vesting_call),
+            Some((
+                fee,
+                CustomFeeDetails::VestedTransferClaims((fee, fee_without_claims))
+            ))
+        );
+
+        // compute fee works fine for order book
+
+        let order_book_id = OrderBookId {
+            dex_id: common::DEXId::Polkaswap.into(),
+            base: VAL.into(),
+            quote: XOR.into(),
+        };
+        let order_call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
+            order_book_id,
+            price: balance!(11),
+            amount: balance!(100),
+            side: PriceVariant::Sell,
+            lifespan: None,
+        });
+        let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(order_call.clone()),
+            asset_id: None,
+        });
+        assert_eq!(
+            CustomFees::compute_fee(&xorless_call),
+            Some((SMALL_FEE, CustomFeeDetails::LimitOrderLifetime(None)))
+        );
+        assert_eq!(
+            CustomFees::compute_fee(&order_call),
+            Some((SMALL_FEE, CustomFeeDetails::LimitOrderLifetime(None)))
+        );
+
+        // compute fee works fine for Some predefined fee
+
+        let transfer_call = RuntimeCall::Assets(assets::Call::transfer {
+            asset_id: GetBaseAssetId::get(),
+            to: From::from([1; 32]),
+            amount: balance!(100),
+        });
+        let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(transfer_call.clone()),
+            asset_id: None,
+        });
+        assert_eq!(
+            CustomFees::compute_fee(&transfer_call),
+            Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+        );
+        assert_eq!(
+            CustomFees::compute_fee(&xorless_call),
+            Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+        );
+
+        // compute fee works fine for others
+
+        let set_call = RuntimeCall::Timestamp(pallet_timestamp::Call::set { now: 1_u64 });
+        let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(set_call.clone()),
+            asset_id: None,
+        });
+        assert_eq!(CustomFees::compute_fee(&set_call), None);
+        assert_eq!(CustomFees::compute_fee(&xorless_call), None);
     }
 }

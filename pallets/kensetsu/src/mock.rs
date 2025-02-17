@@ -71,8 +71,8 @@ type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRunt
 
 pub struct MockRandomness;
 
-impl Randomness<Option<Hash>, BlockNumber> for MockRandomness {
-    fn random(_subject: &[u8]) -> (Option<Hash>, BlockNumber) {
+impl Randomness<Hash, BlockNumber> for MockRandomness {
+    fn random(_subject: &[u8]) -> (Hash, BlockNumber) {
         unimplemented!()
     }
 }
@@ -495,6 +495,8 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
                 None,
             ),
         ],
+        regulated_assets: Default::default(),
+        sbt_assets: Default::default(),
     }
     .assimilate_storage(&mut storage)
     .unwrap();
