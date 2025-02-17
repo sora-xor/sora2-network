@@ -225,6 +225,20 @@ pub fn clear_presto<T: Config>() -> DispatchResult {
         dex_manager::DEXInfos::<T>::remove(dex_id);
     }
 
+    // try to burn access tokens if exist
+    let _ = T::AssetManager::burn_from(
+        &SBT_PRACS.into_predefined().into(),
+        &system_account_id,
+        &presto_buffer_account_id,
+        1,
+    );
+    let _ = T::AssetManager::burn_from(
+        &SBT_PRACS.into_predefined().into(),
+        &system_account_id,
+        &presto_account_id,
+        1,
+    );
+
     let scopes = [
         Scope::Limited(common::hash(&PRUSD)),
         Scope::Limited(common::hash(&SBT_PRACS)),
@@ -249,19 +263,6 @@ pub fn clear_presto<T: Config>() -> DispatchResult {
         SBT_PRINVST.into_predefined().into(),
     );
     delete_asset::<T>(SBT_PRINVST.into_predefined().into(), &system_account_id);
-
-    T::AssetManager::burn_from(
-        &SBT_PRACS.into_predefined().into(),
-        &system_account_id,
-        &presto_buffer_account_id,
-        1,
-    )?;
-    T::AssetManager::burn_from(
-        &SBT_PRACS.into_predefined().into(),
-        &system_account_id,
-        &presto_account_id,
-        1,
-    )?;
 
     extended_assets::RegulatedAssetToSoulboundAsset::<T>::remove::<AssetIdOf<T>>(PRUSD.into());
     extended_assets::SoulboundAsset::<T>::remove::<AssetIdOf<T>>(
