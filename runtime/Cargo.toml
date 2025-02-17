@@ -320,7 +320,6 @@ wip = [
 
 stage = [
     "framenode-chain-spec/stage",
-    "order-book/stage",
     "presto/stage",
 ]
 

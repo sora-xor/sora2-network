@@ -1193,9 +1193,9 @@ fn testnet_genesis(
             VAL,
             parliament_investment_fund_balance,
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_account_id.clone(), SBT_PRACS.into(), 1),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_buffer_account_id.clone(), SBT_PRACS.into(), 1),
     ];
     let faucet_config = {
@@ -1526,7 +1526,7 @@ fn testnet_genesis(
                 ),
             ],
             sbt_assets: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     SBT_PRACS.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -1538,7 +1538,7 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     SBT_PRINVST.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -1550,7 +1550,7 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     SBT_PRCRDT.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -1645,25 +1645,25 @@ fn testnet_genesis(
                     Scope::Limited(hash(&PRUSD)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRACS)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRINVST)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&4u32)),
@@ -1719,7 +1719,7 @@ fn testnet_genesis(
         },
         extended_assets: ExtendedAssetsConfig {
             assets_metadata: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (SBT_PRACS.into(), None, PRUSD),
             ],
         },
@@ -2391,7 +2391,7 @@ fn mainnet_genesis(
     ];
 
     let sbt_assets = vec![
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             SBT_PRACS.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -2403,7 +2403,7 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             SBT_PRINVST.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -2415,7 +2415,7 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             SBT_PRCRDT.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -2603,25 +2603,25 @@ fn mainnet_genesis(
                     Scope::Limited(hash(&PRUSD)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRACS)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRINVST)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&4u32)),
@@ -2719,7 +2719,7 @@ fn mainnet_genesis(
         },
         extended_assets: ExtendedAssetsConfig {
             assets_metadata: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (SBT_PRACS.into(), None, PRUSD),
             ],
         },
@@ -2753,13 +2753,13 @@ fn mainnet_genesis(
                     PSWAP,
                     initial_pswap_market_maker_rewards,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id,
                     SBT_PRACS.into(),
                     1,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_buffer_account_id,
                     SBT_PRACS.into(),
