@@ -4400,6 +4400,86 @@ mod test {
     }
 
     #[test]
+    fn distribute_protocol_interest_borrowing_apollo_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            init_exchange();
+
+            assert_ok!(assets::Pallet::<Runtime>::mint_to(
+                &APOLLO_ASSET_ID,
+                &alice(),
+                &get_pallet_account(),
+                balance!(300)
+            ));
+
+            assert_ok!(ApolloPlatform::add_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                APOLLO_ASSET_ID,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(0.1),
+            ));
+
+            // Check balances before distribution of rewards
+            // Pallet
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account()).unwrap(),
+                balance!(300)
+            );
+
+            assert_ok!(ApolloPlatform::distribute_protocol_interest(
+                APOLLO_ASSET_ID,
+                balance!(100),
+                APOLLO_ASSET_ID
+            ));
+
+            // Check borrowing asset pool values after distribution
+            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(APOLLO_ASSET_ID).unwrap();
+            assert_eq!(borrowing_asset_pool_info.rewards, balance!(90));
+
+            // Check balances after distribution of rewards
+            let (treasury_reserve, _, developer_amount) =
+                calculate_reserve_amounts(APOLLO_ASSET_ID, balance!(100));
+
+            // Pallet
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account()).unwrap(),
+                balance!(290)
+            );
+
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID, &get_pallet_account())
+                    .unwrap(),
+                balance!(0)
+            );
+
+            // Exchange
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&CERES_ASSET_ID, &exchange_account())
+                    .unwrap(),
+                balance!(998)
+            );
+
+            // Treasury
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_treasury_account())
+                    .unwrap(),
+                treasury_reserve
+            );
+
+            // Developer / Authority
+            assert_eq!(
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_authority_account()).unwrap(),
+                developer_amount
+            );
+        });
+    }
+
+    #[test]
     fn update_interests_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {

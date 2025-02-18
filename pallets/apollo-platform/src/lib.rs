@@ -329,6 +329,8 @@ pub mod pallet {
         CanNotTransferAmountToRepay,
         /// Can not transfer amount to developers
         CanNotTransferAmountToDevelopers,
+        /// Can not transfer amount to treasury
+        CanNotTransferAmountToTreasury,
         /// User should not be liquidated
         InvalidLiquidation,
         /// Pool is removed
@@ -1645,20 +1647,22 @@ pub mod pallet {
             .unwrap_or(0);
             let rewards_amount = amount.saturating_sub(reserves_amount);
 
-            let outcome = T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
-                &caller,
-                &caller,
-                &asset_id,
-                &APOLLO_ASSET_ID.into(),
-                SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )?;
-
-            let buyback_amount = outcome.amount;
-
-            pool_info.rewards += buyback_amount;
-
+            if asset_id != APOLLO_ASSET_ID.into() {
+                let outcome = T::LiquidityProxyPallet::exchange(
+                    DEXId::Polkaswap.into(),
+                    &caller,
+                    &caller,
+                    &asset_id,
+                    &APOLLO_ASSET_ID.into(),
+                    SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
+                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                )?;
+                let buyback_amount = outcome.amount;
+                pool_info.rewards += buyback_amount;
+            } else {
+                pool_info.rewards += rewards_amount;
+            }
+            
             <PoolData<T>>::insert(borrowing_asset_id, pool_info);
 
             // Calculate 60% of reserves to transfer APOLLO to treasury
@@ -1689,15 +1693,25 @@ pub mod pallet {
             .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
 
             // Transfer APOLLO to treasury
-            T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
-                &caller,
-                &TreasuryAccount::<T>::get(), // APOLLO Treasury
-                &asset_id,
-                &APOLLO_ASSET_ID.into(),
-                SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )?;
+            if asset_id != APOLLO_ASSET_ID.into() {
+                T::LiquidityProxyPallet::exchange(
+                    DEXId::Polkaswap.into(),
+                    &caller,
+                    &TreasuryAccount::<T>::get(), // APOLLO Treasury
+                    &asset_id,
+                    &APOLLO_ASSET_ID.into(),
+                    SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
+                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                )?;
+            } else {
+                T::AssetManager::transfer_from(
+                    &asset_id,
+                    &caller,
+                    &TreasuryAccount::<T>::get(),
+                    apollo_amount,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferAmountToTreasury)?;
+            }
 
             // Buyback and burn CERES
             let outcome = T::LiquidityProxyPallet::exchange(
