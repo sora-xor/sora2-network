@@ -1662,7 +1662,7 @@ pub mod pallet {
             } else {
                 pool_info.rewards += rewards_amount;
             }
-            
+
             <PoolData<T>>::insert(borrowing_asset_id, pool_info);
 
             // Calculate 60% of reserves to transfer APOLLO to treasury

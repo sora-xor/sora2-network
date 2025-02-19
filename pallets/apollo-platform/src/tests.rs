@@ -4427,7 +4427,8 @@ mod test {
             // Check balances before distribution of rewards
             // Pallet
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account())
+                    .unwrap(),
                 balance!(300)
             );
 
@@ -4438,7 +4439,8 @@ mod test {
             ));
 
             // Check borrowing asset pool values after distribution
-            let borrowing_asset_pool_info = pallet::PoolData::<Runtime>::get(APOLLO_ASSET_ID).unwrap();
+            let borrowing_asset_pool_info =
+                pallet::PoolData::<Runtime>::get(APOLLO_ASSET_ID).unwrap();
             assert_eq!(borrowing_asset_pool_info.rewards, balance!(90));
 
             // Check balances after distribution of rewards
@@ -4447,7 +4449,8 @@ mod test {
 
             // Pallet
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_pallet_account())
+                    .unwrap(),
                 balance!(290)
             );
 
@@ -4473,7 +4476,8 @@ mod test {
 
             // Developer / Authority
             assert_eq!(
-                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_authority_account()).unwrap(),
+                assets::Pallet::<Runtime>::free_balance(&APOLLO_ASSET_ID, &get_authority_account())
+                    .unwrap(),
                 developer_amount
             );
         });
