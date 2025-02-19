@@ -3676,7 +3676,7 @@
 <span class="kw">use </span>common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 <span class="kw">use </span>common::prelude::QuoteAmount;
 <span class="kw">use </span>common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;wip&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))] </span><span class="comment">// presto
 </span><span class="kw">use </span>common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
 <span class="kw">use </span>constants::currency::deposit;
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
@@ -6125,7 +6125,7 @@
     <span class="kw">type </span>WeightInfo = extended_assets::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;wip&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))] </span><span class="comment">// presto
 </span><span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>PrestoUsdAssetId: AssetId = PRUSD;
     <span class="kw">pub </span>PrestoKycAssetId: AssetId = SBT_PRACS.into_predefined();
@@ -6145,7 +6145,7 @@
     };
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;wip&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))] </span><span class="comment">// presto
 </span><span class="kw">impl </span>presto::Config <span class="kw">for </span>Runtime {
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="kw">type </span>TradingPairSourceManager = trading_pair::Pallet&lt;Runtime&gt;;
@@ -6247,7 +6247,7 @@
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">56</span>,
         OrderBook: order_book::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">57</span>,
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(any(feature = <span class="string">&quot;wip&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))] </span><span class="comment">// presto
         </span>Presto: presto::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">59</span>,
 
         <span class="comment">// Leaf provider should be placed before any pallet which is uses it
