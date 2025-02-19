@@ -63,7 +63,7 @@ use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
-#[cfg(feature = "wip")] // presto
+#[cfg(any(feature = "wip", feature = "private-net"))] // presto
 use common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
 use constants::currency::deposit;
 use constants::time::*;
@@ -2512,7 +2512,7 @@ impl extended_assets::Config for Runtime {
     type WeightInfo = extended_assets::weights::SubstrateWeight<Runtime>;
 }
 
-#[cfg(feature = "wip")] // presto
+#[cfg(any(feature = "wip", feature = "private-net"))] // presto
 parameter_types! {
     pub const PrestoUsdAssetId: AssetId = PRUSD;
     pub PrestoKycAssetId: AssetId = SBT_PRACS.into_predefined();
@@ -2532,7 +2532,7 @@ parameter_types! {
     };
 }
 
-#[cfg(feature = "wip")] // presto
+#[cfg(any(feature = "wip", feature = "private-net"))] // presto
 impl presto::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type TradingPairSourceManager = trading_pair::Pallet<Runtime>;
@@ -2634,7 +2634,7 @@ construct_runtime! {
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
-        #[cfg(feature = "wip")] // presto
+        #[cfg(any(feature = "wip", feature = "private-net"))] // presto
         Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
 
         // Leaf provider should be placed before any pallet which is uses it
