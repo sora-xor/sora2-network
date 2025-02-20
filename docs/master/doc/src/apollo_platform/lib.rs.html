@@ -1850,6 +1850,20 @@
 <a href="#1835" id="1835">1835</a>
 <a href="#1836" id="1836">1836</a>
 <a href="#1837" id="1837">1837</a>
+<a href="#1838" id="1838">1838</a>
+<a href="#1839" id="1839">1839</a>
+<a href="#1840" id="1840">1840</a>
+<a href="#1841" id="1841">1841</a>
+<a href="#1842" id="1842">1842</a>
+<a href="#1843" id="1843">1843</a>
+<a href="#1844" id="1844">1844</a>
+<a href="#1845" id="1845">1845</a>
+<a href="#1846" id="1846">1846</a>
+<a href="#1847" id="1847">1847</a>
+<a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
@@ -2181,6 +2195,8 @@
         </span>CanNotTransferAmountToRepay,
         <span class="doccomment">/// Can not transfer amount to developers
         </span>CanNotTransferAmountToDevelopers,
+        <span class="doccomment">/// Can not transfer amount to treasury
+        </span>CanNotTransferAmountToTreasury,
         <span class="doccomment">/// User should not be liquidated
         </span>InvalidLiquidation,
         <span class="doccomment">/// Pool is removed
@@ -3497,19 +3513,21 @@
             .unwrap_or(<span class="number">0</span>);
             <span class="kw">let </span>rewards_amount = amount.saturating_sub(reserves_amount);
 
-            <span class="kw">let </span>outcome = T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
-                <span class="kw-2">&amp;</span>caller,
-                <span class="kw-2">&amp;</span>caller,
-                <span class="kw-2">&amp;</span>asset_id,
-                <span class="kw-2">&amp;</span>APOLLO_ASSET_ID.into(),
-                SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )<span class="question-mark">?</span>;
-
-            <span class="kw">let </span>buyback_amount = outcome.amount;
-
-            pool_info.rewards += buyback_amount;
+            <span class="kw">if </span>asset_id != APOLLO_ASSET_ID.into() {
+                <span class="kw">let </span>outcome = T::LiquidityProxyPallet::exchange(
+                    DEXId::Polkaswap.into(),
+                    <span class="kw-2">&amp;</span>caller,
+                    <span class="kw-2">&amp;</span>caller,
+                    <span class="kw-2">&amp;</span>asset_id,
+                    <span class="kw-2">&amp;</span>APOLLO_ASSET_ID.into(),
+                    SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
+                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                )<span class="question-mark">?</span>;
+                <span class="kw">let </span>buyback_amount = outcome.amount;
+                pool_info.rewards += buyback_amount;
+            } <span class="kw">else </span>{
+                pool_info.rewards += rewards_amount;
+            }
 
             &lt;PoolData&lt;T&gt;&gt;::insert(borrowing_asset_id, pool_info);
 
@@ -3541,15 +3559,25 @@
             .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::CanNotTransferAmountToDevelopers)<span class="question-mark">?</span>;
 
             <span class="comment">// Transfer APOLLO to treasury
-            </span>T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
-                <span class="kw-2">&amp;</span>caller,
-                <span class="kw-2">&amp;</span>TreasuryAccount::&lt;T&gt;::get(), <span class="comment">// APOLLO Treasury
-                </span><span class="kw-2">&amp;</span>asset_id,
-                <span class="kw-2">&amp;</span>APOLLO_ASSET_ID.into(),
-                SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )<span class="question-mark">?</span>;
+            </span><span class="kw">if </span>asset_id != APOLLO_ASSET_ID.into() {
+                T::LiquidityProxyPallet::exchange(
+                    DEXId::Polkaswap.into(),
+                    <span class="kw-2">&amp;</span>caller,
+                    <span class="kw-2">&amp;</span>TreasuryAccount::&lt;T&gt;::get(), <span class="comment">// APOLLO Treasury
+                    </span><span class="kw-2">&amp;</span>asset_id,
+                    <span class="kw-2">&amp;</span>APOLLO_ASSET_ID.into(),
+                    SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
+                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                )<span class="question-mark">?</span>;
+            } <span class="kw">else </span>{
+                T::AssetManager::transfer_from(
+                    <span class="kw-2">&amp;</span>asset_id,
+                    <span class="kw-2">&amp;</span>caller,
+                    <span class="kw-2">&amp;</span>TreasuryAccount::&lt;T&gt;::get(),
+                    apollo_amount,
+                )
+                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::CanNotTransferAmountToTreasury)<span class="question-mark">?</span>;
+            }
 
             <span class="comment">// Buyback and burn CERES
             </span><span class="kw">let </span>outcome = T::LiquidityProxyPallet::exchange(
