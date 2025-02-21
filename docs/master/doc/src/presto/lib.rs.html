@@ -2475,7 +2475,7 @@
             coupon_amount: Balance,
         ) -&gt; DispatchResult {
             <span class="kw">let </span>who = ensure_signed(origin)<span class="question-mark">?</span>;
-            <span class="self">Self</span>::ensure_has_investor_kyc(<span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
+            <span class="self">Self</span>::ensure_has_kyc(<span class="kw-2">&amp;</span>who)<span class="question-mark">?</span>;
 
             <span class="kw">let </span>presto_tech_account_id = technical::Pallet::&lt;T&gt;::tech_account_id_to_account_id(
                 <span class="kw-2">&amp;</span>T::PrestoTechAccount::get(),
