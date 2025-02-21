@@ -1173,7 +1173,7 @@ pub mod pallet {
             coupon_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_has_investor_kyc(&who)?;
+            Self::ensure_has_kyc(&who)?;
 
             let presto_tech_account_id = technical::Pallet::<T>::tech_account_id_to_account_id(
                 &T::PrestoTechAccount::get(),
