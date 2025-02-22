@@ -995,16 +995,16 @@ fn testnet_genesis(
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_tech_account_id = framenode_runtime::PrestoTechAccountId::get();
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_account_id =
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_tech_account_id)
             .unwrap();
 
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_buffer_tech_account_id = framenode_runtime::PrestoBufferTechAccountId::get();
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_buffer_account_id =
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_buffer_tech_account_id)
             .unwrap();
@@ -1072,9 +1072,9 @@ fn testnet_genesis(
             kensetsu_depository_account_id.clone(),
             kensetsu_depository_tech_account_id.clone(),
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_account_id.clone(), presto_tech_account_id.clone()),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             presto_buffer_account_id.clone(),
             presto_buffer_tech_account_id.clone(),
@@ -1105,9 +1105,9 @@ fn testnet_genesis(
         (xst_pool_permissioned_account_id.clone(), 0),
         (kensetsu_depository_account_id.clone(), 0),
         (kensetsu_treasury_account_id.clone(), 0),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_account_id.clone(), 0),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_buffer_account_id.clone(), 0),
     ]
     .into_iter()
@@ -1193,9 +1193,9 @@ fn testnet_genesis(
             VAL,
             parliament_investment_fund_balance,
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_account_id.clone(), SBT_PRACS.into(), 1),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_buffer_account_id.clone(), SBT_PRACS.into(), 1),
     ];
     let faucet_config = {
@@ -1512,7 +1512,7 @@ fn testnet_genesis(
                 ),
             ],
             regulated_assets: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     PRUSD,
                     assets_and_permissions_account_id.clone(),
@@ -1526,7 +1526,7 @@ fn testnet_genesis(
                 ),
             ],
             sbt_assets: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     SBT_PRACS.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -1538,7 +1538,7 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     SBT_PRINVST.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -1550,7 +1550,7 @@ fn testnet_genesis(
                     None,
                     None,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     SBT_PRCRDT.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -1639,31 +1639,31 @@ fn testnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&PRUSD)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRACS)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRINVST)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&4u32)),
@@ -1706,7 +1706,7 @@ fn testnet_genesis(
                         is_public: true,
                     },
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     4,
                     DEXInfo {
@@ -1719,7 +1719,7 @@ fn testnet_genesis(
         },
         extended_assets: ExtendedAssetsConfig {
             assets_metadata: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (SBT_PRACS.into(), None, PRUSD),
             ],
         },
@@ -2079,16 +2079,16 @@ fn mainnet_genesis(
     let kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     let kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_tech_account_id = framenode_runtime::PrestoTechAccountId::get();
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_account_id =
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_tech_account_id)
             .unwrap();
 
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_buffer_tech_account_id = framenode_runtime::PrestoBufferTechAccountId::get();
-    #[cfg(feature = "wip")] // presto
+    #[cfg(feature = "stage")] // presto
     let presto_buffer_account_id =
         technical::Pallet::<Runtime>::tech_account_id_to_account_id(&presto_buffer_tech_account_id)
             .unwrap();
@@ -2156,9 +2156,9 @@ fn mainnet_genesis(
             kensetsu_depository_account_id.clone(),
             kensetsu_depository_tech_account_id.clone(),
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (presto_account_id.clone(), presto_tech_account_id.clone()),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             presto_buffer_account_id.clone(),
             presto_buffer_tech_account_id.clone(),
@@ -2376,7 +2376,7 @@ fn mainnet_genesis(
     ];
 
     let regulated_assets = vec![
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             PRUSD,
             assets_and_permissions_account_id.clone(),
@@ -2391,7 +2391,7 @@ fn mainnet_genesis(
     ];
 
     let sbt_assets = vec![
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             SBT_PRACS.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -2403,7 +2403,7 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             SBT_PRINVST.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -2415,7 +2415,7 @@ fn mainnet_genesis(
             None,
             None,
         ),
-        #[cfg(feature = "wip")] // presto
+        #[cfg(feature = "stage")] // presto
         (
             SBT_PRCRDT.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -2597,31 +2597,31 @@ fn mainnet_genesis(
                     Scope::Unlimited,
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&PRUSD)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRACS)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRINVST)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&SBT_PRCRDT)),
                     vec![permissions::MINT, permissions::BURN],
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id.clone(),
                     Scope::Limited(hash(&4u32)),
@@ -2646,9 +2646,9 @@ fn mainnet_genesis(
                 (xst_pool_permissioned_account_id.clone(), 0),
                 (kensetsu_depository_account_id.clone(), 0),
                 (kensetsu_treasury_account_id.clone(), 0),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (presto_account_id.clone(), 0),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (presto_buffer_account_id.clone(), 0),
             ]
             .into_iter()
@@ -2706,7 +2706,7 @@ fn mainnet_genesis(
                         is_public: true,
                     },
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     4,
                     DEXInfo {
@@ -2719,7 +2719,7 @@ fn mainnet_genesis(
         },
         extended_assets: ExtendedAssetsConfig {
             assets_metadata: vec![
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (SBT_PRACS.into(), None, PRUSD),
             ],
         },
@@ -2753,13 +2753,13 @@ fn mainnet_genesis(
                     PSWAP,
                     initial_pswap_market_maker_rewards,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_account_id,
                     SBT_PRACS.into(),
                     1,
                 ),
-                #[cfg(feature = "wip")] // presto
+                #[cfg(feature = "stage")] // presto
                 (
                     presto_buffer_account_id,
                     SBT_PRACS.into(),
