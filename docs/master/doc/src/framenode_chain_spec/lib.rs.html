@@ -3925,16 +3925,16 @@
     <span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     <span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_tech_account_id = framenode_runtime::PrestoTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_account_id =
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>presto_tech_account_id)
             .unwrap();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_buffer_tech_account_id = framenode_runtime::PrestoBufferTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_buffer_account_id =
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>presto_buffer_tech_account_id)
             .unwrap();
@@ -4002,9 +4002,9 @@
             kensetsu_depository_account_id.clone(),
             kensetsu_depository_tech_account_id.clone(),
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(presto_account_id.clone(), presto_tech_account_id.clone()),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(
             presto_buffer_account_id.clone(),
             presto_buffer_tech_account_id.clone(),
@@ -4035,9 +4035,9 @@
         (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
         (kensetsu_depository_account_id.clone(), <span class="number">0</span>),
         (kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(presto_account_id.clone(), <span class="number">0</span>),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(presto_buffer_account_id.clone(), <span class="number">0</span>),
     ]
     .into_iter()
@@ -4123,9 +4123,9 @@
             VAL,
             parliament_investment_fund_balance,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(presto_account_id.clone(), SBT_PRACS.into(), <span class="number">1</span>),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(presto_buffer_account_id.clone(), SBT_PRACS.into(), <span class="number">1</span>),
     ];
     <span class="kw">let </span>faucet_config = {
@@ -4442,7 +4442,7 @@
                 ),
             ],
             regulated_assets: <span class="macro">vec!</span>[
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     PRUSD,
                     assets_and_permissions_account_id.clone(),
@@ -4456,7 +4456,7 @@
                 ),
             ],
             sbt_assets: <span class="macro">vec!</span>[
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     SBT_PRACS.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -4468,7 +4468,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     SBT_PRINVST.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -4480,7 +4480,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">None</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     SBT_PRCRDT.into_predefined(),
                     assets_and_permissions_account_id.clone(),
@@ -4569,31 +4569,31 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>PRUSD)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>SBT_PRACS)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>SBT_PRINVST)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>SBT_PRCRDT)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span><span class="number">4u32</span>)),
@@ -4636,7 +4636,7 @@
                         is_public: <span class="bool-val">true</span>,
                     },
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     <span class="number">4</span>,
                     DEXInfo {
@@ -4649,7 +4649,7 @@
         },
         extended_assets: ExtendedAssetsConfig {
             assets_metadata: <span class="macro">vec!</span>[
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(SBT_PRACS.into(), <span class="prelude-val">None</span>, PRUSD),
             ],
         },
@@ -5009,16 +5009,16 @@
     <span class="kw">let </span>kensetsu_treasury_tech_account_id = framenode_runtime::KensetsuTreasuryTechAccountId::get();
     <span class="kw">let </span>kensetsu_treasury_account_id = framenode_runtime::KensetsuTreasuryAccountId::get();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_tech_account_id = framenode_runtime::PrestoTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_account_id =
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>presto_tech_account_id)
             .unwrap();
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_buffer_tech_account_id = framenode_runtime::PrestoBufferTechAccountId::get();
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+    <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
     </span><span class="kw">let </span>presto_buffer_account_id =
         technical::Pallet::&lt;Runtime&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>presto_buffer_tech_account_id)
             .unwrap();
@@ -5086,9 +5086,9 @@
             kensetsu_depository_account_id.clone(),
             kensetsu_depository_tech_account_id.clone(),
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(presto_account_id.clone(), presto_tech_account_id.clone()),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(
             presto_buffer_account_id.clone(),
             presto_buffer_tech_account_id.clone(),
@@ -5306,7 +5306,7 @@
     ];
 
     <span class="kw">let </span>regulated_assets = <span class="macro">vec!</span>[
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(
             PRUSD,
             assets_and_permissions_account_id.clone(),
@@ -5321,7 +5321,7 @@
     ];
 
     <span class="kw">let </span>sbt_assets = <span class="macro">vec!</span>[
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(
             SBT_PRACS.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -5333,7 +5333,7 @@
             <span class="prelude-val">None</span>,
             <span class="prelude-val">None</span>,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(
             SBT_PRINVST.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -5345,7 +5345,7 @@
             <span class="prelude-val">None</span>,
             <span class="prelude-val">None</span>,
         ),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+        <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
         </span>(
             SBT_PRCRDT.into_predefined(),
             assets_and_permissions_account_id.clone(),
@@ -5527,31 +5527,31 @@
                     Scope::Unlimited,
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>PRUSD)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>SBT_PRACS)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>SBT_PRINVST)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span>SBT_PRCRDT)),
                     <span class="macro">vec!</span>[permissions::MINT, permissions::BURN],
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id.clone(),
                     Scope::Limited(hash(<span class="kw-2">&amp;</span><span class="number">4u32</span>)),
@@ -5576,9 +5576,9 @@
                 (xst_pool_permissioned_account_id.clone(), <span class="number">0</span>),
                 (kensetsu_depository_account_id.clone(), <span class="number">0</span>),
                 (kensetsu_treasury_account_id.clone(), <span class="number">0</span>),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(presto_account_id.clone(), <span class="number">0</span>),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(presto_buffer_account_id.clone(), <span class="number">0</span>),
             ]
             .into_iter()
@@ -5636,7 +5636,7 @@
                         is_public: <span class="bool-val">true</span>,
                     },
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     <span class="number">4</span>,
                     DEXInfo {
@@ -5649,7 +5649,7 @@
         },
         extended_assets: ExtendedAssetsConfig {
             assets_metadata: <span class="macro">vec!</span>[
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(SBT_PRACS.into(), <span class="prelude-val">None</span>, PRUSD),
             ],
         },
@@ -5683,13 +5683,13 @@
                     PSWAP,
                     initial_pswap_market_maker_rewards,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_account_id,
                     SBT_PRACS.into(),
                     <span class="number">1</span>,
                 ),
-                <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// presto
+                <span class="attr">#[cfg(feature = <span class="string">&quot;stage&quot;</span>)] </span><span class="comment">// presto
                 </span>(
                     presto_buffer_account_id,
                     SBT_PRACS.into(),
