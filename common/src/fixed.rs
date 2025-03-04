@@ -50,6 +50,7 @@ use crate::arithmetic::{
     saturating::{SaturatedConversion, UniqueSaturatedInto},
     sp_saturating::Saturating,
 };
+use crate::Fixed;
 #[cfg(feature = "std")]
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -436,6 +437,18 @@ macro_rules! impl_from_for_fixed {
 }
 
 impl_from_for_fixed!(usize, isize, U256, u128, i128, u64, i64, u32, i32);
+
+impl TryFrom<Fixed> for FixedU256 {
+    type Error = ArithmeticError;
+
+    fn try_from(value: Fixed) -> Result<Self, Self::Error> {
+        if value < <Fixed as fixnum::ops::Zero>::ZERO {
+            Err(ArithmeticError::DomainViolation)
+        } else {
+            Ok(Self(U256::from(value.into_bits())))
+        }
+    }
+}
 
 impl TryFrom<f64> for FixedU256 {
     type Error = ArithmeticError;
@@ -992,6 +1005,101 @@ impl<'de> Deserialize<'de> for FixedU256 {
         let s = String::deserialize(deserializer)?;
         FixedU256::from_str(&s).map_err(de::Error::custom)
     }
+}
+
+const fn find(bytes: &[u8], pattern: u8) -> Option<usize> {
+    let mut i = 0;
+
+    while i < bytes.len() {
+        if bytes[i] == pattern {
+            return Some(i);
+        }
+        i += 1;
+    }
+
+    None
+}
+
+pub fn pow10(power: u32) -> U256 {
+    let pow_10: [U256; 19] = [
+        U256::from(1),
+        U256::from(10),
+        U256::from(100),
+        U256::from(1_000),
+        U256::from(10_000),
+        U256::from(100_000),
+        U256::from(1_000_000),
+        U256::from(10_000_000),
+        U256::from(100_000_000),
+        U256::from(1_000_000_000),
+        U256::from(10_000_000_000_u64),
+        U256::from(100_000_000_000_u64),
+        U256::from(1_000_000_000_000_u64),
+        U256::from(10_000_000_000_000_u64),
+        U256::from(100_000_000_000_000_u64),
+        U256::from(1_000_000_000_000_000_u64),
+        U256::from(10_000_000_000_000_000_u64),
+        U256::from(100_000_000_000_000_000_u64),
+        U256::from(1_000_000_000_000_000_000_u64),
+    ];
+
+    if power < pow_10.len() as u32 {
+        return pow_10[power as usize];
+    }
+
+    let mut result = pow_10[pow_10.len() - 1];
+    let mut i = power - pow_10.len() as u32 + 1;
+
+    while i > 0 {
+        result *= 10;
+        i -= 1;
+    }
+
+    result
+}
+
+fn parse_digit(byte: u8) -> U256 {
+    let digit = byte.wrapping_sub(48);
+    assert!(digit < 10);
+    digit.into()
+}
+
+fn parse_int(bytes: &[u8], start: usize, end: usize) -> U256 {
+    let mut result: U256 = U256::zero();
+    let mut i = start;
+
+    while i < end {
+        let digit = parse_digit(bytes[i]);
+        i += 1;
+        result += digit * pow10((end - i) as u32);
+    }
+
+    result
+}
+
+/// Check for overflow manually
+pub fn parse_fixed(str: &str) -> U256 {
+    let bytes = str.as_bytes();
+    let coef = pow10(18);
+    let start = 0;
+
+    let point = match find(bytes, b'.') {
+        Some(point) => point,
+        None => {
+            let integral = parse_int(bytes, start, bytes.len());
+            return integral * coef;
+        }
+    };
+
+    let integral = parse_int(bytes, start, point);
+    let exp = pow10((bytes.len() - point - 1) as u32);
+    assert!(exp <= coef);
+
+    let fractional = parse_int(bytes, point + 1, bytes.len());
+    let final_integral = integral * coef;
+    let final_fractional = coef / exp * fractional;
+
+    final_integral + final_fractional
 }
 
 #[cfg(test)]
