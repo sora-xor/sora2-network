@@ -45,8 +45,8 @@ macro_rules! fixed_const {
 #[macro_export]
 macro_rules! fixed_u256 {
     ($value:literal) => {{
-        use sp_core::U256;
         use $crate::fixed::FixedU256;
+        use $crate::sp_core::U256;
 
         let value_inner: U256 = $crate::fixed::parse_fixed(stringify!($value));
         FixedU256::from_inner(value_inner).into()
