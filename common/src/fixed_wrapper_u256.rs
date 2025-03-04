@@ -281,39 +281,6 @@ macro_rules! impl_fixed_wrapper_for_type {
 impl_fixed_wrapper_for_type!(FixedU256);
 impl_fixed_wrapper_for_type!(u128);
 
-#[macro_export]
-macro_rules! fixed_u256_int {
-    ($val:literal) => {
-        $crate::fixed::FixedU256::try_from($val)
-            .unwrap()
-            .fixed()
-            .unwrap()
-    };
-}
-
-#[macro_export]
-macro_rules! fixed_wrapper_u256_int {
-    ($val:literal) => {{
-        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256_int!($val).into();
-        val
-    }};
-}
-
-#[macro_export]
-macro_rules! fixed_u256_float {
-    ($val:literal) => {
-        $crate::fixed::FixedU256::try_from($val).unwrap()
-    };
-}
-
-#[macro_export]
-macro_rules! fixed_wrapper_u256_float {
-    ($val:literal) => {{
-        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256_float!($val).into();
-        val
-    }};
-}
-
 #[cfg(test)]
 mod wrapper {
     use crate::fixed_wrapper_u256::FixedWrapper256;
