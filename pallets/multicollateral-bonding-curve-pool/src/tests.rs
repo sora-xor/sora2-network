@@ -201,6 +201,117 @@ mod tests {
     }
 
     #[test]
+    fn should_calculate_tbcd_price() {
+        ExtBuilder::default()
+            .with_tbcd()
+            .with_tbcd_pool()
+            .build()
+            .execute_with(|| {
+                MockDEXApi::init().unwrap();
+                let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+                let alice = &alice();
+                MBCPool::initialize_pool_unchecked(TBCD, false)
+                    .expect("Failed to initialize pool.");
+
+                // base case for buy
+                assert_eq!(
+                    MBCPool::buy_function(&XOR, &TBCD, PriceVariant::Buy, FixedU256::zero())
+                        .expect("failed to calculate buy price"),
+                    fixed_u256!(100.7),
+                );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(1000))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed_u256!(100700.0),
+                );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(100700.0))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed_u256!(1000.0),
+                );
+
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(100000))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed_u256!(10070000.0),
+                );
+                assert_eq!(
+                    MBCPool::buy_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(10070000.0))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed_u256!(100000.0),
+                );
+
+                // base case for sell with empty reserves
+                assert_eq!(
+                    MBCPool::sell_function(&XOR, &TBCD, FixedU256::zero())
+                        .expect("failed to calculate sell price"),
+                    fixed_u256!(80.56)
+                );
+                assert_noop!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(100000))
+                    ),
+                    Error::<Runtime>::NotEnoughReserves,
+                );
+                assert_noop!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(100000))
+                    ),
+                    Error::<Runtime>::NotEnoughReserves,
+                );
+
+                // base case for sell with some reserves
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap,
+                    &TBCD,
+                    &XOR,
+                    SwapAmount::with_desired_input(balance!(100000), 0),
+                )
+                .expect("Failed to buy XOR.");
+                assert_eq!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_output(balance!(50000))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed_u256!(1655.081098973849718635),
+                );
+                assert_eq!(
+                    MBCPool::sell_price(
+                        &XOR,
+                        &TBCD,
+                        QuoteAmount::with_desired_input(balance!(1655.081098973849718635))
+                    )
+                    .expect("failed to calculate buy assets price"),
+                    fixed_u256!(50000),
+                );
+            });
+    }
+
+    #[test]
     fn calculate_price_for_boundary_values() {
         ExtBuilder::new(vec![
             (
