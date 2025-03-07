@@ -44,6 +44,7 @@ use common::{
     LiquiditySourceType, RewardReason, DAI, DEFAULT_BALANCE_PRECISION, DOT, ETH, KSM, PSWAP, USDT,
     VAL, VXOR, XOR, XST, XSTUSD,
 };
+use common::{fixed_u256, fixed_wrapper_u256, FixedWrapper256};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::traits::{ConstU32, GenesisBuild};
@@ -52,6 +53,7 @@ use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
 use traits::MultiCurrency;
 
+use common::fixed::FixedU256;
 use common::prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
@@ -400,23 +402,23 @@ impl MockMCBCPool {
         Ok(())
     }
 
-    fn _spot_price(collateral_asset: &AssetId) -> Fixed {
+    fn _spot_price(collateral_asset: &AssetId) -> FixedU256 {
         let total_supply = pallet_balances::Pallet::<Runtime>::total_issuance();
         Self::_price_at(collateral_asset, total_supply)
     }
 
-    fn _price_at(collateral_asset: &AssetId, base_supply: Balance) -> Fixed {
+    fn _price_at(collateral_asset: &AssetId, base_supply: Balance) -> FixedU256 {
         if *collateral_asset == GetBaseAssetId::get() {
-            return fixed!(1.0);
+            return fixed_u256!(1.0);
         }
         let initial_price = get_initial_price();
-        let x: FixedWrapper = base_supply.into();
-        let b: FixedWrapper = initial_price.into();
-        let m: FixedWrapper = fixed_wrapper!(1) / fixed_wrapper!(1337);
+        let x: FixedWrapper256 = base_supply.into();
+        let b: FixedWrapper256 = initial_price.into();
+        let m: FixedWrapper256 = fixed_wrapper_u256!(1) / fixed_wrapper_u256!(1337);
 
-        let base_price_wrt_ref: FixedWrapper = m * x + b;
+        let base_price_wrt_ref: FixedWrapper256 = m * x + b;
 
-        let collateral_price_per_reference_unit: FixedWrapper =
+        let collateral_price_per_reference_unit: FixedWrapper256 =
             get_reference_prices()[collateral_asset].into();
         (base_price_wrt_ref / collateral_price_per_reference_unit)
             .get()
@@ -456,23 +458,24 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
 
         let (input_amount, output_amount, fee_amount) = if input_asset_id == base_asset_id {
             // Selling XOR
-            let collateral_reserves: FixedWrapper =
+            let collateral_reserves: FixedWrapper256 =
                 Currencies::free_balance(*output_asset_id, &reserves_account_id).into();
-            let buy_spot_price: FixedWrapper = Self::_spot_price(output_asset_id).into();
-            let sell_spot_price: FixedWrapper = buy_spot_price.clone() * fixed_wrapper!(0.8);
+            let buy_spot_price: FixedWrapper256 = Self::_spot_price(output_asset_id).into();
+            let sell_spot_price: FixedWrapper256 =
+                buy_spot_price.clone() * fixed_wrapper_u256!(0.8);
             let pretended_base_reserves = collateral_reserves.clone() / sell_spot_price.clone();
 
-            let ideal_reserves: FixedWrapper = (buy_spot_price
-                + get_initial_price()
-                    / FixedWrapper::from(get_reference_prices()[output_asset_id]))
-                * fixed_wrapper!(0.4)
-                * FixedWrapper::from(current_supply);
+            let ideal_reserves: FixedWrapper256 = (buy_spot_price
+                + FixedWrapper256::from(get_initial_price())
+                    / FixedWrapper256::from(get_reference_prices()[output_asset_id]))
+                * fixed_wrapper_u256!(0.4)
+                * FixedWrapper256::from(current_supply);
             let collateralization = (collateral_reserves.clone() / ideal_reserves)
                 .get()
                 .unwrap();
 
             let extra_fee = if deduce_fee {
-                FixedWrapper::from(undercollaterization_charge(collateralization))
+                FixedWrapper256::from(undercollaterization_charge(collateralization))
             } else {
                 0.into()
             };
@@ -481,9 +484,9 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in, ..
                 } => {
-                    let input_wrapped: FixedWrapper = desired_amount_in.into();
-                    let input_after_fee: FixedWrapper =
-                        input_wrapped * (fixed_wrapper!(1) - extra_fee.clone());
+                    let input_wrapped: FixedWrapper256 = desired_amount_in.into();
+                    let input_after_fee: FixedWrapper256 =
+                        input_wrapped * (fixed_wrapper_u256!(1) - extra_fee.clone());
                     let output_collateral = (input_after_fee.clone() * collateral_reserves)
                         / (pretended_base_reserves + input_after_fee);
                     let output_amount: Balance = output_collateral.try_into_balance().unwrap();
@@ -493,7 +496,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                 QuoteAmount::WithDesiredOutput {
                     desired_amount_out, ..
                 } => {
-                    let output_wrapped: FixedWrapper = desired_amount_out.into();
+                    let output_wrapped: FixedWrapper256 = desired_amount_out.into();
                     ensure!(
                         output_wrapped < collateral_reserves,
                         crate::Error::<Runtime>::InsufficientLiquidity
@@ -501,7 +504,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     let input_base = (pretended_base_reserves * output_wrapped.clone())
                         / (collateral_reserves - output_wrapped);
 
-                    let input_base_after_fee = input_base / (fixed_wrapper!(1) - extra_fee);
+                    let input_base_after_fee = input_base / (fixed_wrapper_u256!(1) - extra_fee);
 
                     let input_amount: Balance = input_base_after_fee.try_into_balance().unwrap();
                     (input_amount, desired_amount_out, 0)
@@ -509,19 +512,19 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
             }
         } else {
             // Buying XOR
-            let buy_spot_price: FixedWrapper = Self::_spot_price(input_asset_id).into();
-            let m: FixedWrapper = fixed_wrapper!(1) / fixed_wrapper!(1337);
+            let buy_spot_price: FixedWrapper256 = Self::_spot_price(input_asset_id).into();
+            let m: FixedWrapper256 = fixed_wrapper_u256!(1) / fixed_wrapper_u256!(1337);
 
             match amount {
                 QuoteAmount::WithDesiredInput {
                     desired_amount_in: collateral_quantity,
                     ..
                 } => {
-                    let under_pow = buy_spot_price.clone() / m.clone() * fixed_wrapper!(2.0);
+                    let under_pow = buy_spot_price.clone() / m.clone() * fixed_wrapper_u256!(2.0);
                     let under_sqrt = under_pow.clone() * under_pow
-                        + fixed_wrapper!(8.0) * collateral_quantity / m.clone();
+                        + fixed_wrapper_u256!(8.0) * collateral_quantity / m.clone();
                     let base_output =
-                        under_sqrt.sqrt_accurate() / fixed_wrapper!(2.0) - buy_spot_price / m;
+                        under_sqrt.sqrt_accurate() / fixed_wrapper_u256!(2.0) - buy_spot_price / m;
                     let output_amount: Balance = base_output.try_into_balance().unwrap();
                     (collateral_quantity, output_amount, 0)
                 }
@@ -530,10 +533,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
                     ..
                 } => {
                     let projected_supply: Balance = current_supply + base_quantity;
-                    let new_buy_price: FixedWrapper =
+                    let new_buy_price: FixedWrapper256 =
                         Self::_price_at(input_asset_id, projected_supply).into();
-                    let collateral_input =
-                        ((buy_spot_price + new_buy_price) / fixed_wrapper!(2.0)) * base_quantity;
+                    let collateral_input = ((buy_spot_price + new_buy_price)
+                        / fixed_wrapper_u256!(2.0))
+                        * base_quantity;
                     let input_amount: Balance = collateral_input.try_into_balance().unwrap();
 
                     (input_amount, base_quantity, 0)
@@ -672,11 +676,11 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetMarketInfo<AssetId> for MockMCBCPool {
+impl GetMarketInfo<AssetId, FixedU256> for MockMCBCPool {
     fn buy_price(
         _base_asset: &AssetId,
         collateral_asset: &AssetId,
-    ) -> Result<Fixed, DispatchError> {
+    ) -> Result<FixedU256, DispatchError> {
         if collateral_asset == &special_asset() {
             fail!(crate::Error::<Runtime>::CalculationError);
         }
@@ -686,10 +690,10 @@ impl GetMarketInfo<AssetId> for MockMCBCPool {
     fn sell_price(
         base_asset: &AssetId,
         collateral_asset: &AssetId,
-    ) -> Result<Fixed, DispatchError> {
+    ) -> Result<FixedU256, DispatchError> {
         let buy_price = Self::buy_price(base_asset, collateral_asset)?;
-        let buy_price: FixedWrapper = FixedWrapper::from(buy_price);
-        let output = (buy_price * fixed_wrapper!(0.8)).get().unwrap();
+        let buy_price: FixedWrapper256 = FixedWrapper256::from(buy_price);
+        let output = (buy_price * fixed_wrapper_u256!(0.8)).get().unwrap();
         Ok(output)
     }
 
@@ -732,17 +736,17 @@ pub fn get_initial_price() -> Fixed {
     fixed!(200)
 }
 
-fn undercollaterization_charge(fraction: Fixed) -> Fixed {
-    if fraction < fixed!(0.05) {
-        fixed!(0.09)
-    } else if fraction < fixed!(0.1) {
-        fixed!(0.06)
-    } else if fraction < fixed!(0.2) {
-        fixed!(0.03)
-    } else if fraction < fixed!(0.3) {
-        fixed!(0.01)
+fn undercollaterization_charge(fraction: FixedU256) -> FixedU256 {
+    if fraction < fixed_u256!(0.05) {
+        fixed_u256!(0.09)
+    } else if fraction < fixed_u256!(0.1) {
+        fixed_u256!(0.06)
+    } else if fraction < fixed_u256!(0.2) {
+        fixed_u256!(0.03)
+    } else if fraction < fixed_u256!(0.3) {
+        fixed_u256!(0.01)
     } else {
-        fixed!(0)
+        fixed_u256!(0)
     }
 }
 
@@ -1123,7 +1127,7 @@ impl LiquiditySource<DEXId, AccountId, AssetId, Balance, DispatchError> for Mock
     }
 }
 
-impl GetMarketInfo<AssetId> for MockXSTPool {
+impl GetMarketInfo<AssetId, Fixed> for MockXSTPool {
     fn buy_price(
         _base_asset_id: &AssetId,
         synthetic_asset: &AssetId,

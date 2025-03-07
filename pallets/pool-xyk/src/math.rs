@@ -33,7 +33,7 @@ use crate::{Config, Error, Pallet};
 use common::fixed::FixedU256;
 use common::fixed_wrapper_u256::FixedWrapper256;
 use common::prelude::{Balance, FixedWrapper};
-use common::{fixed_u256_int, fixed_wrapper_u256_int, AssetIdOf, TradingPair};
+use common::{fixed_wrapper_u256, AssetIdOf, TradingPair};
 use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
@@ -144,7 +144,7 @@ impl<T: Config> Pallet<T> {
             let denominator = fxw_x + fxw_x_in;
             let y_out_with_fee = nominator / denominator;
             let y_out = if deduce_fee {
-                y_out_with_fee.clone() * (fixed_wrapper_u256_int!(1) - fee_fraction)
+                y_out_with_fee.clone() * (fixed_wrapper_u256!(1) - fee_fraction)
             } else {
                 y_out_with_fee.clone()
             };
@@ -157,7 +157,7 @@ impl<T: Config> Pallet<T> {
             // x_1 = x_in * (1 - fee)
             // y_out = (x_1 * y) / (x + x_1)
             let x_in_without_fee = if deduce_fee {
-                fxw_x_in.clone() * (fixed_wrapper_u256_int!(1) - fee_fraction)
+                fxw_x_in.clone() * (fixed_wrapper_u256!(1) - fee_fraction)
             } else {
                 fxw_x_in.clone()
             };
@@ -187,7 +187,7 @@ impl<T: Config> Pallet<T> {
             // x_in = (x * y_1) / (y - y_1)
             let fxw_y_out = fxw_y_out.clone() + FixedU256::try_from(1).unwrap(); // by 1 correction to overestimate required input
             let y_out_with_fee = if deduce_fee {
-                fxw_y_out.clone() / (fixed_wrapper_u256_int!(1) - fee_fraction)
+                fxw_y_out.clone() / (fixed_wrapper_u256!(1) - fee_fraction)
             } else {
                 fxw_y_out.clone()
             };
@@ -203,7 +203,7 @@ impl<T: Config> Pallet<T> {
             let denominator = fxw_y - fxw_y_out;
             let x_in_without_fee = nominator / denominator;
             let x_in = if deduce_fee {
-                x_in_without_fee.clone() / (fixed_wrapper_u256_int!(1) - fee_fraction)
+                x_in_without_fee.clone() / (fixed_wrapper_u256!(1) - fee_fraction)
             } else {
                 x_in_without_fee.clone()
             };
@@ -227,7 +227,7 @@ impl<T: Config> Pallet<T> {
 
         let mut max_output = if get_fee_from_destination && deduce_fee {
             to_balance!(
-                FixedWrapper256::from(reserve_output) * (fixed_wrapper_u256_int!(1) - fee_fraction)
+                FixedWrapper256::from(reserve_output) * (fixed_wrapper_u256!(1) - fee_fraction)
             )
         } else {
             reserve_output

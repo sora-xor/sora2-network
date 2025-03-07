@@ -35,7 +35,7 @@
 #[macro_use]
 extern crate alloc;
 
-pub use {fixnum, paste};
+pub use {fixnum, paste, sp_core};
 
 use fixnum::typenum::{Unsigned, U18};
 use fixnum::FixedPoint;

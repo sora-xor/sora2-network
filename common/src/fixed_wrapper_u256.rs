@@ -41,7 +41,7 @@ use crate::arithmetic::checked::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg,
 #[cfg(not(feature = "test"))]
 use crate::arithmetic::saturating::SaturatedConversion;
 use crate::fixed::FixedU256;
-use crate::Balance;
+use crate::{Balance, Fixed};
 
 /// A convenient wrapper around `FixedU256` type for safe math.
 ///
@@ -156,7 +156,7 @@ macro_rules! impl_from_for_fixed_wrapper {
     };
 }
 
-impl_from_for_fixed_wrapper!(usize, isize, U256, u128, i128, u64, i64, u32, i32, f64);
+impl_from_for_fixed_wrapper!(usize, isize, U256, Fixed, u128, i128, u64, i64, u32, i32, f64);
 
 fn zip<'a, 'b, T, E: Clone>(a: &'a Result<T, E>, b: &'b Result<T, E>) -> Result<(&'a T, &'b T), E> {
     a.as_ref()
@@ -281,39 +281,6 @@ macro_rules! impl_fixed_wrapper_for_type {
 impl_fixed_wrapper_for_type!(FixedU256);
 impl_fixed_wrapper_for_type!(u128);
 
-#[macro_export]
-macro_rules! fixed_u256_int {
-    ($val:literal) => {
-        $crate::fixed::FixedU256::try_from($val)
-            .unwrap()
-            .fixed()
-            .unwrap()
-    };
-}
-
-#[macro_export]
-macro_rules! fixed_wrapper_u256_int {
-    ($val:literal) => {{
-        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256_int!($val).into();
-        val
-    }};
-}
-
-#[macro_export]
-macro_rules! fixed_u256_float {
-    ($val:literal) => {
-        $crate::fixed::FixedU256::try_from($val).unwrap()
-    };
-}
-
-#[macro_export]
-macro_rules! fixed_wrapper_u256_float {
-    ($val:literal) => {{
-        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = fixed_u256_float!($val).into();
-        val
-    }};
-}
-
 #[cfg(test)]
 mod wrapper {
     use crate::fixed_wrapper_u256::FixedWrapper256;
@@ -323,16 +290,16 @@ mod wrapper {
     fn fixed_wrapper_sqrt_small_sanity_check() {
         // basic
         assert_eq!(
-            fixed_wrapper_u256_int!(4).sqrt_accurate(),
-            fixed_wrapper_u256_int!(2)
+            fixed_wrapper_u256!(4).sqrt_accurate(),
+            fixed_wrapper_u256!(2)
         );
         // zero
         assert_eq!(
-            fixed_wrapper_u256_int!(0).sqrt_accurate(),
-            fixed_wrapper_u256_int!(0)
+            fixed_wrapper_u256!(0).sqrt_accurate(),
+            fixed_wrapper_u256!(0)
         );
         // negative
-        assert!((fixed_wrapper_u256_int!(0) - fixed_wrapper_u256_int!(4))
+        assert!((fixed_wrapper_u256!(0) - fixed_wrapper_u256!(4))
             .sqrt_accurate()
             .get()
             .is_err());

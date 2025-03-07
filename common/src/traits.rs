@@ -760,7 +760,7 @@ pub trait FromGenericPair {
 }
 
 /// Trait for bounding liquidity proxy associated type representing primary market in TBC.
-pub trait GetMarketInfo<AssetId> {
+pub trait GetMarketInfo<AssetId, Fixed> {
     /// The price in terms of the `target_asset` at which one can buy
     /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool or xst).
     fn buy_price(base_asset: &AssetId, target_asset: &AssetId) -> Result<Fixed, DispatchError>;
@@ -771,7 +771,7 @@ pub trait GetMarketInfo<AssetId> {
     fn enabled_target_assets() -> BTreeSet<AssetId>;
 }
 
-impl<AssetId: Ord> GetMarketInfo<AssetId> for () {
+impl<AssetId: Ord, Fixed: Default> GetMarketInfo<AssetId, Fixed> for () {
     fn buy_price(
         _base_asset: &AssetId,
         _collateral_asset: &AssetId,
