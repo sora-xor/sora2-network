@@ -1086,10 +1086,8 @@ impl<T: Config> Pallet<T> {
         // Get reference prices for base and collateral to understand token value.
         let main_price_per_reference_unit: FixedWrapper256 =
             Self::sell_function(main_asset_id, collateral_asset_id, FixedU256::zero())?.into();
-
         let collateral_price_per_reference_unit: FixedWrapper256 =
             Self::reference_price(collateral_asset_id, PriceVariant::Sell)?.into();
-
         // Assume main token reserve is equal by reference value to collateral token reserve.
         let main_supply = collateral_supply.clone() * collateral_price_per_reference_unit
             / main_price_per_reference_unit;
@@ -1097,7 +1095,6 @@ impl<T: Config> Pallet<T> {
             .clone()
             .get()
             .map_err(|_| Error::<T>::PriceCalculationFailed)?;
-
         match quantity {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in: quantity_main,
@@ -1339,8 +1336,7 @@ impl<T: Config> Pallet<T> {
             collateral_asset_id,
             PriceVariant::Sell,
             FixedU256::zero(),
-        )?
-        .into();
+        )?;
         // USD price for amount of indicated collateral asset stored in reserves
         let collateral_reserves_price = Self::actual_reserves_reference_price(
             &reserves_account_id,
@@ -1348,7 +1344,7 @@ impl<T: Config> Pallet<T> {
             PriceVariant::Sell,
         )?;
         ensure!(
-            !collateral_reserves_price.is_zero(),
+            !collateral_reserves_price.eq(&FixedWrapper256::from(0)),
             Error::<T>::NotEnoughReserves
         );
         // ratio of stored reserves to ideal reserves
@@ -1541,15 +1537,13 @@ impl<T: Config> Pallet<T> {
         reserves_account_id: &T::AccountId,
         collateral_asset_id: &AssetIdOf<T>,
         price_variant: PriceVariant,
-    ) -> Result<Balance, DispatchError> {
+    ) -> Result<FixedWrapper256, DispatchError> {
         let reserve = <T as Config>::AssetInfoProvider::free_balance(
             &collateral_asset_id,
             &reserves_account_id,
         )?;
         let price = Self::reference_price(&collateral_asset_id, price_variant)?;
-        (FixedWrapper256::from(reserve) * price)
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
+        Ok(FixedWrapper256::from(reserve) * price)
     }
 
     /// Calculate USD price for all XOR in network, this is done by applying ideal sell function to XOR total supply.
@@ -1558,18 +1552,15 @@ impl<T: Config> Pallet<T> {
         collateral_asset_id: &AssetIdOf<T>,
         price_variant: PriceVariant,
         delta: FixedU256,
-    ) -> Result<Balance, DispatchError> {
+    ) -> Result<FixedWrapper256, DispatchError> {
         let base_asset_id = GetBaseAssetIdOf::<T>::get();
         let base_total_supply = <T as Config>::AssetInfoProvider::total_issuance(&base_asset_id)?;
         let initial_state = FixedWrapper256::from(Self::initial_price());
         let current_state =
             Self::buy_function(&base_asset_id, collateral_asset_id, price_variant, delta)?;
-
         let price = ((initial_state + current_state) / fixed_wrapper_u256!(2.0))
             * (FixedWrapper256::from(base_total_supply) + delta);
-        price
-            .try_into_balance()
-            .map_err(|_| Error::<T>::PriceCalculationFailed.into())
+        Ok(price)
     }
 
     /// Calculate amount of PSWAP rewarded for collateralizing XOR in TBC.
@@ -1602,16 +1593,14 @@ impl<T: Config> Pallet<T> {
             collateral_asset_id,
             PriceVariant::Buy,
             FixedU256::zero(),
-        )?
-        .into();
+        )?;
         let ideal_after: FixedWrapper256 = Self::ideal_reserves_reference_price(
             collateral_asset_id,
             PriceVariant::Buy,
             FixedWrapper256::from(main_asset_amount)
                 .get()
                 .map_err(|_| Error::<T>::PriceCalculationFailed)?,
-        )?
-        .into();
+        )?;
         let actual_before: FixedWrapper256 = Self::actual_reserves_reference_price(
             reserves_account_id,
             collateral_asset_id,
