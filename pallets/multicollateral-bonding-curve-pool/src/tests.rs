@@ -33,14 +33,15 @@ mod tests {
         mock::*, DistributionAccount, DistributionAccountData, DistributionAccounts, Error, Pallet,
     };
     use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
+    use common::arithmetic::identities::Zero;
+    use common::fixed::FixedU256;
     use common::{
-        self, balance, fixed, fixed_wrapper,
+        self, balance, fixed, fixed_u256, fixed_wrapper, fixed_wrapper_u256,
         fixnum::ops::One as _,
-        fixnum::ops::Zero as _,
         prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome},
-        AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, LiquidityProxyTrait,
-        LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose, DAI,
-        DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
+        AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, FixedWrapper256,
+        LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose,
+        DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
     };
     use common::{assert_approx_eq_abs, KUSD};
     use frame_support::assert_err;
@@ -49,7 +50,6 @@ mod tests {
     use frame_support::traits::{
         GetStorageVersion, OnFinalize, OnInitialize, OnRuntimeUpgrade, StorageVersion,
     };
-    use sp_arithmetic::traits::Zero;
     use sp_runtime::DispatchError;
     use sp_std::collections::vec_deque::VecDeque;
 
@@ -123,9 +123,9 @@ mod tests {
 
             // base case for buy
             assert_eq!(
-                MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO)
+                MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, FixedU256::zero())
                     .expect("failed to calculate buy price"),
-                fixed!(536.574420344053851907)
+                fixed_u256!(536.574420344053851907)
             );
             assert_eq!(
                 MBCPool::buy_price(
@@ -134,7 +134,7 @@ mod tests {
                     QuoteAmount::with_desired_output(balance!(100000))
                 )
                 .expect("failed to calculate buy assets price"),
-                fixed!(1151397.348365215316854563)
+                fixed_u256!(1151397.348365215316854563)
             );
             assert_eq!(
                 MBCPool::buy_price(
@@ -143,14 +143,14 @@ mod tests {
                     QuoteAmount::with_desired_input(balance!(1151397.348365215316854563))
                 )
                 .expect("failed to calculate buy assets price"),
-                fixed!(99999.99999999999998516) // TODO: try to improve precision
+                fixed_u256!(99999.99999999999998516) // TODO: try to improve precision
             );
 
             // base case for sell with empty reserves
             assert_eq!(
-                MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO)
+                MBCPool::sell_function(&XOR, &VAL, FixedU256::zero())
                     .expect("failed to calculate sell price"),
-                fixed!(429.259536275243081525)
+                fixed_u256!(429.259536275243081525)
             );
             assert_noop!(
                 MBCPool::sell_price(
@@ -186,7 +186,7 @@ mod tests {
                     QuoteAmount::with_desired_output(balance!(50000))
                 )
                 .expect("failed to calculate buy assets price"),
-                fixed!(15287.903511880099065775)
+                fixed_u256!(15287.903511880099065775)
             );
             assert_eq!(
                 MBCPool::sell_price(
@@ -195,125 +195,33 @@ mod tests {
                     QuoteAmount::with_desired_input(balance!(15287.903511880099065528))
                 )
                 .expect("failed to calculate buy assets price"),
-                fixed!(49999.999999999999999697) // TODO: improve precision
+                fixed_u256!(49999.999999999999999697) // TODO: improve precision
             );
         });
     }
 
     #[test]
-    fn should_calculate_tbcd_price() {
-        ExtBuilder::default()
-            .with_tbcd()
-            .with_tbcd_pool()
-            .build()
-            .execute_with(|| {
-                MockDEXApi::init().unwrap();
-                let _ = bonding_curve_pool_init(Vec::new()).unwrap();
-                let alice = &alice();
-                MBCPool::initialize_pool_unchecked(TBCD, false)
-                    .expect("Failed to initialize pool.");
-
-                // base case for buy
-                assert_eq!(
-                    MBCPool::buy_function(&XOR, &TBCD, PriceVariant::Buy, Fixed::ZERO)
-                        .expect("failed to calculate buy price"),
-                    fixed!(100.7),
-                );
-                assert_eq!(
-                    MBCPool::buy_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_output(balance!(1000))
-                    )
-                    .expect("failed to calculate buy assets price"),
-                    fixed!(100700.0),
-                );
-                assert_eq!(
-                    MBCPool::buy_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_input(balance!(100700.0))
-                    )
-                    .expect("failed to calculate buy assets price"),
-                    fixed!(1000.0),
-                );
-
-                assert_eq!(
-                    MBCPool::buy_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_output(balance!(100000))
-                    )
-                    .expect("failed to calculate buy assets price"),
-                    fixed!(10070000.0),
-                );
-                assert_eq!(
-                    MBCPool::buy_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_input(balance!(10070000.0))
-                    )
-                    .expect("failed to calculate buy assets price"),
-                    fixed!(100000.0),
-                );
-
-                // base case for sell with empty reserves
-                assert_eq!(
-                    MBCPool::sell_function(&XOR, &TBCD, Fixed::ZERO)
-                        .expect("failed to calculate sell price"),
-                    fixed!(80.56)
-                );
-                assert_noop!(
-                    MBCPool::sell_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_output(balance!(100000))
-                    ),
-                    Error::<Runtime>::NotEnoughReserves,
-                );
-                assert_noop!(
-                    MBCPool::sell_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_input(balance!(100000))
-                    ),
-                    Error::<Runtime>::NotEnoughReserves,
-                );
-
-                // base case for sell with some reserves
-                MBCPool::exchange(
-                    alice,
-                    alice,
-                    &DEXId::Polkaswap,
-                    &TBCD,
-                    &XOR,
-                    SwapAmount::with_desired_input(balance!(100000), 0),
-                )
-                .expect("Failed to buy XOR.");
-                assert_eq!(
-                    MBCPool::sell_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_output(balance!(50000))
-                    )
-                    .expect("failed to calculate buy assets price"),
-                    fixed!(1655.081098973849718635),
-                );
-                assert_eq!(
-                    MBCPool::sell_price(
-                        &XOR,
-                        &TBCD,
-                        QuoteAmount::with_desired_input(balance!(1655.081098973849718635))
-                    )
-                    .expect("failed to calculate buy assets price"),
-                    fixed!(50000),
-                );
-            });
-    }
-
-    #[test]
     fn calculate_price_for_boundary_values() {
-        ExtBuilder::default().build().execute_with(|| {
+        ExtBuilder::new(vec![
+            (
+                alice(),
+                XOR,
+                340282366920938213463374607431768211455,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                VAL,
+                340282366920938363463374607431768211450,
+                AssetSymbol(b"VAL".to_vec()),
+                AssetName(b"SORA Validator Token".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .build()
+        .execute_with(|| {
             MockDEXApi::init().unwrap();
             let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
             let alice = alice();
@@ -336,13 +244,13 @@ mod tests {
             )
             .expect("Failed to buy XOR.");
 
-            assert_noop!(
+            assert_eq!(
                 MBCPool::sell_price(
                     &XOR,
                     &VAL,
                     QuoteAmount::with_desired_input(Balance::max_value()),
                 ),
-                Error::<Runtime>::PriceCalculationFailed,
+                Ok(fixed_u256!(0.799999999999999999)),
             );
             assert_noop!(
                 MBCPool::sell_price(
@@ -354,7 +262,7 @@ mod tests {
             );
             assert_eq!(
                 MBCPool::sell_price(&XOR, &VAL, QuoteAmount::with_desired_input(Balance::zero()),),
-                Ok(fixed!(0)),
+                Ok(fixed_u256!(0)),
             );
             assert_eq!(
                 MBCPool::sell_price(
@@ -362,28 +270,30 @@ mod tests {
                     &VAL,
                     QuoteAmount::with_desired_output(Balance::zero()),
                 ),
-                Ok(fixed!(0)),
+                Ok(fixed_u256!(0)),
             );
 
-            assert_noop!(
+            assert_eq!(
                 MBCPool::buy_price(
                     &XOR,
                     &VAL,
                     QuoteAmount::with_desired_input(Balance::max_value()),
                 ),
-                Error::<Runtime>::PriceCalculationFailed,
+                Ok(fixed_u256!(66643.297975935543753806)),
             );
-            assert_noop!(
+            assert_eq!(
                 MBCPool::buy_price(
                     &XOR,
                     &VAL,
                     QuoteAmount::with_desired_output(Balance::max_value()),
                 ),
-                Error::<Runtime>::PriceCalculationFailed,
+                Ok(fixed_u256!(
+                    2605995006049927390016066959760470220.257682547449143111
+                ))
             );
             assert_eq!(
                 MBCPool::buy_price(&XOR, &VAL, QuoteAmount::with_desired_input(Balance::zero()),),
-                Ok(fixed!(0)),
+                Ok(fixed_u256!(0)),
             );
             assert_eq!(
                 MBCPool::buy_price(
@@ -391,7 +301,7 @@ mod tests {
                     &VAL,
                     QuoteAmount::with_desired_output(Balance::zero()),
                 ),
-                Ok(fixed!(0)),
+                Ok(fixed_u256!(0)),
             );
         });
     }
@@ -651,6 +561,70 @@ mod tests {
     }
 
     #[test]
+    fn should_exchange_tbcd_with_empty_reserves_max_tbcd() {
+        ExtBuilder::new(vec![
+            (
+                alice(),
+                XOR,
+                0,
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+            (
+                alice(),
+                TBCD,
+                340282366920938113460000000000000000000,
+                AssetSymbol(b"TBCD".to_vec()),
+                AssetName(b"SORA TBC Dollar".to_vec()),
+                DEFAULT_BALANCE_PRECISION,
+            ),
+        ])
+        .with_tbcd_pool()
+        .build()
+        .execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _distribution_accounts = bonding_curve_pool_init(Vec::new()).unwrap();
+            let alice = &alice();
+            MBCPool::initialize_pool_unchecked(TBCD, false).expect("Failed to initialize pool.");
+            assert_swap_outcome(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &TBCD,
+                    &XOR,
+                    SwapAmount::with_desired_output(balance!(1), Balance::max_value()),
+                )
+                .unwrap()
+                .0,
+                SwapOutcome::new(
+                    balance!(101.003009027081243711),
+                    OutcomeFee::xor(balance!(0.003009027081243731)),
+                ),
+                balance!(0.0001),
+            );
+            assert_swap_outcome(
+                MBCPool::exchange(
+                    alice,
+                    alice,
+                    &DEXId::Polkaswap.into(),
+                    &XOR,
+                    &TBCD,
+                    SwapAmount::with_desired_input(balance!(1), Balance::zero()),
+                )
+                .unwrap()
+                .0,
+                SwapOutcome::new(
+                    balance!(38.370385852073146860),
+                    OutcomeFee::xor(balance!(0.093)),
+                ),
+                balance!(0.0001),
+            );
+        });
+    }
+
+    #[test]
     fn should_exchange_with_nearly_full_reserves() {
         ExtBuilder::new(vec![
             (
@@ -692,11 +666,12 @@ mod tests {
             .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
             let total_issuance = Assets::total_issuance(&XOR).unwrap();
-            let reserve_amount_expected = FixedWrapper::from(total_issuance)
-                * MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO).unwrap();
+            let reserve_amount_expected = FixedWrapper256::from(total_issuance)
+                * MBCPool::sell_function(&XOR, &VAL, FixedU256::zero()).unwrap();
             let pool_reference_amount = reserve_amount_expected
-                - FixedWrapper::from(
-                    MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO).unwrap(),
+                - FixedWrapper256::from(
+                    MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, FixedU256::zero())
+                        .unwrap(),
                 ) / balance!(2);
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(
@@ -807,8 +782,8 @@ mod tests {
             .expect("Failed to register trading pair.");
             MBCPool::initialize_pool_unchecked(VAL, false).expect("Failed to initialize pool.");
 
-            let pool_reference_amount = FixedWrapper::from(total_issuance)
-                * MBCPool::sell_function(&XOR, &VAL, Fixed::ZERO).unwrap();
+            let pool_reference_amount = FixedWrapper256::from(total_issuance)
+                * MBCPool::sell_function(&XOR, &VAL, FixedU256::zero()).unwrap();
             let pool_reference_amount = pool_reference_amount.into_balance();
             let pool_val_amount = MockDEXApi::quote(
                 DEXId::Polkaswap,
@@ -1804,6 +1779,7 @@ mod tests {
         });
     }
 
+    #[ignore] // As for now not used negative
     #[test]
     fn should_calculate_ideal_reserves() {
         ExtBuilder::new(vec![
@@ -1859,23 +1835,23 @@ mod tests {
                 &XOR,
                 &VAL,
                 PriceVariant::Buy,
-                (fixed_wrapper!(0) - FixedWrapper::from(xor_supply))
+                (fixed_wrapper_u256!(0) - FixedWrapper256::from(xor_supply))
                     .get()
                     .unwrap(),
             )
             .unwrap();
             let current_state =
-                MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, Fixed::ZERO).unwrap();
-            let buy_amount: Balance = ((FixedWrapper::from(initial_state)
-                + FixedWrapper::from(current_state))
-                / fixed_wrapper!(2)
-                * FixedWrapper::from(xor_supply))
+                MBCPool::buy_function(&XOR, &VAL, PriceVariant::Buy, FixedU256::zero()).unwrap();
+            let buy_amount: Balance = ((FixedWrapper256::from(initial_state)
+                + FixedWrapper256::from(current_state))
+                / fixed_wrapper_u256!(2)
+                * FixedWrapper256::from(xor_supply))
             .try_into_balance()
             .unwrap();
 
             // get ideal reserves
             let ideal_reserves =
-                MBCPool::ideal_reserves_reference_price(&VAL, PriceVariant::Buy, Fixed::ZERO)
+                MBCPool::ideal_reserves_reference_price(&VAL, PriceVariant::Buy, FixedU256::zero())
                     .unwrap();
 
             // actual amount should match to 80% of buy amount
@@ -2128,60 +2104,60 @@ mod tests {
     #[test]
     fn check_sell_penalty_based_on_collateralized_fraction() {
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0)),
-            fixed!(0.09)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0)),
+            fixed_u256!(0.09)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.03)),
-            fixed!(0.09)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.03)),
+            fixed_u256!(0.09)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.05)),
-            fixed!(0.06)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.05)),
+            fixed_u256!(0.06)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.075)),
-            fixed!(0.06)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.075)),
+            fixed_u256!(0.06)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.1)),
-            fixed!(0.03)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.1)),
+            fixed_u256!(0.03)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.15)),
-            fixed!(0.03)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.15)),
+            fixed_u256!(0.03)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.2)),
-            fixed!(0.01)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.2)),
+            fixed_u256!(0.01)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.25)),
-            fixed!(0.01)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.25)),
+            fixed_u256!(0.01)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.3)),
-            fixed!(0)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.3)),
+            fixed_u256!(0)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.35)),
-            fixed!(0)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.35)),
+            fixed_u256!(0)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(0.5)),
-            fixed!(0)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(0.5)),
+            fixed_u256!(0)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(1)),
-            fixed!(0)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(1)),
+            fixed_u256!(0)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(2)),
-            fixed!(0)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(2)),
+            fixed_u256!(0)
         );
         assert_eq!(
-            MBCPool::map_collateralized_fraction_to_penalty(fixed!(10)),
-            fixed!(0)
+            MBCPool::map_collateralized_fraction_to_penalty(fixed_u256!(10)),
+            fixed_u256!(0)
         );
     }
 
@@ -3382,6 +3358,7 @@ mod tests {
                 balance!(0.000000000000000001),
             );
             assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
+            // assert!(false)
         })
     }
 

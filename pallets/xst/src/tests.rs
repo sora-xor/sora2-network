@@ -622,14 +622,14 @@ mod tests {
     fn set_synthetic_base_asset_floor_price_should_work() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
-            let price_before = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
+            let price_before = <XSTPool as GetMarketInfo<_, _>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price before setting floor price.");
             // 1 XOR = 0.5 XST in sell case
             // 1 XOR = 110 DAI in buy case
             // 1 XST = 110/0.5 = 220 DAI
             assert_eq!(price_before, fixed!(220.)); 
 
             XSTPool::set_synthetic_base_asset_floor_price(RuntimeOrigin::root(), balance!(300)).expect("Failed to set floor price.");
-            let price_after = <XSTPool as GetMarketInfo<_>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
+            let price_after = <XSTPool as GetMarketInfo<_, _>>::buy_price(&XST, &XSTUSD).expect("Failed to get buy price after setting floor price.");
             assert_eq!(price_after, fixed!(300));
         });
     }

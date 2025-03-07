@@ -971,7 +971,7 @@ pub mod pallet {
             AssetIdOf<Self>,
             DispatchError,
         >;
-        type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>>;
+        type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>, Fixed>;
         type GetFee: Get<FixedU256>;
         /// Maximum allowed ratio between real and current issuance in pool
         type GetMaxIssuanceRatio: Get<Fixed>;
