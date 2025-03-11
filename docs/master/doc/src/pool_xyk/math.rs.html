@@ -316,7 +316,7 @@
 <span class="kw">use </span>common::fixed::FixedU256;
 <span class="kw">use </span>common::fixed_wrapper_u256::FixedWrapper256;
 <span class="kw">use </span>common::prelude::{Balance, FixedWrapper};
-<span class="kw">use </span>common::{fixed_u256_int, fixed_wrapper_u256_int, AssetIdOf, TradingPair};
+<span class="kw">use </span>common::{fixed_wrapper_u256, AssetIdOf, TradingPair};
 <span class="kw">use </span>frame_support::dispatch::DispatchError;
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::traits::Get;
@@ -427,7 +427,7 @@
             <span class="kw">let </span>denominator = fxw_x + fxw_x_in;
             <span class="kw">let </span>y_out_with_fee = nominator / denominator;
             <span class="kw">let </span>y_out = <span class="kw">if </span>deduce_fee {
-                y_out_with_fee.clone() * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
+                y_out_with_fee.clone() * (<span class="macro">fixed_wrapper_u256!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 y_out_with_fee.clone()
             };
@@ -440,7 +440,7 @@
             // x_1 = x_in * (1 - fee)
             // y_out = (x_1 * y) / (x + x_1)
             </span><span class="kw">let </span>x_in_without_fee = <span class="kw">if </span>deduce_fee {
-                fxw_x_in.clone() * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
+                fxw_x_in.clone() * (<span class="macro">fixed_wrapper_u256!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 fxw_x_in.clone()
             };
@@ -470,7 +470,7 @@
             // x_in = (x * y_1) / (y - y_1)
             </span><span class="kw">let </span>fxw_y_out = fxw_y_out.clone() + FixedU256::try_from(<span class="number">1</span>).unwrap(); <span class="comment">// by 1 correction to overestimate required input
             </span><span class="kw">let </span>y_out_with_fee = <span class="kw">if </span>deduce_fee {
-                fxw_y_out.clone() / (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
+                fxw_y_out.clone() / (<span class="macro">fixed_wrapper_u256!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 fxw_y_out.clone()
             };
@@ -486,7 +486,7 @@
             <span class="kw">let </span>denominator = fxw_y - fxw_y_out;
             <span class="kw">let </span>x_in_without_fee = nominator / denominator;
             <span class="kw">let </span>x_in = <span class="kw">if </span>deduce_fee {
-                x_in_without_fee.clone() / (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
+                x_in_without_fee.clone() / (<span class="macro">fixed_wrapper_u256!</span>(<span class="number">1</span>) - fee_fraction)
             } <span class="kw">else </span>{
                 x_in_without_fee.clone()
             };
@@ -510,7 +510,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>max_output = <span class="kw">if </span>get_fee_from_destination &amp;&amp; deduce_fee {
             <span class="macro">to_balance!</span>(
-                FixedWrapper256::from(reserve_output) * (<span class="macro">fixed_wrapper_u256_int!</span>(<span class="number">1</span>) - fee_fraction)
+                FixedWrapper256::from(reserve_output) * (<span class="macro">fixed_wrapper_u256!</span>(<span class="number">1</span>) - fee_fraction)
             )
         } <span class="kw">else </span>{
             reserve_output

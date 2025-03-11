@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["FixedU256"],"trait":["FixedPointNumber","FixedPointOperand"]};
+window.SIDEBAR_ITEMS = {"fn":["parse_fixed","pow10"],"struct":["FixedU256"],"trait":["FixedPointNumber","FixedPointOperand"]};

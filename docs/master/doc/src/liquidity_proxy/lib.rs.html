@@ -2373,6 +2373,7 @@
 <a href="#2358" id="2358">2358</a>
 <a href="#2359" id="2359">2359</a>
 <a href="#2360" id="2360">2360</a>
+<a href="#2361" id="2361">2361</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -4305,6 +4306,7 @@
 <span class="attr">#[frame_support::pallet]
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span>common::fixed::FixedU256;
     <span class="kw">use </span>common::prelude::OutcomeFee;
     <span class="kw">use </span>common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
@@ -4326,8 +4328,8 @@
         &gt;;
         <span class="kw">type </span>GetNumSamples: Get&lt;usize&gt;;
         <span class="kw">type </span>GetTechnicalAccountId: Get&lt;<span class="self">Self</span>::AccountId&gt;;
-        <span class="kw">type </span>PrimaryMarketTBC: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
-        <span class="kw">type </span>PrimaryMarketXST: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
+        <span class="kw">type </span>PrimaryMarketTBC: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, FixedU256&gt;;
+        <span class="kw">type </span>PrimaryMarketXST: GetMarketInfo&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;, Fixed&gt;;
         <span class="kw">type </span>SecondaryMarket: GetPoolReserves&lt;AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>VestedRewardsPallet: Vesting&lt;<span class="self">Self</span>::AccountId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;
         <span class="kw">type </span>TradingPairSourceManager: TradingPairSourceManager&lt;<span class="self">Self</span>::DEXId, AssetIdOf&lt;<span class="self">Self</span>&gt;&gt;;

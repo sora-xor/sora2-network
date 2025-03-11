@@ -2423,7 +2423,7 @@
 }
 
 <span class="doccomment">/// Trait for bounding liquidity proxy associated type representing primary market in TBC.
-</span><span class="kw">pub trait </span>GetMarketInfo&lt;AssetId&gt; {
+</span><span class="kw">pub trait </span>GetMarketInfo&lt;AssetId, Fixed&gt; {
     <span class="doccomment">/// The price in terms of the `target_asset` at which one can buy
     /// a unit of the `base_asset` on the primary market (e.g. from the bonding curve pool or xst).
     </span><span class="kw">fn </span>buy_price(base_asset: <span class="kw-2">&amp;</span>AssetId, target_asset: <span class="kw-2">&amp;</span>AssetId) -&gt; <span class="prelude-ty">Result</span>&lt;Fixed, DispatchError&gt;;
@@ -2434,7 +2434,7 @@
     </span><span class="kw">fn </span>enabled_target_assets() -&gt; BTreeSet&lt;AssetId&gt;;
 }
 
-<span class="kw">impl</span>&lt;AssetId: Ord&gt; GetMarketInfo&lt;AssetId&gt; <span class="kw">for </span>() {
+<span class="kw">impl</span>&lt;AssetId: Ord, Fixed: Default&gt; GetMarketInfo&lt;AssetId, Fixed&gt; <span class="kw">for </span>() {
     <span class="kw">fn </span>buy_price(
         _base_asset: <span class="kw-2">&amp;</span>AssetId,
         _collateral_asset: <span class="kw-2">&amp;</span>AssetId,
