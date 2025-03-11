@@ -43,6 +43,25 @@ macro_rules! fixed_const {
 }
 
 #[macro_export]
+macro_rules! fixed_u256 {
+    ($value:literal) => {{
+        use $crate::fixed::FixedU256;
+        use $crate::sp_core::U256;
+
+        let value_inner: U256 = $crate::fixed::parse_fixed(stringify!($value));
+        FixedU256::from_inner(value_inner).into()
+    }};
+}
+
+#[macro_export]
+macro_rules! fixed_wrapper_u256 {
+    ($val:literal) => {{
+        let val: $crate::fixed_wrapper_u256::FixedWrapper256 = $crate::fixed_u256!($val);
+        val
+    }};
+}
+
+#[macro_export]
 macro_rules! balance {
     ($value:literal) => {{
         use $crate::fixnum::_priv::parse_fixed;
@@ -332,5 +351,22 @@ mod tests {
             Fixed::from_bits(balance!(0.0000000000001) as FixedInner),
         );
         assert_approx_eq_rel!(49f64, 51f64, 0.02f64);
+    }
+
+    #[test]
+    fn fixed_256_macro_works() {
+        use crate::fixed::FixedU256;
+        use sp_core::U256;
+
+        let f: FixedU256 = fixed_u256!(
+            115792089237316195423570985008687907853269984665640564039457.584007913129639935
+        );
+        assert_eq!(f, FixedU256::from_inner(U256::max_value()));
+        let f: FixedU256 = fixed_u256!(1.0);
+        assert_eq!(f, FixedU256::from_inner(U256::from(balance!(1))));
+        let f: FixedU256 = fixed_u256!(1);
+        assert_eq!(f, FixedU256::from_inner(U256::from(balance!(1))));
+        let f: FixedU256 = fixed_u256!(0.0000001);
+        assert_eq!(f, FixedU256::from_inner(U256::from(balance!(0.0000001))));
     }
 }
