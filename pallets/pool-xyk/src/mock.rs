@@ -164,7 +164,7 @@ parameter_type_with_key! {
             base_asset_id,
             target_asset_id
         } = trading_pair;
-        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId>>::enabled_target_assets()
+        <xst::Pallet::<Runtime> as GetMarketInfo<AssetId, Fixed>>::enabled_target_assets()
             .contains(target_asset_id) ||
             (base_asset_id, target_asset_id) == (&Mango.into(), &GoldenTicket.into()) ||
             (base_asset_id, target_asset_id) == (&Mango.into(), &BatteryForMusicPlayer.into())

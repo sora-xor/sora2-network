@@ -31,20 +31,20 @@
 use crate::{self as multicollateral_bonding_curve_pool, Rewards, TotalRewards};
 use common::mock::ExistentialDeposits;
 use common::prelude::{
-    AssetInfoProvider, Balance, FixedWrapper, OutcomeFee, PriceToolsProvider, QuoteAmount,
-    SwapAmount, SwapOutcome,
+    AssetInfoProvider, Balance, OutcomeFee, PriceToolsProvider, QuoteAmount, SwapAmount,
+    SwapOutcome,
 };
 use common::{
-    self, balance, fixed_wrapper, hash, mock_assets_config, mock_ceres_liquidity_locker_config,
-    mock_common_config, mock_currencies_config, mock_demeter_farming_platform_config,
-    mock_dex_manager_config, mock_frame_system_config, mock_liquidity_source_config,
-    mock_multicollateral_bonding_curve_pool_config, mock_pallet_balances_config,
-    mock_pallet_timestamp_config, mock_permissions_config, mock_pool_xyk_config,
-    mock_price_tools_config, mock_pswap_distribution_config, mock_technical_config,
-    mock_tokens_config, mock_trading_pair_config, Amount, AssetId32, AssetName, AssetSymbol,
-    BuyBackHandler, DEXInfo, LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType,
-    PriceVariant, TechPurpose, Vesting, DAI, DEFAULT_BALANCE_PRECISION, KUSD, PSWAP, TBCD, USDT,
-    VAL, VXOR, XOR, XST, XSTUSD,
+    self, balance, fixed_wrapper_u256, hash, mock_assets_config,
+    mock_ceres_liquidity_locker_config, mock_common_config, mock_currencies_config,
+    mock_demeter_farming_platform_config, mock_dex_manager_config, mock_frame_system_config,
+    mock_liquidity_source_config, mock_multicollateral_bonding_curve_pool_config,
+    mock_pallet_balances_config, mock_pallet_timestamp_config, mock_permissions_config,
+    mock_pool_xyk_config, mock_price_tools_config, mock_pswap_distribution_config,
+    mock_technical_config, mock_tokens_config, mock_trading_pair_config, Amount, AssetId32,
+    AssetName, AssetSymbol, BuyBackHandler, DEXInfo, FixedWrapper256, LiquidityProxyTrait,
+    LiquiditySourceFilter, LiquiditySourceType, PriceVariant, TechPurpose, Vesting, DAI,
+    DEFAULT_BALANCE_PRECISION, KUSD, PSWAP, TBCD, USDT, VAL, VXOR, XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::pallet_prelude::OptionQuery;
@@ -246,7 +246,7 @@ impl MockDEXApi {
         MockPrices::insert(asset_pair.clone(), price);
         MockPrices::insert(
             (asset_pair.1, asset_pair.0),
-            (fixed_wrapper!(1) / FixedWrapper::from(price))
+            (fixed_wrapper_u256!(1) / FixedWrapper256::from(price))
                 .try_into_balance()
                 .unwrap(),
         );
@@ -323,7 +323,7 @@ impl MockDEXApi {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
             } if deduce_fee => {
-                let amount_out = FixedWrapper::from(desired_amount_in)
+                let amount_out = FixedWrapper256::from(desired_amount_in)
                     * Self::get_price(input_asset_id, output_asset_id);
                 let fee = amount_out.clone() * balance!(0.003);
                 let fee = fee.into_balance();
@@ -334,7 +334,7 @@ impl MockDEXApi {
             QuoteAmount::WithDesiredInput {
                 desired_amount_in, ..
             } => {
-                let amount_out = FixedWrapper::from(desired_amount_in)
+                let amount_out = FixedWrapper256::from(desired_amount_in)
                     * Self::get_price(input_asset_id, output_asset_id);
                 Ok(SwapOutcome::new(
                     amount_out.into_balance(),
@@ -344,7 +344,7 @@ impl MockDEXApi {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } if deduce_fee => {
-                let amount_in = FixedWrapper::from(desired_amount_out)
+                let amount_in = FixedWrapper256::from(desired_amount_out)
                     / Self::get_price(input_asset_id, output_asset_id);
                 let with_fee = amount_in.clone() / balance!(0.997);
                 let fee = with_fee.clone() - amount_in;
@@ -355,7 +355,7 @@ impl MockDEXApi {
             QuoteAmount::WithDesiredOutput {
                 desired_amount_out, ..
             } => {
-                let amount_in = FixedWrapper::from(desired_amount_out)
+                let amount_in = FixedWrapper256::from(desired_amount_out)
                     / Self::get_price(input_asset_id, output_asset_id);
                 Ok(SwapOutcome::new(
                     amount_in.into_balance(),

@@ -1252,7 +1252,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
     }
 }
 
-impl<T: Config> GetMarketInfo<AssetIdOf<T>> for Pallet<T> {
+impl<T: Config> GetMarketInfo<AssetIdOf<T>, Fixed> for Pallet<T> {
     fn buy_price(
         synthetic_base_asset: &AssetIdOf<T>,
         synthetic_asset: &AssetIdOf<T>,

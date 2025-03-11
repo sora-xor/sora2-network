@@ -45,8 +45,8 @@ use common::prelude::{
     Balance, EnsureDEXManager, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 use common::{
-    fixed_u256_int, fixed_wrapper_u256_int, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo,
-    DexInfoProvider, EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
+    fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
+    EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
     LiquiditySourceType, ManagementMode, OnPoolReservesChanged, RewardReason, TechAccountId,
     TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager, XykPool,
 };
@@ -832,7 +832,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     // y_out = y_1 * (1 - fee)
                     let out_with_fee: FixedWrapper256 =
                         FixedWrapper256::from(desired_amount_in) * input_price_wrt_output;
-                    let output = out_with_fee.clone() * (fixed_wrapper_u256_int!(1) - fee_fraction);
+                    let output = out_with_fee.clone() * (fixed_wrapper_u256!(1) - fee_fraction);
                     let fee_amount = out_with_fee - output.clone();
                     (output, fee_amount)
                 } else {
@@ -840,7 +840,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     // x_1 = x_in * (1 - fee)
                     // y_out = x_1 * y / x
                     let input_without_fee = FixedWrapper256::from(desired_amount_in.clone())
-                        * (fixed_wrapper_u256_int!(1) - fee_fraction);
+                        * (fixed_wrapper_u256!(1) - fee_fraction);
                     let output = input_without_fee.clone() * input_price_wrt_output;
                     let fee_amount = FixedWrapper256::from(desired_amount_in) - input_without_fee;
                     (output, fee_amount)
@@ -861,7 +861,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     // y_1 = y_out / (1 - fee)
                     // x_in = y_1 / y / x
                     let output_with_fee = FixedWrapper256::from(desired_amount_out.clone())
-                        / (fixed_wrapper_u256_int!(1) - fee_fraction);
+                        / (fixed_wrapper_u256!(1) - fee_fraction);
                     let fee_amount =
                         output_with_fee.clone() - FixedWrapper256::from(desired_amount_out);
                     let input = output_with_fee / input_price_wrt_output;
@@ -871,8 +871,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     // x_in = (y_out / y / x) / (1 - fee)
                     let input_without_fee =
                         FixedWrapper256::from(desired_amount_out) / input_price_wrt_output;
-                    let input =
-                        input_without_fee.clone() / (fixed_wrapper_u256_int!(1) - fee_fraction);
+                    let input = input_without_fee.clone() / (fixed_wrapper_u256!(1) - fee_fraction);
                     let fee_amount = input.clone() - input_without_fee;
                     (input, fee_amount)
                 };
@@ -972,7 +971,7 @@ pub mod pallet {
             AssetIdOf<Self>,
             DispatchError,
         >;
-        type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>>;
+        type XSTMarketInfo: GetMarketInfo<AssetIdOf<Self>, Fixed>;
         type GetFee: Get<FixedU256>;
         /// Maximum allowed ratio between real and current issuance in pool
         type GetMaxIssuanceRatio: Get<Fixed>;

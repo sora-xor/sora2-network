@@ -1930,6 +1930,7 @@ impl<T: Config, GetDEXId: Get<T::DEXId>, GetReferenceAssetId: Get<AssetIdOf<T>>>
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use common::fixed::FixedU256;
     use common::prelude::OutcomeFee;
     use common::{AssetName, AssetSymbol, BalancePrecision, ContentSource, Description};
     use frame_support::pallet_prelude::*;
@@ -1951,8 +1952,8 @@ pub mod pallet {
         >;
         type GetNumSamples: Get<usize>;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type PrimaryMarketTBC: GetMarketInfo<AssetIdOf<Self>>;
-        type PrimaryMarketXST: GetMarketInfo<AssetIdOf<Self>>;
+        type PrimaryMarketTBC: GetMarketInfo<AssetIdOf<Self>, FixedU256>;
+        type PrimaryMarketXST: GetMarketInfo<AssetIdOf<Self>, Fixed>;
         type SecondaryMarket: GetPoolReserves<AssetIdOf<Self>>;
         type VestedRewardsPallet: Vesting<Self::AccountId, AssetIdOf<Self>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
