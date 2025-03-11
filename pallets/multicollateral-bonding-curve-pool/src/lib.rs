@@ -620,7 +620,6 @@ struct BuyMainAsset<T: Config> {
 }
 
 impl<T: Config> BuyMainAsset<T> {
-    // start check
     pub fn new(
         collateral_asset_id: AssetIdOf<T>,
         main_asset_id: AssetIdOf<T>,
