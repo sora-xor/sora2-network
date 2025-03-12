@@ -1305,7 +1305,7 @@ pub mod pallet {
             ensure_root(origin)?;
             ensure!(!factor.is_zero(), Error::<T>::MultiplierCalculationFailed);
 
-            <Multiplier<T>>::try_mutate(|multiplier| -> Result<(), DispatchError> {
+            <Multiplier<T>>::try_mutate(|multiplier| {
                 let new_multiplier = multiplier.saturating_mul(factor);
                 ensure!(
                     !new_multiplier.is_zero(),
