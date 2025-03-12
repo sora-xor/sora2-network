@@ -1294,7 +1294,8 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Update the multiplier for weight -> fee conversion.
+        /// Scale the multiplier for weight -> fee conversion.
+        /// multiplier = multiplier * factor
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::scale_multiplier())]
         pub fn scale_multiplier(
