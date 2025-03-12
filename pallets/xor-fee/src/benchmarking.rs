@@ -118,5 +118,13 @@ benchmarks! {
         assert_eq!(<RemintPeriod<T>>::get(), new_period);
     }
 
+    scale_multiplier {
+        Multiplier::<T>::put(FixedU128::from(2));
+        let factor = FixedU128::from_float(2.25);
+    }: _(RawOrigin::Root, factor)
+    verify {
+        assert_eq!(Multiplier::<T>::get(), FixedU128::from_float(4.5));
+    }
+
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
 }

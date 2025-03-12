@@ -34,9 +34,9 @@
 use crate::extension::ChargeTransactionPayment;
 #[cfg(feature = "wip")] // Xorless fee
 use crate::WeightInfo;
-use crate::{mock::*, LiquidityInfo, XorToVal};
+use crate::{mock::*, Error, LiquidityInfo, XorToVal};
 #[cfg(feature = "wip")] // Dynamic fee
-use crate::{CalculateMultiplier, Error, Multiplier, UpdatePeriod};
+use crate::{CalculateMultiplier, Multiplier, UpdatePeriod};
 use common::balance;
 use common::mock::{alice, bob};
 #[cfg(feature = "wip")] // Dynamic fee
@@ -45,7 +45,6 @@ use common::prelude::FixedWrapper;
 use common::weights::constants::SMALL_FEE;
 #[cfg(feature = "wip")] // Xorless fee
 use common::{KUSD, TBCD, VAL};
-#[cfg(feature = "wip")] // Xorless fee
 use frame_support::assert_err;
 #[cfg(feature = "wip")] // Xorless fee
 use frame_support::dispatch::GetDispatchInfo;
@@ -55,6 +54,7 @@ use frame_support::error::BadOrigin;
 use frame_support::traits::Currency;
 use frame_support::weights::{Weight, WeightToFee};
 use frame_support::{assert_noop, assert_ok};
+use sp_arithmetic::traits::Zero;
 use sp_runtime::traits::SignedExtension;
 use sp_runtime::transaction_validity::{InvalidTransaction, TransactionValidityError};
 use sp_runtime::{FixedPointNumber, FixedU128};
@@ -712,5 +712,64 @@ fn test_xorless_call_failed_inner_call() {
         let err = result.unwrap_err();
         assert_eq!(err.error, tokens::Error::<Runtime>::BalanceTooLow.into());
         assert_eq!(err.post_info.actual_weight.unwrap(), expected_weight);
+    });
+}
+
+#[test]
+fn non_root_scale_fails() {
+    let mut ext = ExtBuilder::build();
+    ext.execute_with(|| {
+        // We allow only root
+
+        assert_noop!(
+            XorFee::scale_multiplier(RuntimeOrigin::signed(alice()), FixedU128::from(3)),
+            BadOrigin
+        );
+
+        assert_noop!(
+            XorFee::scale_multiplier(RuntimeOrigin::none(), FixedU128::from(3)),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn zero_scale_fails() {
+    let mut ext = ExtBuilder::build();
+    ext.execute_with(|| {
+        set_weight_to_fee_multiplier(2);
+
+        assert_err!(
+            XorFee::scale_multiplier(RuntimeOrigin::root(), FixedU128::zero()),
+            Error::<Runtime>::MultiplierCalculationFailed
+        );
+
+        XorFee::update_multiplier(RuntimeOrigin::root(), FixedU128::from_inner(1)).unwrap();
+        assert_err!(
+            XorFee::scale_multiplier(RuntimeOrigin::root(), FixedU128::from_inner(1)),
+            Error::<Runtime>::MultiplierCalculationFailed
+        );
+    });
+}
+
+#[test]
+fn scale_ok() {
+    let mut ext = ExtBuilder::build();
+    ext.execute_with(|| {
+        set_weight_to_fee_multiplier(2);
+
+        assert_ok!(XorFee::scale_multiplier(
+            RuntimeOrigin::root(),
+            FixedU128::from_float(2.25)
+        ));
+
+        assert_eq!(XorFee::multiplier(), FixedU128::from_float(4.5));
+
+        assert_ok!(XorFee::scale_multiplier(
+            RuntimeOrigin::root(),
+            FixedU128::from(u128::MAX)
+        ));
+
+        assert_eq!(XorFee::multiplier(), FixedU128::from(u128::MAX));
     });
 }
