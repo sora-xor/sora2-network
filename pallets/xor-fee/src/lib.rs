@@ -1303,6 +1303,8 @@ pub mod pallet {
             factor: FixedU128,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
+            ensure!(!factor.is_zero(), Error::<T>::MultiplierCalculationFailed);
+
             <Multiplier<T>>::try_mutate(|multiplier| -> Result<(), DispatchError> {
                 let new_multiplier = multiplier.saturating_mul(factor);
                 ensure!(
@@ -1310,9 +1312,8 @@ pub mod pallet {
                     Error::<T>::MultiplierCalculationFailed
                 );
                 *multiplier = new_multiplier;
-                Ok(())
-            })?;
-            Ok(().into())
+                Ok(().into())
+            })
         }
     }
 
