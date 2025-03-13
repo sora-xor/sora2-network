@@ -1646,3 +1646,54 @@ impl<AssetId, Moment, ContentSource> ExtendedAssetsManager<AssetId, Moment, Cont
         Ok(())
     }
 }
+
+pub trait OnDenominate<AssetId, Balance> {
+    // Factor is number by which balance is divided
+    fn on_denominate(asset_id: &AssetId, factor: &Balance) -> DispatchResult;
+}
+
+macro_rules! impl_on_denominate_for_tuples {
+    () => {
+        impl<AssetId, Balance> OnDenominate<AssetId, Balance> for () {
+            fn on_denominate(_asset_id: &AssetId, _factor: &Balance) -> DispatchResult {
+                Ok(())
+            }
+        }
+    };
+
+    ($first:ident) => {
+        impl<
+            AssetId,
+            Balance,
+            $first: OnDenominate<AssetId, Balance>,
+        > OnDenominate<AssetId, Balance> for ($first,) {
+            fn on_denominate(asset_id: &AssetId, factor: &Balance) -> DispatchResult {
+                $first::on_denominate(asset_id, factor)?;
+                Ok(())
+            }
+        }
+
+        impl_on_denominate_for_tuples!();
+    };
+
+    ($first:ident, $($types:ident),*) => {
+        impl<
+            AssetId,
+            Balance,
+            $first: OnDenominate<AssetId, Balance>,
+            $($types: OnDenominate<AssetId, Balance>),+
+        > OnDenominate<AssetId, Balance> for ($first, $($types,)+) {
+            fn on_denominate(asset_id: &AssetId, factor: &Balance) -> DispatchResult {
+                $first::on_denominate(asset_id, factor)?;
+                $(
+                    $types::on_denominate(asset_id, factor)?;
+                )+
+                Ok(())
+            }
+        }
+
+        impl_on_denominate_for_tuples!($($types),*);
+    };
+}
+
+impl_on_denominate_for_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
