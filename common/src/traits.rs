@@ -1647,15 +1647,19 @@ impl<AssetId, Moment, ContentSource> ExtendedAssetsManager<AssetId, Moment, Cont
     }
 }
 
-pub trait OnDenominate<AssetId, Balance> {
+pub trait OnDenominate<Balance> {
     // Factor is number by which balance is divided
-    fn on_denominate(asset_id: &AssetId, factor: &Balance) -> DispatchResult;
+    fn on_denominate(factor: &Balance) -> DispatchResult;
+}
+
+pub trait Denominator<AssetId, Balance> {
+    fn current_factor(asset_id: &AssetId) -> Balance;
 }
 
 macro_rules! impl_on_denominate_for_tuples {
     () => {
-        impl<AssetId, Balance> OnDenominate<AssetId, Balance> for () {
-            fn on_denominate(_asset_id: &AssetId, _factor: &Balance) -> DispatchResult {
+        impl<Balance> OnDenominate<Balance> for () {
+            fn on_denominate(_factor: &Balance) -> DispatchResult {
                 Ok(())
             }
         }
@@ -1663,12 +1667,11 @@ macro_rules! impl_on_denominate_for_tuples {
 
     ($first:ident) => {
         impl<
-            AssetId,
             Balance,
-            $first: OnDenominate<AssetId, Balance>,
-        > OnDenominate<AssetId, Balance> for ($first,) {
-            fn on_denominate(asset_id: &AssetId, factor: &Balance) -> DispatchResult {
-                $first::on_denominate(asset_id, factor)?;
+            $first: OnDenominate<Balance>,
+        > OnDenominate<Balance> for ($first,) {
+            fn on_denominate(factor: &Balance) -> DispatchResult {
+                $first::on_denominate(factor)?;
                 Ok(())
             }
         }
@@ -1678,15 +1681,14 @@ macro_rules! impl_on_denominate_for_tuples {
 
     ($first:ident, $($types:ident),*) => {
         impl<
-            AssetId,
             Balance,
-            $first: OnDenominate<AssetId, Balance>,
-            $($types: OnDenominate<AssetId, Balance>),+
-        > OnDenominate<AssetId, Balance> for ($first, $($types,)+) {
-            fn on_denominate(asset_id: &AssetId, factor: &Balance) -> DispatchResult {
-                $first::on_denominate(asset_id, factor)?;
+            $first: OnDenominate<Balance>,
+            $($types: OnDenominate<Balance>),+
+        > OnDenominate<Balance> for ($first, $($types,)+) {
+            fn on_denominate(factor: &Balance) -> DispatchResult {
+                $first::on_denominate(factor)?;
                 $(
-                    $types::on_denominate(asset_id, factor)?;
+                    $types::on_denominate(factor)?;
                 )+
                 Ok(())
             }

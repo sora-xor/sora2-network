@@ -48,8 +48,9 @@ use crate::{
 };
 use alloc::string::String;
 use codec::{Decode, Encode};
-use common::{eth, Balance};
+use common::eth;
 use ethabi::ParamType;
+use ethereum_types::U256;
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::IdentifyAccount;
@@ -97,7 +98,7 @@ pub mod crypto {
 impl<T: Config> Pallet<T> {
     fn parse_deposit_event(
         log: &Log,
-    ) -> Result<DepositEvent<EthAddress, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<DepositEvent<EthAddress, T::AccountId, U256>, Error<T>> {
         if log.removed.unwrap_or(true) {
             return Err(Error::<T>::EthLogWasRemoved);
         }
@@ -128,7 +129,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         logs: &[Log],
         kind: IncomingTransactionRequestKind,
-    ) -> Result<ContractEvent<EthAddress, T::AccountId, Balance>, Error<T>> {
+    ) -> Result<ContractEvent<EthAddress, T::AccountId, U256>, Error<T>> {
         for log in logs {
             // Check address to be sure what it came from our contract
             if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
