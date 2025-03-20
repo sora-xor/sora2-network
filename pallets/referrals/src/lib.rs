@@ -40,10 +40,12 @@ mod mock;
 
 pub mod weights;
 
-use common::Balance;
 use common::ReferrerAccountProvider;
+use common::{Balance, BalanceOf, OnDenominate};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use sp_std::marker::PhantomData;
 
 pub use weights::WeightInfo;
 
@@ -249,5 +251,20 @@ pub mod pallet {
 impl<T: Config> ReferrerAccountProvider<T::AccountId> for Pallet<T> {
     fn get_referrer_account(who: &T::AccountId) -> Option<T::AccountId> {
         Self::referrer_account(who)
+    }
+}
+
+pub struct DenominateXor<T: Config>(PhantomData<T>);
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
+    fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        ReferrerBalances::<T>::iter_keys().for_each(|account| {
+            ReferrerBalances::<T>::mutate(account, |maybe_balance| {
+                if let Some(balance) = maybe_balance {
+                    *balance = balance.checked_div(*factor).unwrap_or(*balance);
+                }
+            });
+        });
+
+        Ok(())
     }
 }

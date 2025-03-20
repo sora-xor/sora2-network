@@ -65,6 +65,7 @@ dex-api = { path = "../pallets/dex-api", default-features = false }
 dex-manager = { path = "../pallets/dex-manager", default-features = false }
 dex-manager-runtime-api = { path = "../pallets/dex-manager/runtime-api", default-features = false }
 dex-runtime-api = { path = "../pallets/dex-api/runtime-api", default-features = false }
+denomination = { path = "../pallets/denomination", default-features = false }
 eth-bridge = { path = "../pallets/eth-bridge", default-features = false }
 eth-bridge-runtime-api = { path = "../pallets/eth-bridge/runtime-api", default-features = false }
 farming = { path = "../pallets/farming", default-features = false }
@@ -203,6 +204,7 @@ std = [
     "dex-manager-runtime-api/std",
     "dex-manager/std",
     "dex-runtime-api/std",
+    "denomination/std",
     "eth-bridge-runtime-api/std",
     "eth-bridge/std",
     "dispatch/std",
@@ -332,6 +334,7 @@ runtime-benchmarks = [
     "demeter-farming-platform-benchmarking",
     "demeter-farming-platform-benchmarking/runtime-benchmarks",
     "dex-api/runtime-benchmarks",
+    "denomination/runtime-benchmarks",
     "ceres-staking/runtime-benchmarks",
     "ceres-token-locker/runtime-benchmarks",
     "eth-bridge/runtime-benchmarks",
@@ -402,6 +405,7 @@ try-runtime = [
     "hermes-governance-platform/try-runtime",
     "dex-api/try-runtime",
     "dex-manager/try-runtime",
+    "denomination/try-runtime",
     "eth-bridge/try-runtime",
     "dispatch/try-runtime",
     "leaf-provider/try-runtime",

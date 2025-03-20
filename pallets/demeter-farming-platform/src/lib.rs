@@ -12,7 +12,8 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{AssetIdOf, Balance, DemeterFarming};
+use common::{AssetIdOf, Balance, BalanceOf, DemeterFarming, OnDenominate, TBCD, XOR};
+use sp_std::marker::PhantomData;
 pub use weights::WeightInfo;
 
 /// Storage version.
@@ -1338,6 +1339,86 @@ impl<T: Config> DemeterFarming<T::AccountId, AssetIdOf<T>> for Pallet<T> {
             }
         }
         <UserInfos<T>>::insert(user, user_infos);
+
+        Ok(())
+    }
+}
+
+pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+    fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+        let xor = AssetIdOf::<T>::from(XOR);
+        let tbcd = AssetIdOf::<T>::from(TBCD);
+
+        let update_token_info = |asset_id: &AssetIdOf<T>| {
+            if let Some(mut token_info) = TokenInfos::<T>::get(asset_id) {
+                token_info.farms_allocation = token_info
+                    .farms_allocation
+                    .checked_div(*factor)
+                    .unwrap_or(token_info.farms_allocation);
+                token_info.staking_allocation = token_info
+                    .staking_allocation
+                    .checked_div(*factor)
+                    .unwrap_or(token_info.staking_allocation);
+                token_info.team_allocation = token_info
+                    .team_allocation
+                    .checked_div(*factor)
+                    .unwrap_or(token_info.team_allocation);
+
+                TokenInfos::<T>::insert(xor, token_info);
+            }
+        };
+
+        update_token_info(&xor);
+        update_token_info(&tbcd);
+
+        for (pool_asset, reward_asset, mut pool_infos) in <Pools<T>>::iter() {
+            for pool_info in pool_infos.iter_mut() {
+                if pool_asset == xor || pool_asset == tbcd {
+                    pool_info.total_tokens_in_pool = pool_info
+                        .total_tokens_in_pool
+                        .checked_div(*factor)
+                        .unwrap_or(pool_info.total_tokens_in_pool);
+                }
+
+                if reward_asset == xor || reward_asset == tbcd {
+                    pool_info.rewards = pool_info
+                        .rewards
+                        .checked_div(*factor)
+                        .unwrap_or(pool_info.rewards);
+                    pool_info.rewards_to_be_distributed = pool_info
+                        .rewards_to_be_distributed
+                        .checked_div(*factor)
+                        .unwrap_or(pool_info.rewards_to_be_distributed);
+                }
+            }
+
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
+        }
+
+        UserInfos::<T>::iter().for_each(|(account, mut user_infos)| {
+            let mut updated = false;
+            for user_info in &mut user_infos {
+                if user_info.reward_asset == xor || user_info.reward_asset == tbcd {
+                    user_info.rewards = user_info
+                        .rewards
+                        .checked_div(*factor)
+                        .unwrap_or(user_info.rewards);
+                    updated = true;
+                }
+                if user_info.pool_asset == xor || user_info.pool_asset == tbcd {
+                    user_info.pooled_tokens = user_info
+                        .pooled_tokens
+                        .checked_div(*factor)
+                        .unwrap_or(user_info.pooled_tokens);
+                    updated = true;
+                }
+            }
+            if updated {
+                UserInfos::<T>::insert(account, user_infos);
+            }
+        });
 
         Ok(())
     }

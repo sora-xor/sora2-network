@@ -55,6 +55,7 @@ use sp_runtime::traits::Member;
 use crate::alt::DiscreteQuotation;
 use crate::primitives::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
+use num_traits::One;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -1646,3 +1647,62 @@ impl<AssetId, Moment, ContentSource> ExtendedAssetsManager<AssetId, Moment, Cont
         Ok(())
     }
 }
+
+pub trait OnDenominate<Balance> {
+    // Factor is number by which balance is divided
+    fn on_denominate(factor: &Balance) -> DispatchResult;
+}
+
+pub trait Denominator<AssetId, Balance> {
+    fn current_factor(asset_id: &AssetId) -> Balance;
+}
+
+impl<AssetId, Balance: One> Denominator<AssetId, Balance> for () {
+    fn current_factor(_asset_id: &AssetId) -> Balance {
+        Balance::one()
+    }
+}
+
+macro_rules! impl_on_denominate_for_tuples {
+    () => {
+        impl<Balance> OnDenominate<Balance> for () {
+            fn on_denominate(_factor: &Balance) -> DispatchResult {
+                Ok(())
+            }
+        }
+    };
+
+    ($first:ident) => {
+        impl<
+            Balance,
+            $first: OnDenominate<Balance>,
+        > OnDenominate<Balance> for ($first,) {
+            fn on_denominate(factor: &Balance) -> DispatchResult {
+                $first::on_denominate(factor)?;
+                Ok(())
+            }
+        }
+
+        impl_on_denominate_for_tuples!();
+    };
+
+    ($first:ident, $($types:ident),*) => {
+        impl<
+            Balance,
+            $first: OnDenominate<Balance>,
+            $($types: OnDenominate<Balance>),+
+        > OnDenominate<Balance> for ($first, $($types,)+) {
+            fn on_denominate(factor: &Balance) -> DispatchResult {
+                $first::on_denominate(factor)?;
+                $(
+                    $types::on_denominate(factor)?;
+                )+
+                Ok(())
+            }
+        }
+
+        impl_on_denominate_for_tuples!($($types),*);
+    };
+}
+
+impl_on_denominate_for_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);

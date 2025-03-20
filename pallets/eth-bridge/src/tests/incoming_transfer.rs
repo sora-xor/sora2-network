@@ -48,6 +48,7 @@ use common::{
     balance, AssetId32, AssetInfoProvider, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
     PSWAP, VAL, XOR,
 };
+use ethereum_types::U256;
 use frame_support::assert_noop;
 use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_ok};
@@ -445,7 +446,7 @@ fn should_import_incoming_request() {
         let incoming_transfer_result = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(DepositEvent::new(
                 alice.clone(),
-                1,
+                U256::one(),
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
                     .unwrap(),
                 H256::zero(),
@@ -482,7 +483,7 @@ fn should_not_import_incoming_request_twice() {
         let incoming_transfer_result = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(DepositEvent::new(
                 alice.clone(),
-                1,
+                U256::one(),
                 crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
                     .unwrap(),
                 H256::zero(),

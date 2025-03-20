@@ -35,9 +35,10 @@ use crate::{
     RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
 use codec::{Decode, Encode};
-use common::prelude::Balance;
 use common::AssetInfoProvider;
+use common::Denominator;
 use ethabi::Token;
+use ethereum_types::U256;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::log::warn;
 use frame_support::sp_runtime::app_crypto::sp_core;
@@ -303,7 +304,7 @@ pub enum IncomingRequest<T: Config> {
 
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
-        event: ContractEvent<EthAddress, T::AccountId, Balance>,
+        event: ContractEvent<EthAddress, T::AccountId, U256>,
         incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
     ) -> Result<Self, Error<T>> {
@@ -325,6 +326,13 @@ impl<T: Config> IncomingRequest<T> {
                     network_id,
                 )?
                 .ok_or(Error::<T>::UnsupportedAssetId)?;
+                let denomination_factor = T::Denominator::current_factor(&asset_id);
+                let amount = u128::try_from(
+                    amount
+                        .checked_div(denomination_factor.into())
+                        .ok_or(Error::<T>::FailedToApplyDenomination)?,
+                )
+                .map_err(|_| Error::<T>::InvalidAmount)?;
                 let amount = if !asset_kind.is_owned() {
                     let sidechain_precision =
                         SidechainAssetPrecision::<T>::get(network_id, &asset_id);

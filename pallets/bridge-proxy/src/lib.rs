@@ -22,7 +22,7 @@ use bridge_types::{
     GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
 use codec::{Decode, Encode};
-use common::{prelude::FixedWrapper, AssetIdOf, Balance, BalanceOf};
+use common::{prelude::FixedWrapper, AssetIdOf, Balance, BalanceOf, OnDenominate};
 use common::{AssetInfoProvider, AssetManager, ReferencePriceProvider};
 use frame_support::dispatch::{DispatchResult, RuntimeDebug};
 use frame_support::ensure;
@@ -749,5 +749,18 @@ impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>> for Pallet<T> {
         } else {
             Err(Error::<T>::PathIsNotAvailable.into())
         }
+    }
+}
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for Pallet<T> {
+    fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        LockedAssets::<T>::translate(|_, asset_id, value| {
+            if asset_id == common::XOR.into() || asset_id == common::TBCD.into() {
+                Some(value / factor)
+            } else {
+                Some(value)
+            }
+        });
+        Ok(())
     }
 }

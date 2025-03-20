@@ -36,13 +36,14 @@ use common::prelude::FixedWrapper;
 use common::prelude::SwapAmount;
 use common::{
     AssetIdOf, AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
+    LiquiditySourceFilter, LiquiditySourceType, OnDenominate, OnValBurned, ReferrerAccountProvider,
 };
 #[cfg(feature = "wip")] // Xorless fee
 use common::{PriceToolsProvider, PriceVariant};
 #[cfg(feature = "wip")] // Xorless fee
 use frame_support::dispatch::extract_actual_weight;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
+use frame_support::ensure;
 use frame_support::log::{error, warn};
 use frame_support::pallet_prelude::{DispatchResultWithPostInfo, InvalidTransaction};
 use frame_support::traits::Randomness;
@@ -57,6 +58,7 @@ use pallet_transaction_payment::{
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
 use smallvec::smallvec;
+use sp_arithmetic::traits::CheckedDiv;
 use sp_arithmetic::FixedPointOperand;
 use sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
@@ -64,6 +66,7 @@ use sp_runtime::traits::{
 };
 use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
 use sp_std::boxed::Box;
+use sp_std::marker::PhantomData;
 #[cfg(feature = "wip")] // Xorless fee
 use traits::MultiCurrency;
 
@@ -467,6 +470,31 @@ where
                 });
             }
         }
+        Ok(())
+    }
+}
+
+pub struct DenominateXor<T: Config>(PhantomData<T>);
+impl<T: Config> OnDenominate<common::BalanceOf<T>> for DenominateXor<T> {
+    fn on_denominate(factor: &common::BalanceOf<T>) -> DispatchResult {
+        <XorToBuyBack<T>>::mutate(|amount| {
+            if let Some(new_amount) = amount.checked_div(*factor) {
+                *amount = new_amount;
+            }
+        });
+        <XorToVal<T>>::mutate(|amount| {
+            if let Some(new_amount) = amount.checked_div(*factor) {
+                *amount = new_amount;
+            }
+        });
+        <Multiplier<T>>::mutate(|multiplier| {
+            if let Some(new_multiplier) = multiplier.checked_div(&FixedU128::from(*factor)) {
+                if new_multiplier.is_zero() {
+                    *multiplier = DefaultForFeeMultiplier::<T>::get();
+                }
+                *multiplier = new_multiplier;
+            }
+        });
         Ok(())
     }
 }
