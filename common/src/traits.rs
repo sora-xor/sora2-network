@@ -1698,4 +1698,4 @@ macro_rules! impl_on_denominate_for_tuples {
     };
 }
 
-impl_on_denominate_for_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10);
+impl_on_denominate_for_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);
