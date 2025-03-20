@@ -1293,6 +1293,28 @@ pub mod pallet {
             Self::deposit_event(Event::RemintPeriodUpdated(period));
             Ok(().into())
         }
+
+        /// Scale the multiplier for weight -> fee conversion.
+        /// multiplier = multiplier * factor
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::scale_multiplier())]
+        pub fn scale_multiplier(
+            origin: OriginFor<T>,
+            factor: FixedU128,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(!factor.is_zero(), Error::<T>::MultiplierCalculationFailed);
+
+            <Multiplier<T>>::try_mutate(|multiplier| {
+                let new_multiplier = multiplier.saturating_mul(factor);
+                ensure!(
+                    !new_multiplier.is_zero(),
+                    Error::<T>::MultiplierCalculationFailed
+                );
+                *multiplier = new_multiplier;
+                Ok(().into())
+            })
+        }
     }
 
     #[pallet::event]
