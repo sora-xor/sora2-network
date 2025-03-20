@@ -2587,7 +2587,21 @@ impl denomination::Config for Runtime {
     type DemocracyConvertBalance = sp_runtime::traits::Identity;
     type AssetIdConvert = sp_runtime::traits::Identity;
     type ElectionsPhragmenConvertBalance = sp_runtime::traits::Identity;
-    type OnDenominate = (BridgeProxy,);
+    type OnDenominate = (
+        BridgeProxy,
+        xor_fee::DenominateXor<Runtime>,
+        vested_rewards::DenominateXorAndTbcd<Runtime>,
+        referrals::DenominateXor<Runtime>,
+        price_tools::DenominateXorAndTbcd<Runtime>,
+        pool_xyk::DenominateXor<Runtime>,
+        pool_xyk::DenominateTbcd<Runtime>,
+        order_book::DenominateXor<Runtime>,
+        multicollateral_bonding_curve_pool::DenominateTbcd<Runtime>,
+        kensetsu::DenominateXorAndTbcd<Runtime>,
+        demeter_farming_platform::DenominateXorAndTbcd<Runtime>,
+        ceres_token_locker::DenominateXorAndTbcd<Runtime>,
+        ceres_liquidity_locker::DenominateXorAndTbcd<Runtime>,
+    );
     type ShouldRemoveAccount = ShouldRemoveAccount;
     type StakingConvertBalance = sp_runtime::traits::Identity;
     type TokensConvertBalance = sp_runtime::traits::Identity;

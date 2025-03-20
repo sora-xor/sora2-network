@@ -34,12 +34,13 @@
 #![allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
-use crate::vesting_currencies::VestingSchedule;
+
+use crate::vesting_currencies::{VestingSchedule, VestingScheduleVariant};
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
 use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetManager, BalanceOf, CrowdloanTag, FromGenericPair,
-    OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
+    OnDenominate, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP, TBCD, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::traits::{Defensive, LockIdentifier};
@@ -57,6 +58,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::collections::vec_deque::VecDeque;
 use sp_std::convert::TryInto;
+use sp_std::marker::PhantomData;
 use sp_std::str;
 use sp_std::vec::Vec;
 use traits::{MultiCurrency, MultiLockableCurrency};
@@ -834,6 +836,61 @@ impl<T: Config> Vesting<T::AccountId, AssetIdOf<T>> for Pallet<T> {
             RewardReason::LiquidityProvisionFarming,
             pswap_amount,
         )
+    }
+}
+
+pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+    fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        let accounts: Vec<T::AccountId> = VestingSchedules::<T>::iter_keys().collect();
+        let block_number = <frame_system::Pallet<T>>::block_number();
+        for account in accounts {
+            VestingSchedules::<T>::mutate(account.clone(), |schedules| {
+                for schedule in schedules.iter_mut() {
+                    match schedule {
+                        VestingScheduleVariant::LinearVestingSchedule(s)
+                            if s.asset_id == TBCD.into() || s.asset_id == XOR.into() =>
+                        {
+                            let mut locked_amount =
+                                s.locked_amount(block_number).unwrap_or(Balance::zero());
+                            locked_amount =
+                                locked_amount.checked_div(*factor).unwrap_or(locked_amount);
+                            s.per_period =
+                                s.per_period.checked_div(*factor).unwrap_or(s.per_period);
+                            s.remainder_amount = s
+                                .remainder_amount
+                                .checked_div(*factor)
+                                .unwrap_or(s.remainder_amount);
+                            s.remainder_amount = s.remainder_amount.saturating_add(
+                                locked_amount
+                                    - s.locked_amount(block_number).unwrap_or(Balance::zero()),
+                            );
+                        }
+                        VestingScheduleVariant::LinearPendingVestingSchedule(s)
+                            if s.asset_id == TBCD.into() || s.asset_id == XOR.into() =>
+                        {
+                            let mut locked_amount =
+                                s.locked_amount(block_number).unwrap_or(Balance::zero());
+                            locked_amount =
+                                locked_amount.checked_div(*factor).unwrap_or(locked_amount);
+                            s.per_period =
+                                s.per_period.checked_div(*factor).unwrap_or(s.per_period);
+                            s.remainder_amount = s
+                                .remainder_amount
+                                .checked_div(*factor)
+                                .unwrap_or(s.remainder_amount);
+                            s.remainder_amount = s.remainder_amount.saturating_add(
+                                locked_amount
+                                    - s.locked_amount(block_number).unwrap_or(Balance::zero()),
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            });
+        }
+        Ok(())
     }
 }
 

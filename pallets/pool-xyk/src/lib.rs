@@ -38,6 +38,7 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
@@ -45,10 +46,11 @@ use common::prelude::{
     Balance, EnsureDEXManager, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
 use common::{
-    fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
-    EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, OnPoolReservesChanged, RewardReason, TechAccountId,
-    TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager, XykPool,
+    fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetRegulator, BalanceOf, DEXInfo,
+    DexInfoProvider, EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
+    LiquiditySourceType, ManagementMode, OnDenominate, OnPoolReservesChanged, RewardReason,
+    TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager, XykPool, TBCD,
+    XOR,
 };
 
 mod aliases;
@@ -915,6 +917,59 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 impl<T: Config> GetPoolReserves<AssetIdOf<T>> for Pallet<T> {
     fn reserves(base_asset: &AssetIdOf<T>, other_asset: &AssetIdOf<T>) -> (Balance, Balance) {
         Reserves::<T>::get(base_asset, other_asset)
+    }
+}
+
+pub struct DenominateXor<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
+    fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        for dex_id in T::DexInfoProvider::list_dex_ids() {
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            if dex_info.base_asset_id == XOR.into() {
+                for (target_asset_id, (pool_account, _fee_account)) in
+                    Properties::<T>::iter_prefix(dex_info.base_asset_id)
+                {
+                    Pallet::<T>::fix_pool_parameters(
+                        dex_id,
+                        &pool_account,
+                        &dex_info.base_asset_id,
+                        &target_asset_id,
+                    )?;
+                }
+            } else if let Some((pool_account, _fee_account)) =
+                Properties::<T>::get(&dex_info.base_asset_id, AssetIdOf::<T>::from(XOR))
+            {
+                Pallet::<T>::fix_pool_parameters(
+                    dex_id,
+                    &pool_account,
+                    &dex_info.base_asset_id,
+                    &XOR.into(),
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+pub struct DenominateTbcd<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
+    fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        for dex_id in T::DexInfoProvider::list_dex_ids() {
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            if let Some((pool_account, _fee_account)) =
+                Properties::<T>::get(&dex_info.base_asset_id, AssetIdOf::<T>::from(TBCD))
+            {
+                Pallet::<T>::fix_pool_parameters(
+                    dex_id,
+                    &pool_account,
+                    &dex_info.base_asset_id,
+                    &TBCD.into(),
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 

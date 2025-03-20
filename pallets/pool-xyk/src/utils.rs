@@ -346,7 +346,7 @@ impl<T: Config> Pallet<T> {
             Self::get_actual_reserves(pool_account, asset_a, asset_a, asset_b)?;
         Self::update_reserves(asset_a, asset_a, asset_b, (&reserve_a, &reserve_b));
         frame_support::log::debug!(
-            "Updated reserves for {:?}({}) => {:?}({})",
+            "Updated pool xyk reserves for {:?}({}) => {:?}({})",
             asset_a,
             reserve_a,
             asset_b,

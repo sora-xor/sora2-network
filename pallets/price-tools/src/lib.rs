@@ -57,8 +57,8 @@ use common::prelude::{
     TradingPairSourceManager,
 };
 use common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
-    OnPoolReservesChanged, PriceVariant, XOR,
+    balance, fixed_const, fixed_wrapper, BalanceOf, DEXId, LiquidityProxyTrait,
+    LiquiditySourceFilter, OnDenominate, OnPoolReservesChanged, PriceVariant, XOR,
 };
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::weights::Weight;
@@ -581,5 +581,14 @@ impl<T: Config> OnPoolReservesChanged<AssetIdOf<T>> for Pallet<T> {
     fn reserves_changed(target_asset_id: &AssetIdOf<T>) {
         Self::on_reserves_changed::<PriceInfos<T>>(target_asset_id);
         Self::on_reserves_changed::<FastPriceInfos<T>>(target_asset_id);
+    }
+}
+
+pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+    fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        Pallet::<T>::reserves_changed(&XOR.into());
+        Pallet::<T>::reserves_changed(&common::TBCD.into());
+        Ok(())
     }
 }
