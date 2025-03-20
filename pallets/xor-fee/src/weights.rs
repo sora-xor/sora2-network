@@ -67,6 +67,7 @@ pub trait WeightInfo {
 	fn add_asset_to_white_list() -> Weight;
 	fn remove_asset_from_white_list() -> Weight;
 	fn set_random_remint_period() -> Weight;
+	fn scale_multiplier() -> Weight;
 }
 
 /// Weights for xor_fee using the Substrate node and recommended hardware.
@@ -127,6 +128,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(16_373_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
+	fn scale_multiplier() -> Weight {
+		Weight::from_parts(15_876_000, 0)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
 }
 
 // For backwards compatibility and tests
@@ -184,6 +190,11 @@ impl WeightInfo for () {
 		//  Estimated: `0`
 		// Minimum execution time: 16_088_000 picoseconds.
 		Weight::from_parts(16_373_000, 0)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	fn scale_multiplier() -> Weight {
+		Weight::from_parts(15_876_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 }
