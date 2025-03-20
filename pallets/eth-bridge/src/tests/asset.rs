@@ -565,7 +565,7 @@ fn should_convert_amount_for_a_token_with_non_default_precision() {
         let incoming_trasfer = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(DepositEvent::new(
                 alice.clone(),
-                sidechain_amount,
+                sidechain_amount.into(),
                 token_address,
                 H256::zero(),
             )),
@@ -673,7 +673,7 @@ fn should_convert_amount_for_indivisible_token() {
         let incoming_trasfer = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(DepositEvent::new(
                 alice.clone(),
-                amount,
+                amount.into(),
                 token_address,
                 asset_id.into(),
             )),
@@ -730,7 +730,7 @@ fn should_fail_convert_amount_for_a_token_with_non_default_precision() {
         let incoming_trasfer_result = IncomingRequest::try_from_contract_event(
             ContractEvent::Deposit(DepositEvent::new(
                 alice.clone(),
-                sidechain_amount,
+                sidechain_amount.into(),
                 token_address,
                 H256::zero(),
             )),

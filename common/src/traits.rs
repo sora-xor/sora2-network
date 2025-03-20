@@ -55,6 +55,7 @@ use sp_runtime::traits::Member;
 use crate::alt::DiscreteQuotation;
 use crate::primitives::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
+use num_traits::One;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -1654,6 +1655,12 @@ pub trait OnDenominate<Balance> {
 
 pub trait Denominator<AssetId, Balance> {
     fn current_factor(asset_id: &AssetId) -> Balance;
+}
+
+impl<AssetId, Balance: One> Denominator<AssetId, Balance> for () {
+    fn current_factor(_asset_id: &AssetId) -> Balance {
+        Balance::one()
+    }
 }
 
 macro_rules! impl_on_denominate_for_tuples {
