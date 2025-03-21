@@ -19,6 +19,7 @@ env_logger = "0.10.0"
 hex = "0.4.3"
 
 frame-remote-externalities = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -29,3 +30,8 @@ framenode-runtime = { path = "../../runtime", default-features = false, features
 
 liquidity-proxy = { path = "../../pallets/liquidity-proxy" }
 common = { path = "../../common" }
+
+[features]
+wip = ["framenode-runtime/wip"]
+ready-to-test = ["framenode-runtime/ready-to-test"]
+private-net = ["framenode-runtime/private-net"]
