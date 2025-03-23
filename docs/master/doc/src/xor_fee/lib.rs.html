@@ -1434,6 +1434,28 @@
 <a href="#1419" id="1419">1419</a>
 <a href="#1420" id="1420">1420</a>
 <a href="#1421" id="1421">1421</a>
+<a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2728,6 +2750,28 @@
             RemintPeriod::&lt;T&gt;::set(period);
             <span class="self">Self</span>::deposit_event(Event::RemintPeriodUpdated(period));
             <span class="prelude-val">Ok</span>(().into())
+        }
+
+        <span class="doccomment">/// Scale the multiplier for weight -&gt; fee conversion.
+        /// multiplier = multiplier * factor
+        </span><span class="attr">#[pallet::call_index(<span class="number">7</span>)]
+        #[pallet::weight(&lt;T <span class="kw">as </span>Config&gt;::WeightInfo::scale_multiplier())]
+        </span><span class="kw">pub fn </span>scale_multiplier(
+            origin: OriginFor&lt;T&gt;,
+            factor: FixedU128,
+        ) -&gt; DispatchResultWithPostInfo {
+            ensure_root(origin)<span class="question-mark">?</span>;
+            <span class="macro">ensure!</span>(!factor.is_zero(), Error::&lt;T&gt;::MultiplierCalculationFailed);
+
+            &lt;Multiplier&lt;T&gt;&gt;::try_mutate(|multiplier| {
+                <span class="kw">let </span>new_multiplier = multiplier.saturating_mul(factor);
+                <span class="macro">ensure!</span>(
+                    !new_multiplier.is_zero(),
+                    Error::&lt;T&gt;::MultiplierCalculationFailed
+                );
+                <span class="kw-2">*</span>multiplier = new_multiplier;
+                <span class="prelude-val">Ok</span>(().into())
+            })
         }
     }
 

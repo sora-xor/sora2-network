@@ -202,6 +202,17 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -271,6 +282,7 @@
 	<span class="kw">fn </span>add_asset_to_white_list() -&gt; Weight;
 	<span class="kw">fn </span>remove_asset_from_white_list() -&gt; Weight;
 	<span class="kw">fn </span>set_random_remint_period() -&gt; Weight;
+	<span class="kw">fn </span>scale_multiplier() -&gt; Weight;
 }
 
 <span class="doccomment">/// Weights for xor_fee using the Substrate node and recommended hardware.
@@ -331,6 +343,11 @@
 		</span>Weight::from_parts(<span class="number">16_373_000</span>, <span class="number">0</span>)
 			.saturating_add(T::DbWeight::get().writes(<span class="number">1_u64</span>))
 	}
+
+	<span class="kw">fn </span>scale_multiplier() -&gt; Weight {
+		Weight::from_parts(<span class="number">15_876_000</span>, <span class="number">0</span>)
+			.saturating_add(T::DbWeight::get().writes(<span class="number">1_u64</span>))
+	}
 }
 
 <span class="comment">// For backwards compatibility and tests
@@ -388,6 +405,11 @@
 		//  Estimated: `0`
 		// Minimum execution time: 16_088_000 picoseconds.
 		</span>Weight::from_parts(<span class="number">16_373_000</span>, <span class="number">0</span>)
+			.saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
+	}
+
+	<span class="kw">fn </span>scale_multiplier() -&gt; Weight {
+		Weight::from_parts(<span class="number">15_876_000</span>, <span class="number">0</span>)
 			.saturating_add(RocksDbWeight::get().writes(<span class="number">1_u64</span>))
 	}
 }
