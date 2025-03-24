@@ -587,19 +587,14 @@ impl<T: Config> Pallet<T> {
         IdentityOf::<T>::modify_values(|v| {
             v.deposit /= denominator;
             for (_, judgement) in v.judgements.iter_mut() {
-                match judgement {
-                    pallet_identity::Judgement::FeePaid(fee) => {
-                        *fee /= denominator;
-                    }
-                    _ => {}
+                if let pallet_identity::Judgement::FeePaid(fee) = judgement {
+                    *fee /= denominator;
                 }
             }
         });
         Registrars::<T>::mutate(|v| {
-            for registrar in v.iter_mut() {
-                if let Some(registrar) = registrar {
-                    registrar.fee /= denominator;
-                }
+            for registrar in v.iter_mut().flatten() {
+                registrar.fee /= denominator;
             }
         });
         Ok(())
