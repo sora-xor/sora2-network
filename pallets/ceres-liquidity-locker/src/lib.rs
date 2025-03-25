@@ -44,8 +44,8 @@ pub mod pallet {
     use crate::{migrations, LockInfo, StorageVersion, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{
-        balance, AssetIdOf, AssetManager, BalanceOf, DemeterFarming, OnDenominate, XykPool, TBCD,
-        XOR,
+        balance, AssetIdOf, AssetManager, BalanceOf, DemeterFarming, FixedWrapper256, OnDenominate,
+        XykPool, TBCD, XOR,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
@@ -438,18 +438,30 @@ pub mod pallet {
 
     pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
-        fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+        fn on_denominate(_factor: &BalanceOf<T>) -> Result<(), DispatchError> {
             let xor = AssetIdOf::<T>::from(XOR);
             let tbcd = AssetIdOf::<T>::from(TBCD);
 
             LockerData::<T>::translate_values(
                 |mut locks: Vec<LockInfo<BalanceOf<T>, _, AssetIdOf<T>>>| {
                     for lock in &mut locks {
-                        if lock.asset_b == xor || lock.asset_b == tbcd {
-                            lock.pool_tokens = lock
-                                .pool_tokens
-                                .checked_div(*factor)
+                        if lock.asset_a == xor
+                            || lock.asset_b == xor
+                            || lock.asset_a == tbcd
+                            || lock.asset_b == tbcd
+                        {
+                            let fxw_issuance_ratio = T::XYKPool::calculate_fxw_issuance_ratio(
+                                &lock.asset_a,
+                                &lock.asset_b,
+                            )?;
+                            let new_pool_tokens = (FixedWrapper256::from(lock.pool_tokens)
+                                / fxw_issuance_ratio)
+                                .try_into_balance()
                                 .unwrap_or(lock.pool_tokens);
+                            if new_pool_tokens.is_zero() {
+                                return None;
+                            };
+                            lock.pool_tokens = new_pool_tokens;
                         }
                     }
                     Some(locks)

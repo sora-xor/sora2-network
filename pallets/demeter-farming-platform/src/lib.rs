@@ -12,7 +12,10 @@ mod mock;
 mod tests;
 
 use codec::{Decode, Encode};
-use common::{AssetIdOf, Balance, BalanceOf, DemeterFarming, OnDenominate, TBCD, XOR};
+use common::{
+    AssetIdOf, Balance, BalanceOf, DemeterFarming, FixedWrapper256, OnDenominate, XykPool, TBCD,
+    XOR,
+};
 use sp_std::marker::PhantomData;
 pub use weights::WeightInfo;
 
@@ -64,6 +67,7 @@ pub struct UserInfo<AssetId> {
 
 use frame_support::dispatch::DispatchError;
 pub use pallet::*;
+use sp_runtime::traits::Zero;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -1374,12 +1378,30 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         update_token_info(&tbcd);
 
         for (pool_asset, reward_asset, mut pool_infos) in <Pools<T>>::iter() {
-            for pool_info in pool_infos.iter_mut() {
-                if pool_asset == xor || pool_asset == tbcd {
-                    pool_info.total_tokens_in_pool = pool_info
-                        .total_tokens_in_pool
-                        .checked_div(*factor)
-                        .unwrap_or(pool_info.total_tokens_in_pool);
+            let mut i = 0;
+            let mut updated = false;
+
+            while i < pool_infos.len() {
+                let pool_info = &mut pool_infos[i];
+
+                if pool_asset == xor
+                    || pool_asset == tbcd
+                    || pool_info.base_asset == xor
+                    || pool_info.base_asset == tbcd
+                {
+                    updated = true;
+                    if let Some(fxw_issuance_ratio) =
+                        T::XYKPool::calculate_fxw_issuance_ratio(&pool_info.base_asset, &pool_asset)
+                    {
+                        pool_info.total_tokens_in_pool =
+                            (FixedWrapper256::from(pool_info.total_tokens_in_pool)
+                                / fxw_issuance_ratio)
+                                .try_into_balance()
+                                .unwrap_or(pool_info.total_tokens_in_pool);
+                    } else {
+                        pool_infos.remove(i);
+                        continue;
+                    }
                 }
 
                 if reward_asset == xor || reward_asset == tbcd {
@@ -1391,15 +1413,50 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
                         .rewards_to_be_distributed
                         .checked_div(*factor)
                         .unwrap_or(pool_info.rewards_to_be_distributed);
+                    updated = true;
                 }
+
+                i += 1;
             }
 
-            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
+            if updated {
+                <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
+            }
         }
 
         UserInfos::<T>::iter().for_each(|(account, mut user_infos)| {
+            let mut i = 0;
             let mut updated = false;
-            for user_info in &mut user_infos {
+
+            while i < user_infos.len() {
+                let user_info = &mut user_infos[i];
+
+                if user_info.pool_asset == xor
+                    || user_info.base_asset == xor
+                    || user_info.pool_asset == tbcd
+                    || user_info.base_asset == tbcd
+                {
+                    updated = true;
+                    if let Some(fxw_issuance_ratio) = T::XYKPool::calculate_fxw_issuance_ratio(
+                        &user_info.base_asset,
+                        &user_info.pool_asset,
+                    ) {
+                        let new_pooled_tokens = (FixedWrapper256::from(user_info.pooled_tokens)
+                            / fxw_issuance_ratio)
+                            .try_into_balance()
+                            .unwrap_or(user_info.pooled_tokens);
+                        if new_pooled_tokens.is_zero() {
+                            user_infos.remove(i);
+                            continue;
+                        } else {
+                            user_info.pooled_tokens = new_pooled_tokens;
+                        }
+                    } else {
+                        user_infos.remove(i);
+                        continue;
+                    }
+                }
+
                 if user_info.reward_asset == xor || user_info.reward_asset == tbcd {
                     user_info.rewards = user_info
                         .rewards
@@ -1407,14 +1464,10 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
                         .unwrap_or(user_info.rewards);
                     updated = true;
                 }
-                if user_info.pool_asset == xor || user_info.pool_asset == tbcd {
-                    user_info.pooled_tokens = user_info
-                        .pooled_tokens
-                        .checked_div(*factor)
-                        .unwrap_or(user_info.pooled_tokens);
-                    updated = true;
-                }
+
+                i += 1;
             }
+
             if updated {
                 UserInfos::<T>::insert(account, user_infos);
             }
