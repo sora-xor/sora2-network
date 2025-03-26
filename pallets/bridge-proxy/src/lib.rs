@@ -754,6 +754,7 @@ impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>> for Pallet<T> {
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for Pallet<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
         LockedAssets::<T>::translate(|_, asset_id, value| {
             if asset_id == common::XOR.into() || asset_id == common::TBCD.into() {
                 Some(value / factor)

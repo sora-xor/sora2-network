@@ -1920,6 +1920,7 @@ pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     // For now denominate only for quote and divisible, if denominate for base and indivisible need add logic for it
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
         let factor = BalanceUnit::divisible(*factor);
 
         let quote_books = OrderBooks::<T>::iter()

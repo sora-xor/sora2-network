@@ -2038,6 +2038,7 @@ pub struct DenominateTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> frame_support::dispatch::DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
         let reserves_account_id =
             &Technical::<T>::tech_account_id_to_account_id(&Pallet::<T>::reserves_account_id())?;
         Pallet::<T>::update_collateral_reserves(&TBCD.into(), reserves_account_id)?;

@@ -132,6 +132,7 @@ pub trait ShouldRemoveAccount<AccountData> {
 pub mod pallet {
     use super::*;
     use common::OnDenominate;
+    use frame_support::storage::generator::StorageMap;
     use frame_support::{pallet_prelude::*, traits::Currency};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{ConvertBack, One};
@@ -352,6 +353,7 @@ pub mod pallet {
                 keep: read.saturating_sub(removed),
                 removed,
             });
+            log::info!("Removed accounts {removed}, read {read}");
             T::DbWeight::get().reads_writes(read, removed)
         }
     }
@@ -366,6 +368,7 @@ pub mod pallet {
                 CurrentMigrationStage::<T>::get() == MigrationStage::Initial,
                 Error::<T>::WrongMigrationStage
             );
+            RemoveAccountsCursor::<T>::set(Some(frame_system::Account::<T>::prefix_hash()));
             CurrentMigrationStage::<T>::set(MigrationStage::RemoveAccounts);
             Self::deposit_event(Event::<T>::MigrationStageUpdated {
                 stage: MigrationStage::RemoveAccounts,

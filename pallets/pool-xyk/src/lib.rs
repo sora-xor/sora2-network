@@ -45,6 +45,7 @@ use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
+use common::AssetManager;
 use common::{
     fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetRegulator, BalanceOf, DEXInfo,
     DexInfoProvider, EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
@@ -924,12 +925,18 @@ pub struct DenominateXor<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
         for dex_id in T::DexInfoProvider::list_dex_ids() {
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             if dex_info.base_asset_id == XOR.into() {
                 for (target_asset_id, (pool_account, _fee_account)) in
                     Properties::<T>::iter_prefix(dex_info.base_asset_id)
                 {
+                    if <T as Config>::AssetInfoProvider::total_balance(&XOR.into(), &pool_account)?
+                        < T::MIN_XOR
+                    {
+                        T::AssetManager::mint_unchecked(&XOR.into(), &pool_account, T::MIN_XOR)?;
+                    }
                     Pallet::<T>::fix_pool_parameters(
                         dex_id,
                         &pool_account,
@@ -940,6 +947,11 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
             } else if let Some((pool_account, _fee_account)) =
                 Properties::<T>::get(&dex_info.base_asset_id, AssetIdOf::<T>::from(XOR))
             {
+                if <T as Config>::AssetInfoProvider::total_balance(&XOR.into(), &pool_account)?
+                    < T::MIN_XOR
+                {
+                    T::AssetManager::mint_unchecked(&XOR.into(), &pool_account, T::MIN_XOR)?;
+                }
                 Pallet::<T>::fix_pool_parameters(
                     dex_id,
                     &pool_account,
@@ -956,11 +968,17 @@ pub struct DenominateTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
         for dex_id in T::DexInfoProvider::list_dex_ids() {
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             if let Some((pool_account, _fee_account)) =
                 Properties::<T>::get(&dex_info.base_asset_id, AssetIdOf::<T>::from(TBCD))
             {
+                if <T as Config>::AssetInfoProvider::total_balance(&TBCD.into(), &pool_account)?
+                    < T::MIN_XOR
+                {
+                    T::AssetManager::mint_unchecked(&TBCD.into(), &pool_account, T::MIN_XOR)?;
+                }
                 Pallet::<T>::fix_pool_parameters(
                     dex_id,
                     &pool_account,

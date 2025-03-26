@@ -587,6 +587,7 @@ impl<T: Config> OnPoolReservesChanged<AssetIdOf<T>> for Pallet<T> {
 pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
         Pallet::<T>::reserves_changed(&XOR.into());
         Pallet::<T>::reserves_changed(&common::TBCD.into());
         Ok(())

@@ -843,6 +843,7 @@ pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
         let accounts: Vec<T::AccountId> = VestingSchedules::<T>::iter_keys().collect();
         let block_number = <frame_system::Pallet<T>>::block_number();
         for account in accounts {

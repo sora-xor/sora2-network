@@ -2385,6 +2385,7 @@ pub mod pallet {
     pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
             for asset_id in [XOR, TBCD] {
                 for (identifier, _) in CollateralInfos::<T>::iter() {
                     if identifier.collateral_asset_id == asset_id.into() {

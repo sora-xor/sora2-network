@@ -257,6 +257,7 @@ impl<T: Config> ReferrerAccountProvider<T::AccountId> for Pallet<T> {
 pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
         ReferrerBalances::<T>::iter_keys().for_each(|account| {
             ReferrerBalances::<T>::mutate(account, |maybe_balance| {
                 if let Some(balance) = maybe_balance {

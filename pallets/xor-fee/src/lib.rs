@@ -477,6 +477,7 @@ where
 pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<common::BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(factor: &common::BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
         <XorToBuyBack<T>>::mutate(|amount| {
             if let Some(new_amount) = amount.checked_div(*factor) {
                 *amount = new_amount;

@@ -439,6 +439,7 @@ pub mod pallet {
     pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
             let xor = AssetIdOf::<T>::from(XOR);
             let tbcd = AssetIdOf::<T>::from(TBCD);
 
