@@ -33,8 +33,9 @@ use crate::prelude::{
 };
 use crate::{
     Amount, AssetId32, AssetName, AssetSymbol, AssetType, BalancePrecision, ContentSource,
-    Description, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle,
-    OrderBookId, PredefinedAssetId, PriceVariant, PswapRemintInfo, RewardReason,
+    Description, Fixed, FixedWrapper256, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, Oracle, OrderBookId, PredefinedAssetId, PriceVariant, PswapRemintInfo,
+    RewardReason,
 };
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
@@ -55,6 +56,7 @@ use sp_runtime::traits::Member;
 use crate::alt::DiscreteQuotation;
 use crate::primitives::Balance;
 use codec::{Decode, Encode, MaxEncodedLen};
+use num_traits::One;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec::Vec;
 
@@ -859,6 +861,22 @@ pub trait XykPool<AccountId, AssetId> {
     ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
     }
+
+    fn actual_reserves(
+        _pool_acc_id: &AccountId,
+        _base_asset_id: &AssetId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn calculate_fxw_issuance_ratio(
+        _base_asset: &AssetId,
+        _target_asset: &AssetId,
+    ) -> Option<FixedWrapper256> {
+        None
+    }
 }
 
 pub trait DemeterFarming<AccountId, AssetId> {
@@ -1646,3 +1664,62 @@ impl<AssetId, Moment, ContentSource> ExtendedAssetsManager<AssetId, Moment, Cont
         Ok(())
     }
 }
+
+pub trait OnDenominate<Balance> {
+    // Factor is number by which balance is divided
+    fn on_denominate(factor: &Balance) -> DispatchResult;
+}
+
+pub trait Denominator<AssetId, Balance> {
+    fn current_factor(asset_id: &AssetId) -> Balance;
+}
+
+impl<AssetId, Balance: One> Denominator<AssetId, Balance> for () {
+    fn current_factor(_asset_id: &AssetId) -> Balance {
+        Balance::one()
+    }
+}
+
+macro_rules! impl_on_denominate_for_tuples {
+    () => {
+        impl<Balance> OnDenominate<Balance> for () {
+            fn on_denominate(_factor: &Balance) -> DispatchResult {
+                Ok(())
+            }
+        }
+    };
+
+    ($first:ident) => {
+        impl<
+            Balance,
+            $first: OnDenominate<Balance>,
+        > OnDenominate<Balance> for ($first,) {
+            fn on_denominate(factor: &Balance) -> DispatchResult {
+                $first::on_denominate(factor)?;
+                Ok(())
+            }
+        }
+
+        impl_on_denominate_for_tuples!();
+    };
+
+    ($first:ident, $($types:ident),*) => {
+        impl<
+            Balance,
+            $first: OnDenominate<Balance>,
+            $($types: OnDenominate<Balance>),+
+        > OnDenominate<Balance> for ($first, $($types,)+) {
+            fn on_denominate(factor: &Balance) -> DispatchResult {
+                $first::on_denominate(factor)?;
+                $(
+                    $types::on_denominate(factor)?;
+                )+
+                Ok(())
+            }
+        }
+
+        impl_on_denominate_for_tuples!($($types),*);
+    };
+}
+
+impl_on_denominate_for_tuples!(T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13);

@@ -33,6 +33,7 @@ use core::marker::PhantomData;
 use bridge_types::ton::TonBalance;
 use bridge_types::{GenericAccount, GenericAssetId, GenericBalance};
 use codec::{Decode, Encode};
+use common::Denominator;
 use frame_support::dispatch::DispatchClass;
 use frame_support::traits::{Currency, OnUnbalanced};
 use frame_support::weights::constants::BlockExecutionWeight;
@@ -404,6 +405,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, crate::Balance)> {
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.checked_div(denomination_factor)?;
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(sidechain_precision, thischain_precision, amount)
             .map(|(a, b)| (b, a))
@@ -414,6 +417,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, crate::Balance)> {
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.checked_mul(denomination_factor)?;
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
     }
@@ -427,6 +432,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: U256,
     ) -> Option<(crate::Balance, U256)> {
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.checked_div(denomination_factor.into())?;
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(
             sidechain_precision,
@@ -441,6 +448,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, U256)> {
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.checked_mul(denomination_factor)?;
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
             .map(|(a, b)| (a, b.into()))
@@ -455,8 +464,10 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: TonBalance,
     ) -> Option<(crate::Balance, TonBalance)> {
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.balance().checked_div(denomination_factor)?;
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
-        Self::convert_precision(sidechain_precision, thischain_precision, amount.balance())
+        Self::convert_precision(sidechain_precision, thischain_precision, amount)
             .map(|(a, b)| (b, TonBalance::new(a)))
     }
 
@@ -465,6 +476,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         sidechain_precision: u8,
         amount: crate::Balance,
     ) -> Option<(crate::Balance, TonBalance)> {
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.checked_mul(denomination_factor)?;
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
         Self::convert_precision(thischain_precision, sidechain_precision, amount)
             .map(|(a, b)| (a, TonBalance::new(b)))
@@ -481,17 +494,18 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         amount: GenericBalance,
     ) -> Option<(crate::Balance, GenericBalance)> {
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
         match amount {
             GenericBalance::Substrate(val) => BalancePrecisionConverter::convert_precision(
                 sidechain_precision,
                 thischain_precision,
-                val,
+                val.checked_div(denomination_factor)?,
             )
             .map(|(a, b)| (b, GenericBalance::Substrate(a))),
             GenericBalance::TON(val) => BalancePrecisionConverter::convert_precision(
                 sidechain_precision,
                 thischain_precision,
-                val.balance(),
+                val.balance().checked_div(denomination_factor)?,
             )
             .map(|(a, b)| (b, GenericBalance::TON(TonBalance::new(a)))),
             GenericBalance::EVM(_) => None,
@@ -504,6 +518,8 @@ impl bridge_types::traits::BalancePrecisionConverter<crate::AssetId, crate::Bala
         amount: crate::Balance,
     ) -> Option<(crate::Balance, GenericBalance)> {
         let thischain_precision = crate::Assets::asset_infos_v2(asset_id).precision;
+        let denomination_factor = crate::Denomination::current_factor(asset_id);
+        let amount = amount.checked_mul(denomination_factor)?;
         BalancePrecisionConverter::convert_precision(
             thischain_precision,
             sidechain_precision,

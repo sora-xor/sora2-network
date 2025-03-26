@@ -43,7 +43,10 @@ pub use pallet::*;
 pub mod pallet {
     use crate::{migrations, LockInfo, StorageVersion, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
-    use common::{balance, AssetIdOf, AssetManager, DemeterFarming, XykPool};
+    use common::{
+        balance, AssetIdOf, AssetManager, BalanceOf, DemeterFarming, OnDenominate, XykPool, TBCD,
+        XOR,
+    };
     use frame_support::pallet_prelude::*;
     use frame_support::sp_runtime::traits::Zero;
     use frame_system::ensure_signed;
@@ -430,6 +433,30 @@ pub mod pallet {
                 pool_tokens,
             );
             return result;
+        }
+    }
+
+    pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+    impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+        fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+            let xor = AssetIdOf::<T>::from(XOR);
+            let tbcd = AssetIdOf::<T>::from(TBCD);
+
+            LockerData::<T>::translate_values(
+                |mut locks: Vec<LockInfo<BalanceOf<T>, _, AssetIdOf<T>>>| {
+                    for lock in &mut locks {
+                        if lock.asset_b == xor || lock.asset_b == tbcd {
+                            lock.pool_tokens = lock
+                                .pool_tokens
+                                .checked_div(*factor)
+                                .unwrap_or(lock.pool_tokens);
+                        }
+                    }
+                    Some(locks)
+                },
+            );
+            Ok(())
         }
     }
 }
