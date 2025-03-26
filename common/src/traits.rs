@@ -33,8 +33,9 @@ use crate::prelude::{
 };
 use crate::{
     Amount, AssetId32, AssetName, AssetSymbol, AssetType, BalancePrecision, ContentSource,
-    Description, Fixed, LiquiditySourceFilter, LiquiditySourceId, LiquiditySourceType, Oracle,
-    OrderBookId, PredefinedAssetId, PriceVariant, PswapRemintInfo, RewardReason,
+    Description, Fixed, FixedWrapper256, LiquiditySourceFilter, LiquiditySourceId,
+    LiquiditySourceType, Oracle, OrderBookId, PredefinedAssetId, PriceVariant, PswapRemintInfo,
+    RewardReason,
 };
 
 use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
@@ -859,6 +860,22 @@ pub trait XykPool<AccountId, AssetId> {
         _pool_tokens: Balance,
     ) -> Result<(), DispatchError> {
         Err(DispatchError::CannotLookup)
+    }
+
+    fn actual_reserves(
+        _pool_acc_id: &AccountId,
+        _base_asset_id: &AssetId,
+        _input_asset_id: &AssetId,
+        _output_asset_id: &AssetId,
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        Err(DispatchError::CannotLookup)
+    }
+
+    fn calculate_fxw_issuance_ratio(
+        _base_asset: &AssetId,
+        _target_asset: &AssetId,
+    ) -> Option<FixedWrapper256> {
+        None
     }
 }
 

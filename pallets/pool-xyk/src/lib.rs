@@ -163,6 +163,29 @@ impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
 
         Ok(())
     }
+
+    fn actual_reserves(
+        pool_acc_id: &T::AccountId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        Self::get_actual_reserves(pool_acc_id, base_asset_id, input_asset_id, output_asset_id)
+    }
+
+    fn calculate_fxw_issuance_ratio(
+        base_asset: &AssetIdOf<T>,
+        target_asset: &AssetIdOf<T>,
+    ) -> Option<FixedWrapper256> {
+        let (pool_acc, _) = Self::properties_of_pool(*base_asset, *target_asset)?;
+        let (b_in_pool, t_in_pool, _max_output_available) =
+            Self::actual_reserves(&pool_acc, &base_asset, &base_asset, &target_asset).ok()?;
+        let fxw_real_issuance =
+            FixedWrapper256::from(b_in_pool).multiply_and_sqrt(&FixedWrapper256::from(t_in_pool));
+        let current_issuance = Self::total_issuance(&pool_acc).ok()?;
+        let fxw_current_issuance = FixedWrapper256::from(current_issuance);
+        Some(fxw_current_issuance / fxw_real_issuance)
+    }
 }
 
 impl<T: Config> Pallet<T> {
