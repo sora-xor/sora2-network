@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["MigrationStage"],"mod":["pallet"],"struct":["SpanRecord","StakingLedger","UnappliedSlash","UnlockChunk"],"trait":["ShouldRemoveAccount"]};

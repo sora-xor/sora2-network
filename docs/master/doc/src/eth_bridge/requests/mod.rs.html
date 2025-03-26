@@ -957,6 +957,14 @@
 <a href="#942" id="942">942</a>
 <a href="#943" id="943">943</a>
 <a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -994,9 +1002,10 @@
     RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::prelude::Balance;
 <span class="kw">use </span>common::AssetInfoProvider;
+<span class="kw">use </span>common::Denominator;
 <span class="kw">use </span>ethabi::Token;
+<span class="kw">use </span>ethereum_types::U256;
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::log::warn;
 <span class="kw">use </span>frame_support::sp_runtime::app_crypto::sp_core;
@@ -1262,7 +1271,7 @@
 
 <span class="kw">impl</span>&lt;T: Config&gt; IncomingRequest&lt;T&gt; {
     <span class="kw">pub fn </span>try_from_contract_event(
-        event: ContractEvent&lt;EthAddress, T::AccountId, Balance&gt;,
+        event: ContractEvent&lt;EthAddress, T::AccountId, U256&gt;,
         incoming_request: LoadIncomingTransactionRequest&lt;T&gt;,
         at_height: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, Error&lt;T&gt;&gt; {
@@ -1284,6 +1293,13 @@
                     network_id,
                 )<span class="question-mark">?
                 </span>.ok_or(Error::&lt;T&gt;::UnsupportedAssetId)<span class="question-mark">?</span>;
+                <span class="kw">let </span>denomination_factor = T::Denominator::current_factor(<span class="kw-2">&amp;</span>asset_id);
+                <span class="kw">let </span>amount = u128::try_from(
+                    amount
+                        .checked_div(denomination_factor.into())
+                        .ok_or(Error::&lt;T&gt;::FailedToApplyDenomination)<span class="question-mark">?</span>,
+                )
+                .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::InvalidAmount)<span class="question-mark">?</span>;
                 <span class="kw">let </span>amount = <span class="kw">if </span>!asset_kind.is_owned() {
                     <span class="kw">let </span>sidechain_precision =
                         SidechainAssetPrecision::&lt;T&gt;::get(network_id, <span class="kw-2">&amp;</span>asset_id);

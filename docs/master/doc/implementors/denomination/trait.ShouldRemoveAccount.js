@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"framenode_runtime":[["impl <a class=\"trait\" href=\"denomination/trait.ShouldRemoveAccount.html\" title=\"trait denomination::ShouldRemoveAccount\">ShouldRemoveAccount</a>&lt;AccountInfo&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u32.html\">u32</a>, AccountData&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.u128.html\">u128</a>&gt;&gt;&gt; for <a class=\"struct\" href=\"framenode_runtime/struct.ShouldRemoveAccount.html\" title=\"struct framenode_runtime::ShouldRemoveAccount\">ShouldRemoveAccount</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

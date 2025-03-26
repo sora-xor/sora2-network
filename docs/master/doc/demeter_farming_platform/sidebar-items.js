@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["StorageVersion"],"mod":["migrations","pallet","weights"],"struct":["PoolData","TokenInfo","UserInfo"]};
+window.SIDEBAR_ITEMS = {"enum":["StorageVersion"],"mod":["migrations","pallet","weights"],"struct":["DenominateXorAndTbcd","PoolData","TokenInfo","UserInfo"]};

@@ -1981,6 +1981,10 @@
 <a href="#1966" id="1966">1966</a>
 <a href="#1967" id="1967">1967</a>
 <a href="#1968" id="1968">1968</a>
+<a href="#1969" id="1969">1969</a>
+<a href="#1970" id="1970">1970</a>
+<a href="#1971" id="1971">1971</a>
+<a href="#1972" id="1972">1972</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2374,6 +2378,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
             ContentSource,
             Description,
         &gt;;
+
+        <span class="kw">type </span>Denominator: common::Denominator&lt;<span class="self">Self</span>::AssetId, Balance&gt;;
     }
 
     <span class="doccomment">/// The current storage version.
@@ -3217,6 +3223,8 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
         </span>ReadStorageError,
         <span class="doccomment">/// Bridge needs to have at least 3 peers for migration. Add new peer
         </span>UnsafeMigration,
+        <span class="doccomment">/// Probably denomination factor is too big and we can&#39;t apply it
+        </span>FailedToApplyDenomination,
     }
 
     <span class="kw">impl</span>&lt;T: Config&gt; Error&lt;T&gt; {

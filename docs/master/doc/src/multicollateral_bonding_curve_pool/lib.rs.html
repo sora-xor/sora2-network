@@ -2048,6 +2048,31 @@
 <a href="#2033" id="2033">2033</a>
 <a href="#2034" id="2034">2034</a>
 <a href="#2035" id="2035">2035</a>
+<a href="#2036" id="2036">2036</a>
+<a href="#2037" id="2037">2037</a>
+<a href="#2038" id="2038">2038</a>
+<a href="#2039" id="2039">2039</a>
+<a href="#2040" id="2040">2040</a>
+<a href="#2041" id="2041">2041</a>
+<a href="#2042" id="2042">2042</a>
+<a href="#2043" id="2043">2043</a>
+<a href="#2044" id="2044">2044</a>
+<a href="#2045" id="2045">2045</a>
+<a href="#2046" id="2046">2046</a>
+<a href="#2047" id="2047">2047</a>
+<a href="#2048" id="2048">2048</a>
+<a href="#2049" id="2049">2049</a>
+<a href="#2050" id="2050">2050</a>
+<a href="#2051" id="2051">2051</a>
+<a href="#2052" id="2052">2052</a>
+<a href="#2053" id="2053">2053</a>
+<a href="#2054" id="2054">2054</a>
+<a href="#2055" id="2055">2055</a>
+<a href="#2056" id="2056">2056</a>
+<a href="#2057" id="2057">2057</a>
+<a href="#2058" id="2058">2058</a>
+<a href="#2059" id="2059">2059</a>
+<a href="#2060" id="2060">2060</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2092,8 +2117,6 @@
 
 <span class="kw">mod </span>benchmarking;
 
-<span class="kw">use </span>core::convert::TryInto;
-
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::arithmetic::identities::Zero;
@@ -2104,10 +2127,11 @@
 };
 <span class="kw">use </span>common::{
     balance, fixed, fixed_u256, fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetManager,
-    BuyBackHandler, DEXId, DexIdOf, FixedWrapper256, GetMarketInfo, LiquidityProxyTrait,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PriceVariant,
-    RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD, VAL, XOR, XST,
+    BalanceOf, BuyBackHandler, DEXId, DexIdOf, FixedWrapper256, GetMarketInfo, LiquidityProxyTrait,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, OnDenominate,
+    PriceVariant, RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD, VAL, XOR, XST,
 };
+<span class="kw">use </span>core::convert::TryInto;
 <span class="kw">use </span>frame_support::traits::Get;
 <span class="kw">use </span>frame_support::weights::Weight;
 <span class="kw">use </span>frame_support::{ensure, fail};
@@ -2115,6 +2139,7 @@
 <span class="kw">use </span>permissions::{Scope, BURN, MINT};
 <span class="kw">use </span>sp_runtime::{traits::One, DispatchError, DispatchResult, Saturating};
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
+<span class="kw">use </span>sp_std::marker::PhantomData;
 <span class="kw">use </span>sp_std::vec::Vec;
 <span class="kw">pub use </span>weights::WeightInfo;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
@@ -4081,6 +4106,31 @@
 
     <span class="kw">fn </span>enabled_target_assets() -&gt; BTreeSet&lt;AssetIdOf&lt;T&gt;&gt; {
         EnabledTargets::&lt;T&gt;::get()
+    }
+}
+
+<span class="kw">pub struct </span>DenominateTbcd&lt;T: Config&gt;(PhantomData&lt;T&gt;);
+
+<span class="kw">impl</span>&lt;T: Config&gt; OnDenominate&lt;BalanceOf&lt;T&gt;&gt; <span class="kw">for </span>DenominateTbcd&lt;T&gt; {
+    <span class="kw">fn </span>on_denominate(factor: <span class="kw-2">&amp;</span>BalanceOf&lt;T&gt;) -&gt; frame_support::dispatch::DispatchResult {
+        <span class="macro">frame_support::log::info!</span>(<span class="string">&quot;{}::on_denominate({})&quot;</span>, <span class="macro">module_path!</span>(), factor);
+        <span class="kw">let </span>reserves_account_id =
+            <span class="kw-2">&amp;</span>Technical::&lt;T&gt;::tech_account_id_to_account_id(<span class="kw-2">&amp;</span>Pallet::&lt;T&gt;::reserves_account_id())<span class="question-mark">?</span>;
+        Pallet::&lt;T&gt;::update_collateral_reserves(<span class="kw-2">&amp;</span>TBCD.into(), reserves_account_id)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>block = frame_system::Pallet::&lt;T&gt;::block_number();
+        <span class="kw">let </span>max_block =
+            block + T::RETRY_DISTRIBUTION_FREQUENCY * T::SPLIT_FAILED_DISTRIBUTION_COUNT.into();
+
+        <span class="kw">while </span>block &lt; max_block {
+            PendingFreeReserves::&lt;T&gt;::mutate(block, |reserves| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(balance) = reserves.get_mut(<span class="kw-2">&amp;</span>TBCD.into()) {
+                    <span class="kw-2">*</span>balance = balance.checked_div(<span class="kw-2">*</span>factor).unwrap_or(<span class="kw-2">*</span>balance);
+                }
+            });
+            block += One::one();
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

@@ -1,0 +1,4 @@
+(function() {var implementors = {
+"common":[],
+"denomination":[["impl&lt;T: <a class=\"trait\" href=\"denomination/pallet/trait.Config.html\" title=\"trait denomination::pallet::Config\">Config</a>&gt; Denominator&lt;AssetId32&lt;PredefinedAssetId&gt;, &lt;T as Config&lt;<a class=\"primitive\" href=\"https://doc.rust-lang.org/nightly/std/primitive.unit.html\">()</a>&gt;&gt;::Balance&gt; for <a class=\"struct\" href=\"denomination/pallet/struct.Pallet.html\" title=\"struct denomination::pallet::Pallet\">Pallet</a>&lt;T&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

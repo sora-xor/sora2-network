@@ -1927,6 +1927,68 @@
 <a href="#1912" id="1912">1912</a>
 <a href="#1913" id="1913">1913</a>
 <a href="#1914" id="1914">1914</a>
+<a href="#1915" id="1915">1915</a>
+<a href="#1916" id="1916">1916</a>
+<a href="#1917" id="1917">1917</a>
+<a href="#1918" id="1918">1918</a>
+<a href="#1919" id="1919">1919</a>
+<a href="#1920" id="1920">1920</a>
+<a href="#1921" id="1921">1921</a>
+<a href="#1922" id="1922">1922</a>
+<a href="#1923" id="1923">1923</a>
+<a href="#1924" id="1924">1924</a>
+<a href="#1925" id="1925">1925</a>
+<a href="#1926" id="1926">1926</a>
+<a href="#1927" id="1927">1927</a>
+<a href="#1928" id="1928">1928</a>
+<a href="#1929" id="1929">1929</a>
+<a href="#1930" id="1930">1930</a>
+<a href="#1931" id="1931">1931</a>
+<a href="#1932" id="1932">1932</a>
+<a href="#1933" id="1933">1933</a>
+<a href="#1934" id="1934">1934</a>
+<a href="#1935" id="1935">1935</a>
+<a href="#1936" id="1936">1936</a>
+<a href="#1937" id="1937">1937</a>
+<a href="#1938" id="1938">1938</a>
+<a href="#1939" id="1939">1939</a>
+<a href="#1940" id="1940">1940</a>
+<a href="#1941" id="1941">1941</a>
+<a href="#1942" id="1942">1942</a>
+<a href="#1943" id="1943">1943</a>
+<a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
+<a href="#1948" id="1948">1948</a>
+<a href="#1949" id="1949">1949</a>
+<a href="#1950" id="1950">1950</a>
+<a href="#1951" id="1951">1951</a>
+<a href="#1952" id="1952">1952</a>
+<a href="#1953" id="1953">1953</a>
+<a href="#1954" id="1954">1954</a>
+<a href="#1955" id="1955">1955</a>
+<a href="#1956" id="1956">1956</a>
+<a href="#1957" id="1957">1957</a>
+<a href="#1958" id="1958">1958</a>
+<a href="#1959" id="1959">1959</a>
+<a href="#1960" id="1960">1960</a>
+<a href="#1961" id="1961">1961</a>
+<a href="#1962" id="1962">1962</a>
+<a href="#1963" id="1963">1963</a>
+<a href="#1964" id="1964">1964</a>
+<a href="#1965" id="1965">1965</a>
+<a href="#1966" id="1966">1966</a>
+<a href="#1967" id="1967">1967</a>
+<a href="#1968" id="1968">1968</a>
+<a href="#1969" id="1969">1969</a>
+<a href="#1970" id="1970">1970</a>
+<a href="#1971" id="1971">1971</a>
+<a href="#1972" id="1972">1972</a>
+<a href="#1973" id="1973">1973</a>
+<a href="#1974" id="1974">1974</a>
+<a href="#1975" id="1975">1975</a>
+<a href="#1976" id="1976">1976</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1961,22 +2023,23 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
+#![feature(is_some_and)]
 
 </span><span class="kw">use </span>common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 <span class="kw">use </span>common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
     SwapOutcome, TradingPair,
 };
-<span class="kw">use </span>common::AssetIdOf;
-<span class="kw">use </span>common::LiquiditySourceType;
+<span class="kw">use </span>common::{AssetIdOf, BalanceOf, OnDenominate};
 <span class="kw">use </span>common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, OrderBookId, OrderBookManager, PriceVariant,
     RewardReason, SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair,
     TradingPairSourceManager,
 };
+<span class="kw">use </span>common::{LiquiditySourceType, XOR};
 <span class="kw">use </span>core::fmt::Debug;
-<span class="kw">use </span>frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
+<span class="kw">use </span>frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo};
 <span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchError;
 <span class="kw">use </span>frame_support::traits::{Get, Time};
@@ -1987,6 +2050,7 @@
 };
 <span class="kw">use </span>sp_runtime::BoundedVec;
 <span class="kw">use </span>sp_std::collections::btree_map::BTreeMap;
+<span class="kw">use </span>sp_std::marker::PhantomData;
 <span class="kw">use </span>sp_std::vec::Vec;
 
 <span class="kw">pub mod </span>weights;
@@ -3839,6 +3903,66 @@
 
     <span class="kw">fn </span>check_rewards_weight() -&gt; Weight {
         Weight::zero()
+    }
+}
+
+<span class="kw">pub struct </span>DenominateXor&lt;T: Config&gt;(PhantomData&lt;T&gt;);
+
+<span class="kw">impl</span>&lt;T: Config&gt; OnDenominate&lt;BalanceOf&lt;T&gt;&gt; <span class="kw">for </span>DenominateXor&lt;T&gt; {
+    <span class="comment">// For now denominate only for quote and divisible, if denominate for base and indivisible need add logic for it
+    </span><span class="kw">fn </span>on_denominate(factor: <span class="kw-2">&amp;</span>BalanceOf&lt;T&gt;) -&gt; DispatchResult {
+        <span class="macro">frame_support::log::info!</span>(<span class="string">&quot;{}::on_denominate({})&quot;</span>, <span class="macro">module_path!</span>(), factor);
+        <span class="kw">let </span>factor = BalanceUnit::divisible(<span class="kw-2">*</span>factor);
+
+        <span class="kw">let </span>quote_books = OrderBooks::&lt;T&gt;::iter()
+            .filter(|order_book| order_book.<span class="number">0</span>.quote.eq(<span class="kw-2">&amp;</span>XOR.into()))
+            .map(|order_book| order_book.<span class="number">0</span>)
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+
+        <span class="kw">for </span>(order_book_id, order_id, <span class="kw-2">mut </span>order) <span class="kw">in </span>LimitOrders::&lt;T&gt;::iter() {
+            <span class="kw">if </span>quote_books.contains(<span class="kw-2">&amp;</span>order_book_id) {
+                order.price = order.price.checked_div(<span class="kw-2">&amp;</span>factor).unwrap_or(order.price);
+                LimitOrders::&lt;T&gt;::insert(order_book_id, order_id, order);
+            }
+        }
+
+        <span class="kw">for </span>(order_book_id, price, orders) <span class="kw">in </span>Bids::&lt;T&gt;::iter() {
+            <span class="kw">if </span>quote_books.contains(<span class="kw-2">&amp;</span>order_book_id) {
+                <span class="kw">let </span>new_price = price.checked_div(<span class="kw-2">&amp;</span>factor).unwrap_or(price);
+                Bids::&lt;T&gt;::remove(order_book_id, price);
+                Bids::&lt;T&gt;::insert(order_book_id, new_price, orders);
+            }
+        }
+        <span class="kw">for </span>(order_book_id, price, orders) <span class="kw">in </span>Asks::&lt;T&gt;::iter() {
+            <span class="kw">if </span>quote_books.contains(<span class="kw-2">&amp;</span>order_book_id) {
+                <span class="kw">let </span>new_price = price.checked_div(<span class="kw-2">&amp;</span>factor).unwrap_or(price);
+                Asks::&lt;T&gt;::remove(order_book_id, price);
+                Asks::&lt;T&gt;::insert(order_book_id, new_price, orders);
+            }
+        }
+
+        <span class="kw">for </span>(order_book_id, side) <span class="kw">in </span>AggregatedBids::&lt;T&gt;::iter() {
+            <span class="kw">if </span>quote_books.contains(<span class="kw-2">&amp;</span>order_book_id) {
+                <span class="kw">let </span><span class="kw-2">mut </span>new_side = MarketSide::&lt;T::MaxSidePriceCount&gt;::new();
+                <span class="kw">for </span>(price, volume) <span class="kw">in </span>side.iter() {
+                    <span class="kw">let </span>new_price = price.checked_div(<span class="kw-2">&amp;</span>factor).unwrap_or(<span class="kw-2">*</span>price);
+                    <span class="kw">let _ </span>= new_side.try_insert(new_price, <span class="kw-2">*</span>volume);
+                }
+                AggregatedBids::&lt;T&gt;::insert(order_book_id, new_side);
+            }
+        }
+        <span class="kw">for </span>(order_book_id, side) <span class="kw">in </span>AggregatedAsks::&lt;T&gt;::iter() {
+            <span class="kw">if </span>quote_books.contains(<span class="kw-2">&amp;</span>order_book_id) {
+                <span class="kw">let </span><span class="kw-2">mut </span>new_side = MarketSide::&lt;T::MaxSidePriceCount&gt;::new();
+                <span class="kw">for </span>(price, volume) <span class="kw">in </span>side.iter() {
+                    <span class="kw">let </span>new_price = price.checked_div(<span class="kw-2">&amp;</span>factor).unwrap_or(<span class="kw-2">*</span>price);
+                    <span class="kw">let _ </span>= new_side.try_insert(new_price, <span class="kw-2">*</span>volume);
+                }
+                AggregatedAsks::&lt;T&gt;::insert(order_book_id, new_side);
+            }
+        }
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>

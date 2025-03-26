@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["AVG_BLOCK_SPAN","DEFAULT_PARAMETERS","FAST_PARAMETERS"],"enum":["PriceError"],"mod":["migrations","pallet","weights"],"struct":["AdjustParameters","AggregatedPriceInfo","FastPriceTools","PriceInfo"]};
+window.SIDEBAR_ITEMS = {"constant":["AVG_BLOCK_SPAN","DEFAULT_PARAMETERS","FAST_PARAMETERS"],"enum":["PriceError"],"mod":["migrations","pallet","weights"],"struct":["AdjustParameters","AggregatedPriceInfo","DenominateXorAndTbcd","FastPriceTools","PriceInfo"]};

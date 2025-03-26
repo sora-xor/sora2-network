@@ -2397,6 +2397,28 @@
 <a href="#2382" id="2382">2382</a>
 <a href="#2383" id="2383">2383</a>
 <a href="#2384" id="2384">2384</a>
+<a href="#2385" id="2385">2385</a>
+<a href="#2386" id="2386">2386</a>
+<a href="#2387" id="2387">2387</a>
+<a href="#2388" id="2388">2388</a>
+<a href="#2389" id="2389">2389</a>
+<a href="#2390" id="2390">2390</a>
+<a href="#2391" id="2391">2391</a>
+<a href="#2392" id="2392">2392</a>
+<a href="#2393" id="2393">2393</a>
+<a href="#2394" id="2394">2394</a>
+<a href="#2395" id="2395">2395</a>
+<a href="#2396" id="2396">2396</a>
+<a href="#2397" id="2397">2397</a>
+<a href="#2398" id="2398">2398</a>
+<a href="#2399" id="2399">2399</a>
+<a href="#2400" id="2400">2400</a>
+<a href="#2401" id="2401">2401</a>
+<a href="#2402" id="2402">2402</a>
+<a href="#2403" id="2403">2403</a>
+<a href="#2404" id="2404">2404</a>
+<a href="#2405" id="2405">2405</a>
+<a href="#2406" id="2406">2406</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2605,10 +2627,10 @@
     <span class="kw">use </span><span class="kw">crate</span>::weights::WeightInfo;
     <span class="kw">use </span>common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     <span class="kw">use </span>common::{
-        AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter,
-        LiquiditySourceType, PriceToolsProvider, PriceVariant, TradingPairSourceManager, DAI,
-        DEFAULT_BALANCE_PRECISION, KXOR, XOR,
+        AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalanceOf,
+        BalancePrecision, ContentSource, DEXId, Description, LiquidityProxyTrait,
+        LiquiditySourceFilter, LiquiditySourceType, OnDenominate, PriceToolsProvider, PriceVariant,
+        TradingPairSourceManager, DAI, DEFAULT_BALANCE_PRECISION, KXOR, TBCD, XOR,
     };
     <span class="kw">use </span>frame_support::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>frame_support::traits::Randomness;
@@ -4778,6 +4800,28 @@
                     <span class="prelude-val">Ok</span>(())
                 },
             )
+        }
+    }
+
+    <span class="kw">pub struct </span>DenominateXorAndTbcd&lt;T: Config&gt;(PhantomData&lt;T&gt;);
+    <span class="kw">impl</span>&lt;T: Config&gt; OnDenominate&lt;BalanceOf&lt;T&gt;&gt; <span class="kw">for </span>DenominateXorAndTbcd&lt;T&gt; {
+        <span class="kw">fn </span>on_denominate(factor: <span class="kw-2">&amp;</span>BalanceOf&lt;T&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), DispatchError&gt; {
+            <span class="macro">frame_support::log::info!</span>(<span class="string">&quot;{}::on_denominate({})&quot;</span>, <span class="macro">module_path!</span>(), factor);
+            <span class="kw">for </span>asset_id <span class="kw">in </span>[XOR, TBCD] {
+                <span class="kw">for </span>(identifier, <span class="kw">_</span>) <span class="kw">in </span>CollateralInfos::&lt;T&gt;::iter() {
+                    <span class="kw">if </span>identifier.collateral_asset_id == asset_id.into() {
+                        CollateralInfos::&lt;T&gt;::mutate(identifier, |maybe_info| {
+                            <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = maybe_info {
+                                info.total_collateral = info
+                                    .total_collateral
+                                    .checked_div(<span class="kw-2">*</span>factor)
+                                    .unwrap_or(info.total_collateral);
+                            }
+                        });
+                    }
+                }
+            }
+            <span class="prelude-val">Ok</span>(())
         }
     }
 }

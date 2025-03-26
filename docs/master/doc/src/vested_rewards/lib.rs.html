@@ -1258,6 +1258,64 @@
 <a href="#1243" id="1243">1243</a>
 <a href="#1244" id="1244">1244</a>
 <a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1294,12 +1352,13 @@
 #![allow(unused_imports)]
 #[macro_use]
 </span><span class="kw">extern crate </span>alloc;
-<span class="kw">use </span><span class="kw">crate</span>::vesting_currencies::VestingSchedule;
+
+<span class="kw">use </span><span class="kw">crate</span>::vesting_currencies::{VestingSchedule, VestingScheduleVariant};
 <span class="kw">use </span>codec::{Decode, Encode};
 <span class="kw">use </span>common::prelude::{Balance, FixedWrapper};
 <span class="kw">use </span>common::{
     balance, AssetIdOf, AssetInfoProvider, AssetManager, BalanceOf, CrowdloanTag, FromGenericPair,
-    OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP,
+    OnDenominate, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP, TBCD, XOR,
 };
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::traits::{Defensive, LockIdentifier};
@@ -1317,6 +1376,7 @@
 <span class="kw">use </span>sp_std::collections::btree_set::BTreeSet;
 <span class="kw">use </span>sp_std::collections::vec_deque::VecDeque;
 <span class="kw">use </span>sp_std::convert::TryInto;
+<span class="kw">use </span>sp_std::marker::PhantomData;
 <span class="kw">use </span>sp_std::str;
 <span class="kw">use </span>sp_std::vec::Vec;
 <span class="kw">use </span>traits::{MultiCurrency, MultiLockableCurrency};
@@ -2094,6 +2154,62 @@
             RewardReason::LiquidityProvisionFarming,
             pswap_amount,
         )
+    }
+}
+
+<span class="kw">pub struct </span>DenominateXorAndTbcd&lt;T: Config&gt;(PhantomData&lt;T&gt;);
+
+<span class="kw">impl</span>&lt;T: Config&gt; OnDenominate&lt;BalanceOf&lt;T&gt;&gt; <span class="kw">for </span>DenominateXorAndTbcd&lt;T&gt; {
+    <span class="kw">fn </span>on_denominate(factor: <span class="kw-2">&amp;</span>BalanceOf&lt;T&gt;) -&gt; DispatchResult {
+        <span class="macro">frame_support::log::info!</span>(<span class="string">&quot;{}::on_denominate({})&quot;</span>, <span class="macro">module_path!</span>(), factor);
+        <span class="kw">let </span>accounts: Vec&lt;T::AccountId&gt; = VestingSchedules::&lt;T&gt;::iter_keys().collect();
+        <span class="kw">let </span>block_number = &lt;frame_system::Pallet&lt;T&gt;&gt;::block_number();
+        <span class="kw">for </span>account <span class="kw">in </span>accounts {
+            VestingSchedules::&lt;T&gt;::mutate(account.clone(), |schedules| {
+                <span class="kw">for </span>schedule <span class="kw">in </span>schedules.iter_mut() {
+                    <span class="kw">match </span>schedule {
+                        VestingScheduleVariant::LinearVestingSchedule(s)
+                            <span class="kw">if </span>s.asset_id == TBCD.into() || s.asset_id == XOR.into() =&gt;
+                        {
+                            <span class="kw">let </span><span class="kw-2">mut </span>locked_amount =
+                                s.locked_amount(block_number).unwrap_or(Balance::zero());
+                            locked_amount =
+                                locked_amount.checked_div(<span class="kw-2">*</span>factor).unwrap_or(locked_amount);
+                            s.per_period =
+                                s.per_period.checked_div(<span class="kw-2">*</span>factor).unwrap_or(s.per_period);
+                            s.remainder_amount = s
+                                .remainder_amount
+                                .checked_div(<span class="kw-2">*</span>factor)
+                                .unwrap_or(s.remainder_amount);
+                            s.remainder_amount = s.remainder_amount.saturating_add(
+                                locked_amount
+                                    - s.locked_amount(block_number).unwrap_or(Balance::zero()),
+                            );
+                        }
+                        VestingScheduleVariant::LinearPendingVestingSchedule(s)
+                            <span class="kw">if </span>s.asset_id == TBCD.into() || s.asset_id == XOR.into() =&gt;
+                        {
+                            <span class="kw">let </span><span class="kw-2">mut </span>locked_amount =
+                                s.locked_amount(block_number).unwrap_or(Balance::zero());
+                            locked_amount =
+                                locked_amount.checked_div(<span class="kw-2">*</span>factor).unwrap_or(locked_amount);
+                            s.per_period =
+                                s.per_period.checked_div(<span class="kw-2">*</span>factor).unwrap_or(s.per_period);
+                            s.remainder_amount = s
+                                .remainder_amount
+                                .checked_div(<span class="kw-2">*</span>factor)
+                                .unwrap_or(s.remainder_amount);
+                            s.remainder_amount = s.remainder_amount.saturating_add(
+                                locked_amount
+                                    - s.locked_amount(block_number).unwrap_or(Balance::zero()),
+                            );
+                        }
+                        <span class="kw">_ </span>=&gt; {}
+                    }
+                }
+            });
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 }
 

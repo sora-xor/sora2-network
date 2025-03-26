@@ -541,6 +541,7 @@
 <a href="#526" id="526">526</a>
 <a href="#527" id="527">527</a>
 <a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -591,8 +592,9 @@
 };
 <span class="kw">use </span>alloc::string::String;
 <span class="kw">use </span>codec::{Decode, Encode};
-<span class="kw">use </span>common::{eth, Balance};
+<span class="kw">use </span>common::eth;
 <span class="kw">use </span>ethabi::ParamType;
+<span class="kw">use </span>ethereum_types::U256;
 <span class="kw">use </span>frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 <span class="kw">use </span>frame_support::sp_runtime::offchain::storage::StorageValueRef;
 <span class="kw">use </span>frame_support::sp_runtime::traits::IdentifyAccount;
@@ -640,7 +642,7 @@
 <span class="kw">impl</span>&lt;T: Config&gt; Pallet&lt;T&gt; {
     <span class="kw">fn </span>parse_deposit_event(
         log: <span class="kw-2">&amp;</span>Log,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;DepositEvent&lt;EthAddress, T::AccountId, Balance&gt;, Error&lt;T&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;DepositEvent&lt;EthAddress, T::AccountId, U256&gt;, Error&lt;T&gt;&gt; {
         <span class="kw">if </span>log.removed.unwrap_or(<span class="bool-val">true</span>) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(Error::&lt;T&gt;::EthLogWasRemoved);
         }
@@ -671,7 +673,7 @@
         network_id: T::NetworkId,
         logs: <span class="kw-2">&amp;</span>[Log],
         kind: IncomingTransactionRequestKind,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractEvent&lt;EthAddress, T::AccountId, Balance&gt;, Error&lt;T&gt;&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ContractEvent&lt;EthAddress, T::AccountId, U256&gt;, Error&lt;T&gt;&gt; {
         <span class="kw">for </span>log <span class="kw">in </span>logs {
             <span class="comment">// Check address to be sure what it came from our contract
             </span><span class="kw">if </span><span class="self">Self</span>::ensure_known_contract(log.address.<span class="number">0</span>.into(), network_id).is_err() {

@@ -3611,6 +3611,60 @@
 <a href="#3596" id="3596">3596</a>
 <a href="#3597" id="3597">3597</a>
 <a href="#3598" id="3598">3598</a>
+<a href="#3599" id="3599">3599</a>
+<a href="#3600" id="3600">3600</a>
+<a href="#3601" id="3601">3601</a>
+<a href="#3602" id="3602">3602</a>
+<a href="#3603" id="3603">3603</a>
+<a href="#3604" id="3604">3604</a>
+<a href="#3605" id="3605">3605</a>
+<a href="#3606" id="3606">3606</a>
+<a href="#3607" id="3607">3607</a>
+<a href="#3608" id="3608">3608</a>
+<a href="#3609" id="3609">3609</a>
+<a href="#3610" id="3610">3610</a>
+<a href="#3611" id="3611">3611</a>
+<a href="#3612" id="3612">3612</a>
+<a href="#3613" id="3613">3613</a>
+<a href="#3614" id="3614">3614</a>
+<a href="#3615" id="3615">3615</a>
+<a href="#3616" id="3616">3616</a>
+<a href="#3617" id="3617">3617</a>
+<a href="#3618" id="3618">3618</a>
+<a href="#3619" id="3619">3619</a>
+<a href="#3620" id="3620">3620</a>
+<a href="#3621" id="3621">3621</a>
+<a href="#3622" id="3622">3622</a>
+<a href="#3623" id="3623">3623</a>
+<a href="#3624" id="3624">3624</a>
+<a href="#3625" id="3625">3625</a>
+<a href="#3626" id="3626">3626</a>
+<a href="#3627" id="3627">3627</a>
+<a href="#3628" id="3628">3628</a>
+<a href="#3629" id="3629">3629</a>
+<a href="#3630" id="3630">3630</a>
+<a href="#3631" id="3631">3631</a>
+<a href="#3632" id="3632">3632</a>
+<a href="#3633" id="3633">3633</a>
+<a href="#3634" id="3634">3634</a>
+<a href="#3635" id="3635">3635</a>
+<a href="#3636" id="3636">3636</a>
+<a href="#3637" id="3637">3637</a>
+<a href="#3638" id="3638">3638</a>
+<a href="#3639" id="3639">3639</a>
+<a href="#3640" id="3640">3640</a>
+<a href="#3641" id="3641">3641</a>
+<a href="#3642" id="3642">3642</a>
+<a href="#3643" id="3643">3643</a>
+<a href="#3644" id="3644">3644</a>
+<a href="#3645" id="3645">3645</a>
+<a href="#3646" id="3646">3646</a>
+<a href="#3647" id="3647">3647</a>
+<a href="#3648" id="3648">3648</a>
+<a href="#3649" id="3649">3649</a>
+<a href="#3650" id="3650">3650</a>
+<a href="#3651" id="3651">3651</a>
+<a href="#3652" id="3652">3652</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3678,7 +3732,7 @@
 <span class="kw">use </span>common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
 <span class="attr">#[cfg(any(feature = <span class="string">&quot;stage&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))] </span><span class="comment">// presto
 </span><span class="kw">use </span>common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
-<span class="kw">use </span>constants::currency::deposit;
+<span class="kw">use </span>constants::currency::{deposit, UNITS};
 <span class="kw">use </span>constants::time::<span class="kw-2">*</span>;
 <span class="kw">use </span>frame_support::traits::EitherOf;
 <span class="kw">use </span>frame_support::weights::ConstantMultiplier;
@@ -3707,7 +3761,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Trustless bridges
 </span><span class="kw">use </span>sp_beefy::mmr::MmrLeafVersion;
 <span class="kw">use </span>sp_core::crypto::KeyTypeId;
-<span class="kw">use </span>sp_core::{Encode, OpaqueMetadata, H160};
+<span class="kw">use </span>sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 <span class="kw">use </span>sp_mmr_primitives <span class="kw">as </span>mmr;
 <span class="kw">use </span>sp_runtime::traits::{
     BlakeTwo256, Block <span class="kw">as </span>BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
@@ -5157,6 +5211,7 @@
     <span class="kw">type </span>MessageStatusNotifier = BridgeProxy;
     <span class="kw">type </span>BridgeAssetLockChecker = BridgeProxy;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
+    <span class="kw">type </span>Denominator = Denomination;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
@@ -6174,6 +6229,58 @@
     <span class="kw">type </span>WeightInfo = presto::weights::SubstrateWeight&lt;Runtime&gt;;
 }
 
+<span class="kw">pub struct </span>ShouldRemoveAccount;
+
+<span class="kw">pub type </span>AccountData = frame_system::AccountInfo&lt;Index, pallet_balances::AccountData&lt;Balance&gt;&gt;;
+
+<span class="kw">impl </span>denomination::ShouldRemoveAccount&lt;AccountData&gt; <span class="kw">for </span>ShouldRemoveAccount {
+    <span class="kw">fn </span>should_remove_account(data: <span class="kw-2">&amp;</span>AccountData) -&gt; bool {
+        <span class="comment">// No tokens, pools, etc.
+        </span>data.providers
+            .saturating_add(data.consumers)
+            .saturating_add(data.sufficients)
+            == <span class="number">1
+            </span><span class="comment">// Never used
+            </span>&amp;&amp; data.nonce == <span class="number">0
+            </span><span class="comment">// Less than 1 XOR balance
+            </span>&amp;&amp; data.data.free.saturating_add(data.data.reserved) &lt; UNITS
+    }
+}
+
+<span class="kw">impl </span>denomination::Config <span class="kw">for </span>Runtime {
+    <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
+    <span class="kw">type </span>RemoveReadPerBlock = ConstU64&lt;<span class="number">1000</span>&gt;;
+    <span class="kw">type </span>OffencesConverter = sp_runtime::traits::Identity;
+    <span class="kw">type </span>DemocracyConvertBalance = sp_runtime::traits::Identity;
+    <span class="kw">type </span>AssetIdConvert = sp_runtime::traits::Identity;
+    <span class="kw">type </span>ElectionsPhragmenConvertBalance = sp_runtime::traits::Identity;
+    <span class="kw">type </span>OnDenominate = (
+        BridgeProxy,
+        xor_fee::DenominateXor&lt;Runtime&gt;,
+        vested_rewards::DenominateXorAndTbcd&lt;Runtime&gt;,
+        referrals::DenominateXor&lt;Runtime&gt;,
+        price_tools::DenominateXorAndTbcd&lt;Runtime&gt;,
+        order_book::DenominateXor&lt;Runtime&gt;,
+        multicollateral_bonding_curve_pool::DenominateTbcd&lt;Runtime&gt;,
+        kensetsu::DenominateXorAndTbcd&lt;Runtime&gt;,
+        demeter_farming_platform::DenominateXorAndTbcd&lt;Runtime&gt;,
+        ceres_token_locker::DenominateXorAndTbcd&lt;Runtime&gt;,
+        ceres_liquidity_locker::DenominateXorAndTbcd&lt;Runtime&gt;,
+        pool_xyk::DenominateXor&lt;Runtime&gt;,
+        pool_xyk::DenominateTbcd&lt;Runtime&gt;,
+    );
+    <span class="kw">type </span>ShouldRemoveAccount = ShouldRemoveAccount;
+    <span class="kw">type </span>StakingConvertBalance = sp_runtime::traits::Identity;
+    <span class="kw">type </span>TokensConvertBalance = sp_runtime::traits::Identity;
+    <span class="kw">type </span>CallOrigin = EitherOfDiverse&lt;
+        EnsureRoot&lt;AccountId&gt;,
+        EitherOfDiverse&lt;
+            pallet_collective::EnsureProportionAtLeast&lt;AccountId, CouncilCollective, <span class="number">2</span>, <span class="number">3</span>&gt;,
+            pallet_collective::EnsureProportionAtLeast&lt;AccountId, TechnicalCollective, <span class="number">2</span>, <span class="number">3</span>&gt;,
+        &gt;,
+    &gt;;
+}
+
 <span class="macro">construct_runtime! </span>{
     <span class="kw">pub enum </span>Runtime <span class="kw">where
         </span>Block = Block,
@@ -6249,6 +6356,7 @@
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config&lt;T&gt;, Event&lt;T&gt;, ValidateUnsigned} = <span class="number">58</span>,
         <span class="attr">#[cfg(any(feature = <span class="string">&quot;stage&quot;</span>, feature = <span class="string">&quot;private-net&quot;</span>))] </span><span class="comment">// presto
         </span>Presto: presto::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">59</span>,
+        Denomination: denomination::{Pallet, Call, Storage, Event&lt;T&gt;} = <span class="number">60</span>,
 
         <span class="comment">// Leaf provider should be placed before any pallet which is uses it
         </span>LeafProvider: leaf_provider::{Pallet, Storage, Event&lt;T&gt;} = <span class="number">99</span>,

@@ -1366,6 +1366,11 @@
 <a href="#1351" id="1351">1351</a>
 <a href="#1352" id="1352">1352</a>
 <a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1413,6 +1418,7 @@
 <span class="kw">use </span>common::prelude::Balance;
 <span class="attr">#[cfg(feature = <span class="string">&quot;std&quot;</span>)]
 </span><span class="kw">use </span>common::utils::string_serialization;
+<span class="kw">use </span>common::Denominator;
 <span class="kw">use </span>common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
 <span class="kw">use </span>ethabi::{FixedBytes, Token};
 <span class="attr">#[allow(unused_imports)]
@@ -1461,6 +1467,7 @@
         <span class="kw">let </span>to = <span class="self">self</span>.to;
         <span class="kw">let </span>currency_id;
         <span class="kw">let </span>amount;
+        <span class="kw">let </span>denomination_factor = T::Denominator::current_factor(<span class="kw-2">&amp;</span><span class="self">self</span>.asset_id);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(token_address) =
             Pallet::&lt;T&gt;::registered_sidechain_token(<span class="self">self</span>.network_id, <span class="kw-2">&amp;</span><span class="self">self</span>.asset_id)
         {
@@ -1472,6 +1479,9 @@
             currency_id = CurrencyIdEncoded::AssetId(H256(x.<span class="number">0</span>));
             amount = U256::from(<span class="self">self</span>.amount);
         }
+        <span class="kw">let </span>amount = amount
+            .checked_mul(denomination_factor.into())
+            .ok_or(Error::&lt;T&gt;::FailedToApplyDenomination)<span class="question-mark">?</span>;
         <span class="kw">let </span>tx_hash = H256(tx_hash.<span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>network_id: H256 = H256::default();
         U256::from(

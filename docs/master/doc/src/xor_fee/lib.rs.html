@@ -1456,6 +1456,35 @@
 <a href="#1441" id="1441">1441</a>
 <a href="#1442" id="1442">1442</a>
 <a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1494,13 +1523,14 @@
 <span class="kw">use </span>common::prelude::SwapAmount;
 <span class="kw">use </span>common::{
     AssetIdOf, AssetManager, Balance, BuyBackHandler, LiquidityProxyTrait, LiquiditySource,
-    LiquiditySourceFilter, LiquiditySourceType, OnValBurned, ReferrerAccountProvider,
+    LiquiditySourceFilter, LiquiditySourceType, OnDenominate, OnValBurned, ReferrerAccountProvider,
 };
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
 </span><span class="kw">use </span>common::{PriceToolsProvider, PriceVariant};
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
 </span><span class="kw">use </span>frame_support::dispatch::extract_actual_weight;
 <span class="kw">use </span>frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
+<span class="kw">use </span>frame_support::ensure;
 <span class="kw">use </span>frame_support::log::{error, warn};
 <span class="kw">use </span>frame_support::pallet_prelude::{DispatchResultWithPostInfo, InvalidTransaction};
 <span class="kw">use </span>frame_support::traits::Randomness;
@@ -1515,6 +1545,7 @@
     FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
 };
 <span class="kw">use </span>smallvec::smallvec;
+<span class="kw">use </span>sp_arithmetic::traits::CheckedDiv;
 <span class="kw">use </span>sp_arithmetic::FixedPointOperand;
 <span class="kw">use </span>sp_runtime::traits::{
     DispatchInfoOf, Dispatchable, Extrinsic <span class="kw">as </span>ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
@@ -1522,6 +1553,7 @@
 };
 <span class="kw">use </span>sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
 <span class="kw">use </span>sp_std::boxed::Box;
+<span class="kw">use </span>sp_std::marker::PhantomData;
 <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Xorless fee
 </span><span class="kw">use </span>traits::MultiCurrency;
 
@@ -1925,6 +1957,32 @@
                 });
             }
         }
+        <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="kw">pub struct </span>DenominateXor&lt;T: Config&gt;(PhantomData&lt;T&gt;);
+<span class="kw">impl</span>&lt;T: Config&gt; OnDenominate&lt;common::BalanceOf&lt;T&gt;&gt; <span class="kw">for </span>DenominateXor&lt;T&gt; {
+    <span class="kw">fn </span>on_denominate(factor: <span class="kw-2">&amp;</span>common::BalanceOf&lt;T&gt;) -&gt; DispatchResult {
+        <span class="macro">frame_support::log::info!</span>(<span class="string">&quot;{}::on_denominate({})&quot;</span>, <span class="macro">module_path!</span>(), factor);
+        &lt;XorToBuyBack&lt;T&gt;&gt;::mutate(|amount| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_amount) = amount.checked_div(<span class="kw-2">*</span>factor) {
+                <span class="kw-2">*</span>amount = new_amount;
+            }
+        });
+        &lt;XorToVal&lt;T&gt;&gt;::mutate(|amount| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_amount) = amount.checked_div(<span class="kw-2">*</span>factor) {
+                <span class="kw-2">*</span>amount = new_amount;
+            }
+        });
+        &lt;Multiplier&lt;T&gt;&gt;::mutate(|multiplier| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(new_multiplier) = multiplier.checked_div(<span class="kw-2">&amp;</span>FixedU128::from(<span class="kw-2">*</span>factor)) {
+                <span class="kw">if </span>new_multiplier.is_zero() {
+                    <span class="kw-2">*</span>multiplier = DefaultForFeeMultiplier::&lt;T&gt;::get();
+                }
+                <span class="kw-2">*</span>multiplier = new_multiplier;
+            }
+        });
         <span class="prelude-val">Ok</span>(())
     }
 }

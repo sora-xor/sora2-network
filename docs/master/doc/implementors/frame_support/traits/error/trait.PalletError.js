@@ -9,6 +9,7 @@
 "ceres_staking":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"ceres_staking/pallet/enum.Error.html\" title=\"enum ceres_staking::pallet::Error\">Error</a>&lt;T&gt;"]],
 "ceres_token_locker":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"ceres_token_locker/pallet/enum.Error.html\" title=\"enum ceres_token_locker::pallet::Error\">Error</a>&lt;T&gt;"]],
 "demeter_farming_platform":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"demeter_farming_platform/pallet/enum.Error.html\" title=\"enum demeter_farming_platform::pallet::Error\">Error</a>&lt;T&gt;"]],
+"denomination":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"denomination/pallet/enum.Error.html\" title=\"enum denomination::pallet::Error\">Error</a>&lt;T&gt;"]],
 "dex_api":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"dex_api/pallet/enum.Error.html\" title=\"enum dex_api::pallet::Error\">Error</a>&lt;T&gt;"]],
 "dex_manager":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"dex_manager/pallet/enum.Error.html\" title=\"enum dex_manager::pallet::Error\">Error</a>&lt;T&gt;"]],
 "eth_bridge":[["impl&lt;T&gt; PalletError for <a class=\"enum\" href=\"eth_bridge/pallet/enum.Error.html\" title=\"enum eth_bridge::pallet::Error\">Error</a>&lt;T&gt;"]],

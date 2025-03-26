@@ -291,7 +291,6 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -331,6 +330,7 @@
 <span class="kw">use </span>core::convert::TryFrom;
 <span class="kw">use </span>core::iter;
 <span class="kw">use </span>ethabi::Token;
+<span class="kw">use </span>ethereum_types::U256;
 <span class="kw">use </span>frame_support::dispatch::{DispatchResult, PostDispatchInfo};
 <span class="kw">use </span>frame_support::sp_runtime::app_crypto::sp_core;
 <span class="kw">use </span>frame_support::sp_runtime::DispatchErrorWithPostInfo;
@@ -413,14 +413,12 @@
         ))
     }
 
-    <span class="kw">pub fn </span>next_amount(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Balance, Error&lt;T&gt;&gt; {
-        <span class="prelude-val">Ok</span>(u128::try_from(
-            <span class="self">self</span>.tokens
-                .pop()
-                .and_then(|x| x.into_uint())
-                .ok_or(Error::&lt;T&gt;::InvalidUint)<span class="question-mark">?</span>,
-        )
-        .map_err(|<span class="kw">_</span>| Error::&lt;T&gt;::InvalidAmount)<span class="question-mark">?</span>)
+    <span class="kw">pub fn </span>next_amount(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;U256, Error&lt;T&gt;&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.tokens
+            .pop()
+            .and_then(|x| x.into_uint())
+            .ok_or(Error::&lt;T&gt;::InvalidUint)<span class="question-mark">?</span>)
     }
 
     <span class="kw">pub fn </span>next_account_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;T::AccountId, Error&lt;T&gt;&gt; {

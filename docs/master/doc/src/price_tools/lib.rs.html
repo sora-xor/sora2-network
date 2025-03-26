@@ -598,6 +598,16 @@
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -657,8 +667,8 @@
     TradingPairSourceManager,
 };
 <span class="kw">use </span>common::{
-    balance, fixed_const, fixed_wrapper, DEXId, LiquidityProxyTrait, LiquiditySourceFilter,
-    OnPoolReservesChanged, PriceVariant, XOR,
+    balance, fixed_const, fixed_wrapper, BalanceOf, DEXId, LiquidityProxyTrait,
+    LiquiditySourceFilter, OnDenominate, OnPoolReservesChanged, PriceVariant, XOR,
 };
 <span class="kw">use </span>frame_support::dispatch::{DispatchError, DispatchResult};
 <span class="kw">use </span>frame_support::weights::Weight;
@@ -1181,6 +1191,16 @@
     <span class="kw">fn </span>reserves_changed(target_asset_id: <span class="kw-2">&amp;</span>AssetIdOf&lt;T&gt;) {
         <span class="self">Self</span>::on_reserves_changed::&lt;PriceInfos&lt;T&gt;&gt;(target_asset_id);
         <span class="self">Self</span>::on_reserves_changed::&lt;FastPriceInfos&lt;T&gt;&gt;(target_asset_id);
+    }
+}
+
+<span class="kw">pub struct </span>DenominateXorAndTbcd&lt;T: Config&gt;(PhantomData&lt;T&gt;);
+<span class="kw">impl</span>&lt;T: Config&gt; OnDenominate&lt;BalanceOf&lt;T&gt;&gt; <span class="kw">for </span>DenominateXorAndTbcd&lt;T&gt; {
+    <span class="kw">fn </span>on_denominate(_factor: <span class="kw-2">&amp;</span>BalanceOf&lt;T&gt;) -&gt; DispatchResult {
+        <span class="macro">frame_support::log::info!</span>(<span class="string">&quot;{}::on_denominate({})&quot;</span>, <span class="macro">module_path!</span>(), _factor);
+        Pallet::&lt;T&gt;::reserves_changed(<span class="kw-2">&amp;</span>XOR.into());
+        Pallet::&lt;T&gt;::reserves_changed(<span class="kw-2">&amp;</span>common::TBCD.into());
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div>
