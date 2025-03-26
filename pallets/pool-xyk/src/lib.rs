@@ -38,17 +38,20 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     Balance, EnsureDEXManager, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome, SwapVariant,
 };
+use common::AssetManager;
 use common::{
-    fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetRegulator, DEXInfo, DexInfoProvider,
-    EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
-    LiquiditySourceType, ManagementMode, OnPoolReservesChanged, RewardReason, TechAccountId,
-    TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager, XykPool,
+    fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetRegulator, BalanceOf, DEXInfo,
+    DexInfoProvider, EnsureTradingPairExists, FixedWrapper256, GetPoolReserves, LiquiditySource,
+    LiquiditySourceType, ManagementMode, OnDenominate, OnPoolReservesChanged, RewardReason,
+    TechAccountId, TechPurpose, ToFeeAccount, TradingPair, TradingPairSourceManager, XykPool, TBCD,
+    XOR,
 };
 
 mod aliases;
@@ -159,6 +162,29 @@ impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
         result?;
 
         Ok(())
+    }
+
+    fn actual_reserves(
+        pool_acc_id: &T::AccountId,
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+    ) -> Result<(Balance, Balance, Balance), DispatchError> {
+        Self::get_actual_reserves(pool_acc_id, base_asset_id, input_asset_id, output_asset_id)
+    }
+
+    fn calculate_fxw_issuance_ratio(
+        base_asset: &AssetIdOf<T>,
+        target_asset: &AssetIdOf<T>,
+    ) -> Option<FixedWrapper256> {
+        let (pool_acc, _) = Self::properties_of_pool(*base_asset, *target_asset)?;
+        let (b_in_pool, t_in_pool, _max_output_available) =
+            Self::actual_reserves(&pool_acc, &base_asset, &base_asset, &target_asset).ok()?;
+        let fxw_real_issuance =
+            FixedWrapper256::from(b_in_pool).multiply_and_sqrt(&FixedWrapper256::from(t_in_pool));
+        let current_issuance = Self::total_issuance(&pool_acc).ok()?;
+        let fxw_current_issuance = FixedWrapper256::from(current_issuance);
+        Some(fxw_current_issuance / fxw_real_issuance)
     }
 }
 
@@ -915,6 +941,76 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 impl<T: Config> GetPoolReserves<AssetIdOf<T>> for Pallet<T> {
     fn reserves(base_asset: &AssetIdOf<T>, other_asset: &AssetIdOf<T>) -> (Balance, Balance) {
         Reserves::<T>::get(base_asset, other_asset)
+    }
+}
+
+pub struct DenominateXor<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
+    fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
+        for dex_id in T::DexInfoProvider::list_dex_ids() {
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            if dex_info.base_asset_id == XOR.into() {
+                for (target_asset_id, (pool_account, _fee_account)) in
+                    Properties::<T>::iter_prefix(dex_info.base_asset_id)
+                {
+                    if <T as Config>::AssetInfoProvider::total_balance(&XOR.into(), &pool_account)?
+                        < T::MIN_XOR
+                    {
+                        T::AssetManager::mint_unchecked(&XOR.into(), &pool_account, T::MIN_XOR)?;
+                    }
+                    Pallet::<T>::fix_pool_parameters(
+                        dex_id,
+                        &pool_account,
+                        &dex_info.base_asset_id,
+                        &target_asset_id,
+                    )?;
+                }
+            } else if let Some((pool_account, _fee_account)) =
+                Properties::<T>::get(&dex_info.base_asset_id, AssetIdOf::<T>::from(XOR))
+            {
+                if <T as Config>::AssetInfoProvider::total_balance(&XOR.into(), &pool_account)?
+                    < T::MIN_XOR
+                {
+                    T::AssetManager::mint_unchecked(&XOR.into(), &pool_account, T::MIN_XOR)?;
+                }
+                Pallet::<T>::fix_pool_parameters(
+                    dex_id,
+                    &pool_account,
+                    &dex_info.base_asset_id,
+                    &XOR.into(),
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
+pub struct DenominateTbcd<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
+    fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
+        for dex_id in T::DexInfoProvider::list_dex_ids() {
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            if let Some((pool_account, _fee_account)) =
+                Properties::<T>::get(&dex_info.base_asset_id, AssetIdOf::<T>::from(TBCD))
+            {
+                if <T as Config>::AssetInfoProvider::total_balance(&TBCD.into(), &pool_account)?
+                    < T::MIN_XOR
+                {
+                    T::AssetManager::mint_unchecked(&TBCD.into(), &pool_account, T::MIN_XOR)?;
+                }
+                Pallet::<T>::fix_pool_parameters(
+                    dex_id,
+                    &pool_account,
+                    &dex_info.base_asset_id,
+                    &TBCD.into(),
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 

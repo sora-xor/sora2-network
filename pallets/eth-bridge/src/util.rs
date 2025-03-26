@@ -37,6 +37,7 @@ use common::BalancePrecision;
 use core::convert::TryFrom;
 use core::iter;
 use ethabi::Token;
+use ethereum_types::U256;
 use frame_support::dispatch::{DispatchResult, PostDispatchInfo};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::DispatchErrorWithPostInfo;
@@ -119,14 +120,12 @@ impl<T: Config> Decoder<T> {
         ))
     }
 
-    pub fn next_amount(&mut self) -> Result<Balance, Error<T>> {
-        Ok(u128::try_from(
-            self.tokens
-                .pop()
-                .and_then(|x| x.into_uint())
-                .ok_or(Error::<T>::InvalidUint)?,
-        )
-        .map_err(|_| Error::<T>::InvalidAmount)?)
+    pub fn next_amount(&mut self) -> Result<U256, Error<T>> {
+        Ok(self
+            .tokens
+            .pop()
+            .and_then(|x| x.into_uint())
+            .ok_or(Error::<T>::InvalidUint)?)
     }
 
     pub fn next_account_id(&mut self) -> Result<T::AccountId, Error<T>> {

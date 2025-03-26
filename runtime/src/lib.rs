@@ -65,7 +65,7 @@ use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
 #[cfg(any(feature = "stage", feature = "private-net"))] // presto
 use common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
-use constants::currency::deposit;
+use constants::currency::{deposit, UNITS};
 use constants::time::*;
 use frame_support::traits::EitherOf;
 use frame_support::weights::ConstantMultiplier;
@@ -94,7 +94,7 @@ pub use sp_beefy::crypto::AuthorityId as BeefyId;
 #[cfg(feature = "wip")] // Trustless bridges
 use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
-use sp_core::{Encode, OpaqueMetadata, H160};
+use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
@@ -1544,6 +1544,7 @@ impl eth_bridge::Config for Runtime {
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type Denominator = Denomination;
 }
 
 #[cfg(feature = "private-net")]
@@ -2561,6 +2562,58 @@ impl presto::Config for Runtime {
     type WeightInfo = presto::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct ShouldRemoveAccount;
+
+pub type AccountData = frame_system::AccountInfo<Index, pallet_balances::AccountData<Balance>>;
+
+impl denomination::ShouldRemoveAccount<AccountData> for ShouldRemoveAccount {
+    fn should_remove_account(data: &AccountData) -> bool {
+        // No tokens, pools, etc.
+        data.providers
+            .saturating_add(data.consumers)
+            .saturating_add(data.sufficients)
+            == 1
+            // Never used
+            && data.nonce == 0
+            // Less than 1 XOR balance
+            && data.data.free.saturating_add(data.data.reserved) < UNITS
+    }
+}
+
+impl denomination::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type RemoveReadPerBlock = ConstU64<1000>;
+    type OffencesConverter = sp_runtime::traits::Identity;
+    type DemocracyConvertBalance = sp_runtime::traits::Identity;
+    type AssetIdConvert = sp_runtime::traits::Identity;
+    type ElectionsPhragmenConvertBalance = sp_runtime::traits::Identity;
+    type OnDenominate = (
+        BridgeProxy,
+        xor_fee::DenominateXor<Runtime>,
+        vested_rewards::DenominateXorAndTbcd<Runtime>,
+        referrals::DenominateXor<Runtime>,
+        price_tools::DenominateXorAndTbcd<Runtime>,
+        order_book::DenominateXor<Runtime>,
+        multicollateral_bonding_curve_pool::DenominateTbcd<Runtime>,
+        kensetsu::DenominateXorAndTbcd<Runtime>,
+        demeter_farming_platform::DenominateXorAndTbcd<Runtime>,
+        ceres_token_locker::DenominateXorAndTbcd<Runtime>,
+        ceres_liquidity_locker::DenominateXorAndTbcd<Runtime>,
+        pool_xyk::DenominateXor<Runtime>,
+        pool_xyk::DenominateTbcd<Runtime>,
+    );
+    type ShouldRemoveAccount = ShouldRemoveAccount;
+    type StakingConvertBalance = sp_runtime::traits::Identity;
+    type TokensConvertBalance = sp_runtime::traits::Identity;
+    type CallOrigin = EitherOfDiverse<
+        EnsureRoot<AccountId>,
+        EitherOfDiverse<
+            pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>,
+            pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 2, 3>,
+        >,
+    >;
+}
+
 construct_runtime! {
     pub enum Runtime where
         Block = Block,
@@ -2636,6 +2689,7 @@ construct_runtime! {
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
         #[cfg(any(feature = "stage", feature = "private-net"))] // presto
         Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
+        Denomination: denomination::{Pallet, Call, Storage, Event<T>} = 60,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

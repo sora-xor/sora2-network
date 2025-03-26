@@ -44,8 +44,8 @@ pub mod pallet {
     use crate::{migrations, StorageVersion, TokenLockInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper};
     use common::{
-        balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
-        BalancePrecision, ContentSource, Description,
+        balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, BalanceOf,
+        BalancePrecision, ContentSource, Description, OnDenominate, TBCD, XOR,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::PalletId;
@@ -328,6 +328,27 @@ pub mod pallet {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
             PALLET_ID.into_account_truncating()
+        }
+    }
+
+    pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+    impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+        fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+            let xor = AssetIdOf::<T>::from(XOR);
+            let tbcd = AssetIdOf::<T>::from(TBCD);
+
+            TokenLockerData::<T>::translate_values(
+                |mut locks: Vec<TokenLockInfo<BalanceOf<T>, _, AssetIdOf<T>>>| {
+                    for lock in &mut locks {
+                        if lock.asset_id == xor || lock.asset_id == tbcd {
+                            lock.tokens = lock.tokens.checked_div(*factor).unwrap_or(lock.tokens);
+                        }
+                    }
+                    Some(locks)
+                },
+            );
+            Ok(())
         }
     }
 }

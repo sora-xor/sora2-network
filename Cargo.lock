@@ -2258,6 +2258,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "denomination"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-democracy",
+ "pallet-elections-phragmen",
+ "pallet-identity",
+ "pallet-offences",
+ "pallet-preimage",
+ "pallet-staking",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-staking",
+ "sp-std",
+]
+
+[[package]]
 name = "der"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3692,6 +3718,7 @@ dependencies = [
  "common",
  "demeter-farming-platform",
  "demeter-farming-platform-benchmarking",
+ "denomination",
  "dex-api",
  "dex-manager",
  "dex-manager-runtime-api",

@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use common::prelude::FixedWrapper;
+use common::FixedWrapper256;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::weights::Weight;
@@ -294,13 +294,13 @@ impl<T: Config> Pallet<T> {
         let (b_in_pool, t_in_pool, _max_output_available) =
             Self::get_actual_reserves(&pool_acc, base_asset_id, base_asset_id, target_asset_id)?;
         let fxw_real_issuance =
-            to_fixed_wrapper!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper!(t_in_pool));
+            to_fixed_wrapper_256!(b_in_pool).multiply_and_sqrt(&to_fixed_wrapper_256!(t_in_pool));
         let current_issuance =
             TotalIssuances::<T>::get(&pool_acc).ok_or(Error::<T>::PoolIsEmpty)?;
-        let fxw_current_issuance = to_fixed_wrapper!(current_issuance);
+        let fxw_current_issuance = to_fixed_wrapper_256!(current_issuance);
         let fxw_issuance_ratio = fxw_current_issuance / fxw_real_issuance;
         // We handle only case when current issuance is larger than real issuance
-        if fxw_issuance_ratio < to_fixed_wrapper!(T::GetMaxIssuanceRatio::get()) {
+        if fxw_issuance_ratio < to_fixed_wrapper_256!(T::GetMaxIssuanceRatio::get()) {
             return Ok(());
         }
         let mut new_issuance: Balance = 0;
@@ -308,7 +308,7 @@ impl<T: Config> Pallet<T> {
         for (account, share) in PoolProviders::<T>::iter_prefix(&pool_acc) {
             providers += 1;
             *weight = weight.saturating_add(T::DbWeight::get().reads_writes(1, 1));
-            let fxw_real_share = to_fixed_wrapper!(share) / fxw_issuance_ratio.clone();
+            let fxw_real_share = to_fixed_wrapper_256!(share) / fxw_issuance_ratio.clone();
             let real_share = to_balance!(fxw_real_share);
             // Safe, because we don't remove either add keys
             PoolProviders::<T>::insert(&pool_acc, &account, real_share);
@@ -346,7 +346,7 @@ impl<T: Config> Pallet<T> {
             Self::get_actual_reserves(pool_account, asset_a, asset_a, asset_b)?;
         Self::update_reserves(asset_a, asset_a, asset_b, (&reserve_a, &reserve_b));
         frame_support::log::debug!(
-            "Updated reserves for {:?}({}) => {:?}({})",
+            "Updated pool xyk reserves for {:?}({}) => {:?}({})",
             asset_a,
             reserve_a,
             asset_b,

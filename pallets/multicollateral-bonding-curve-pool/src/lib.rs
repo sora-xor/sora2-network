@@ -42,8 +42,6 @@ mod tests;
 
 mod benchmarking;
 
-use core::convert::TryInto;
-
 use codec::{Decode, Encode};
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::arithmetic::identities::Zero;
@@ -54,10 +52,11 @@ use common::prelude::{
 };
 use common::{
     balance, fixed, fixed_u256, fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetManager,
-    BuyBackHandler, DEXId, DexIdOf, FixedWrapper256, GetMarketInfo, LiquidityProxyTrait,
-    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, PriceVariant,
-    RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD, VAL, XOR, XST,
+    BalanceOf, BuyBackHandler, DEXId, DexIdOf, FixedWrapper256, GetMarketInfo, LiquidityProxyTrait,
+    LiquiditySource, LiquiditySourceFilter, LiquiditySourceType, ManagementMode, OnDenominate,
+    PriceVariant, RewardReason, TradingPairSourceManager, Vesting, PSWAP, TBCD, VAL, XOR, XST,
 };
+use core::convert::TryInto;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
@@ -65,6 +64,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MINT};
 use sp_runtime::{traits::One, DispatchError, DispatchResult, Saturating};
 use sp_std::collections::btree_set::BTreeSet;
+use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
 #[cfg(feature = "std")]
@@ -2031,5 +2031,30 @@ impl<T: Config> GetMarketInfo<AssetIdOf<T>, FixedU256> for Pallet<T> {
 
     fn enabled_target_assets() -> BTreeSet<AssetIdOf<T>> {
         EnabledTargets::<T>::get()
+    }
+}
+
+pub struct DenominateTbcd<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
+    fn on_denominate(factor: &BalanceOf<T>) -> frame_support::dispatch::DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        let reserves_account_id =
+            &Technical::<T>::tech_account_id_to_account_id(&Pallet::<T>::reserves_account_id())?;
+        Pallet::<T>::update_collateral_reserves(&TBCD.into(), reserves_account_id)?;
+
+        let mut block = frame_system::Pallet::<T>::block_number();
+        let max_block =
+            block + T::RETRY_DISTRIBUTION_FREQUENCY * T::SPLIT_FAILED_DISTRIBUTION_COUNT.into();
+
+        while block < max_block {
+            PendingFreeReserves::<T>::mutate(block, |reserves| {
+                if let Some(balance) = reserves.get_mut(&TBCD.into()) {
+                    *balance = balance.checked_div(*factor).unwrap_or(*balance);
+                }
+            });
+            block += One::one();
+        }
+        Ok(())
     }
 }

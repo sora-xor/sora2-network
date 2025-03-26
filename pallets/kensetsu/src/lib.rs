@@ -206,10 +206,10 @@ pub mod pallet {
     use crate::weights::WeightInfo;
     use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
     use common::{
-        AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
-        ContentSource, DEXId, Description, LiquidityProxyTrait, LiquiditySourceFilter,
-        LiquiditySourceType, PriceToolsProvider, PriceVariant, TradingPairSourceManager, DAI,
-        DEFAULT_BALANCE_PRECISION, KXOR, XOR,
+        AccountIdOf, AssetId32, AssetInfoProvider, AssetName, AssetSymbol, BalanceOf,
+        BalancePrecision, ContentSource, DEXId, Description, LiquidityProxyTrait,
+        LiquiditySourceFilter, LiquiditySourceType, OnDenominate, PriceToolsProvider, PriceVariant,
+        TradingPairSourceManager, DAI, DEFAULT_BALANCE_PRECISION, KXOR, TBCD, XOR,
     };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
@@ -2379,6 +2379,28 @@ pub mod pallet {
                     Ok(())
                 },
             )
+        }
+    }
+
+    pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+    impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+        fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
+            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+            for asset_id in [XOR, TBCD] {
+                for (identifier, _) in CollateralInfos::<T>::iter() {
+                    if identifier.collateral_asset_id == asset_id.into() {
+                        CollateralInfos::<T>::mutate(identifier, |maybe_info| {
+                            if let Some(info) = maybe_info {
+                                info.total_collateral = info
+                                    .total_collateral
+                                    .checked_div(*factor)
+                                    .unwrap_or(info.total_collateral);
+                            }
+                        });
+                    }
+                }
+            }
+            Ok(())
         }
     }
 }

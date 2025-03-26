@@ -45,6 +45,7 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
+use common::Denominator;
 use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
@@ -93,6 +94,7 @@ impl<T: Config> OutgoingTransfer<T> {
         let to = self.to;
         let currency_id;
         let amount;
+        let denomination_factor = T::Denominator::current_factor(&self.asset_id);
         if let Some(token_address) =
             Pallet::<T>::registered_sidechain_token(self.network_id, &self.asset_id)
         {
@@ -104,6 +106,9 @@ impl<T: Config> OutgoingTransfer<T> {
             currency_id = CurrencyIdEncoded::AssetId(H256(x.0));
             amount = U256::from(self.amount);
         }
+        let amount = amount
+            .checked_mul(denomination_factor.into())
+            .ok_or(Error::<T>::FailedToApplyDenomination)?;
         let tx_hash = H256(tx_hash.0);
         let mut network_id: H256 = H256::default();
         U256::from(

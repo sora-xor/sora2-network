@@ -32,22 +32,23 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
+#![feature(is_some_and)]
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
     BalanceUnit, EnsureTradingPairExists, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount,
     SwapOutcome, TradingPair,
 };
-use common::AssetIdOf;
-use common::LiquiditySourceType;
+use common::{AssetIdOf, BalanceOf, OnDenominate};
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, Balance, BalancePrecision, ContentSource,
     Description, DexInfoProvider, LiquiditySource, OrderBookId, OrderBookManager, PriceVariant,
     RewardReason, SyntheticInfoProvider, ToOrderTechUnitFromDEXAndTradingPair,
     TradingPairSourceManager,
 };
+use common::{LiquiditySourceType, XOR};
 use core::fmt::Debug;
-use frame_support::dispatch::{DispatchResultWithPostInfo, PostDispatchInfo};
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo};
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::{Get, Time};
@@ -58,6 +59,7 @@ use sp_runtime::traits::{
 };
 use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
 pub mod weights;
@@ -1910,5 +1912,65 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
 
     fn check_rewards_weight() -> Weight {
         Weight::zero()
+    }
+}
+
+pub struct DenominateXor<T: Config>(PhantomData<T>);
+
+impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
+    // For now denominate only for quote and divisible, if denominate for base and indivisible need add logic for it
+    fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        let factor = BalanceUnit::divisible(*factor);
+
+        let quote_books = OrderBooks::<T>::iter()
+            .filter(|order_book| order_book.0.quote.eq(&XOR.into()))
+            .map(|order_book| order_book.0)
+            .collect::<Vec<_>>();
+
+        for (order_book_id, order_id, mut order) in LimitOrders::<T>::iter() {
+            if quote_books.contains(&order_book_id) {
+                order.price = order.price.checked_div(&factor).unwrap_or(order.price);
+                LimitOrders::<T>::insert(order_book_id, order_id, order);
+            }
+        }
+
+        for (order_book_id, price, orders) in Bids::<T>::iter() {
+            if quote_books.contains(&order_book_id) {
+                let new_price = price.checked_div(&factor).unwrap_or(price);
+                Bids::<T>::remove(order_book_id, price);
+                Bids::<T>::insert(order_book_id, new_price, orders);
+            }
+        }
+        for (order_book_id, price, orders) in Asks::<T>::iter() {
+            if quote_books.contains(&order_book_id) {
+                let new_price = price.checked_div(&factor).unwrap_or(price);
+                Asks::<T>::remove(order_book_id, price);
+                Asks::<T>::insert(order_book_id, new_price, orders);
+            }
+        }
+
+        for (order_book_id, side) in AggregatedBids::<T>::iter() {
+            if quote_books.contains(&order_book_id) {
+                let mut new_side = MarketSide::<T::MaxSidePriceCount>::new();
+                for (price, volume) in side.iter() {
+                    let new_price = price.checked_div(&factor).unwrap_or(*price);
+                    let _ = new_side.try_insert(new_price, *volume);
+                }
+                AggregatedBids::<T>::insert(order_book_id, new_side);
+            }
+        }
+        for (order_book_id, side) in AggregatedAsks::<T>::iter() {
+            if quote_books.contains(&order_book_id) {
+                let mut new_side = MarketSide::<T::MaxSidePriceCount>::new();
+                for (price, volume) in side.iter() {
+                    let new_price = price.checked_div(&factor).unwrap_or(*price);
+                    let _ = new_side.try_insert(new_price, *volume);
+                }
+                AggregatedAsks::<T>::insert(order_book_id, new_side);
+            }
+        }
+
+        Ok(())
     }
 }

@@ -391,6 +391,8 @@ pub mod pallet {
             ContentSource,
             Description,
         >;
+
+        type Denominator: common::Denominator<Self::AssetId, Balance>;
     }
 
     /// The current storage version.
@@ -1234,6 +1236,8 @@ pub mod pallet {
         ReadStorageError,
         /// Bridge needs to have at least 3 peers for migration. Add new peer
         UnsafeMigration,
+        /// Probably denomination factor is too big and we can't apply it
+        FailedToApplyDenomination,
     }
 
     impl<T: Config> Error<T> {

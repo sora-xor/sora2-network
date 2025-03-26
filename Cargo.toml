@@ -283,6 +283,7 @@ members = [
     "pallets/band",
     "pallets/qa-tools",
     "pallets/extended-assets",
+    "pallets/denomination",
     "node/",
     "utils/parse",
     "utils/generate-bags",
