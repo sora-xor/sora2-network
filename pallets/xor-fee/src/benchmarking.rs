@@ -120,10 +120,10 @@ benchmarks! {
 
     scale_multiplier {
         Multiplier::<T>::put(FixedU128::from(2));
-        let factor = FixedU128::from_float(2.25);
+        let factor = FixedU128::from((9, 4));
     }: _(RawOrigin::Root, factor)
     verify {
-        assert_eq!(Multiplier::<T>::get(), FixedU128::from_float(4.5));
+        assert_eq!(Multiplier::<T>::get(), FixedU128::from((9, 2)));
     }
 
     impl_benchmark_test_suite!(Pallet, mock::ExtBuilder::build(), mock::Runtime);
