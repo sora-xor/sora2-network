@@ -3586,7 +3586,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.5.6"
+version = "4.6.0"
 dependencies = [
  "ahash 0.8.5",
  "assert_cmd",
@@ -3670,7 +3670,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.5.6"
+version = "4.6.0"
 dependencies = [
  "common",
  "faucet",
@@ -3696,7 +3696,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.5.6"
+version = "4.6.0"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -8481,6 +8481,7 @@ dependencies = [
  "common",
  "env_logger",
  "frame-remote-externalities",
+ "frame-support",
  "framenode-runtime",
  "hex",
  "jsonrpsee",
