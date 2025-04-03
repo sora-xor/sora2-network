@@ -589,22 +589,21 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
         frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
 
-        let clear_price_info = |asset_id: AssetIdOf<T>| {
+        for asset_id in PriceInfos::<T>::iter_keys() {
             PriceInfos::<T>::mutate(asset_id, |price_info| {
                 if let Some(info) = price_info {
                     *info = AggregatedPriceInfo::default();
                 }
             });
+        }
 
-            FastPriceInfos::<T>::mutate(asset_id, |fast_price_info| {
-                if let Some(info) = fast_price_info {
+        for asset_id in FastPriceInfos::<T>::iter_keys() {
+            FastPriceInfos::<T>::mutate(asset_id, |price_info| {
+                if let Some(info) = price_info {
                     *info = AggregatedPriceInfo::default();
                 }
             });
-        };
-
-        clear_price_info(AssetIdOf::<T>::from(XOR));
-        clear_price_info(AssetIdOf::<T>::from(common::TBCD));
+        }
 
         Ok(())
     }
