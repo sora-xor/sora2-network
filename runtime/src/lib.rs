@@ -659,7 +659,64 @@ impl pallet_staking::Config for Runtime {
     type OnStakerSlash = ();
     type HistoryDepth = frame_support::traits::ConstU32<84>;
     type TargetList = pallet_staking::UseValidatorsMap<Self>;
-    type WeightInfo = ();
+    type WeightInfo = staking_weight::OverrideStackingWeightInfo;
+}
+
+pub mod staking_weight {
+    use super::*;
+    use pallet_staking::WeightInfo;
+
+    pub struct OverrideStackingWeightInfo;
+
+    macro_rules! delegate {
+        ($id:ident) => {
+            fn $id() -> Weight { <() as WeightInfo>::$id() }
+        };
+        ($fun:ident($($arg:ident: $ty:ty),+)) => {
+            fn $fun($($arg: $ty),+) -> Weight { <() as WeightInfo>::$fun($($arg),+) }
+        };
+    }
+
+    impl WeightInfo for OverrideStackingWeightInfo {
+        fn payout_stakers() -> Weight {
+            let weight = <() as WeightInfo>::payout_stakers();
+
+            // https://github.com/sora-xor/sora2-network/issues/1335
+            // and proposed reduction by 10: https://github.com/sora-xor/sora2-network/issues/1335#issuecomment-3004262480
+            weight / 10
+        }
+
+        delegate!(bond);
+        delegate!(bond_extra);
+        delegate!(unbond);
+        delegate!(validate);
+        delegate!(chill);
+        delegate!(set_payee);
+        delegate!(set_controller);
+        delegate!(force_no_eras);
+        delegate!(force_new_era);
+        delegate!(force_new_era_always);
+        delegate!(set_validator_count);
+        delegate!(set_min_commission);
+        delegate!(force_apply_min_commission);
+        delegate!(chill_other);
+        delegate!(set_staking_configs_all_remove);
+        delegate!(set_staking_configs_all_set);
+        delegate!(nominate(n: u32));
+        delegate!(kick(k: u32));
+        delegate!(get_npos_targets(v: u32));
+        delegate!(get_npos_voters(v: u32, n: u32));
+        delegate!(new_era(v: u32, n: u32));
+        delegate!(reap_stash(s: u32));
+        delegate!(rebond(l: u32));
+        delegate!(payout_stakers_alive_staked(n: u32));
+        delegate!(payout_stakers_dead_controller(n: u32));
+        delegate!(cancel_deferred_slash(s: u32));
+        delegate!(force_unstake(s: u32));
+        delegate!(set_invulnerables(v: u32));
+        delegate!(withdraw_unbonded_kill(s: u32));
+        delegate!(withdraw_unbonded_update(s: u32));
+    }
 }
 
 /// The numbers configured here could always be more than the the maximum limits of staking pallet
