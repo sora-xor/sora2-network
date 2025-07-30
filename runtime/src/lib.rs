@@ -774,12 +774,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
     type DataProvider = Staking;
-    type Fallback = frame_election_provider_support::NoElection<(
-        AccountId,
-        BlockNumber,
-        Staking,
-        MaxActiveValidators,
-    )>;
+    type Fallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
         AccountId,
