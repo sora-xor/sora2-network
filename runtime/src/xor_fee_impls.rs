@@ -220,7 +220,6 @@ impl CustomFees {
             | RuntimeCall::MulticollateralBondingCurvePool(..)
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)
-            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
             | RuntimeCall::Referrals(..)
             | RuntimeCall::OrderBook(..)
@@ -234,8 +233,11 @@ impl CustomFees {
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_unlocked { .. }) => {
                 Some(SMALL_FEE)
             }
-            RuntimeCall::Band(..) => Some(MINIMAL_FEE),
-            RuntimeCall::Soratopia(soratopia::Call::check_in {}) => Some(MINIMAL_FEE),
+            // NOTE: reducing fees to 1/10 for payout_stakers (from SMALL_FEE)
+            // https://github.com/sora-xor/sora2-network/issues/1335#issuecomment-3004262480
+            RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+            | RuntimeCall::Band(..)
+            | RuntimeCall::Soratopia(soratopia::Call::check_in {}) => Some(MINIMAL_FEE),
             _ => None,
         }
     }
