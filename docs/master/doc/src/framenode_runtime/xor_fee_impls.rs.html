@@ -986,6 +986,8 @@
 <a href="#971" id="971">971</a>
 <a href="#972" id="972">972</a>
 <a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -1208,7 +1210,6 @@
             | RuntimeCall::MulticollateralBondingCurvePool(..)
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)
-            | RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
             | RuntimeCall::TradingPair(..)
             | RuntimeCall::Referrals(..)
             | RuntimeCall::OrderBook(..)
@@ -1222,8 +1223,11 @@
             | RuntimeCall::VestedRewards(vested_rewards::Call::claim_unlocked { .. }) =&gt; {
                 <span class="prelude-val">Some</span>(SMALL_FEE)
             }
-            RuntimeCall::Band(..) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
-            RuntimeCall::Soratopia(soratopia::Call::check_in {}) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
+            <span class="comment">// NOTE: reducing fees to 1/10 for payout_stakers (from SMALL_FEE)
+            // https://github.com/sora-xor/sora2-network/issues/1335#issuecomment-3004262480
+            </span>RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
+            | RuntimeCall::Band(..)
+            | RuntimeCall::Soratopia(soratopia::Call::check_in {}) =&gt; <span class="prelude-val">Some</span>(MINIMAL_FEE),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
