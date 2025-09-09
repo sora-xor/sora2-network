@@ -42,6 +42,7 @@ use frame_support::{
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
 use sp_core::bounded::BoundedVec;
+use sp_runtime::traits::CheckedMul;
 use sp_runtime::traits::{Convert, ConvertBack, One, Saturating, Zero};
 use sp_runtime::Perbill;
 use sp_staking::EraIndex;
@@ -132,7 +133,6 @@ pub trait ShouldRemoveAccount<AccountData> {
 pub mod pallet {
     use super::*;
     use common::OnDenominate;
-    use frame_support::storage::generator::StorageMap;
     use frame_support::{pallet_prelude::*, traits::Currency};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{ConvertBack, One};
@@ -209,6 +209,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// This action is not allowed at current stage
         WrongMigrationStage,
+        /// Resulting denominator is too large
+        InvalidDenominator,
     }
 
     #[pallet::storage]
@@ -365,13 +367,15 @@ pub mod pallet {
         pub fn init(origin: OriginFor<T>) -> DispatchResult {
             T::CallOrigin::ensure_origin(origin)?;
             ensure!(
-                CurrentMigrationStage::<T>::get() == MigrationStage::Initial,
+                matches!(
+                    CurrentMigrationStage::<T>::get(),
+                    MigrationStage::Initial | MigrationStage::Complete
+                ),
                 Error::<T>::WrongMigrationStage
             );
-            RemoveAccountsCursor::<T>::set(Some(frame_system::Account::<T>::prefix_hash()));
-            CurrentMigrationStage::<T>::set(MigrationStage::RemoveAccounts);
+            CurrentMigrationStage::<T>::set(MigrationStage::Denomination);
             Self::deposit_event(Event::<T>::MigrationStageUpdated {
-                stage: MigrationStage::RemoveAccounts,
+                stage: MigrationStage::Denomination,
             });
             Ok(())
         }
@@ -387,10 +391,13 @@ pub mod pallet {
                 CurrentMigrationStage::<T>::get() == MigrationStage::Denomination,
                 Error::<T>::WrongMigrationStage
             );
+            let new_denominator = Denominator::<T>::get()
+                .checked_mul(&denominator)
+                .ok_or(Error::<T>::InvalidDenominator)?;
             Self::denominate(denominator)?;
             T::OnDenominate::on_denominate(&denominator)?;
             CurrentMigrationStage::<T>::set(MigrationStage::Complete);
-            Denominator::<T>::set(denominator);
+            Denominator::<T>::set(new_denominator);
             Self::deposit_event(Event::<T>::Denominated { denominator });
             Self::deposit_event(Event::<T>::MigrationStageUpdated {
                 stage: MigrationStage::Complete,
