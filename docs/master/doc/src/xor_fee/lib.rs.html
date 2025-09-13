@@ -1485,6 +1485,7 @@
 <a href="#1470" id="1470">1470</a>
 <a href="#1471" id="1471">1471</a>
 <a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -2733,7 +2734,8 @@
         /// - `call`: dispatch call for which pay fee
         /// - `asset_id`: asset in which pay fee, where None - XOR
         </span><span class="attr">#[allow(unused_variables)] </span><span class="comment">// Used in extension
-        </span><span class="attr">#[pallet::call_index(<span class="number">3</span>)]
+        </span><span class="attr">#[allow(clippy::boxed_local)]
+        #[pallet::call_index(<span class="number">3</span>)]
         #[pallet::weight({
             <span class="kw">let </span>dispatch_info = call.get_dispatch_info();
             (

@@ -695,6 +695,13 @@
 <a href="#680" id="680">680</a>
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -739,6 +746,7 @@
 <span class="kw">use </span>frame_system::pallet_prelude::BlockNumberFor;
 <span class="kw">use </span>scale_info::TypeInfo;
 <span class="kw">use </span>sp_core::bounded::BoundedVec;
+<span class="kw">use </span>sp_runtime::traits::CheckedMul;
 <span class="kw">use </span>sp_runtime::traits::{Convert, ConvertBack, One, Saturating, Zero};
 <span class="kw">use </span>sp_runtime::Perbill;
 <span class="kw">use </span>sp_staking::EraIndex;
@@ -829,7 +837,6 @@
 </span><span class="kw">pub mod </span>pallet {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>common::OnDenominate;
-    <span class="kw">use </span>frame_support::storage::generator::StorageMap;
     <span class="kw">use </span>frame_support::{pallet_prelude::<span class="kw-2">*</span>, traits::Currency};
     <span class="kw">use </span>frame_system::pallet_prelude::<span class="kw-2">*</span>;
     <span class="kw">use </span>sp_runtime::traits::{ConvertBack, One};
@@ -906,6 +913,8 @@
     </span><span class="kw">pub enum </span>Error&lt;T&gt; {
         <span class="doccomment">/// This action is not allowed at current stage
         </span>WrongMigrationStage,
+        <span class="doccomment">/// Resulting denominator is too large
+        </span>InvalidDenominator,
     }
 
     <span class="attr">#[pallet::storage]
@@ -1062,13 +1071,15 @@
         </span><span class="kw">pub fn </span>init(origin: OriginFor&lt;T&gt;) -&gt; DispatchResult {
             T::CallOrigin::ensure_origin(origin)<span class="question-mark">?</span>;
             <span class="macro">ensure!</span>(
-                CurrentMigrationStage::&lt;T&gt;::get() == MigrationStage::Initial,
+                <span class="macro">matches!</span>(
+                    CurrentMigrationStage::&lt;T&gt;::get(),
+                    MigrationStage::Initial | MigrationStage::Complete
+                ),
                 Error::&lt;T&gt;::WrongMigrationStage
             );
-            RemoveAccountsCursor::&lt;T&gt;::set(<span class="prelude-val">Some</span>(frame_system::Account::&lt;T&gt;::prefix_hash()));
-            CurrentMigrationStage::&lt;T&gt;::set(MigrationStage::RemoveAccounts);
+            CurrentMigrationStage::&lt;T&gt;::set(MigrationStage::Denomination);
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::MigrationStageUpdated {
-                stage: MigrationStage::RemoveAccounts,
+                stage: MigrationStage::Denomination,
             });
             <span class="prelude-val">Ok</span>(())
         }
@@ -1084,10 +1095,13 @@
                 CurrentMigrationStage::&lt;T&gt;::get() == MigrationStage::Denomination,
                 Error::&lt;T&gt;::WrongMigrationStage
             );
+            <span class="kw">let </span>new_denominator = Denominator::&lt;T&gt;::get()
+                .checked_mul(<span class="kw-2">&amp;</span>denominator)
+                .ok_or(Error::&lt;T&gt;::InvalidDenominator)<span class="question-mark">?</span>;
             <span class="self">Self</span>::denominate(denominator)<span class="question-mark">?</span>;
             T::OnDenominate::on_denominate(<span class="kw-2">&amp;</span>denominator)<span class="question-mark">?</span>;
             CurrentMigrationStage::&lt;T&gt;::set(MigrationStage::Complete);
-            Denominator::&lt;T&gt;::set(denominator);
+            Denominator::&lt;T&gt;::set(new_denominator);
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::Denominated { denominator });
             <span class="self">Self</span>::deposit_event(Event::&lt;T&gt;::MigrationStageUpdated {
                 stage: MigrationStage::Complete,
