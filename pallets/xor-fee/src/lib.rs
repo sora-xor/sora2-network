@@ -1246,6 +1246,7 @@ pub mod pallet {
         /// - `call`: dispatch call for which pay fee
         /// - `asset_id`: asset in which pay fee, where None - XOR
         #[allow(unused_variables)] // Used in extension
+        #[allow(clippy::boxed_local)]
         #[pallet::call_index(3)]
         #[pallet::weight({
             let dispatch_info = call.get_dispatch_info();

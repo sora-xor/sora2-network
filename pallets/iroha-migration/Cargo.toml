@@ -37,7 +37,7 @@ technical = { path = "../technical", default-features = false }
 eth-bridge = { path = "../eth-bridge", default-features = false }
 
 [dev-dependencies]
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+currencies = { workspace = true }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 parity-util-mem = { version = "0.12.0", default-features = false, features = [
     "primitive-types",
@@ -47,7 +47,7 @@ sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkado
 ] }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+tokens = { workspace = true }
 
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }

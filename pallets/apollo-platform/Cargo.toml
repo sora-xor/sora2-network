@@ -38,13 +38,13 @@ assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+currencies = { workspace = true }
 dex-manager = { path = "../dex-manager", default-features = false }
 apollo-platform = { path = ".", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+tokens = { workspace = true }
+orml-traits = { workspace = true }
 permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution" }
