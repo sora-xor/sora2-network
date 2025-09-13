@@ -17,7 +17,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 common = { path = "../../common", default-features = false }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+currencies = { workspace = true }
 dex-manager = { path = "../dex-manager", default-features = false }
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -26,8 +26,8 @@ mock-liquidity-source = { path = "../mock-liquidity-source", default-features = 
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 strum = { version = "0.25.0", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens", default-features = false }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+tokens = { workspace = true }
+traits = { workspace = true }
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dev-dependencies]

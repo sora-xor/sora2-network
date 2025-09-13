@@ -14,7 +14,7 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 ] }
 itoa = "1.0"
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies", default-features = false }
+currencies = { workspace = true }
 # derive_more = { version = "0.99.17", default-features = false }
 fixnum = { git = "https://github.com/sora-xor/fixnum", branch = "sora-v2.1.0", default-features = false, features = [
     "i128",
@@ -29,7 +29,7 @@ secp256k1 = { version = "0.7", features = [
 ], default-features = false, package = "libsecp256k1" }
 thiserror = { version = "2.0", default-features = false }
 num-traits = { version = "0.2.12", default-features = false }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+orml-traits = { workspace = true }
 paste = "1.0.0"
 pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 rustc-hex = { version = "2.1.0", default-features = false }
