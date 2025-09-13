@@ -106,10 +106,11 @@ thread_local = { git = "https://github.com/sora-xor/thread_local-rs.git", branch
 #orml-tokens = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 
 [patch."https://github.com/open-web3-stack/open-runtime-module-library.git"]
-orml-tokens = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-traits = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-currencies = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-utilities = { git = "https://github.com/open-web3-stack//open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
+orml-tokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
+orml-traits = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
+orml-currencies = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
+orml-utilities = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
+orml-xtokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
 
 [patch."https://github.com/paritytech/substrate.git"]
 frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
@@ -291,6 +292,15 @@ members = [
 ]
 
 resolver = "2"
+
+[workspace.dependencies]
+currencies = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies", default-features = false }
+tokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-tokens", default-features = false }
+orml-tokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-tokens", default-features = false }
+traits = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false }
+orml-traits = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false }
+xtokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-xtokens", default-features = false }
+
 
 [profile.release]
 panic = 'unwind'

@@ -35,11 +35,11 @@ common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
 ceres-governance-platform = { path = "../ceres-governance-platform", default-features = false }
 demeter-farming-platform = { path = "../demeter-farming-platform", default-features = false }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
+currencies = { workspace = true }
 hermes-governance-platform = { path = ".", default-features = false }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+tokens = { workspace = true }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
-orml-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
+orml-traits = { workspace = true }
 permissions = { path = "../permissions" }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution" }
