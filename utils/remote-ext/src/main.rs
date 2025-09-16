@@ -1,17 +1,21 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use codec::Decode;
 use frame_remote_externalities::{
     Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
 };
+use frame_support::log::info;
+use framenode_runtime::AccountId;
 use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
 use sp_core::H256;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
-use sp_runtime::traits::Dispatchable;
+use frame_support::dispatch::GetDispatchInfo;
+use frame_support::traits::OnRuntimeUpgrade;
+use sp_runtime::traits::{Dispatchable, SignedExtension};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -58,9 +62,36 @@ struct Cli {
     /// Sora snapshot path.
     #[clap(long)]
     snapshot_path: Option<PathBuf>,
-    /// Encoded extrinsic
+    /// Run migrations
     #[clap(long)]
-    xt: String,
+    run_migrations: bool,
+    /// Command type
+    #[clap(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, Clone, Args)]
+#[group(multiple = false, required = true)]
+pub struct AccountArg {
+    #[clap(long)]
+    account: Option<AccountId>,
+    #[clap(long)]
+    root: bool,
+    #[clap(long)]
+    unsigned: bool,
+}
+
+#[derive(Subcommand, Clone, Debug)]
+pub enum Command {
+    Call {
+        #[clap(long)]
+        call: String,
+        #[clap(flatten)]
+        account: AccountArg,
+    },
+    Xt {
+        xt: String,
+    },
 }
 
 #[tokio::main]
@@ -75,12 +106,55 @@ async fn main() -> AnyResult<()> {
     let mut ext =
         create_ext::<framenode_runtime::Block>(client.clone(), cli.at, cli.snapshot_path).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
-        let xt_encoded = hex::decode(&cli.xt).unwrap();
-        let xt = framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
-        if let Some((account, _signature, _extra)) = xt.signature {
-            xt.function
-                .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
-                .unwrap();
+        if cli.run_migrations {
+            framenode_runtime::migrations::Migrations::on_runtime_upgrade();
+        }
+        match cli.command {
+            Command::Call { call, account } => {
+                let origin = if account.unsigned {
+                    framenode_runtime::RuntimeOrigin::none()
+                } else if account.root {
+                    framenode_runtime::RuntimeOrigin::root()
+                } else {
+                    framenode_runtime::RuntimeOrigin::signed(account.account.unwrap())
+                };
+                let call_encoded = hex::decode(call.strip_prefix("0x").unwrap_or(&call)).unwrap();
+                let call = framenode_runtime::RuntimeCall::decode(&mut &call_encoded[..]).unwrap();
+                call.dispatch(origin).unwrap();
+            }
+            Command::Xt { xt } => {
+                let xt_encoded = hex::decode(xt.strip_prefix("0x").unwrap_or(&xt)).unwrap();
+                let xt =
+                    framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
+                if let Some((account, _signature, extra)) = xt.signature {
+                    let info = xt.function.get_dispatch_info();
+                    info!("Dispatch info: {info:?}");
+                    extra
+                        .validate(&account, &xt.function, &info, xt_encoded.len())
+                        .unwrap();
+                    let pre = extra
+                        .pre_dispatch(&account, &xt.function, &info, xt_encoded.len())
+                        .unwrap();
+                    info!("Pre dispatch: {pre:?}");
+                    let result = xt
+                        .function
+                        .dispatch(framenode_runtime::RuntimeOrigin::signed(account));
+                    let (post_info, result) = match result {
+                        Ok(post_info) => (post_info, Ok(())),
+                        Err(error) => (error.post_info, Err(error.error)),
+                    };
+                    info!("Post info: {post_info:?}");
+                    info!("Dispatch result: {result:?}");
+                    framenode_runtime::SignedExtra::post_dispatch(
+                        Some(pre),
+                        &info,
+                        &post_info,
+                        xt_encoded.len(),
+                        &result,
+                    )
+                    .unwrap();
+                }
+            }
         }
         Ok(())
     });
