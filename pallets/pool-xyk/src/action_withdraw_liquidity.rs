@@ -72,8 +72,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
             }
         }
 
-        // Dealing with receiver account, for example case then not swapping to self, but to
-        // other account.
+        // Populate receiver accounts when caller leaves them unset (withdraw to self).
         match &self.receiver_account_a {
             // Just use `client_account` as same account, swapping to self.
             None => {
@@ -90,10 +89,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         }
         let pool_account_repr_sys =
             technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        // Check that pool account is valid.
+        // Ensure the pool entry actually tracks the requested asset pair.
         Pallet::<T>::is_pool_account_valid_for(self.destination.0.asset, &self.pool_account)?;
 
-        // Balance of source account for k value.
+        // Obtain the provider balance (`k` tokens). Zero means the account was never a liquidity provider.
         let balance_ks = PoolProviders::<T>::get(&pool_account_repr_sys, &source).unwrap_or(0);
         if balance_ks <= 0 {
             Err(Error::<T>::AccountBalanceIsInvalid)?;

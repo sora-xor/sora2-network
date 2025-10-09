@@ -66,13 +66,13 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, RuntimeDebug};
 use frame_system::ensure_signed;
-use itertools::Itertools as _;
+use itertools::Itertools;
 use liquidity_aggregator::AggregatedSwapOutcome;
 use liquidity_aggregator::LiquidityAggregator;
 pub use pallet::*;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
-use sp_std::collections::btree_set::BTreeSet;
+use sp_std::collections::{btree_map::BTreeMap, btree_set::BTreeSet};
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
 pub use weights::WeightInfo;
@@ -102,7 +102,7 @@ impl<T: Config> core::fmt::Debug for ExchangePath<T> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum AssetType {
     Base,
     SyntheticBase,
@@ -141,222 +141,161 @@ impl AssetType {
     }
 }
 
-macro_rules! forward_or_backward {
-    ($ex1:tt, $ex2:tt) => {
-        ($ex1, $ex2) | ($ex2, $ex1)
-    };
-}
-
-struct PathBuilder<T: Config> {
-    pub paths: Vec<ExchangePath<T>>,
-    pub input_asset_id: AssetIdOf<T>,
-    pub output_asset_id: AssetIdOf<T>,
-    pub base_asset_id: AssetIdOf<T>,
-    pub synthetic_base_asset_id: AssetIdOf<T>,
-    pub base_chameleon_asset_id: Option<AssetIdOf<T>>,
-}
-
-impl<T: Config> core::fmt::Debug for PathBuilder<T> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("PathBuilder")
-            .field("paths", &self.paths)
-            .field("input_asset_id", &self.input_asset_id)
-            .field("output_asset_id", &self.output_asset_id)
-            .field("base_asset_id", &self.base_asset_id)
-            .field("synthetic_base_asset_id", &self.synthetic_base_asset_id)
-            .field("base_chameleon_asset_id", &self.base_chameleon_asset_id)
-            .finish()
-    }
-}
-
-impl<T: Config> PathBuilder<T> {
-    pub fn direct(&mut self) -> &mut Self {
-        self.paths.push(ExchangePath(vec![
-            self.input_asset_id,
-            self.output_asset_id,
-        ]));
-        self
-    }
-
-    pub fn via_base(&mut self) -> &mut Self {
-        self.paths.push(ExchangePath(vec![
-            self.input_asset_id,
-            self.base_asset_id,
-            self.output_asset_id,
-        ]));
-        self
-    }
-
-    pub fn via_synthetic_base(&mut self) -> &mut Self {
-        self.paths.push(ExchangePath(vec![
-            self.input_asset_id,
-            self.synthetic_base_asset_id,
-            self.output_asset_id,
-        ]));
-        self
-    }
-    pub fn via_base_and_synthetic_base(&mut self) -> &mut Self {
-        self.paths.push(ExchangePath(vec![
-            self.input_asset_id,
-            self.base_asset_id,
-            self.synthetic_base_asset_id,
-            self.output_asset_id,
-        ]));
-        self
-    }
-
-    pub fn via_synthetic_base_and_base(&mut self) -> &mut Self {
-        self.paths.push(ExchangePath(vec![
-            self.input_asset_id,
-            self.synthetic_base_asset_id,
-            self.base_asset_id,
-            self.output_asset_id,
-        ]));
-        self
-    }
-
-    pub fn via_base_chameleon(&mut self) -> &mut Self {
-        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
-            self.paths.push(ExchangePath(vec![
-                self.input_asset_id,
-                base_chameleon_asset_id,
-                self.output_asset_id,
-            ]));
-        }
-        self
-    }
-
-    pub fn via_base_and_base_chameleon(&mut self) -> &mut Self {
-        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
-            self.paths.push(ExchangePath(vec![
-                self.input_asset_id,
-                self.base_asset_id,
-                base_chameleon_asset_id,
-                self.output_asset_id,
-            ]));
-        }
-        self
-    }
-
-    pub fn via_base_chameleon_and_base(&mut self) -> &mut Self {
-        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
-            self.paths.push(ExchangePath(vec![
-                self.input_asset_id,
-                base_chameleon_asset_id,
-                self.base_asset_id,
-                self.output_asset_id,
-            ]));
-        }
-        self
-    }
-
-    pub fn via_base_chameleon_and_base_and_synthetic_base(&mut self) -> &mut Self {
-        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
-            self.paths.push(ExchangePath(vec![
-                self.input_asset_id,
-                base_chameleon_asset_id,
-                self.base_asset_id,
-                self.synthetic_base_asset_id,
-                self.output_asset_id,
-            ]));
-        }
-        self
-    }
-
-    pub fn via_synthetic_base_and_base_and_base_chameleon(&mut self) -> &mut Self {
-        if let Some(base_chameleon_asset_id) = self.base_chameleon_asset_id {
-            self.paths.push(ExchangePath(vec![
-                self.input_asset_id,
-                self.synthetic_base_asset_id,
-                self.base_asset_id,
-                base_chameleon_asset_id,
-                self.output_asset_id,
-            ]));
-        }
-        self
-    }
-}
-
 impl<T: Config> ExchangePath<T> {
+    fn permutations(items: &[AssetIdOf<T>], target_len: usize) -> Vec<Vec<AssetIdOf<T>>> {
+        let mut results = Vec::new();
+        if target_len == 0 {
+            results.push(Vec::new());
+            return results;
+        }
+
+        let mut used = vec![false; items.len()];
+        let mut current = Vec::with_capacity(target_len);
+        Self::permutations_backtrack(items, target_len, &mut used, &mut current, &mut results);
+        results
+    }
+
+    fn permutations_backtrack(
+        items: &[AssetIdOf<T>],
+        target_len: usize,
+        used: &mut [bool],
+        current: &mut Vec<AssetIdOf<T>>,
+        results: &mut Vec<Vec<AssetIdOf<T>>>,
+    ) {
+        if current.len() == target_len {
+            results.push(current.clone());
+            return;
+        }
+
+        for (index, item) in items.iter().enumerate() {
+            if used[index] {
+                continue;
+            }
+            used[index] = true;
+            current.push(item.clone());
+            Self::permutations_backtrack(items, target_len, used, current, results);
+            current.pop();
+            used[index] = false;
+        }
+    }
+
+    fn neighbors(asset_type: AssetType) -> &'static [AssetType] {
+        use AssetType::*;
+        match asset_type {
+            Base => &[
+                Basic,
+                SyntheticBase,
+                ChameleonBase,
+                Synthetic,
+                ChameleonPoolAsset,
+            ],
+            Basic => &[Base],
+            SyntheticBase => &[Base, Synthetic],
+            Synthetic => &[Base, SyntheticBase],
+            ChameleonBase => &[Base, ChameleonPoolAsset],
+            ChameleonPoolAsset => &[Base, ChameleonBase],
+        }
+    }
+
+    fn is_path_valid(
+        path: &[AssetIdOf<T>],
+        asset_types: &BTreeMap<AssetIdOf<T>, AssetType>,
+    ) -> bool {
+        path.windows(2).all(|pair| {
+            let from_type = match asset_types.get(&pair[0]) {
+                Some(ty) => ty.clone(),
+                None => return false,
+            };
+            let to_type = match asset_types.get(&pair[1]) {
+                Some(ty) => ty.clone(),
+                None => return false,
+            };
+            let neighbors_from = Self::neighbors(from_type.clone());
+            let neighbors_to = Self::neighbors(to_type.clone());
+            neighbors_from.contains(&to_type) && neighbors_to.contains(&from_type)
+        })
+    }
+
     pub fn new_trivial(
         dex_info: &DEXInfo<AssetIdOf<T>>,
         input_asset_id: AssetIdOf<T>,
         output_asset_id: AssetIdOf<T>,
     ) -> Option<Vec<Self>> {
-        use AssetType::*;
-
         if input_asset_id == output_asset_id {
             return None;
         }
 
         let synthetic_assets = T::PrimaryMarketXST::enabled_target_assets();
-        let input_type = AssetType::determine::<T>(dex_info, &synthetic_assets, input_asset_id);
-        let output_type = AssetType::determine::<T>(dex_info, &synthetic_assets, output_asset_id);
         let (base_chameleon_asset_id, _) =
             <T::GetChameleonPools as traits::GetByKey<_, _>>::get(&dex_info.base_asset_id).unzip();
 
-        let mut path_builder = PathBuilder::<T> {
-            input_asset_id,
-            output_asset_id,
-            paths: Vec::new(),
-            base_asset_id: dex_info.base_asset_id,
-            synthetic_base_asset_id: dex_info.synthetic_base_asset_id,
-            base_chameleon_asset_id,
+        let mut asset_types = BTreeMap::new();
+        let mut register_asset = |asset: AssetIdOf<T>| {
+            asset_types
+                .entry(asset.clone())
+                .or_insert_with(|| AssetType::determine::<T>(dex_info, &synthetic_assets, asset));
         };
-
-        match (input_type, output_type) {
-            forward_or_backward!(Base, Basic)
-            | forward_or_backward!(Base, SyntheticBase)
-            | forward_or_backward!(Base, ChameleonBase) => path_builder.direct(),
-            forward_or_backward!(SyntheticBase, Synthetic) => path_builder.direct().via_base(),
-            (Basic, Basic)
-            | forward_or_backward!(SyntheticBase, Basic)
-            | forward_or_backward!(ChameleonBase, SyntheticBase)
-            | forward_or_backward!(Basic, ChameleonBase) => path_builder.via_base(),
-            (Synthetic, Synthetic) => path_builder.via_synthetic_base().via_base(),
-            forward_or_backward!(Base, Synthetic) => path_builder.direct().via_synthetic_base(),
-            (Basic, Synthetic) | (ChameleonBase, Synthetic) => {
-                path_builder.via_base().via_base_and_synthetic_base()
-            }
-            (Synthetic, Basic) | (Synthetic, ChameleonBase) => {
-                path_builder.via_base().via_synthetic_base_and_base()
-            }
-            forward_or_backward!(ChameleonPoolAsset, ChameleonBase) => {
-                path_builder.direct().via_base()
-            }
-            forward_or_backward!(Base, ChameleonPoolAsset) => {
-                path_builder.direct().via_base_chameleon()
-            }
-            (SyntheticBase, ChameleonPoolAsset) | (Basic, ChameleonPoolAsset) => {
-                path_builder.via_base().via_base_and_base_chameleon()
-            }
-            (ChameleonPoolAsset, SyntheticBase) | (ChameleonPoolAsset, Basic) => {
-                path_builder.via_base().via_base_chameleon_and_base()
-            }
-            (Synthetic, ChameleonPoolAsset) => path_builder
-                .via_base()
-                .via_synthetic_base_and_base()
-                .via_base_and_base_chameleon()
-                .via_synthetic_base_and_base_and_base_chameleon(),
-            (ChameleonPoolAsset, Synthetic) => path_builder
-                .via_base()
-                .via_base_and_synthetic_base()
-                .via_base_chameleon_and_base()
-                .via_base_chameleon_and_base_and_synthetic_base(),
-            (ChameleonPoolAsset, ChameleonPoolAsset) => path_builder
-                .via_base()
-                .via_base_chameleon_and_base()
-                .via_base_and_base_chameleon(),
-            (Base, Base) | (SyntheticBase, SyntheticBase) | (ChameleonBase, ChameleonBase) => {
-                &mut path_builder
-            }
-        };
-        frame_support::log::trace!("Found paths: {:?}", path_builder);
-        if path_builder.paths.is_empty() {
-            None
-        } else {
-            Some(path_builder.paths)
+        register_asset(input_asset_id.clone());
+        register_asset(output_asset_id.clone());
+        register_asset(dex_info.base_asset_id.clone());
+        register_asset(dex_info.synthetic_base_asset_id.clone());
+        if let Some(chameleon_asset) = base_chameleon_asset_id.clone() {
+            register_asset(chameleon_asset);
         }
+
+        let mut intermediates: Vec<AssetIdOf<T>> = Vec::new();
+        for candidate in [
+            dex_info.base_asset_id.clone(),
+            dex_info.synthetic_base_asset_id.clone(),
+        ] {
+            if candidate != input_asset_id
+                && candidate != output_asset_id
+                && !intermediates.contains(&candidate)
+            {
+                intermediates.push(candidate);
+            }
+        }
+        if let Some(chameleon_asset) = base_chameleon_asset_id.clone() {
+            if chameleon_asset != input_asset_id
+                && chameleon_asset != output_asset_id
+                && !intermediates.contains(&chameleon_asset)
+            {
+                intermediates.push(chameleon_asset);
+            }
+        }
+
+        let mut unique_paths: BTreeSet<Vec<AssetIdOf<T>>> = BTreeSet::new();
+
+        let direct_path = vec![input_asset_id.clone(), output_asset_id.clone()];
+        if Self::is_path_valid(&direct_path, &asset_types) {
+            unique_paths.insert(direct_path);
+        }
+
+        for count in 1..=intermediates.len() {
+            for perm in Self::permutations(&intermediates, count) {
+                let mut path = Vec::with_capacity(perm.len() + 2);
+                path.push(input_asset_id.clone());
+                path.extend(perm);
+                path.push(output_asset_id.clone());
+                if Self::is_path_valid(&path, &asset_types) {
+                    unique_paths.insert(path);
+                }
+            }
+        }
+
+        if unique_paths.is_empty() {
+            return None;
+        }
+
+        let mut ordered_paths: Vec<Vec<AssetIdOf<T>>> = unique_paths.into_iter().collect();
+        ordered_paths.sort_by(|a, b| a.len().cmp(&b.len()).then_with(|| a.cmp(b)));
+
+        Some(
+            ordered_paths
+                .into_iter()
+                .map(ExchangePath)
+                .collect::<Vec<_>>(),
+        )
     }
 }
 
@@ -375,6 +314,44 @@ fn merge_two_vectors_unique<T: PartialEq>(vec_1: &mut Vec<T>, vec_2: Vec<T>) {
         if !vec_1.contains(&el) {
             vec_1.push(el);
         }
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+pub(crate) struct RemainderDistribution {
+    total: Balance,
+}
+
+impl RemainderDistribution {
+    fn none() -> Self {
+        Self {
+            total: Balance::zero(),
+        }
+    }
+
+    pub(crate) fn from_total(total: Balance) -> Self {
+        Self { total }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn remaining(&self) -> Balance {
+        self.total
+    }
+
+    pub(crate) fn take(&mut self, receivers_left: usize, target_amount: Balance) -> Balance {
+        if self.total.is_zero() || receivers_left == 0 {
+            return Balance::zero();
+        }
+
+        let receivers_left_balance = receivers_left as Balance;
+        let unit = balance!(1);
+        let rounding_adjustment = unit.saturating_mul(receivers_left_balance.saturating_sub(1));
+        let mut share = self.total.saturating_add(rounding_adjustment) / receivers_left_balance;
+
+        share = share.min(self.total);
+        let applied = share.min(target_amount);
+        self.total = self.total.saturating_sub(applied);
+        applied
     }
 }
 
@@ -730,6 +707,12 @@ impl<T: Config> Pallet<T> {
         deduce_fee: bool,
     ) -> Result<(QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         let mut weight = Weight::zero();
+        let mut asset_paths = asset_paths;
+        asset_paths.sort_by(|a, b| {
+            a.0.len()
+                .cmp(&b.0.len())
+                .then_with(|| a.0.cmp(&b.0))
+        });
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match swap_variant {
                 SwapVariant::WithDesiredInput => Self::quote_pairs_with_flexible_amount(
@@ -911,7 +894,8 @@ impl<T: Config> Pallet<T> {
 
     // Would likely to fail if operating near the limits,
     // because it uses i128 for fixed-point arithmetics.
-    // TODO: switch to unsigned internal representation
+    // NOTE: this still uses a signed fixed-point representation; switching to an unsigned variant might improve
+    // saturation behaviour, but the supporting types are not yet available in `common::fixed`.
     fn calculate_amount_without_impact(
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
@@ -927,7 +911,8 @@ impl<T: Config> Pallet<T> {
         use fixnum::ops::{One, RoundMode, RoundingDiv, RoundingMul};
 
         let ratio_to_actual = if outcome_amount != 0 {
-            // TODO: switch to unsigned internal representation (`FixedPoint<u128, U18>`)
+            // NOTE: we currently rely on a signed representation (`FixedI128`). If the toolkit gains a
+            // `FixedPoint<u128, U18>` type we can revisit this conversion to avoid intermediate sign handling.
             // for now lib `fixnum` doesn't implement operations for such types, so
             // we just use `i128` repr
             let outcome_without_impact = Fixed::from_bits(
@@ -1005,6 +990,15 @@ impl<T: Config> Pallet<T> {
         Ok(sources)
     }
 
+    #[cfg(test)]
+    pub(crate) fn test_list_quote_liquidity_sources(
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+        filter: &LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+    ) -> Result<Vec<LiquiditySourceIdOf<T>>, DispatchError> {
+        Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, filter)
+    }
+
     /// Computes the optimal distribution across available liquidity sources to execute the requested trade
     /// given the input and output assets, the trade amount and a liquidity sources filter.
     ///
@@ -1034,6 +1028,12 @@ impl<T: Config> Pallet<T> {
         let sources = Self::list_quote_liquidity_sources(input_asset_id, output_asset_id, &filter)?;
         let mut total_weight = <T as Config>::WeightInfo::list_liquidity_sources();
         ensure!(!sources.is_empty(), Error::<T>::UnavailableExchangePath);
+        debug_assert!(
+            (sources.len() as u32) <= T::MaxLiquiditySourcesPerPath::get(),
+            "liquidity-proxy: encountered {} sources, but MaxLiquiditySourcesPerPath is {}",
+            sources.len(),
+            T::MaxLiquiditySourcesPerPath::get()
+        );
 
         // Check if we have exactly one source => no split required
         if sources.len() == 1 {
@@ -1088,6 +1088,35 @@ impl<T: Config> Pallet<T> {
 
         total_weight = total_weight.saturating_add(weight);
         Ok((outcome, rewards, sources, total_weight))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_quote_single(
+        base_asset_id: &AssetIdOf<T>,
+        input_asset_id: &AssetIdOf<T>,
+        output_asset_id: &AssetIdOf<T>,
+        amount: QuoteAmount<Balance>,
+        filter: LiquiditySourceFilter<T::DEXId, LiquiditySourceType>,
+        skip_info: bool,
+        deduce_fee: bool,
+    ) -> Result<
+        (
+            AggregatedSwapOutcome<AssetIdOf<T>, LiquiditySourceIdOf<T>, Balance>,
+            Rewards<AssetIdOf<T>>,
+            Vec<LiquiditySourceIdOf<T>>,
+            Weight,
+        ),
+        DispatchError,
+    > {
+        Self::quote_single(
+            base_asset_id,
+            input_asset_id,
+            output_asset_id,
+            amount,
+            filter,
+            skip_info,
+            deduce_fee,
+        )
     }
 
     /// Check if given two arbitrary tokens can be used to perform an exchange via any available sources.
@@ -1174,18 +1203,26 @@ impl<T: Config> Pallet<T> {
     /// The new approach code map:
     ///
     /// new_smart_split()
-    ///     step_quote() - max 4 times, because there are 4 liquidity sources
-    ///     check_rewards() - max 4 times, because there are 4 liquidity sources
+    ///     step_quote() - once for every enabled liquidity source type
+    ///     check_rewards() - once for every enabled liquidity source type
     ///
     /// Dev NOTE: if you change the logic of liquidity proxy, please sustain inner_exchange_weight() and code map above.
     pub fn smart_split_weight() -> Weight {
-        // Only TBC has rewards weight, all others are zero.
-        // In this case the max value of the sum of rewards weights is TBC weight,
-        // because it could be only one TBC source in the list.
-        // The rewards weight is added once, no matter how many times it was called in the code.
-        T::LiquidityRegistry::check_rewards_weight().saturating_add(
-            T::LiquidityRegistry::step_quote_weight(T::GetNumSamples::get()).saturating_mul(4),
-        )
+        let max_sources = T::MaxLiquiditySourcesPerPath::get() as u64;
+        let rewards_weight = T::LiquidityRegistry::check_rewards_weight();
+        let step_weight = T::LiquidityRegistry::step_quote_weight(T::GetNumSamples::get());
+        Self::smart_split_weight_for(max_sources, step_weight, rewards_weight)
+    }
+
+    /// Helper for computing the smart split bound given pre-calculated per-source weights.
+    pub(crate) fn smart_split_weight_for(
+        max_sources: u64,
+        step_weight: Weight,
+        rewards_weight: Weight,
+    ) -> Weight {
+        let rewards_total = rewards_weight.saturating_mul(max_sources);
+        let step_total = step_weight.saturating_mul(max_sources);
+        rewards_total.saturating_add(step_total)
     }
 
     /// Calculates the max potential weight of inner_exchange
@@ -1439,7 +1476,7 @@ impl<T: Config> Pallet<T> {
 
     fn new_smart_split(
         sources: &Vec<LiquiditySourceIdOf<T>>,
-        base_asset_id: &AssetIdOf<T>,
+        _base_asset_id: &AssetIdOf<T>,
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
         amount: QuoteAmount<Balance>,
@@ -1455,11 +1492,6 @@ impl<T: Config> Pallet<T> {
     > {
         ensure!(
             input_asset_id != output_asset_id,
-            Error::<T>::UnavailableExchangePath
-        );
-
-        ensure!(
-            input_asset_id == base_asset_id || output_asset_id == base_asset_id,
             Error::<T>::UnavailableExchangePath
         );
 
@@ -1522,7 +1554,7 @@ impl<T: Config> Pallet<T> {
         dex_id: T::DEXId,
         filter_mode: &FilterMode,
         out_amount: Balance,
-    ) -> Result<(Balance, Balance, Weight), DispatchError> {
+    ) -> Result<(Balance, RemainderDistribution, Weight), DispatchError> {
         Self::check_indivisible_assets(input_asset_id, output_asset_id)?;
         let mut total_weight = <T as Config>::WeightInfo::check_indivisible_assets();
 
@@ -1553,47 +1585,47 @@ impl<T: Config> Pallet<T> {
         )?;
         total_weight = total_weight.saturating_add(weights);
 
+        let caller_output_asset_balance =
+            T::AssetInfoProvider::total_balance(&output_asset_id, &sender)?;
+        let (actual_output_amount, remainder_distribution) =
+            Self::split_remainder(out_amount, caller_output_asset_balance, num_of_receivers);
+
         Self::deposit_event(Event::<T>::Exchange(
             sender.clone(),
             dex_id,
             input_asset_id.clone(),
             output_asset_id.clone(),
             executed_input_amount,
-            out_amount,
+            actual_output_amount,
             fee,
             sources,
         ));
 
-        let caller_output_asset_balance =
-            T::AssetInfoProvider::total_balance(&output_asset_id, &sender)?;
-        let remainder_per_receiver: Balance = if caller_output_asset_balance < out_amount {
-            let remainder = out_amount.saturating_sub(caller_output_asset_balance);
-            remainder / num_of_receivers + remainder % num_of_receivers
-        } else {
-            0
-        };
-        Ok((executed_input_amount, remainder_per_receiver, total_weight))
+        Ok((executed_input_amount, remainder_distribution, total_weight))
     }
 
     fn transfer_batch_tokens_unchecked(
         sender: &T::AccountId,
         output_asset_id: &AssetIdOf<T>,
         receivers: Vec<BatchReceiverInfo<T::AccountId>>,
-        remainder_per_receiver: Balance,
+        remainder_distribution: RemainderDistribution,
     ) -> Result<Weight, DispatchError> {
         let len = receivers.len();
-        fallible_iterator::convert(receivers.into_iter().map(|val| Ok(val))).for_each(
-            |receiver| {
+        let mut remainder_distribution = remainder_distribution;
+        fallible_iterator::convert(receivers.into_iter().enumerate().map(
+            |(idx, receiver)| -> Result<_, DispatchError> {
+                let receivers_left = len - idx;
+                let remainder = remainder_distribution.take(receivers_left, receiver.target_amount);
                 T::AssetManager::transfer_from(
                     &output_asset_id,
                     &sender,
                     &receiver.account_id,
-                    receiver
-                        .target_amount
-                        .saturating_sub(remainder_per_receiver),
+                    receiver.target_amount.saturating_sub(remainder),
                 )
             },
-        )?;
+        ))
+        .for_each(|_| Ok(()))?;
+        debug_assert!(remainder_distribution.total.is_zero());
         Ok(<T as assets::Config>::WeightInfo::transfer().saturating_mul(len as u64))
     }
 
@@ -1681,9 +1713,9 @@ impl<T: Config> Pallet<T> {
                     .try_fold(Balance::zero(), |acc, val| acc.checked_add(val))
                     .ok_or(Error::<T>::CalculationError)?;
 
-                let (executed_input_amount, remainder_per_receiver, weight): (
+                let (executed_input_amount, remainder_distribution, weight): (
                     Balance,
-                    Balance,
+                    RemainderDistribution,
                     Weight,
                 ) = if &asset_id != input_asset_id {
                     let withdrawn_fee = Self::withdraw_adar_commission(
@@ -1699,7 +1731,7 @@ impl<T: Config> Pallet<T> {
                     let desired_exchange_amount = out_amount.saturating_sub(outcome_asset_reuse);
 
                     if !desired_exchange_amount.is_zero() {
-                        Self::exchange_batch_tokens(
+                        let result = Self::exchange_batch_tokens(
                             &sender,
                             receivers.len() as u128,
                             &input_asset_id,
@@ -1709,12 +1741,13 @@ impl<T: Config> Pallet<T> {
                             dex_id,
                             &filter_mode,
                             desired_exchange_amount,
-                        )?
+                        )?;
+                        result
                     } else {
-                        (0, 0, Weight::zero())
+                        (0, RemainderDistribution::none(), Weight::zero())
                     }
                 } else {
-                    (out_amount, 0, Weight::zero())
+                    (out_amount, RemainderDistribution::none(), Weight::zero())
                 };
                 total_weight = total_weight.saturating_add(weight);
 
@@ -1730,7 +1763,7 @@ impl<T: Config> Pallet<T> {
                     &sender,
                     &asset_id,
                     receivers,
-                    remainder_per_receiver,
+                    remainder_distribution,
                 )?;
                 total_weight = total_weight.saturating_add(transfer_weight);
                 Result::<_, DispatchError>::Ok(())
@@ -1744,6 +1777,23 @@ impl<T: Config> Pallet<T> {
             max_input_amount,
         )?;
         Ok((adar_commission, executed_batch_input_amount, total_weight))
+    }
+
+    pub(crate) fn split_remainder(
+        expected_amount: Balance,
+        actual_amount: Balance,
+        receivers: u128,
+    ) -> (Balance, RemainderDistribution) {
+        if expected_amount <= actual_amount || receivers == 0 {
+            return (expected_amount, RemainderDistribution::none());
+        }
+
+        let remainder = expected_amount.saturating_sub(actual_amount);
+        let actual_output_amount = expected_amount.saturating_sub(remainder);
+        (
+            actual_output_amount,
+            RemainderDistribution::from_total(remainder),
+        )
     }
 
     /// Wrapper for `quote_single` to make possible call it from tests.
@@ -1981,6 +2031,8 @@ pub mod pallet {
         /// Percent of internal slippage tolerance
         #[pallet::constant]
         type InternalSlippageTolerance: Get<Permill>;
+        /// Upper bound for liquidity sources considered during smart split calculations.
+        type MaxLiquiditySourcesPerPath: Get<u32>;
         /// Weight information for the extrinsics in this Pallet.
         type WeightInfo: WeightInfo;
     }
@@ -2129,6 +2181,8 @@ pub mod pallet {
 
         /// Enables XST or TBC liquidity source.
         ///
+        /// Can only be called by root.
+        ///
         /// - `liquidity_source`: the liquidity source to be enabled.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
@@ -2158,6 +2212,8 @@ pub mod pallet {
         }
 
         /// Disables XST or TBC liquidity source. The liquidity source becomes unavailable for swap.
+        ///
+        /// Can only be called by root.
         ///
         /// - `liquidity_source`: the liquidity source to be disabled.
         #[pallet::call_index(4)]
@@ -2197,12 +2253,13 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Extrinsic which is enable XORless transfers.
-        /// Internally it's swaps `asset_id` to `desired_xor_amount` of `XOR` and transfers remaining amount of `asset_id` to `receiver`.
-        /// Client apps should specify the XOR amount which should be paid as a fee in `desired_xor_amount` parameter.
-        /// If sender will not have enough XOR to pay fees after execution, transaction will be rejected.
-        /// This extrinsic is done as temporary solution for XORless transfers, in future it would be removed
-        /// and logic for XORless extrinsics should be moved to xor-fee pallet.
+        /// Perform a transfer that sources XOR fees from the transferred asset.
+        /// When `asset_id` is not XOR and both `desired_xor_amount` and `max_amount_in` are non-zero,
+        /// the pallet swaps up to `max_amount_in` of `asset_id` on `dex_id` so the sender receives `desired_xor_amount` of XOR,
+        /// and then transfers exactly `amount` of `asset_id` to `receiver`.
+        /// Client applications must choose `desired_xor_amount` so the sender keeps enough XOR to pay fees;
+        /// otherwise the transaction is rejected.
+        /// Temporary helper until xor-fee pallet supports XORless extrinsics directly.
         #[pallet::call_index(6)]
         #[pallet::weight({
             let mut weight = <T as assets::Config>::WeightInfo::transfer();

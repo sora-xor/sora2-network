@@ -431,6 +431,9 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Update the minimum LP XOR threshold required to receive bonus rewards.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::set_lp_min_xor_for_bonus_reward())]
         pub fn set_lp_min_xor_for_bonus_reward(

@@ -31,6 +31,7 @@
 use crate::mock::*;
 use crate::*;
 use frame_support::assert_ok;
+use frame_system::Pallet as System;
 use sp_core::hash::H512;
 
 type Permissions = Pallet<Runtime>;
@@ -255,6 +256,39 @@ fn permission_assign_fails_with_permission_already_exists() {
 }
 
 #[test]
+fn permission_assign_respects_owner_limit() {
+    ExtBuilder::default().build().execute_with(|| {
+        let max_owners = <Runtime as crate::Config>::MaxPermissionOwners::get() as usize;
+        let existing = crate::Owners::<Runtime>::get(SLASH, Scope::Unlimited).len();
+        for i in 0..max_owners.saturating_sub(existing) {
+            let mut bytes = [0u8; 32];
+            bytes[0] = (i as u8).saturating_add(10);
+            let account = AccountId::new(bytes);
+            let _ = System::<Runtime>::inc_providers(&account);
+            assert_ok!(Permissions::assign_permission(
+                account.clone(),
+                &account,
+                SLASH,
+                Scope::Unlimited
+            ));
+        }
+        let mut overflow_bytes = [0u8; 32];
+        overflow_bytes[0] = (max_owners as u8).saturating_add(20);
+        let overflow_account = AccountId::new(overflow_bytes);
+        let _ = System::<Runtime>::inc_providers(&overflow_account);
+        assert!(matches!(
+            Permissions::assign_permission(
+                overflow_account.clone(),
+                &overflow_account,
+                SLASH,
+                Scope::Unlimited
+            ),
+            Err(Error::<Runtime>::TooManyPermissionOwners)
+        ));
+    });
+}
+
+#[test]
 fn permission_create_passes() {
     ExtBuilder::default().build().execute_with(|| {
         assert_ok!(Permissions::create_permission(
@@ -272,6 +306,28 @@ fn permission_create_passes() {
         assert_ok!(Permissions::check_permission(BOB, CUSTOM_PERMISSION));
         // Verify existing permissions are kept
         assert_ok!(Permissions::check_permission(BOB, INIT_DEX));
+    });
+}
+
+#[test]
+fn create_permission_respects_scope_limit() {
+    ExtBuilder::default().build().execute_with(|| {
+        let max_per_scope = <Runtime as crate::Config>::MaxPermissionsPerScope::get() as usize;
+        let existing = crate::Permissions::<Runtime>::get(&BOB, Scope::Unlimited).len();
+        for i in 0..max_per_scope.saturating_sub(existing) {
+            let permission = CUSTOM_PERMISSION + i as u32 + 1;
+            assert_ok!(Permissions::create_permission(
+                ALICE,
+                BOB,
+                permission,
+                Scope::Unlimited,
+            ));
+        }
+        let overflow_permission = CUSTOM_PERMISSION + max_per_scope as u32 + 10;
+        assert!(matches!(
+            Permissions::create_permission(ALICE, BOB, overflow_permission, Scope::Unlimited,),
+            Err(Error::<Runtime>::TooManyPermissionsPerScope)
+        ));
     });
 }
 

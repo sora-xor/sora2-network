@@ -148,8 +148,8 @@ impl<T: Config> Pallet<T> {
 
     /// Claims the reward for an account with specified `eth_address` and transfers the reward to
     /// the specified `account_id`.
-    /// Does not directly return errors.
-    /// Interacts with the specified `M` StorageMap.
+    /// Returns `Ok(())` on success or propagates a [`DispatchErrorWithPostInfo`] if a transfer fails.
+    /// Interacts with the specified `M` [`StorageMapTrait`].
     ///
     /// Used in `claim` extrinsic.
     ///
@@ -180,8 +180,8 @@ impl<T: Config> Pallet<T> {
 
     /// Claims the VAL reward for an account with specified `eth_address` and transfers the reward to
     /// the specified `account_id` if the `eth_address` is present in `ValOwners`.
-    /// Does not directly return errors.
-    /// Interacts with the `ValOwners` StorageMap and the `TotalValRewards`, `TotalClaimableVal` StorageValues.
+    /// Returns `Ok(())` on success or propagates a [`DispatchErrorWithPostInfo`] if a transfer fails.
+    /// Interacts with the `ValOwners` storage map and the `TotalValRewards`, `TotalClaimableVal` storage values.
     ///
     /// Used in `claim` extrinsic.
     ///
@@ -221,10 +221,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Claims the UMI NFTs for an account with specified `eth_address` and transfers the NFTs to
-    /// the specified `account_id` if the `eth_address` is present in `UmiNftReceivers`.
-    /// Does not directly return errors.
-    /// Interacts with the `UmiNftReceivers` StorageMap and the `UmiNfts` StorageValue.
+    /// Transfers any claimable UMI NFT balances to `account_id`.
+    ///
+    /// Remaining balances are zeroed after a successful transfer to prevent multiple withdrawals.
     ///
     /// Used in `claim` extrinsic.
     ///
@@ -268,8 +267,8 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Adds the specified ETH address to the list of UMI NFT receivers.
-    /// Does not directly return errors.
-    /// Interacts with the `UmiNftReceivers`, `UmiNftClaimed` StorageMaps and the `UmiNfts` StorageValue.
+    /// Returns `Ok(())` on success.
+    /// Interacts with the `UmiNftReceivers`, `UmiNftClaimed` storage maps and the `UmiNfts` storage value.
     ///
     /// Used in `claim` extrinsic.
     ///
@@ -333,11 +332,12 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: T::BlockNumber) -> Weight {
+            // Track DB operations manually so we return an accurate weight.
             let mut consumed_weight: Weight = Weight::zero();
 
             if (now % T::BLOCKS_PER_DAY).is_zero() {
                 if TotalValRewards::<T>::get() == TotalClaimableVal::<T>::get() {
-                    // All VAL has been vested
+                    // All VAL has been vested; nothing new to release this cycle.
                     CurrentClaimableVal::<T>::put(0);
                     return T::DbWeight::get().reads_writes(2, 1);
                 }
@@ -459,8 +459,7 @@ pub mod pallet {
             }
         }
 
-        /// Finalize the update of unclaimed VAL data in storage
-        /// Add addresses, who will receive UMI NFT rewards.
+        /// Finalizes the unclaimed VAL update and appends UMI-NFT receivers to storage.
         #[transactional]
         #[pallet::call_index(1)]
         #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u32), Pays::No))]

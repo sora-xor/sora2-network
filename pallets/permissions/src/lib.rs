@@ -52,10 +52,13 @@ use common::permissions::TRANSFER;
 use common::{hash, AssetRegulator};
 use frame_support::codec::{Decode, Encode};
 use frame_support::sp_runtime::DispatchError;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::traits::Get;
+use frame_support::{ensure, BoundedVec, RuntimeDebug};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
+use sp_std::convert::TryInto;
+#[allow(unused_imports)]
 use sp_std::vec::Vec;
 #[cfg(test)]
 mod mock;
@@ -74,20 +77,28 @@ pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
+/// Limits the visibility of a permission to a particular context.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Scope {
+    /// Permission applies only inside the hash-identified context.
     Limited(H512),
+    /// Permission applies globally.
     Unlimited,
 }
 
 /// Permissions module declaration.
 impl<T: Config> Pallet<T> {
-    /// Method checks a permission of an Account.
+    /// Checks whether `who` owns `permission_id` in any scope.
+    ///
+    /// Returns `Err(Forbidden)` if the permission is missing.
     pub fn check_permission(who: HolderId<T>, permission_id: PermissionId) -> Result<(), Error<T>> {
         Self::check_permission_with_scope(who, permission_id, &Scope::Unlimited)
     }
 
-    /// Method checks a permission with defined scope of an Account.
+    /// Checks whether `who` owns `permission_id` within `scope`.
+    ///
+    /// Falls back to the unlimited scope if a scoped permission is not found.
+    /// Returns `Err(Forbidden)` if neither scoped nor global permission exists.
     pub fn check_permission_with_scope(
         who: HolderId<T>,
         permission_id: PermissionId,
@@ -101,7 +112,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Method grants a permission to an Account.
+    /// Grants a global permission to `account_id` on behalf of `who`.
+    ///
+    /// Succeeds only if `who` already owns the permission globally.
     pub fn grant_permission(
         who: OwnerId<T>,
         account_id: HolderId<T>,
@@ -110,7 +123,12 @@ impl<T: Config> Pallet<T> {
         Self::grant_permission_with_scope(who, account_id, permission_id, Scope::Unlimited)
     }
 
-    /// Method grants a permission with defined scope to an Account.
+    /// Grants `permission_id` within `scope` to `account_id`.
+    ///
+    /// The caller must either own the permission in the same scope or, if the scope is limited,
+    /// own it globally. Returns `Err(PermissionNotOwned)` when the caller lacks ownership or
+    /// `Err(PermissionNotFound)` when the permission was never created. Propagates
+    /// `TooManyPermissionsPerScope` if the holder exceeds capacity.
     pub fn grant_permission_with_scope(
         who: OwnerId<T>,
         account_id: HolderId<T>,
@@ -129,17 +147,45 @@ impl<T: Config> Pallet<T> {
             }
         };
         if owns_permission {
+            let mut added_consumer = false;
             if Permissions::<T>::iter_prefix_values(&account_id).count() == 0 {
                 frame_system::Pallet::<T>::inc_consumers(&account_id)
                     .map_err(|_| Error::<T>::IncRefError)?;
+                added_consumer = true;
             }
-            Permissions::<T>::mutate(&account_id, &scope, |permissions| {
-                if let Err(index) = permissions.binary_search(&permission_id) {
-                    permissions.insert(index, permission_id);
+            let insert_result = Permissions::<T>::try_mutate(
+                &account_id,
+                &scope,
+                |permissions| -> Result<bool, Error<T>> {
+                    if let Err(index) = permissions.binary_search(&permission_id) {
+                        return permissions
+                            .try_insert(index, permission_id)
+                            .map(|_| true)
+                            .map_err(|_| Error::<T>::TooManyPermissionsPerScope);
+                    }
+                    Ok(false)
+                },
+            );
+            match insert_result {
+                Ok(inserted) => {
+                    if inserted {
+                        Self::deposit_event(Event::<T>::PermissionGranted(
+                            permission_id,
+                            account_id,
+                        ));
+                    }
+                    if !inserted && added_consumer {
+                        // Match previous behaviour: the consumer remains incremented.
+                    }
+                    Ok(())
                 }
-            });
-            Self::deposit_event(Event::<T>::PermissionGranted(permission_id, account_id));
-            Ok(())
+                Err(err) => {
+                    if added_consumer {
+                        frame_system::Pallet::<T>::dec_consumers(&account_id);
+                    }
+                    Err(err)
+                }
+            }
         } else if permission_found {
             Err(Error::PermissionNotOwned)
         } else {
@@ -147,7 +193,11 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Method transfers a permission from owner to another Account.
+    /// Transfers permission ownership from `owner` to `new_owner`.
+    ///
+    /// The transfer happens either in the provided scope or, if the scope is limited, falls back
+    /// to the global scope. Returns `Err(PermissionNotOwned)` if `owner` does not control the
+    /// permission.
     pub fn transfer_permission(
         who: OwnerId<T>,
         account_id: HolderId<T>,
@@ -171,28 +221,64 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Method creates a permission from scratch.
+    /// Creates a new permission identified by `permission_id` within `scope`.
+    ///
+    /// Initializes the permission with `owner`, optionally attaching it to `account_id` as the
+    /// first holder. Returns `Err(PermissionAlreadyExists)` when attempting to recreate an
+    /// existing permission.
     pub fn create_permission(
         owner: OwnerId<T>,
         account_id: HolderId<T>,
         permission_id: PermissionId,
         scope: Scope,
     ) -> Result<(), Error<T>> {
+        let mut account_consumer_added = false;
         if Permissions::<T>::iter_prefix_values(&account_id).count() == 0 {
             frame_system::Pallet::<T>::inc_consumers(&account_id)
                 .map_err(|_| Error::<T>::IncRefError)?;
+            account_consumer_added = true;
         }
         frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
-        Owners::<T>::mutate(permission_id, scope, |owners| {
-            ensure!(owners.is_empty(), Error::<T>::PermissionAlreadyExists);
-            owners.push(owner);
-            Ok(())
-        })?;
-        Permissions::<T>::mutate(&account_id, scope, |permissions| {
-            if let Err(index) = permissions.binary_search(&permission_id) {
-                permissions.insert(index, permission_id);
+
+        let owner_insert_result =
+            Owners::<T>::try_mutate(permission_id, scope, |owners| -> Result<(), Error<T>> {
+                ensure!(owners.is_empty(), Error::<T>::PermissionAlreadyExists);
+                owners
+                    .try_push(owner.clone())
+                    .map_err(|_| Error::<T>::TooManyPermissionOwners)
+            });
+        if let Err(err) = owner_insert_result {
+            frame_system::Pallet::<T>::dec_consumers(&owner);
+            if account_consumer_added {
+                frame_system::Pallet::<T>::dec_consumers(&account_id);
             }
-        });
+            return Err(err);
+        }
+
+        let insert_result = Permissions::<T>::try_mutate(
+            &account_id,
+            scope,
+            |permissions| -> Result<(), Error<T>> {
+                if let Err(index) = permissions.binary_search(&permission_id) {
+                    permissions
+                        .try_insert(index, permission_id)
+                        .map_err(|_| Error::<T>::TooManyPermissionsPerScope)?;
+                }
+                Ok(())
+            },
+        );
+        if let Err(err) = insert_result {
+            Owners::<T>::mutate(permission_id, scope, |owners| {
+                if let Some(pos) = owners.iter().position(|o| o == &owner) {
+                    let _ = owners.swap_remove(pos);
+                }
+            });
+            frame_system::Pallet::<T>::dec_consumers(&owner);
+            if account_consumer_added {
+                frame_system::Pallet::<T>::dec_consumers(&account_id);
+            }
+            return Err(err);
+        }
         Self::deposit_event(Event::<T>::PermissionCreated(permission_id, account_id));
         Ok(())
     }
@@ -206,26 +292,56 @@ impl<T: Config> Pallet<T> {
         scope: Scope,
     ) -> Result<(), Error<T>> {
         frame_system::Pallet::<T>::inc_consumers(&owner).map_err(|_| Error::<T>::IncRefError)?;
-        let made_owner = Owners::<T>::mutate(permission_id, scope, |owners| {
-            if !owners.contains(&owner) {
-                owners.push(owner);
-                true
-            } else {
-                false
-            }
-        });
+        let mut made_owner = false;
+        let owner_result =
+            Owners::<T>::try_mutate(permission_id, scope, |owners| -> Result<(), Error<T>> {
+                if owners.contains(&owner) {
+                    return Ok(());
+                }
+                owners
+                    .try_push(owner.clone())
+                    .map_err(|_| Error::<T>::TooManyPermissionOwners)?;
+                made_owner = true;
+                Ok(())
+            });
+        if let Err(err) = owner_result {
+            frame_system::Pallet::<T>::dec_consumers(&owner);
+            return Err(err);
+        }
+        let mut holder_consumer_added = false;
         if Permissions::<T>::iter_prefix_values(&holder_id).count() == 0 {
             frame_system::Pallet::<T>::inc_consumers(&holder_id)
                 .map_err(|_| Error::<T>::IncRefError)?;
+            holder_consumer_added = true;
         }
-        let granted_permission = Permissions::<T>::mutate(&holder_id, scope, |permissions| {
-            if let Err(index) = permissions.binary_search(&permission_id) {
-                permissions.insert(index, permission_id);
-                true
-            } else {
-                false
+        let mut granted_permission = false;
+        let insert_result = Permissions::<T>::try_mutate(
+            &holder_id,
+            scope,
+            |permissions| -> Result<(), Error<T>> {
+                if let Err(index) = permissions.binary_search(&permission_id) {
+                    permissions
+                        .try_insert(index, permission_id)
+                        .map_err(|_| Error::<T>::TooManyPermissionsPerScope)?;
+                    granted_permission = true;
+                }
+                Ok(())
+            },
+        );
+        if let Err(err) = insert_result {
+            if made_owner {
+                Owners::<T>::mutate(permission_id, scope, |owners| {
+                    if let Some(pos) = owners.iter().position(|o| o == &owner) {
+                        let _ = owners.swap_remove(pos);
+                    }
+                });
             }
-        });
+            frame_system::Pallet::<T>::dec_consumers(&owner);
+            if holder_consumer_added {
+                frame_system::Pallet::<T>::dec_consumers(&holder_id);
+            }
+            return Err(err);
+        }
         if made_owner || granted_permission {
             Ok(())
         } else {
@@ -256,6 +372,10 @@ pub mod pallet {
     pub trait Config: frame_system::Config {
         /// Permissions pallet's events.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        /// Maximum number of owners allowed per `(permission, scope)` entry.
+        type MaxPermissionOwners: Get<u32>;
+        /// Maximum number of permissions a holder may posses within a single scope.
+        type MaxPermissionsPerScope: Get<u32>;
     }
 
     /// The current storage version.
@@ -298,6 +418,10 @@ pub mod pallet {
         Forbidden,
         /// Increment account reference error.
         IncRefError,
+        /// Owners limit exceeded for the permission in the given scope.
+        TooManyPermissionOwners,
+        /// Holder reached the maximum number of permissions within the scope.
+        TooManyPermissionsPerScope,
     }
 
     #[pallet::storage]
@@ -307,7 +431,7 @@ pub mod pallet {
         PermissionId,
         Blake2_256,
         Scope,
-        Vec<OwnerId<T>>,
+        BoundedVec<OwnerId<T>, T::MaxPermissionOwners>,
         ValueQuery,
     >;
 
@@ -318,7 +442,7 @@ pub mod pallet {
         HolderId<T>,
         Blake2_256,
         Scope,
-        Vec<PermissionId>,
+        BoundedVec<PermissionId, T::MaxPermissionsPerScope>,
         ValueQuery,
     >;
 
@@ -347,7 +471,11 @@ pub mod pallet {
                     for owner in owners {
                         frame_system::Pallet::<T>::inc_consumers(owner).unwrap();
                     }
-                    Owners::<T>::insert(permission, scope, owners);
+                    let bounded: BoundedVec<_, T::MaxPermissionOwners> =
+                        owners.clone().try_into().expect(
+                            "initial_permission_owners exceeds MaxPermissionOwners; update the genesis configuration",
+                        );
+                    Owners::<T>::insert(permission, scope, bounded);
                 });
 
             self.initial_permissions
@@ -356,7 +484,11 @@ pub mod pallet {
                     let mut permissions = permissions.clone();
                     permissions.sort();
                     frame_system::Pallet::<T>::inc_consumers(&holder_id).unwrap();
-                    Permissions::<T>::insert(holder_id, scope, permissions);
+                    let bounded: BoundedVec<_, T::MaxPermissionsPerScope> =
+                        permissions.clone().try_into().expect(
+                            "initial_permissions exceeds MaxPermissionsPerScope; update the genesis configuration",
+                        );
+                    Permissions::<T>::insert(holder_id, scope, bounded);
                 });
         }
     }

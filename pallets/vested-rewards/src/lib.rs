@@ -993,6 +993,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Can only be called by root.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::update_rewards(rewards.len() as u32))]
         pub fn update_rewards(
@@ -1026,6 +1027,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Can only be called by root.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_crowdloan(contributions.len() as u32))]
         pub fn register_crowdloan(
@@ -1093,6 +1095,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Can only be called by root.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::update_vesting_schedules())]
         pub fn update_vesting_schedules(

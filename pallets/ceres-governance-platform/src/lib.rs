@@ -292,7 +292,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Create poll
+        /// Create poll.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::create_poll())]
         pub fn create_poll(

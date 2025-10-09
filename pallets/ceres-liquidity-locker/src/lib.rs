@@ -299,7 +299,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change CERES fee
+        /// Change CERES fee.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_fee())]
         pub fn change_ceres_fee(

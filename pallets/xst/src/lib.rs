@@ -176,7 +176,9 @@ pub mod pallet {
         /// Change reference asset which is used to determine collateral assets value.
         /// Intended to be e.g., stablecoin DAI.
         ///
-        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root,
         /// - `reference_asset_id`: asset id of the new reference asset.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::set_reference_asset())]
@@ -197,6 +199,9 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Enable an existing synthetic asset and link it to `reference_symbol`.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_synthetic_asset())]
         pub fn enable_synthetic_asset(
@@ -211,7 +216,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Register and enable new synthetic asset with `reference_symbol` price binding
+        /// Register and enable new synthetic asset with `reference_symbol` price binding.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::register_synthetic_asset())]
         pub fn register_synthetic_asset(
@@ -245,7 +252,7 @@ pub mod pallet {
         /// Removes synthetic from exchanging
         /// and removes XSTPool liquidity source for corresponding trading pair.
         ///
-        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `origin`: must be signed by root,
         /// - `synthetic_asset`: synthetic asset id to disable.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_synthetic_asset())]
@@ -262,7 +269,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Entirely remove synthetic asset (including linked symbol info)
+        /// Entirely remove synthetic asset (including linked symbol info).
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_synthetic_asset())]
         pub fn remove_synthetic_asset(
@@ -289,7 +298,7 @@ pub mod pallet {
         /// This fee will be used to determine the amount of synthetic base asset (e.g. XST) to be
         /// burned when user buys synthetic asset.
         ///
-        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `origin`: must be signed by root,
         /// - `synthetic_asset`: synthetic asset id to set fee for,
         /// - `fee_ratio`: fee ratio with precision = 18, so 1000000000000000000 = 1 = 100% fee.
         #[pallet::call_index(5)]

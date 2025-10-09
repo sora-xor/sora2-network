@@ -305,7 +305,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Changes `initial_price` used as bias in XOR-DAI(reference asset) price calculation
+        /// Changes `initial_price` used as bias in XOR-DAI(reference asset) price calculation.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(3)]
         #[pallet::weight(< T as Config >::WeightInfo::set_price_bias())]
         pub fn set_price_bias(
@@ -324,7 +326,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Changes price change rate and step
+        /// Changes price change rate and step.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(4)]
         #[pallet::weight(< T as Config >::WeightInfo::set_price_change_config())]
         pub fn set_price_change_config(

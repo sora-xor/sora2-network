@@ -54,12 +54,10 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
         source_opt: Option<&AccountIdOf<T>>,
         base_asset_id: &AssetIdOf<T>,
     ) -> DispatchResult {
-        let abstract_checking = source_opt.is_none() || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::is_abstract_checking(self);
+        let abstract_checking = source_opt.is_none()
+            || common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::is_abstract_checking(self);
 
-        // Check that client account is same as source, because signature is checked for source.
-        // Signature checking is used in extrinsics for example, and source is derived from origin.
-        // TODO: In general case it is possible to use different client account, for example if
-        // signature of source is legal for some source accounts.
+        // Ensure the action is signed by the same account that is contributing liquidity.
         if !abstract_checking {
             let source = source_opt.unwrap();
             match &self.client_account {
@@ -74,8 +72,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
                 }
             }
 
-            // Dealing with receiver account, for example case then not swapping to self, but to
-            // other account.
+            // Default the receiver to the provider so deposits without a receiver payout to self.
             match &self.receiver_account {
                 // Just use `client_account` as same account, swapping to self.
                 None => {
@@ -87,7 +84,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         let pool_account_repr_sys =
             technical::Pallet::<T>::tech_account_id_to_account_id(&self.pool_account)?;
-        // Check that pool account is valid.
+        // Ensure the selected pool corresponds to the requested trading pair.
         Pallet::<T>::is_pool_account_valid_for(self.source.0.asset, &self.pool_account)?;
 
         // Balance of source account for asset pair.
@@ -120,6 +117,7 @@ impl<T: Config> common::SwapRulesValidation<AccountIdOf<T>, TechAccountIdOf<T>, 
 
         let mut empty_pool = false;
         if balance_bp == 0 && balance_tp == 0 {
+            // First provider sets the initial ratio.
             empty_pool = true;
         } else if balance_bp == 0 {
             Err(Error::<T>::PoolIsInvalid)?;

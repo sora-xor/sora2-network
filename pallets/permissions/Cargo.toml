@@ -27,6 +27,7 @@ sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+common = { path = "../../common", default-features = false, features = ["test"] }
 
 [features]
 default = ["std"]

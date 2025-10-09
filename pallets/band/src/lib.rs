@@ -393,11 +393,13 @@ pub mod pallet {
 
         /// Add `account_ids` to the list of trusted relayers.
         ///
+        /// Can only be called by root.
+        ///
         /// Ignores repeated accounts in `account_ids`.
         /// If one of account is already a trusted relayer an [`Error::AlreadyATrustedRelayer`] will
         /// be returned.
         ///
-        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `origin`: must be signed by root,
         /// - `account_ids`: list of new trusted relayers to add.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::add_relayers())]
@@ -432,11 +434,13 @@ pub mod pallet {
 
         /// Remove `account_ids` from the list of trusted relayers.
         ///
+        /// Can only be called by root.
+        ///
         /// Ignores repeated accounts in `account_ids`.
         /// If one of account is not a trusted relayer an [`Error::AlreadyATrustedRelayer`] will
         /// be returned.
         ///
-        /// - `origin`: the sudo account on whose behalf the transaction is being executed,
+        /// - `origin`: must be signed by root,
         /// - `account_ids`: list of relayers to remove.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config<I>>::WeightInfo::remove_relayers())]

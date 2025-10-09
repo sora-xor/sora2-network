@@ -343,7 +343,9 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Add pool
+        /// Add pool.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::add_pool())]
         pub fn add_pool(
@@ -983,7 +985,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change rewards amount
+        /// Change rewards amount.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::change_rewards_amount())]
         pub fn change_rewards_amount(
@@ -1007,7 +1011,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change rewards per block
+        /// Change rewards per block.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::change_rewards_per_block())]
         pub fn change_rewards_per_block(
@@ -1054,7 +1060,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Liquidate
+        /// Liquidates `user` by seizing collateral from pools that back `asset_id`.
+        ///
+        /// Requires the caller to be signed; the actual authorization is performed in the unsigned
+        /// validator (off-chain workers submit unsigned transactions when a position becomes unsafe).
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(
@@ -1156,7 +1165,9 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Remove pool
+        /// Remove pool.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_pool())]
         pub fn remove_pool(
@@ -1203,7 +1214,9 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Edit pool info
+        /// Edit pool info.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::edit_pool_info())]
         pub fn edit_pool_info(
@@ -1370,7 +1383,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change rewards amount
+        /// Change the collateral factor.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::change_collateral_factor())]
         pub fn change_collateral_factor(
@@ -1395,7 +1410,8 @@ pub mod pallet {
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
 
-        /// It is allowed to call only liquidate() and only if it fulfills conditions.
+        /// Approves unsigned `liquidate` calls emitted by the off-chain worker when a position
+        /// violates safety rules. Rejects any other unsigned call.
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
                 Call::liquidate { user, asset_id } => {
@@ -1491,6 +1507,9 @@ pub mod pallet {
                 .unwrap_or(0)
         }
 
+        /// Returns `true` if the borrowing position is below the liquidation threshold.
+        ///
+        /// Panics are avoided by defaulting to zero when pool data is missing.
         pub fn check_liquidation(
             user_infos: &BTreeMap<AssetIdOf<T>, BorrowingPosition<BlockNumberFor<T>>>,
             borrowing_asset: AssetIdOf<T>,
@@ -1526,6 +1545,7 @@ pub mod pallet {
             .try_into_balance()
             .unwrap_or(0);
 
+            // Liquidate when health_factor < 1. `unwrap_or(0)` ensures we never panic in case of overflow.
             health_factor < balance!(1)
         }
 

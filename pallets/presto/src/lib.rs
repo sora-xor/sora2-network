@@ -399,6 +399,9 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Add a new Presto manager.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::add_presto_manager())]
         pub fn add_presto_manager(origin: OriginFor<T>, manager: AccountIdOf<T>) -> DispatchResult {
@@ -419,6 +422,9 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Remove a Presto manager.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_presto_manager())]
         pub fn remove_presto_manager(
@@ -437,6 +443,9 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Add a new Presto auditor.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::add_presto_auditor())]
         pub fn add_presto_auditor(origin: OriginFor<T>, auditor: AccountIdOf<T>) -> DispatchResult {
@@ -457,6 +466,9 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Remove a Presto auditor.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_presto_auditor())]
         pub fn remove_presto_auditor(

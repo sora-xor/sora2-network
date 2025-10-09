@@ -1202,8 +1202,8 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Set new update period for `xor_fee::Multiplier` updating
-        /// Set 0 to stop updating
+        /// Set the update period for `xor_fee::Multiplier` when dynamic fees are enabled.
+        /// Passing 0 disables further automatic updates. No-op on builds without the `wip` feature.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
@@ -1219,8 +1219,8 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Set new small reference amount `xor_fee::SmallReferenceAmount`
-        /// Small fee should tend to the amount value
+        /// Set the `xor_fee::SmallReferenceAmount` used by dynamic fee logic.
+        /// Fails if `new_reference_amount` is zero. No-op on builds without the `wip` feature.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::set_small_reference_amount())]
         pub fn set_small_reference_amount(

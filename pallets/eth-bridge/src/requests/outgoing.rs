@@ -749,7 +749,7 @@ impl<T: Config> OutgoingAddPeer<T> {
         Ok(())
     }
 
-    /// Cleans the current pending peer value.
+    /// Clears the pending peer state, returning the consumer reference.
     pub fn cancel(&self) -> Result<(), DispatchError> {
         if let Some(account_id) = crate::PendingPeer::<T>::take(self.network_id) {
             frame_system::Pallet::<T>::dec_consumers(&account_id);
@@ -948,7 +948,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
     }
 }
 
-// TODO: add reference for a corresponding `OutgoingRemovePeer` and check its existence.
+// TODO: add reference for the corresponding `OutgoingRemovePeer` and check its existence before enqueueing.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

@@ -157,7 +157,9 @@ impl<T: Config> Pallet<T> {
         Self::ensure_account_registered(&account_id).map(|_| ())
     }
 
-    /// Register `TechAccountId` in storage map.
+    /// Registers `tech_account_id` and links it to the corresponding `AccountId`.
+    ///
+    /// Increments the system provider reference if this is a brand-new technical account.
     pub fn register_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
         if let Err(_) = Self::lookup_tech_account_id(&account_id) {
@@ -167,7 +169,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Register `TechAccountId` in storage map if it not exist.
+    /// Registers `tech_account_id` only if it is not already present.
+    ///
+    /// Safe to call multiple times; subsequent calls become no-ops.
     pub fn register_tech_account_id_if_not_exist(
         tech_account_id: &T::TechAccountId,
     ) -> DispatchResult {
@@ -179,7 +183,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Deregister `TechAccountId` in storage map.
+    /// Deregisters `tech_account_id` and drops the provider reference.
     pub fn deregister_tech_account_id(tech_account_id: T::TechAccountId) -> DispatchResult {
         let account_id = Self::tech_account_id_to_account_id(&tech_account_id)?;
         if let Ok(_) = Self::lookup_tech_account_id(&account_id) {
@@ -189,7 +193,9 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Set storage changes in assets to transfer specific asset from regular `AccountId` into pure `TechAccountId`.
+    /// Transfers `amount` of `asset` from a regular account into the technical account.
+    ///
+    /// Fails if the technical account is not registered or the transfer cannot be executed.
     pub fn transfer_in(
         asset: &AssetIdOf<T>,
         source: &T::AccountId,
@@ -202,7 +208,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Set storage changes in assets to transfer specific asset from pure `TechAccountId` into pure `AccountId`.
+    /// Transfers `amount` of `asset` from a technical account to a regular account.
     pub fn transfer_out(
         asset: &AssetIdOf<T>,
         tech_source: &T::TechAccountId,
@@ -215,7 +221,7 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    /// Transfer specific asset from pure `TechAccountId` into pure `TechAccountId`.
+    /// Moves `amount` of `asset` between two technical accounts.
     pub fn transfer(
         asset: &AssetIdOf<T>,
         tech_source: &T::TechAccountId,

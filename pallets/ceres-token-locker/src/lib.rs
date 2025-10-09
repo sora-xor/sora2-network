@@ -292,7 +292,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change fee
+        /// Change fee.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::change_fee())]
         pub fn change_fee(origin: OriginFor<T>, new_fee: Balance) -> DispatchResultWithPostInfo {

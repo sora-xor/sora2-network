@@ -201,7 +201,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change RewardsRemaining
+        /// Change the `RewardsRemaining` counter.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::change_rewards_remaining())]
         pub fn change_rewards_remaining(

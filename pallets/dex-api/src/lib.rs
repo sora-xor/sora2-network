@@ -476,6 +476,9 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        /// Enable an additional liquidity source type.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_liquidity_source())]
         pub fn enable_liquidity_source(
@@ -496,6 +499,9 @@ pub mod pallet {
             Ok(().into())
         }
 
+        /// Disable a liquidity source type.
+        ///
+        /// Can only be called by root.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_liquidity_source())]
         pub fn disable_liquidity_source(

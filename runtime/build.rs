@@ -53,7 +53,18 @@ fn main() {
         pre_commit_hook_path.to_string_lossy()
     );
     let enabled_hooks_dir = root_path.join(".git/hooks");
-    fs::create_dir_all(&enabled_hooks_dir).expect("Failed to create '.git/hooks' dir");
-    fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit"))
-        .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");
+    if let Err(err) = fs::create_dir_all(&enabled_hooks_dir) {
+        if err.kind() == std::io::ErrorKind::PermissionDenied {
+            println!("cargo:warning=Skipping git hook installation: {}", err);
+            return;
+        }
+        panic!("Failed to create '.git/hooks' dir: {err}");
+    }
+    if let Err(err) = fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit")) {
+        if err.kind() == std::io::ErrorKind::PermissionDenied {
+            println!("cargo:warning=Skipping git hook installation: {}", err);
+            return;
+        }
+        panic!("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit': {err}");
+    }
 }

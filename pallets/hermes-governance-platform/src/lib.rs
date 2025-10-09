@@ -542,7 +542,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change minimum Hermes for voting
+        /// Change minimum Hermes for voting.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_voting())]
         pub fn change_min_hermes_for_voting(
@@ -565,7 +567,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change minimum Hermes for creating a poll
+        /// Change minimum Hermes for creating a poll.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::change_min_hermes_for_creating_poll())]
         pub fn change_min_hermes_for_creating_poll(

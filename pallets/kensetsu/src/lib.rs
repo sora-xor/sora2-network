@@ -646,7 +646,7 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// - `origin`: the caller opening the CDP.
         /// - `collateral_asset_id`: The identifier of the asset used as collateral.
         /// - `collateral_amount`: The amount of collateral to be deposited.
         /// - `borrow_amount_min`: The minimum amount the user wants to borrow.
@@ -733,7 +733,9 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `cdp_id`: The ID of the CDP to deposit collateral into.
         /// - `collateral_amount`: The amount of collateral to deposit.
         #[pallet::call_index(2)]
@@ -752,7 +754,9 @@ pub mod pallet {
         /// `[borrow_amount_min, borrow_amount_max]` in order to confrom the slippage tolerance.
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `cdp_id`: The ID of the CDP to borrow against.
         /// - `borrow_amount_min`: The minimum amount the user wants to borrow.
         /// - `borrow_amount_max`: The maximum amount the user wants to borrow.
@@ -776,7 +780,9 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `cdp_id`: The ID of the CDP to repay debt for.
         /// - `amount`: The amount to repay against the CDP's debt.
         #[pallet::call_index(4)]
@@ -842,7 +848,9 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `collateral_asset_id`: The identifier of the collateral asset. If collateral asset id
         /// is not tracked by PriceTools, registers the asset id in PriceTools.
         /// - `new_risk_parameters`: The new risk parameters to be set for the collateral asset.
@@ -877,7 +885,9 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `new_borrow_tax`: The new borrow tax percentage to be set.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_borrow_tax())]
@@ -906,7 +916,9 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `new_liquidation_penalty`: The new liquidation penalty percentage to be set.
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::update_liquidation_penalty())]
@@ -929,7 +941,9 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `origin`: The origin of the transaction.
+        /// Can only be called by root.
+        ///
+        /// - `origin`: must be signed by root.
         /// - `beneficiary` : The destination account where assets will be withdrawn.
         /// - `stablecoin_asset_id` - The asset id of stablecoin.
         /// - `amount`: The amount of stablecoin to withdraw as protocol profit.
@@ -995,6 +1009,8 @@ pub mod pallet {
         /// Adds new stablecoin mutating StablecoinInfo.
         ///
         /// ##Parameters
+        ///
+        /// Can only be called by root.
         /// - stablecoin_asset_id - asset id of new stablecoin, must be mintable and total supply
         /// must be 0.
         /// - new_stablecoin_parameters - parameters for peg.
@@ -1021,6 +1037,8 @@ pub mod pallet {
         /// Updates risk parameter `hard_cap`.
         ///
         /// ##Parameters
+        ///
+        /// Can only be called by root.
         /// - `collateral_asset_id` and `stablecoin_asset_id` - composite key for collateral_info;
         /// - `hard_cap` - new value.
         #[pallet::call_index(13)]
@@ -1058,6 +1076,8 @@ pub mod pallet {
         /// Updates risk parameter `liquidation_ratio`.
         ///
         /// ##Parameters
+        ///
+        /// Can only be called by root.
         /// - `collateral_asset_id` and `stablecoin_asset_id` - composite key for collateral_info;
         /// - `liquidation_ratio` - new value.
         #[pallet::call_index(14)]
@@ -1095,6 +1115,8 @@ pub mod pallet {
         /// Updates risk parameter `max_liquidation_lot`.
         ///
         /// ##Parameters
+        ///
+        /// Can only be called by root.
         /// - `collateral_asset_id` and `stablecoin_asset_id` - composite key for collateral_info;
         /// - `max_liquidation_lot` - new value.
         #[pallet::call_index(15)]
@@ -1133,6 +1155,8 @@ pub mod pallet {
         /// Updates risk parameter `stability_fee_rate`.
         ///
         /// ##Parameters
+        ///
+        /// Can only be called by root.
         /// - `collateral_asset_id` and `stablecoin_asset_id` - composite key for collateral_info;
         /// - `stability_fee_rate` - new value.
         #[pallet::call_index(16)]
@@ -1177,6 +1201,8 @@ pub mod pallet {
         /// Updates risk parameter `minimal_collateral_deposit`.
         ///
         /// ##Parameters
+        ///
+        /// Can only be called by root.
         /// - `collateral_asset_id` and `stablecoin_asset_id` - composite key for collateral_info;
         /// - `minimal_collateral_deposit` - new value.
         #[pallet::call_index(17)]
@@ -1213,6 +1239,7 @@ pub mod pallet {
             )
         }
 
+        /// Can only be called by root.
         #[pallet::call_index(18)]
         #[pallet::weight(<T as Config>::WeightInfo::update_minimal_stability_fee_accrue())]
         pub fn update_minimal_stability_fee_accrue(

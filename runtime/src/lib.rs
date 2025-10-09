@@ -167,22 +167,20 @@ pub use {
     multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
 };
 
-/// An index to a block.
+/// 32-bit block number type.
 pub type BlockNumber = u32;
 
-/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
+/// 512-bit hash used to identify transactions.
 pub type Signature = MultiSignature;
 
-/// Some way of identifying an account on the chain. We intentionally make it equivalent
-/// to the public key of our transaction signing scheme.
+/// SS58-compatible account identifier (alias for the signature public key).
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 // This assert is needed for `technical` pallet in order to create
 // `AccountId` from the hash type.
 assert_eq_size!(AccountId, sp_core::H256);
 
-/// The type for looking up accounts. We don't expect more than 4 billion of them, but you
-/// never know...
+/// Account index type used for nonce tracking. 32-bit to match Substrate defaults.
 pub type AccountIndex = u32;
 
 /// Index of a transaction in the chain.
@@ -330,12 +328,13 @@ parameter_types! {
         *BlockLength::get()
         .max
         .get(DispatchClass::Normal);
+    // Default referendum scheduling (30-day enactment includes 2-day buffer for finalization).
     pub const DemocracyEnactmentPeriod: BlockNumber = 30 * DAYS;
     pub const DemocracyLaunchPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyVotingPeriod: BlockNumber = 14 * DAYS;
     pub const DemocracyMinimumDeposit: Balance = balance!(1);
-    pub const DemocracyFastTrackVotingPeriod: BlockNumber = 3 * HOURS;
-    pub const DemocracyInstantAllowed: bool = true;
+    pub const DemocracyFastTrackVotingPeriod: BlockNumber = 3 * HOURS; // fast-track referenda conclude within 3 hours
+    pub const DemocracyInstantAllowed: bool = true; // allow instant enactment when council approves
     pub const DemocracyCooloffPeriod: BlockNumber = 28 * DAYS;
     pub const DemocracyPreimageByteDeposit: Balance = balance!(0.000002); // 2 * 10^-6, 5 MiB -> 10.48576 XOR
     pub const DemocracyMaxVotes: u32 = 500;
@@ -348,15 +347,17 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
-    pub SchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
+    pub SchedulerMaxWeight: Weight =
+        Perbill::from_percent(50) * BlockWeights::get().max_block; // keep half the block free to accommodate on-chain scheduling overhead
     pub const MaxScheduledPerBlock: u32 = 50;
-    pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
+    pub OffencesWeightSoftLimit: Weight =
+        Perbill::from_percent(60) * BlockWeights::get().max_block; // prevents offence reporting from saturating blocks
     pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
     pub const ElectionsCandidacyBond: Balance = balance!(1);
-    // 1 storage item created, key size is 32 bytes, value size is 16+16.
+    // Base bond per voter; covers the storage footprint of the `Votes` map entry.
     pub const ElectionsVotingBondBase: Balance = balance!(0.000001);
-    // additional data per vote is 32 bytes (account id).
+    // Additional bond per vote to account for the encoded account reference.
     pub const ElectionsVotingBondFactor: Balance = balance!(0.000001);
     pub const ElectionsTermDuration: BlockNumber = 7 * DAYS;
     /// 13 members initially, to be increased to 23 eventually.
@@ -637,7 +638,7 @@ impl pallet_staking::Config for Runtime {
     type MultiCurrency = Tokens;
     type CurrencyBalance = Balance;
     type ValTokenId = GetValAssetId;
-    type ValRewardCurve = ValRewardCurve;
+    type ValRewardCurve = ValRewardCurve; // maps burned VAL percentage to validator reward multiplier
     type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
     type RuntimeEvent = RuntimeEvent;
@@ -916,7 +917,7 @@ parameter_types! {
     pub const GetKusdAssetId: AssetId = AssetId32::from_asset_id(PredefinedAssetId::KUSD);
     pub const GetVXorAssetId: AssetId = common::VXOR;
 
-    pub const GetBaseAssetId: AssetId = GetXorAssetId::get();
+    pub const GetBaseAssetId: AssetId = GetXorAssetId::get(); // XOR is the canonical base asset on DEX 0
     pub const GetBuyBackAssetId: AssetId = GetXstAssetId::get();
     pub GetBuyBackSupplyAssets: Vec<AssetId> = vec![GetValAssetId::get(), GetPswapAssetId::get()];
     pub const GetBuyBackPercentage: u8 = 10;
@@ -1089,6 +1090,7 @@ parameter_types! {
     pub const MaxRegistrars: u32 = 20;
     pub const MaxAdditionalDataLengthXorlessTransfer: u32 = 128;
     pub const MaxAdditionalDataLengthSwapTransferBatch: u32 = 2000;
+    pub const MaxLiquiditySourcesPerPath: u32 = 16;
     pub ReferralsReservesAcc: AccountId = {
         let tech_account_id = TechAccountId::from_generic_pair(
             b"referrals".to_vec(),
@@ -1121,6 +1123,7 @@ impl liquidity_proxy::Config for Runtime {
     >;
     type MaxAdditionalDataLengthXorlessTransfer = MaxAdditionalDataLengthXorlessTransfer;
     type MaxAdditionalDataLengthSwapTransferBatch = MaxAdditionalDataLengthSwapTransferBatch;
+    type MaxLiquiditySourcesPerPath = MaxLiquiditySourcesPerPath;
     type GetChameleonPools = GetChameleonPools;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
@@ -1282,10 +1285,10 @@ impl referrals::Config for Runtime {
 
 impl rewards::Config for Runtime {
     const BLOCKS_PER_DAY: BlockNumber = 1 * DAYS;
-    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES;
-    const MAX_CHUNK_SIZE: usize = 100;
+    const UPDATE_FREQUENCY: BlockNumber = 10 * MINUTES; // refresh claimable amounts every 10 minutes
+    const MAX_CHUNK_SIZE: usize = 100; // batch size for nightly distribution updates
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
-    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
+    const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years until vesting reaches MAX_VESTING_RATIO
     const VAL_BURN_PERCENT: Percent = VAL_BURN_PERCENT;
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = rewards::weights::SubstrateWeight<Runtime>;
@@ -1298,6 +1301,7 @@ where
     T: ValBurnedNotifier<Balance>,
 {
     fn on_val_burned(amount: Balance) {
+        // Feed burned VAL into rewards vesting and notify staking notifier.
         Rewards::on_val_burned(amount);
         T::notify_val_burned(amount);
     }
@@ -1345,7 +1349,7 @@ impl xor_fee::Config for Runtime {
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type OnValBurned = ValBurnedAggregator<Staking>;
+    type OnValBurned = ValBurnedAggregator<Staking>; // aggregates burned VAL and redistributes rewards to staking\n*** End Patch
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
@@ -1388,6 +1392,11 @@ parameter_types! {
     pub const OperationalFeeMultiplier: u8 = 5;
 }
 
+parameter_types! {
+    pub const PermissionsMaxOwners: u32 = 64;
+    pub const PermissionsMaxPerScope: u32 = 128;
+}
+
 impl pallet_transaction_payment::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type OnChargeTransaction = XorFee;
@@ -1405,6 +1414,8 @@ impl pallet_sudo::Config for Runtime {
 
 impl permissions::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type MaxPermissionOwners = PermissionsMaxOwners;
+    type MaxPermissionsPerScope = PermissionsMaxPerScope;
 }
 
 impl pallet_utility::Config for Runtime {

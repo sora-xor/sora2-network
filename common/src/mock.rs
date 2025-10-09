@@ -706,6 +706,7 @@ macro_rules! mock_liquidity_proxy_config {
             type LockedLiquiditySourcesManager = trading_pair::Pallet<$runtime>;
             type MaxAdditionalDataLengthSwapTransferBatch = frame_support::traits::ConstU32<2000>;
             type MaxAdditionalDataLengthXorlessTransfer = frame_support::traits::ConstU32<128>;
+            type MaxLiquiditySourcesPerPath = frame_support::traits::ConstU32<16>;
             type PrimaryMarketTBC = $primaty_market_tbc;
             type PrimaryMarketXST = $primaty_market_xst;
             type RuntimeEvent = RuntimeEvent;
@@ -956,8 +957,14 @@ macro_rules! mock_pallet_transaction_payment_config {
 #[macro_export]
 macro_rules! mock_permissions_config {
     ($runtime:ty) => {
+        frame_support::parameter_types! {
+            pub const PermissionsMaxOwners: u32 = 16;
+            pub const PermissionsMaxPerScope: u32 = 64;
+        }
         impl permissions::Config for $runtime {
             type RuntimeEvent = RuntimeEvent;
+            type MaxPermissionOwners = PermissionsMaxOwners;
+            type MaxPermissionsPerScope = PermissionsMaxPerScope;
         }
     };
 }

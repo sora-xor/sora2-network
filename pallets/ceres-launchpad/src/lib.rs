@@ -1038,7 +1038,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change fee percent on raised funds in successful ILO
+        /// Change fee percent on raised funds in successful ILO.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_fee_percent_for_raised_funds(
@@ -1063,7 +1065,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change CERES burn fee
+        /// Change CERES burn fee.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_burn_fee())]
         pub fn change_ceres_burn_fee(
@@ -1084,7 +1088,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change CERES contribution fee
+        /// Change CERES contribution fee.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::change_ceres_contribution_fee())]
         pub fn change_ceres_contribution_fee(
@@ -1105,7 +1111,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Claim PSWAP rewards
+        /// Claim PSWAP rewards.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[transactional]
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::claim_pswap_rewards())]
@@ -1142,7 +1150,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Add whitelisted contributor
+        /// Add whitelisted contributor.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_contributor())]
         pub fn add_whitelisted_contributor(
@@ -1163,7 +1173,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Remove whitelisted contributor
+        /// Remove whitelisted contributor.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_contributor())]
         pub fn remove_whitelisted_contributor(
@@ -1186,7 +1198,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Add whitelisted ILO organizer
+        /// Add whitelisted ILO organizer.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(12)]
         #[pallet::weight(<T as Config>::WeightInfo::add_whitelisted_ilo_organizer())]
         pub fn add_whitelisted_ilo_organizer(
@@ -1207,7 +1221,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Remove whitelisted ILO organizer
+        /// Remove whitelisted ILO organizer.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(13)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_whitelisted_ilo_organizer())]
         pub fn remove_whitelisted_ilo_organizer(

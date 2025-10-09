@@ -389,8 +389,11 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    /// Returns (input reserves, output reserves, max output amount)
-    /// Output reserves could only be greater than max output amount if it's chameleon pool
+    /// Returns `(input_reserve, output_reserve, max_output_amount)` for the current pool state.
+    ///
+    /// For chameleon pools the raw output reserve may exceed the amount that can be withdrawn,
+    /// therefore the third element reflects the effective maximum payout after considering
+    /// chameleon issuance.
     pub fn get_actual_reserves(
         pool_acc_id: &T::AccountId,
         base_asset_id: &AssetIdOf<T>,
@@ -490,7 +493,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             &dex_info.base_asset_id,
             input_asset_id,
             output_asset_id,
-        )?;
+        )?; // XOR-fee models charge on the XOR leg when present.
 
         // Calculate quote.
         let (calculated, fee_amount) = match amount {
@@ -768,8 +771,8 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             &dex_info.base_asset_id,
         )?;
 
-        // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for create_swap_unchecked.
+        // Each branch unwraps the amount corresponding to the user's “desired” leg.
+        // Clone is used here because the action is consumed when building the swap extrinsic.
         let retval = match action.clone() {
             PolySwapAction::PairSwap(a) => {
                 let (fee, amount) = match swap_amount {
@@ -853,18 +856,14 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         let (calculated, fee_amount) = match amount {
             QuoteAmount::WithDesiredInput { desired_amount_in } => {
                 let (output, fee_amount) = if get_fee_from_destination {
-                    // output token is xor, user indicates desired input amount
-                    // y_1 = x_in * y / x
-                    // y_out = y_1 * (1 - fee)
+                    // output token is XOR: apply the fee on the destination leg.
                     let out_with_fee: FixedWrapper256 =
                         FixedWrapper256::from(desired_amount_in) * input_price_wrt_output;
                     let output = out_with_fee.clone() * (fixed_wrapper_u256!(1) - fee_fraction);
                     let fee_amount = out_with_fee - output.clone();
                     (output, fee_amount)
                 } else {
-                    // input token is xor, user indicates desired input amount
-                    // x_1 = x_in * (1 - fee)
-                    // y_out = x_1 * y / x
+                    // input token is XOR: deduct fee from the input before pricing.
                     let input_without_fee = FixedWrapper256::from(desired_amount_in.clone())
                         * (fixed_wrapper_u256!(1) - fee_fraction);
                     let output = input_without_fee.clone() * input_price_wrt_output;
@@ -883,9 +882,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
             }
             QuoteAmount::WithDesiredOutput { desired_amount_out } => {
                 let (input, fee_amount) = if get_fee_from_destination {
-                    // output token is xor, user indicates desired output amount:
-                    // y_1 = y_out / (1 - fee)
-                    // x_in = y_1 / y / x
+                    // output token is XOR: gross-up the desired amount to include fees.
                     let output_with_fee = FixedWrapper256::from(desired_amount_out.clone())
                         / (fixed_wrapper_u256!(1) - fee_fraction);
                     let fee_amount =
@@ -893,8 +890,7 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
                     let input = output_with_fee / input_price_wrt_output;
                     (input, fee_amount)
                 } else {
-                    // input token is xor, user indicates desired output amount:
-                    // x_in = (y_out / y / x) / (1 - fee)
+                    // input token is XOR: compute net input and then adjust for fee on the input leg.
                     let input_without_fee =
                         FixedWrapper256::from(desired_amount_out) / input_price_wrt_output;
                     let input = input_without_fee.clone() / (fixed_wrapper_u256!(1) - fee_fraction);
@@ -1096,7 +1092,7 @@ pub mod pallet {
         /// Percent of reserve which is not involved in swap
         #[pallet::constant]
         type IrreducibleReserve: Get<Percent>;
-        /// How often to check and adjust Chameleon pool issuance
+        /// Period (in blocks) between Chameleon pool issuance adjustments.
         #[pallet::constant]
         type PoolAdjustPeriod: Get<BlockNumberFor<Self>>;
         /// Weight information for extrinsics in this pallet.
@@ -1476,7 +1472,7 @@ pub mod pallet {
         NotEnoughLiquidityOutOfFarming,
         /// Cannot create a pool with restricted target asset
         TargetAssetIsRestricted,
-        /// Restricted Chameleon pool
+        /// Restricted Chameleon pool.
         RestrictedChameleonPool,
         /// Output asset reserves is not enough
         NotEnoughOutputReserves,

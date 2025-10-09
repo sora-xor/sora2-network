@@ -310,7 +310,9 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Register token for farming
+        /// Register token for farming.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::register_token())]
         pub fn register_token(
@@ -362,7 +364,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Add pool
+        /// Add pool.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::add_pool())]
         pub fn add_pool(
@@ -770,7 +774,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Remove pool
+        /// Remove pool.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_pool())]
         pub fn remove_pool(
@@ -809,7 +815,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change pool multiplier
+        /// Change pool multiplier.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::change_pool_multiplier())]
         pub fn change_pool_multiplier(
@@ -868,7 +876,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change total tokens
+        /// Change total tokens.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::change_total_tokens())]
         pub fn change_total_tokens(
@@ -916,7 +926,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change info
+        /// Change info for a staking participant.
+        ///
+        /// Only the configured `AuthorityAccount` may call this extrinsic.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::change_info())]
         pub fn change_info(
@@ -1012,7 +1024,9 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Change token info
+        /// Change token info.
+        ///
+        /// Only the configured `AuthorityAccount` or the token’s `team_account` may call this extrinsic.
         #[pallet::call_index(10)]
         #[pallet::weight(<T as Config>::WeightInfo::change_token_info())]
         pub fn change_token_info(

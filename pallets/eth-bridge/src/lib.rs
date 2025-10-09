@@ -584,11 +584,11 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Load incoming request from Sidechain by the given transaction hash.
+        /// Load incoming request metadata or transaction by the given Sidechain transaction hash.
         ///
         /// Parameters:
         /// - `eth_tx_hash` - transaction hash on Sidechain.
-        /// - `kind` - incoming request type.
+        /// - `kind` - incoming request type. `IncomingMetaRequestKind::CancelOutgoingRequest` is rejected.
         /// - `network_id` - network identifier.
 
         #[transactional]
@@ -640,7 +640,7 @@ pub mod pallet {
         /// Can be only called from a bridge account.
         ///
         /// Parameters:
-        /// - `request` - an incoming request.
+        /// - `hash` - hash of the incoming request to finalize.
         /// - `network_id` - network identifier.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request())]
@@ -778,9 +778,11 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Prepare the given bridge for migration.
+        /// Queues a migration preparation request for the given network.
         ///
-        /// Can only be called by an authority.
+        /// Verifies peer quorum before scheduling the off-chain request.
+        ///
+        /// Can only be called by root.
         ///
         /// Parameters:
         /// - `network_id` - bridge network identifier.
@@ -815,12 +817,12 @@ pub mod pallet {
             Ok(().into())
         }
 
-        /// Migrate the given bridge to a new smart-contract.
+        /// Finalizes migration by posting an off-chain request to switch the smart-contract.
         ///
-        /// Can only be called by an authority.
+        /// Can only be called by root.
         ///
         /// Parameters:
-        /// - `new_contract_address` - new sidechain ocntract address.
+        /// - `new_contract_address` - new sidechain contract address.
         /// - `erc20_native_tokens` - migrated assets ids.
         /// - `network_id` - bridge network identifier.
 

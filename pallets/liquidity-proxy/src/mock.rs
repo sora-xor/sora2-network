@@ -780,6 +780,8 @@ impl ExtBuilder {
     pub fn with_xyk_pool_xstusd(mut self) -> Self {
         self.xyk_reserves
             .push((DEX_D_ID, XSTUSD, (balance!(1000), balance!(1000))));
+        self.reserves
+            .push((DEX_D_ID, XSTUSD, (fixed!(1000), fixed!(1000))));
         self
     }
 

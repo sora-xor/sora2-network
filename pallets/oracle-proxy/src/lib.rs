@@ -154,9 +154,9 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         /// Enables a specified oracle
         ///
-        /// Checks if the caller is root
+        /// Checks if the caller is root.
         ///
-        /// - `origin`: the sudo account
+        /// - `origin`: must be signed by root,
         /// - `oracle`: oracle variant which should be enabled
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::enable_oracle())]
@@ -176,9 +176,9 @@ pub mod pallet {
 
         /// Disables a specified oracle
         ///
-        /// Checks if the caller is root
+        /// Checks if the caller is root.
         ///
-        /// - `origin`: the sudo account
+        /// - `origin`: must be signed by root,
         /// - `oracle`: oracle variant which should be disabled
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::disable_oracle())]
