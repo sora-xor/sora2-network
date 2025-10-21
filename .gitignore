@@ -8,6 +8,8 @@
 
 # The cache for chain data in container
 .local
+.cargo/*
+.cargo*
 
 local-test
 
