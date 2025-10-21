@@ -442,20 +442,24 @@ impl TryFrom<SwapAmount<Fixed>> for SwapAmount<Balance> {
 
 impl UniqueSaturatedFrom<SwapAmount<Fixed>> for SwapAmount<Balance> {
     fn unique_saturated_from(v: SwapAmount<Fixed>) -> Self {
+        fn fixed_to_balance_saturating(value: Fixed) -> Balance {
+            Balance::try_from(value.into_bits()).unwrap_or(0)
+        }
+
         match v {
             SwapAmount::WithDesiredInput {
                 desired_amount_in,
                 min_amount_out,
             } => SwapAmount::WithDesiredInput {
-                desired_amount_in: desired_amount_in.into_bits().unique_saturated_into(),
-                min_amount_out: min_amount_out.into_bits().unique_saturated_into(),
+                desired_amount_in: fixed_to_balance_saturating(desired_amount_in),
+                min_amount_out: fixed_to_balance_saturating(min_amount_out),
             },
             SwapAmount::WithDesiredOutput {
                 desired_amount_out,
                 max_amount_in,
             } => SwapAmount::WithDesiredOutput {
-                desired_amount_out: desired_amount_out.into_bits().unique_saturated_into(),
-                max_amount_in: max_amount_in.into_bits().unique_saturated_into(),
+                desired_amount_out: fixed_to_balance_saturating(desired_amount_out),
+                max_amount_in: fixed_to_balance_saturating(max_amount_in),
             },
         }
     }
@@ -683,7 +687,365 @@ impl<AssetId: Ord> TryFrom<SwapOutcome<Fixed, AssetId>> for SwapOutcome<Balance,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::balance;
     use crate::fixed;
+    use sp_std::convert::TryFrom;
+
+    #[test]
+    fn test_quote_amount_direction_helpers() {
+        let qa_in = QuoteAmount::with_desired_input(10u32);
+        assert_eq!(qa_in.variant(), SwapVariant::WithDesiredInput);
+        assert_eq!(qa_in.amount(), 10);
+
+        let qa_out = QuoteAmount::with_desired_output(25u32);
+        assert_eq!(qa_out.variant(), SwapVariant::WithDesiredOutput);
+        assert_eq!(qa_out.amount(), 25);
+
+        assert_eq!(
+            QuoteAmount::with_variant(SwapVariant::WithDesiredInput, 7u32),
+            QuoteAmount::with_desired_input(7u32)
+        );
+        assert_eq!(
+            QuoteAmount::with_variant(SwapVariant::WithDesiredOutput, 9u32),
+            QuoteAmount::with_desired_output(9u32)
+        );
+
+        assert_eq!(qa_in.copy_direction(3), QuoteAmount::with_desired_input(3));
+        assert_eq!(
+            qa_out.copy_direction(4),
+            QuoteAmount::with_desired_output(4)
+        );
+    }
+
+    #[test]
+    fn test_quote_amount_place_input_output_should_align() {
+        let qa_in = QuoteAmount::with_desired_input(11u32);
+        let qa_out = QuoteAmount::with_desired_output(13u32);
+        let empty_fee = OutcomeFee::<u8, u32>::new();
+        let outcome = SwapOutcome::new(17u32, empty_fee);
+
+        assert_eq!(qa_in.place_input_and_output(outcome.clone()), (11, 17));
+        assert_eq!(qa_out.place_input_and_output(outcome), (17, 13));
+    }
+
+    #[test]
+    fn test_quote_amount_from_swap_amount_should_match_direction() {
+        let swap_in = SwapAmount::with_desired_input(20u32, 5u32);
+        let swap_out = SwapAmount::with_desired_output(30u32, 40u32);
+
+        assert_eq!(
+            QuoteAmount::from(swap_in),
+            QuoteAmount::with_desired_input(20u32)
+        );
+        assert_eq!(
+            QuoteAmount::from(swap_out),
+            QuoteAmount::with_desired_output(30u32)
+        );
+    }
+
+    #[test]
+    fn test_quote_amount_arithmetic_should_follow_variant() {
+        let sum_in = QuoteAmount::with_desired_input(2u32) + QuoteAmount::with_desired_input(3u32);
+        assert_eq!(sum_in, QuoteAmount::with_desired_input(5u32));
+
+        let sum_out =
+            QuoteAmount::with_desired_output(4u32) + QuoteAmount::with_desired_output(6u32);
+        assert_eq!(sum_out, QuoteAmount::with_desired_output(10u32));
+
+        let diff_in = QuoteAmount::with_desired_input(9u32) - QuoteAmount::with_desired_input(4u32);
+        assert_eq!(diff_in, QuoteAmount::with_desired_input(5u32));
+
+        let diff_out =
+            QuoteAmount::with_desired_output(12u32) - QuoteAmount::with_desired_output(2u32);
+        assert_eq!(diff_out, QuoteAmount::with_desired_output(10u32));
+    }
+
+    #[test]
+    fn test_quote_amount_checked_ops_should_handle_edge_cases() {
+        let a = QuoteAmount::with_desired_input(u8::MAX);
+        let b = QuoteAmount::with_desired_input(1u8);
+        assert!(a.checked_add(&b).is_none());
+
+        let add_in_lhs = QuoteAmount::with_desired_input(10u8);
+        let add_in_rhs = QuoteAmount::with_desired_input(5u8);
+        assert_eq!(
+            add_in_lhs.checked_add(&add_in_rhs),
+            Some(QuoteAmount::with_desired_input(15u8))
+        );
+
+        let c = QuoteAmount::with_desired_output(0u8);
+        let d = QuoteAmount::with_desired_output(1u8);
+        assert!(c.checked_sub(&d).is_none());
+
+        let mixed_in = QuoteAmount::with_desired_input(5u8);
+        let mixed_out = QuoteAmount::with_desired_output(5u8);
+        assert!(mixed_in.checked_add(&mixed_out).is_none());
+        assert!(mixed_in.checked_sub(&mixed_out).is_none());
+
+        let ok_add = QuoteAmount::with_desired_output(10u8);
+        let ok_add_rhs = QuoteAmount::with_desired_output(5u8);
+        assert_eq!(
+            ok_add.checked_add(&ok_add_rhs),
+            Some(QuoteAmount::with_desired_output(15u8))
+        );
+
+        let ok_sub = QuoteAmount::with_desired_input(10u8);
+        let ok_sub_rhs = QuoteAmount::with_desired_input(5u8);
+        assert_eq!(
+            ok_sub.checked_sub(&ok_sub_rhs),
+            Some(QuoteAmount::with_desired_input(5u8))
+        );
+
+        let ok_sub_out = QuoteAmount::with_desired_output(9u8);
+        let ok_sub_out_rhs = QuoteAmount::with_desired_output(4u8);
+        assert_eq!(
+            ok_sub_out.checked_sub(&ok_sub_out_rhs),
+            Some(QuoteAmount::with_desired_output(5u8))
+        );
+    }
+
+    #[test]
+    fn test_quote_amount_conversions_between_fixed_and_balance() {
+        let qa_fixed: QuoteAmount<Fixed> = QuoteAmount::with_desired_input(fixed!(1.5));
+        let converted: QuoteAmount<Balance> =
+            QuoteAmount::try_from(qa_fixed).expect("should convert to balance");
+        assert_eq!(converted, QuoteAmount::with_desired_input(balance!(1.5)));
+
+        let qa_fixed_out: QuoteAmount<Fixed> = QuoteAmount::with_desired_output(fixed!(2));
+        let converted_out: QuoteAmount<Balance> =
+            QuoteAmount::try_from(qa_fixed_out).expect("should convert to balance");
+        assert_eq!(converted_out, QuoteAmount::with_desired_output(balance!(2)));
+
+        let negative_fixed: QuoteAmount<Fixed> = QuoteAmount::with_desired_input(fixed!(-1));
+        assert!(QuoteAmount::<Balance>::try_from(negative_fixed).is_err());
+
+        let overflowing_balance = QuoteAmount::with_desired_output(Balance::MAX);
+        assert!(QuoteAmount::<Fixed>::try_from(overflowing_balance).is_err());
+    }
+
+    #[test]
+    fn test_swap_amount_direction_helpers() {
+        let sa_in = SwapAmount::with_desired_input(50u32, 10u32);
+        assert_eq!(sa_in.variant(), SwapVariant::WithDesiredInput);
+        assert_eq!(sa_in.amount(), 50);
+        assert_eq!(sa_in.limit(), 10);
+        assert_eq!(
+            SwapAmount::with_variant(SwapVariant::WithDesiredInput, 7u32, 3u32),
+            SwapAmount::with_desired_input(7u32, 3u32)
+        );
+        assert_eq!(SwapVariant::from(sa_in), SwapVariant::WithDesiredInput);
+
+        let sa_out = SwapAmount::with_desired_output(80u32, 120u32);
+        assert_eq!(sa_out.variant(), SwapVariant::WithDesiredOutput);
+        assert_eq!(sa_out.amount(), 80);
+        assert_eq!(sa_out.limit(), 120);
+        assert_eq!(
+            SwapAmount::with_variant(SwapVariant::WithDesiredOutput, 9u32, 11u32),
+            SwapAmount::with_desired_output(9u32, 11u32)
+        );
+        assert_eq!(SwapVariant::from(sa_out), SwapVariant::WithDesiredOutput);
+    }
+
+    #[test]
+    fn test_swap_amount_place_input_output_should_align() {
+        let sa_in = SwapAmount::with_desired_input(40u32, 30u32);
+        let sa_out = SwapAmount::with_desired_output(15u32, 70u32);
+        let fee = OutcomeFee::<u8, u32>::new();
+        let outcome = SwapOutcome::new(90u32, fee);
+
+        assert_eq!(sa_in.place_input_and_output(outcome.clone()), (40, 90));
+        assert_eq!(sa_out.place_input_and_output(outcome), (90, 15));
+    }
+
+    #[test]
+    fn test_swap_amount_copy_direction_should_preserve_variant() {
+        let sa_in = SwapAmount::with_desired_input(10u32, 5u32);
+        assert_eq!(
+            sa_in.copy_direction(3, 2),
+            SwapAmount::with_desired_input(3u32, 2u32)
+        );
+
+        let sa_out = SwapAmount::with_desired_output(9u32, 12u32);
+        assert_eq!(
+            sa_out.copy_direction(7, 6),
+            SwapAmount::with_desired_output(7u32, 6u32)
+        );
+    }
+
+    #[test]
+    fn test_swap_amount_multiplication_variants_should_pass() {
+        let swap_input: SwapAmount<Fixed> = SwapAmount::with_desired_input(fixed!(25), fixed!(10));
+        assert_eq!(
+            swap_input * fixed!(3),
+            SwapAmount::with_desired_input(fixed!(75), fixed!(30))
+        );
+
+        let swap_output: SwapAmount<Fixed> =
+            SwapAmount::with_desired_output(fixed!(40), fixed!(120));
+        assert_eq!(
+            swap_output * fixed!(2),
+            SwapAmount::with_desired_output(fixed!(80), fixed!(240))
+        );
+
+        let factor_in: Fixed = fixed!(4);
+        assert_eq!(
+            factor_in * swap_input,
+            SwapAmount::with_desired_input(fixed!(100), fixed!(40))
+        );
+        let factor_out: Fixed = fixed!(5);
+        assert_eq!(
+            factor_out * swap_output,
+            SwapAmount::with_desired_output(fixed!(200), fixed!(600))
+        );
+    }
+
+    #[test]
+    fn test_swap_amount_mul_assign_output_variant_should_pass() {
+        let mut swap_amount: SwapAmount<Fixed> =
+            SwapAmount::with_desired_output(fixed!(30), fixed!(80));
+        swap_amount *= fixed!(3);
+        assert_eq!(
+            swap_amount,
+            SwapAmount::with_desired_output(fixed!(90), fixed!(240))
+        );
+    }
+
+    #[test]
+    fn test_swap_amount_try_from_fixed_to_balance_should_handle_errors() {
+        let swap_fixed_in: SwapAmount<Fixed> =
+            SwapAmount::with_desired_input(fixed!(1.25), fixed!(0.75));
+        let converted_in: SwapAmount<Balance> =
+            SwapAmount::try_from(swap_fixed_in).expect("convert input variant");
+        assert_eq!(
+            converted_in,
+            SwapAmount::with_desired_input(balance!(1.25), balance!(0.75))
+        );
+
+        let swap_fixed_out: SwapAmount<Fixed> =
+            SwapAmount::with_desired_output(fixed!(2), fixed!(3));
+        let converted_out: SwapAmount<Balance> =
+            SwapAmount::try_from(swap_fixed_out).expect("convert output variant");
+        assert_eq!(
+            converted_out,
+            SwapAmount::with_desired_output(balance!(2), balance!(3))
+        );
+
+        let negative_fixed: SwapAmount<Fixed> =
+            SwapAmount::with_desired_output(fixed!(-1), fixed!(1));
+        assert!(SwapAmount::<Balance>::try_from(negative_fixed).is_err());
+    }
+
+    #[test]
+    fn test_swap_amount_try_from_balance_to_fixed_should_handle_edges() {
+        let swap_balance_in = SwapAmount::with_desired_input(balance!(1.5), balance!(0.25));
+        let converted_in: SwapAmount<Fixed> =
+            SwapAmount::try_from(swap_balance_in).expect("convert balance input");
+        assert_eq!(
+            converted_in,
+            SwapAmount::with_desired_input(fixed!(1.5), fixed!(0.25))
+        );
+
+        let swap_balance_out = SwapAmount::with_desired_output(balance!(2.5), balance!(4));
+        let converted_out: SwapAmount<Fixed> =
+            SwapAmount::try_from(swap_balance_out).expect("convert balance output");
+        assert_eq!(
+            converted_out,
+            SwapAmount::with_desired_output(fixed!(2.5), fixed!(4))
+        );
+
+        let overflow_balance = SwapAmount::with_desired_input(Balance::MAX, Balance::MAX);
+        assert!(SwapAmount::<Fixed>::try_from(overflow_balance).is_err());
+    }
+
+    #[test]
+    fn test_swap_amount_unique_saturated_from_fixed_to_balance() {
+        let swap_negative = SwapAmount::with_desired_input(fixed!(-5), fixed!(2));
+        let saturated_negative: SwapAmount<Balance> =
+            SwapAmount::unique_saturated_from(swap_negative);
+        match saturated_negative {
+            SwapAmount::WithDesiredInput {
+                desired_amount_in,
+                min_amount_out,
+            } => {
+                assert_eq!(desired_amount_in, 0);
+                assert_eq!(min_amount_out, balance!(2));
+            }
+            _ => panic!("expected input variant"),
+        }
+
+        let swap_mixed = SwapAmount::with_desired_output(fixed!(3), fixed!(-1));
+        let saturated_mixed: SwapAmount<Balance> = SwapAmount::unique_saturated_from(swap_mixed);
+        match saturated_mixed {
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => {
+                assert_eq!(desired_amount_out, balance!(3));
+                assert_eq!(max_amount_in, 0);
+            }
+            _ => panic!("expected input variant"),
+        }
+    }
+
+    #[test]
+    fn test_swap_amount_unique_saturated_from_balance_to_fixed() {
+        let swap_large = SwapAmount::with_desired_output(Balance::MAX, Balance::MAX);
+        let saturated: SwapAmount<Fixed> = SwapAmount::unique_saturated_from(swap_large);
+        match saturated {
+            SwapAmount::WithDesiredOutput {
+                desired_amount_out,
+                max_amount_in,
+            } => {
+                assert_eq!(desired_amount_out.into_bits(), i128::MAX);
+                assert_eq!(max_amount_in.into_bits(), i128::MAX);
+            }
+            _ => panic!("expected output variant"),
+        }
+    }
+
+    #[test]
+    fn test_swap_outcome_try_from_balance_should_convert() {
+        let mut fee = OutcomeFee::<u8, Balance>::new();
+        fee.0.insert(1, balance!(0.5));
+        fee.0.insert(2, balance!(1.25));
+        let outcome = SwapOutcome::new(balance!(10), fee);
+
+        let converted: SwapOutcome<Fixed, u8> =
+            SwapOutcome::try_from(outcome).expect("should convert outcome");
+        assert_eq!(converted.amount, fixed!(10));
+        assert_eq!(converted.fee.0.get(&1), Some(&fixed!(0.5)));
+        assert_eq!(converted.fee.0.get(&2), Some(&fixed!(1.25)));
+        assert_eq!(converted.fee.0.len(), 2);
+    }
+
+    #[test]
+    fn test_swap_outcome_try_from_balance_should_fail_on_large_values() {
+        let mut fee = OutcomeFee::<u8, Balance>::new();
+        fee.0.insert(3, Balance::MAX);
+        let outcome = SwapOutcome::new(Balance::MAX, fee);
+        assert!(SwapOutcome::<Fixed, u8>::try_from(outcome).is_err());
+    }
+
+    #[test]
+    fn test_swap_outcome_try_from_fixed_should_convert() {
+        let mut fee = OutcomeFee::<u8, Fixed>::new();
+        fee.0.insert(4, fixed!(0.75));
+        let outcome = SwapOutcome::new(fixed!(5.5), fee);
+
+        let converted: SwapOutcome<Balance, u8> =
+            SwapOutcome::try_from(outcome).expect("should convert to balance");
+        assert_eq!(converted.amount, balance!(5.5));
+        assert_eq!(converted.fee.0.get(&4), Some(&balance!(0.75)));
+        assert_eq!(converted.fee.0.len(), 1);
+    }
+
+    #[test]
+    fn test_swap_outcome_try_from_fixed_should_fail_on_negative_values() {
+        let mut fee = OutcomeFee::<u8, Fixed>::new();
+        fee.0.insert(5, fixed!(-0.1));
+        let outcome = SwapOutcome::new(fixed!(-1), fee);
+        assert!(SwapOutcome::<Balance, u8>::try_from(outcome).is_err());
+    }
 
     #[test]
     fn test_mul_amount_should_pass() {

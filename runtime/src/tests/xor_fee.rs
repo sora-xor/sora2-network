@@ -36,6 +36,7 @@ use crate::{
     Referrals, RemintKusdBuyBackPercent, RemintTbcdBuyBackPercent, Runtime, RuntimeCall,
     RuntimeOrigin, Staking, System, Tokens, Weight, XorFee,
 };
+use bridge_multisig::MultisigAccount;
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
 use common::prelude::{AssetName, AssetSymbol, FixedWrapper, SwapAmount};
@@ -1422,6 +1423,52 @@ fn it_works_eth_bridge_pays_no() {
                 Some(CustomFeeDetails::Regular(SMALL_FEE))
             ))
         );
+    });
+}
+
+#[test]
+fn bridge_multisig_peer_pays_no_fee() {
+    ext().execute_with(|| {
+        let multisig_id = AccountId::from([42u8; 32]);
+        let peers = vec![alice(), bob()];
+
+        bridge_multisig::Accounts::<Runtime>::insert(
+            &multisig_id,
+            MultisigAccount::new(peers.clone()),
+        );
+
+        let call = RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi {
+            id: multisig_id.clone(),
+            maybe_timepoint: None,
+            call: vec![],
+            store_call: false,
+            max_weight: Weight::from_parts(0, 0),
+        });
+
+        assert!(!CustomFees::should_be_paid(&peers[0], &call));
+        assert!(!CustomFees::should_be_paid(&peers[1], &call));
+        assert!(CustomFees::should_be_paid(&charlie(), &call));
+    });
+}
+
+#[test]
+fn bridge_multisig_non_peer_pays_fee() {
+    ext().execute_with(|| {
+        let multisig_id = AccountId::from([7u8; 32]);
+        let peers = vec![alice(), bob()];
+        let outsider = AccountId::from([99u8; 32]);
+
+        bridge_multisig::Accounts::<Runtime>::insert(&multisig_id, MultisigAccount::new(peers));
+
+        let call = RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi {
+            id: multisig_id,
+            maybe_timepoint: None,
+            call: vec![],
+            store_call: true,
+            max_weight: Weight::from_parts(500, 0),
+        });
+
+        assert!(CustomFees::should_be_paid(&outsider, &call));
     });
 }
 

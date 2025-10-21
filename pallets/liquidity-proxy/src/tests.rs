@@ -2899,7 +2899,6 @@ fn smart_split_weight_scales_rewards_for_each_source() {
     let expected = rewards_weight
         .saturating_mul(max_sources)
         .saturating_add(step_weight.saturating_mul(max_sources));
-    let computed =
-        LiquidityProxy::smart_split_weight_for(max_sources, step_weight, rewards_weight);
+    let computed = LiquidityProxy::smart_split_weight_for(max_sources, step_weight, rewards_weight);
     assert_eq!(computed, expected);
 }

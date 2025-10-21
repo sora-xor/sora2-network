@@ -1,9 +1,0 @@
-[profile.dev]
-debug = false
-
-[profile.release]
-lto = true
-opt-level = 's'
-
-[profile.test]
-debug = false

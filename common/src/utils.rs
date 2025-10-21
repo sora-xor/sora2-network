@@ -609,3 +609,24 @@ mod tests {
 pub fn parse_hex_string(s: &str) -> Option<Vec<u8>> {
     s.strip_prefix("0x").and_then(|x| x.from_hex().ok())
 }
+
+#[cfg(test)]
+mod parse_hex_string_tests {
+    use super::parse_hex_string;
+
+    #[test]
+    fn test_parse_hex_string_with_prefix() {
+        assert_eq!(parse_hex_string("0x68656c6c6f"), Some(b"hello".to_vec()));
+    }
+
+    #[test]
+    fn test_parse_hex_string_without_prefix_returns_none() {
+        assert_eq!(parse_hex_string("68656c6c6f"), None);
+    }
+
+    #[test]
+    fn test_parse_hex_string_invalid_hex_returns_none() {
+        assert_eq!(parse_hex_string("0xzzzz"), None);
+        assert_eq!(parse_hex_string("0xabc"), None);
+    }
+}

@@ -2855,7 +2855,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6648,7 +6648,7 @@ dependencies = [
 [[package]]
 name = "orml-currencies"
 version = "0.4.1-dev"
-source = "git+https://github.com/sora-xor/open-runtime-module-library.git?branch=polkadot-v0.9.38#a1cd69dc4808800698b1c213a4817d8e3caf7895"
+source = "git+https://github.com/sora-xor/open-runtime-module-library.git?rev=a1cd69dc4808800698b1c213a4817d8e3caf7895#a1cd69dc4808800698b1c213a4817d8e3caf7895"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6665,7 +6665,7 @@ dependencies = [
 [[package]]
 name = "orml-tokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/sora-xor/open-runtime-module-library.git?branch=polkadot-v0.9.38#a1cd69dc4808800698b1c213a4817d8e3caf7895"
+source = "git+https://github.com/sora-xor/open-runtime-module-library.git?rev=a1cd69dc4808800698b1c213a4817d8e3caf7895#a1cd69dc4808800698b1c213a4817d8e3caf7895"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -6680,7 +6680,7 @@ dependencies = [
 [[package]]
 name = "orml-traits"
 version = "0.4.1-dev"
-source = "git+https://github.com/sora-xor/open-runtime-module-library.git?branch=polkadot-v0.9.38#a1cd69dc4808800698b1c213a4817d8e3caf7895"
+source = "git+https://github.com/sora-xor/open-runtime-module-library.git?rev=a1cd69dc4808800698b1c213a4817d8e3caf7895#a1cd69dc4808800698b1c213a4817d8e3caf7895"
 dependencies = [
  "frame-support",
  "impl-trait-for-tuples",
@@ -6699,7 +6699,7 @@ dependencies = [
 [[package]]
 name = "orml-utilities"
 version = "0.4.1-dev"
-source = "git+https://github.com/sora-xor/open-runtime-module-library.git?branch=polkadot-v0.9.38#a1cd69dc4808800698b1c213a4817d8e3caf7895"
+source = "git+https://github.com/sora-xor/open-runtime-module-library.git?rev=a1cd69dc4808800698b1c213a4817d8e3caf7895#a1cd69dc4808800698b1c213a4817d8e3caf7895"
 dependencies = [
  "frame-support",
  "parity-scale-codec",
@@ -8774,7 +8774,7 @@ dependencies = [
  "errno 0.3.14",
  "libc",
  "linux-raw-sys 0.11.0",
- "windows-sys 0.61.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -11562,7 +11562,7 @@ dependencies = [
  "getrandom 0.3.3",
  "once_cell",
  "rustix 1.1.2",
- "windows-sys 0.61.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -13074,7 +13074,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -13843,4 +13843,4 @@ dependencies = [
 [[patch.unused]]
 name = "orml-xtokens"
 version = "0.4.1-dev"
-source = "git+https://github.com/sora-xor/open-runtime-module-library.git?branch=polkadot-v0.9.38#a1cd69dc4808800698b1c213a4817d8e3caf7895"
+source = "git+https://github.com/sora-xor/open-runtime-module-library.git?rev=a1cd69dc4808800698b1c213a4817d8e3caf7895#a1cd69dc4808800698b1c213a4817d8e3caf7895"

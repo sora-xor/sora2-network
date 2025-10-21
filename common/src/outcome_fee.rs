@@ -286,3 +286,61 @@ where
         self.get_by_asset_fixed(&crate::VXOR.into())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{balance, fixed_wrapper};
+
+    #[test]
+    fn test_outcome_fee_merge_combines_assets() {
+        let base = OutcomeFee::<u8, Balance>::from_asset(1, balance!(2))
+            .merge(OutcomeFee::from_asset(2, balance!(3)));
+        let merged = base.merge(OutcomeFee::from_asset(1, balance!(4)));
+
+        assert_eq!(merged.get_by_asset(&1), balance!(6));
+        assert_eq!(merged.get_by_asset(&2), balance!(3));
+        assert_eq!(merged.0.len(), 2);
+    }
+
+    #[test]
+    fn test_outcome_fee_subtract_handles_zero_and_missing_assets() {
+        let base = OutcomeFee::<u8, Balance>::from_asset(1, balance!(3))
+            .merge(OutcomeFee::from_asset(2, balance!(2)));
+        let other =
+            OutcomeFee::from_asset(1, balance!(5)).merge(OutcomeFee::from_asset(3, balance!(1)));
+
+        let result = base.subtract(other);
+
+        assert!(result.0.get(&1).is_none());
+        assert_eq!(result.get_by_asset(&2), balance!(2));
+        assert_eq!(result.get_by_asset(&3), balance!(1));
+    }
+
+    #[test]
+    fn test_outcome_fee_rescale_by_ratio_should_adjust_values() {
+        let fee = OutcomeFee::<u8, Balance>::from_asset(1, balance!(10))
+            .merge(OutcomeFee::from_asset(2, balance!(6)));
+        let ratio = fixed_wrapper!(0.5);
+
+        let scaled = fee.clone().rescale_by_ratio(ratio).expect("scales");
+        assert_eq!(scaled.get_by_asset(&1), balance!(5));
+        assert_eq!(scaled.get_by_asset(&2), balance!(3));
+
+        let negative_ratio = fixed_wrapper!(-1);
+        assert!(fee.rescale_by_ratio(negative_ratio).is_none());
+    }
+
+    #[test]
+    fn test_outcome_fee_saturating_mul_usize_should_scale() {
+        let fee = OutcomeFee::<u8, Balance>::from_asset(1, balance!(4))
+            .merge(OutcomeFee::from_asset(2, balance!(1)));
+        let scaled = fee.saturating_mul_usize(3);
+
+        assert_eq!(scaled.get_by_asset(&1), balance!(12));
+        assert_eq!(scaled.get_by_asset(&2), balance!(3));
+
+        let zero_scaled = scaled.saturating_mul_usize(0);
+        assert!(zero_scaled.is_zero_fee());
+    }
+}

@@ -708,11 +708,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<(QuoteInfo<AssetIdOf<T>, LiquiditySourceIdOf<T>>, Weight), DispatchError> {
         let mut weight = Weight::zero();
         let mut asset_paths = asset_paths;
-        asset_paths.sort_by(|a, b| {
-            a.0.len()
-                .cmp(&b.0.len())
-                .then_with(|| a.0.cmp(&b.0))
-        });
+        asset_paths.sort_by(|a, b| a.0.len().cmp(&b.0.len()).then_with(|| a.0.cmp(&b.0)));
         let mut path_quote_iter = asset_paths.into_iter().map(|ExchangePath(atomic_path)| {
             let quote = match swap_variant {
                 SwapVariant::WithDesiredInput => Self::quote_pairs_with_flexible_amount(
