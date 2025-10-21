@@ -478,6 +478,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
             RequestStatus::Failed(Error::<T>::Cancelled.into()),
         );
         crate::RequestApprovals::<T>::take(net_id, hash);
+        crate::RequestApprovers::<T>::take(net_id, hash);
         Ok(self.initial_request_hash)
     }
 

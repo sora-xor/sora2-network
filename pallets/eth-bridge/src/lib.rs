@@ -396,7 +396,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -1309,6 +1309,18 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Outgoing request approval authors.
+    #[pallet::storage]
+    pub(super) type RequestApprovers<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Identity,
+        H256,
+        BTreeSet<T::AccountId>,
+        ValueQuery,
+    >;
+
     /// Requests made by an account.
     #[pallet::storage]
     #[pallet::getter(fn account_requests)]
@@ -1732,6 +1744,7 @@ impl<T: Config> Pallet<T> {
         );
         cancel!(request, hash, network_id, error);
         Self::remove_request_from_queue(network_id, &hash);
+        RequestApprovers::<T>::remove(network_id, &hash);
         Self::deposit_event(Event::RequestAborted(hash));
         Ok(())
     }
@@ -1785,6 +1798,7 @@ impl<T: Config> Pallet<T> {
         }
         info!("Verified request approve {:?}", request_encoded);
         let mut approvals = RequestApprovals::<T>::get(net_id, &hash);
+        let mut approvers = RequestApprovers::<T>::get(net_id, &hash);
         let pending_peers_len = if Self::is_additional_signature_needed(net_id, &request) {
             1
         } else {
@@ -1793,8 +1807,17 @@ impl<T: Config> Pallet<T> {
         let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
         let current_status =
             RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+        if !approvers.insert(author.clone()) {
+            debug!(
+                "Peer {:?} attempted to resubmit approval for {:?}",
+                author, hash
+            );
+            RequestApprovers::<T>::insert(net_id, &hash, &approvers);
+            return Ok(None);
+        }
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
+        RequestApprovers::<T>::insert(net_id, &hash, &approvers);
         if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
             if let Err(err) = request.finalize(hash) {
                 error!("Outgoing request finalization failed: {:?}", err);

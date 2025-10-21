@@ -238,6 +238,10 @@ fn ocw_should_handle_outgoing_request() {
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
+            1
+        );
     });
 }
 
@@ -261,9 +265,17 @@ fn ocw_should_not_handle_outgoing_request_twice() {
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
+            1
+        );
         state.run_next_offchain_and_dispatch_txs();
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
+            1
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             1
         );
     });
