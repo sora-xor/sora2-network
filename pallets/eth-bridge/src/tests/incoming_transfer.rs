@@ -50,9 +50,7 @@ use common::{
 };
 use ethereum_types::U256;
 use frame_support::assert_noop;
-use frame_support::dispatch::{
-    DispatchError, DispatchErrorWithPostInfo, Pays, PostDispatchInfo,
-};
+use frame_support::dispatch::{DispatchError, DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
@@ -464,10 +462,7 @@ fn incoming_queue_respects_limit() {
         )
         .unwrap();
 
-        assert_eq!(
-            crate::RequestsQueue::<Runtime>::get(net_id).len(),
-            max
-        );
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), max);
 
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: EthAddress::from([1; 20]),
@@ -489,10 +484,7 @@ fn incoming_queue_respects_limit() {
             incoming_transfer.clone(),
         )
         .unwrap_err();
-        assert_eq!(
-            err.error,
-            Error::RequestsQueueFull.into()
-        );
+        assert_eq!(err.error, Error::RequestsQueueFull.into());
 
         assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&load_hash));
         assert_eq!(

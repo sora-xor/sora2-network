@@ -1056,7 +1056,10 @@ pub mod pallet {
             let status =
                 RequestStatuses::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
             ensure!(
-                matches!(status, RequestStatus::Failed(_) | RequestStatus::Broken(_, _)),
+                matches!(
+                    status,
+                    RequestStatus::Failed(_) | RequestStatus::Broken(_, _)
+                ),
                 Error::<T>::RequestStatusNotResettable
             );
             ensure!(

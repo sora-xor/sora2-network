@@ -300,21 +300,17 @@ fn failed_finalization_allows_fresh_approvals_after_resubmission() {
             net_id,
         ));
         let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
-        let bridge_account = state.networks[&net_id]
-            .config
-            .bridge_account_id
-            .clone();
+        let bridge_account = state.networks[&net_id].config.bridge_account_id.clone();
         Assets::unreserve(&XOR.into(), &bridge_account, amount).unwrap();
         System::reset_events();
 
         let encoded = request.to_eth_abi(hash).unwrap();
         let keypairs = &state.networks[&net_id].ocw_keypairs;
-        let additional =
-            if EthBridge::is_additional_signature_needed(net_id, &request) {
-                1
-            } else {
-                0
-            };
+        let additional = if EthBridge::is_additional_signature_needed(net_id, &request) {
+            1
+        } else {
+            0
+        };
         let sigs_needed = majority(keypairs.len()) + additional;
 
         for (i, (_signer, account_id, seed)) in keypairs.iter().enumerate().take(sigs_needed) {
@@ -332,7 +328,9 @@ fn failed_finalization_allows_fresh_approvals_after_resubmission() {
             ));
             if i + 1 == sigs_needed {
                 let event_hash = match last_event().expect("event expected") {
-                    RuntimeEvent::EthBridge(crate::Event::RequestFinalizationFailed(event_hash))
+                    RuntimeEvent::EthBridge(crate::Event::RequestFinalizationFailed(
+                        event_hash,
+                    ))
                     | RuntimeEvent::EthBridge(crate::Event::CancellationFailed(event_hash)) => {
                         event_hash
                     }
@@ -475,13 +473,7 @@ fn requests_queue_respects_limit() {
             ),
             Error::RequestsQueueFull
         );
-        assert_eq!(
-            crate::Requests::<Runtime>::iter_prefix(net_id).count(),
-            max
-        );
-        assert_eq!(
-            crate::RequestsQueue::<Runtime>::get(net_id).len(),
-            max
-        );
+        assert_eq!(crate::Requests::<Runtime>::iter_prefix(net_id).count(), max);
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), max);
     });
 }
