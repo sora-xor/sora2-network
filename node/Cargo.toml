@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "4.7.0"
+version = "4.7.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -103,8 +103,6 @@ rayon = "=1.10.0"
 rayon-core = "=1.12.1"
 url = "=2.5.2"
 static_init = "=1.0.3"
-netlink-proto = "=0.10.0"
-if-watch = "=3.2.0"
 backtrace = "=0.3.74"
 derive_more = "=0.99.18"
 scale-info = "=2.11.3"
@@ -126,6 +124,11 @@ tokio = { version = "1.10.1", features = ["macros"] }
 pallet-sudo = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
 
 framenode-chain-spec = { path = "chain_spec", features = ["test"] }
+
+# Linux-only netlink dependencies (do not compile on macOS)
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+netlink-proto = "=0.10.0"
+if-watch = "=3.2.0"
 
 [features]
 include-real-files = []

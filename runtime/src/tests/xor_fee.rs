@@ -32,9 +32,10 @@ use crate::mock::{ensure_pool_initialized, fill_spot_price};
 use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
 use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, FeeKusdBurnedWeight,
-    FeeReferrerWeight, FeeValBurnedWeight, FeeXorBurnedWeight, GetXorFeeAccountId, PoolXYK,
-    Referrals, RemintKusdBuyBackPercent, RemintTbcdBuyBackPercent, Runtime, RuntimeCall,
-    RuntimeOrigin, Staking, System, Tokens, Weight, XorFee,
+    FeeReferrerWeight, FeeValBurnedWeight, FeeXorBurnedWeight, ForcedMultiplierAt,
+    ForcedMultiplierValue, GetXorFeeAccountId, PoolXYK, Referrals, RemintKusdBuyBackPercent,
+    RemintTbcdBuyBackPercent, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens, Weight,
+    XorFee,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -64,7 +65,9 @@ use traits::MultiCurrency;
 use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
 
 use xor_fee::extension::ChargeTransactionPayment;
-use xor_fee::{ApplyCustomFees, LiquidityInfo, XorToBuyBack, XorToVal};
+use xor_fee::{
+    ApplyCustomFees, LiquidityInfo, Multiplier as XorFeeMultiplier, XorToBuyBack, XorToVal,
+};
 
 type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
@@ -129,6 +132,30 @@ fn set_weight_to_fee_multiplier(mul: u64) {
         RuntimeOrigin::root(),
         FixedU128::saturating_from_integer(mul)
     ));
+}
+
+#[test]
+fn forced_multiplier_triggers_at_configured_block() {
+    ext().execute_with(|| {
+        let forced_at = ForcedMultiplierAt::get();
+        assert!(forced_at > 0);
+
+        let oversized =
+            FixedU128::from_inner(1_486_296_111_770_910_720_000_000_000_000_000_000u128);
+        XorFeeMultiplier::<Runtime>::put(oversized);
+
+        let before_block = forced_at - 1;
+        System::set_block_number(before_block);
+        XorFee::on_initialize(before_block);
+        assert_eq!(XorFeeMultiplier::<Runtime>::get(), oversized);
+
+        System::set_block_number(forced_at);
+        XorFee::on_initialize(forced_at);
+        assert_eq!(
+            XorFeeMultiplier::<Runtime>::get(),
+            ForcedMultiplierValue::get()
+        );
+    });
 }
 
 #[cfg(feature = "wip")] // Xorless fee
