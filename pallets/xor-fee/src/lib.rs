@@ -1159,7 +1159,7 @@ pub mod pallet {
             let mut weight: Weight = Default::default();
 
             let forced_at = T::ForcedMultiplierAt::get();
-            if !forced_at.is_zero() && current_block >= forced_at {
+            if !forced_at.is_zero() && current_block == forced_at {
                 let forced_multiplier = T::ForcedMultiplier::get();
                 let current_multiplier = Multiplier::<T>::get();
                 if current_multiplier != forced_multiplier {
