@@ -1319,7 +1319,7 @@ parameter_types! {
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
-    pub const ForcedMultiplierAt: BlockNumber = 23_195_000;
+    pub const ForcedMultiplierAt: BlockNumber = 23_202_222;
     pub const ForcedMultiplierValue: FixedU128 =
         FixedU128::from_inner(14_862_961_117_709_108_000_000_000_000_000u128);
 }
