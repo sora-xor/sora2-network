@@ -47,7 +47,6 @@ use common::{
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
     ReferrerAccountProvider, KUSD, PSWAP, TBCD, VAL, XOR,
 };
-#[cfg(feature = "wip")] // Dynamic fee
 use sp_arithmetic::FixedU128;
 
 use currencies::BasicCurrencyAdapter;
@@ -160,6 +159,11 @@ parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
 }
 
+parameter_types! {
+    pub const ForcedMultiplierAt: BlockNumber = 0;
+    pub const ForcedMultiplierValue: FixedU128 = FixedU128::from_inner(1_000_000_000_000_000_000u128);
+}
+
 pub struct CustomFees;
 
 impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
@@ -267,6 +271,8 @@ impl Config for Runtime {
     type TbcdId = TbcdId;
     type ValId = ValId;
     type XorId = XorId;
+    type ForcedMultiplierAt = ForcedMultiplierAt;
+    type ForcedMultiplier = ForcedMultiplierValue;
     type FeeReferrerWeight = FeeReferrerWeight;
     type FeeXorBurnedWeight = FeeXorBurnedWeight;
     type FeeValBurnedWeight = FeeValBurnedWeight;
