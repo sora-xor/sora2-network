@@ -256,6 +256,7 @@ parameter_types! {
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
+    pub const MaxRequestsPerQueueConst: u32 = 64;
 }
 
 pub struct RemoveTemporaryPeerAccountId;
@@ -361,6 +362,7 @@ impl Config for Runtime {
     type BridgeAssetLockChecker = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = ();
+    type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {

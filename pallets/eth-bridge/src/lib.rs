@@ -393,6 +393,8 @@ pub mod pallet {
         >;
 
         type Denominator: common::Denominator<Self::AssetId, Balance>;
+        /// Maximum number of requests that can be queued per network.
+        type MaxRequestsPerQueue: Get<u32>;
     }
 
     /// The current storage version.
@@ -1038,6 +1040,33 @@ pub mod pallet {
             SidechainAssetPrecision::<T>::insert(network_id, &asset_id, precision);
             Ok(().into())
         }
+
+        /// Explicitly clear collected signatures for a request.
+        ///
+        /// Used by operators to recover from failed finalization without implicitly wiping
+        /// approvals on-chain.
+        #[pallet::call_index(17)]
+        #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
+        pub fn reset_request_signatures(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            hash: H256,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            let status =
+                RequestStatuses::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+            ensure!(
+                matches!(status, RequestStatus::Failed(_) | RequestStatus::Broken(_, _)),
+                Error::<T>::RequestStatusNotResettable
+            );
+            ensure!(
+                Requests::<T>::contains_key(network_id, &hash),
+                Error::<T>::UnknownRequest
+            );
+            Self::clear_request_signatures(network_id, &hash);
+            Self::deposit_event(Event::RequestSignaturesCleared(hash));
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -1059,6 +1088,8 @@ pub mod pallet {
         CancellationFailed(H256),
         /// The request registration has been failed. [Request Hash, Error]
         RegisterRequestFailed(H256, DispatchError),
+        /// Operators cleared stored signatures for a request. [Request Hash]
+        RequestSignaturesCleared(H256),
     }
 
     #[cfg_attr(test, derive(PartialEq, Eq))]
@@ -1224,6 +1255,10 @@ pub mod pallet {
         Other,
         /// Expected pending request.
         ExpectedPendingRequest,
+        /// Too many requests queued for the network.
+        RequestsQueueFull,
+        /// Signatures can only be reset when a request failed or is broken.
+        RequestStatusNotResettable,
         /// Expected Ethereum network.
         ExpectedEthNetwork,
         /// Request was removed and refunded.
@@ -1586,11 +1621,17 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::DuplicatedRequest
             );
         }
+        let queue_len = RequestsQueue::<T>::get(net_id).len();
+        ensure!(
+            queue_len < T::MaxRequestsPerQueue::get() as usize,
+            Error::<T>::RequestsQueueFull
+        );
         request.validate()?;
         request.prepare()?;
+        Self::clear_request_signatures(net_id, &hash);
         AccountRequests::<T>::mutate(&request.author(), |vec| vec.push((net_id, hash)));
         Requests::<T>::insert(net_id, &hash, request);
-        RequestsQueue::<T>::mutate(net_id, |v| v.push(hash));
+        RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
         let block_number = frame_system::Pallet::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
@@ -1615,13 +1656,6 @@ impl<T: Config> Pallet<T> {
             !Requests::<T>::contains_key(network_id, incoming_request_hash),
             Error::<T>::RequestIsAlreadyRegistered
         );
-        Self::remove_request_from_queue(network_id, &sidechain_tx_hash);
-        RequestStatuses::<T>::insert(network_id, sidechain_tx_hash, RequestStatus::Done);
-        LoadToIncomingRequestHash::<T>::insert(
-            network_id,
-            sidechain_tx_hash,
-            incoming_request_hash,
-        );
         if let Err(e) = incoming_request
             .validate()
             .and_then(|_| incoming_request.prepare())
@@ -1635,12 +1669,24 @@ impl<T: Config> Pallet<T> {
             Self::deposit_event(Event::RegisterRequestFailed(incoming_request_hash, e));
             return Ok(incoming_request_hash);
         }
+        let queue_len = RequestsQueue::<T>::get(network_id).len();
+        ensure!(
+            queue_len < T::MaxRequestsPerQueue::get() as usize,
+            Error::<T>::RequestsQueueFull
+        );
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
-        RequestsQueue::<T>::mutate(network_id, |v| v.push(incoming_request_hash));
+        RequestsQueue::<T>::mutate(network_id, |queue| queue.push(incoming_request_hash));
         RequestStatuses::<T>::insert(network_id, incoming_request_hash, RequestStatus::Pending);
         AccountRequests::<T>::mutate(request_author, |v| {
             v.push((network_id, incoming_request_hash))
         });
+        Self::remove_request_from_queue(network_id, &sidechain_tx_hash);
+        RequestStatuses::<T>::insert(network_id, sidechain_tx_hash, RequestStatus::Done);
+        LoadToIncomingRequestHash::<T>::insert(
+            network_id,
+            sidechain_tx_hash,
+            incoming_request_hash,
+        );
         Ok(incoming_request_hash)
     }
 
@@ -1679,6 +1725,12 @@ impl<T: Config> Pallet<T> {
                 queue.remove(pos);
             }
         });
+    }
+
+    #[inline]
+    pub(crate) fn clear_request_signatures(network_id: T::NetworkId, hash: &H256) {
+        RequestApprovals::<T>::remove(network_id, hash);
+        RequestApprovers::<T>::remove(network_id, hash);
     }
 
     /// Registers new sidechain asset and grants mint permission to the bridge account.
@@ -1744,7 +1796,6 @@ impl<T: Config> Pallet<T> {
         );
         cancel!(request, hash, network_id, error);
         Self::remove_request_from_queue(network_id, &hash);
-        RequestApprovers::<T>::remove(network_id, &hash);
         Self::deposit_event(Event::RequestAborted(hash));
         Ok(())
     }

@@ -34,7 +34,7 @@ use super::Error;
 use crate::contract::{ContractEvent, DepositEvent};
 use crate::requests::{
     AssetKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
-    LoadIncomingRequest, LoadIncomingTransactionRequest, RequestStatus,
+    LoadIncomingRequest, LoadIncomingTransactionRequest, OffchainRequest, RequestStatus,
 };
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
@@ -50,7 +50,9 @@ use common::{
 };
 use ethereum_types::U256;
 use frame_support::assert_noop;
-use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
+use frame_support::dispatch::{
+    DispatchError, DispatchErrorWithPostInfo, Pays, PostDispatchInfo,
+};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
@@ -411,21 +413,98 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
                 actual_weight: None
             }
         );
+        let expected_hash = OffchainRequest::incoming(incoming_transfer.clone()).hash();
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
-        assert_last_event::<Runtime>(
-            crate::Event::RegisterRequestFailed(
-                req_hash,
-                tokens::Error::<Runtime>::BalanceTooLow.into(),
-            )
-            .into(),
-        );
-        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+        let event = super::last_event().expect("event expected");
+        match event {
+            RuntimeEvent::EthBridge(crate::Event::RegisterRequestFailed(hash, dispatch_error)) => {
+                assert_eq!(hash, expected_hash);
+                let expected_error: DispatchError = tokens::Error::<Runtime>::BalanceTooLow.into();
+                match (dispatch_error, expected_error) {
+                    (DispatchError::Module(actual), DispatchError::Module(expected)) => {
+                        assert_eq!(actual.index, expected.index);
+                        assert_eq!(actual.error, expected.error);
+                    }
+                    other => panic!("unexpected error tuple: {:?}", other),
+                }
+            }
+            other => panic!("unexpected event: {:?}", other),
+        }
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
         assert!(crate::Requests::<Runtime>::get(net_id, &req_hash).is_none());
         assert!(matches!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
+            crate::RequestStatuses::<Runtime>::get(net_id, &expected_hash).unwrap(),
             RequestStatus::Failed(_)
         ));
+    });
+}
+
+#[test]
+fn incoming_queue_respects_limit() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let max = MaxRequestsPerQueueConst::get() as usize;
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| {
+            queue.clear();
+            for i in 0..(max - 1) {
+                queue.push(H256::from_low_u64_be(i as u64 + 1));
+            }
+        });
+
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let sidechain_tx = H256::from_low_u64_be(42);
+        let load_hash = request_incoming(
+            alice.clone(),
+            sidechain_tx,
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+
+        assert_eq!(
+            crate::RequestsQueue::<Runtime>::get(net_id).len(),
+            max
+        );
+
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: alice.clone(),
+            asset_id: PredefinedAssetId::XOR.into(),
+            asset_kind: AssetKind::SidechainOwned,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash: sidechain_tx,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+            should_take_fee: false,
+        });
+
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        let err = EthBridge::register_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
+            incoming_transfer.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err.error,
+            Error::RequestsQueueFull.into()
+        );
+
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&load_hash));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &load_hash).unwrap(),
+            RequestStatus::Pending
+        );
+        assert_eq!(
+            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash),
+            H256::zero()
+        );
+        let stored = crate::Requests::<Runtime>::get(net_id, load_hash).unwrap();
+        assert!(stored.into_incoming().is_none());
     });
 }
 
