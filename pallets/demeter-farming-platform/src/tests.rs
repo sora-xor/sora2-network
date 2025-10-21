@@ -1809,7 +1809,7 @@ mod tests {
                 RuntimeOrigin::signed(ALICE),
                 asset_xstusd,
                 asset_ceres,
-                asset_xstusd,
+                asset_ceres,
                 pooled_tokens,
                 is_farm,
             ));
@@ -1818,7 +1818,7 @@ mod tests {
 
             for user_info in user_infos.iter_mut() {
                 if user_info.pool_asset == asset_ceres
-                    && user_info.reward_asset == asset_xstusd
+                    && user_info.reward_asset == asset_ceres
                     && user_info.is_farm == is_farm
                     && user_info.base_asset == asset_xstusd
                 {
@@ -1827,7 +1827,7 @@ mod tests {
             }
 
             pool_infos =
-                demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_xstusd);
+                demeter_farming_platform::Pools::<Runtime>::get(&asset_ceres, &asset_ceres);
             for p_info in pool_infos.iter_mut() {
                 if p_info.is_farm == is_farm && p_info.base_asset == asset_xstusd {
                     assert_eq!(p_info.total_tokens_in_pool, balance!(0))
