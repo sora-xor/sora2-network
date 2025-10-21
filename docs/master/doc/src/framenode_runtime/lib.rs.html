@@ -3660,6 +3660,14 @@
 <a href="#3645" id="3645">3645</a>
 <a href="#3646" id="3646">3646</a>
 <a href="#3647" id="3647">3647</a>
+<a href="#3648" id="3648">3648</a>
+<a href="#3649" id="3649">3649</a>
+<a href="#3650" id="3650">3650</a>
+<a href="#3651" id="3651">3651</a>
+<a href="#3652" id="3652">3652</a>
+<a href="#3653" id="3653">3653</a>
+<a href="#3654" id="3654">3654</a>
+<a href="#3655" id="3655">3655</a>
 </pre><pre class="rust"><code><span class="comment">// This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -3767,7 +3775,7 @@
     TransactionPriority, TransactionSource, TransactionValidity,
 };
 <span class="kw">use </span>sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
+    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError, FixedU128,
     MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 <span class="kw">use </span>sp_std::cmp::Ordering;
@@ -3920,10 +3928,10 @@
     spec_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     impl_name: <span class="macro">create_runtime_str!</span>(<span class="string">&quot;sora-substrate&quot;</span>),
     authoring_version: <span class="number">1</span>,
-    spec_version: <span class="number">115</span>,
+    spec_version: <span class="number">116</span>,
     impl_version: <span class="number">1</span>,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: <span class="number">115</span>,
+    transaction_version: <span class="number">116</span>,
     state_version: <span class="number">0</span>,
 };
 
@@ -4981,6 +4989,9 @@
     </span><span class="kw">pub const </span>MinimalFeeInAsset: Balance = <span class="macro">balance!</span>(<span class="number">0.00000000000000001</span>);
     <span class="kw">pub const </span>RemintTbcdBuyBackPercent: Percent = Percent::from_percent(<span class="number">1</span>);
     <span class="kw">pub const </span>RemintKusdBuyBackPercent: Percent = Percent::from_percent(<span class="number">39</span>);
+    <span class="kw">pub const </span>ForcedMultiplierAt: BlockNumber = <span class="number">23_206_222</span>;
+    <span class="kw">pub const </span>ForcedMultiplierValue: FixedU128 =
+        FixedU128::from_inner(<span class="number">14_862_961_117_709_108_000_000_000_000_000u128</span>);
 }
 
 <span class="kw">impl </span>xor_fee::Config <span class="kw">for </span>Runtime {
@@ -4992,6 +5003,8 @@
     </span><span class="kw">type </span>DynamicMultiplier = ();
     <span class="attr">#[cfg(feature = <span class="string">&quot;wip&quot;</span>)] </span><span class="comment">// Dynamic fee
     </span><span class="kw">type </span>DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
+    <span class="kw">type </span>ForcedMultiplierAt = ForcedMultiplierAt;
+    <span class="kw">type </span>ForcedMultiplier = ForcedMultiplierValue;
     <span class="kw">type </span>RuntimeEvent = RuntimeEvent;
     <span class="comment">// Pass native currency.
     </span><span class="kw">type </span>XorCurrency = Balances;
@@ -5180,12 +5193,14 @@
 </span><span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>RemovePendingOutgoingRequestsAfter: BlockNumber = <span class="number">1 </span>* DAYS;
     <span class="kw">pub const </span>TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (<span class="number">1 </span>* DAYS, <span class="number">12697214</span>);
+    <span class="kw">pub const </span>MaxEthBridgeRequestsPerQueue: u32 = <span class="number">2048</span>;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]
 </span><span class="macro">parameter_types! </span>{
     <span class="kw">pub const </span>RemovePendingOutgoingRequestsAfter: BlockNumber = <span class="number">30 </span>* MINUTES;
     <span class="kw">pub const </span>TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (<span class="number">30 </span>* MINUTES, <span class="number">0</span>);
+    <span class="kw">pub const </span>MaxEthBridgeRequestsPerQueue: u32 = <span class="number">2048</span>;
 }
 
 <span class="kw">pub type </span>NetworkId = u32;
@@ -5202,6 +5217,7 @@
     <span class="kw">type </span>BridgeAssetLockChecker = BridgeProxy;
     <span class="kw">type </span>AssetInfoProvider = assets::Pallet&lt;Runtime&gt;;
     <span class="kw">type </span>Denominator = Denomination;
+    <span class="kw">type </span>MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;private-net&quot;</span>)]

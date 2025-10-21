@@ -31,6 +31,7 @@
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
 </pre><pre class="rust"><code><span class="attr">#[macro_export]
 </span><span class="macro">macro_rules! </span>cancel {
     (<span class="macro-nonterminal">$request</span>:ident, <span class="macro-nonterminal">$hash</span>: expr, <span class="macro-nonterminal">$net_id</span>:expr, <span class="macro-nonterminal">$err</span>:expr) =&gt; {
@@ -46,6 +47,7 @@
             </span><span class="macro">debug_assert!</span>(<span class="bool-val">false</span>, <span class="string">&quot;unexpected cancellation error {:?}&quot;</span>, e);
         } <span class="kw">else </span>{
             <span class="kw">crate</span>::RequestStatuses::&lt;T&gt;::insert(<span class="macro-nonterminal">$net_id</span>, <span class="macro-nonterminal">$hash</span>, RequestStatus::Failed(<span class="macro-nonterminal">$err</span>));
+            <span class="self">Self</span>::clear_request_signatures(<span class="macro-nonterminal">$net_id</span>, <span class="kw-2">&amp;</span><span class="macro-nonterminal">$hash</span>);
         }
     };
 }

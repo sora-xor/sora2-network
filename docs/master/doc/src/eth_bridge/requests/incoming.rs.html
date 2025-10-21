@@ -1156,7 +1156,7 @@
             hash,
             RequestStatus::Failed(Error::&lt;T&gt;::Cancelled.into()),
         );
-        <span class="kw">crate</span>::RequestApprovals::&lt;T&gt;::take(net_id, hash);
+        <span class="kw">crate</span>::Pallet::&lt;T&gt;::clear_request_signatures(net_id, hash);
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.initial_request_hash)
     }
 

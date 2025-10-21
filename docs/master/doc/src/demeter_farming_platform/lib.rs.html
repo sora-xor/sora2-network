@@ -1492,6 +1492,10 @@
 <a href="#1477" id="1477">1477</a>
 <a href="#1478" id="1478">1478</a>
 <a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
 </pre><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">&quot;std&quot;</span>), no_std)]
 </span><span class="comment">// TODO #167: fix clippy warnings
 </span><span class="attr">#![allow(clippy::all)]
@@ -2214,6 +2218,7 @@
 
             <span class="comment">// Get user info
             </span><span class="kw">let </span><span class="kw-2">mut </span>user_infos = &lt;UserInfos&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>user);
+            <span class="kw">let </span><span class="kw-2">mut </span>found = <span class="bool-val">false</span>;
 
             <span class="kw">for </span>user_info <span class="kw">in </span>user_infos.iter_mut() {
                 <span class="kw">if </span>user_info.pool_asset == pool_asset
@@ -2235,8 +2240,11 @@
                         )<span class="question-mark">?</span>;
                     }
                     user_info.pooled_tokens -= pooled_tokens;
+                    found = <span class="bool-val">true</span>;
                 }
             }
+
+            <span class="macro">ensure!</span>(found, Error::&lt;T&gt;::InsufficientFunds);
 
             <span class="comment">// Get pool info
             </span><span class="kw">let </span><span class="kw-2">mut </span>pool_infos = &lt;Pools&lt;T&gt;&gt;::get(<span class="kw-2">&amp;</span>pool_asset, <span class="kw-2">&amp;</span>reward_asset);
