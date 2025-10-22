@@ -105,8 +105,8 @@ use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
-    FixedU128, MultiSignature, Perbill, Percent, Permill, Perquintill,
+    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError, FixedU128,
+    MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
@@ -258,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 116,
+    spec_version: 115,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 116,
+    transaction_version: 115,
     state_version: 0,
 };
 

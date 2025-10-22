@@ -2891,9 +2891,9 @@ mod tests {
     use common::eth::EthAddress;
     use common::{balance, Balance};
     #[cfg(not(feature = "private-net"))]
-    use sp_core::blake2_256;
-    #[cfg(not(feature = "private-net"))]
     use serde_json::Value;
+    #[cfg(not(feature = "private-net"))]
+    use sp_core::blake2_256;
 
     #[test]
     fn calculate_reserves() {
