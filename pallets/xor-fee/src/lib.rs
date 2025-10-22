@@ -1098,6 +1098,8 @@ pub mod pallet {
     {
         type PermittedSetPeriod: EnsureOrigin<Self::RuntimeOrigin>;
         type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
+        type ForcedMultiplierAt: Get<BlockNumberFor<Self>>;
+        type ForcedMultiplier: Get<FixedU128>;
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
@@ -1155,6 +1157,20 @@ pub mod pallet {
         #[allow(unused_variables)]
         fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
             let mut weight: Weight = Default::default();
+
+            // The forced multiplier acts as a one-shot safety override triggered by a specific
+            // block. It replaces any accumulated multiplier so that emergency fee adjustments can
+            // be delivered via a hard fork (e.g. codeSubstitutes) without requiring an extrinsic.
+            let forced_at = T::ForcedMultiplierAt::get();
+            if !forced_at.is_zero() && current_block == forced_at {
+                let forced_multiplier = T::ForcedMultiplier::get();
+                let current_multiplier = Multiplier::<T>::get();
+                if current_multiplier != forced_multiplier {
+                    Multiplier::<T>::put(forced_multiplier);
+                    weight.saturating_accrue(T::DbWeight::get().writes(1));
+                    Self::deposit_event(Event::WeightToFeeMultiplierUpdated(forced_multiplier));
+                }
+            }
             #[cfg(feature = "wip")] // Dynamic fee
             {
                 let update_period = Self::update_period(); // 1 read
