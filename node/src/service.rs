@@ -41,7 +41,10 @@ use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
-use sc_client_api::{Backend, BlockBackend};
+use sc_client_api::{
+    execution_extensions::{ExecutionStrategies, ExecutionStrategy},
+    Backend, BlockBackend,
+};
 use sc_consensus_aura::SlotDuration;
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_service::config::PrometheusConfig;
@@ -125,6 +128,26 @@ pub fn new_partial(
         )));
     }
     set_prometheus_registry(config)?;
+    // Force wasm execution paths when users rely on code substitutes while keeping the on-chain
+    // spec version unchanged. Native execution would otherwise run the embedded runtime (with the
+    // post-fix logic) against historical blocks that expect the old code, causing storage root
+    // mismatches. Honour any explicit `--execution` flags by only overriding non-wasm defaults.
+    let strategies = &mut config.execution_strategies;
+    if !matches!(strategies.syncing, ExecutionStrategy::AlwaysWasm) {
+        strategies.syncing = ExecutionStrategy::AlwaysWasm;
+    }
+    if !matches!(strategies.importing, ExecutionStrategy::AlwaysWasm) {
+        strategies.importing = ExecutionStrategy::AlwaysWasm;
+    }
+    if !matches!(strategies.block_construction, ExecutionStrategy::AlwaysWasm) {
+        strategies.block_construction = ExecutionStrategy::AlwaysWasm;
+    }
+    if !matches!(strategies.offchain_worker, ExecutionStrategy::AlwaysWasm) {
+        strategies.offchain_worker = ExecutionStrategy::AlwaysWasm;
+    }
+    if !matches!(strategies.other, ExecutionStrategy::AlwaysWasm) {
+        strategies.other = ExecutionStrategy::AlwaysWasm;
+    }
 
     let telemetry = config
         .telemetry_endpoints

@@ -2929,15 +2929,15 @@ mod tests {
             .and_then(Value::as_object)
             .expect("codeSubstitutes object missing");
         let wasm_hex = code_substitutes
-            .get("23218325")
+            .get("23222482")
             .and_then(Value::as_str)
-            .expect("missing codeSubstitute for block 23218325");
+            .expect("missing codeSubstitute for block 23222482");
         let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
             .expect("codeSubstitutes entry must be valid hex");
         assert_eq!(
             blake2_256(&wasm_bytes),
-            hex!("12918159e4292317dc5900add3ffa3d7d9b1289e7bfa725856d1c69e0873cd2e"),
-            "unexpected Wasm hash for 23218325 code substitute"
+            hex!("8ae8ea50c96732a70711d838dd1cfadee0b33c7724b2a40b4f4ee6ed8d56f289"),
+            "unexpected Wasm hash for 23222482 code substitute"
         );
     }
 }
