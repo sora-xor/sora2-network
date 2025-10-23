@@ -2936,7 +2936,7 @@ mod tests {
             .expect("codeSubstitutes entry must be valid hex");
         assert_eq!(
             blake2_256(&wasm_bytes),
-            hex!("8ae8ea50c96732a70711d838dd1cfadee0b33c7724b2a40b4f4ee6ed8d56f289"),
+            hex!("f588f8daeb9bcb63f27c366c1eba41d3d5b4b6d9752be70fe2542b80bbef860f"),
             "unexpected Wasm hash for 23222482 code substitute"
         );
     }
