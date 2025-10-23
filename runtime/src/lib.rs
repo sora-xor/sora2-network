@@ -258,10 +258,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 115,
+    spec_version: 118,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 115,
+    transaction_version: 118,
     state_version: 0,
 };
 
@@ -1319,10 +1319,10 @@ parameter_types! {
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
-    // Hard-fork override: once block 23_218_325 is reached, force the fee multiplier used by
+    // Hard-fork override: once block 23_223_845 is reached, force the fee multiplier used by
     // pallet-transaction-payment back to ≈14.8629× to restore the intended fee schedule. This
     // matches the value approved for the emergency fork.
-    pub const ForcedMultiplierAt: BlockNumber = 23_218_325;
+    pub const ForcedMultiplierAt: BlockNumber = 23_223_845;
     pub const ForcedMultiplierValue: FixedU128 =
         FixedU128::from_inner(14_862_961_117_709_108_000_000_000_000_000u128);
 }
