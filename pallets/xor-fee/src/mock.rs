@@ -47,8 +47,6 @@ use common::{
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
     ReferrerAccountProvider, KUSD, PSWAP, TBCD, VAL, XOR,
 };
-use sp_arithmetic::FixedU128;
-
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
@@ -96,9 +94,6 @@ parameter_types! {
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001); // Minimal amount for proportions right calculations
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
-    pub const ForcedMultiplierAt: BlockNumber = 0;
-    pub const ForcedMultiplierValue: FixedU128 =
-        FixedU128::from_inner(1_000_000_000_000_000_000u128);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const KusdId: AssetId = KUSD;
@@ -275,8 +270,6 @@ impl Config for Runtime {
     type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
     type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
-    type ForcedMultiplierAt = ForcedMultiplierAt;
-    type ForcedMultiplier = ForcedMultiplierValue;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator;

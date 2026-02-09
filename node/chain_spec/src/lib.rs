@@ -2929,15 +2929,33 @@ mod tests {
             .and_then(Value::as_object)
             .expect("codeSubstitutes object missing");
         let wasm_hex = code_substitutes
-            .get("23223844")
+            .get("23234813")
             .and_then(Value::as_str)
-            .expect("missing codeSubstitute for block 23223844");
+            .expect("missing codeSubstitute for block 23234813");
         let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
             .expect("codeSubstitutes entry must be valid hex");
         assert_eq!(
             blake2_256(&wasm_bytes),
-            hex!("c258872ae9e0952cae8c23060c0aa3a1342302efa103678729ffbe541ecf1dee"),
-            "unexpected Wasm hash for 23223844 code substitute"
+            hex!("311d77b61faf6950680f520333e2c8af5ad3155f0d3e60ec9439fcf2bbceef3e"),
+            "unexpected Wasm hash for 23234813 code substitute"
         );
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_code_substitute_has_expected_wasm_size() {
+        let raw_spec = include_str!("./bytes/chain_spec_main.json");
+        let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
+        let code_substitutes = json
+            .get("codeSubstitutes")
+            .and_then(Value::as_object)
+            .expect("codeSubstitutes object missing");
+        let wasm_hex = code_substitutes
+            .get("23234813")
+            .and_then(Value::as_str)
+            .expect("missing codeSubstitute for block 23234813");
+        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
+            .expect("codeSubstitutes entry must be valid hex");
+        assert_eq!(wasm_bytes.len(), 2_815_465);
     }
 }
