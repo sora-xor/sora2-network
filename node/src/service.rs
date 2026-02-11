@@ -42,7 +42,7 @@ use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{
-    execution_extensions::{ExecutionStrategies, ExecutionStrategy},
+    execution_extensions::ExecutionStrategy,
     Backend, BlockBackend,
 };
 use sc_consensus_aura::SlotDuration;
