@@ -58,6 +58,7 @@ use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
+use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::{AccountId32, DispatchError, Percent};
 use traits::MultiCurrency;
@@ -155,6 +156,11 @@ mock_price_tools_config!(Runtime);
 
 parameter_types! {
     pub const GetBuyBackAssetId: AssetId = TBCD;
+}
+
+parameter_types! {
+    pub const ForcedMultiplierAt: BlockNumber = 0;
+    pub const ForcedMultiplierValue: FixedU128 = FixedU128::from_inner(1_000_000_000_000_000_000u128);
 }
 
 pub struct CustomFees;
@@ -264,6 +270,8 @@ impl Config for Runtime {
     type TbcdId = TbcdId;
     type ValId = ValId;
     type XorId = XorId;
+    type ForcedMultiplierAt = ForcedMultiplierAt;
+    type ForcedMultiplier = ForcedMultiplierValue;
     type FeeReferrerWeight = FeeReferrerWeight;
     type FeeXorBurnedWeight = FeeXorBurnedWeight;
     type FeeValBurnedWeight = FeeValBurnedWeight;

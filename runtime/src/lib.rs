@@ -105,7 +105,7 @@ use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
 };
 use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError,
+    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError, FixedU128,
     MultiSignature, Perbill, Percent, Permill, Perquintill,
 };
 use sp_std::cmp::Ordering;
@@ -1319,6 +1319,9 @@ parameter_types! {
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
+    pub const ForcedMultiplierAt: BlockNumber = 23_206_222;
+    pub const ForcedMultiplierValue: FixedU128 =
+        FixedU128::from_inner(14_862_961_117_709_108_000_000_000_000_000u128);
 }
 
 impl xor_fee::Config for Runtime {
@@ -1330,6 +1333,8 @@ impl xor_fee::Config for Runtime {
     type DynamicMultiplier = ();
     #[cfg(feature = "wip")] // Dynamic fee
     type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
+    type ForcedMultiplierAt = ForcedMultiplierAt;
+    type ForcedMultiplier = ForcedMultiplierValue;
     type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
@@ -1518,12 +1523,14 @@ impl Get<Vec<(AccountId, H160)>> for RemoveTemporaryPeerAccountIds {
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
+    pub const MaxEthBridgeRequestsPerQueue: u32 = 2048;
 }
 
 #[cfg(feature = "private-net")]
 parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
+    pub const MaxEthBridgeRequestsPerQueue: u32 = 2048;
 }
 
 pub type NetworkId = u32;
@@ -1540,6 +1547,7 @@ impl eth_bridge::Config for Runtime {
     type BridgeAssetLockChecker = BridgeProxy;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = Denomination;
+    type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
 }
 
 #[cfg(feature = "private-net")]

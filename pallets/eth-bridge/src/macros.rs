@@ -13,6 +13,7 @@ macro_rules! cancel {
             debug_assert!(false, "unexpected cancellation error {:?}", e);
         } else {
             crate::RequestStatuses::<T>::insert($net_id, $hash, RequestStatus::Failed($err));
+            Self::clear_request_signatures($net_id, &$hash);
         }
     };
 }

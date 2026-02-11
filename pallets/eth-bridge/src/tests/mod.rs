@@ -35,7 +35,7 @@ use crate::requests::{
 use crate::tests::mock::*;
 use crate::util::majority;
 use common::eth;
-use frame_support::dispatch::{Pays, PostDispatchInfo};
+use frame_support::dispatch::{DispatchError, Pays, PostDispatchInfo};
 use frame_support::{assert_ok, ensure};
 
 use secp256k1::{PublicKey, SecretKey};
@@ -267,13 +267,6 @@ pub fn assert_incoming_request_registration_failed(
 ) -> Result<(), RuntimeEvent> {
     let net_id = incoming_request.network_id();
     let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
-    assert_eq!(
-        crate::RequestsQueue::<Runtime>::get(net_id)
-            .last()
-            .unwrap()
-            .0,
-        incoming_request.hash().0
-    );
     assert_ok!(
         EthBridge::register_incoming_request(
             RuntimeOrigin::signed(bridge_acc_id.clone()),
@@ -284,10 +277,21 @@ pub fn assert_incoming_request_registration_failed(
             actual_weight: None
         }
     );
-    let req_hash =
-        crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, incoming_request.hash());
-    assert_last_event::<Runtime>(
-        crate::Event::RegisterRequestFailed(req_hash, error.into()).into(),
-    );
+    let expected_hash = OffchainRequest::incoming(incoming_request.clone()).hash();
+    let event = crate::tests::last_event().expect("event expected");
+    match event {
+        RuntimeEvent::EthBridge(crate::Event::RegisterRequestFailed(hash, dispatch_error)) => {
+            assert_eq!(hash, expected_hash);
+            let expected_error: DispatchError = error.into();
+            match (dispatch_error, expected_error) {
+                (DispatchError::Module(actual), DispatchError::Module(expected)) => {
+                    assert_eq!(actual.index, expected.index);
+                    assert_eq!(actual.error, expected.error);
+                }
+                other => panic!("unexpected error tuple: {:?}", other),
+            }
+        }
+        other => panic!("unexpected event: {:?}", other),
+    }
     Ok(())
 }

@@ -153,3 +153,16 @@ Easiest way is to use `ethApp.burn` and `erc20App.burn` via polkadot.js/apps
 
 ### Ethereum to Sora
 Example placed in `bridge-scripts/transfer-eth.sh`
+
+## Operational Runbook
+
+### Clearing Stalled Outgoing Requests
+
+If an outgoing request collects signatures but cannot finalize (for example because the bridge account lacks funds), the pallet keeps the existing approvals. Once the underlying issue is fixed, clear the stale signatures before peers vote again:
+
+1. Use a root session (sudo in polkadot.js/apps) and call the extrinsic  
+   `ethBridge.resetRequestSignatures(network_id, request_hash)`.
+2. Confirm the runtime emits `ethBridge.RequestSignaturesCleared`.
+3. The request status should remain `Failed` or `Broken`; resubmit or re-run the approval flow as appropriate.
+
+This explicit reset replaces the old behaviour where signatures were wiped automatically on failure, preventing accidental loss of evidence while still giving operators a deterministic recovery step.

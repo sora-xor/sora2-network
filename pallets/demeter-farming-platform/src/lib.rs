@@ -720,6 +720,7 @@ pub mod pallet {
 
             // Get user info
             let mut user_infos = <UserInfos<T>>::get(&user);
+            let mut found = false;
 
             for user_info in user_infos.iter_mut() {
                 if user_info.pool_asset == pool_asset
@@ -741,8 +742,11 @@ pub mod pallet {
                         )?;
                     }
                     user_info.pooled_tokens -= pooled_tokens;
+                    found = true;
                 }
             }
+
+            ensure!(found, Error::<T>::InsufficientFunds);
 
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
