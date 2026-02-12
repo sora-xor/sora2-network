@@ -53,7 +53,13 @@ fn main() {
         pre_commit_hook_path.to_string_lossy()
     );
     let enabled_hooks_dir = root_path.join(".git/hooks");
-    fs::create_dir_all(&enabled_hooks_dir).expect("Failed to create '.git/hooks' dir");
-    fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit"))
-        .expect("Failed to copy '.hooks/pre_commit' to '.git/hooks/pre_commit'");
+    // Installing git hooks is best-effort: the build should not fail if the repo lives on
+    // a read-only volume (common on CI or macOS sandboxed builds).
+    if let Err(err) = fs::create_dir_all(&enabled_hooks_dir) {
+        println!("cargo:warning=Failed to create '.git/hooks' dir (skipping hook install): {err}");
+        return;
+    }
+    if let Err(err) = fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit")) {
+        println!("cargo:warning=Failed to copy '.hooks/pre_commit' (skipping hook install): {err}");
+    }
 }

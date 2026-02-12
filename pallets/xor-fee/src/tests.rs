@@ -140,6 +140,55 @@ fn non_root_update_fails() {
 }
 
 #[test]
+fn fees_remain_stable_on_codesub_block_without_forced_override() {
+    // This block matches mainnet codeSubstitute activation height.
+    const CODESUB_BLOCK: u64 = 23_234_813;
+
+    ExtBuilder::build().execute_with(|| {
+        set_weight_to_fee_multiplier(2);
+        System::set_block_number(CODESUB_BLOCK - 1);
+
+        let tracked_call = RuntimeCall::Assets(assets::Call::transfer {
+            to: alice(),
+            asset_id: common::VAL,
+            amount: 10,
+        });
+        let tracked_info = info_from_weight(100.into());
+        let tracked_len = 100;
+
+        let (fee_before, _) = XorFee::compute_fee(tracked_len, &tracked_call, &tracked_info, 0);
+        assert_eq!(fee_before, balance!(0.0014));
+
+        let multiplier_events_before = System::events()
+            .iter()
+            .filter(|record| {
+                matches!(
+                    &record.event,
+                    RuntimeEvent::XorFee(crate::Event::WeightToFeeMultiplierUpdated(_))
+                )
+            })
+            .count();
+
+        run_to_block(CODESUB_BLOCK);
+
+        assert_eq!(XorFee::multiplier(), FixedU128::saturating_from_integer(2));
+        let (fee_after, _) = XorFee::compute_fee(tracked_len, &tracked_call, &tracked_info, 0);
+        assert_eq!(fee_after, fee_before);
+
+        let multiplier_events_after = System::events()
+            .iter()
+            .filter(|record| {
+                matches!(
+                    &record.event,
+                    RuntimeEvent::XorFee(crate::Event::WeightToFeeMultiplierUpdated(_))
+                )
+            })
+            .count();
+        assert_eq!(multiplier_events_before, multiplier_events_after);
+    });
+}
+
+#[test]
 fn it_works_postpone() {
     ExtBuilder::build().execute_with(|| {
         let who = GetPostponeAccountId::get();

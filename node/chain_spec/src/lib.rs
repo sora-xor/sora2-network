@@ -2890,6 +2890,10 @@ mod tests {
 
     use common::eth::EthAddress;
     use common::{balance, Balance};
+    #[cfg(not(feature = "private-net"))]
+    use serde_json::Value;
+    #[cfg(not(feature = "private-net"))]
+    use sp_core::blake2_256;
 
     #[test]
     fn calculate_reserves() {
@@ -2911,5 +2915,47 @@ mod tests {
             super::calculate_reserves(accounts.iter().map(|(_, b)| *b)),
             balance!(123.45678)
         );
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_code_substitute_matches_expected_wasm() {
+        // The live chain is upgraded via codeSubstitutes, so we verify the embedded JSON still
+        // carries the correct Wasm blob for the emergency fork height.
+        let raw_spec = include_str!("./bytes/chain_spec_main.json");
+        let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
+        let code_substitutes = json
+            .get("codeSubstitutes")
+            .and_then(Value::as_object)
+            .expect("codeSubstitutes object missing");
+        let wasm_hex = code_substitutes
+            .get("23234813")
+            .and_then(Value::as_str)
+            .expect("missing codeSubstitute for block 23234813");
+        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
+            .expect("codeSubstitutes entry must be valid hex");
+        assert_eq!(
+            blake2_256(&wasm_bytes),
+            hex!("311d77b61faf6950680f520333e2c8af5ad3155f0d3e60ec9439fcf2bbceef3e"),
+            "unexpected Wasm hash for 23234813 code substitute"
+        );
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_code_substitute_has_expected_wasm_size() {
+        let raw_spec = include_str!("./bytes/chain_spec_main.json");
+        let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
+        let code_substitutes = json
+            .get("codeSubstitutes")
+            .and_then(Value::as_object)
+            .expect("codeSubstitutes object missing");
+        let wasm_hex = code_substitutes
+            .get("23234813")
+            .and_then(Value::as_str)
+            .expect("missing codeSubstitute for block 23234813");
+        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
+            .expect("codeSubstitutes entry must be valid hex");
+        assert_eq!(wasm_bytes.len(), 2_815_465);
     }
 }

@@ -47,8 +47,6 @@ use common::{
     LiquidityProxyTrait, LiquiditySourceFilter, LiquiditySourceType, OnValBurned,
     ReferrerAccountProvider, KUSD, PSWAP, TBCD, VAL, XOR,
 };
-use sp_arithmetic::FixedU128;
-
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
@@ -60,6 +58,7 @@ use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
+use sp_arithmetic::FixedU128;
 use sp_core::H256;
 use sp_runtime::{AccountId32, DispatchError, Percent};
 use traits::MultiCurrency;
