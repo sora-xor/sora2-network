@@ -41,10 +41,7 @@ use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
 use log::debug;
 use prometheus_endpoint::Registry;
-use sc_client_api::{
-    execution_extensions::ExecutionStrategy,
-    Backend, BlockBackend,
-};
+use sc_client_api::{execution_extensions::ExecutionStrategy, Backend, BlockBackend};
 use sc_consensus_aura::SlotDuration;
 pub use sc_executor::NativeElseWasmExecutor;
 use sc_service::config::PrometheusConfig;
