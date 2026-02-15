@@ -80,6 +80,7 @@ use frame_system::offchain::{Account, SigningTypes};
 use hex_literal::hex;
 use parking_lot::RwLock;
 use rustc_hex::ToHex;
+use sccp;
 use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
 use sp_keystore::testing::KeyStore;
@@ -349,6 +350,15 @@ impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
         }
     }
 }
+
+pub struct MockSccpAssetChecker;
+
+impl sccp::SccpAssetChecker<AssetId> for MockSccpAssetChecker {
+    fn is_sccp_asset(asset_id: &AssetId) -> bool {
+        SCCP_ASSETS.with(|assets| assets.borrow().contains(asset_id))
+    }
+}
+
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PeerId = crate::offchain::crypto::TestAuthId;
@@ -361,6 +371,7 @@ impl Config for Runtime {
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type SccpAssetChecker = MockSccpAssetChecker;
     type Denominator = ();
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
 }
@@ -400,6 +411,20 @@ thread_local! {
     pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
     pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
+    pub static SCCP_ASSETS: RefCell<Vec<AssetId>> = RefCell::new(Vec::new());
+}
+
+pub fn set_sccp_asset(asset_id: AssetId, enabled: bool) {
+    SCCP_ASSETS.with(|assets| {
+        let mut assets = assets.borrow_mut();
+        if enabled {
+            if !assets.contains(&asset_id) {
+                assets.push(asset_id);
+            }
+        } else {
+            assets.retain(|id| id != &asset_id);
+        }
+    });
 }
 
 fn push_response(data: Vec<u8>) {
@@ -420,6 +445,10 @@ fn json_rpc_response<T: Serialize>(value: T) -> jsonrpc_core::Response {
 fn push_json_rpc_response<T: Serialize>(value: T) {
     let json_rpc_response = json_rpc_response(value);
     push_response(serde_json::to_vec(&json_rpc_response).unwrap());
+}
+
+pub(crate) fn push_global_json_rpc_response<T: Serialize>(value: T) {
+    push_json_rpc_response(value);
 }
 
 pub struct State {
@@ -545,8 +574,6 @@ impl State {
             // In reality you would do `e.apply`, but this is a test. we assume we don't care
             // about validation etc.
             let origin = Some(who).into();
-            // set_caller_from
-            println!("{:?} {:?}", origin, call);
             if let Err(e) = call.dispatch_bypass_filter(origin) {
                 eprintln!("call dispatch error {:?}", e);
             }
@@ -863,7 +890,10 @@ impl ExtBuilder {
         t.register_extension(OffchainWorkerExt::new(offchain));
         t.register_extension(TransactionPoolExt::new(pool));
         t.register_extension(KeystoreExt(Arc::new(key_store)));
-        t.execute_with(|| System::set_block_number(1));
+        t.execute_with(|| {
+            System::set_block_number(1);
+            SCCP_ASSETS.with(|assets| assets.borrow_mut().clear());
+        });
 
         let state = State {
             networks: self.networks,

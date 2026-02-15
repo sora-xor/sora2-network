@@ -30,7 +30,8 @@
 
 use crate::offchain::SignatureParams;
 use crate::requests::{
-    IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest, RequestStatus,
+    IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, LoadIncomingMetaRequest,
+    OffchainRequest, OutgoingRequest, RequestStatus,
 };
 use crate::tests::mock::*;
 use crate::util::majority;
@@ -50,6 +51,7 @@ pub mod mock;
 mod ocw;
 mod outgoing_tranfser;
 mod peer;
+mod rpc;
 
 pub(crate) type Error = crate::Error<Runtime>;
 pub(crate) type Assets = assets::Pallet<Runtime>;
@@ -194,12 +196,24 @@ pub fn request_incoming(
     kind: IncomingRequestKind,
     net_id: u32,
 ) -> Result<H256, RuntimeEvent> {
-    assert_ok!(EthBridge::request_from_sidechain(
-        RuntimeOrigin::signed(account_id),
-        tx_hash,
-        kind,
-        net_id
-    ));
+    if let IncomingRequestKind::Meta(IncomingMetaRequestKind::CancelOutgoingRequest) = kind {
+        let timepoint = bridge_multisig::Pallet::<Runtime>::thischain_timepoint();
+        let request = OffchainRequest::load_incoming_meta(LoadIncomingMetaRequest::new(
+            account_id,
+            tx_hash,
+            timepoint,
+            IncomingMetaRequestKind::CancelOutgoingRequest,
+            net_id,
+        ));
+        assert_ok!(EthBridge::add_request(&request));
+    } else {
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(account_id),
+            tx_hash,
+            kind,
+            net_id
+        ));
+    }
     let last_request: OffchainRequest<Runtime> = last_request(net_id).unwrap();
     match last_request {
         OffchainRequest::LoadIncoming(..) => (),

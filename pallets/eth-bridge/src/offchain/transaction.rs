@@ -31,7 +31,6 @@
 use crate::requests::{IncomingRequest, LoadIncomingRequest, RequestStatus};
 #[cfg(test)]
 use crate::tests::mock::Mock;
-use crate::util::get_bridge_account;
 use crate::{
     Config, Error, Pallet, Timepoint, OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
     STORAGE_PENDING_TRANSACTIONS_KEY,
@@ -135,11 +134,18 @@ impl<T: Config> SignedTransactionData<T> {
             } else {
                 Some(frame_system::Pallet::<T>::current_block_number())
             };
-            let signed_transaction_data =
+            if let Some(signed_transaction_data) =
                 SignedTransactionData::from_local_call(self.call.clone(), &account, submitted_at)
-                    .expect("we've just successfully signed the same data; qed");
-            *self = signed_transaction_data;
-            res.is_ok()
+            {
+                *self = signed_transaction_data;
+                res.is_ok()
+            } else {
+                error!(
+                    "[{:?}] Failed to reconstruct signed transaction after re-send",
+                    account.id
+                );
+                false
+            }
         } else {
             false
         }
@@ -207,9 +213,9 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        let bridge_account = get_bridge_account::<T>(network_id);
+        let bridge_account = Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
         let threshold = bridge_multisig::Accounts::<T>::get(&bridge_account)
-            .unwrap()
+            .ok_or(Error::<T>::UnknownNetwork)?
             .threshold_num();
         let call = if threshold == 1 {
             bridge_multisig::Call::as_multi_threshold_1 {
@@ -298,9 +304,15 @@ impl<T: Config> Pallet<T> {
         } else {
             Some(frame_system::Pallet::<T>::current_block_number())
         };
-        let signed_transaction_data =
+        let Some(signed_transaction_data) =
             SignedTransactionData::from_local_call(call, account, submitted_at)
-                .expect("we've just successfully signed the same data; qed");
+        else {
+            error!(
+                "[{:?}] Failed to cache signed transaction for retry",
+                account.id
+            );
+            return;
+        };
         transactions.insert(
             signed_transaction_data.extrinsic_hash,
             signed_transaction_data,
@@ -329,8 +341,9 @@ impl<T: Config> Pallet<T> {
         #[cfg(test)]
         let result = {
             if T::Mock::should_fail_send_signed_transaction() {
-                let account_id = signer.sign_message(&[]).unwrap().0;
-                Some((account_id, Err(())))
+                signer
+                    .sign_message(&[])
+                    .map(|(account_id, _)| (account_id, Err(())))
             } else {
                 signer.send_signed_transaction(|_acc| call.clone())
             }

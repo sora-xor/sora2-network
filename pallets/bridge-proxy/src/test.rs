@@ -31,14 +31,16 @@
 use crate::mock::RuntimeCall;
 use crate::mock::RuntimeEvent;
 use crate::mock::{
-    new_tester, AccountId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch, FungibleApp,
-    System, Test, BASE_EVM_NETWORK_ID,
+    new_tester, AccountId, AssetId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch,
+    FungibleApp, Sccp, System, Test, BASE_EVM_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions};
-use bridge_types::traits::MessageDispatch;
+use bridge_types::traits::{
+    BridgeAssetLocker, BridgeAssetRegistry, EVMBridgeWithdrawFee, MessageDispatch,
+};
 use bridge_types::GenericTimepoint;
-use bridge_types::H160;
 use bridge_types::{GenericAccount, GenericNetworkId};
+use bridge_types::{H160, H256};
 use codec::Encode;
 use common::{balance, FixedInner, DAI, XOR};
 use frame_support::assert_noop;
@@ -55,6 +57,21 @@ fn assert_event(event: RuntimeEvent) {
         .iter()
         .find(|e| e.event == event)
         .expect("Event not found");
+}
+
+fn has_asset(assets: &[bridge_types::types::BridgeAssetInfo], asset_id: AssetId) -> bool {
+    assets.iter().any(|asset| {
+        let listed_asset = match asset {
+            bridge_types::types::BridgeAssetInfo::EVMLegacy(info) => {
+                Some(AssetId::from(info.asset_id))
+            }
+            bridge_types::types::BridgeAssetInfo::EVM(info) => Some(AssetId::from(info.asset_id)),
+            bridge_types::types::BridgeAssetInfo::Sub(info) => Some(AssetId::from(info.asset_id)),
+            bridge_types::types::BridgeAssetInfo::Ton(info) => Some(AssetId::from(info.asset_id)),
+            bridge_types::types::BridgeAssetInfo::Liberland => None,
+        };
+        listed_asset == Some(asset_id)
+    })
 }
 
 #[test]
@@ -151,6 +168,165 @@ fn burn_failed() {
         );
         assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 0);
+    })
+}
+
+#[test]
+fn burn_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+        assert_ok!(BridgeProxy::add_limited_asset(RawOrigin::Root.into(), XOR));
+        Currencies::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            XOR,
+            balance!(1) as FixedInner,
+        )
+        .unwrap();
+
+        assert_noop!(
+            BridgeProxy::burn(
+                RawOrigin::Signed(caller).into(),
+                BASE_EVM_NETWORK_ID.into(),
+                XOR,
+                GenericAccount::EVM(H160::default()),
+                1000,
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn list_supported_assets_filters_out_sccp_assets() {
+    new_tester().execute_with(|| {
+        let network_id: GenericNetworkId = BASE_EVM_NETWORK_ID.into();
+        let before = BridgeProxy::list_supported_assets(network_id);
+        assert!(has_asset(&before, XOR));
+
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        let after = BridgeProxy::list_supported_assets(network_id);
+        assert!(!has_asset(&after, XOR));
+    })
+}
+
+#[test]
+fn refund_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let beneficiary: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::refund(
+                BASE_EVM_NETWORK_ID.into(),
+                H256::zero(),
+                GenericAccount::Sora(beneficiary),
+                XOR,
+                1000,
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn manage_asset_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::manage_asset(BASE_EVM_NETWORK_ID.into(), XOR),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn lock_asset_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::lock_asset(
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                bridge_types::types::AssetKind::Thischain,
+                &caller,
+                &XOR,
+                &1000u32.into(),
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn unlock_asset_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::unlock_asset(
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                bridge_types::types::AssetKind::Thischain,
+                &caller,
+                &XOR,
+                &1000u32.into(),
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn withdraw_fee_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::withdraw_fee(
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                &caller,
+                &XOR,
+                &1000u32.into(),
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn withdraw_transfer_fee_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::withdraw_transfer_fee(&caller, BASE_EVM_NETWORK_ID, XOR),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+    })
+}
+
+#[test]
+fn refund_fee_rejects_sccp_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(Sccp::add_token(RawOrigin::Root.into(), XOR));
+
+        assert_noop!(
+            BridgeProxy::refund_fee(
+                GenericNetworkId::EVM(BASE_EVM_NETWORK_ID),
+                &caller,
+                &XOR,
+                &1000u32.into(),
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
     })
 }
 

@@ -93,6 +93,22 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    pub fn with_initial_permission_owners(
+        mut self,
+        initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    ) -> Self {
+        self.initial_permission_owners = initial_permission_owners;
+        self
+    }
+
+    pub fn with_initial_permissions(
+        mut self,
+        initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    ) -> Self {
+        self.initial_permissions = initial_permissions;
+        self
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::default()
             .build_storage::<Runtime>()

@@ -191,17 +191,13 @@ impl<T: Config> Decoder<T> {
     }
 }
 
-pub fn get_bridge_account<T: Config>(network_id: T::NetworkId) -> T::AccountId {
-    crate::BridgeAccount::<T>::get(network_id).expect("networks can't be removed; qed")
-}
-
 pub fn serialize<T: serde::Serialize>(t: &T) -> crate::jsonrpc::Value {
-    serde_json::to_value(t).expect("Types never fail to serialize.")
+    serde_json::to_value(t).unwrap_or(crate::jsonrpc::Value::Null)
 }
 
 #[allow(unused)]
 pub fn to_string<T: serde::Serialize>(request: &T) -> String {
-    serde_json::to_string(&request).expect("String serialization never fails.")
+    serde_json::to_string(&request).unwrap_or_else(|_| "null".to_owned())
 }
 
 pub fn iter_storage<S, K1, K2, V, F, O>(k1: Option<K1>, f: F) -> Vec<O>

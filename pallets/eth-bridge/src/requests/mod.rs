@@ -227,6 +227,7 @@ impl<T: Config> OutgoingRequest<T> {
 
     pub fn should_be_skipped(&self) -> bool {
         match self {
+            OutgoingRequest::AddPeerCompat(req) => req.should_be_skipped(),
             OutgoingRequest::RemovePeer(req) => req.should_be_skipped(),
             _ => false,
         }
@@ -524,8 +525,19 @@ impl<T: Config> IncomingRequest<T> {
         match self {
             IncomingRequest::CancelOutgoingRequest(request) => {
                 let hash = request.tx_hash;
-                let tx = Pallet::<T>::load_tx_receipt(hash, network_id)?;
-                Ok(tx.is_approved() == false) // TODO: check for gas limit
+                let tx_receipt = Pallet::<T>::load_tx_receipt(hash, network_id)?;
+                if tx_receipt.is_approved() {
+                    return Ok(false);
+                }
+                let tx = Pallet::<T>::load_tx(hash, network_id)?;
+                ensure!(
+                    tx_receipt
+                        .gas_used
+                        .map(|used| used != tx.gas)
+                        .unwrap_or(false),
+                    Error::<T>::TransactionMightHaveFailedDueToGasLimit
+                );
+                Ok(true)
             }
             IncomingRequest::MarkAsDone(request) => {
                 Pallet::<T>::load_is_used(request.outgoing_request_hash, request.network_id)

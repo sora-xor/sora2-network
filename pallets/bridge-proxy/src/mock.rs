@@ -42,9 +42,8 @@ use common::{
     balance, mock_assets_config, mock_bridge_channel_outbound_config, mock_common_config,
     mock_currencies_config, mock_dispatch_config, mock_evm_fungible_app_config,
     mock_frame_system_config, mock_pallet_balances_config, mock_pallet_timestamp_config,
-    mock_permissions_config, mock_proxy_config, mock_technical_config, mock_tokens_config, Amount,
-    AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI,
-    ETH, XOR, XST,
+    mock_permissions_config, mock_technical_config, mock_tokens_config, Amount, AssetId32,
+    AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU32, GenesisBuild};
@@ -53,6 +52,7 @@ use sp_runtime::traits::{Convert, IdentifyAccount, Verify};
 use sp_runtime::{DispatchResult, MultiSignature};
 
 use crate as proxy;
+use sccp;
 
 pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 pub type Block = frame_system::mocking::MockBlock<Test>;
@@ -76,6 +76,7 @@ frame_support::construct_runtime!(
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
         FungibleApp: evm_fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Sccp: sccp::{Pallet, Call, Storage, Event<T>},
         BridgeProxy: proxy::{Pallet, Call, Storage, Event},
     }
 );
@@ -95,7 +96,6 @@ mock_frame_system_config!(Test, (), ConstU32<65536>);
 mock_pallet_balances_config!(Test);
 mock_pallet_timestamp_config!(Test);
 mock_permissions_config!(Test);
-mock_proxy_config!(Test);
 mock_technical_config!(Test);
 mock_tokens_config!(Test);
 
@@ -107,6 +107,30 @@ parameter_types! {
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
+
+parameter_types! {
+    pub const SccpMaxRemoteTokenIdLen: u32 = 64;
+    pub const SccpMaxDomains: u32 = 16;
+    pub const SccpMaxBscValidators: u32 = 64;
+    pub const SccpMaxAttesters: u32 = 64;
+}
+
+impl sccp::Config for Test {
+    type RuntimeEvent = RuntimeEvent;
+    type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
+    type AccountIdConverter = sp_runtime::traits::ConvertInto;
+    type AssetInfoProvider = Assets;
+    type LegacyBridgeAssetChecker = ();
+    type AuxiliaryDigestHandler = ();
+    type EthFinalizedStateProvider = ();
+    type SolanaFinalizedBurnProofVerifier = ();
+    type TonFinalizedBurnProofVerifier = ();
+    type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
+    type MaxDomains = SccpMaxDomains;
+    type MaxBscValidators = SccpMaxBscValidators;
+    type MaxAttesters = SccpMaxAttesters;
+    type WeightInfo = ();
+}
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 2048;
@@ -205,6 +229,20 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
     ) -> Result<Balance, frame_support::dispatch::DispatchError> {
         Ok(common::balance!(2.5))
     }
+}
+
+impl proxy::Config for Test {
+    type RuntimeEvent = RuntimeEvent;
+    type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
+    type AccountIdConverter = sp_runtime::traits::Identity;
+    type FAApp = FungibleApp;
+    type HashiBridge = ();
+    type LiberlandApp = ();
+    type ParachainApp = ();
+    type ReferencePriceProvider = ReferencePriceProvider;
+    type SccpAssetChecker = Sccp;
+    type TimepointProvider = GenericTimepointProvider;
+    type WeightInfo = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

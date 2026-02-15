@@ -41,6 +41,7 @@ leaf-provider = { git = "https://github.com/sora-xor/sora2-common.git", default-
 leaf-provider-runtime-api = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 bridge-proxy = { path = "../pallets/bridge-proxy", default-features = false }
 bridge-proxy-runtime-api = { path = "../pallets/bridge-proxy/runtime-api", default-features = false }
+sccp = { path = "../pallets/sccp", default-features = false }
 parachain-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-app = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
 substrate-bridge-channel = { git = "https://github.com/sora-xor/sora2-common.git", default-features = false }
@@ -212,6 +213,7 @@ std = [
     "leaf-provider-runtime-api/std",
     "bridge-proxy/std",
     "bridge-proxy-runtime-api/std",
+    "sccp/std",
     "evm-fungible-app/std",
     "jetton-app/std",
     "parachain-bridge-app/std",
@@ -341,6 +343,7 @@ runtime-benchmarks = [
     "dispatch/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "bridge-proxy/runtime-benchmarks",
+    "sccp/runtime-benchmarks",
     "evm-fungible-app/runtime-benchmarks",
     "jetton-app/runtime-benchmarks",
     "parachain-bridge-app/runtime-benchmarks",
@@ -410,6 +413,7 @@ try-runtime = [
     "dispatch/try-runtime",
     "leaf-provider/try-runtime",
     "bridge-proxy/try-runtime",
+    "sccp/try-runtime",
     "evm-fungible-app/try-runtime",
     "jetton-app/try-runtime",
     "parachain-bridge-app/try-runtime",

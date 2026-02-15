@@ -41,9 +41,32 @@ use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use secp256k1::{PublicKey, SecretKey};
-use sp_core::{ecdsa, H160};
+use sp_core::{ecdsa, H160, H256};
 use sp_std::prelude::*;
 use std::str::FromStr;
+
+#[test]
+fn outgoing_transfer_prepare_should_fail_for_unknown_network() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        let request = OutgoingTransfer::<Runtime> {
+            from: alice.clone(),
+            to: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            asset_id: XOR.into(),
+            amount: 10u32.into(),
+            nonce: Default::default(),
+            network_id: ETH_NETWORK_ID + 1,
+            timepoint: Default::default(),
+        };
+        assert_err!(
+            request.prepare(H256::repeat_byte(0xAB)),
+            Error::UnknownNetwork
+        );
+    });
+}
 
 #[test]
 fn should_approve_outgoing_transfer() {
@@ -69,6 +92,76 @@ fn should_approve_outgoing_transfer() {
             99900u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
+    });
+}
+
+#[test]
+fn should_fail_outgoing_transfer_finalization_if_asset_becomes_sccp_managed() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let amount = 100u32.into();
+        Assets::mint_to(&XOR.into(), &alice, &alice, 1_000u32.into()).unwrap();
+
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            amount,
+            net_id,
+        ));
+        let bridge_acc = state.networks[&net_id].config.bridge_account_id.clone();
+        let (request, hash) = last_outgoing_request(net_id).expect("outgoing request should exist");
+        let encoded = request.to_eth_abi(hash).unwrap();
+        let keypairs = &state.networks[&net_id].ocw_keypairs;
+        let additional = if EthBridge::is_additional_signature_needed(net_id, &request) {
+            1
+        } else {
+            0
+        };
+        let sigs_needed = majority(keypairs.len()) + additional;
+
+        set_sccp_asset(XOR.into(), true);
+        System::reset_events();
+        for (_signer, account_id, seed) in keypairs.iter().take(sigs_needed) {
+            let secret = SecretKey::parse_slice(seed).unwrap();
+            let public = PublicKey::from_secret_key(&secret);
+            let msg = eth::prepare_message(encoded.as_raw());
+            let sig_pair = secp256k1::sign(&msg, &secret);
+            let signature_params = super::get_signature_params(&sig_pair);
+            assert_ok!(EthBridge::approve_request(
+                RuntimeOrigin::signed(account_id.clone()),
+                ecdsa::Public::from_raw(public.serialize_compressed()),
+                hash,
+                signature_params,
+                net_id,
+            ));
+        }
+
+        let has_finalization_failed = frame_system::Pallet::<Runtime>::events().iter().any(
+            |record| {
+                matches!(
+                    record.event,
+                    RuntimeEvent::EthBridge(crate::Event::RequestFinalizationFailed(failed_hash))
+                        if failed_hash == hash
+                )
+            },
+        );
+        assert!(has_finalization_failed);
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            Some(RequestStatus::Failed(_))
+        ));
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            1_000u32.into()
+        );
+        assert_eq!(
+            Assets::free_balance(&XOR.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&XOR.into(), &bridge_acc).unwrap()
+        );
     });
 }
 
@@ -217,6 +310,55 @@ fn should_register_outgoing_transfer() {
             }
             _ => panic!("Invalid off-chain request"),
         }
+    });
+}
+
+#[test]
+fn abort_request_removes_all_duplicate_hashes_from_queue() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+
+        let request_hash = last_outgoing_request(net_id)
+            .expect("outgoing request should exist")
+            .1;
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| queue.push(request_hash));
+        assert_eq!(
+            crate::RequestsQueue::<Runtime>::get(net_id)
+                .iter()
+                .filter(|hash| **hash == request_hash)
+                .count(),
+            2
+        );
+
+        let bridge_account = state.networks[&net_id].config.bridge_account_id.clone();
+        assert_ok!(EthBridge::abort_request(
+            RuntimeOrigin::signed(bridge_account),
+            request_hash,
+            Error::Cancelled.into(),
+            net_id,
+        ));
+        assert_eq!(
+            crate::RequestsQueue::<Runtime>::get(net_id)
+                .iter()
+                .filter(|hash| **hash == request_hash)
+                .count(),
+            0
+        );
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Failed(_))
+        ));
     });
 }
 

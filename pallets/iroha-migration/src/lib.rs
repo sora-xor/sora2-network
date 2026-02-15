@@ -494,8 +494,18 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
-            Account::<T>::put(&self.account_id.as_ref().unwrap());
+            if let Some(account_id) = self.account_id.as_ref() {
+                if frame_system::Pallet::<T>::inc_consumers(account_id).is_ok() {
+                    Account::<T>::put(account_id);
+                } else {
+                    frame_support::log::error!(
+                        "IrohaMigration genesis failed to increase consumers for account: {:?}",
+                        account_id
+                    );
+                }
+            } else {
+                frame_support::log::error!("IrohaMigration genesis account_id is not configured");
+            }
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {
                 Balances::<T>::insert(account_id, *balance);

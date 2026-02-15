@@ -57,6 +57,8 @@ use frame_support::{ensure, fail, log};
 use frame_system::offchain::{CreateSignedTransaction, Signer};
 use sp_core::H256;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::convert::TryInto;
 
 impl<T: Config> Pallet<T> {
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
@@ -69,14 +71,13 @@ impl<T: Config> Pallet<T> {
         }
         let encoded_request = request.to_eth_abi(hash)?;
         let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-        let sk = secp256k1::SecretKey::parse_slice(
-            &secret_s
-                .get::<Vec<u8>>()
-                .ok()
-                .flatten()
-                .expect("Off-chain worker secret key is not specified."),
-        )
-        .expect("Invalid off-chain worker secret key.");
+        let secret_key = secret_s
+            .get::<Vec<u8>>()
+            .ok()
+            .flatten()
+            .ok_or(Error::<T>::FailedToSignMessage)?;
+        let sk = secp256k1::SecretKey::parse_slice(&secret_key)
+            .map_err(|_| Error::<T>::FailedToSignMessage)?;
         // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
         let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
         let call = Call::approve_request {
@@ -257,10 +258,8 @@ impl<T: Config> Pallet<T> {
                         debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
-                        // TODO: this flow was used to transfer XOR for free with the `request_from_sidechain`
-                        // extrinsic. This could be used to spam network with transactions. Now it's unneeded,
-                        // since all incoming transactions are loaded automatically. The extrinsic and related
-                        // code should be considered for deletion.
+                        // Legacy path kept for already queued requests. New `TransferXOR` pre-requests
+                        // are blocked in `request_from_sidechain`.
                         if kind == IncomingTransactionRequestKind::TransferXOR {
                             if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
                                 ensure!(
@@ -348,10 +347,10 @@ impl<T: Config> Pallet<T> {
                 .transaction_index
                 .ok_or(Error::<T>::EthTransactionIsPending)?
                 .as_u64();
-            let timepoint = bridge_multisig::Pallet::<T>::sidechain_timepoint(
-                at_height,
-                transaction_index as u32, // TODO: can it exceed u32?
-            );
+            let transaction_index =
+                u32::try_from(transaction_index).map_err(|_| Error::<T>::InvalidUint)?;
+            let timepoint =
+                bridge_multisig::Pallet::<T>::sidechain_timepoint(at_height, transaction_index);
             info!("Got log [{}], {:?}", at_height, log);
             let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
                 event.destination.clone(),
@@ -449,9 +448,11 @@ impl<T: Config> Pallet<T> {
             Self::handle_failed_transactions_queue();
         }
 
-        let substrate_finalized_height = <T::BlockNumber>::from(
-            u32::try_from(substrate_finalized_block.number).expect("cannot cast block height"),
-        );
+        let substrate_finalized_height: T::BlockNumber = substrate_finalized_block
+            .number
+            .as_u64()
+            .try_into()
+            .map_err(|_| Error::<T>::InvalidUint)?;
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY);
         let from_block_opt = s_sub_to_handle_from_height
@@ -613,10 +614,14 @@ impl<T: Config> Pallet<T> {
             Self::handle_pending_multisig_calls(network_id, current_eth_height);
         }
 
+        let mut stale_hashes = BTreeSet::new();
         for request_hash in RequestsQueue::<T>::get(network_id) {
             let request = match Requests::<T>::get(network_id, request_hash) {
                 Some(v) => v,
-                _ => continue, // TODO: remove from queue
+                _ => {
+                    stale_hashes.insert(request_hash);
+                    continue;
+                }
             };
             if request.should_be_skipped() {
                 log::debug!("Temporary skip request: {:?}", request_hash);
@@ -670,6 +675,11 @@ impl<T: Config> Pallet<T> {
                     s_handled_request.set(&request_submission_height);
                 }
             }
+        }
+        if !stale_hashes.is_empty() {
+            RequestsQueue::<T>::mutate(network_id, |queue| {
+                queue.retain(|hash| !stale_hashes.contains(hash));
+            });
         }
     }
 }

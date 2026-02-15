@@ -99,8 +99,12 @@ pub struct Receipt {
 
 impl Receipt {
     pub fn is_approved(&self) -> bool {
-        // TODO: handle `root` field?
-        self.status.unwrap_or_else(|| 0.into()) != 0.into()
+        if let Some(status) = self.status {
+            status != 0.into()
+        } else {
+            // Pre-EIP-658 receipts may not include `status`, but include `root`.
+            self.root.is_some()
+        }
     }
 }
 
@@ -149,7 +153,7 @@ pub struct RawTransactionDetails {
 
 #[cfg(test)]
 mod tests {
-    use super::{RawTransaction, Receipt};
+    use super::{RawTransaction, Receipt, H256};
     use serde_json;
 
     #[test]
@@ -242,5 +246,39 @@ mod tests {
     }"#;
 
         let _tx: RawTransaction = serde_json::from_str(tx_str).unwrap();
+    }
+
+    #[test]
+    fn receipt_is_approved_uses_status_when_present() {
+        let receipt = Receipt {
+            status: Some(1u64.into()),
+            root: None,
+            ..Default::default()
+        };
+        assert!(receipt.is_approved());
+
+        let receipt = Receipt {
+            status: Some(0u64.into()),
+            root: Some(H256::repeat_byte(0x11)),
+            ..Default::default()
+        };
+        assert!(!receipt.is_approved());
+    }
+
+    #[test]
+    fn receipt_is_approved_falls_back_to_root_when_status_absent() {
+        let receipt = Receipt {
+            status: None,
+            root: Some(H256::repeat_byte(0x22)),
+            ..Default::default()
+        };
+        assert!(receipt.is_approved());
+
+        let receipt = Receipt {
+            status: None,
+            root: None,
+            ..Default::default()
+        };
+        assert!(!receipt.is_approved());
     }
 }

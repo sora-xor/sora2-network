@@ -33,33 +33,32 @@ use super::{Assets, Error, EthBridge};
 use crate::contract::{functions, FUNCTIONS, RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID};
 use crate::offchain::SignatureParams;
 use crate::requests::{
-    encode_outgoing_request_eth_call, AssetKind, IncomingAddToken, IncomingChangePeers,
-    IncomingMetaRequestKind, IncomingMigrate, IncomingPrepareForMigration, IncomingRequest,
-    IncomingTransfer, OffchainRequest, OutgoingAddAsset, OutgoingAddPeer, OutgoingAddPeerCompat,
-    OutgoingAddToken, OutgoingMigrate, OutgoingPrepareForMigration, OutgoingRemovePeer,
-    OutgoingRemovePeerCompat, OutgoingRequest, OutgoingTransfer,
+    encode_outgoing_request_eth_call, AssetKind, IncomingAddToken, IncomingCancelOutgoingRequest,
+    IncomingChangePeers, IncomingMetaRequestKind, IncomingMigrate, IncomingPrepareForMigration,
+    IncomingRequest, IncomingTransfer, OffchainRequest, OutgoingAddAsset, OutgoingAddPeer,
+    OutgoingAddPeerCompat, OutgoingAddToken, OutgoingMigrate, OutgoingPrepareForMigration,
+    OutgoingRemovePeer, OutgoingRemovePeerCompat, OutgoingRequest, OutgoingTransfer, RequestStatus,
 };
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
-    approve_last_request, assert_incoming_request_done,
-    assert_incoming_request_registration_failed, last_outgoing_request, request_incoming,
-    ETH_NETWORK_ID,
+    approve_last_request, assert_incoming_request_registration_failed, last_outgoing_request,
+    request_incoming, ETH_NETWORK_ID,
 };
+use crate::types::{Transaction, TransactionReceipt};
 use crate::{AssetConfig, EthAddress};
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, USDT,
     VAL, XOR,
 };
-use frame_support::assert_ok;
 use frame_support::sp_runtime::{DispatchResult, TransactionOutcome};
 use frame_support::traits::Currency;
+use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
 use sp_core::{sr25519, H160, H256};
 use std::str::FromStr;
 
 #[test]
-#[ignore]
 fn should_cancel_ready_outgoing_request() {
     let (mut ext, state) = ExtBuilder::default().build();
     let _ = FUNCTIONS.get_or_init(functions);
@@ -111,16 +110,29 @@ fn should_cancel_ready_outgoing_request() {
                 network_id: ETH_NETWORK_ID,
             });
 
-        assert_incoming_request_done(&state, incoming_transfer.clone()).unwrap();
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        assert_ok!(EthBridge::register_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
+            incoming_transfer.clone(),
+        ));
+        let req_hash =
+            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, incoming_transfer.hash());
+        assert_ok!(EthBridge::finalize_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id),
+            req_hash,
+            net_id,
+        ));
+        let expected_error: frame_support::dispatch::DispatchError =
+            Error::FailedToUnreserve.into();
         assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            100u32.into()
+            crate::RequestStatuses::<Runtime>::get(net_id, req_hash),
+            Some(RequestStatus::Failed(expected_error))
         );
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
     });
 }
 
 #[test]
-#[ignore]
 fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -190,7 +202,6 @@ fn should_fail_cancel_ready_outgoing_request_with_wrong_approvals() {
 }
 
 #[test]
-#[ignore]
 fn should_fail_cancel_unfinished_outgoing_request() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -299,6 +310,14 @@ fn should_cancel_outgoing_prepared_requests() {
         Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
         Assets::mint_to(&XOR.into(), &alice, bridge_acc, 100u32.into()).unwrap();
         let ocw0_account_id = &state.networks[&net_id].ocw_keypairs[0].1;
+        let extra_peer = AccountId32::new([12u8; 32]);
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&extra_peer, 1u32.into());
+        assert_ok!(EthBridge::force_add_peer(
+            RuntimeOrigin::root(),
+            extra_peer,
+            EthAddress::from([12u8; 20]),
+            net_id,
+        ));
         // Paris (preparation requests, testable request).
         let test_acc = AccountId32::new([10u8; 32]);
         let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&test_acc, 1u32.into());
@@ -646,7 +665,6 @@ fn should_cancel_incoming_prepared_requests() {
                 }
                 .into(),
             ),
-            // TODO: test incoming 'cancel outgoing request'
         ];
         for (preparations, request) in requests {
             frame_support::storage::with_transaction(|| {
@@ -668,5 +686,277 @@ fn should_cancel_incoming_prepared_requests() {
             })
             .unwrap();
         }
+    });
+}
+
+#[test]
+fn should_cancel_incoming_cancel_outgoing_request_prepare() {
+    let _ = FUNCTIONS.get_or_init(functions);
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        let (outgoing_request, outgoing_request_hash) =
+            last_outgoing_request(net_id).expect("outgoing request should exist");
+        crate::RequestStatuses::<Runtime>::insert(
+            net_id,
+            outgoing_request_hash,
+            RequestStatus::ApprovalsReady,
+        );
+        let tx_input = encode_outgoing_request_eth_call::<Runtime>(
+            *RECEIVE_BY_ETHEREUM_ASSET_ADDRESS_ID.get().unwrap(),
+            &outgoing_request,
+            outgoing_request_hash,
+        )
+        .unwrap();
+        let request = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request,
+            outgoing_request_hash,
+            initial_request_hash: H256::repeat_byte(0x55),
+            tx_input,
+            author: alice,
+            tx_hash: H256::repeat_byte(0x77),
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+
+        let state_hash_before = frame_support::storage_root(frame_support::StateVersion::V1);
+        request.prepare().unwrap();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, outgoing_request_hash),
+            Some(RequestStatus::Frozen)
+        );
+        request.cancel().unwrap();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, outgoing_request_hash),
+            Some(RequestStatus::ApprovalsReady)
+        );
+        let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
+        assert_eq!(state_hash_before, state_hash_after);
+    });
+}
+
+#[test]
+fn should_reject_manual_cancel_outgoing_meta_request() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
+        assert_noop!(
+            EthBridge::request_from_sidechain(
+                RuntimeOrigin::signed(alice),
+                H256::repeat_byte(0x90),
+                IncomingMetaRequestKind::CancelOutgoingRequest.into(),
+                net_id
+            ),
+            Error::Unavailable
+        );
+    });
+}
+
+#[test]
+fn cancel_outgoing_check_existence_rejects_gas_limit_failure() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        let (outgoing_request, outgoing_request_hash) =
+            last_outgoing_request(net_id).expect("outgoing request should exist");
+        let tx_hash = H256::repeat_byte(0x91);
+        let contract = crate::BridgeContractAddress::<Runtime>::get(net_id);
+        let request = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request,
+            outgoing_request_hash,
+            initial_request_hash: H256::repeat_byte(0x92),
+            tx_input: vec![],
+            author: alice,
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+
+        push_global_json_rpc_response(TransactionReceipt {
+            transaction_hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            status: Some(0u64.into()),
+            gas_used: Some(100u64.into()),
+            ..Default::default()
+        });
+        push_global_json_rpc_response(Transaction {
+            hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            gas: 100u64.into(),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            request.check_existence(),
+            Err(Error::TransactionMightHaveFailedDueToGasLimit)
+        );
+    });
+}
+
+#[test]
+fn cancel_outgoing_check_existence_accepts_non_gas_limit_failure() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        let (outgoing_request, outgoing_request_hash) =
+            last_outgoing_request(net_id).expect("outgoing request should exist");
+        let tx_hash = H256::repeat_byte(0x93);
+        let contract = crate::BridgeContractAddress::<Runtime>::get(net_id);
+        let request = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request,
+            outgoing_request_hash,
+            initial_request_hash: H256::repeat_byte(0x94),
+            tx_input: vec![],
+            author: alice,
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+
+        push_global_json_rpc_response(TransactionReceipt {
+            transaction_hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            status: Some(0u64.into()),
+            gas_used: Some(99u64.into()),
+            ..Default::default()
+        });
+        push_global_json_rpc_response(Transaction {
+            hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            gas: 100u64.into(),
+            ..Default::default()
+        });
+
+        assert_eq!(request.check_existence(), Ok(true));
+    });
+}
+
+#[test]
+fn cancel_outgoing_check_existence_returns_false_for_approved_tx() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        let (outgoing_request, outgoing_request_hash) =
+            last_outgoing_request(net_id).expect("outgoing request should exist");
+        let tx_hash = H256::repeat_byte(0x95);
+        let contract = crate::BridgeContractAddress::<Runtime>::get(net_id);
+        let request = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request,
+            outgoing_request_hash,
+            initial_request_hash: H256::repeat_byte(0x96),
+            tx_input: vec![],
+            author: alice,
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+
+        push_global_json_rpc_response(TransactionReceipt {
+            transaction_hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            status: Some(1u64.into()),
+            ..Default::default()
+        });
+
+        assert_eq!(request.check_existence(), Ok(false));
+    });
+}
+
+#[test]
+fn cancel_outgoing_check_existence_rejects_missing_gas_used() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        let (outgoing_request, outgoing_request_hash) =
+            last_outgoing_request(net_id).expect("outgoing request should exist");
+        let tx_hash = H256::repeat_byte(0x97);
+        let contract = crate::BridgeContractAddress::<Runtime>::get(net_id);
+        let request = IncomingRequest::CancelOutgoingRequest(IncomingCancelOutgoingRequest {
+            outgoing_request,
+            outgoing_request_hash,
+            initial_request_hash: H256::repeat_byte(0x98),
+            tx_input: vec![],
+            author: alice,
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+        });
+
+        push_global_json_rpc_response(TransactionReceipt {
+            transaction_hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            status: Some(0u64.into()),
+            gas_used: None,
+            ..Default::default()
+        });
+        push_global_json_rpc_response(Transaction {
+            hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            gas: 100u64.into(),
+            ..Default::default()
+        });
+
+        assert_eq!(
+            request.check_existence(),
+            Err(Error::TransactionMightHaveFailedDueToGasLimit)
+        );
     });
 }

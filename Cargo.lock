@@ -1155,6 +1155,7 @@ dependencies = [
  "parity-scale-codec",
  "permissions",
  "scale-info",
+ "sccp",
  "sp-core",
  "sp-io",
  "sp-keyring",
@@ -2901,6 +2902,7 @@ dependencies = [
  "permissions",
  "rustc-hex",
  "scale-info",
+ "sccp",
  "serde",
  "serde_json",
  "sp-core",
@@ -3838,6 +3840,7 @@ dependencies = [
  "rewards",
  "rewards-runtime-api",
  "scale-info",
+ "sccp",
  "serde",
  "soratopia",
  "sp-api",
@@ -9975,6 +9978,30 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
+]
+
+[[package]]
+name = "sccp"
+version = "0.1.0"
+dependencies = [
+ "assets",
+ "bridge-types",
+ "common",
+ "frame-support",
+ "frame-system",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "permissions",
+ "rlp",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "technical",
 ]
 
 [[package]]

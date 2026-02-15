@@ -109,7 +109,10 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
+pub fn test_ext_with_account_id(
+    add_iroha_accounts: bool,
+    account_id: Option<AccountId>,
+) -> sp_io::TestExternalities {
     let tech_account_id =
         TechAccountId::Generic(TECH_ACCOUNT_PREFIX.to_vec(), TECH_ACCOUNT_MAIN.to_vec());
 
@@ -233,12 +236,16 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     IrohaMigrationConfig {
         iroha_accounts,
-        account_id: Some(MINTING_ACCOUNT),
+        account_id,
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     t.into()
+}
+
+pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
+    test_ext_with_account_id(add_iroha_accounts, Some(MINTING_ACCOUNT))
 }
 
 // Build genesis storage according to the mock runtime.

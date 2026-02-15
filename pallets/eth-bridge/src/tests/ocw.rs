@@ -33,10 +33,11 @@ use super::Error;
 use crate::requests::{IncomingRequestKind, IncomingTransactionRequestKind, RequestStatus};
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{last_outgoing_request, last_request, Assets, ETH_NETWORK_ID};
-use crate::types::Log;
+use crate::types::{Log, TransactionReceipt};
 use crate::{
     types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
-    MAX_PENDING_TX_BLOCKS_PERIOD, RE_HANDLE_TXS_PERIOD, STORAGE_PENDING_TRANSACTIONS_KEY,
+    MAX_PENDING_TX_BLOCKS_PERIOD, RE_HANDLE_TXS_PERIOD, STORAGE_ETH_NODE_PARAMS,
+    STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
     SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use codec::Encode;
@@ -67,6 +68,26 @@ fn ocw_should_not_handle_non_finalized_outgoing_request() {
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             0
         );
+    });
+}
+
+#[test]
+fn ocw_should_prune_stale_hashes_from_requests_queue() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let stale_hash = H256::repeat_byte(0xaa);
+        assert!(crate::Requests::<Runtime>::get(net_id, stale_hash).is_none());
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| queue.push(stale_hash));
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&stale_hash));
+
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&stale_hash));
     });
 }
 
@@ -182,6 +203,63 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
 }
 
 #[test]
+fn should_not_abort_request_when_peer_secret_key_is_missing() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+        state.storage_remove(STORAGE_PEER_SECRET_KEY);
+        state.run_next_offchain_and_dispatch_txs();
+        let request_hash = last_request(net_id).unwrap().hash();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Pending)
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&request_hash));
+    });
+}
+
+#[test]
+fn send_multisig_transaction_should_return_unknown_network_for_unregistered_network() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let network_id = ETH_NETWORK_ID + 1;
+        let call = crate::Call::<Runtime>::abort_request {
+            hash: H256::repeat_byte(0x11),
+            error: Error::Other.into(),
+            network_id,
+        };
+        let result = EthBridge::send_multisig_transaction(
+            call,
+            bridge_multisig::Pallet::<Runtime>::thischain_timepoint(),
+            network_id,
+        );
+        assert_eq!(result, Err(Error::UnknownNetwork));
+    });
+}
+
+#[test]
 fn ocw_should_load_substrate_blocks_sequentially() {
     let (mut ext, mut state) = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -204,6 +282,19 @@ fn ocw_should_load_substrate_blocks_sequentially() {
                     + 1
             );
         }
+    });
+}
+
+#[test]
+fn ocw_should_handle_substrate_height_above_u32_max() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let finalized_height = (u32::MAX as u64) + 1;
+        state.run_next_offchain_with_params(0, finalized_height, false);
+        assert_eq!(
+            state.substrate_to_handle_from_height(),
+            finalized_height + 1
+        );
     });
 }
 
@@ -236,7 +327,7 @@ fn ocw_should_abort_missing_transaction() {
         let raw_response = r#"{
  "jsonrpc": "2.0",
    "id": 0,
-   "result":
+   "result": null
  }"#;
         state.push_response_raw(raw_response.as_bytes().to_owned());
         state.run_next_offchain_and_dispatch_txs();
@@ -245,6 +336,172 @@ fn ocw_should_abort_missing_transaction() {
             crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).unwrap(),
             RequestStatus::Failed(dispatch_error.stripped()),
         );
+    });
+}
+
+#[test]
+fn ocw_should_not_panic_on_receipt_without_block_number() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: VAL.into(),
+            sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(VAL.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256([2; 32]);
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            tx_hash,
+            IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
+            net_id
+        ));
+        let contract = crate::BridgeContractAddress::<Runtime>::get(net_id);
+        state.push_response(TransactionReceipt {
+            transaction_hash: crate::types::H256(tx_hash.0),
+            to: Some(crate::types::H160(contract.0)),
+            status: Some(1u64.into()),
+            block_number: None,
+            ..Default::default()
+        });
+        state.run_next_offchain_and_dispatch_txs();
+        let dispatch_error: DispatchError = Error::EthTransactionIsPending.into();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            Some(RequestStatus::Failed(dispatch_error.stripped()))
+        );
+    });
+}
+
+#[test]
+fn ocw_should_retry_on_malformed_json_rpc_response() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: VAL.into(),
+            sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(VAL.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256([8; 32]);
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            tx_hash,
+            IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
+            net_id
+        ));
+        let raw_response = r#"{
+ "jsonrpc": "2.0",
+   "id": 0,
+   "result":
+ }"#;
+        state.push_response_raw(raw_response.as_bytes().to_owned());
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            Some(RequestStatus::Pending)
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+    });
+}
+
+#[test]
+fn ocw_should_retry_on_json_rpc_batch_response() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: VAL.into(),
+            sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(VAL.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256([10; 32]);
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            tx_hash,
+            IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
+            net_id
+        ));
+        let raw_response = r#"[{
+ "jsonrpc": "2.0",
+   "id": 0,
+   "result": {}
+ }]"#;
+        state.push_response_raw(raw_response.as_bytes().to_owned());
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            Some(RequestStatus::Pending)
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+    });
+}
+
+#[test]
+fn ocw_should_retry_when_sidechain_node_params_are_missing() {
+    assert!(Error::FailedToLoadSidechainNodeParams.should_retry());
+
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256([9; 32]);
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            tx_hash,
+            IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
+            net_id
+        ));
+
+        let key = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
+        state.storage_remove(key.as_bytes());
+        state.run_next_offchain_and_dispatch_txs();
+
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            Some(RequestStatus::Pending)
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
     });
 }
 
@@ -380,5 +637,68 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         assert_eq!(state.pending_txs().len(), 1);
         assert_eq!(state.failed_pending_txs().len(), 0);
         assert_eq!(state.pool_state.read().transactions.len(), 0);
+    });
+}
+
+#[test]
+fn ocw_should_skip_log_with_overflowing_transaction_index() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: XOR.into(),
+            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(XOR.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+
+        let mut log = Log::default();
+        log.topics = vec![types::H256(hex!(
+            "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
+        ))];
+        let data = ethabi::encode(&[
+            ethabi::Token::FixedBytes(alice.encode()),
+            ethabi::Token::Uint(types::U256::from(100)),
+            ethabi::Token::Address(types::EthAddress::from(
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, XOR)
+                    .unwrap()
+                    .0,
+            )),
+            ethabi::Token::FixedBytes(XOR.code.to_vec()),
+        ]);
+        let tx_hash = H256([7; 32]);
+        log.data = data.into();
+        log.removed = Some(false);
+        log.transaction_hash = Some(types::H256(tx_hash.0));
+        log.block_number = Some(0u64.into());
+        log.transaction_index = Some(types::U64::from(u64::MAX));
+
+        // Initialize OCW height pointers.
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+
+        state.push_response([log]);
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        // No import extrinsic should be submitted for a malformed log.
+        assert_eq!(state.pool_state.read().transactions.len(), 0);
+        assert!(crate::RequestStatuses::<Runtime>::get(net_id, tx_hash).is_none());
     });
 }

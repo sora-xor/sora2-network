@@ -284,3 +284,30 @@ fn permission_create_fails_with_permission_already_exists_error() {
         }
     });
 }
+
+#[test]
+fn genesis_should_skip_entries_when_inc_consumers_fails() {
+    let unknown = AccountId::new([9; 32]);
+    ExtBuilder::default()
+        .with_initial_permission_owners(vec![(
+            CUSTOM_PERMISSION,
+            Scope::Unlimited,
+            vec![unknown.clone()],
+        )])
+        .with_initial_permissions(vec![(
+            unknown.clone(),
+            Scope::Unlimited,
+            vec![CUSTOM_PERMISSION],
+        )])
+        .build()
+        .execute_with(|| {
+            assert!(!crate::Owners::<Runtime>::contains_key(
+                CUSTOM_PERMISSION,
+                Scope::Unlimited
+            ));
+            assert!(!crate::Permissions::<Runtime>::contains_key(
+                unknown,
+                Scope::Unlimited
+            ));
+        });
+}

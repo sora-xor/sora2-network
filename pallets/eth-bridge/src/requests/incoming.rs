@@ -28,10 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
+use crate::contract::{functions, MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::offchain::SignatureParams;
 use crate::requests::Assets;
-use crate::util::get_bridge_account;
 use crate::{
     AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
     EthAddress, EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint,
@@ -56,6 +55,7 @@ use frame_support::traits::Get;
 use frame_support::weights::WeightToFee;
 use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
+use sccp::SccpAssetChecker;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
@@ -161,8 +161,10 @@ impl<T: Config> IncomingChangePeers<T> {
                     .as_ref()
                     .ok_or(Error::<T>::UnknownPeerAddress)?
                     .clone();
+                let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+                    .ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(
-                    RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+                    RawOrigin::Signed(bridge_account).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
@@ -236,8 +238,10 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         if is_ready {
             let account_id = self.peer_account_id.clone();
             if self.added {
+                let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+                    .ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(
-                    RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+                    RawOrigin::Signed(bridge_account).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
@@ -291,6 +295,7 @@ impl<T: Config> IncomingTransfer<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
+        self.ensure_not_sccp_asset()?;
         if self.should_take_fee {
             let transfer_fee = Self::fee_amount();
             ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);
@@ -300,6 +305,7 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
+        self.ensure_not_sccp_asset()?;
         let generic_network_id =
             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
         let asset_kind = if self.asset_kind.is_owned() {
@@ -307,24 +313,37 @@ impl<T: Config> IncomingTransfer<T> {
         } else {
             bridge_types::types::AssetKind::Sidechain
         };
-        T::BridgeAssetLockChecker::before_asset_unlock(
-            generic_network_id,
-            asset_kind,
-            &self.asset_id,
-            &self.amount,
-        )?;
-        if self.asset_kind.is_owned() {
-            let bridge_account = get_bridge_account::<T>(self.network_id);
-            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
-        }
+        common::with_transaction(|| {
+            T::BridgeAssetLockChecker::before_asset_unlock(
+                generic_network_id,
+                asset_kind,
+                &self.asset_id,
+                &self.amount,
+            )?;
+            if self.asset_kind.is_owned() {
+                let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+                    .ok_or(Error::<T>::UnknownNetwork)?;
+                Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
+            }
+            Ok(())
+        })
+    }
+
+    fn ensure_not_sccp_asset(&self) -> Result<(), DispatchError> {
+        let common_asset_id: common::AssetIdOf<T> = self.asset_id.into();
+        ensure!(
+            !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
+            Error::<T>::SccpAssetNotAllowed
+        );
         Ok(())
     }
 
     /// Unreserves previously reserved amount of funds if the asset kind is owned.
     pub fn unreserve(&self) -> DispatchResult {
         if self.asset_kind.is_owned() {
-            let bridge_acc = &get_bridge_account::<T>(self.network_id);
-            let remainder = Assets::<T>::unreserve(&self.asset_id, bridge_acc, self.amount)?;
+            let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
+                .ok_or(Error::<T>::UnknownNetwork)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
         }
         Ok(())
@@ -332,14 +351,30 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// Calls `.unreserve`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        self.unreserve()
+        let generic_network_id =
+            GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
+        let asset_kind = if self.asset_kind.is_owned() {
+            bridge_types::types::AssetKind::Thischain
+        } else {
+            bridge_types::types::AssetKind::Sidechain
+        };
+        common::with_transaction(|| {
+            T::BridgeAssetLockChecker::before_asset_lock(
+                generic_network_id,
+                asset_kind,
+                &self.asset_id,
+                &self.amount,
+            )?;
+            self.unreserve()
+        })
     }
 
     /// If the transferring asset kind is owned, the funds are transferred from the bridge account,
     /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         self.validate()?;
-        let bridge_account_id = get_bridge_account::<T>(self.network_id);
+        let bridge_account_id = crate::Pallet::<T>::bridge_account(self.network_id)
+            .ok_or(Error::<T>::UnknownNetwork)?;
         let transfer_fee = Self::fee_amount();
         let amount = if self.should_take_fee {
             self.amount - transfer_fee
@@ -395,7 +430,7 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
     request: &OutgoingRequest<T>,
     request_hash: H256,
 ) -> Result<Vec<u8>, Error<T>> {
-    let fun_metas = &FUNCTIONS.get().unwrap();
+    let fun_metas = FUNCTIONS.get_or_init(functions);
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
     let request_encoded = request.to_eth_abi(request_hash)?;
     let approvals: BTreeSet<SignatureParams> =

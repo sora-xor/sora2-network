@@ -32,6 +32,8 @@ mod liquidity_proxy;
 mod referrals;
 #[cfg(feature = "try-runtime")]
 mod remote;
+mod sccp_legacy_bridge_checker;
+mod sccp_runtime_integration;
 mod xor_fee;
 
 mod tests {

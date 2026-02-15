@@ -1240,6 +1240,7 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     GenesisConfig {
+        sccp: Default::default(),
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -2451,6 +2452,7 @@ fn mainnet_genesis(
         )
     }));
     GenesisConfig {
+        sccp: Default::default(),
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),

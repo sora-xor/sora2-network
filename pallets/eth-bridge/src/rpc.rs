@@ -142,9 +142,7 @@ impl<T: Config> Pallet<T> {
                         let request: OffchainRequest<T> = Requests::get(net_id, hash)?;
                         match request {
                             OffchainRequest::Outgoing(request, hash) => {
-                                let encoded = request
-                                    .to_eth_abi(hash)
-                                    .expect("this conversion was already tested; qed");
+                                let encoded = request.to_eth_abi(hash).ok()?;
                                 Self::get_approvals(&[hash], Some(net_id))
                                     .ok()?
                                     .pop()
@@ -163,9 +161,7 @@ impl<T: Config> Pallet<T> {
                                 let request: OffchainRequest<T> = Requests::get(net_id, hash)?;
                                 match request {
                                     OffchainRequest::Outgoing(request, hash) => {
-                                        let encoded = request
-                                            .to_eth_abi(hash)
-                                            .expect("this conversion was already tested; qed");
+                                        let encoded = request.to_eth_abi(hash).ok()?;
                                         Self::get_approvals(&[hash], Some(net_id))
                                             .ok()?
                                             .pop()
@@ -213,7 +209,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Vec<(T::NetworkId, H256)>, DispatchError> {
         let mut requests: Vec<(T::NetworkId, H256)> = Self::account_requests(account);
         if let Some(filter) = status_filter {
-            requests.retain(|(net_id, h)| Self::request_status(net_id, h).unwrap() == filter)
+            requests.retain(|(net_id, h)| Self::request_status(net_id, h).as_ref() == Some(&filter))
         }
         Ok(requests)
     }

@@ -344,8 +344,18 @@ pub mod pallet {
             self.initial_permission_owners
                 .iter()
                 .for_each(|(permission, scope, owners)| {
+                    let mut can_insert = true;
                     for owner in owners {
-                        frame_system::Pallet::<T>::inc_consumers(owner).unwrap();
+                        if frame_system::Pallet::<T>::inc_consumers(owner).is_err() {
+                            frame_support::log::error!(
+                                "Permissions genesis failed to increase consumers for owner: {:?}",
+                                owner
+                            );
+                            can_insert = false;
+                        }
+                    }
+                    if !can_insert {
+                        return;
                     }
                     Owners::<T>::insert(permission, scope, owners);
                 });
@@ -355,7 +365,13 @@ pub mod pallet {
                 .for_each(|(holder_id, scope, permissions)| {
                     let mut permissions = permissions.clone();
                     permissions.sort();
-                    frame_system::Pallet::<T>::inc_consumers(&holder_id).unwrap();
+                    if frame_system::Pallet::<T>::inc_consumers(holder_id).is_err() {
+                        frame_support::log::error!(
+                            "Permissions genesis failed to increase consumers for holder: {:?}",
+                            holder_id
+                        );
+                        return;
+                    }
                     Permissions::<T>::insert(holder_id, scope, permissions);
                 });
         }

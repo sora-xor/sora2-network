@@ -1546,6 +1546,7 @@ impl eth_bridge::Config for Runtime {
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
     type AssetInfoProvider = assets::Pallet<Runtime>;
+    type SccpAssetChecker = Sccp;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
 }
@@ -2321,8 +2322,55 @@ parameter_types! {
     pub const GetReferenceDexId: DEXId = 0;
 }
 
+parameter_types! {
+    pub const SccpMaxRemoteTokenIdLen: u32 = 64;
+    pub const SccpMaxDomains: u32 = 16;
+    pub const SccpMaxBscValidators: u32 = 64;
+    pub const SccpMaxAttesters: u32 = 64;
+}
+
+pub struct LegacyBridgeChecker;
+
+impl sccp::LegacyBridgeAssetChecker<AssetId> for LegacyBridgeChecker {
+    fn is_legacy_bridge_asset(asset_id: &AssetId) -> bool {
+        // SCCP assets must be exclusive from any legacy/parallel bridge registries on SORA.
+        // Currently this includes:
+        // - legacy EVM bridge (`eth_bridge`)
+        // - existing TON Jetton bridge (`jetton_app`)
+        let on_evm_bridge = (0..EthBridge::next_network_id()).any(|evm_net_id| {
+            let is_registered = EthBridge::registered_asset(evm_net_id, asset_id.clone()).is_some();
+            let is_pending_add_asset =
+                EthBridge::is_add_asset_request_pending(evm_net_id, asset_id.clone());
+            is_registered || is_pending_add_asset
+        });
+
+        let on_ton_bridge = JettonApp::token_address(asset_id.clone()).is_some();
+
+        on_evm_bridge || on_ton_bridge
+    }
+}
+
+impl sccp::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type ManagerOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
+    type AccountIdConverter = sp_runtime::traits::ConvertInto;
+    type AssetInfoProvider = Assets;
+    type LegacyBridgeAssetChecker = LegacyBridgeChecker;
+    type AuxiliaryDigestHandler = LeafProvider;
+    type EthFinalizedStateProvider = ();
+    type SolanaFinalizedBurnProofVerifier = ();
+    type TonFinalizedBurnProofVerifier = ();
+    type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
+    type MaxDomains = SccpMaxDomains;
+    type MaxBscValidators = SccpMaxBscValidators;
+    type MaxAttesters = SccpMaxAttesters;
+    type WeightInfo = ();
+}
+
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+
+    type SccpAssetChecker = Sccp;
 
     #[cfg(feature = "wip")] // EVM bridge
     type FAApp = EVMFungibleApp;
@@ -2721,6 +2769,9 @@ construct_runtime! {
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
+
+        // SCCP (SORA Cross-Chain Protocol)
+        Sccp: sccp::{Pallet, Call, Storage, Event<T>, Config<T>} = 117,
 
         // Trustless bridges
         // Beefy pallets should be placed after channels

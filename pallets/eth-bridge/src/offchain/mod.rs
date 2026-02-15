@@ -62,12 +62,12 @@ pub use handle::*;
 use hex_literal::hex;
 pub use http::*;
 use rustc_hex::ToHex;
+use sccp::SccpAssetChecker;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::convert::TryInto;
 use sp_std::fmt;
 use sp_std::fmt::Formatter;
 pub use transaction::*;
@@ -228,14 +228,11 @@ impl<T: Config> Pallet<T> {
         let pk = secp256k1::PublicKey::from_secret_key(secret_key);
         let v = v.serialize();
         let sig_ser = sig.serialize();
-        (
-            SignatureParams {
-                r: sig_ser[..32].try_into().unwrap(),
-                s: sig_ser[32..].try_into().unwrap(),
-                v,
-            },
-            pk,
-        )
+        let mut r = [0u8; 32];
+        r.copy_from_slice(&sig_ser[..32]);
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&sig_ser[32..]);
+        (SignatureParams { r, s, v }, pk)
     }
 
     /// Parses a 'cancel' incoming request from the given transaction receipt and pre-request.
@@ -251,7 +248,7 @@ impl<T: Config> Pallet<T> {
         ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
         let at_height = tx_receipt
             .block_number
-            .expect("'block_number' is null only when the log/transaction is pending; qed")
+            .ok_or(Error::<T>::EthTransactionIsPending)?
             .as_u64();
         let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0), pre_request.network_id)?;
         ensure!(
@@ -316,6 +313,11 @@ impl<T: Config> Pallet<T> {
                     return Ok(None);
                 }
             };
+            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
+            ensure!(
+                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
+                Error::<T>::SccpAssetNotAllowed
+            );
             Ok(Some((
                 asset_id,
                 Self::registered_asset(network_id, &asset_id).unwrap_or(AssetKind::Sidechain),
@@ -323,9 +325,14 @@ impl<T: Config> Pallet<T> {
         } else {
             let asset_id = T::AssetId::from(H256(raw_asset_id.0));
             let asset_kind = Self::registered_asset(network_id, &asset_id);
-            if asset_kind.is_none() || asset_kind.unwrap() == AssetKind::Sidechain {
+            if matches!(asset_kind, None | Some(AssetKind::Sidechain)) {
                 fail!(Error::<T>::UnknownAssetId);
             }
+            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
+            ensure!(
+                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
+                Error::<T>::SccpAssetNotAllowed
+            );
             Ok(Some((asset_id, AssetKind::Thischain)))
         }
     }
@@ -365,7 +372,7 @@ impl<T: Config> Pallet<T> {
             fail!(Error::<T>::UnknownMethodId);
         };
 
-        let tokens = (*fun.get().unwrap())
+        let tokens = (*fun.get().ok_or(Error::<T>::UnknownMethodId)?)
             .decode_input(tail)
             .map_err(|_| Error::<T>::EthAbiDecodingError)?;
         let request_hash = parse_hash_from_call::<T>(tokens, arg_pos)?;
@@ -401,7 +408,7 @@ impl<T: Config> Pallet<T> {
                 };
                 let at_height = tx
                     .block_number
-                    .expect("'block_number' is null only when the log/transaction is pending; qed")
+                    .ok_or(Error::<T>::EthTransactionIsPending)?
                     .as_u64();
                 let request = IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
                     peer_account_id,
@@ -441,7 +448,7 @@ impl<T: Config> Pallet<T> {
 
         let at_height = tx_receipt
             .block_number
-            .expect("'block_number' is null only when the log/transaction is pending; qed")
+            .ok_or(Error::<T>::EthTransactionIsPending)?
             .as_u64();
 
         let call = Self::parse_main_event(network_id, &tx_receipt.logs, kind)?;

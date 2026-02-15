@@ -1077,6 +1077,7 @@ macro_rules! mock_proxy_config {
             type ParachainApp = ();
             type ReferencePriceProvider = ReferencePriceProvider;
             type RuntimeEvent = RuntimeEvent;
+            type SccpAssetChecker = ();
             type TimepointProvider = GenericTimepointProvider;
             type WeightInfo = ();
         }
