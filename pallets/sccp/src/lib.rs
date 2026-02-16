@@ -174,6 +174,17 @@ pub const SECP256K1N_HALF_ORDER: [u8; 32] = [
     0x5d, 0x57, 0x6e, 0x73, 0x57, 0xa4, 0x50, 0x1d, 0xdf, 0xe9, 0x2f, 0x46, 0x68, 0x1b, 0x20, 0xa0,
 ];
 
+fn default_required_domains_for_bound<S: Get<u32>>() -> BoundedVec<u32, S> {
+    // ETH, BSC, Solana, TON, TRON
+    let mut domains = BoundedVec::<u32, S>::default();
+    for domain in SCCP_CORE_REMOTE_DOMAINS {
+        if domains.try_push(domain).is_err() {
+            break;
+        }
+    }
+    domains
+}
+
 #[derive(
     Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
 )]
@@ -641,18 +652,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub fn DefaultRequiredDomains<T: Config>() -> RequiredDomainsOf<T> {
-        // ETH, BSC, Solana, TON, TRON
-        let mut domains = RequiredDomainsOf::<T>::default();
-        for domain in [
-            SCCP_DOMAIN_ETH,
-            SCCP_DOMAIN_BSC,
-            SCCP_DOMAIN_SOL,
-            SCCP_DOMAIN_TON,
-            SCCP_DOMAIN_TRON,
-        ] {
-            let _ = domains.try_push(domain);
-        }
-        domains
+        default_required_domains_for_bound::<T::MaxDomains>()
     }
 
     #[pallet::genesis_config]
@@ -675,11 +675,14 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             InboundGracePeriod::<T>::set(self.inbound_grace_period);
-            RequiredDomains::<T>::set(self.required_domains.clone());
+            let normalized =
+                Pallet::<T>::normalize_required_domains(self.required_domains.clone().into_inner())
+                    .expect("invalid SCCP genesis required_domains");
+            RequiredDomains::<T>::set(normalized);
         }
     }
 
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -690,59 +693,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_runtime_upgrade() -> Weight {
-            if Pallet::<T>::on_chain_storage_version() >= StorageVersion::new(4) {
-                return Weight::zero();
-            }
-
-            let mut reads: u64 = 0;
-            let mut writes: u64 = 0;
-
-            // v1 -> v2 migration:
-            // - `BscLightClientParams` gained `chain_id` and `turn_length`.
-            // - New BSC auxiliary storages were added.
-            if Pallet::<T>::on_chain_storage_version() < StorageVersion::new(2) {
-                #[derive(Encode, Decode)]
-                struct OldBscLightClientParams {
-                    epoch_length: u64,
-                    confirmation_depth: u64,
-                }
-
-                let _ = BscParams::<T>::translate::<OldBscLightClientParams, _>(|old| {
-                    old.map(|p| BscLightClientParams {
-                        epoch_length: p.epoch_length,
-                        confirmation_depth: p.confirmation_depth,
-                        // Defaults: BSC mainnet values. If incorrect, header verification will fail-closed
-                        // until governance re-initializes with the correct config.
-                        chain_id: 56,
-                        turn_length: 1,
-                    })
-                });
-                reads += 1;
-                writes += 1;
-
-                // Initialize new storages with safe defaults.
-                BscRecentsLowerBound::<T>::put(0u64);
-                writes += 1;
-
-                StorageVersion::new(2).put::<Pallet<T>>();
-                writes += 1;
-            }
-
-            // v2 -> v3 migration:
-            // - TRON light client storages were added.
-            // No translation is needed; bump the storage version only.
-            if Pallet::<T>::on_chain_storage_version() < StorageVersion::new(3) {
-                StorageVersion::new(3).put::<Pallet<T>>();
-                writes += 1;
-            }
-
-            // v3 -> v4 migration:
-            // - Inbound attester quorum storages were added.
-            // No translation is needed; bump the storage version only.
-            StorageVersion::new(4).put::<Pallet<T>>();
-            writes += 1;
-
-            T::DbWeight::get().reads_writes(reads, writes)
+            Weight::zero()
         }
     }
 
@@ -1814,34 +1765,15 @@ pub mod pallet {
 
         /// Update required domains list (governance).
         ///
-        /// This list must include all SCCP core remote domains (ETH/BSC/SOL/TON/TRON) and can
-        /// add extra domain requirements.
+        /// For first release, this list must be exactly SCCP core remote domains
+        /// (ETH/BSC/SOL/TON/TRON), persisted in canonical sorted order.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::set_required_domains(domains.len() as u32))]
         pub fn set_required_domains(origin: OriginFor<T>, domains: Vec<u32>) -> DispatchResult {
             T::ManagerOrigin::ensure_origin(origin)?;
-            // Validate and store.
-            for &d in domains.iter() {
-                ensure!(d != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
-                Self::ensure_supported_domain(d)?;
-            }
-            let mut sorted = domains.clone();
-            sorted.sort();
-            ensure!(
-                sorted.windows(2).all(|w| w[0] != w[1]),
-                Error::<T>::RequiredDomainsInvalid
-            );
-            for core_domain in SCCP_CORE_REMOTE_DOMAINS.into_iter() {
-                ensure!(
-                    sorted.iter().any(|d| *d == core_domain),
-                    Error::<T>::RequiredDomainsInvalid
-                );
-            }
+            let bounded = Self::normalize_required_domains(domains)?;
+            let sorted = bounded.clone().into_inner();
             // Persist canonical ordering to avoid equivalent sets producing different state hashes.
-            let bounded: RequiredDomainsOf<T> = sorted
-                .clone()
-                .try_into()
-                .map_err(|_| DispatchError::Other("Too many domains"))?;
             RequiredDomains::<T>::set(bounded);
             let domains_hash = H256::from_slice(&keccak_256(&sorted.encode()));
             Self::deposit_event(Event::RequiredDomainsSet { domains_hash });
@@ -2397,6 +2329,27 @@ pub mod pallet {
                 | SCCP_DOMAIN_TON | SCCP_DOMAIN_TRON => Ok(()),
                 _ => Err(Error::<T>::DomainUnsupported.into()),
             }
+        }
+
+        fn normalize_required_domains(
+            domains: Vec<u32>,
+        ) -> Result<RequiredDomainsOf<T>, DispatchError> {
+            for &domain_id in domains.iter() {
+                ensure!(domain_id != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
+                Self::ensure_supported_domain(domain_id)?;
+            }
+            let mut sorted = domains;
+            sorted.sort();
+            ensure!(
+                sorted.windows(2).all(|w| w[0] != w[1]),
+                Error::<T>::RequiredDomainsInvalid
+            );
+            let mut required_core = SCCP_CORE_REMOTE_DOMAINS.to_vec();
+            required_core.sort();
+            ensure!(sorted == required_core, Error::<T>::RequiredDomainsInvalid);
+            sorted
+                .try_into()
+                .map_err(|_| Error::<T>::RequiredDomainsInvalid.into())
         }
 
         fn ensure_remote_token_len(domain_id: u32, len: usize) -> Result<(), DispatchError> {

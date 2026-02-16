@@ -5,9 +5,9 @@
 
 use crate::mock::*;
 use crate::{
-    BurnPayloadV1, Error, EvmBurnProofV1, InboundFinalityMode, SCCP_DIGEST_NETWORK_ID,
-    SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON,
-    SCCP_DOMAIN_TRON, SCCP_EVM_BURNS_MAPPING_SLOT, SCCP_MSG_PREFIX_ATTEST_V1,
+    BurnPayloadV1, Error, EvmBurnProofV1, InboundFinalityMode, SCCP_CORE_REMOTE_DOMAINS,
+    SCCP_DIGEST_NETWORK_ID, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA,
+    SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON, SCCP_EVM_BURNS_MAPPING_SLOT, SCCP_MSG_PREFIX_ATTEST_V1,
     SCCP_MSG_PREFIX_BURN_V1,
 };
 use bridge_types::types::AuxiliaryDigestItem;
@@ -15,10 +15,12 @@ use codec::Encode;
 use common::{
     prelude::Balance, AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION,
 };
+use frame_support::traits::ConstU32;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::BoundedVec;
+use sp_runtime::DispatchError;
 
 fn register_mintable_asset(asset_id: AssetId) {
     assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
@@ -118,6 +120,63 @@ fn set_dummy_evm_anchor(domain_id: u32) {
         H256([1u8; 32]),
         H256([2u8; 32]),
     ));
+}
+
+#[test]
+fn default_required_domains_should_include_all_core_domains_when_capacity_allows() {
+    let domains: BoundedVec<u32, ConstU32<8>> =
+        crate::default_required_domains_for_bound::<ConstU32<8>>();
+    assert_eq!(domains.to_vec(), SCCP_CORE_REMOTE_DOMAINS.to_vec());
+}
+
+#[test]
+fn default_required_domains_should_truncate_when_capacity_is_smaller_than_core_set() {
+    let domains: BoundedVec<u32, ConstU32<2>> =
+        crate::default_required_domains_for_bound::<ConstU32<2>>();
+    assert_eq!(domains.to_vec(), vec![SCCP_DOMAIN_ETH, SCCP_DOMAIN_BSC]);
+}
+
+#[test]
+fn default_required_domains_should_be_empty_when_capacity_is_zero() {
+    let domains: BoundedVec<u32, ConstU32<0>> =
+        crate::default_required_domains_for_bound::<ConstU32<0>>();
+    assert!(domains.is_empty());
+}
+
+#[test]
+fn genesis_build_canonicalizes_required_domains() {
+    let mut ext = ExtBuilder::default()
+        .with_required_domains(vec![
+            SCCP_DOMAIN_TRON,
+            SCCP_DOMAIN_ETH,
+            SCCP_DOMAIN_TON,
+            SCCP_DOMAIN_BSC,
+            SCCP_DOMAIN_SOL,
+        ])
+        .build();
+
+    ext.execute_with(|| {
+        assert_eq!(
+            Sccp::required_domains().into_inner(),
+            vec![
+                SCCP_DOMAIN_ETH,
+                SCCP_DOMAIN_BSC,
+                SCCP_DOMAIN_SOL,
+                SCCP_DOMAIN_TON,
+                SCCP_DOMAIN_TRON,
+            ]
+        );
+    });
+}
+
+#[test]
+fn genesis_build_rejects_invalid_required_domains() {
+    let build_result = std::panic::catch_unwind(|| {
+        ExtBuilder::default()
+            .with_required_domains(vec![SCCP_DOMAIN_ETH])
+            .build();
+    });
+    assert!(build_result.is_err());
 }
 
 fn last_sccp_event() -> crate::Event<Runtime> {
@@ -370,6 +429,7 @@ fn set_required_domains_rejects_duplicates() {
     let mut ext = ExtBuilder::default().build();
 
     ext.execute_with(|| {
+        let initial = Sccp::required_domains().into_inner();
         assert_noop!(
             Sccp::set_required_domains(
                 RuntimeOrigin::root(),
@@ -377,6 +437,56 @@ fn set_required_domains_rejects_duplicates() {
             ),
             Error::<Runtime>::RequiredDomainsInvalid
         );
+        assert_eq!(Sccp::required_domains().into_inner(), initial);
+    });
+}
+
+#[test]
+fn set_required_domains_rejects_non_manager_origin() {
+    let mut ext = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let initial = Sccp::required_domains().into_inner();
+        assert_noop!(
+            Sccp::set_required_domains(
+                RuntimeOrigin::signed(alice()),
+                vec![
+                    SCCP_DOMAIN_ETH,
+                    SCCP_DOMAIN_BSC,
+                    SCCP_DOMAIN_SOL,
+                    SCCP_DOMAIN_TON,
+                    SCCP_DOMAIN_TRON,
+                ],
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_eq!(Sccp::required_domains().into_inner(), initial);
+    });
+}
+
+#[test]
+fn set_required_domains_failure_does_not_emit_event() {
+    let mut ext = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        System::set_block_number(1);
+        let initial = Sccp::required_domains().into_inner();
+        let events_before = System::events().len();
+        assert_noop!(
+            Sccp::set_required_domains(
+                RuntimeOrigin::signed(alice()),
+                vec![
+                    SCCP_DOMAIN_ETH,
+                    SCCP_DOMAIN_BSC,
+                    SCCP_DOMAIN_SOL,
+                    SCCP_DOMAIN_TON,
+                    SCCP_DOMAIN_TRON,
+                ],
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_eq!(Sccp::required_domains().into_inner(), initial);
+        assert_eq!(System::events().len(), events_before);
     });
 }
 
@@ -408,9 +518,130 @@ fn set_required_domains_rejects_missing_core_domains() {
     let mut ext = ExtBuilder::default().build();
 
     ext.execute_with(|| {
+        let initial = Sccp::required_domains().into_inner();
         assert_noop!(
             Sccp::set_required_domains(RuntimeOrigin::root(), vec![SCCP_DOMAIN_ETH]),
             Error::<Runtime>::RequiredDomainsInvalid
+        );
+        assert_eq!(Sccp::required_domains().into_inner(), initial);
+    });
+}
+
+#[test]
+fn set_required_domains_rejects_sora_domain() {
+    let mut ext = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let initial = Sccp::required_domains().into_inner();
+        assert_noop!(
+            Sccp::set_required_domains(
+                RuntimeOrigin::root(),
+                vec![
+                    SCCP_DOMAIN_SORA,
+                    SCCP_DOMAIN_ETH,
+                    SCCP_DOMAIN_BSC,
+                    SCCP_DOMAIN_SOL,
+                    SCCP_DOMAIN_TON,
+                    SCCP_DOMAIN_TRON,
+                ],
+            ),
+            Error::<Runtime>::DomainUnsupported
+        );
+        assert_eq!(Sccp::required_domains().into_inner(), initial);
+    });
+}
+
+#[test]
+fn set_required_domains_rejects_unknown_domain() {
+    let mut ext = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let initial = Sccp::required_domains().into_inner();
+        assert_noop!(
+            Sccp::set_required_domains(
+                RuntimeOrigin::root(),
+                vec![
+                    SCCP_DOMAIN_ETH,
+                    SCCP_DOMAIN_BSC,
+                    SCCP_DOMAIN_SOL,
+                    SCCP_DOMAIN_TON,
+                    SCCP_DOMAIN_TRON,
+                    777,
+                ],
+            ),
+            Error::<Runtime>::DomainUnsupported
+        );
+        assert_eq!(Sccp::required_domains().into_inner(), initial);
+    });
+}
+
+#[test]
+fn activate_requires_core_domains_even_if_required_domains_storage_is_corrupted() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Flower.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+
+        // Simulate storage corruption: keep only ETH in governance-required domains.
+        let corrupted_required_domains: BoundedVec<u32, SccpMaxDomains> =
+            vec![SCCP_DOMAIN_ETH].try_into().expect("bounded");
+        crate::RequiredDomains::<Runtime>::set(corrupted_required_domains);
+
+        // Configure only ETH path; activation must still fail on missing core domains.
+        assert_ok!(Sccp::set_remote_token(
+            RuntimeOrigin::root(),
+            asset_id,
+            SCCP_DOMAIN_ETH,
+            vec![1u8; 20],
+        ));
+        assert_ok!(Sccp::set_domain_endpoint(
+            RuntimeOrigin::root(),
+            SCCP_DOMAIN_ETH,
+            vec![11u8; 20],
+        ));
+
+        assert_noop!(
+            Sccp::activate_token(RuntimeOrigin::root(), asset_id),
+            Error::<Runtime>::RemoteTokenMissing
+        );
+    });
+}
+
+#[test]
+fn activate_fails_closed_when_required_domains_storage_contains_unknown_domain() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Flower.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+
+        // Simulate storage corruption: inject an unsupported domain id.
+        let corrupted_required_domains: BoundedVec<u32, SccpMaxDomains> = vec![
+            SCCP_DOMAIN_ETH,
+            SCCP_DOMAIN_BSC,
+            SCCP_DOMAIN_SOL,
+            SCCP_DOMAIN_TON,
+            SCCP_DOMAIN_TRON,
+            777,
+        ]
+        .try_into()
+        .expect("bounded");
+        crate::RequiredDomains::<Runtime>::set(corrupted_required_domains);
+
+        // Even with forged IDs/endpoints for the unknown domain, activation must fail-closed.
+        let forged_id: BoundedVec<u8, <Runtime as crate::Config>::MaxRemoteTokenIdLen> =
+            vec![0xabu8; 20].try_into().expect("bounded");
+        crate::pallet::RemoteToken::<Runtime>::insert(&asset_id, 777, forged_id.clone());
+        crate::pallet::DomainEndpoint::<Runtime>::insert(777, forged_id);
+
+        assert_noop!(
+            Sccp::activate_token(RuntimeOrigin::root(), asset_id),
+            Error::<Runtime>::DomainUnsupported
         );
     });
 }

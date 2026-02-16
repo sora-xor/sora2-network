@@ -200,17 +200,24 @@ pub fn alice() -> AccountId {
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
+    required_domains: Option<sp_runtime::BoundedVec<u32, SccpMaxDomains>>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![(alice(), GetBaseAssetId::get(), 0u32.into())],
+            required_domains: None,
         }
     }
 }
 
 impl ExtBuilder {
+    pub fn with_required_domains(mut self, domains: Vec<u32>) -> Self {
+        self.required_domains = Some(domains.try_into().expect("required domains fit bound"));
+        self
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
 
@@ -245,9 +252,11 @@ impl ExtBuilder {
         .unwrap();
 
         // Ensure SCCP defaults (grace period + required domains) are initialized.
-        sccp::GenesisConfig::<Runtime>::default()
-            .assimilate_storage(&mut t)
-            .unwrap();
+        let mut sccp_genesis = sccp::GenesisConfig::<Runtime>::default();
+        if let Some(required_domains) = self.required_domains {
+            sccp_genesis.required_domains = required_domains;
+        }
+        sccp_genesis.assimilate_storage(&mut t).unwrap();
 
         t.into()
     }
