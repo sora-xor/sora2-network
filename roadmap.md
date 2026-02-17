@@ -2,6 +2,15 @@
 
 Last updated: 2026-02-16
 
+## Latest tasks
+
+- [x] Added a Vue 3 SCCP cross-chain UI widget for TON swap app (`/Users/mtakemiya/dev/tonswap_web/components/Crosschain.vue`).
+- [x] Wired TON swap cross-chain navigation (`navItems` + `mobileTabs`) and i18n (`nav.crosschain`, `crosschain.*`) in `/Users/mtakemiya/dev/tonswap_web`.
+- [x] Added Solswap Vue 3 SCCP cross-chain view and route (`/crosschain`) with shared BSC/ETH/TRON payload builder and copy flow (`/Users/mtakemiya/dev/solswap/apps/web/src/views/CrosschainView.vue`).
+- [x] Added Solswap route-level navigation/i18n wiring for SCCP (`/Users/mtakemiya/dev/solswap/apps/web/src/{router.ts,App.vue,i18n/locales/en.json}`).
+- [x] Verified Polkaswap web already had SCCP route/view in `/Users/mtakemiya/dev/polkaswap-exchange-web/src/{router/modules/bridge.ts,views/Sccp.vue,lang/*}`; no additional UI tasks pending there.
+- [ ] Optional follow-up: localize SCCP `crosschain.*` strings in non-English locales for Solswap and Tonswap (`i18n.ts` + locale bundles).
+
 ## Completed
 
 - [x] Extracted `default_required_domains_for_bound` and reused it for canonical SCCP core-domain defaults with bounded safe push behavior.

@@ -1,0 +1,54 @@
+name: SCCP MCP
+
+on:
+  pull_request:
+    paths:
+      - "misc/sccp-mcp/**"
+      - ".github/workflows/sccp_mcp.yml"
+  push:
+    branches: [master, develop]
+    paths:
+      - "misc/sccp-mcp/**"
+      - ".github/workflows/sccp_mcp.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  sccp_mcp:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Setup Rust nightly toolchain
+        run: |
+          rustup toolchain install nightly-2023-03-21 --profile minimal --component rustfmt
+          rustup default nightly-2023-03-21
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
+        with:
+          cache-provider: "buildjet"
+          workspaces: |
+            misc/sccp-mcp -> target
+
+      - name: Cargo fmt
+        working-directory: misc/sccp-mcp
+        run: cargo fmt --check
+
+      - name: Cargo check
+        working-directory: misc/sccp-mcp
+        run: cargo check
+
+      - name: Cargo test
+        working-directory: misc/sccp-mcp
+        run: cargo test
+
+      - name: MCP stdio smoke
+        working-directory: misc/sccp-mcp
+        run: ./scripts/smoke_stdio.sh
+
+      - name: Node integration script syntax check
+        working-directory: misc/sccp-mcp
+        run: node --check scripts/sora_dev_integration.js

@@ -1,0 +1,89 @@
+[limits]
+max_call_bytes = 131072
+max_proof_bytes = 1048576
+max_request_bytes = 4194304
+
+[policy]
+allow_tools = []
+deny_tools = []
+
+# SORA (Substrate)
+[networks.sora_testnet]
+kind = "sora"
+rpc_url = "http://127.0.0.1:9933"
+ws_url = "ws://127.0.0.1:9944"
+ss58_prefix = 69
+sccp_pallet_index = 0
+block_number_bytes = 4
+notes = "Local or testnet SORA node"
+
+[networks.sora_mainnet]
+kind = "sora"
+rpc_url = "http://127.0.0.1:9933"
+ss58_prefix = 69
+sccp_pallet_index = 0
+block_number_bytes = 4
+notes = "Replace with production endpoint"
+
+# EVM siblings: sccp-eth, sccp-bsc, sccp-tron
+[networks.eth_testnet]
+kind = "evm"
+rpc_url = "https://rpc.sepolia.org"
+chain_id = 11155111
+router_address = "0x0000000000000000000000000000000000000000"
+notes = "sccp-eth"
+
+[networks.eth_mainnet]
+kind = "evm"
+rpc_url = "https://ethereum-rpc.publicnode.com"
+chain_id = 1
+router_address = "0x0000000000000000000000000000000000000000"
+notes = "sccp-eth"
+
+[networks.bsc_testnet]
+kind = "evm"
+rpc_url = "https://data-seed-prebsc-1-s1.bnbchain.org:8545"
+chain_id = 97
+router_address = "0x0000000000000000000000000000000000000000"
+notes = "sccp-bsc"
+
+[networks.bsc_mainnet]
+kind = "evm"
+rpc_url = "https://bsc-dataseed.binance.org"
+chain_id = 56
+router_address = "0x0000000000000000000000000000000000000000"
+notes = "sccp-bsc"
+
+[networks.tron_shasta]
+kind = "evm"
+rpc_url = "https://api.shasta.trongrid.io/jsonrpc"
+router_address = "0x0000000000000000000000000000000000000000"
+notes = "sccp-tron"
+
+[networks.tron_mainnet]
+kind = "evm"
+rpc_url = "https://api.trongrid.io/jsonrpc"
+router_address = "0x0000000000000000000000000000000000000000"
+notes = "sccp-tron"
+
+# Solana sibling: sccp-sol
+[networks.solana_testnet]
+kind = "solana"
+rpc_url = "https://api.testnet.solana.com"
+notes = "sccp-sol"
+
+[networks.solana_mainnet]
+kind = "solana"
+rpc_url = "https://api.mainnet-beta.solana.com"
+notes = "sccp-sol"
+
+# TON sibling: sccp-ton
+[networks.ton_testnet]
+kind = "ton"
+rpc_url = "https://testnet.toncenter.com/api/v2/jsonRPC"
+notes = "sccp-ton"
+
+[networks.ton_mainnet]
+kind = "ton"
+rpc_url = "https://toncenter.com/api/v2/jsonRPC"
+notes = "sccp-ton"

@@ -41,6 +41,10 @@ Proof generation is implemented in:
 
 - `../bridge-relayer` (`bridge-relayer sccp ...`)
 
+MCP server for AI agents (stateless, external-signer-only):
+
+- `misc/sccp-mcp` (`cargo run` in that directory; configure networks via `config.toml`)
+
 Cross-repo validation matrix:
 
 - `misc/sccp/run_all_tests.sh` runs SORA pallet tests (`sccp`, `bridge-proxy`, `eth-bridge`),
