@@ -13,7 +13,7 @@ case $arg in
 esac
 
 if [ "$build_main" = 1 ]; then
-  cargo run --bin framenode --release --features include-real-files -- build-spec --chain main-coded --raw > node/chain_spec/src/bytes/chain_spec_main.json || exit 1
+  cargo run --bin framenode --release --features "include-real-files main-net-coded" -- build-spec --chain main-coded --raw > node/chain_spec/src/bytes/chain_spec_main.json || exit 1
 fi
 
 if [ "$build_test" = 1 ]; then

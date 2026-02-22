@@ -62,6 +62,7 @@ use bridge_types::types::LeafExtraData;
 use bridge_types::U256;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
+use common::LiquidityProxyTrait;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
 #[cfg(any(feature = "stage", feature = "private-net"))] // presto
 use common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
@@ -77,7 +78,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
 use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
-use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
+use frame_support::traits::{ConstBool, ConstU128, ConstU32, Currency, EitherOfDiverse};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use frame_system::EnsureSigned;
@@ -85,6 +86,7 @@ use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
+use pallet_polkamarket::{AssetTransfer as PolkamarketAssetTransfer, CollateralRouter};
 use pallet_session::historical as pallet_session_historical;
 use pallet_staking::sora::ValBurnedNotifier;
 #[cfg(feature = "std")]
@@ -98,7 +100,7 @@ use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
-    SaturatedConversion, Verify,
+    SaturatedConversion, Verify, Zero,
 };
 use sp_runtime::transaction_validity::TransactionLongevity;
 use sp_runtime::transaction_validity::{
@@ -139,7 +141,7 @@ pub use frame_support::traits::{
 };
 pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 pub use frame_support::weights::Weight;
-pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
+pub use frame_support::{construct_runtime, debug, parameter_types, PalletId, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 pub use pallet_staking::StakerStatus;
@@ -164,7 +166,7 @@ pub use qa_tools;
 pub use soratopia;
 pub use {
     assets, dex_api, eth_bridge, frame_system, kensetsu, liquidity_proxy,
-    multicollateral_bonding_curve_pool, order_book, trading_pair, xst,
+    multicollateral_bonding_curve_pool, order_book, pallet_polkamarket, trading_pair, xst,
 };
 
 /// An index to a block.
@@ -258,10 +260,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 119,
-    impl_version: 1,
+    spec_version: 120,
+    impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 119,
+    transaction_version: 120,
     state_version: 0,
 };
 
@@ -974,6 +976,118 @@ impl assets::Config for Runtime {
     );
 }
 
+parameter_types! {
+    pub const PolkamarketPalletId: PalletId = PalletId(*b"pk/mktpl");
+    pub PolkamarketCanonicalStableAssetId: AssetId = AssetId::from_bytes(hex!(
+        "02000c0000000000000000000000000000000000000000000000000000000000"
+    ));
+    pub PolkamarketHollarAssetId: AssetId = AssetId::from_bytes(hex!(
+        "0200000000000000000000000000000000000000000000000000000000000000"
+    ));
+    pub PolkamarketUsdcAssetId: AssetId = AssetId::from_bytes(hex!(
+        "00ef6658f79d8b560f77b7b20a5d7822f5bc22539c7b4056128258e5829da517"
+    ));
+    pub PolkamarketUsdtAssetId: AssetId = AssetId::from_bytes(hex!(
+        "0083a6b3fbc6edae06f115c8953ddd7cbfba0b74579d6ea190f96853073b76f4"
+    ));
+    pub const PolkamarketMinQuestionLength: u32 = 32;
+    pub const PolkamarketCreationFeeBps: u32 = 35;
+    pub const PolkamarketMinCreationFee: Balance = balance!(5);
+    pub const PolkamarketMinMarketDuration: BlockNumber = 7_200;
+    pub const PolkamarketCommitmentRevealDelay: BlockNumber = 6;
+    pub const PolkamarketCommitmentExpiry: BlockNumber = 7_200;
+    pub const PolkamarketMaxMetadataLength: u32 = 512;
+    pub const PolkamarketMaxPlazaTagLength: u32 = 64;
+    pub PolkamarketOpenInterestThreshold: Balance = balance!(10000);
+    pub const PolkamarketCreatorRewardBps: u32 = 10;
+    pub const PolkamarketCollateralRouterWeight: Weight = Weight::from_parts(200_000_000, 0);
+    pub const PolkamarketBridgeDailyCap: Balance = balance!(100000);
+    pub const PolkamarketBlocksPerDay: BlockNumber = 14_400;
+    pub const PolkamarketWalletCooldown: BlockNumber = 720;
+    pub const PolkamarketPayoutTaxBps: u32 = 10;
+    pub const PolkamarketMaintenanceFeeBps: u32 = 2_000;
+    pub PolkamarketGovernanceBondMinimum: Balance = balance!(5000);
+    pub const PolkamarketLiquiditySafetyBps: u32 = 8_500;
+    pub const PolkamarketCredentialTtl: BlockNumber = 600_000;
+}
+
+parameter_types! {
+    pub PolkamarketFeeCollector: AccountId = AccountId::new(hex!(
+        "c0e6629c9baf600a20be6cdeda7545c03ae60175982debe124a369b9a1aa8a38"
+    ));
+    pub PolkamarketMaintenancePoolAccount: AccountId = AccountId::new(hex!(
+        "9e6663fbfc3f0bd24b00f984adc0f4a585ccf84ab1bb1049433e9fa680f6c828"
+    ));
+    pub PolkamarketForkTaxAccount: AccountId = AccountId::new(hex!(
+        "98c01314fcb58fa333d46c9533fffb8db5d30ab9b2dbe8506cccc88eaab90b36"
+    ));
+}
+
+pub struct PolkamarketAssetsAdapter;
+
+impl PolkamarketAssetTransfer<AccountId, AssetId, Balance> for PolkamarketAssetsAdapter {
+    fn transfer(
+        asset: AssetId,
+        from: &AccountId,
+        to: &AccountId,
+        amount: Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        assets::Pallet::<Runtime>::transfer_from(&asset, from, to, amount)
+    }
+}
+
+pub struct PolkamarketRouter;
+
+impl CollateralRouter<AccountId, AssetId, Balance> for PolkamarketRouter {
+    fn quote_to_canonical(
+        asset: AssetId,
+        canonical_amount: Balance,
+    ) -> Result<Balance, DispatchError> {
+        if canonical_amount.is_zero() {
+            return Ok(Balance::zero());
+        }
+        let canonical = PolkamarketCanonicalStableAssetId::get();
+        if asset == canonical {
+            return Ok(canonical_amount);
+        }
+        let quote = liquidity_proxy::Pallet::<Runtime>::quote(
+            DEXIdValue::get(),
+            &asset,
+            &canonical,
+            QuoteAmount::with_desired_output(canonical_amount),
+            LiquiditySourceFilter::empty(DEXIdValue::get()),
+            true,
+        )?;
+        Ok(quote.amount)
+    }
+
+    fn to_canonical(
+        who: &AccountId,
+        asset: AssetId,
+        amount: Balance,
+        dest: &AccountId,
+    ) -> Result<Balance, DispatchError> {
+        if amount.is_zero() {
+            return Ok(Balance::zero());
+        }
+        let canonical = PolkamarketCanonicalStableAssetId::get();
+        if asset == canonical {
+            assets::Pallet::<Runtime>::transfer_from(&asset, who, dest, amount)?;
+            return Ok(amount);
+        }
+        let outcome = liquidity_proxy::Pallet::<Runtime>::exchange(
+            DEXIdValue::get(),
+            who,
+            dest,
+            &asset,
+            &canonical,
+            SwapAmount::with_desired_input(amount, Balance::zero()),
+            LiquiditySourceFilter::empty(DEXIdValue::get()),
+        )?;
+        Ok(outcome.amount)
+    }
+}
+
 impl trading_pair::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type EnsureDEXManager = dex_manager::Pallet<Runtime>;
@@ -1125,6 +1239,46 @@ impl liquidity_proxy::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type InternalSlippageTolerance = GetInternalSlippageTolerancePercent;
     type WeightInfo = liquidity_proxy::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_polkamarket::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type CanonicalStableAssetId = PolkamarketCanonicalStableAssetId;
+    type Assets = PolkamarketAssetsAdapter;
+    type AssetId = AssetId;
+    type Balance = Balance;
+    type FeeCollector = PolkamarketFeeCollector;
+    type MinQuestionLength = PolkamarketMinQuestionLength;
+    type CreationFeeBps = PolkamarketCreationFeeBps;
+    type MinCreationFee = PolkamarketMinCreationFee;
+    type PalletId = PolkamarketPalletId;
+    type OrderbookIntegration = pallet_polkamarket::OrderbookEventEmitter<Self>;
+    type CollateralRouter = PolkamarketRouter;
+    type CollateralRouterWeight = PolkamarketCollateralRouterWeight;
+    type MinMarketDuration = PolkamarketMinMarketDuration;
+    type CommitmentRevealDelay = PolkamarketCommitmentRevealDelay;
+    type CommitmentExpiry = PolkamarketCommitmentExpiry;
+    type MaxMetadataLength = PolkamarketMaxMetadataLength;
+    type MaxPlazaTagLength = PolkamarketMaxPlazaTagLength;
+    type WeightInfo = weights::polkamarket::SubstrateWeight<Runtime>;
+    type OpenInterestThreshold = PolkamarketOpenInterestThreshold;
+    type CreatorRewardBps = PolkamarketCreatorRewardBps;
+    type ForkTaxAccount = PolkamarketForkTaxAccount;
+    type UsdcAssetId = PolkamarketUsdcAssetId;
+    type UsdtAssetId = PolkamarketUsdtAssetId;
+    type HollarAssetId = PolkamarketHollarAssetId;
+    type MaintenancePoolAccount = PolkamarketMaintenancePoolAccount;
+    type MaintenanceFeeBps = PolkamarketMaintenanceFeeBps;
+    type GovernanceBondMinimum = PolkamarketGovernanceBondMinimum;
+    type LiquiditySafetyBps = PolkamarketLiquiditySafetyBps;
+    type GovernanceOrigin = EnsureRoot<AccountId>;
+    type BridgeDailyCap = PolkamarketBridgeDailyCap;
+    type BlocksPerDay = PolkamarketBlocksPerDay;
+    type WalletCooldown = PolkamarketWalletCooldown;
+    type PayoutTaxBps = PolkamarketPayoutTaxBps;
+    type CredentialTtl = PolkamarketCredentialTtl;
+    type CredentialsRequired = ConstBool<false>;
+    type PlazaIntegration = pallet_polkamarket::PolkadotPlazaBridge<Self>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
@@ -2692,7 +2846,8 @@ construct_runtime! {
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
         #[cfg(any(feature = "stage", feature = "private-net"))] // presto
         Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
-        Denomination: denomination::{Pallet, Call, Storage, Event<T>} = 60,
+        Polkamarket: pallet_polkamarket::{Pallet, Call, Storage, Event<T>, Config<T>} = 60,
+        Denomination: denomination::{Pallet, Call, Storage, Event<T>} = 61,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
@@ -3481,6 +3636,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, oracle_proxy, OracleProxy);
             list_benchmark!(list, extra, apollo_platform, ApolloPlatform);
             list_benchmark!(list, extra, order_book, OrderBookBench::<Runtime>);
+            list_benchmark!(list, extra, pallet_polkamarket, Polkamarket);
             #[cfg(feature = "stage")] // presto
             list_benchmark!(list, extra, presto, Presto);
 
@@ -3579,6 +3735,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, oracle_proxy, OracleProxy);
             add_benchmark!(params, batches, apollo_platform, ApolloPlatform);
             add_benchmark!(params, batches, order_book, OrderBookBench::<Runtime>);
+            add_benchmark!(params, batches, pallet_polkamarket, Polkamarket);
             #[cfg(feature = "stage")] // presto
             add_benchmark!(params, batches, presto, Presto);
 

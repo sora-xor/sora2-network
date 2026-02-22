@@ -3812,6 +3812,7 @@ dependencies = [
  "pallet-multisig 3.2.3",
  "pallet-multisig 4.0.0-dev",
  "pallet-offences",
+ "pallet-polkamarket",
  "pallet-preimage",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
@@ -7052,6 +7053,21 @@ dependencies = [
  "serde",
  "sp-runtime",
  "sp-staking",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-polkamarket"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
  "sp-std",
 ]
 
