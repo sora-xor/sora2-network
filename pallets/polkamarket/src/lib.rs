@@ -895,13 +895,10 @@ pub mod pallet {
 
         /// Create a market for a registered condition and seed it with canonical stable collateral.
         #[pallet::call_index(1)]
-        #[allow(clippy::needless_borrow)]
-        #[pallet::weight(
-            T::WeightInfo::create_market(Pallet::<T>::routed_transfers(
-                &seed_liquidity,
-                &fee_asset
-            ))
-        )]
+        #[pallet::weight(Pallet::<T>::create_market_weight(
+            seed_liquidity.clone(),
+            &fee_asset
+        ))]
         pub fn create_market(
             origin: OriginFor<T>,
             condition_id: ConditionId,
@@ -1356,7 +1353,7 @@ pub mod pallet {
             CredentialsRequiredOverride::<T>::get().unwrap_or_else(T::CredentialsRequired::get)
         }
 
-        fn routed_transfers(amount: &T::Balance, fee_asset: &Option<T::AssetId>) -> u32 {
+        fn routed_transfers(amount: T::Balance, fee_asset: &Option<T::AssetId>) -> u32 {
             if amount.is_zero() {
                 return 0;
             }
@@ -1365,6 +1362,11 @@ pub mod pallet {
                 Some(asset) if *asset != canonical => 4,
                 _ => 0,
             }
+        }
+
+        fn create_market_weight(amount: T::Balance, fee_asset: &Option<T::AssetId>) -> Weight {
+            let routed = Self::routed_transfers(amount, fee_asset);
+            T::WeightInfo::create_market(routed)
         }
 
         fn withdraw_creation_fee(
