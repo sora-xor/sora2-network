@@ -897,7 +897,7 @@ pub mod pallet {
         #[pallet::call_index(1)]
         #[pallet::weight(Pallet::<T>::create_market_weight(
             seed_liquidity.clone(),
-            &fee_asset
+            fee_asset.clone()
         ))]
         pub fn create_market(
             origin: OriginFor<T>,
@@ -1364,8 +1364,8 @@ pub mod pallet {
             }
         }
 
-        fn create_market_weight(amount: T::Balance, fee_asset: &Option<T::AssetId>) -> Weight {
-            let routed = Self::routed_transfers(amount, fee_asset);
+        fn create_market_weight(amount: T::Balance, fee_asset: Option<T::AssetId>) -> Weight {
+            let routed = Self::routed_transfers(amount, &fee_asset);
             T::WeightInfo::create_market(routed)
         }
 
