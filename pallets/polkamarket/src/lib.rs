@@ -130,16 +130,13 @@ impl<T: Config> PlazaIntegrationHook<OpengovProposalOf<T>> for PolkadotPlazaBrid
     }
 }
 
-#[derive(Encode, Decode, TypeInfo, Clone, Copy, PartialEq, Eq, RuntimeDebug, MaxEncodedLen)]
+#[derive(
+    Encode, Decode, TypeInfo, Clone, Copy, PartialEq, Eq, RuntimeDebug, Default, MaxEncodedLen,
+)]
 pub enum RelayNetwork {
+    #[default]
     Polkadot,
     Kusama,
-}
-
-impl Default for RelayNetwork {
-    fn default() -> Self {
-        RelayNetwork::Polkadot
-    }
 }
 
 #[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen)]
@@ -640,8 +637,8 @@ pub mod pallet {
             if let Some(ref account) = self.fork_tax_account {
                 ForkTaxAccountOverride::<T>::put(account.clone());
             }
-            if let Some(ref value) = self.governance_bond_minimum {
-                GovernanceBondMinimumOverride::<T>::put(value.clone());
+            if let Some(value) = self.governance_bond_minimum {
+                GovernanceBondMinimumOverride::<T>::put(value);
             }
             if let Some(bps) = self.maintenance_fee_bps {
                 MaintenanceFeeBpsOverride::<T>::put(bps);
@@ -649,20 +646,20 @@ pub mod pallet {
             if let Some(bps) = self.liquidity_safety_bps {
                 LiquiditySafetyBpsOverride::<T>::put(bps);
             }
-            if let Some(ref value) = self.bridge_daily_cap {
-                BridgeDailyCapOverride::<T>::put(value.clone());
+            if let Some(value) = self.bridge_daily_cap {
+                BridgeDailyCapOverride::<T>::put(value);
             }
-            if let Some(ref value) = self.blocks_per_day {
-                BlocksPerDayOverride::<T>::put(value.clone());
+            if let Some(value) = self.blocks_per_day {
+                BlocksPerDayOverride::<T>::put(value);
             }
-            if let Some(ref value) = self.wallet_cooldown {
-                WalletCooldownOverride::<T>::put(value.clone());
+            if let Some(value) = self.wallet_cooldown {
+                WalletCooldownOverride::<T>::put(value);
             }
             if let Some(bps) = self.payout_tax_bps {
                 PayoutTaxBpsOverride::<T>::put(bps);
             }
-            if let Some(ref value) = self.credential_ttl {
-                CredentialTtlOverride::<T>::put(value.clone());
+            if let Some(value) = self.credential_ttl {
+                CredentialTtlOverride::<T>::put(value);
             }
             if let Some(required) = self.credentials_required {
                 CredentialsRequiredOverride::<T>::put(required);
@@ -898,10 +895,13 @@ pub mod pallet {
 
         /// Create a market for a registered condition and seed it with canonical stable collateral.
         #[pallet::call_index(1)]
-        #[pallet::weight(T::WeightInfo::create_market(Pallet::<T>::routed_transfers(
-            &seed_liquidity,
-            &fee_asset
-        )))]
+        #[allow(clippy::needless_borrow)]
+        #[pallet::weight(
+            T::WeightInfo::create_market(Pallet::<T>::routed_transfers(
+                &seed_liquidity,
+                &fee_asset
+            ))
+        )]
         pub fn create_market(
             origin: OriginFor<T>,
             condition_id: ConditionId,
