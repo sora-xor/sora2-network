@@ -1016,7 +1016,10 @@ pub mod pallet {
                 .checked_add(&T::CommitmentRevealDelay::get())
                 .ok_or(Error::<T>::Overflow)?;
             ensure!(now >= min_reveal, Error::<T>::RevealTooSoon);
-            ensure!(now <= stored.info.expires_at, Error::<T>::CommitmentExpired);
+            if now > stored.info.expires_at {
+                Commitments::<T>::remove(market_id, hash);
+                return Err(Error::<T>::CommitmentExpired.into());
+            }
 
             Commitments::<T>::remove(market_id, hash);
 
@@ -1391,7 +1394,12 @@ pub mod pallet {
 
             let asset = fee_asset.unwrap_or(T::CanonicalStableAssetId::get());
             let collector = Self::fee_collector_account();
-            let deposited = Self::deposit_canonical(who, asset, &collector, fee)?;
+            let required_input = if asset == T::CanonicalStableAssetId::get() {
+                fee
+            } else {
+                T::CollateralRouter::quote_to_canonical(asset, fee)?
+            };
+            let deposited = Self::deposit_canonical(who, asset, &collector, required_input)?;
             ensure!(deposited >= fee, Error::<T>::InsufficientCreationFee);
 
             let maintenance_ratio = Perbill::from_rational(Self::maintenance_fee_bps(), 10_000u32);
