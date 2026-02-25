@@ -895,10 +895,11 @@ pub mod pallet {
 
         /// Create a market for a registered condition and seed it with canonical stable collateral.
         #[pallet::call_index(1)]
-        #[pallet::weight(Pallet::<T>::create_market_weight(
-            seed_liquidity.clone(),
-            fee_asset.clone()
-        ))]
+        #[pallet::weight({
+            let amount = *seed_liquidity;
+            let fee = *fee_asset;
+            Pallet::<T>::create_market_weight(amount, fee)
+        })]
         pub fn create_market(
             origin: OriginFor<T>,
             condition_id: ConditionId,
