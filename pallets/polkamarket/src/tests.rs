@@ -264,12 +264,14 @@ fn commit_and_reveal_flow_enforces_delays() {
 
         // Too soon to reveal
         run_to_block(3);
+        let payload_reveal = payload.clone();
+        let salt_reveal = salt.clone();
         assert_noop!(
             Polkamarket::reveal_order(
                 RuntimeOrigin::signed(ALICE),
                 0,
-                payload.clone(),
-                salt.clone(),
+                payload_reveal,
+                salt_reveal,
                 50
             ),
             Error::<Test>::RevealTooSoon
@@ -280,8 +282,8 @@ fn commit_and_reveal_flow_enforces_delays() {
         assert_ok!(Polkamarket::reveal_order(
             RuntimeOrigin::signed(ALICE),
             0,
-            payload.clone(),
-            salt.clone(),
+            payload,
+            salt,
             50
         ));
 
@@ -296,7 +298,7 @@ fn commit_and_reveal_flow_enforces_delays() {
                     market_id,
                     trader,
                     order_value,
-                }) => Some((*market_id, trader.clone(), *order_value)),
+                }) => Some((*market_id, *trader, *order_value)),
                 _ => None,
             })
             .expect("order placement event");
@@ -337,13 +339,7 @@ fn commit_expires_if_not_revealed() {
         // Jump beyond expiry window
         run_to_block(20);
         assert_noop!(
-            Polkamarket::reveal_order(
-                RuntimeOrigin::signed(ALICE),
-                0,
-                payload.clone(),
-                salt.clone(),
-                50
-            ),
+            Polkamarket::reveal_order(RuntimeOrigin::signed(ALICE), 0, payload, salt, 50),
             Error::<Test>::CommitmentExpired
         );
     });
@@ -380,8 +376,8 @@ fn creator_reward_activates_when_threshold_reached() {
         assert_ok!(Polkamarket::reveal_order(
             RuntimeOrigin::signed(ALICE),
             0,
-            payload.clone(),
-            salt.clone(),
+            payload,
+            salt,
             20_000
         ));
 
