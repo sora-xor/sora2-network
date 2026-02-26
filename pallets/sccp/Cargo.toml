@@ -7,6 +7,7 @@ edition = "2021"
 codec = { version = "3", package = "parity-scale-codec", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -25,8 +26,9 @@ currencies = { workspace = true }
 common = { path = "../../common", features = ["test"] }
 orml-traits = { workspace = true }
 pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-rlp = "0.5.2"
 tokens = { workspace = true }
+rlp = "0.5.2"
+proptest = "=1.4.0"
 
 [features]
 default = ["std"]
@@ -46,7 +48,10 @@ std = [
     "bridge-types/std",
 ]
 
+fuzzing = []
+
 runtime-benchmarks = [
+    "frame-benchmarking",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
 ]

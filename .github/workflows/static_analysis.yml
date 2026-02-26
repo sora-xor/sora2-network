@@ -42,6 +42,56 @@ jobs:
       - name: cargo fmt
         run: cargo fmt --check
 
+      - name: Enforce SCCP runtime weights wiring
+        run: |
+          chmod +x .github/scripts/check_sccp_runtime_weightinfo.sh
+          .github/scripts/check_sccp_runtime_weightinfo.sh
+
+      - name: Enforce SCCP proof parser test guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_proof_parser_tests_guard.sh
+          .github/scripts/check_sccp_proof_parser_tests_guard.sh
+
+      - name: Enforce SCCP proof fuzz harness guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_proof_fuzz_harness_guard.sh
+          .github/scripts/check_sccp_proof_fuzz_harness_guard.sh
+
+      - name: Enforce SCCP MCP auth guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_mcp_auth_guard.sh
+          .github/scripts/check_sccp_mcp_auth_guard.sh
+
+      - name: Enforce SCCP MCP auth-resistance guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_mcp_auth_resistance_guard.sh
+          .github/scripts/check_sccp_mcp_auth_resistance_guard.sh
+
+      - name: Enforce SCCP MCP resilience guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_mcp_resilience_guard.sh
+          .github/scripts/check_sccp_mcp_resilience_guard.sh
+
+      - name: Enforce SCCP MCP load-shedding guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_mcp_load_shedding_guard.sh
+          .github/scripts/check_sccp_mcp_load_shedding_guard.sh
+
+      - name: Enforce SCCP MCP read-only tool guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_mcp_readonly_tool_guard.sh
+          .github/scripts/check_sccp_mcp_readonly_tool_guard.sh
+
+      - name: Enforce SCCP MCP activation preflight guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_mcp_preflight_guard.sh
+          .github/scripts/check_sccp_mcp_preflight_guard.sh
+
+      - name: Enforce SCCP CODEOWNERS guardrails
+        run: |
+          chmod +x .github/scripts/check_sccp_codeowners_guard.sh
+          .github/scripts/check_sccp_codeowners_guard.sh
+
       - name: cargo clippy
         env:
           SKIP_WASM_BUILD: 1

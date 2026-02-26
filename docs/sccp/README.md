@@ -20,6 +20,8 @@ SCCP is a burn/mint cross-chain protocol intended to be **fully on-chain**:
 - `docs/sccp/EVM_ANCHOR_MODE.md`: governance-anchored EVM mode details
 - `docs/sccp/BSC_LIGHT_CLIENT.md`: BSC header verifier details (inbound-to-SORA)
 - `docs/sccp/TRON_LIGHT_CLIENT.md`: TRON header verifier details (inbound-to-SORA)
+- `docs/security/sccp_mcp_deployment_guardrails.md`: MCP deployment hardening baseline
+- `docs/security/sccp_security_ownership.md`: SCCP sensitive-path ownership and review policy
 
 ## Code In This Repo (SORA)
 
@@ -43,7 +45,11 @@ Proof generation is implemented in:
 
 MCP server for AI agents (stateless, external-signer-only):
 
-- `misc/sccp-mcp` (`cargo run` in that directory; configure networks via `config.toml`)
+- `misc/sccp-mcp` (`cargo run` in that directory; configure networks via `config.toml` and set `SCCP_MCP_AUTH_TOKEN` unless using inline `[auth].required_token`)
+
+Coverage-guided proof-helper fuzzing:
+
+- `pallets/sccp/fuzz` (`cargo fuzz run evm_proof_helpers` and `cargo fuzz run tron_proof_helpers`)
 
 Cross-repo validation matrix:
 
@@ -78,6 +84,25 @@ Cross-repo validation matrix:
   accept only `0` or `1`.
   On retry exhaustion, the script prints an exact reproduce command for
   `../sccp-sol/program` with the effective test env.
+
+Hub E2E matrix harness:
+
+- `misc/sccp-e2e/run_hub_matrix.sh` orchestrates ordered SCCP source->destination
+  scenario execution across `SORA/ETH/BSC/SOL/TON/TRON`, writes per-scenario logs,
+  and exports both `report.json` and `junit.xml` artifacts under
+  `misc/sccp-e2e/artifacts/hub-matrix-<timestamp>/`.
+- It prefers sibling adapter scripts (`scripts/sccp_e2e_adapter.sh`) when present;
+  otherwise it falls back to configurable per-domain commands from
+  `misc/sccp-e2e/config.local.json`.
+- Install/update sibling adapters from this repo via:
+  `misc/sccp-e2e/install_sibling_adapters.sh`.
+- For CI/workspace layouts where sibling repos are under `sora2-network/siblings`,
+  use:
+  `misc/sccp-e2e/install_sibling_adapters.sh --siblings-root "$PWD/siblings"`.
+- Use `--dry-run` for command planning/validation without execution,
+  and `--strict-adapters` to fail if adapters are missing.
+- CI runner config is available at `misc/sccp-e2e/config.ci.json`, and scheduled/manual
+  automation is wired in `.github/workflows/sccp_hub_matrix.yml`.
 
 Solana program flake stress loop:
 

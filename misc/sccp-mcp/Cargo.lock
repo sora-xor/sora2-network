@@ -629,6 +629,7 @@ dependencies = [
  "blake2",
  "ethabi",
  "hex",
+ "once_cell",
  "serde",
  "serde_json",
  "sha3",

@@ -8,11 +8,12 @@ const { ApiPromise, Keyring, WsProvider } = require('@polkadot/api');
 const { cryptoWaitReady } = require('@polkadot/util-crypto');
 
 class McpStdioClient {
-  constructor({ cmd, args, cwd, env }) {
+  constructor({ cmd, args, cwd, env, authToken }) {
     this.cmd = cmd;
     this.args = args;
     this.cwd = cwd;
     this.env = env;
+    this.authToken = authToken;
     this.nextId = 1;
     this.pending = new Map();
     this.buffer = Buffer.alloc(0);
@@ -47,11 +48,16 @@ class McpStdioClient {
 
   async request(method, params) {
     const id = this.nextId++;
+    const authMethods = new Set(['tools/list', 'tools/call']);
+    const normalizedParams = params && typeof params === 'object' ? { ...params } : {};
+    if (authMethods.has(method) && !normalizedParams.auth_token) {
+      normalizedParams.auth_token = this.authToken;
+    }
     const payload = {
       jsonrpc: '2.0',
       id,
       method,
-      params,
+      params: normalizedParams,
     };
 
     const body = Buffer.from(JSON.stringify(payload), 'utf8');
@@ -235,6 +241,9 @@ async function main() {
   const mcpNetwork = process.env.MCP_NETWORK || 'sora_testnet';
   const signerUri = process.env.SIGNER_URI || '//Alice';
   const timeoutMs = Number(process.env.WATCH_TIMEOUT_MS || 120000);
+  const mcpAuthToken =
+    process.env.SCCP_MCP_AUTH_TOKEN ||
+    '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   const callName = process.env.SCCP_CALL_NAME || 'set_outbound_domain_paused';
   const callArgs = process.env.SCCP_CALL_ARGS
     ? JSON.parse(process.env.SCCP_CALL_ARGS)
@@ -271,7 +280,9 @@ async function main() {
     env: {
       ...process.env,
       SCCP_MCP_CONFIG: mcpConfig,
+      SCCP_MCP_AUTH_TOKEN: mcpAuthToken,
     },
+    authToken: mcpAuthToken,
   });
 
   await mcp.start();

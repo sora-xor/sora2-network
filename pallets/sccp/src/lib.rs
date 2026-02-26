@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: BSD-4-Clause
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "512"]
 // This pallet is security-critical; keep logic explicit and avoid "clever" abstractions.
 
 #[cfg(test)]
@@ -12,7 +13,17 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+#[cfg(any(test, feature = "fuzzing"))]
+pub mod evm_proof;
+#[cfg(not(any(test, feature = "fuzzing")))]
 mod evm_proof;
+
+#[cfg(any(test, feature = "fuzzing"))]
+pub mod tron_proof;
+#[cfg(not(any(test, feature = "fuzzing")))]
 mod tron_proof;
 
 use bridge_types::{traits::AuxiliaryDigestHandler, types::AuxiliaryDigestItem, GenericNetworkId};

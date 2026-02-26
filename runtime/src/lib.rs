@@ -2364,7 +2364,7 @@ impl sccp::Config for Runtime {
     type MaxDomains = SccpMaxDomains;
     type MaxBscValidators = SccpMaxBscValidators;
     type MaxAttesters = SccpMaxAttesters;
-    type WeightInfo = ();
+    type WeightInfo = sccp::weights::SubstrateWeight<Runtime>;
 }
 
 impl bridge_proxy::Config for Runtime {
@@ -3553,6 +3553,7 @@ impl_runtime_apis! {
             list_benchmark!(list, extra, bridge_data_signer, BridgeDataSigner);
             list_benchmark!(list, extra, multisig_verifier, MultisigVerifier);
             list_benchmark!(list, extra, extended_assets, ExtendedAssets);
+            list_benchmark!(list, extra, sccp, Sccp);
 
             list_benchmark!(list, extra, soratopia, Soratopia);
 
@@ -3651,6 +3652,7 @@ impl_runtime_apis! {
             add_benchmark!(params, batches, bridge_data_signer, BridgeDataSigner);
             add_benchmark!(params, batches, multisig_verifier, MultisigVerifier);
             add_benchmark!(params, batches, extended_assets, ExtendedAssets);
+            add_benchmark!(params, batches, sccp, Sccp);
 
             add_benchmark!(params, batches, soratopia, Soratopia);
 
