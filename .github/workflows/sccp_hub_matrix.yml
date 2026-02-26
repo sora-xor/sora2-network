@@ -1,0 +1,188 @@
+name: SCCP Hub Matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      matrix_mode:
+        description: Matrix mode
+        required: true
+        default: sora-pairs
+        type: choice
+        options:
+          - sora-pairs
+          - full
+      include_negative:
+        description: Include negative verification checks
+        required: true
+        default: true
+        type: boolean
+      strict_adapters:
+        description: Require sibling adapter scripts
+        required: true
+        default: true
+        type: boolean
+      scenario:
+        description: Optional source:destination filter, e.g. eth:sol
+        required: false
+        type: string
+      max_minutes:
+        description: Max harness wall-clock budget
+        required: true
+        default: "120"
+        type: string
+  schedule:
+    - cron: "15 03 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  hub_matrix:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 240
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Checkout bridge-relayer
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/bridge-relayer
+          path: siblings/bridge-relayer
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-eth
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-eth
+          path: siblings/sccp-eth
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-bsc
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-bsc
+          path: siblings/sccp-bsc
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-sol
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-sol
+          path: siblings/sccp-sol
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-ton
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-ton
+          path: siblings/sccp-ton
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-tron
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-tron
+          path: siblings/sccp-tron
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Setup Rust nightly toolchain
+        run: |
+          rustup toolchain install nightly-2023-03-21 --profile minimal
+          rustup default nightly-2023-03-21
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: |
+            siblings/sccp-eth/package-lock.json
+            siblings/sccp-bsc/package-lock.json
+            siblings/sccp-tron/package-lock.json
+            siblings/sccp-ton/package-lock.json
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
+        with:
+          cache-provider: "buildjet"
+          workspaces: |
+            . -> target
+            siblings/bridge-relayer -> target
+            siblings/sccp-sol/program -> target
+
+      - name: Install JS dependencies
+        run: |
+          set -euo pipefail
+          for repo in siblings/sccp-eth siblings/sccp-bsc siblings/sccp-tron siblings/sccp-ton; do
+            if [[ -f "${repo}/package-lock.json" ]]; then
+              (cd "${repo}" && npm ci)
+            else
+              (cd "${repo}" && npm install)
+            fi
+          done
+
+      - name: Install sibling adapters
+        run: misc/sccp-e2e/install_sibling_adapters.sh --siblings-root "$GITHUB_WORKSPACE/siblings"
+
+      - name: Run SCCP hub matrix
+        run: |
+          set -euo pipefail
+
+          matrix_mode="${{ github.event.inputs.matrix_mode || 'sora-pairs' }}"
+          include_negative="${{ github.event.inputs.include_negative || 'true' }}"
+          strict_adapters="${{ github.event.inputs.strict_adapters || 'true' }}"
+          scenario_filter="${{ github.event.inputs.scenario || '' }}"
+          max_minutes="${{ github.event.inputs.max_minutes || '120' }}"
+
+          artifacts_dir="misc/sccp-e2e/artifacts/ci-hub-matrix"
+          rm -rf "${artifacts_dir}"
+          mkdir -p "${artifacts_dir}"
+
+          args=(
+            --config misc/sccp-e2e/config.ci.json
+            --artifacts-dir "${artifacts_dir}"
+            --skip-preflight
+            --matrix "${matrix_mode}"
+            --max-minutes "${max_minutes}"
+          )
+
+          if [[ "${include_negative}" == "true" ]]; then
+            args+=(--include-negative)
+          else
+            args+=(--exclude-negative)
+          fi
+
+          if [[ "${strict_adapters}" == "true" ]]; then
+            args+=(--strict-adapters)
+          fi
+
+          if [[ -n "${scenario_filter}" ]]; then
+            args+=(--scenario "${scenario_filter}")
+          fi
+
+          misc/sccp-e2e/run_hub_matrix.sh "${args[@]}"
+
+      - name: Summarize report
+        if: always()
+        run: |
+          set -euo pipefail
+          report_path="misc/sccp-e2e/artifacts/ci-hub-matrix/report.json"
+          if [[ -f "${report_path}" ]]; then
+            misc/sccp-e2e/scripts/print_report_summary.sh "${report_path}" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "# SCCP Hub Matrix Summary" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "report not found: ${report_path}" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload matrix artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sccp-hub-matrix-${{ github.run_id }}-${{ github.run_attempt }}
+          path: misc/sccp-e2e/artifacts/ci-hub-matrix
+          if-no-files-found: warn

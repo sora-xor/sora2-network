@@ -4,86 +4,96 @@ max_proof_bytes = 1048576
 max_request_bytes = 4194304
 
 [policy]
-allow_tools = []
+# Secure-by-default: read-only + offline build tools only.
+# No submit-capable tools are enabled unless explicitly added.
+allow_tools = [
+  "sccp_list_networks",
+  "sccp_health",
+  "sccp_get_message_id",
+  "sccp_validate_payload",
+  "sccp_encode_attester_quorum_proof",
+  "sccp_list_supported_calls",
+  "sccp_get_token_state",
+  "sccp_get_remote_token",
+  "sccp_get_domain_endpoint",
+  "sccp_preflight_activation",
+  "sccp_get_light_client_state",
+  "sccp_get_message_status",
+  "sora_sccp_build_call",
+  "sora_sccp_estimate_fee",
+  "evm_sccp_read_contract",
+  "evm_sccp_build_tx",
+  "sol_sccp_get_account",
+  "sol_sccp_build_transaction",
+  "ton_sccp_get_method",
+  "ton_sccp_build_message",
+]
 deny_tools = []
 
+# Startup fails closed unless risky deployment settings are explicitly acknowledged.
+[deployment]
+allow_non_private_rpc = false
+allow_mutating_tools = false
+
+[auth]
+# Mandatory built-in auth for tool methods (`tools/list`, `tools/call`).
+# Preferred: load the secret from environment to avoid storing plaintext tokens in config.
+required_token_env = "SCCP_MCP_AUTH_TOKEN"
+# Fail closed for weak shared secrets (bytes, not hex chars). Keep this high in production.
+min_required_token_bytes = 32
+# Fail closed for oversized shared secrets to bound auth comparison/hashing costs.
+max_token_bytes = 512
+# Optional alternative (plaintext in config):
+# required_token = "replace-with-long-random-shared-secret"
+
+# To allow state-changing submission tools, explicitly append one or more names above:
+# - sora_sccp_submit_signed_extrinsic
+# - evm_sccp_submit_signed_tx
+# - sol_sccp_submit_signed_transaction
+# - ton_sccp_submit_signed_message
+#
+# If you enable submit tools and/or public RPC endpoints, you must also set
+# corresponding [deployment] flags to true.
+
 # SORA (Substrate)
-[networks.sora_testnet]
+[networks.sora_local]
 kind = "sora"
 rpc_url = "http://127.0.0.1:9933"
 ws_url = "ws://127.0.0.1:9944"
 ss58_prefix = 69
 sccp_pallet_index = 0
 block_number_bytes = 4
-notes = "Local or testnet SORA node"
-
-[networks.sora_mainnet]
-kind = "sora"
-rpc_url = "http://127.0.0.1:9933"
-ss58_prefix = 69
-sccp_pallet_index = 0
-block_number_bytes = 4
-notes = "Replace with production endpoint"
+notes = "Local/private SORA endpoint only"
 
 # EVM siblings: sccp-eth, sccp-bsc, sccp-tron
-[networks.eth_testnet]
+[networks.eth_local]
 kind = "evm"
-rpc_url = "https://rpc.sepolia.org"
-chain_id = 11155111
+rpc_url = "http://127.0.0.1:8545"
+chain_id = 31337
 router_address = "0x0000000000000000000000000000000000000000"
-notes = "sccp-eth"
+notes = "Local/private ETH endpoint only"
 
-[networks.eth_mainnet]
+[networks.bsc_local]
 kind = "evm"
-rpc_url = "https://ethereum-rpc.publicnode.com"
-chain_id = 1
-router_address = "0x0000000000000000000000000000000000000000"
-notes = "sccp-eth"
-
-[networks.bsc_testnet]
-kind = "evm"
-rpc_url = "https://data-seed-prebsc-1-s1.bnbchain.org:8545"
+rpc_url = "http://127.0.0.1:8546"
 chain_id = 97
 router_address = "0x0000000000000000000000000000000000000000"
-notes = "sccp-bsc"
+notes = "Local/private BSC endpoint only"
 
-[networks.bsc_mainnet]
+[networks.tron_local]
 kind = "evm"
-rpc_url = "https://bsc-dataseed.binance.org"
-chain_id = 56
+rpc_url = "http://127.0.0.1:8547"
 router_address = "0x0000000000000000000000000000000000000000"
-notes = "sccp-bsc"
-
-[networks.tron_shasta]
-kind = "evm"
-rpc_url = "https://api.shasta.trongrid.io/jsonrpc"
-router_address = "0x0000000000000000000000000000000000000000"
-notes = "sccp-tron"
-
-[networks.tron_mainnet]
-kind = "evm"
-rpc_url = "https://api.trongrid.io/jsonrpc"
-router_address = "0x0000000000000000000000000000000000000000"
-notes = "sccp-tron"
+notes = "Local/private TRON JSON-RPC endpoint only"
 
 # Solana sibling: sccp-sol
-[networks.solana_testnet]
+[networks.solana_local]
 kind = "solana"
-rpc_url = "https://api.testnet.solana.com"
-notes = "sccp-sol"
-
-[networks.solana_mainnet]
-kind = "solana"
-rpc_url = "https://api.mainnet-beta.solana.com"
-notes = "sccp-sol"
+rpc_url = "http://127.0.0.1:8899"
+notes = "Local/private Solana endpoint only"
 
 # TON sibling: sccp-ton
-[networks.ton_testnet]
+[networks.ton_local]
 kind = "ton"
-rpc_url = "https://testnet.toncenter.com/api/v2/jsonRPC"
-notes = "sccp-ton"
-
-[networks.ton_mainnet]
-kind = "ton"
-rpc_url = "https://toncenter.com/api/v2/jsonRPC"
-notes = "sccp-ton"
+rpc_url = "http://127.0.0.1:8081/jsonRPC"
+notes = "Local/private TON endpoint only"
