@@ -374,24 +374,22 @@ fn commit_and_reveal_flow_enforces_delays() {
 
         // Too soon to reveal
         run_to_block(3);
+        let payload_fail = payload.clone();
+        let salt_fail = salt.clone();
         assert_noop!(
-            Polkamarkt::reveal_order(
-                RuntimeOrigin::signed(ALICE),
-                0,
-                payload.clone(),
-                salt.clone(),
-                50
-            ),
+            Polkamarkt::reveal_order(RuntimeOrigin::signed(ALICE), 0, payload_fail, salt_fail, 50),
             Error::<Test>::RevealTooSoon
         );
 
         // Reveal after delay
         run_to_block(5);
+        let payload_success = payload;
+        let salt_success = salt;
         assert_ok!(Polkamarkt::reveal_order(
             RuntimeOrigin::signed(ALICE),
             0,
-            payload.clone(),
-            salt.clone(),
+            payload_success,
+            salt_success,
             50
         ));
 
@@ -446,12 +444,14 @@ fn commit_expires_if_not_revealed() {
 
         // Jump beyond expiry window
         run_to_block(20);
+        let payload_expired = payload;
+        let salt_expired = salt;
         assert_noop!(
             Polkamarkt::reveal_order(
                 RuntimeOrigin::signed(ALICE),
                 0,
-                payload.clone(),
-                salt.clone(),
+                payload_expired,
+                salt_expired,
                 50
             ),
             Error::<Test>::CommitmentExpired
@@ -487,11 +487,13 @@ fn creator_reward_activates_when_threshold_reached() {
             hash
         ));
         run_to_block(10);
+        let payload_reveal = payload;
+        let salt_reveal = salt;
         assert_ok!(Polkamarkt::reveal_order(
             RuntimeOrigin::signed(ALICE),
             0,
-            payload.clone(),
-            salt.clone(),
+            payload_reveal,
+            salt_reveal,
             20_000
         ));
 
