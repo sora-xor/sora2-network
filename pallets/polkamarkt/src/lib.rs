@@ -1359,12 +1359,15 @@ pub mod pallet {
         }
 
         fn routed_transfers(amount: &T::Balance, fee_asset: &Option<T::AssetId>) -> u32 {
-            if amount.is_zero() {
-                return 0;
-            }
             let canonical = T::CanonicalStableAssetId::get();
             match fee_asset {
-                Some(asset) if *asset != canonical => 4,
+                Some(asset) if *asset != canonical => {
+                    let mut transfers = 1; // routed path for creation fee
+                    if !amount.is_zero() {
+                        transfers += 3; // additional router calls when seeding liquidity
+                    }
+                    transfers
+                }
                 _ => 0,
             }
         }
@@ -1384,14 +1387,23 @@ pub mod pallet {
                 fee_from_bps
             };
 
+            let canonical_fee = fee;
             let asset = fee_asset.unwrap_or(T::CanonicalStableAssetId::get());
             let fee_collector = Self::fee_collector_account();
             let maintenance_account = Self::maintenance_pool_account();
-            let deposited = Self::deposit_canonical(who, asset, &fee_collector, fee)?;
-            ensure!(deposited >= fee, Error::<T>::InsufficientCreationFee);
+            let fee_input = if asset == T::CanonicalStableAssetId::get() {
+                canonical_fee
+            } else {
+                T::CollateralRouter::quote_to_canonical(asset, canonical_fee)?
+            };
+            let deposited = Self::deposit_canonical(who, asset, &fee_collector, fee_input)?;
+            ensure!(
+                deposited >= canonical_fee,
+                Error::<T>::InsufficientCreationFee
+            );
 
             let maintenance_ratio = Perbill::from_rational(Self::maintenance_fee_bps(), 10_000u32);
-            let maintenance_amount = maintenance_ratio * fee;
+            let maintenance_amount = maintenance_ratio * deposited;
             if !maintenance_amount.is_zero() {
                 T::Assets::transfer(
                     T::CanonicalStableAssetId::get(),
