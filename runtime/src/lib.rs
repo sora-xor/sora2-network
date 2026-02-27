@@ -2846,8 +2846,8 @@ construct_runtime! {
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
         #[cfg(any(feature = "stage", feature = "private-net"))] // presto
         Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
-        Polkamarkt: pallet_polkamarkt::{Pallet, Call, Storage, Event<T>, Config<T>} = 60,
-        Denomination: denomination::{Pallet, Call, Storage, Event<T>} = 61,
+        Denomination: denomination::{Pallet, Call, Storage, Event<T>} = 60,
+        Polkamarkt: pallet_polkamarkt::{Pallet, Call, Storage, Event<T>, Config<T>} = 61,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,

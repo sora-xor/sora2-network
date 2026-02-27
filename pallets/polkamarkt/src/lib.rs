@@ -1374,10 +1374,6 @@ pub mod pallet {
             seed: T::Balance,
             fee_asset: Option<T::AssetId>,
         ) -> DispatchResult {
-            if seed.is_zero() {
-                return Ok(());
-            }
-
             let bps = T::CreationFeeBps::get();
             let ratio = Perbill::from_rational(bps, 10_000u32);
             let fee_from_bps = ratio * seed;
