@@ -105,6 +105,7 @@ impl sccp::Config for Runtime {
     type EthFinalizedStateProvider = MockEthFinalizedStateProvider;
     type SolanaFinalizedBurnProofVerifier = MockSolanaFinalizedBurnProofVerifier;
     type TonFinalizedBurnProofVerifier = MockTonFinalizedBurnProofVerifier;
+    type SubstrateFinalizedBurnProofVerifier = MockSubstrateFinalizedBurnProofVerifier;
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
     type MaxDomains = SccpMaxDomains;
     type MaxBscValidators = SccpMaxBscValidators;
@@ -118,6 +119,7 @@ thread_local! {
     static ETH_FINALIZED_STATE: RefCell<Option<(H256, H256)>> = RefCell::new(None);
     static SOLANA_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
     static TON_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
+    static SUBSTRATE_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
 }
 
 pub struct MockAuxiliaryDigestHandler;
@@ -176,6 +178,26 @@ pub fn set_ton_finalized_verify_result(result: Option<bool>) {
     TON_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
 }
 
+pub struct MockSubstrateFinalizedBurnProofVerifier;
+
+impl sccp::SubstrateFinalizedBurnProofVerifier for MockSubstrateFinalizedBurnProofVerifier {
+    fn is_available(_source_domain: u32) -> bool {
+        SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
+    }
+
+    fn verify_finalized_burn(
+        _source_domain: u32,
+        _message_id: H256,
+        _proof: &[u8],
+    ) -> Option<bool> {
+        SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
+    }
+}
+
+pub fn set_substrate_finalized_verify_result(result: Option<bool>) {
+    SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
+}
+
 pub struct MockLegacyBridgeChecker;
 
 impl sccp::LegacyBridgeAssetChecker<AssetId> for MockLegacyBridgeChecker {
@@ -227,6 +249,7 @@ impl ExtBuilder {
         ETH_FINALIZED_STATE.with(|s| *s.borrow_mut() = None);
         SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
         TON_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
+        SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self

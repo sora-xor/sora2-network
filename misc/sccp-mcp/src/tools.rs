@@ -2,7 +2,8 @@ use crate::config::{Config, NetworkKind, NetworkProfile, Policy, MUTATING_TOOL_N
 use crate::error::{AppError, AppResult};
 use crate::payload::{
     message_id, parse_hex_fixed, parse_payload, validate_payload, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH,
-    SCCP_DOMAIN_SOL, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
+    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA_KUSAMA, SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON,
+    SCCP_DOMAIN_TRON,
 };
 use crate::rpc_client::{rpc_call, with_rpc_fairness_scope};
 use crate::sora_calls::{encode_attester_quorum_proof, encode_sora_call, supported_sora_calls};
@@ -716,18 +717,22 @@ fn sccp_get_domain_endpoint(ctx: &ToolContext, args: &Value) -> AppResult<Value>
     }))
 }
 
-const SCCP_CORE_REMOTE_DOMAINS: [u32; 5] = [
+const SCCP_CORE_REMOTE_DOMAINS: [u32; 7] = [
     SCCP_DOMAIN_ETH,
     SCCP_DOMAIN_BSC,
     SCCP_DOMAIN_SOL,
     SCCP_DOMAIN_TON,
     SCCP_DOMAIN_TRON,
+    SCCP_DOMAIN_SORA_KUSAMA,
+    SCCP_DOMAIN_SORA_POLKADOT,
 ];
 
 fn expected_remote_id_len(domain_id: u32) -> Option<usize> {
     match domain_id {
         SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON => Some(20),
-        SCCP_DOMAIN_SOL | SCCP_DOMAIN_TON => Some(32),
+        SCCP_DOMAIN_SOL | SCCP_DOMAIN_TON | SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT => {
+            Some(32)
+        }
         _ => None,
     }
 }

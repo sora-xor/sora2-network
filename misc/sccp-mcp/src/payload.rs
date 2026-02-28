@@ -9,6 +9,8 @@ pub const SCCP_DOMAIN_BSC: u32 = 2;
 pub const SCCP_DOMAIN_SOL: u32 = 3;
 pub const SCCP_DOMAIN_TON: u32 = 4;
 pub const SCCP_DOMAIN_TRON: u32 = 5;
+pub const SCCP_DOMAIN_SORA_KUSAMA: u32 = 6;
+pub const SCCP_DOMAIN_SORA_POLKADOT: u32 = 7;
 
 pub const SCCP_MSG_PREFIX_BURN_V1: &[u8] = b"sccp:burn:v1";
 
@@ -24,7 +26,7 @@ pub struct BurnPayload {
     pub recipient: String,
 }
 
-pub fn supported_domains() -> [u32; 6] {
+pub fn supported_domains() -> [u32; 8] {
     [
         SCCP_DOMAIN_SORA,
         SCCP_DOMAIN_ETH,
@@ -32,6 +34,8 @@ pub fn supported_domains() -> [u32; 6] {
         SCCP_DOMAIN_SOL,
         SCCP_DOMAIN_TON,
         SCCP_DOMAIN_TRON,
+        SCCP_DOMAIN_SORA_KUSAMA,
+        SCCP_DOMAIN_SORA_POLKADOT,
     ]
 }
 

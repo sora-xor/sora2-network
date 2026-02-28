@@ -26,7 +26,9 @@ pub mod tron_proof;
 #[cfg(not(any(test, feature = "fuzzing")))]
 mod tron_proof;
 
-use bridge_types::{traits::AuxiliaryDigestHandler, types::AuxiliaryDigestItem, GenericNetworkId};
+use bridge_types::{
+    traits::AuxiliaryDigestHandler, types::AuxiliaryDigestItem, GenericNetworkId, SubNetworkId,
+};
 use codec::{Decode, Encode};
 use common::{hash, prelude::Balance, AssetInfoProvider, AssetName, AssetSymbol};
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -126,19 +128,50 @@ impl TonFinalizedBurnProofVerifier for () {
     }
 }
 
+/// Pluggable on-chain verifier hook for trustless Substrate burn proofs into SORA.
+///
+/// This is used for SCCP domains backed by SORA parachains (Kusama/Polkadot).
+///
+/// Implementations should return:
+/// - `Some(true)` when the proof is valid and finalized under Substrate consensus,
+/// - `Some(false)` when the proof is invalid,
+/// - `None` when finalized verification is currently unavailable (fail-closed).
+pub trait SubstrateFinalizedBurnProofVerifier {
+    fn is_available(source_domain: u32) -> bool;
+    fn verify_finalized_burn(source_domain: u32, message_id: H256, proof: &[u8]) -> Option<bool>;
+}
+
+impl SubstrateFinalizedBurnProofVerifier for () {
+    fn is_available(_source_domain: u32) -> bool {
+        false
+    }
+
+    fn verify_finalized_burn(
+        _source_domain: u32,
+        _message_id: H256,
+        _proof: &[u8],
+    ) -> Option<bool> {
+        None
+    }
+}
+
 pub const SCCP_DOMAIN_SORA: u32 = 0;
 pub const SCCP_DOMAIN_ETH: u32 = 1;
 pub const SCCP_DOMAIN_BSC: u32 = 2;
 pub const SCCP_DOMAIN_SOL: u32 = 3;
 pub const SCCP_DOMAIN_TON: u32 = 4;
 pub const SCCP_DOMAIN_TRON: u32 = 5;
+pub const SCCP_DOMAIN_SORA_KUSAMA: u32 = 6;
+pub const SCCP_DOMAIN_SORA_POLKADOT: u32 = 7;
 /// Core SCCP remote domains that must always be configured per token before activation.
-pub const SCCP_CORE_REMOTE_DOMAINS: [u32; 5] = [
+pub const SCCP_CORE_REMOTE_DOMAINS: [u32; 7] = [
     SCCP_DOMAIN_ETH,
     SCCP_DOMAIN_BSC,
     SCCP_DOMAIN_SOL,
     SCCP_DOMAIN_TON,
     SCCP_DOMAIN_TRON,
+    SCCP_DOMAIN_SORA_KUSAMA,
+    SCCP_DOMAIN_SORA_POLKADOT,
 ];
 
 pub const SCCP_MSG_PREFIX_BURN_V1: &[u8] = b"sccp:burn:v1";
@@ -153,6 +186,14 @@ pub const SCCP_TECH_ACC_MAIN: &[u8] = b"main";
 /// We reuse `GenericNetworkId::EVMLegacy(u32)` to avoid changing the shared `bridge-types` enum,
 /// reserving `0x5343_4350` ('SCCP') as sentinel.
 pub const SCCP_DIGEST_NETWORK_ID: GenericNetworkId = GenericNetworkId::EVMLegacy(0x5343_4350);
+
+fn digest_network_id_for_domain(domain_id: u32) -> GenericNetworkId {
+    match domain_id {
+        SCCP_DOMAIN_SORA_KUSAMA => GenericNetworkId::Sub(SubNetworkId::Kusama),
+        SCCP_DOMAIN_SORA_POLKADOT => GenericNetworkId::Sub(SubNetworkId::Polkadot),
+        _ => SCCP_DIGEST_NETWORK_ID,
+    }
+}
 
 /// Solidity storage slot index of `mapping(bytes32 => BurnRecord) public burns;` in `SccpRouter`.
 ///
@@ -186,7 +227,7 @@ pub const SECP256K1N_HALF_ORDER: [u8; 32] = [
 ];
 
 fn default_required_domains_for_bound<S: Get<u32>>() -> BoundedVec<u32, S> {
-    // ETH, BSC, Solana, TON, TRON
+    // ETH, BSC, Solana, TON, TRON, SORA Kusama parachain, SORA Polkadot parachain
     let mut domains = BoundedVec::<u32, S>::default();
     for domain in SCCP_CORE_REMOTE_DOMAINS {
         if domains.try_push(domain).is_err() {
@@ -273,6 +314,8 @@ pub enum InboundFinalityMode {
     TonLightClient,
     /// TRON witness light client: on-chain header verifier + "solidified block" finality (>70% witnesses).
     TronLightClient,
+    /// Substrate light client for SORA parachain domains (Kusama/Polkadot relay contexts).
+    SubstrateLightClient,
     /// Attester quorum: threshold ECDSA signatures over `messageId`, with an on-chain attester set per domain.
     ///
     /// This is a CCTP-style mode intended as a practical fallback for chains without an integrated
@@ -435,6 +478,12 @@ pub mod pallet {
         ///
         /// Returning unavailable keeps TON inbound verification fail-closed.
         type TonFinalizedBurnProofVerifier: TonFinalizedBurnProofVerifier;
+
+        /// Provider for trustless Substrate finalized burn verification used by
+        /// `SubstrateLightClient` mode.
+        ///
+        /// Returning unavailable keeps Substrate-domain inbound verification fail-closed.
+        type SubstrateFinalizedBurnProofVerifier: SubstrateFinalizedBurnProofVerifier;
 
         /// Max length (in bytes) of a remote token identifier stored on SORA (address/pubkey/etc.).
         #[pallet::constant]
@@ -1971,7 +2020,7 @@ pub mod pallet {
             // Commit the burn message id into the auxiliary digest so it can be proven to other
             // chains via BEEFY+MMR light clients.
             T::AuxiliaryDigestHandler::add_item(AuxiliaryDigestItem::Commitment(
-                SCCP_DIGEST_NETWORK_ID,
+                digest_network_id_for_domain(dest_domain),
                 message_id,
             ));
 
@@ -2211,7 +2260,7 @@ pub mod pallet {
 
             AttestedOutbound::<T>::insert(message_id, true);
             T::AuxiliaryDigestHandler::add_item(AuxiliaryDigestItem::Commitment(
-                SCCP_DIGEST_NETWORK_ID,
+                digest_network_id_for_domain(payload.dest_domain),
                 message_id,
             ));
 
@@ -2336,8 +2385,14 @@ pub mod pallet {
 
         fn ensure_supported_domain(domain_id: u32) -> Result<(), DispatchError> {
             match domain_id {
-                SCCP_DOMAIN_SORA | SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_SOL
-                | SCCP_DOMAIN_TON | SCCP_DOMAIN_TRON => Ok(()),
+                SCCP_DOMAIN_SORA
+                | SCCP_DOMAIN_ETH
+                | SCCP_DOMAIN_BSC
+                | SCCP_DOMAIN_SOL
+                | SCCP_DOMAIN_TON
+                | SCCP_DOMAIN_TRON
+                | SCCP_DOMAIN_SORA_KUSAMA
+                | SCCP_DOMAIN_SORA_POLKADOT => Ok(()),
                 _ => Err(Error::<T>::DomainUnsupported.into()),
             }
         }
@@ -2366,7 +2421,10 @@ pub mod pallet {
         fn ensure_remote_token_len(domain_id: u32, len: usize) -> Result<(), DispatchError> {
             let expected = match domain_id {
                 SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON => 20usize,
-                SCCP_DOMAIN_SOL | SCCP_DOMAIN_TON => 32usize,
+                SCCP_DOMAIN_SOL
+                | SCCP_DOMAIN_TON
+                | SCCP_DOMAIN_SORA_KUSAMA
+                | SCCP_DOMAIN_SORA_POLKADOT => 32usize,
                 SCCP_DOMAIN_SORA => 0usize, // not used
                 _ => return Err(Error::<T>::DomainUnsupported.into()),
             };
@@ -2380,7 +2438,10 @@ pub mod pallet {
         fn ensure_domain_endpoint_len(domain_id: u32, len: usize) -> Result<(), DispatchError> {
             let expected = match domain_id {
                 SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON => 20usize,
-                SCCP_DOMAIN_SOL | SCCP_DOMAIN_TON => 32usize,
+                SCCP_DOMAIN_SOL
+                | SCCP_DOMAIN_TON
+                | SCCP_DOMAIN_SORA_KUSAMA
+                | SCCP_DOMAIN_SORA_POLKADOT => 32usize,
                 SCCP_DOMAIN_SORA => 0usize, // not used
                 _ => return Err(Error::<T>::DomainUnsupported.into()),
             };
@@ -2702,6 +2763,21 @@ pub mod pallet {
                     T::TonFinalizedBurnProofVerifier::verify_finalized_burn(message_id, proof)
                         .ok_or(Error::<T>::InboundFinalityUnavailable.into())
                 }
+                InboundFinalityMode::SubstrateLightClient => {
+                    ensure!(
+                        matches!(
+                            source_domain,
+                            SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT
+                        ),
+                        Error::<T>::InboundFinalityModeUnsupported
+                    );
+                    T::SubstrateFinalizedBurnProofVerifier::verify_finalized_burn(
+                        source_domain,
+                        message_id,
+                        proof,
+                    )
+                    .ok_or(Error::<T>::InboundFinalityUnavailable.into())
+                }
                 InboundFinalityMode::AttesterQuorum => {
                     Self::verify_attester_quorum(source_domain, message_id, proof)
                 }
@@ -2932,6 +3008,9 @@ pub mod pallet {
                 SCCP_DOMAIN_SOL => InboundFinalityMode::SolanaLightClient,
                 SCCP_DOMAIN_TON => InboundFinalityMode::TonLightClient,
                 SCCP_DOMAIN_TRON => InboundFinalityMode::TronLightClient,
+                SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT => {
+                    InboundFinalityMode::SubstrateLightClient
+                }
                 _ => InboundFinalityMode::Disabled,
             }
         }
@@ -2982,6 +3061,12 @@ pub mod pallet {
                     InboundFinalityMode::Disabled
                         | InboundFinalityMode::EvmAnchor
                         | InboundFinalityMode::TronLightClient
+                        | InboundFinalityMode::AttesterQuorum
+                ),
+                SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT => matches!(
+                    mode,
+                    InboundFinalityMode::Disabled
+                        | InboundFinalityMode::SubstrateLightClient
                         | InboundFinalityMode::AttesterQuorum
                 ),
                 _ => false,
@@ -3073,6 +3158,20 @@ pub mod pallet {
                     );
                     ensure!(
                         T::TonFinalizedBurnProofVerifier::is_available(),
+                        Error::<T>::InboundFinalityUnavailable
+                    );
+                    Ok(())
+                }
+                InboundFinalityMode::SubstrateLightClient => {
+                    ensure!(
+                        matches!(
+                            source_domain,
+                            SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT
+                        ),
+                        Error::<T>::InboundFinalityModeUnsupported
+                    );
+                    ensure!(
+                        T::SubstrateFinalizedBurnProofVerifier::is_available(source_domain),
                         Error::<T>::InboundFinalityUnavailable
                     );
                     Ok(())
