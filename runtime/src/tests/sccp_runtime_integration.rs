@@ -14,9 +14,9 @@ use frame_support::{assert_noop, assert_ok};
 use framenode_chain_spec::ext;
 use sccp::{
     BurnPayloadV1, InboundFinalityMode, LegacyBridgeAssetChecker, SCCP_CORE_REMOTE_DOMAINS,
-    SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON,
-    SCCP_DOMAIN_TRON, SCCP_MAX_BSC_HEADER_RLP_BYTES, SCCP_MAX_TRON_RAW_DATA_BYTES,
-    SCCP_MSG_PREFIX_ATTEST_V1, SCCP_MSG_PREFIX_BURN_V1,
+    SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_SORA_KUSAMA,
+    SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON, SCCP_MAX_BSC_HEADER_RLP_BYTES,
+    SCCP_MAX_TRON_RAW_DATA_BYTES, SCCP_MSG_PREFIX_ATTEST_V1, SCCP_MSG_PREFIX_BURN_V1,
 };
 use sp_core::{ecdsa, keccak_256, Pair, H256};
 use sp_runtime::DispatchError;
@@ -31,6 +31,8 @@ fn sccp_test_remote_token_bytes(domain: u32) -> Vec<u8> {
         SCCP_DOMAIN_TRON => vec![0x13u8; 20],
         SCCP_DOMAIN_SOL => vec![0x14u8; 32],
         SCCP_DOMAIN_TON => vec![0x15u8; 32],
+        SCCP_DOMAIN_SORA_KUSAMA => vec![0x16u8; 32],
+        SCCP_DOMAIN_SORA_POLKADOT => vec![0x17u8; 32],
         _ => unreachable!("core domain expected"),
     }
 }
@@ -42,6 +44,8 @@ fn sccp_test_domain_endpoint_bytes(domain: u32) -> Vec<u8> {
         SCCP_DOMAIN_TRON => vec![0x23u8; 20],
         SCCP_DOMAIN_SOL => vec![0x24u8; 32],
         SCCP_DOMAIN_TON => vec![0x25u8; 32],
+        SCCP_DOMAIN_SORA_KUSAMA => vec![0x26u8; 32],
+        SCCP_DOMAIN_SORA_POLKADOT => vec![0x27u8; 32],
         _ => unreachable!("core domain expected"),
     }
 }
@@ -270,8 +274,10 @@ fn sccp_set_required_domains_stores_canonical_order_in_runtime() {
             RuntimeOrigin::root(),
             vec![
                 SCCP_DOMAIN_TRON,
+                SCCP_DOMAIN_SORA_POLKADOT,
                 SCCP_DOMAIN_ETH,
                 SCCP_DOMAIN_TON,
+                SCCP_DOMAIN_SORA_KUSAMA,
                 SCCP_DOMAIN_BSC,
                 SCCP_DOMAIN_SOL,
             ],
@@ -285,6 +291,8 @@ fn sccp_set_required_domains_stores_canonical_order_in_runtime() {
                 SCCP_DOMAIN_SOL,
                 SCCP_DOMAIN_TON,
                 SCCP_DOMAIN_TRON,
+                SCCP_DOMAIN_SORA_KUSAMA,
+                SCCP_DOMAIN_SORA_POLKADOT,
             ]
         );
     });
@@ -296,8 +304,10 @@ fn sccp_set_required_domains_event_hash_uses_canonical_sorted_order_in_runtime()
         System::set_block_number(1);
         let input = vec![
             SCCP_DOMAIN_TRON,
+            SCCP_DOMAIN_SORA_POLKADOT,
             SCCP_DOMAIN_ETH,
             SCCP_DOMAIN_TON,
+            SCCP_DOMAIN_SORA_KUSAMA,
             SCCP_DOMAIN_BSC,
             SCCP_DOMAIN_SOL,
         ];

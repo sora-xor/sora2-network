@@ -125,6 +125,7 @@ impl sccp::Config for Test {
     type EthFinalizedStateProvider = ();
     type SolanaFinalizedBurnProofVerifier = ();
     type TonFinalizedBurnProofVerifier = ();
+    type SubstrateFinalizedBurnProofVerifier = ();
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
     type MaxDomains = SccpMaxDomains;
     type MaxBscValidators = SccpMaxBscValidators;

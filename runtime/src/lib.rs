@@ -60,6 +60,8 @@ use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::U256;
+#[cfg(feature = "wip")] // Trustless substrate bridge
+use codec::Decode;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
@@ -2350,6 +2352,59 @@ impl sccp::LegacyBridgeAssetChecker<AssetId> for LegacyBridgeChecker {
     }
 }
 
+pub struct SccpSubstrateFinalizedBurnProofVerifier;
+
+#[cfg(feature = "wip")] // Trustless substrate bridge
+fn sccp_sub_network_for_domain(domain_id: u32) -> Option<SubNetworkId> {
+    match domain_id {
+        sccp::SCCP_DOMAIN_SORA_KUSAMA => Some(SubNetworkId::Kusama),
+        sccp::SCCP_DOMAIN_SORA_POLKADOT => Some(SubNetworkId::Polkadot),
+        _ => None,
+    }
+}
+
+#[cfg(feature = "wip")]
+impl sccp::SubstrateFinalizedBurnProofVerifier for SccpSubstrateFinalizedBurnProofVerifier {
+    fn is_available(source_domain: u32) -> bool {
+        sccp_sub_network_for_domain(source_domain).is_some()
+    }
+
+    fn verify_finalized_burn(source_domain: u32, message_id: H256, proof: &[u8]) -> Option<bool> {
+        let Some(sub_network_id) = sccp_sub_network_for_domain(source_domain) else {
+            return None;
+        };
+
+        let mut input = proof;
+        let decoded = match <BeefyLightClient as Verifier>::Proof::decode(&mut input) {
+            Ok(decoded) => decoded,
+            Err(_) => return Some(false),
+        };
+        if !input.is_empty() {
+            return Some(false);
+        }
+
+        Some(
+            BeefyLightClient::verify(GenericNetworkId::Sub(sub_network_id), message_id, &decoded)
+                .is_ok(),
+        )
+    }
+}
+
+#[cfg(not(feature = "wip"))]
+impl sccp::SubstrateFinalizedBurnProofVerifier for SccpSubstrateFinalizedBurnProofVerifier {
+    fn is_available(_source_domain: u32) -> bool {
+        false
+    }
+
+    fn verify_finalized_burn(
+        _source_domain: u32,
+        _message_id: H256,
+        _proof: &[u8],
+    ) -> Option<bool> {
+        None
+    }
+}
+
 impl sccp::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ManagerOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
@@ -2360,6 +2415,7 @@ impl sccp::Config for Runtime {
     type EthFinalizedStateProvider = ();
     type SolanaFinalizedBurnProofVerifier = ();
     type TonFinalizedBurnProofVerifier = ();
+    type SubstrateFinalizedBurnProofVerifier = SccpSubstrateFinalizedBurnProofVerifier;
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
     type MaxDomains = SccpMaxDomains;
     type MaxBscValidators = SccpMaxBscValidators;

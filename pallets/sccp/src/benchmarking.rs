@@ -87,6 +87,20 @@ fn set_default_remote_tokens<T: Config>(asset_id: AssetIdOf<T>) -> Result<(), &'
         vec![5u8; 32],
     )
     .map_err(|_| "set_remote_token ton failed")?;
+    Pallet::<T>::set_remote_token(
+        RawOrigin::Root.into(),
+        asset_id,
+        SCCP_DOMAIN_SORA_KUSAMA,
+        vec![6u8; 32],
+    )
+    .map_err(|_| "set_remote_token sora kusama failed")?;
+    Pallet::<T>::set_remote_token(
+        RawOrigin::Root.into(),
+        asset_id,
+        SCCP_DOMAIN_SORA_POLKADOT,
+        vec![7u8; 32],
+    )
+    .map_err(|_| "set_remote_token sora polkadot failed")?;
     Ok(())
 }
 
@@ -101,6 +115,18 @@ fn set_default_domain_endpoints<T: Config>() -> Result<(), &'static str> {
         .map_err(|_| "set_domain_endpoint sol failed")?;
     Pallet::<T>::set_domain_endpoint(RawOrigin::Root.into(), SCCP_DOMAIN_TON, vec![15u8; 32])
         .map_err(|_| "set_domain_endpoint ton failed")?;
+    Pallet::<T>::set_domain_endpoint(
+        RawOrigin::Root.into(),
+        SCCP_DOMAIN_SORA_KUSAMA,
+        vec![16u8; 32],
+    )
+    .map_err(|_| "set_domain_endpoint sora kusama failed")?;
+    Pallet::<T>::set_domain_endpoint(
+        RawOrigin::Root.into(),
+        SCCP_DOMAIN_SORA_POLKADOT,
+        vec![17u8; 32],
+    )
+    .map_err(|_| "set_domain_endpoint sora polkadot failed")?;
     Ok(())
 }
 

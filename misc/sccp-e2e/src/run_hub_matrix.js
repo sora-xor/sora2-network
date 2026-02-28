@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const DOMAIN_ORDER = ['sora', 'eth', 'bsc', 'sol', 'ton', 'tron'];
+const DOMAIN_ORDER = ['sora', 'eth', 'bsc', 'sol', 'ton', 'tron', 'sora_kusama', 'sora_polkadot'];
 const DOMAIN_TO_ID = {
   sora: 0,
   eth: 1,
@@ -14,6 +14,8 @@ const DOMAIN_TO_ID = {
   sol: 3,
   ton: 4,
   tron: 5,
+  sora_kusama: 6,
+  sora_polkadot: 7,
 };
 
 function nowIso() {
@@ -149,6 +151,9 @@ function resolveConfig(rawConfig, harnessRoot) {
     sccpSol: path.resolve(repoRoot, '..', 'sccp-sol'),
     sccpTon: path.resolve(repoRoot, '..', 'sccp-ton'),
     sccpTron: path.resolve(repoRoot, '..', 'sccp-tron'),
+    sora2Parachain: path.resolve(repoRoot, '..', 'sora2-parachain'),
+    sccpSoraKusama: path.resolve(repoRoot, '..', 'sora2-parachain'),
+    sccpSoraPolkadot: path.resolve(repoRoot, '..', 'sora2-parachain'),
   };
 
   const merged = JSON.parse(JSON.stringify(rawConfig));
@@ -347,6 +352,8 @@ function resolveDomainRepo(config, domain) {
     sol: config.paths.sccpSol,
     ton: config.paths.sccpTon,
     tron: config.paths.sccpTron,
+    sora_kusama: config.paths.sccpSoraKusama,
+    sora_polkadot: config.paths.sccpSoraPolkadot,
   };
   return map[domain] || null;
 }
@@ -530,6 +537,8 @@ function checkRequiredPaths(config) {
     sccpSol: config.paths.sccpSol,
     sccpTon: config.paths.sccpTon,
     sccpTron: config.paths.sccpTron,
+    sccpSoraKusama: config.paths.sccpSoraKusama,
+    sccpSoraPolkadot: config.paths.sccpSoraPolkadot,
   };
 
   const missing = [];

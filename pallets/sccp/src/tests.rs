@@ -7,10 +7,10 @@ use crate::mock::*;
 use crate::{
     BurnPayloadV1, Error, EvmBurnProofV1, InboundFinalityMode, SCCP_CORE_REMOTE_DOMAINS,
     SCCP_DIGEST_NETWORK_ID, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA,
-    SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON, SCCP_EVM_BURNS_MAPPING_SLOT, SCCP_MSG_PREFIX_ATTEST_V1,
-    SCCP_MSG_PREFIX_BURN_V1,
+    SCCP_DOMAIN_SORA_KUSAMA, SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
+    SCCP_EVM_BURNS_MAPPING_SLOT, SCCP_MSG_PREFIX_ATTEST_V1, SCCP_MSG_PREFIX_BURN_V1,
 };
-use bridge_types::types::AuxiliaryDigestItem;
+use bridge_types::{types::AuxiliaryDigestItem, GenericNetworkId, SubNetworkId};
 use codec::Encode;
 use common::{
     prelude::Balance, AssetInfoProvider, AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION,
@@ -70,6 +70,19 @@ fn set_default_remote_tokens(asset_id: AssetId) {
         SCCP_DOMAIN_TON,
         vec![5u8; 32],
     ));
+    // SORA parachains: 32-byte identifiers
+    assert_ok!(Sccp::set_remote_token(
+        RuntimeOrigin::root(),
+        asset_id,
+        SCCP_DOMAIN_SORA_KUSAMA,
+        vec![6u8; 32],
+    ));
+    assert_ok!(Sccp::set_remote_token(
+        RuntimeOrigin::root(),
+        asset_id,
+        SCCP_DOMAIN_SORA_POLKADOT,
+        vec![7u8; 32],
+    ));
 }
 
 fn set_default_domain_endpoints() {
@@ -99,6 +112,16 @@ fn set_default_domain_endpoints() {
         RuntimeOrigin::root(),
         SCCP_DOMAIN_TON,
         vec![15u8; 32],
+    ));
+    assert_ok!(Sccp::set_domain_endpoint(
+        RuntimeOrigin::root(),
+        SCCP_DOMAIN_SORA_KUSAMA,
+        vec![16u8; 32],
+    ));
+    assert_ok!(Sccp::set_domain_endpoint(
+        RuntimeOrigin::root(),
+        SCCP_DOMAIN_SORA_POLKADOT,
+        vec![17u8; 32],
     ));
 }
 
@@ -148,8 +171,10 @@ fn genesis_build_canonicalizes_required_domains() {
     let mut ext = ExtBuilder::default()
         .with_required_domains(vec![
             SCCP_DOMAIN_TRON,
+            SCCP_DOMAIN_SORA_POLKADOT,
             SCCP_DOMAIN_ETH,
             SCCP_DOMAIN_TON,
+            SCCP_DOMAIN_SORA_KUSAMA,
             SCCP_DOMAIN_BSC,
             SCCP_DOMAIN_SOL,
         ])
@@ -164,6 +189,8 @@ fn genesis_build_canonicalizes_required_domains() {
                 SCCP_DOMAIN_SOL,
                 SCCP_DOMAIN_TON,
                 SCCP_DOMAIN_TRON,
+                SCCP_DOMAIN_SORA_KUSAMA,
+                SCCP_DOMAIN_SORA_POLKADOT,
             ]
         );
     });
@@ -656,8 +683,10 @@ fn set_required_domains_stores_canonical_sorted_order() {
             RuntimeOrigin::root(),
             vec![
                 SCCP_DOMAIN_TRON,
+                SCCP_DOMAIN_SORA_POLKADOT,
                 SCCP_DOMAIN_ETH,
                 SCCP_DOMAIN_TON,
+                SCCP_DOMAIN_SORA_KUSAMA,
                 SCCP_DOMAIN_BSC,
                 SCCP_DOMAIN_SOL,
             ],
@@ -671,6 +700,8 @@ fn set_required_domains_stores_canonical_sorted_order() {
                 SCCP_DOMAIN_SOL,
                 SCCP_DOMAIN_TON,
                 SCCP_DOMAIN_TRON,
+                SCCP_DOMAIN_SORA_KUSAMA,
+                SCCP_DOMAIN_SORA_POLKADOT,
             ]
         );
     });
@@ -684,8 +715,10 @@ fn set_required_domains_event_hash_uses_canonical_sorted_order() {
         System::set_block_number(1);
         let input = vec![
             SCCP_DOMAIN_TRON,
+            SCCP_DOMAIN_SORA_POLKADOT,
             SCCP_DOMAIN_ETH,
             SCCP_DOMAIN_TON,
+            SCCP_DOMAIN_SORA_KUSAMA,
             SCCP_DOMAIN_BSC,
             SCCP_DOMAIN_SOL,
         ];
@@ -1205,6 +1238,189 @@ fn ton_light_client_mode_uses_provider_for_proof_path() {
             vec![],
         ));
         assert!(Sccp::processed_inbound(message_id));
+    });
+}
+
+#[test]
+fn substrate_light_client_mode_uses_provider_for_proof_path() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Pan.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_SORA_KUSAMA,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 208,
+            sora_asset_id: asset_h256.0,
+            amount: 9u32.into(),
+            recipient: [0x7au8; 32],
+        };
+        let message_id = {
+            let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+            preimage.extend(payload.encode());
+            H256::from_slice(&keccak_256(&preimage))
+        };
+
+        // Without a Substrate finalized-proof verifier, mode is fail-closed.
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_SORA_KUSAMA,
+                payload.clone(),
+                vec![],
+            ),
+            Error::<Runtime>::InboundFinalityUnavailable
+        );
+
+        // Provider available, invalid proof path => verification failure.
+        set_substrate_finalized_verify_result(Some(false));
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_SORA_KUSAMA,
+                payload.clone(),
+                vec![],
+            ),
+            Error::<Runtime>::ProofVerificationFailed
+        );
+
+        // Provider available, valid proof path => mint succeeds.
+        set_substrate_finalized_verify_result(Some(true));
+        assert_ok!(Sccp::mint_from_proof(
+            RuntimeOrigin::signed(alice()),
+            SCCP_DOMAIN_SORA_KUSAMA,
+            payload,
+            vec![],
+        ));
+        assert!(Sccp::processed_inbound(message_id));
+    });
+}
+
+#[test]
+fn burn_to_sora_parachain_domains_uses_substrate_digest_network_ids() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::RedPepper.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(assets::Pallet::<Runtime>::mint_to(
+            &asset_id,
+            &alice(),
+            &alice(),
+            1_000u32.into()
+        ));
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+
+        let amount: Balance = 10u32.into();
+        let recipient = [0x55u8; 32];
+        assert_ok!(Sccp::burn(
+            RuntimeOrigin::signed(alice()),
+            asset_id,
+            amount,
+            SCCP_DOMAIN_SORA_KUSAMA,
+            recipient,
+        ));
+        let payload_kusama = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_SORA,
+            dest_domain: SCCP_DOMAIN_SORA_KUSAMA,
+            nonce: 1,
+            sora_asset_id: H256::from(asset_id).0,
+            amount,
+            recipient,
+        };
+        let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage.extend(payload_kusama.encode());
+        let kusama_message_id = H256::from_slice(&keccak_256(&preimage));
+        assert_eq!(
+            take_aux_digest_items(),
+            vec![AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(SubNetworkId::Kusama),
+                kusama_message_id
+            )]
+        );
+
+        assert_ok!(Sccp::burn(
+            RuntimeOrigin::signed(alice()),
+            asset_id,
+            amount,
+            SCCP_DOMAIN_SORA_POLKADOT,
+            recipient,
+        ));
+        let payload_polkadot = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_SORA,
+            dest_domain: SCCP_DOMAIN_SORA_POLKADOT,
+            nonce: 2,
+            sora_asset_id: H256::from(asset_id).0,
+            amount,
+            recipient,
+        };
+        let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage.extend(payload_polkadot.encode());
+        let polkadot_message_id = H256::from_slice(&keccak_256(&preimage));
+        assert_eq!(
+            take_aux_digest_items(),
+            vec![AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(SubNetworkId::Polkadot),
+                polkadot_message_id
+            )]
+        );
+    });
+}
+
+#[test]
+fn attest_burn_to_sora_parachain_domain_uses_substrate_digest_network_id() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Pan.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+
+        set_solana_finalized_verify_result(Some(true));
+
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_SOL,
+            dest_domain: SCCP_DOMAIN_SORA_POLKADOT,
+            nonce: 209,
+            sora_asset_id: asset_h256.0,
+            amount: 9u32.into(),
+            recipient: [0x7bu8; 32],
+        };
+        let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage.extend(payload.encode());
+        let message_id = H256::from_slice(&keccak_256(&preimage));
+
+        assert_ok!(Sccp::attest_burn(
+            RuntimeOrigin::signed(alice()),
+            SCCP_DOMAIN_SOL,
+            payload,
+            vec![],
+        ));
+        assert_eq!(
+            take_aux_digest_items(),
+            vec![AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(SubNetworkId::Polkadot),
+                message_id
+            )]
+        );
     });
 }
 

@@ -11,7 +11,9 @@
     "sccpBsc": "${sccpBsc}",
     "sccpSol": "${sccpSol}",
     "sccpTon": "${sccpTon}",
-    "sccpTron": "${sccpTron}"
+    "sccpTron": "${sccpTron}",
+    "sccpSoraKusama": "${sccpSoraKusama}",
+    "sccpSoraPolkadot": "${sccpSoraPolkadot}"
   },
   "commands": {
     "preflight": {
@@ -53,6 +55,16 @@
         "burn": "npm test",
         "mint_verify": "npm test",
         "negative_verify": "npm test"
+      },
+      "sora_kusama": {
+        "burn": "cargo test -p sccp-link",
+        "mint_verify": "cargo test -p sccp-link",
+        "negative_verify": "cargo test -p sccp-link"
+      },
+      "sora_polkadot": {
+        "burn": "cargo test -p sccp-link",
+        "mint_verify": "cargo test -p sccp-link",
+        "negative_verify": "cargo test -p sccp-link"
       }
     }
   }
