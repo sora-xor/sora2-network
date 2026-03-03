@@ -1034,6 +1034,15 @@ impl PolkamarktAssetTransfer<AccountId, AssetId, Balance> for PolkamarktAssetsAd
     ) -> frame_support::dispatch::DispatchResult {
         assets::Pallet::<Runtime>::transfer_from(&asset, from, to, amount)
     }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn mint_for_bench(
+        asset: AssetId,
+        to: &AccountId,
+        amount: Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        assets::Pallet::<Runtime>::mint_unchecked(&asset, to, amount)
+    }
 }
 
 pub struct PolkamarktRouter;

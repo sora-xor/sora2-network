@@ -4,18 +4,28 @@ use super::*;
 use frame_benchmarking::v2::*;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::traits::{One, Saturating, Zero};
 
 fn default_condition_input<BlockNumber>() -> ConditionInput<BlockNumber>
 where
     BlockNumber: Default,
 {
     ConditionInput {
-        question: b"Will Hydra succeed?".to_vec(),
+        question: b"Will Hydra succeed across all markets?".to_vec(),
         oracle: b"Chainlink".to_vec(),
         resolution_source: b"https://oracle.example.com".to_vec(),
         submission_deadline: BlockNumber::default(),
     }
+}
+
+fn fund_canonical_fee<T>(who: &T::AccountId)
+where
+    T: crate::Config + frame_system::Config,
+{
+    let asset = T::CanonicalStableAssetId::get();
+    let fee = T::MinCreationFee::get();
+    let amount = fee.saturating_add(fee);
+    T::Assets::mint_for_bench(asset, who, amount).expect("benchmark canonical funding");
 }
 
 #[benchmarks(where
@@ -38,6 +48,7 @@ mod benchmarks {
     fn create_market() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
+        fund_canonical_fee::<T>(&caller);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
@@ -60,6 +71,7 @@ mod benchmarks {
     fn commit_order() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
+        fund_canonical_fee::<T>(&caller);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
@@ -84,6 +96,8 @@ mod benchmarks {
     #[benchmark]
     fn reveal_order() {
         let caller: T::AccountId = whitelisted_caller();
+        GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
+        fund_canonical_fee::<T>(&caller);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");

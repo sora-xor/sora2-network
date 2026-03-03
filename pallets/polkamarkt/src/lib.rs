@@ -3,7 +3,9 @@
 pub use pallet::*;
 
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{dispatch::DispatchResult, weights::Weight, BoundedVec, PalletId};
+use frame_support::{
+    dispatch::DispatchResult, transactional, weights::Weight, BoundedVec, PalletId,
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_256;
@@ -254,6 +256,11 @@ pub trait AssetTransfer<AccountId, AssetId, Balance> {
         to: &AccountId,
         amount: Balance,
     ) -> DispatchResult;
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn mint_for_bench(_asset: AssetId, _to: &AccountId, _amount: Balance) -> DispatchResult {
+        Err(DispatchError::Other("benchmark-minting-not-supported"))
+    }
 }
 
 impl<AccountId, AssetId, Balance> AssetTransfer<AccountId, AssetId, Balance> for () {
@@ -900,6 +907,7 @@ pub mod pallet {
             seed_liquidity,
             fee_asset
         )))]
+        #[transactional]
         pub fn create_market(
             origin: OriginFor<T>,
             condition_id: ConditionId,
@@ -1362,7 +1370,7 @@ pub mod pallet {
             let canonical = T::CanonicalStableAssetId::get();
             match fee_asset {
                 Some(asset) if *asset != canonical => {
-                    let mut transfers = 1; // routed path for creation fee
+                    let mut transfers = 2; // quote + convert during creation fee withdrawal
                     if !amount.is_zero() {
                         transfers += 3; // additional router calls when seeding liquidity
                     }
