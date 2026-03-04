@@ -1147,6 +1147,7 @@ pub mod pallet {
         /// Withdraw bonded governance stake (subject to safety threshold).
         #[pallet::call_index(8)]
         #[pallet::weight(Weight::from_parts(50_000, 0))]
+        #[transactional]
         pub fn unbond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_account_is_clear(&who)?;
@@ -1243,6 +1244,7 @@ pub mod pallet {
         /// Withdraw funds from the maintenance pool while respecting the safety floor.
         #[pallet::call_index(13)]
         #[pallet::weight(Weight::from_parts(50_000, 0))]
+        #[transactional]
         pub fn withdraw_maintenance_pool(
             origin: OriginFor<T>,
             destination: T::AccountId,
