@@ -18,14 +18,24 @@ where
     }
 }
 
+fn mint_canonical_balance<T>(who: &T::AccountId, amount: T::Balance)
+where
+    T: crate::Config + frame_system::Config,
+{
+    if amount.is_zero() {
+        return;
+    }
+    let asset = T::CanonicalStableAssetId::get();
+    T::Assets::mint_for_bench(asset, who, amount).expect("benchmark canonical funding");
+}
+
 fn fund_canonical_fee<T>(who: &T::AccountId)
 where
     T: crate::Config + frame_system::Config,
 {
-    let asset = T::CanonicalStableAssetId::get();
     let fee = T::MinCreationFee::get();
     let amount = fee.saturating_add(fee);
-    T::Assets::mint_for_bench(asset, who, amount).expect("benchmark canonical funding");
+    mint_canonical_balance::<T>(who, amount);
 }
 
 #[benchmarks(where
@@ -49,6 +59,8 @@ mod benchmarks {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
         fund_canonical_fee::<T>(&caller);
+        let seed = T::Balance::one();
+        mint_canonical_balance::<T>(&caller, seed);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
@@ -58,13 +70,7 @@ mod benchmarks {
             + BlockNumberFor::<T>::one();
 
         #[extrinsic_call]
-        create_market(
-            RawOrigin::Signed(caller),
-            0,
-            close,
-            T::Balance::zero(),
-            None,
-        );
+        create_market(RawOrigin::Signed(caller), 0, close, seed, None);
     }
 
     #[benchmark]

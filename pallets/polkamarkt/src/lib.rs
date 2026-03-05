@@ -841,6 +841,7 @@ pub mod pallet {
         /// Register an OpenGov-linked condition compatible with Polkadot Plaza feeds.
         #[pallet::call_index(16)]
         #[pallet::weight(T::WeightInfo::create_condition())]
+        #[transactional]
         pub fn create_opengov_condition(
             origin: OriginFor<T>,
             metadata: ConditionInput<BlockNumberFor<T>>,
@@ -1024,7 +1025,10 @@ pub mod pallet {
                 .checked_add(&T::CommitmentRevealDelay::get())
                 .ok_or(Error::<T>::Overflow)?;
             ensure!(now >= min_reveal, Error::<T>::RevealTooSoon);
-            ensure!(now <= stored.info.expires_at, Error::<T>::CommitmentExpired);
+            if now > stored.info.expires_at {
+                Commitments::<T>::remove(market_id, hash);
+                return Err(Error::<T>::CommitmentExpired.into());
+            }
 
             Commitments::<T>::remove(market_id, hash);
 
