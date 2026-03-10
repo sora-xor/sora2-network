@@ -126,8 +126,7 @@ proptest! {
             )
         });
         let floor_bps = LiquiditySafetyBpsConst::get().min(10_000);
-        let expected_floor: Balance =
-            (Perbill::from_rational(floor_bps, 10_000u32) * total).into();
+        let expected_floor = Perbill::from_rational(floor_bps, 10_000u32) * total;
         let remaining = total.saturating_sub(amount);
         let enough_balance = total >= amount;
         let respects_floor = remaining >= expected_floor;
