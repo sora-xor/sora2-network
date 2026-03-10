@@ -89,8 +89,6 @@ use pallet_grandpa::{
 };
 use pallet_session::historical as pallet_session_historical;
 use pallet_staking::sora::ValBurnedNotifier;
-#[cfg(feature = "std")]
-use serde::{Serialize, Serializer};
 use sp_api::impl_runtime_apis;
 pub use sp_beefy::crypto::AuthorityId as BeefyId;
 #[cfg(feature = "wip")] // Trustless bridges
@@ -98,6 +96,8 @@ use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
 use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
+#[cfg(feature = "std")]
+use sp_runtime::serde::{Serialize, Serializer};
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
     SaturatedConversion, Verify,
@@ -1314,10 +1314,8 @@ parameter_types! {
     pub const FeeReferrerWeight: u32 = 10; // 10%
     pub const FeeXorBurnedWeight: u32 = 20; // 20%
     pub const FeeValBurnedWeight: u32 = 50; // 50%
-    pub const FeeKusdBurnedWeight: u32 = 20; // 20%
-    // Minimal amount for proportions right calculations
-    // now weights are equal to 1, 2, 5, 2, so max weight equal to 10
-    // max weight always right amount for calculations: weight / max_weight * max_weight = weight
+    pub const FeeKusdBurnedWeight: u32 = 5; // 5%
+    // Minimal amount for proportions calculations (fee ratio: 10:20:50:5).
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
     pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
@@ -1526,6 +1524,8 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
     pub const MaxEthBridgeRequestsPerQueue: u32 = 2048;
+    pub const ReservedEthBridgeQueueSlots: u32 = 256;
+    pub const MaxEthBridgePendingLoadIncomingRequestsPerAccount: u32 = 32;
 }
 
 #[cfg(feature = "private-net")]
@@ -1533,6 +1533,8 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
     pub const MaxEthBridgeRequestsPerQueue: u32 = 2048;
+    pub const ReservedEthBridgeQueueSlots: u32 = 256;
+    pub const MaxEthBridgePendingLoadIncomingRequestsPerAccount: u32 = 32;
 }
 
 pub type NetworkId = u32;
@@ -1551,6 +1553,9 @@ impl eth_bridge::Config for Runtime {
     type SccpAssetChecker = Sccp;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
+    type ReservedBridgeQueueSlots = ReservedEthBridgeQueueSlots;
+    type MaxPendingLoadIncomingRequestsPerAccount =
+        MaxEthBridgePendingLoadIncomingRequestsPerAccount;
 }
 
 #[cfg(feature = "private-net")]

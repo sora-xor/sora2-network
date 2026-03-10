@@ -1,0 +1,79 @@
+[package]
+name = "evm-fungible-app"
+description = "EVM Fungible App"
+version = "0.1.1"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.130", optional = true }
+codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
+rlp = { version = "0.5.2", default-features = false }
+hex-literal = { version = "0.4.1", default-features = false }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false, optional = true }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies", default-features = false, optional = true }
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", rev = "f38ef9d584d6dfe341af5b2788c5446528a53bf4", default-features = false, optional = true }
+
+ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
+
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", rev = "f38ef9d584d6dfe341af5b2788c5446528a53bf4", default-features = false }
+
+[dev-dependencies]
+dispatch = { git = "https://github.com/sora-xor/sora2-common.git", rev = "f38ef9d584d6dfe341af5b2788c5446528a53bf4" }
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-tokens" }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies" }
+hex-literal = { version = "0.4.1" }
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", rev = "f38ef9d584d6dfe341af5b2788c5446528a53bf4", features = ["test"] }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "hex/std",
+    "codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "bridge-types/std",
+    "frame-benchmarking/std",
+    "ethabi/std",
+    "traits/std",
+    "currencies/std",
+    "dispatch/std",
+    "rlp/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "traits",
+    "currencies",
+    "dispatch",
+    "dispatch/runtime-benchmarks",
+]
+
+try-runtime = ["frame-support/try-runtime"]

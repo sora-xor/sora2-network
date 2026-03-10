@@ -74,7 +74,7 @@ pub struct IncomingAddToken<T: Config> {
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
     pub name: AssetName,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -100,7 +100,7 @@ impl<T: Config> IncomingAddToken<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -110,10 +110,10 @@ impl<T: Config> IncomingAddToken<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeers<T: Config> {
-    pub peer_account_id: Option<T::AccountId>,
+    pub peer_account_id: Option<<T as frame_system::pallet::Config>::AccountId>,
     pub peer_address: EthAddress,
     pub removed: bool,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -185,7 +185,7 @@ impl<T: Config> IncomingChangePeers<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -201,11 +201,11 @@ pub enum ChangePeersContract {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeersCompat<T: Config> {
-    pub peer_account_id: T::AccountId,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
     pub added: bool,
     pub contract: ChangePeersContract,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -264,7 +264,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -275,12 +275,12 @@ impl<T: Config> IncomingChangePeersCompat<T> {
 #[scale_info(skip_type_params(T))]
 pub struct IncomingTransfer<T: Config> {
     pub from: EthAddress,
-    pub to: T::AccountId,
+    pub to: <T as frame_system::pallet::Config>::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -415,7 +415,7 @@ impl<T: Config> IncomingTransfer<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 
@@ -454,7 +454,7 @@ pub struct IncomingCancelOutgoingRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -520,7 +520,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -534,7 +534,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 pub struct IncomingMarkAsDoneRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
     pub network_id: BridgeNetworkId<T>,
@@ -576,7 +576,7 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -587,7 +587,7 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingPrepareForMigration<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -619,7 +619,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -631,7 +631,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 #[scale_info(skip_type_params(T))]
 pub struct IncomingMigrate<T: Config> {
     pub new_contract_address: EthAddress,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -668,7 +668,7 @@ impl<T: Config> IncomingMigrate<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }

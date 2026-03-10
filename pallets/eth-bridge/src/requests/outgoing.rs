@@ -46,7 +46,7 @@ use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::Denominator;
-use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
+use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL};
 use ethabi::{FixedBytes, Token};
 #[allow(unused_imports)]
 use frame_support::debug;
@@ -79,17 +79,21 @@ fn encode_network_id<T: Config>(network_id: BridgeNetworkId<T>) -> Result<H256, 
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingTransfer<T: Config> {
-    pub from: T::AccountId,
+    pub from: <T as frame_system::pallet::Config>::AccountId,
     pub to: EthAddress,
     pub asset_id: AssetIdOf<T>,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingTransfer<T> {
+    pub(crate) fn uses_legacy_master_contract_path(&self) -> bool {
+        self.network_id == T::GetEthNetworkId::get() && self.asset_id == VAL.into()
+    }
+
     pub fn sidechain_amount(&self) -> Result<(u128, Balance), Error<T>> {
         let sidechain_precision =
             crate::SidechainAssetPrecision::<T>::get(self.network_id, &self.asset_id);
@@ -120,8 +124,7 @@ impl<T: Config> OutgoingTransfer<T> {
             .ok_or(Error::<T>::FailedToApplyDenomination)?;
         let tx_hash = H256(tx_hash.0);
         let network_id = encode_network_id::<T>(self.network_id)?;
-        let is_old_contract = self.network_id == T::GetEthNetworkId::get()
-            && (self.asset_id == XOR.into() || self.asset_id == VAL.into());
+        let is_old_contract = self.uses_legacy_master_contract_path();
         let raw = if is_old_contract {
             encode_packed(&[
                 currency_id.to_token().into(),
@@ -357,9 +360,9 @@ impl OutgoingTransferEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddAsset<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub asset_id: AssetIdOf<T>,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -490,12 +493,12 @@ impl OutgoingAddAssetEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddToken<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub token_address: EthAddress,
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -677,10 +680,10 @@ impl OutgoingAddTokenEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeer<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub peer_account_id: T::AccountId,
-    pub nonce: T::Index,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -731,7 +734,9 @@ impl<T: Config> OutgoingAddPeer<T> {
 
     /// Checks that the current number of peers is less than `MAX_PEERS` and the given peer
     /// is not presented in the current peer set,
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() < MAX_PEERS, Error::<T>::CantAddMorePeers);
         ensure!(
@@ -778,10 +783,10 @@ impl<T: Config> OutgoingAddPeer<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeerCompat<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub peer_account_id: T::AccountId,
-    pub nonce: T::Index,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -817,7 +822,9 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
         })
     }
 
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() < MAX_PEERS, Error::<T>::CantAddMorePeers);
         ensure!(
@@ -868,10 +875,10 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeer<T: Config> {
-    pub author: T::AccountId,
-    pub peer_account_id: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
     pub compat_hash: Option<H256>,
@@ -923,7 +930,9 @@ impl<T: Config> OutgoingRemovePeer<T> {
 
     /// Checks that the current number of peers is greater than `MIN_PEERS` and the given peer
     /// is presented in the current peer set,
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() > MIN_PEERS, Error::<T>::CantRemoveMorePeers);
         ensure!(
@@ -998,10 +1007,10 @@ impl<T: Config> OutgoingRemovePeer<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeerCompat<T: Config> {
-    pub author: T::AccountId,
-    pub peer_account_id: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -1041,7 +1050,9 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
         })
     }
 
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
         ensure!(peers.len() > MIN_PEERS, Error::<T>::CantRemoveMorePeers);
         ensure!(
@@ -1131,8 +1142,8 @@ impl OutgoingRemovePeerEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingPrepareForMigration<T: Config> {
-    pub author: T::AccountId,
-    pub nonce: T::Index,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -1221,10 +1232,10 @@ impl OutgoingPrepareForMigrationEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingMigrate<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub new_contract_address: EthAddress,
     pub erc20_native_tokens: Vec<EthAddress>,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Index,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
     pub new_signature_version: BridgeSignatureVersion,

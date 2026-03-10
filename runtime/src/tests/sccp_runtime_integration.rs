@@ -2769,6 +2769,110 @@ fn sccp_mint_from_proof_rejects_replay_after_success_in_runtime() {
 }
 
 #[test]
+fn sccp_mint_from_proof_truncated_attester_proofs_fail_closed_without_replay_poisoning_in_runtime()
+{
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = common::mock::alice();
+        assert_ok!(Currencies::update_balance(
+            RuntimeOrigin::root(),
+            owner.clone(),
+            common::XOR.into(),
+            1i128,
+        ));
+        let asset_id = Assets::register_from(
+            &owner,
+            AssetSymbol(b"SCCPMTP".to_vec()),
+            AssetName(b"SCCP Mint Truncated Proof".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            0u32.into(),
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        for domain in SCCP_CORE_REMOTE_DOMAINS {
+            assert_ok!(Sccp::set_remote_token(
+                RuntimeOrigin::root(),
+                asset_id,
+                domain,
+                sccp_test_remote_token_bytes(domain),
+            ));
+            assert_ok!(Sccp::set_domain_endpoint(
+                RuntimeOrigin::root(),
+                domain,
+                sccp_test_domain_endpoint_bytes(domain),
+            ));
+        }
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_SOL,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 278,
+            sora_asset_id: asset_h256.0,
+            amount: 9u128,
+            recipient: [0x33u8; 32],
+        };
+        let message_id = sccp_test_message_id(&payload);
+        let (attesters, proof) = sccp_test_attester_quorum_proof(message_id);
+        assert_ok!(Sccp::set_inbound_attesters(
+            RuntimeOrigin::root(),
+            SCCP_DOMAIN_SOL,
+            attesters,
+            2
+        ));
+        assert_ok!(Sccp::set_inbound_finality_mode(
+            RuntimeOrigin::root(),
+            SCCP_DOMAIN_SOL,
+            InboundFinalityMode::AttesterQuorum,
+        ));
+
+        let events_before = frame_system::Pallet::<Runtime>::events().len();
+        for cut in 0..proof.len() {
+            let result = Sccp::mint_from_proof(
+                RuntimeOrigin::signed(owner.clone()),
+                SCCP_DOMAIN_SOL,
+                payload.clone(),
+                proof[..cut].to_vec(),
+            );
+            assert!(
+                result.is_err(),
+                "truncated proof unexpectedly accepted at cut={}",
+                cut
+            );
+            assert!(!Sccp::processed_inbound(message_id));
+            assert_eq!(
+                frame_system::Pallet::<Runtime>::events().len(),
+                events_before
+            );
+        }
+
+        assert_ok!(Sccp::mint_from_proof(
+            RuntimeOrigin::signed(owner.clone()),
+            SCCP_DOMAIN_SOL,
+            payload.clone(),
+            proof.clone(),
+        ));
+        assert!(Sccp::processed_inbound(message_id));
+
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(owner),
+                SCCP_DOMAIN_SOL,
+                payload,
+                proof
+            ),
+            sccp::Error::<Runtime>::InboundAlreadyProcessed
+        );
+    });
+}
+
+#[test]
 fn sccp_attest_burn_records_attestation_and_emits_event_in_runtime() {
     ext().execute_with(|| {
         System::set_block_number(1);

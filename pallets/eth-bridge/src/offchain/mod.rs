@@ -98,7 +98,10 @@ pub mod crypto {
 impl<T: Config> Pallet<T> {
     fn parse_deposit_event(
         log: &Log,
-    ) -> Result<DepositEvent<EthAddress, T::AccountId, U256>, Error<T>> {
+    ) -> Result<
+        DepositEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
+        Error<T>,
+    > {
         if log.removed.unwrap_or(true) {
             return Err(Error::<T>::EthLogWasRemoved);
         }
@@ -129,7 +132,10 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         logs: &[Log],
         kind: IncomingTransactionRequestKind,
-    ) -> Result<ContractEvent<EthAddress, T::AccountId, U256>, Error<T>> {
+    ) -> Result<
+        ContractEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
+        Error<T>,
+    > {
         for log in logs {
             // Check address to be sure what it came from our contract
             if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
@@ -202,7 +208,7 @@ impl<T: Config> Pallet<T> {
         msg: &[u8],
         signature: &SignatureParams,
         ecdsa_public_key: &ecdsa::Public,
-        author: &T::AccountId,
+        author: &<T as frame_system::pallet::Config>::AccountId,
     ) -> bool {
         let message = eth::prepare_message(msg);
         let sig_bytes = signature.to_bytes();
@@ -515,6 +521,15 @@ pub struct SignatureParams {
 }
 
 impl SignatureParams {
+    pub(crate) fn from_ecdsa_signature(signature: &ecdsa::Signature) -> Self {
+        let mut r = [0u8; 32];
+        r.copy_from_slice(&signature.0[..32]);
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&signature.0[32..64]);
+        let v = signature.0[64];
+        Self { r, s, v }
+    }
+
     fn to_bytes(&self) -> [u8; 65] {
         let mut arr = [0u8; 65];
         arr[..32].copy_from_slice(&self.r[..]);

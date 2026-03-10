@@ -14,8 +14,9 @@ This directory provides a cross-repo SCCP matrix harness for local integration t
 
 The harness builds an ordered source/destination matrix over SCCP domains.
 
-- Full matrix (`--matrix full`): 30 scenarios (`6 * 5`)
-- SORA pairs (`--matrix sora-pairs`): 10 scenarios (`sora<->target`)
+- Full matrix (`--matrix full`): 56 scenarios (`8 * 7`)
+- SORA pairs (`--matrix sora-pairs`): 14 scenarios (`sora<->all domains`)
+- SORA core pairs (`--matrix sora-core-pairs`): 10 scenarios (`sora<->ETH/BSC/SOL/TON/TRON`)
 
 For each scenario, the harness executes these steps:
 
@@ -56,6 +57,11 @@ Install adapters into sibling repos from this repo:
 misc/sccp-e2e/install_sibling_adapters.sh
 ```
 
+Notes:
+- Core SCCP adapters (`sccp-eth`, `sccp-bsc`, `sccp-tron`, `sccp-sol`, `sccp-ton`) are required.
+- `sora2-parachain` adapter install is optional; it is used for `sora_kusama` / `sora_polkadot`
+  scenarios in full-matrix runs.
+
 Install adapters into an explicit sibling root (CI/workspace layout):
 
 ```bash
@@ -88,6 +94,18 @@ Strict adapter mode:
 misc/sccp-e2e/run_hub_matrix.sh --strict-adapters
 ```
 
+Disable cross-scenario command cache (release-grade independence):
+
+```bash
+misc/sccp-e2e/run_hub_matrix.sh --disable-command-cache
+```
+
+Run with a config mode preset:
+
+```bash
+misc/sccp-e2e/run_hub_matrix.sh --config misc/sccp-e2e/config.ci.json --mode release
+```
+
 ## Artifacts
 
 Each run writes to:
@@ -115,17 +133,34 @@ Edit `misc/sccp-e2e/config.local.json` to tune:
 - SORA step commands
 - bridge-relayer command
 - per-domain fallback commands
+- matrix presets (`matrixPresets`)
+- mode presets (`modes`) for:
+  - mode-specific `defaults.maxMinutes`
+  - mode-specific `defaults.commandCache`
+  - mode-specific `commands.preflight.enabled`
+  - default matrix selection (`mode.matrix`)
 
 CI layout config:
 
 - `misc/sccp-e2e/config.ci.json` expects sibling repos under
   `sora2-network/siblings/*` and keeps preflight disabled by default.
 
+Local config modes:
+
+- `local`: full matrix, preflight enabled
+- `release`: full matrix, preflight disabled, command cache disabled
+- `nightly`: full matrix, preflight disabled, command cache disabled
+
 ## CI Automation
 
 - Workflow: `.github/workflows/sccp_hub_matrix.yml`
 - Triggers:
-  - scheduled daily run
-  - manual `workflow_dispatch` with matrix/negative/strict/scenario options
+  - manual `workflow_dispatch` with mode/matrix/negative/strict/scenario options
 - Report summary script:
   - `misc/sccp-e2e/scripts/print_report_summary.sh <report.json>`
+
+Tiered SCCP confidence gates:
+
+- PR fast gate: `.github/workflows/sccp_confidence_pr.yml`
+- Nightly exhaustive gate: `.github/workflows/sccp_confidence_nightly.yml`
+- Release gate: `.github/workflows/sccp_confidence_release.yml`

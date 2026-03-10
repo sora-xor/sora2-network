@@ -34,8 +34,8 @@
 
 use codec::Encode;
 use framenode_runtime::eth_bridge::{
-    self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
-    STORAGE_SUB_NODE_URL_KEY,
+    self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
+    STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
 };
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, Runtime, RuntimeApi};
@@ -48,7 +48,7 @@ use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
 use sc_service::{Configuration, TaskManager};
 use sp_core::offchain::OffchainStorage;
-use sp_core::{ByteArray, Pair};
+use sp_core::ByteArray;
 use sp_keystore::SyncCryptoStore;
 use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::IdentifyAccount;
@@ -177,7 +177,7 @@ pub fn new_partial(
             executor,
         )?;
     let client = Arc::new(client);
-    let mut bridge_peer_secret_key = None;
+    let mut bridge_peer_storage_marker = None;
 
     if let Some(first_pk_raw) =
         SyncCryptoStore::keys(&*keystore_container.sync_keystore(), eth_bridge::KEY_TYPE)
@@ -198,19 +198,17 @@ pub fn new_partial(
             account,
             sub_public
         );
-        if let Some(keystore) = keystore_container.local_keystore() {
-            if let Ok(Some(kep)) = keystore.key_pair::<eth_bridge::offchain::crypto::Pair>(&pk) {
-                let seed = kep.to_raw_vec();
-                bridge_peer_secret_key = Some(seed);
-            }
-        }
+        bridge_peer_storage_marker = Some(first_pk_raw);
     } else {
         log::debug!("Ethereum bridge peer key not found.")
     }
 
-    if let Some(sk) = bridge_peer_secret_key {
+    if let Some(marker) = bridge_peer_storage_marker {
         let mut storage = backend.offchain_storage().unwrap();
-        storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &sk.encode());
+        // Keep a non-secret OCW activation marker in offchain DB for bridge workers.
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
+        // Legacy compatibility key for nodes/runtimes still reading the old storage path.
+        storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &marker.encode());
 
         let path = config
             .network

@@ -2,7 +2,51 @@
   "defaults": {
     "maxMinutes": 60,
     "perCommandTimeoutSeconds": 1200,
-    "includeNegative": true
+    "includeNegative": true,
+    "matrix": "full",
+    "commandCache": true
+  },
+  "matrixPresets": {
+    "sora-pairs": "sora-pairs",
+    "sora-core-pairs": "sora-core-pairs",
+    "full": "full"
+  },
+  "modes": {
+    "local": {
+      "defaults": {
+        "maxMinutes": 60
+      },
+      "commands": {
+        "preflight": {
+          "enabled": true
+        }
+      },
+      "matrix": "full"
+    },
+    "release": {
+      "defaults": {
+        "maxMinutes": 120,
+        "commandCache": false
+      },
+      "commands": {
+        "preflight": {
+          "enabled": false
+        }
+      },
+      "matrix": "full"
+    },
+    "nightly": {
+      "defaults": {
+        "maxMinutes": 240,
+        "commandCache": false
+      },
+      "commands": {
+        "preflight": {
+          "enabled": false
+        }
+      },
+      "matrix": "full"
+    }
   },
   "paths": {
     "sora2Network": "${repoRoot}",

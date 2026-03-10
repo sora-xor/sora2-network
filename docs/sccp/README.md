@@ -20,6 +20,7 @@ SCCP is a burn/mint cross-chain protocol intended to be **fully on-chain**:
 - `docs/sccp/EVM_ANCHOR_MODE.md`: governance-anchored EVM mode details
 - `docs/sccp/BSC_LIGHT_CLIENT.md`: BSC header verifier details (inbound-to-SORA)
 - `docs/sccp/TRON_LIGHT_CLIENT.md`: TRON header verifier details (inbound-to-SORA)
+- `docs/sccp/RELEASE_CHECKLIST.md`: release-gate checklist and evidence package expectations
 - `docs/security/sccp_mcp_deployment_guardrails.md`: MCP deployment hardening baseline
 - `docs/security/sccp_security_ownership.md`: SCCP sensitive-path ownership and review policy
 
@@ -49,7 +50,9 @@ MCP server for AI agents (stateless, external-signer-only):
 
 Coverage-guided proof-helper fuzzing:
 
-- `pallets/sccp/fuzz` (`cargo fuzz run evm_proof_helpers` and `cargo fuzz run tron_proof_helpers`)
+- `pallets/sccp/fuzz` (`cargo fuzz run evm_proof_helpers`,
+  `cargo fuzz run tron_proof_helpers`, `cargo fuzz run attester_quorum_helpers`,
+  and `cargo fuzz run bsc_header_helpers`)
 
 Cross-repo validation matrix:
 
@@ -57,6 +60,7 @@ Cross-repo validation matrix:
   runtime SCCP integration tests (`framenode-runtime` `sccp_` subset), and sibling-chain tests
   (`../sccp-eth`, `../sccp-bsc`, `../sccp-tron`, `../sccp-sol`, `../sccp-ton`).
   The script requires those sibling repositories to exist one level above `sora2-network`.
+  Override sibling root with `SCCP_DEV_DIR=/path/to/siblings` when CI layout differs.
   For Solana program test log verbosity, override `SOLANA_TEST_RUST_LOG`
   (default: `warn`).
   Solana program retries/parallelism are configurable via `SCCP_SOL_PROGRAM_RETRIES`
@@ -101,8 +105,56 @@ Hub E2E matrix harness:
   `misc/sccp-e2e/install_sibling_adapters.sh --siblings-root "$PWD/siblings"`.
 - Use `--dry-run` for command planning/validation without execution,
   and `--strict-adapters` to fail if adapters are missing.
-- CI runner config is available at `misc/sccp-e2e/config.ci.json`, and scheduled/manual
-  automation is wired in `.github/workflows/sccp_hub_matrix.yml`.
+- CI runner config is available at `misc/sccp-e2e/config.ci.json`;
+  manual matrix automation is wired in `.github/workflows/sccp_hub_matrix.yml`,
+  and scheduled exhaustive automation is wired in `.github/workflows/sccp_confidence_nightly.yml`.
+
+Release verification orchestrator:
+
+- `misc/sccp/verify_release.sh` executes the SCCP release evidence sequence:
+  - `misc/sccp/run_all_tests.sh`
+  - `misc/sccp-e2e/run_hub_matrix.sh --matrix full --strict-adapters --disable-command-cache`
+  - bounded SCCP fuzz runs (`evm_proof_helpers`, `tron_proof_helpers`,
+    `attester_quorum_helpers`, `bsc_header_helpers`)
+  - bounded sibling fuzz runs (`../sccp-eth`, `../sccp-bsc`, `../sccp-tron`,
+    `../sccp-ton`, `../sccp-sol`)
+  - formal-assisted bounded checks (SORA + sibling `../sccp*` repos)
+- Artifacts are emitted under:
+  - `misc/sccp/artifacts/<timestamp>/summary.json`
+  - `misc/sccp/artifacts/<timestamp>/junit.xml`
+  - per-stage logs + hub-matrix report bundle.
+
+PR fast verification orchestrator:
+
+- `misc/sccp/verify_pr_fast.sh` executes PR-fast parity checks and emits artifacts under
+  `misc/sccp/artifacts/pr-fast/<timestamp>/`:
+  - SCCP-critical Rust tests (`sccp`, `bridge-proxy`, `eth-bridge`, `framenode-runtime` `sccp_`)
+  - formal-assisted fast profile with sibling checks disabled
+  - sibling smoke matrix scenario (`sora:eth`, no negative check)
+- It auto-selects smoke config/mode by layout:
+  - CI layout (`sora2-network/siblings/*`) -> `config.ci.json` + `mode=pr`
+  - local sibling layout (`../sccp-*`) -> `config.local.json` + `mode=local`
+- `misc/sccp/print_latest_evidence.sh` prints the newest release, PR-fast, and hub-matrix
+  artifact statuses from local artifact directories. Hub status is sourced from the latest
+  release artifact bundle when available.
+
+Formal-assisted runner:
+
+- `misc/sccp/run_formal_assisted.sh` includes sibling formal-assisted checks by default
+  (`SCCP_FORMAL_INCLUDE_SIBLINGS=1`), delegating to
+  `misc/sccp/run_formal_assisted_siblings.sh`.
+- For local-only or PR-fast use, disable sibling checks with either
+  `--exclude-siblings` or `SCCP_FORMAL_INCLUDE_SIBLINGS=0`.
+
+Tiered SCCP CI gates:
+
+- PR fast gate: `.github/workflows/sccp_confidence_pr.yml`
+- Nightly exhaustive gate: `.github/workflows/sccp_confidence_nightly.yml`
+- Release gate: `.github/workflows/sccp_confidence_release.yml`
+
+Node runtime for EVM/TON sibling tests in CI:
+
+- SCCP CI workflows pin Node.js `22.x` for `sccp-eth`, `sccp-bsc`, `sccp-tron`, `sccp-ton`.
 
 Solana program flake stress loop:
 

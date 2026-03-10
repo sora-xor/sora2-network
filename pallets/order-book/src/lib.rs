@@ -74,6 +74,7 @@ pub mod cache_data_layer;
 pub mod fee_calculator;
 mod limit_order;
 mod market_order;
+pub mod migrations;
 mod order_book;
 mod scheduler;
 pub mod storage_data_layer;
@@ -110,7 +111,7 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use sp_runtime::Either;
 
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(0);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]

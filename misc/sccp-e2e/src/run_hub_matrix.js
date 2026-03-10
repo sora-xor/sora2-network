@@ -7,6 +7,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 const DOMAIN_ORDER = ['sora', 'eth', 'bsc', 'sol', 'ton', 'tron', 'sora_kusama', 'sora_polkadot'];
+const CORE_SORA_DOMAINS = ['eth', 'bsc', 'sol', 'ton', 'tron'];
 const DOMAIN_TO_ID = {
   sora: 0,
   eth: 1,
@@ -48,14 +49,16 @@ function xmlEscape(value) {
 function parseArgs(argv) {
   const out = {
     config: null,
+    mode: null,
     maxMinutes: null,
     dryRun: false,
     skipPreflight: false,
     includeNegative: null,
     scenario: null,
     strictAdapters: false,
-    matrix: 'full',
+    matrix: null,
     artifactsDir: null,
+    commandCacheEnabled: null,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -63,6 +66,9 @@ function parseArgs(argv) {
     const next = argv[i + 1];
     if ((arg === '--config' || arg === '-c') && next) {
       out.config = next;
+      i += 1;
+    } else if (arg === '--mode' && next) {
+      out.mode = next;
       i += 1;
     } else if (arg === '--max-minutes' && next) {
       out.maxMinutes = Number(next);
@@ -80,6 +86,10 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg === '--strict-adapters') {
       out.strictAdapters = true;
+    } else if (arg === '--disable-command-cache') {
+      out.commandCacheEnabled = false;
+    } else if (arg === '--enable-command-cache') {
+      out.commandCacheEnabled = true;
     } else if (arg === '--matrix' && next) {
       out.matrix = next;
       i += 1;
@@ -104,6 +114,7 @@ function printHelp() {
       '',
       'Options:',
       '  -c, --config <path>        Config JSON path',
+      '  --mode <name>              Optional config mode (for overrides/presets)',
       '  --max-minutes <n>          Max wall clock budget in minutes',
       '  --dry-run                  Plan and validate commands without executing',
       '  --skip-preflight           Skip misc/sccp/run_all_tests.sh preflight',
@@ -111,7 +122,9 @@ function printHelp() {
       '  --exclude-negative         Disable negative checks',
       '  --scenario <src:dst>       Run a single scenario (example: eth:sol)',
       '  --strict-adapters          Require adapter scripts for all non-sora domains',
-      '  --matrix <full|sora-pairs> Matrix mode (default: full)',
+      '  --disable-command-cache    Disable per-command cross-scenario result cache',
+      '  --enable-command-cache     Enable per-command cross-scenario result cache',
+      '  --matrix <name>            Matrix key or mode (for example: full, sora-pairs, sora-core-pairs)',
       '  --artifacts-dir <path>     Output directory for run artifacts',
       '  -h, --help                 Show help',
     ].join('\n') + '\n'
@@ -184,10 +197,51 @@ function resolveConfig(rawConfig, harnessRoot) {
 
   merged.commands = deepResolve(merged.commands || {});
   merged.defaults = deepResolve(merged.defaults || {});
+  merged.modes = deepResolve(merged.modes || {});
+  merged.matrixPresets = deepResolve(merged.matrixPresets || {});
 
   merged.harnessRoot = harnessRoot;
   merged.repoRoot = repoRoot;
   merged.vars = vars;
+  return merged;
+}
+
+function deepMerge(base, override) {
+  if (Array.isArray(base) || Array.isArray(override)) {
+    return Array.isArray(override) ? override.slice() : base;
+  }
+  if (!base || typeof base !== 'object') {
+    return override;
+  }
+  if (!override || typeof override !== 'object') {
+    return base;
+  }
+
+  const out = { ...base };
+  for (const [k, v] of Object.entries(override)) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && out[k] && typeof out[k] === 'object' && !Array.isArray(out[k])) {
+      out[k] = deepMerge(out[k], v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function applyModeConfig(config, modeName) {
+  const modeConfig = config.modes?.[modeName];
+  if (!modeConfig) {
+    throw new Error(`Unknown mode '${modeName}'. Available modes: ${Object.keys(config.modes || {}).join(', ') || '(none)'}`);
+  }
+
+  const merged = {
+    ...config,
+    defaults: deepMerge(config.defaults || {}, modeConfig.defaults || {}),
+    commands: deepMerge(config.commands || {}, modeConfig.commands || {}),
+  };
+
+  merged.activeMode = modeName;
+  merged.activeModeConfig = modeConfig;
   return merged;
 }
 
@@ -324,6 +378,13 @@ function buildMatrix(mode) {
       if (domain === 'sora') {
         continue;
       }
+      pairs.push({ src: 'sora', dst: domain });
+      pairs.push({ src: domain, dst: 'sora' });
+    }
+    return pairs;
+  }
+  if (mode === 'sora-core-pairs') {
+    for (const domain of CORE_SORA_DOMAINS) {
       pairs.push({ src: 'sora', dst: domain });
       pairs.push({ src: domain, dst: 'sora' });
     }
@@ -488,7 +549,7 @@ function parseAdapterJson(stdout) {
   return null;
 }
 
-async function runPreflight({ config, args, artifactsDir, timeoutMs, runBudget }) {
+async function runPreflight({ config, args, artifactsDir, timeoutMs, runBudget, commandEnv }) {
   const pf = config.commands?.preflight;
   if (!pf || !pf.enabled) {
     return {
@@ -511,7 +572,7 @@ async function runPreflight({ config, args, artifactsDir, timeoutMs, runBudget }
     cmd: pf.cmd,
     cwd: pf.cwd || config.repoRoot,
     timeoutMs,
-    env: process.env,
+    env: commandEnv,
     logFile,
     dryRun: args.dryRun,
     runBudget,
@@ -528,21 +589,29 @@ async function runPreflight({ config, args, artifactsDir, timeoutMs, runBudget }
   };
 }
 
-function checkRequiredPaths(config) {
-  const required = {
-    sora2Network: config.paths.sora2Network,
-    bridgeRelayer: config.paths.bridgeRelayer,
-    sccpEth: config.paths.sccpEth,
-    sccpBsc: config.paths.sccpBsc,
-    sccpSol: config.paths.sccpSol,
-    sccpTon: config.paths.sccpTon,
-    sccpTron: config.paths.sccpTron,
-    sccpSoraKusama: config.paths.sccpSoraKusama,
-    sccpSoraPolkadot: config.paths.sccpSoraPolkadot,
-  };
+function checkRequiredPaths(config, scenarios) {
+  const required = new Map();
+  required.set('sora2Network', config.paths.sora2Network);
+
+  const needBridgeRelayer = scenarios.some((scenario) => scenario.dst !== 'sora');
+  if (needBridgeRelayer) {
+    required.set('bridgeRelayer', config.paths.bridgeRelayer);
+  }
+
+  const neededDomains = new Set();
+  for (const scenario of scenarios) {
+    neededDomains.add(scenario.src);
+    neededDomains.add(scenario.dst);
+  }
+  neededDomains.delete('sora');
+
+  for (const domain of neededDomains) {
+    const repoPath = resolveDomainRepo(config, domain);
+    required.set(domain, repoPath);
+  }
 
   const missing = [];
-  for (const [name, value] of Object.entries(required)) {
+  for (const [name, value] of required.entries()) {
     if (!value || !fs.existsSync(value)) {
       missing.push({ name, path: value || '(undefined)' });
     }
@@ -558,6 +627,8 @@ async function runScenario({
   artifactsDir,
   runBudget,
   commandCache,
+  commandCacheEnabled,
+  commandEnv,
 }) {
   const scenarioDir = path.join(artifactsDir, scenario.id);
   ensureDir(scenarioDir);
@@ -703,7 +774,7 @@ async function runScenario({
     }
 
     const runner = step.runner;
-    const fromCache = commandCache.get(runner.cacheKey);
+    const fromCache = commandCacheEnabled ? commandCache.get(runner.cacheKey) : null;
     if (fromCache) {
       const cached = {
         name: step.name,
@@ -731,7 +802,7 @@ async function runScenario({
       cmd: runner.cmd,
       cwd: runner.cwd,
       timeoutMs,
-      env: process.env,
+      env: commandEnv,
       logFile,
       dryRun: args.dryRun,
       runBudget,
@@ -766,11 +837,13 @@ async function runScenario({
 
     stepResults.push(normalized);
 
-    commandCache.set(runner.cacheKey, {
-      ok: normalized.ok,
-      log_file: normalized.log_file,
-      result: normalized.result,
-    });
+    if (commandCacheEnabled) {
+      commandCache.set(runner.cacheKey, {
+        ok: normalized.ok,
+        log_file: normalized.log_file,
+        result: normalized.result,
+      });
+    }
 
     if (!normalized.ok) {
       scenarioOk = false;
@@ -873,13 +946,40 @@ async function main() {
   }
 
   const rawConfig = readJson(configPath);
-  const config = resolveConfig(rawConfig, harnessRoot);
+  let config = resolveConfig(rawConfig, harnessRoot);
+  if (args.mode) {
+    config = applyModeConfig(config, args.mode);
+  }
+
+  const matrixPresets = config.matrixPresets || {};
+  const defaultMatrixKey = config.activeModeConfig?.matrix || config.defaults?.matrix || 'full';
+  const matrixKey = args.matrix || defaultMatrixKey;
+  const matrixMode = matrixPresets[matrixKey] || matrixKey;
+  if (!['full', 'sora-pairs', 'sora-core-pairs'].includes(matrixMode)) {
+    throw new Error(`Invalid matrix mode '${matrixMode}' (resolved from key '${matrixKey}')`);
+  }
 
   const defaultMaxMinutes = Number(config.defaults?.maxMinutes || 60);
-  const maxMinutes = args.maxMinutes || defaultMaxMinutes;
+  const maxMinutes = args.maxMinutes ?? defaultMaxMinutes;
   if (!Number.isFinite(maxMinutes) || maxMinutes <= 0) {
     throw new Error(`Invalid max-minutes: ${maxMinutes}`);
   }
+
+  const defaultCommandCacheEnabled =
+    typeof config.defaults?.commandCache === 'boolean'
+      ? config.defaults.commandCache
+      : true;
+  const commandCacheEnabled =
+    args.commandCacheEnabled === null ? defaultCommandCacheEnabled : args.commandCacheEnabled;
+
+  const rustupToolchain =
+    process.env.SCCP_RUSTUP_TOOLCHAIN ||
+    process.env.RUSTUP_TOOLCHAIN ||
+    'nightly-2025-05-08';
+  const commandEnv = {
+    ...process.env,
+    RUSTUP_TOOLCHAIN: rustupToolchain,
+  };
 
   const timeoutSeconds = Number(config.defaults?.perCommandTimeoutSeconds || 900);
   const timeoutMs = timeoutSeconds * 1000;
@@ -898,16 +998,8 @@ async function main() {
     },
   };
 
-  const requiredMissing = checkRequiredPaths(config);
-  if (requiredMissing.length > 0) {
-    const msg = requiredMissing
-      .map((x) => `missing required path '${x.name}': ${x.path}`)
-      .join('\n');
-    throw new Error(msg);
-  }
-
   const singleScenario = normalizeScenarioArg(args.scenario);
-  let matrix = buildMatrix(args.matrix);
+  let matrix = buildMatrix(matrixMode);
   if (singleScenario) {
     matrix = matrix.filter((x) => x.src === singleScenario.src && x.dst === singleScenario.dst);
   }
@@ -922,14 +1014,26 @@ async function main() {
     dst: pair.dst,
   }));
 
+  const requiredMissing = checkRequiredPaths(config, scenarios);
+  if (requiredMissing.length > 0) {
+    const msg = requiredMissing
+      .map((x) => `missing required path '${x.name}': ${x.path}`)
+      .join('\n');
+    throw new Error(msg);
+  }
+
   const metadata = {
     run_id: runId,
     started_at: nowIso(),
     config_path: configPath,
     artifacts_dir: artifactsRoot,
     dry_run: args.dryRun,
+    mode: args.mode || null,
+    matrix_key: matrixKey,
     strict_adapters: args.strictAdapters,
-    matrix_mode: args.matrix,
+    command_cache_enabled: commandCacheEnabled,
+    matrix_mode: matrixMode,
+    rustup_toolchain: rustupToolchain,
     scenario_filter: args.scenario || null,
     max_minutes: maxMinutes,
     total_scenarios: scenarios.length,
@@ -943,6 +1047,7 @@ async function main() {
     artifactsDir: artifactsRoot,
     timeoutMs,
     runBudget,
+    commandEnv,
   });
 
   if (!preflight.ok) {
@@ -1000,6 +1105,8 @@ async function main() {
       artifactsDir: artifactsRoot,
       runBudget,
       commandCache,
+      commandCacheEnabled,
+      commandEnv,
     });
     results.push(result);
 

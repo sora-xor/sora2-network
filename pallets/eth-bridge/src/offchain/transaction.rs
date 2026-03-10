@@ -56,6 +56,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 type Call<T> = <T as Config>::RuntimeCall;
+type BlockNumber<T> = frame_system::pallet_prelude::BlockNumberFor<T>;
 
 /// Information about an extrinsic sent by an off-chain worker. Used to identify extrinsics in
 /// finalized blocks.
@@ -66,14 +67,14 @@ where
     T: Config,
 {
     pub extrinsic_hash: H256,
-    pub submitted_at: Option<T::BlockNumber>,
+    pub submitted_at: Option<BlockNumber<T>>,
     pub call: Call<T>,
 }
 
 impl<T: Config> SignedTransactionData<T> {
     pub fn new(
         extrinsic_hash: H256,
-        submitted_at: Option<T::BlockNumber>,
+        submitted_at: Option<BlockNumber<T>>,
         call: impl Into<Call<T>>,
     ) -> Self {
         SignedTransactionData {
@@ -90,7 +91,7 @@ impl<T: Config> SignedTransactionData<T> {
     pub fn from_local_call<LocalCall: Clone + Encode + Into<Call<T>>>(
         call: LocalCall,
         account: &Account<T>,
-        submitted_at: Option<T::BlockNumber>,
+        submitted_at: Option<BlockNumber<T>>,
     ) -> Option<Self>
     where
         T: CreateSignedTransaction<LocalCall>,
@@ -162,7 +163,7 @@ impl<T: Config> Pallet<T> {
         Ok(signer)
     }
 
-    pub(crate) fn get_keystore_accounts() -> Vec<T::AccountId> {
+    pub(crate) fn get_keystore_accounts() -> Vec<<T as frame_system::pallet::Config>::AccountId> {
         <<T as Config>::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
             .into_iter()
             .map(|key| {

@@ -178,6 +178,75 @@ pub const SCCP_MSG_PREFIX_BURN_V1: &[u8] = b"sccp:burn:v1";
 /// Prefix for attester signatures over `messageId` (see `InboundFinalityMode::AttesterQuorum`).
 pub const SCCP_MSG_PREFIX_ATTEST_V1: &[u8] = b"sccp:attest:v1";
 
+#[cfg(any(test, feature = "fuzzing"))]
+pub fn decode_attester_quorum_proof_for_fuzz(
+    proof: &[u8],
+    max_attesters: usize,
+) -> Option<Vec<[u8; 65]>> {
+    let mut input = proof;
+    let version = u8::decode(&mut input).ok()?;
+    if version != 1 {
+        return None;
+    }
+    let signatures = Vec::<[u8; 65]>::decode(&mut input).ok()?;
+    if !input.is_empty() {
+        return None;
+    }
+    if signatures.len() > max_attesters {
+        return None;
+    }
+    Some(signatures)
+}
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    fn any_payload() -> BurnPayloadV1 {
+        BurnPayloadV1 {
+            version: kani::any(),
+            source_domain: kani::any(),
+            dest_domain: kani::any(),
+            nonce: kani::any(),
+            sora_asset_id: kani::any(),
+            amount: kani::any(),
+            recipient: kani::any(),
+        }
+    }
+
+    #[kani::proof]
+    pub fn kani_burn_payload_roundtrip_bounded() {
+        let payload = any_payload();
+        let encoded = payload.encode();
+        let decoded = BurnPayloadV1::decode(&mut encoded.as_slice())
+            .expect("burn payload should roundtrip through SCALE encoding");
+        assert_eq!(decoded, payload);
+    }
+
+    #[kani::proof]
+    pub fn kani_burn_message_id_nonce_sensitivity_bounded() {
+        let payload = any_payload();
+        let mut nonce_changed = payload.clone();
+        nonce_changed.nonce = nonce_changed.nonce.wrapping_add(1);
+        kani::assume(payload.nonce != nonce_changed.nonce);
+
+        let mut preimage_a = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage_a.extend(payload.encode());
+
+        let mut preimage_b = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage_b.extend(nonce_changed.encode());
+
+        assert_ne!(preimage_a, preimage_b);
+    }
+
+    #[kani::proof]
+    pub fn kani_domain_separator_prefixes_bounded() {
+        assert_ne!(SCCP_MSG_PREFIX_BURN_V1, SCCP_MSG_PREFIX_ATTEST_V1);
+        assert!(SCCP_MSG_PREFIX_BURN_V1.starts_with(b"sccp:"));
+        assert!(SCCP_MSG_PREFIX_ATTEST_V1.starts_with(b"sccp:"));
+    }
+}
+
 pub const SCCP_TECH_ACC_PREFIX: &[u8] = b"sccp";
 pub const SCCP_TECH_ACC_MAIN: &[u8] = b"main";
 

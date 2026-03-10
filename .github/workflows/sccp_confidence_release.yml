@@ -1,0 +1,199 @@
+name: SCCP Confidence Release Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      matrix_mode:
+        description: Matrix mode for release gate
+        required: true
+        default: full
+        type: choice
+        options:
+          - sora-core-pairs
+          - sora-pairs
+          - full
+      max_minutes:
+        description: Hub matrix wall-clock budget (minutes)
+        required: true
+        default: "180"
+        type: string
+      include_negative:
+        description: Include negative verification scenarios
+        required: true
+        default: true
+        type: boolean
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  release_gate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 480
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Checkout bridge-relayer
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/bridge-relayer
+          path: siblings/bridge-relayer
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-eth
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-eth
+          path: siblings/sccp-eth
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-bsc
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-bsc
+          path: siblings/sccp-bsc
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-sol
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-sol
+          path: siblings/sccp-sol
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-ton
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-ton
+          path: siblings/sccp-ton
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sccp-tron
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sccp-tron
+          path: siblings/sccp-tron
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Checkout sora2-parachain
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sora2-parachain
+          path: siblings/sora2-parachain
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
+      - name: Setup Rust nightly toolchain
+        run: |
+          rustup toolchain install nightly-2025-05-08 --profile minimal
+          rustup default nightly-2025-05-08
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            siblings/sccp-eth/package-lock.json
+            siblings/sccp-bsc/package-lock.json
+            siblings/sccp-tron/package-lock.json
+            siblings/sccp-ton/package-lock.json
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8
+        with:
+          cache-provider: "buildjet"
+          workspaces: |
+            . -> target
+            siblings/bridge-relayer -> target
+            siblings/sccp-sol/program -> target
+            siblings/sccp-sol/fuzz -> target
+            siblings/sora2-parachain -> target
+            pallets/sccp/fuzz -> target
+
+      - name: Install JS dependencies
+        run: |
+          set -euo pipefail
+          for repo in siblings/sccp-eth siblings/sccp-bsc siblings/sccp-tron siblings/sccp-ton; do
+            if [[ -f "${repo}/package-lock.json" ]]; then
+              (cd "${repo}" && npm ci)
+            else
+              (cd "${repo}" && npm install)
+            fi
+          done
+
+      - name: Install sibling adapters
+        run: misc/sccp-e2e/install_sibling_adapters.sh --siblings-root "$GITHUB_WORKSPACE/siblings"
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz
+
+      - name: Install Foundry
+        run: |
+          set -euo pipefail
+          curl -L https://foundry.paradigm.xyz | bash
+          "$HOME/.foundry/bin/foundryup"
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+
+      - name: Install Echidna
+        run: |
+          set -euo pipefail
+          curl -Ls https://github.com/crytic/echidna/releases/download/v2.3.1/echidna-2.3.1-x86_64-linux.tar.gz | tar -xz
+          sudo install -m 0755 echidna /usr/local/bin/echidna
+
+      - name: Run release confidence gate
+        env:
+          SCCP_DEV_DIR: ${{ github.workspace }}/siblings
+          SCCP_VERIFY_ARTIFACTS_BASE: ${{ github.workspace }}/misc/sccp/artifacts/ci-release
+          SCCP_VERIFY_HUB_CONFIG: ${{ github.workspace }}/misc/sccp-e2e/config.ci.json
+          SCCP_VERIFY_HUB_MODE: release
+          SCCP_VERIFY_MATRIX_MODE: ${{ github.event.inputs.matrix_mode || 'full' }}
+          SCCP_VERIFY_MATRIX_MAX_MINUTES: ${{ github.event.inputs.max_minutes || '180' }}
+          SCCP_VERIFY_STRICT_ADAPTERS: "1"
+          SCCP_VERIFY_INCLUDE_NEGATIVE_RAW: ${{ github.event.inputs.include_negative || 'true' }}
+          SCCP_VERIFY_FUZZ_PROFILE: full
+          SCCP_VERIFY_FORMAL_PROFILE: full
+          SCCP_FUZZ_EVM_SECONDS: "1200"
+          SCCP_FUZZ_TRON_SECONDS: "1200"
+          SCCP_FUZZ_ATTEST_SECONDS: "1200"
+          SCCP_FUZZ_BSC_SECONDS: "1200"
+          SCCP_FUZZ_FASTCHECK_RUNS: "1000"
+          SCCP_FUZZ_FOUNDRY_RUNS: "12000"
+          SCCP_FUZZ_ECHIDNA_TIMEOUT_SECS: "1200"
+          SCCP_SOL_FUZZ_BURN_SECONDS: "1200"
+          SCCP_SOL_FUZZ_ATTEST_SECONDS: "1200"
+          SCCP_SOL_FUZZ_VERIFIER_SECONDS: "1200"
+        run: |
+          set -euo pipefail
+          if [[ "${SCCP_VERIFY_INCLUDE_NEGATIVE_RAW}" == "true" ]]; then
+            export SCCP_VERIFY_INCLUDE_NEGATIVE=1
+          else
+            export SCCP_VERIFY_INCLUDE_NEGATIVE=0
+          fi
+          misc/sccp/verify_release.sh
+
+      - name: Summarize release gate result
+        if: always()
+        run: |
+          set -euo pipefail
+          latest_run="$(ls -1dt misc/sccp/artifacts/ci-release/* 2>/dev/null | head -n 1 || true)"
+          echo "# SCCP Confidence Release Gate" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          if [[ -n "${latest_run}" && -f "${latest_run}/summary.json" ]]; then
+            echo "Artifacts: ${latest_run}" >> "$GITHUB_STEP_SUMMARY"
+            echo >> "$GITHUB_STEP_SUMMARY"
+            cat "${latest_run}/summary.json" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No release summary artifact found." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sccp-confidence-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: misc/sccp/artifacts/ci-release
+          if-no-files-found: warn

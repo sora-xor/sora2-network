@@ -50,6 +50,8 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
+#[cfg(feature = "runtime-wasm")]
+use framenode_runtime::WASM_BINARY;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig,
@@ -60,8 +62,10 @@ use framenode_runtime::{
     MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
     RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
     SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
-    TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    TradingPair, TradingPairConfig, XSTPoolConfig,
 };
+#[cfg(not(feature = "runtime-wasm"))]
+const WASM_BINARY: Option<&[u8]> = None;
 
 use hex_literal::hex;
 use permissions::Scope;
@@ -1863,7 +1867,13 @@ pub fn main_net_coded() -> ChainSpec {
               MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), //Prod value
               MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  //Prod value
             ];
-    ChainSpec::from_genesis(
+    let mut spec = ChainSpec::from_json_bytes(
+        include_str!("./bytes/chain_spec_main.json")
+            .as_bytes()
+            .to_vec(),
+    )
+    .expect("parse embedded mainnet spec json");
+    let coded_spec = ChainSpec::from_genesis(
         name,
         id,
         ChainType::Live,
@@ -1933,7 +1943,17 @@ pub fn main_net_coded() -> ChainSpec {
         None,
         Some(properties),
         None,
-    )
+    );
+
+    // Keep the mainnet client spec metadata (including codeSubstitutes) and replace only genesis
+    // storage with the deterministic coded-genesis content.
+    sc_service::ChainSpec::set_storage(
+        &mut spec,
+        coded_spec
+            .build_storage()
+            .expect("build coded mainnet storage"),
+    );
+    spec
 }
 
 #[cfg(all(
@@ -2920,10 +2940,7 @@ mod tests {
     }
 
     #[cfg(not(feature = "private-net"))]
-    #[test]
-    fn mainnet_code_substitute_matches_expected_wasm() {
-        // The live chain is upgraded via codeSubstitutes, so we verify the embedded JSON still
-        // carries the correct Wasm blob for the emergency fork height.
+    fn mainnet_code_substitute_bytes(block_number: &str) -> Vec<u8> {
         let raw_spec = include_str!("./bytes/chain_spec_main.json");
         let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
         let code_substitutes = json
@@ -2931,33 +2948,52 @@ mod tests {
             .and_then(Value::as_object)
             .expect("codeSubstitutes object missing");
         let wasm_hex = code_substitutes
-            .get("23234813")
+            .get(block_number)
             .and_then(Value::as_str)
-            .expect("missing codeSubstitute for block 23234813");
-        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
-            .expect("codeSubstitutes entry must be valid hex");
+            .unwrap_or_else(|| panic!("missing codeSubstitute for block {block_number}"));
+        hex::decode(wasm_hex.trim_start_matches("0x"))
+            .expect("codeSubstitutes entry must be valid hex")
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_codesub_11271782_matches_expected_wasm() {
+        let wasm_bytes = mainnet_code_substitute_bytes("11271782");
+        assert_eq!(
+            blake2_256(&wasm_bytes),
+            hex!("e18bc6bc95e7318ca5e22b3bdc71b0d1095c0d215f467c16eb7e41972c4cf3c1"),
+            "unexpected Wasm hash for 11271782 code substitute"
+        );
+        assert_eq!(wasm_bytes.len(), 2_380_296);
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_codesub_23234813_matches_expected_wasm() {
+        // The live chain is upgraded via codeSubstitutes, so we verify the embedded JSON still
+        // carries the correct Wasm blob for the emergency fork height.
+        let wasm_bytes = mainnet_code_substitute_bytes("23234813");
         assert_eq!(
             blake2_256(&wasm_bytes),
             hex!("311d77b61faf6950680f520333e2c8af5ad3155f0d3e60ec9439fcf2bbceef3e"),
             "unexpected Wasm hash for 23234813 code substitute"
         );
+        assert_eq!(wasm_bytes.len(), 2_815_465);
     }
 
     #[cfg(not(feature = "private-net"))]
+    #[cfg(any(
+        feature = "main-net-coded",
+        feature = "test",
+        feature = "runtime-benchmarks",
+        feature = "wip",
+        feature = "stage"
+    ))]
     #[test]
-    fn mainnet_code_substitute_has_expected_wasm_size() {
-        let raw_spec = include_str!("./bytes/chain_spec_main.json");
-        let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
-        let code_substitutes = json
-            .get("codeSubstitutes")
-            .and_then(Value::as_object)
-            .expect("codeSubstitutes object missing");
-        let wasm_hex = code_substitutes
-            .get("23234813")
-            .and_then(Value::as_str)
-            .expect("missing codeSubstitute for block 23234813");
-        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
-            .expect("codeSubstitutes entry must be valid hex");
-        assert_eq!(wasm_bytes.len(), 2_815_465);
+    fn mainnet_coded_spec_includes_mainnet_codesubs() {
+        let spec = super::main_net_coded();
+        let code_substitutes = sc_service::ChainSpec::code_substitutes(&spec);
+        assert!(code_substitutes.contains_key("11271782"));
+        assert!(code_substitutes.contains_key("23234813"));
     }
 }
