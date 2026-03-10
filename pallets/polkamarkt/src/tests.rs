@@ -1,18 +1,20 @@
 use crate::{
-    BlockedJurisdictions, CommitmentHash, ConditionInput, CreatorRewardActivated, CreatorRewards,
-    Credentials, CredentialsEnforced, Error, Event, ForkTaxOwed, MaintenancePoolBalance,
-    MaintenancePoolTotal, MarketCollateral, MarketId, OpengovProposalInput, Pallet, RelayNetwork,
+    BlockedJurisdictions, BridgeEntitlements, CommitmentHash, ConditionInput,
+    CreatorRewardActivated, CreatorRewards, Credentials, CredentialsEnforced, Error, Event,
+    ForkTaxOwed, MaintenancePoolBalance, MaintenancePoolTotal, MarketCollateral, MarketId,
+    OpengovProposalInput, Pallet, RelayNetwork,
 };
 use codec::Encode;
 use frame_support::{assert_noop, assert_ok};
 use frame_system::Pallet as System;
 use proptest::prelude::*;
 use sp_io::hashing::blake2_256;
+use sp_runtime::Perbill;
 
 use super::mock::*;
 use super::mock::{
-    last_plaza_condition, reset_plaza_notifications, BlockNumber, CredentialTtlConst, RuntimeEvent,
-    WalletCooldownConst, MAINTENANCE_ACCOUNT, USDC_ASSET,
+    last_plaza_condition, reset_plaza_notifications, BlockNumber, CredentialTtlConst,
+    LiquiditySafetyBpsConst, RuntimeEvent, WalletCooldownConst, MAINTENANCE_ACCOUNT, USDC_ASSET,
 };
 
 type Polkamarkt = Pallet<Test>;
@@ -123,7 +125,9 @@ proptest! {
                 MaintenancePoolTotal::<Test>::get(),
             )
         });
-        let expected_floor = Pallet::<Test>::pool_floor_from_total(total);
+        let floor_bps = LiquiditySafetyBpsConst::get().min(10_000);
+        let expected_floor: Balance =
+            (Perbill::from_rational(floor_bps, 10_000u32) * total).into();
         let remaining = total.saturating_sub(amount);
         let enough_balance = total >= amount;
         let respects_floor = remaining >= expected_floor;
@@ -547,10 +551,17 @@ fn bridge_withdraw_applies_tax() {
             RuntimeOrigin::signed(ALICE),
             BOB
         ));
+        assert_ok!(Polkamarkt::bridge_deposit(
+            RuntimeOrigin::signed(ALICE),
+            USDC_ASSET,
+            1_000
+        ));
+        assert_eq!(BridgeEntitlements::<Test>::get(ALICE), 1_000);
         assert_ok!(Polkamarkt::bridge_withdraw(
             RuntimeOrigin::signed(ALICE),
             1_000
         ));
+        assert_eq!(BridgeEntitlements::<Test>::get(ALICE), 0);
         assert_eq!(ForkTaxOwed::<Test>::get(), 1);
     });
 }
@@ -566,6 +577,48 @@ fn bridge_withdraw_requires_credential() {
         assert_noop!(
             Polkamarkt::bridge_withdraw(RuntimeOrigin::signed(ALICE), 1_000),
             Error::<Test>::CredentialMissing
+        );
+    });
+}
+
+#[test]
+fn bridge_withdraw_requires_entitlement() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        provide_credential(ALICE);
+        assert_ok!(Polkamarkt::set_bridge_wallet(
+            RuntimeOrigin::signed(ALICE),
+            BOB
+        ));
+        assert_noop!(
+            Polkamarkt::bridge_withdraw(RuntimeOrigin::signed(ALICE), 1_000),
+            Error::<Test>::BridgeInsufficientEntitlement
+        );
+    });
+}
+
+#[test]
+fn bridge_withdraw_debits_entitlement() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        provide_credential(ALICE);
+        assert_ok!(Polkamarkt::set_bridge_wallet(
+            RuntimeOrigin::signed(ALICE),
+            BOB
+        ));
+        assert_ok!(Polkamarkt::bridge_deposit(
+            RuntimeOrigin::signed(ALICE),
+            USDC_ASSET,
+            1_500
+        ));
+        assert_ok!(Polkamarkt::bridge_withdraw(
+            RuntimeOrigin::signed(ALICE),
+            1_000
+        ));
+        assert_eq!(BridgeEntitlements::<Test>::get(ALICE), 500);
+        assert_noop!(
+            Polkamarkt::bridge_withdraw(RuntimeOrigin::signed(ALICE), 600),
+            Error::<Test>::BridgeInsufficientEntitlement
         );
     });
 }

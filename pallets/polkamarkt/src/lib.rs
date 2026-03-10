@@ -492,6 +492,11 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    #[pallet::storage]
+    #[pallet::getter(fn bridge_entitlements)]
+    pub type BridgeEntitlements<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
+
     #[derive(
         Encode, Decode, TypeInfo, Clone, PartialEq, Eq, sp_runtime::RuntimeDebug, MaxEncodedLen,
     )]
@@ -812,6 +817,7 @@ pub mod pallet {
         BridgeDailyLimitReached,
         BridgeWalletLocked,
         BridgeWalletMissing,
+        BridgeInsufficientEntitlement,
         UnsupportedCollateralAsset,
         InsufficientCreationFee,
         GovernanceBondTooLow,
@@ -1086,6 +1092,9 @@ pub mod pallet {
                 Error::<T>::BridgeAssetNotAllowed
             );
             let day = Self::apply_daily_bridge_cap(&who, amount)?;
+            BridgeEntitlements::<T>::mutate(&who, |balance| {
+                *balance = balance.saturating_add(amount);
+            });
             Self::deposit_event(Event::BridgeDeposited {
                 user: who,
                 asset,
@@ -1104,6 +1113,14 @@ pub mod pallet {
             Self::ensure_has_credential(&who)?;
             ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
             let wallet = BridgeWallet::<T>::get(&who).ok_or(Error::<T>::BridgeWalletMissing)?;
+            BridgeEntitlements::<T>::try_mutate(&who, |balance| -> DispatchResult {
+                ensure!(
+                    *balance >= amount,
+                    Error::<T>::BridgeInsufficientEntitlement
+                );
+                *balance = balance.saturating_sub(amount);
+                Ok(())
+            })?;
             let tax = Perbill::from_rational(Self::payout_tax_bps(), 10_000u32) * amount;
             if !tax.is_zero() {
                 ForkTaxOwed::<T>::mutate(|total| {
