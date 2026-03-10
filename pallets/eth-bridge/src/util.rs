@@ -128,8 +128,10 @@ impl<T: Config> Decoder<T> {
             .ok_or(Error::<T>::InvalidUint)?)
     }
 
-    pub fn next_account_id(&mut self) -> Result<T::AccountId, Error<T>> {
-        Ok(T::AccountId::decode(
+    pub fn next_account_id(
+        &mut self,
+    ) -> Result<<T as frame_system::pallet::Config>::AccountId, Error<T>> {
+        Ok(<T as frame_system::pallet::Config>::AccountId::decode(
             &mut &self
                 .tokens
                 .pop()
@@ -220,12 +222,18 @@ where
 
 impl<T: Config> Pallet<T> {
     /// Checks if the account is a bridge peer.
-    pub fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
+    pub fn is_peer(
+        who: &<T as frame_system::pallet::Config>::AccountId,
+        network_id: T::NetworkId,
+    ) -> bool {
         Self::peers(network_id).into_iter().any(|i| i == *who)
     }
 
     /// Ensures that the account is a bridge peer.
-    pub(crate) fn ensure_peer(who: &T::AccountId, network_id: T::NetworkId) -> DispatchResult {
+    pub(crate) fn ensure_peer(
+        who: &<T as frame_system::pallet::Config>::AccountId,
+        network_id: T::NetworkId,
+    ) -> DispatchResult {
         ensure!(Self::is_peer(who, network_id), Error::<T>::Forbidden);
         Ok(())
     }
@@ -234,7 +242,10 @@ impl<T: Config> Pallet<T> {
     pub(crate) fn ensure_bridge_account(
         origin: OriginFor<T>,
         network_id: T::NetworkId,
-    ) -> Result<T::AccountId, DispatchErrorWithPostInfo<PostDispatchInfo>> {
+    ) -> Result<
+        <T as frame_system::pallet::Config>::AccountId,
+        DispatchErrorWithPostInfo<PostDispatchInfo>,
+    > {
         let who = ensure_signed(origin)?;
         let bridge_account_id =
             Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;

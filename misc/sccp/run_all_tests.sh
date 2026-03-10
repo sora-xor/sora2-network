@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DEV_DIR="$(cd "${ROOT_DIR}/.." && pwd)"
+DEV_DIR="${SCCP_DEV_DIR:-$(cd "${ROOT_DIR}/.." && pwd)}"
 SOLANA_TEST_RUST_LOG="${SOLANA_TEST_RUST_LOG:-warn}"
 SCCP_SOL_PROGRAM_RETRIES="${SCCP_SOL_PROGRAM_RETRIES:-2}"
 SCCP_SOL_PROGRAM_TEST_THREADS="${SCCP_SOL_PROGRAM_TEST_THREADS:-1}"
@@ -13,6 +13,8 @@ SCCP_SOL_PROGRAM_LOG_DIR="${SCCP_SOL_PROGRAM_LOG_DIR:-${ROOT_DIR}/misc/sccp/logs
 SCCP_SOL_PROGRAM_LOG_TAIL_LINES="${SCCP_SOL_PROGRAM_LOG_TAIL_LINES:-120}"
 SCCP_SOL_PROGRAM_PRESERVE_LOGS="${SCCP_SOL_PROGRAM_PRESERVE_LOGS:-1}"
 SCCP_SOL_PROGRAM_NOCAPTURE="${SCCP_SOL_PROGRAM_NOCAPTURE:-0}"
+SCCP_RUSTUP_TOOLCHAIN="${SCCP_RUSTUP_TOOLCHAIN:-${RUSTUP_TOOLCHAIN:-nightly-2025-05-08}}"
+export RUSTUP_TOOLCHAIN="${SCCP_RUSTUP_TOOLCHAIN}"
 
 require_positive_int() {
   local name="$1"
@@ -64,6 +66,8 @@ if [[ "${CI:-}" == "1" || "${CI:-}" == "true" ]]; then
     exit 1
   fi
 fi
+
+echo "[sccp-tests] RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN}"
 
 run_sccp_sol_program_tests() {
   local attempt=1

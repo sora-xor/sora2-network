@@ -58,8 +58,19 @@ copy_adapter() {
   echo "installed adapter: ${dst}"
 }
 
+copy_adapter_optional() {
+  local src="$1"
+  local dst_repo="$2"
+  if [[ ! -d "${dst_repo}" ]]; then
+    echo "optional sibling repo not found, skipping: ${dst_repo}" >&2
+    return 0
+  fi
+  copy_adapter "${src}" "${dst_repo}"
+}
+
 copy_adapter "${TEMPLATES_DIR}/sccp_evm_adapter.sh" "${SIBLINGS_ROOT}/sccp-eth"
 copy_adapter "${TEMPLATES_DIR}/sccp_evm_adapter.sh" "${SIBLINGS_ROOT}/sccp-bsc"
 copy_adapter "${TEMPLATES_DIR}/sccp_evm_adapter.sh" "${SIBLINGS_ROOT}/sccp-tron"
 copy_adapter "${TEMPLATES_DIR}/sccp_sol_adapter.sh" "${SIBLINGS_ROOT}/sccp-sol"
 copy_adapter "${TEMPLATES_DIR}/sccp_ton_adapter.sh" "${SIBLINGS_ROOT}/sccp-ton"
+copy_adapter_optional "${TEMPLATES_DIR}/sccp_sora_parachain_adapter.sh" "${SIBLINGS_ROOT}/sora2-parachain"

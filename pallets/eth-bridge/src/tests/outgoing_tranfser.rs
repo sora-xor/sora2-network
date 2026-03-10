@@ -36,7 +36,7 @@ use crate::tests::{
 };
 use crate::util::majority;
 use crate::{AssetConfig, EthAddress};
-use common::{eth, AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, PSWAP, USDT, XOR};
+use common::{eth, AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, PSWAP, USDT, VAL, XOR};
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -617,5 +617,66 @@ fn requests_queue_respects_limit() {
         );
         assert_eq!(crate::Requests::<Runtime>::iter_prefix(net_id).count(), max);
         assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), max);
+    });
+}
+
+#[test]
+fn should_block_v1_signature_domain_requests_without_toggle() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&PSWAP.into(), &alice, &alice, 1000).unwrap();
+
+        crate::BridgeSignatureVersions::<Runtime>::insert(
+            net_id,
+            crate::BridgeSignatureVersion::V1,
+        );
+        assert_err!(
+            EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(alice),
+                PSWAP.into(),
+                EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                10,
+                net_id,
+            ),
+            Error::WeakLegacySigningDisabled
+        );
+    });
+}
+
+#[test]
+fn should_use_legacy_master_contract_path_for_val_only() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let to = EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap();
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&alice);
+        let timepoint = bridge_multisig::Pallet::<Runtime>::thischain_timepoint();
+
+        let xor_req = OutgoingTransfer::<Runtime> {
+            from: alice.clone(),
+            to,
+            asset_id: XOR.into(),
+            amount: 10,
+            nonce,
+            network_id: net_id,
+            timepoint,
+        };
+        let val_req = OutgoingTransfer::<Runtime> {
+            from: alice,
+            to,
+            asset_id: VAL.into(),
+            amount: 10,
+            nonce,
+            network_id: net_id,
+            timepoint,
+        };
+
+        assert!(!xor_req.uses_legacy_master_contract_path());
+        assert!(val_req.uses_legacy_master_contract_path());
     });
 }

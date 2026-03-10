@@ -36,8 +36,8 @@ use crate::types::{
 };
 use crate::{
     AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
-    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
-    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
+    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
+    STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
 };
 use codec::{Codec, Decode, Encode};
@@ -258,6 +258,8 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const MaxRequestsPerQueueConst: u32 = 64;
+    pub const ReservedBridgeQueueSlotsConst: u32 = 4;
+    pub const MaxPendingLoadIncomingRequestsPerAccountConst: u32 = 16;
 }
 
 pub struct RemoveTemporaryPeerAccountId;
@@ -374,6 +376,8 @@ impl Config for Runtime {
     type SccpAssetChecker = MockSccpAssetChecker;
     type Denominator = ();
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
+    type ReservedBridgeQueueSlots = ReservedBridgeQueueSlotsConst;
+    type MaxPendingLoadIncomingRequestsPerAccount = MaxPendingLoadIncomingRequestsPerAccountConst;
 }
 
 impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
@@ -497,11 +501,12 @@ impl State {
         self.push_response_raw(data);
     }
 
-    pub fn run_next_offchain_with_params(
+    fn run_next_offchain_inner(
         &mut self,
         sidechain_height: u64,
         finalized_thischain_height: BlockNumber,
         dispatch_txs: bool,
+        via_hook: bool,
     ) {
         let finalized_block_hash = H256([0; 32]);
         // Thischain finalized head.
@@ -549,14 +554,57 @@ impl State {
         for resp in responses {
             push_response(resp);
         }
-        EthBridge::offchain();
+        let current_block_number = frame_system::Pallet::<Runtime>::block_number();
+        if via_hook {
+            <EthBridge as frame_support::traits::Hooks<BlockNumber>>::offchain_worker(
+                current_block_number,
+            );
+        } else {
+            EthBridge::offchain();
+        }
         if dispatch_txs {
             self.dispatch_offchain_transactions();
         }
     }
 
+    pub fn run_next_offchain_with_params(
+        &mut self,
+        sidechain_height: u64,
+        finalized_thischain_height: BlockNumber,
+        dispatch_txs: bool,
+    ) {
+        self.run_next_offchain_inner(
+            sidechain_height,
+            finalized_thischain_height,
+            dispatch_txs,
+            false,
+        );
+    }
+
     pub fn run_next_offchain_and_dispatch_txs(&mut self) {
         self.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
+    }
+
+    pub fn run_next_offchain_worker_with_params(
+        &mut self,
+        sidechain_height: u64,
+        finalized_thischain_height: BlockNumber,
+        dispatch_txs: bool,
+    ) {
+        self.run_next_offchain_inner(
+            sidechain_height,
+            finalized_thischain_height,
+            dispatch_txs,
+            true,
+        );
+    }
+
+    pub fn run_next_offchain_worker_and_dispatch_txs(&mut self) {
+        self.run_next_offchain_worker_with_params(
             CONFIRMATION_INTERVAL,
             frame_system::Pallet::<Runtime>::block_number() + 1,
             true,
@@ -773,11 +821,13 @@ impl ExtBuilder {
             &String::from("http://sub.node").encode(),
         );
         let ocw_keys = &self.networks[&0].ocw_keypairs[0];
-        offchain_storage.set(
-            b"",
-            STORAGE_PEER_SECRET_KEY,
-            &Vec::from(ocw_keys.2).encode(),
-        );
+        let ocw_marker = match &ocw_keys.0 {
+            MultiSigner::Ecdsa(pubkey) => pubkey.0.to_vec(),
+            _ => unreachable!("only ecdsa bridge peers are expected in tests"),
+        };
+        offchain_storage.set(b"", STORAGE_PEER_MARKER_KEY, &ocw_marker.encode());
+        // Keep legacy key populated for backward-compatibility paths.
+        offchain_storage.set(b"", STORAGE_PEER_SECRET_KEY, &ocw_marker.encode());
         drop(offchain_guard);
         let key_store = KeyStore::new();
         key_store

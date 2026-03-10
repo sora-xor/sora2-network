@@ -16,18 +16,18 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
 common = { path = "../../common", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
 technical = { path = "../technical", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 hex-literal = "0.4.1"
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false, optional = true }
+pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
 
 [dev-dependencies]
 assets = { path = "../assets" }
@@ -37,8 +37,8 @@ demeter-farming-platform = { path = "../demeter-farming-platform", default-featu
 currencies = { workspace = true }
 dex-manager = { path = "../dex-manager", default-features = false }
 ceres-governance-platform = { path = ".", default-features = false }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
 tokens = { workspace = true }
 orml-traits = { workspace = true }
 permissions = { path = "../permissions" }

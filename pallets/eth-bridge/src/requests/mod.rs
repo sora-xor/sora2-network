@@ -31,8 +31,8 @@
 use crate::contract::{ContractEvent, DepositEvent};
 use crate::offchain::SignatureParams;
 use crate::{
-    BridgeNetworkId, BridgeTimepoint, Config, Error, EthAddress, Pallet, PeerAccountId,
-    RequestStatuses, SidechainAssetPrecision, Timepoint,
+    BridgeNetworkId, BridgeSignatureVersion, BridgeSignatureVersions, BridgeTimepoint, Config,
+    Error, EthAddress, Pallet, PeerAccountId, RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
 use codec::{Decode, Encode};
 use common::AssetInfoProvider;
@@ -87,7 +87,7 @@ pub enum OutgoingRequest<T: Config> {
 }
 
 impl<T: Config> OutgoingRequest<T> {
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             OutgoingRequest::Transfer(transfer) => &transfer.from,
             OutgoingRequest::AddAsset(request) => &request.author,
@@ -232,6 +232,19 @@ impl<T: Config> OutgoingRequest<T> {
             _ => false,
         }
     }
+
+    /// Returns `true` when signatures for this request use legacy-insecure domain separation.
+    ///
+    /// Weak domains are rejected unconditionally in runtime logic.
+    pub fn uses_weak_signature_domain(&self) -> bool {
+        if matches!(
+            self,
+            OutgoingRequest::AddPeerCompat(_) | OutgoingRequest::RemovePeerCompat(_)
+        ) {
+            return true;
+        }
+        BridgeSignatureVersions::<T>::get(self.network_id()) == BridgeSignatureVersion::V1
+    }
 }
 
 /// Types of transaction-requests that can be made from a sidechain.
@@ -305,7 +318,7 @@ pub enum IncomingRequest<T: Config> {
 
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
-        event: ContractEvent<EthAddress, T::AccountId, U256>,
+        event: ContractEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
         incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
     ) -> Result<Self, Error<T>> {
@@ -506,7 +519,7 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             IncomingRequest::Transfer(request) => request.author(),
             IncomingRequest::AddToken(request) => request.author(),
@@ -590,7 +603,7 @@ impl<T: Config> LoadIncomingRequest<T> {
         }
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             Self::Transaction(request) => &request.author,
             Self::Meta(request, _) => &request.author,
@@ -638,7 +651,7 @@ impl<T: Config> LoadIncomingRequest<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct LoadIncomingTransactionRequest<T: Config> {
-    pub(crate) author: T::AccountId,
+    pub(crate) author: <T as frame_system::pallet::Config>::AccountId,
     pub(crate) hash: H256,
     pub(crate) timepoint: BridgeTimepoint<T>,
     pub(crate) kind: IncomingTransactionRequestKind,
@@ -647,7 +660,7 @@ pub struct LoadIncomingTransactionRequest<T: Config> {
 
 impl<T: Config> LoadIncomingTransactionRequest<T> {
     pub fn new(
-        author: T::AccountId,
+        author: <T as frame_system::pallet::Config>::AccountId,
         hash: H256,
         timepoint: Timepoint<T>,
         kind: IncomingTransactionRequestKind,
@@ -669,7 +682,7 @@ impl<T: Config> LoadIncomingTransactionRequest<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct LoadIncomingMetaRequest<T: Config> {
-    pub(crate) author: T::AccountId,
+    pub(crate) author: <T as frame_system::pallet::Config>::AccountId,
     pub(crate) hash: H256,
     pub(crate) timepoint: BridgeTimepoint<T>,
     pub(crate) kind: IncomingMetaRequestKind,
@@ -678,7 +691,7 @@ pub struct LoadIncomingMetaRequest<T: Config> {
 
 impl<T: Config> LoadIncomingMetaRequest<T> {
     pub fn new(
-        author: T::AccountId,
+        author: <T as frame_system::pallet::Config>::AccountId,
         hash: H256,
         timepoint: Timepoint<T>,
         kind: IncomingMetaRequestKind,
@@ -766,7 +779,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     /// An initiator of the request.
-    pub(crate) fn author(&self) -> &T::AccountId {
+    pub(crate) fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             OffchainRequest::Outgoing(request, _) => request.author(),
             OffchainRequest::LoadIncoming(request) => request.author(),

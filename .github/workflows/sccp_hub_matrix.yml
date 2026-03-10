@@ -3,12 +3,22 @@ name: SCCP Hub Matrix
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: Config mode preset
+        required: true
+        default: release
+        type: choice
+        options:
+          - pr
+          - nightly
+          - release
       matrix_mode:
         description: Matrix mode
         required: true
-        default: sora-pairs
+        default: full
         type: choice
         options:
+          - sora-core-pairs
           - sora-pairs
           - full
       include_negative:
@@ -30,9 +40,6 @@ on:
         required: true
         default: "120"
         type: string
-  schedule:
-    - cron: "15 03 * * *"
-
 env:
   CARGO_TERM_COLOR: always
 
@@ -89,15 +96,22 @@ jobs:
           path: siblings/sccp-tron
           token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
 
+      - name: Checkout sora2-parachain
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          repository: ${{ github.repository_owner }}/sora2-parachain
+          path: siblings/sora2-parachain
+          token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
+
       - name: Setup Rust nightly toolchain
         run: |
-          rustup toolchain install nightly-2023-03-21 --profile minimal
-          rustup default nightly-2023-03-21
+          rustup toolchain install nightly-2025-05-08 --profile minimal
+          rustup default nightly-2025-05-08
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: |
             siblings/sccp-eth/package-lock.json
@@ -113,6 +127,7 @@ jobs:
             . -> target
             siblings/bridge-relayer -> target
             siblings/sccp-sol/program -> target
+            siblings/sora2-parachain -> target
 
       - name: Install JS dependencies
         run: |
@@ -132,7 +147,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          matrix_mode="${{ github.event.inputs.matrix_mode || 'sora-pairs' }}"
+          mode="${{ github.event.inputs.mode || 'release' }}"
+          matrix_mode="${{ github.event.inputs.matrix_mode || 'full' }}"
           include_negative="${{ github.event.inputs.include_negative || 'true' }}"
           strict_adapters="${{ github.event.inputs.strict_adapters || 'true' }}"
           scenario_filter="${{ github.event.inputs.scenario || '' }}"
@@ -144,6 +160,7 @@ jobs:
 
           args=(
             --config misc/sccp-e2e/config.ci.json
+            --mode "${mode}"
             --artifacts-dir "${artifacts_dir}"
             --skip-preflight
             --matrix "${matrix_mode}"

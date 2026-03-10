@@ -293,7 +293,9 @@ impl<T: Config> Pallet<T> {
 
     /// Queries a block at the given height of the local node with `chain_getBlockHash` and
     /// `chain_getBlock` RPC calls.
-    pub fn load_substrate_block(number: T::BlockNumber) -> Result<SubstrateBlockLimited, Error<T>>
+    pub fn load_substrate_block(
+        number: <T as frame_system::pallet::Config>::BlockNumber,
+    ) -> Result<SubstrateBlockLimited, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {

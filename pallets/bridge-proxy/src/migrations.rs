@@ -207,7 +207,18 @@ pub mod generic_account_v2 {
             match self {
                 OldGenericAccount::EVM(account) => GenericAccount::EVM(account),
                 OldGenericAccount::Sora(account) => GenericAccount::Sora(account),
-                OldGenericAccount::Parachain(account) => GenericAccount::Parachain(account),
+                OldGenericAccount::Parachain(account) => {
+                    let encoded = account.encode();
+                    match codec::Decode::decode(&mut &encoded[..]) {
+                        Ok(location) => GenericAccount::Parachain(location),
+                        Err(_) => {
+                            frame_support::log::error!(
+                                "Failed to decode parachain account in v2 migration"
+                            );
+                            GenericAccount::Unknown
+                        }
+                    }
+                }
                 OldGenericAccount::Unknown => GenericAccount::Unknown,
                 OldGenericAccount::Root => GenericAccount::Root,
             }
@@ -241,10 +252,14 @@ pub mod generic_account_v2 {
                 };
 
                 // Create some correct bridge request that should not be changed
+                let parachain_here = {
+                    let encoded =
+                        xcm::VersionedMultiLocation::V3(xcm::v3::MultiLocation::here()).encode();
+                    codec::Decode::decode(&mut &encoded[..])
+                        .expect("v3 multilocation should decode")
+                };
                 let some_correct_bridge_request = BridgeRequest {
-                    source: GenericAccount::Parachain(xcm::VersionedMultiLocation::V3(
-                        xcm::v3::MultiLocation::here(),
-                    )),
+                    source: GenericAccount::Parachain(parachain_here),
                     dest: GenericAccount::Sora(MainnetAccountId::new([3; 32])),
                     asset_id: AssetId::default(),
                     amount: 5000,

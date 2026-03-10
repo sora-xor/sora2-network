@@ -110,15 +110,15 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: EthBridge RequestsQueue (max_values: None, max_size: None, mode: Measured)
 	/// Storage: EthBridge RequestSubmissionHeight (r:0 w:1)
 	/// Proof Skipped: EthBridge RequestSubmissionHeight (max_values: None, max_size: None, mode: Measured)
-	fn request_from_sidechain() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `566`
-		//  Estimated: `15771`
-		// Minimum execution time: 60_702_000 picoseconds.
-		Weight::from_parts(61_393_000, 15771)
-			.saturating_add(T::DbWeight::get().reads(5_u64))
-			.saturating_add(T::DbWeight::get().writes(5_u64))
-	}
+		fn request_from_sidechain() -> Weight {
+			// Proof Size summary in bytes:
+			//  Measured:  `566`
+			//  Estimated: `15771`
+			// Minimum execution time: 60_702_000 picoseconds.
+			Weight::from_parts(75_000_000, 20000)
+				.saturating_add(T::DbWeight::get().reads(7_u64))
+				.saturating_add(T::DbWeight::get().writes(6_u64))
+		}
 	/// Storage: EthBridge BridgeAccount (r:1 w:0)
 	/// Proof Skipped: EthBridge BridgeAccount (max_values: None, max_size: None, mode: Measured)
 	/// Storage: EthBridge Requests (r:1 w:1)
@@ -283,15 +283,15 @@ impl WeightInfo for () {
 	/// Proof Skipped: EthBridge RequestsQueue (max_values: None, max_size: None, mode: Measured)
 	/// Storage: EthBridge RequestSubmissionHeight (r:0 w:1)
 	/// Proof Skipped: EthBridge RequestSubmissionHeight (max_values: None, max_size: None, mode: Measured)
-	fn request_from_sidechain() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `566`
-		//  Estimated: `15771`
-		// Minimum execution time: 60_702_000 picoseconds.
-		Weight::from_parts(61_393_000, 15771)
-			.saturating_add(RocksDbWeight::get().reads(5_u64))
-			.saturating_add(RocksDbWeight::get().writes(5_u64))
-	}
+		fn request_from_sidechain() -> Weight {
+			// Proof Size summary in bytes:
+			//  Measured:  `566`
+			//  Estimated: `15771`
+			// Minimum execution time: 60_702_000 picoseconds.
+			Weight::from_parts(75_000_000, 20000)
+				.saturating_add(RocksDbWeight::get().reads(7_u64))
+				.saturating_add(RocksDbWeight::get().writes(6_u64))
+		}
 	/// Storage: EthBridge BridgeAccount (r:1 w:0)
 	/// Proof Skipped: EthBridge BridgeAccount (max_values: None, max_size: None, mode: Measured)
 	/// Storage: EthBridge Requests (r:1 w:1)

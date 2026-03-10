@@ -72,6 +72,64 @@ pub fn rlp_decode<'a>(input: &'a [u8]) -> Option<RlpItem<'a>> {
     Some(item)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BscHeaderMinimal<'a> {
+    pub parent_hash: &'a [u8; 32],
+    pub beneficiary: &'a [u8; 20],
+    pub state_root: &'a [u8; 32],
+    pub difficulty: u64,
+    pub number: u64,
+    pub extra_data_no_sig: &'a [u8],
+    pub signature: [u8; 65],
+}
+
+/// Parse only the minimal BSC header fields SCCP needs before signature verification.
+///
+/// This helper is pure and fail-closed. It is shared by tests/fuzzing to harden RLP parsing
+/// invariants without touching pallet storage or runtime state.
+pub fn parse_bsc_header_minimal(header_rlp: &[u8]) -> Option<BscHeaderMinimal<'_>> {
+    let item = rlp_decode(header_rlp)?;
+    let RlpItem::List(items) = item else {
+        return None;
+    };
+    if items.len() < 15 {
+        return None;
+    }
+
+    let mut fields: Vec<&[u8]> = Vec::with_capacity(items.len());
+    for it in items.iter() {
+        let RlpItem::Bytes(b) = it else {
+            return None;
+        };
+        fields.push(*b);
+    }
+
+    let parent_hash: &[u8; 32] = fields.get(0).copied()?.try_into().ok()?;
+    let beneficiary: &[u8; 20] = fields.get(2).copied()?.try_into().ok()?;
+    let state_root: &[u8; 32] = fields.get(3).copied()?.try_into().ok()?;
+    let difficulty = be_u64(fields.get(7).copied()?).ok()?;
+    let number = be_u64(fields.get(8).copied()?).ok()?;
+
+    let extra_data = fields.get(12).copied()?;
+    if extra_data.len() < (32 + 65) {
+        return None;
+    }
+    let sig_start = extra_data.len() - 65;
+    let extra_data_no_sig = &extra_data[..sig_start];
+    let mut signature = [0u8; 65];
+    signature.copy_from_slice(&extra_data[sig_start..]);
+
+    Some(BscHeaderMinimal {
+        parent_hash,
+        beneficiary,
+        state_root,
+        difficulty,
+        number,
+        extra_data_no_sig,
+        signature,
+    })
+}
+
 fn rlp_decode_item<'a>(input: &'a [u8]) -> Result<(RlpItem<'a>, usize), ()> {
     if input.is_empty() {
         return Err(());
@@ -88,14 +146,16 @@ fn rlp_decode_item<'a>(input: &'a [u8]) -> Result<(RlpItem<'a>, usize), ()> {
         }
         0xb8..=0xbf => {
             let ll = (b0 - 0xb7) as usize;
-            if input.len() < 1 + ll {
+            let header_len = 1usize.checked_add(ll).ok_or(())?;
+            if input.len() < header_len {
                 return Err(());
             }
-            let len = be_u64(&input[1..1 + ll])? as usize;
-            if input.len() < 1 + ll + len {
+            let len = be_u64(&input[1..header_len])? as usize;
+            let total_len = header_len.checked_add(len).ok_or(())?;
+            if input.len() < total_len {
                 return Err(());
             }
-            Ok((RlpItem::Bytes(&input[1 + ll..1 + ll + len]), 1 + ll + len))
+            Ok((RlpItem::Bytes(&input[header_len..total_len]), total_len))
         }
         0xc0..=0xf7 => {
             let len = (b0 - 0xc0) as usize;
@@ -108,16 +168,18 @@ fn rlp_decode_item<'a>(input: &'a [u8]) -> Result<(RlpItem<'a>, usize), ()> {
         }
         0xf8..=0xff => {
             let ll = (b0 - 0xf7) as usize;
-            if input.len() < 1 + ll {
+            let header_len = 1usize.checked_add(ll).ok_or(())?;
+            if input.len() < header_len {
                 return Err(());
             }
-            let len = be_u64(&input[1..1 + ll])? as usize;
-            if input.len() < 1 + ll + len {
+            let len = be_u64(&input[1..header_len])? as usize;
+            let total_len = header_len.checked_add(len).ok_or(())?;
+            if input.len() < total_len {
                 return Err(());
             }
-            let payload = &input[1 + ll..1 + ll + len];
+            let payload = &input[header_len..total_len];
             let items = rlp_decode_list_payload(payload)?;
-            Ok((RlpItem::List(items), 1 + ll + len))
+            Ok((RlpItem::List(items), total_len))
         }
     }
 }
@@ -397,6 +459,17 @@ mod tests {
         for item in decoded_items {
             assert_eq!(item, RlpItem::Bytes(&[0x11u8, 0x22u8]));
         }
+    }
+
+    #[test]
+    fn rlp_decode_rejects_long_list_with_overflowed_total_length() {
+        // Regression seed from fuzzing:
+        // the prefix says "long list with 8-byte length", and that length is usize::MAX.
+        // Decoder must fail closed instead of panicking on integer overflow.
+        let crashing_seed = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xf9, 0x00, 0x14, 0x00,
+        ];
+        assert!(rlp_decode(&crashing_seed).is_none());
     }
 
     #[test]

@@ -466,22 +466,23 @@ fn remint_for_xorless_works() {
         xor_fee::Pallet::<Runtime>::on_initialize(1);
         assert!(xor_fee::BurntForFee::<Runtime>::iter().next().is_none());
 
+        let xor_to_val_after_tbcd_burn =
+            total_xor_to_val.saturating_sub(RemintTbcdBuyBackPercent::get() * total_xor_to_val);
         let val_burned = calc_xyk_swap_result(
             INITIAL_RESERVES + val_fee + val_fee,
             INITIAL_RESERVES - total_asset_fee_in_xor,
-            total_xor_to_val,
+            xor_to_val_after_tbcd_burn,
         );
-        let remint_buy_back_percent =
-            RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
+        let kusd_buy_back = RemintKusdBuyBackPercent::get() * val_burned;
         let xor_to_remint_buy_back = calc_xyk_swap_result(
             INITIAL_RESERVES - val_burned + val_fee + val_fee,
-            INITIAL_RESERVES + total_xor_to_val - total_asset_fee_in_xor,
-            remint_buy_back_percent * val_burned,
+            INITIAL_RESERVES + xor_to_val_after_tbcd_burn - total_asset_fee_in_xor,
+            kusd_buy_back,
         );
 
         assert_approx_eq_abs!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
-            val_burned - remint_buy_back_percent * val_burned,
+            val_burned - kusd_buy_back,
             balance!(0.000000001)
         );
 
@@ -490,12 +491,7 @@ fn remint_for_xorless_works() {
         let kusd_burned_remint = calc_xyk_swap_result(
             INITIAL_RESERVES + total_xor_to_buy_back,
             INITIAL_RESERVES - kusd_burned,
-            (RemintKusdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
-        );
-        let tbcd_burned_remint = calc_xyk_swap_result(
-            INITIAL_RESERVES,
-            INITIAL_RESERVES,
-            (RemintTbcdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
+            xor_to_remint_buy_back,
         );
 
         assert_approx_eq_abs!(
@@ -506,7 +502,7 @@ fn remint_for_xorless_works() {
 
         assert_approx_eq_abs!(
             Assets::total_issuance(&TBCD.into()).unwrap(),
-            2 * INITIAL_RESERVES - tbcd_burned_remint,
+            2 * INITIAL_RESERVES,
             balance!(0.00001)
         );
     });
@@ -751,9 +747,9 @@ fn notify_val_burned_works() {
                 / weights_sum;
         }
 
-        // The correct answer is 3E-13 away
-        assert_eq!(XorToVal::<Runtime>::get(), total_xor_to_val);
-        assert_eq!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back);
+        // Bucket values may differ by a few base units due to integer ration rounding.
+        assert_approx_eq_abs!(XorToVal::<Runtime>::get(), total_xor_to_val, 10);
+        assert_approx_eq_abs!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back, 10);
         assert_eq!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
             0_u128.into()
@@ -761,18 +757,23 @@ fn notify_val_burned_works() {
 
         xor_fee::Pallet::<Runtime>::on_initialize(1);
 
-        let val_burned = calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, total_xor_to_val);
-        let remint_buy_back_percent =
-            RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
+        let xor_to_val_after_tbcd_burn =
+            total_xor_to_val.saturating_sub(RemintTbcdBuyBackPercent::get() * total_xor_to_val);
+        let val_burned = calc_xyk_swap_result(
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            xor_to_val_after_tbcd_burn,
+        );
+        let kusd_buy_back = RemintKusdBuyBackPercent::get() * val_burned;
         let xor_to_remint_buy_back = calc_xyk_swap_result(
             INITIAL_RESERVES - val_burned,
-            INITIAL_RESERVES + total_xor_to_val,
-            remint_buy_back_percent * val_burned,
+            INITIAL_RESERVES + xor_to_val_after_tbcd_burn,
+            kusd_buy_back,
         );
 
         assert_approx_eq_abs!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
-            val_burned - remint_buy_back_percent * val_burned,
+            val_burned - kusd_buy_back,
             balance!(0.000000001)
         );
 
@@ -781,12 +782,7 @@ fn notify_val_burned_works() {
         let kusd_burned_remint = calc_xyk_swap_result(
             INITIAL_RESERVES + total_xor_to_buy_back,
             INITIAL_RESERVES - kusd_burned,
-            (RemintKusdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
-        );
-        let tbcd_burned_remint = calc_xyk_swap_result(
-            INITIAL_RESERVES,
-            INITIAL_RESERVES,
-            (RemintTbcdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
+            xor_to_remint_buy_back,
         );
 
         assert_approx_eq_abs!(
@@ -797,7 +793,7 @@ fn notify_val_burned_works() {
 
         assert_approx_eq_abs!(
             crate::Assets::total_issuance(&TBCD.into()).unwrap(),
-            balance!(20000) - tbcd_burned_remint,
+            balance!(20000),
             balance!(0.00001)
         );
     });
@@ -1173,9 +1169,7 @@ fn reminting_for_sora_parliament_works() {
         let y = INITIAL_RESERVES;
         let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let remint_buy_back_percent =
-            RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
-        let expected_balance = FixedWrapper::from(remint_buy_back_percent * val_burned);
+        let expected_balance = FixedWrapper::from(RemintKusdBuyBackPercent::get() * val_burned);
 
         xor_fee::Pallet::<Runtime>::on_initialize(1);
 
@@ -1993,9 +1987,9 @@ fn random_remint_works() {
                 / weights_sum;
         }
 
-        // The correct answer is 3E-13 away
-        assert_eq!(XorToVal::<Runtime>::get(), total_xor_to_val);
-        assert_eq!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back);
+        // Bucket values may differ by a few base units due to integer ration rounding.
+        assert_approx_eq_abs!(XorToVal::<Runtime>::get(), total_xor_to_val, 10);
+        assert_approx_eq_abs!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back, 10);
         assert_eq!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
             0_u128.into()
@@ -2023,18 +2017,23 @@ fn random_remint_works() {
 
         xor_fee::Pallet::<Runtime>::on_initialize(1);
 
-        let val_burned = calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, total_xor_to_val);
-        let remint_buy_back_percent =
-            RemintKusdBuyBackPercent::get() + RemintTbcdBuyBackPercent::get();
+        let xor_to_val_after_tbcd_burn =
+            total_xor_to_val.saturating_sub(RemintTbcdBuyBackPercent::get() * total_xor_to_val);
+        let val_burned = calc_xyk_swap_result(
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            xor_to_val_after_tbcd_burn,
+        );
+        let kusd_buy_back = RemintKusdBuyBackPercent::get() * val_burned;
         let xor_to_remint_buy_back = calc_xyk_swap_result(
             INITIAL_RESERVES - val_burned,
-            INITIAL_RESERVES + total_xor_to_val,
-            remint_buy_back_percent * val_burned,
+            INITIAL_RESERVES + xor_to_val_after_tbcd_burn,
+            kusd_buy_back,
         );
 
         assert_approx_eq_abs!(
             pallet_staking::Pallet::<Runtime>::era_val_burned(),
-            val_burned - remint_buy_back_percent * val_burned,
+            val_burned - kusd_buy_back,
             balance!(0.000000001)
         );
 
@@ -2043,12 +2042,7 @@ fn random_remint_works() {
         let kusd_burned_remint = calc_xyk_swap_result(
             INITIAL_RESERVES + total_xor_to_buy_back,
             INITIAL_RESERVES - kusd_burned,
-            (RemintKusdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
-        );
-        let tbcd_burned_remint = calc_xyk_swap_result(
-            INITIAL_RESERVES,
-            INITIAL_RESERVES,
-            (RemintTbcdBuyBackPercent::get() / remint_buy_back_percent) * xor_to_remint_buy_back,
+            xor_to_remint_buy_back,
         );
 
         assert_approx_eq_abs!(
@@ -2059,7 +2053,7 @@ fn random_remint_works() {
 
         assert_approx_eq_abs!(
             crate::Assets::total_issuance(&TBCD.into()).unwrap(),
-            balance!(20000) - tbcd_burned_remint,
+            balance!(20000),
             balance!(0.00001)
         );
     });

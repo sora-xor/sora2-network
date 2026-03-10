@@ -30,3 +30,8 @@ benches/
 
 # SCCP local matrix logs
 misc/sccp/logs/
+
+# SCCP fuzz-generated inputs and crash artifacts
+pallets/sccp/fuzz/corpus/
+pallets/sccp/fuzz/artifacts/
+pallets/sccp/fuzz/Cargo.lock

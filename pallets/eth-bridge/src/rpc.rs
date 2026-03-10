@@ -204,7 +204,7 @@ impl<T: Config> Pallet<T> {
 
     /// Get account requests list.
     pub fn get_account_requests(
-        account: &T::AccountId,
+        account: &<T as frame_system::pallet::Config>::AccountId,
         status_filter: Option<RequestStatus>,
     ) -> Result<Vec<(T::NetworkId, H256)>, DispatchError> {
         let mut requests: Vec<(T::NetworkId, H256)> = Self::account_requests(account);
