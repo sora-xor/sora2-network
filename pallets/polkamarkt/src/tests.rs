@@ -539,7 +539,10 @@ fn bridge_deposit_locks_funds() {
         ));
 
         assert_eq!(balance_of(ALICE, USDC_ASSET), user_before - 1_000);
-        assert_eq!(balance_of(pallet_account, USDC_ASSET), pallet_before + 1_000);
+        assert_eq!(
+            balance_of(pallet_account, USDC_ASSET),
+            pallet_before + 1_000
+        );
     });
 }
 
