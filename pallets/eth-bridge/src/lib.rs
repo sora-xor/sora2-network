@@ -419,10 +419,6 @@ pub mod pallet {
         type Denominator: common::Denominator<Self::AssetId, Balance>;
         /// Maximum number of requests that can be queued per network.
         type MaxRequestsPerQueue: Get<u32>;
-        /// Number of queue slots reserved for non-`LoadIncoming` bridge operations.
-        type ReservedBridgeQueueSlots: Get<u32>;
-        /// Maximum number of pending `request_from_sidechain` items per account and network.
-        type MaxPendingLoadIncomingRequestsPerAccount: Get<u32>;
     }
 
     /// The current storage version.
@@ -439,6 +435,10 @@ pub mod pallet {
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
+        }
+
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
@@ -689,11 +689,6 @@ pub mod pallet {
                     if kind == IncomingTransactionRequestKind::TransferXOR {
                         fail!(Error::<T>::Unavailable);
                     }
-                    ensure!(
-                        Self::pending_load_incoming_requests_for_account(network_id, &from)
-                            < T::MaxPendingLoadIncomingRequestsPerAccount::get() as usize,
-                        Error::<T>::TooManyPendingLoadIncomingRequestsForAccount
-                    );
                     Self::add_request(&OffchainRequest::LoadIncoming(
                         LoadIncomingRequest::Transaction(LoadIncomingTransactionRequest::new(
                             from,
@@ -710,11 +705,6 @@ pub mod pallet {
                         fail!(Error::<T>::Unavailable);
                     }
                     let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
-                    ensure!(
-                        Self::pending_load_incoming_requests_for_account(network_id, &from)
-                            < T::MaxPendingLoadIncomingRequestsPerAccount::get() as usize,
-                        Error::<T>::TooManyPendingLoadIncomingRequestsForAccount
-                    );
                     Self::add_request(&OffchainRequest::load_incoming_meta(
                         LoadIncomingMetaRequest::new(
                             from,
@@ -1390,8 +1380,6 @@ pub mod pallet {
         FailedToApplyDenomination,
         /// Asset can't be removed while it has active outgoing transfer requests.
         ActiveOutgoingTransferRequest,
-        /// Too many pending sidechain load requests for this account.
-        TooManyPendingLoadIncomingRequestsForAccount,
     }
 
     impl<T: Config> Error<T> {
@@ -1651,19 +1639,6 @@ pub mod pallet {
     pub(super) type PendingBridgeSignatureVersions<T: Config> =
         StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BridgeSignatureVersion>;
 
-    /// Number of pending `LoadIncoming` requests for an account in a network.
-    #[pallet::storage]
-    #[pallet::getter(fn pending_load_incoming_requests_for_account_storage)]
-    pub(super) type PendingLoadIncomingRequestsByAccount<T: Config> = StorageDoubleMap<
-        _,
-        Twox64Concat,
-        BridgeNetworkId<T>,
-        Blake2_128Concat,
-        <T as frame_system::pallet::Config>::AccountId,
-        u32,
-        ValueQuery,
-    >;
-
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub authority_account: Option<<T as frame_system::pallet::Config>::AccountId>,
@@ -1785,10 +1760,18 @@ impl<T: Config> Pallet<T> {
                     || outgoing_req.is_allowed_during_migration(),
                 Error::<T>::ContractIsInMigrationStage
             );
-            ensure!(
-                !outgoing_req.uses_weak_signature_domain(),
-                Error::<T>::WeakLegacySigningDisabled
-            );
+            if outgoing_req.uses_weak_signature_domain() {
+                // Transitional exception: ETH peer-management requests still need to support
+                // legacy-signature domains for old-contract compatibility.
+                let is_eth_peer_request = matches!(
+                    outgoing_req,
+                    OutgoingRequest::AddPeer(_)
+                        | OutgoingRequest::RemovePeer(_)
+                        | OutgoingRequest::AddPeerCompat(_)
+                        | OutgoingRequest::RemovePeerCompat(_)
+                ) && net_id == T::GetEthNetworkId::get();
+                ensure!(is_eth_peer_request, Error::<T>::WeakLegacySigningDisabled);
+            }
             if let OutgoingRequest::AddAsset(add_asset_request) = outgoing_req {
                 ensure!(
                     !Self::is_add_asset_request_pending(net_id, add_asset_request.asset_id),
@@ -1812,28 +1795,16 @@ impl<T: Config> Pallet<T> {
             );
         }
         let queue_len = RequestsQueue::<T>::get(net_id).len();
-        let max_queue_len = T::MaxRequestsPerQueue::get() as usize;
-        if request.is_load_incoming() {
-            let max_load_incoming_len =
-                max_queue_len.saturating_sub(T::ReservedBridgeQueueSlots::get() as usize);
-            ensure!(
-                queue_len < max_load_incoming_len,
-                Error::<T>::RequestsQueueFull
-            );
-        } else {
-            ensure!(queue_len < max_queue_len, Error::<T>::RequestsQueueFull);
-        }
+        ensure!(
+            queue_len < T::MaxRequestsPerQueue::get() as usize,
+            Error::<T>::RequestsQueueFull
+        );
         request.validate()?;
         request.prepare()?;
         Self::clear_request_signatures(net_id, &hash);
         AccountRequests::<T>::mutate(&request.author(), |vec| vec.push((net_id, hash)));
         Requests::<T>::insert(net_id, &hash, request);
         RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
-        if request.is_load_incoming() {
-            PendingLoadIncomingRequestsByAccount::<T>::mutate(net_id, request.author(), |value| {
-                *value = value.saturating_add(1)
-            });
-        }
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
         let block_number = frame_system::Pallet::<T>::current_block_number();
         RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
@@ -1927,17 +1898,6 @@ impl<T: Config> Pallet<T> {
             .any(|queued_hash| queued_hash == hash);
         if !was_queued {
             return;
-        }
-        if let Some(request) = Requests::<T>::get(network_id, hash) {
-            if request.is_load_incoming() {
-                PendingLoadIncomingRequestsByAccount::<T>::mutate(
-                    network_id,
-                    request.author(),
-                    |value| {
-                        *value = value.saturating_sub(1);
-                    },
-                );
-            }
         }
         RequestsQueue::<T>::mutate(network_id, |queue| {
             queue.retain(|queued_hash| queued_hash != hash);
@@ -2189,13 +2149,6 @@ impl<T: Config> Pallet<T> {
                     if req.token_address == token_address
             )
         })
-    }
-
-    fn pending_load_incoming_requests_for_account(
-        network_id: T::NetworkId,
-        account: &<T as frame_system::pallet::Config>::AccountId,
-    ) -> usize {
-        PendingLoadIncomingRequestsByAccount::<T>::get(network_id, account) as usize
     }
 
     fn has_active_outgoing_transfer_request(

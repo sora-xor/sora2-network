@@ -3692,7 +3692,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.7.5"
+version = "4.7.6"
 dependencies = [
  "assets-rpc",
  "beefy-gadget",
@@ -3769,7 +3769,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.7.5"
+version = "4.7.6"
 dependencies = [
  "common",
  "faucet",
@@ -3797,7 +3797,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.7.5"
+version = "4.7.6"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -14394,10 +14394,10 @@ dependencies = [
 ]
 
 [[patch.unused]]
-name = "sp-serializer"
-version = "4.0.0-dev"
-
-[[patch.unused]]
 name = "orml-xtokens"
 version = "0.4.1-dev"
 source = "git+https://github.com/sora-xor/open-runtime-module-library.git?branch=polkadot-v0.9.38#a1cd69dc4808800698b1c213a4817d8e3caf7895"
+
+[[patch.unused]]
+name = "sp-serializer"
+version = "4.0.0-dev"

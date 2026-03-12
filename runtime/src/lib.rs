@@ -260,7 +260,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: create_runtime_str!("sora-substrate"),
     impl_name: create_runtime_str!("sora-substrate"),
     authoring_version: 1,
-    spec_version: 119,
+    spec_version: 120,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 119,
@@ -1524,8 +1524,6 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 1 * DAYS;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (1 * DAYS, 12697214);
     pub const MaxEthBridgeRequestsPerQueue: u32 = 2048;
-    pub const ReservedEthBridgeQueueSlots: u32 = 256;
-    pub const MaxEthBridgePendingLoadIncomingRequestsPerAccount: u32 = 32;
 }
 
 #[cfg(feature = "private-net")]
@@ -1533,8 +1531,6 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 30 * MINUTES;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (30 * MINUTES, 0);
     pub const MaxEthBridgeRequestsPerQueue: u32 = 2048;
-    pub const ReservedEthBridgeQueueSlots: u32 = 256;
-    pub const MaxEthBridgePendingLoadIncomingRequestsPerAccount: u32 = 32;
 }
 
 pub type NetworkId = u32;
@@ -1553,9 +1549,6 @@ impl eth_bridge::Config for Runtime {
     type SccpAssetChecker = Sccp;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
-    type ReservedBridgeQueueSlots = ReservedEthBridgeQueueSlots;
-    type MaxPendingLoadIncomingRequestsPerAccount =
-        MaxEthBridgePendingLoadIncomingRequestsPerAccount;
 }
 
 #[cfg(feature = "private-net")]
