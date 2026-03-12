@@ -225,7 +225,7 @@ fn create_opengov_condition_rejects_invalid_inputs() {
     new_test_ext().execute_with(|| {
         bond_alice();
         let mut proposal = default_opengov_input();
-        proposal.referendum_index = 0;
+        proposal.parachain_id = 0;
         assert_noop!(
             Polkamarkt::create_opengov_condition(
                 RuntimeOrigin::signed(ALICE),
@@ -588,6 +588,7 @@ fn bridge_withdraw_applies_tax() {
         ));
         assert_eq!(BridgeEntitlements::<Test>::get(ALICE), 0);
         assert_eq!(ForkTaxOwed::<Test>::get(), 1);
+        assert_eq!(balance_of(FORK_TAX_ACCOUNT, USDC_ASSET), 1);
     });
 }
 

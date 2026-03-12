@@ -818,6 +818,7 @@ pub mod pallet {
         BridgeWalletLocked,
         BridgeWalletMissing,
         BridgeInsufficientEntitlement,
+        ForkTaxRemitFailed,
         UnsupportedCollateralAsset,
         InsufficientCreationFee,
         GovernanceBondTooLow,
@@ -856,7 +857,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized_creator(&who)?;
             ensure!(
-                proposal.parachain_id > 0 && proposal.track_id > 0 && proposal.referendum_index > 0,
+                proposal.parachain_id > 0,
                 Error::<T>::InvalidOpengovProposal
             );
             let condition_id = Self::create_condition_entry(&who, metadata)?;
@@ -1125,12 +1126,7 @@ pub mod pallet {
                 Ok(())
             })?;
             let tax = Perbill::from_rational(Self::payout_tax_bps(), 10_000u32) * amount;
-            if !tax.is_zero() {
-                ForkTaxOwed::<T>::mutate(|total| {
-                    *total = total.saturating_add(tax);
-                });
-                Self::deposit_event(Event::ForkTaxAccrued { amount: tax });
-            }
+            Self::remit_bridge_fork_tax(tax)?;
             Self::deposit_event(Event::BridgeWithdrawalRequested {
                 user: who,
                 wallet,
@@ -1351,7 +1347,6 @@ pub mod pallet {
             MaintenancePoolOverride::<T>::get().unwrap_or_else(T::MaintenancePoolAccount::get)
         }
 
-        #[allow(dead_code)]
         fn fork_tax_account() -> T::AccountId {
             ForkTaxAccountOverride::<T>::get().unwrap_or_else(T::ForkTaxAccount::get)
         }
@@ -1599,6 +1594,24 @@ pub mod pallet {
                 Error::<T>::BridgeDailyLimitReached
             );
             Ok((day, new_total))
+        }
+
+        fn remit_bridge_fork_tax(amount: T::Balance) -> DispatchResult {
+            if amount.is_zero() {
+                return Ok(());
+            }
+            let payer = Self::account_id();
+            let fork_tax_account = Self::fork_tax_account();
+            T::Assets::transfer(T::UsdcAssetId::get(), &payer, &fork_tax_account, amount)
+                .or_else(|_| {
+                    T::Assets::transfer(T::UsdtAssetId::get(), &payer, &fork_tax_account, amount)
+                })
+                .map_err(|_| -> DispatchError { Error::<T>::ForkTaxRemitFailed.into() })?;
+            ForkTaxOwed::<T>::mutate(|total| {
+                *total = total.saturating_add(amount);
+            });
+            Self::deposit_event(Event::ForkTaxAccrued { amount });
+            Ok(())
         }
 
         fn ensure_account_is_clear(who: &T::AccountId) -> DispatchResult {
