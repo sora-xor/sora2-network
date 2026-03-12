@@ -40,6 +40,7 @@ default = ["std"]
 
 runtime-benchmarks = [
     "frame-benchmarking",
+    "frame-benchmarking/std",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "hex-literal",
@@ -50,7 +51,6 @@ std = [
     "codec/std",
     "assets/std",
     "scale-info/std",
-    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "pallet-balances/std",

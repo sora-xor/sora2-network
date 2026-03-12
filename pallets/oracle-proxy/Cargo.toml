@@ -34,7 +34,6 @@ default = ['std']
 std = [
     "frame-support/std",
     "frame-system/std",
-    "frame-benchmarking/std",
     "band/std",
     "common/std",
     "sp-std/std",
@@ -47,6 +46,7 @@ std = [
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
+    "frame-benchmarking/std",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]

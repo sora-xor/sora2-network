@@ -144,6 +144,9 @@ CI layout config:
 
 - `misc/sccp-e2e/config.ci.json` expects sibling repos under
   `sora2-network/siblings/*` and keeps preflight disabled by default.
+- `misc/sccp-e2e/config.release-shadow.json` is the release-validation default
+  used by `misc/sccp/verify_release.sh`; it is preflight-disabled and intended
+  for prod-shadow confidence runs across sibling repos.
 
 Local config modes:
 
