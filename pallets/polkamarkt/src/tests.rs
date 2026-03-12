@@ -36,7 +36,9 @@ fn compute_commitment(
 ) -> CommitmentHash {
     let mut data = who.encode();
     data.extend_from_slice(&market_id.encode());
+    data.extend_from_slice(&(payload.len() as u32).encode());
     data.extend_from_slice(payload);
+    data.extend_from_slice(&(salt.len() as u32).encode());
     data.extend_from_slice(salt);
     blake2_256(&data)
 }
@@ -52,7 +54,9 @@ proptest! {
         let hash = compute_commitment(account, market_id, &payload, &salt);
         let mut data = account.encode();
         data.extend_from_slice(&market_id.encode());
+        data.extend_from_slice(&(payload.len() as u32).encode());
         data.extend_from_slice(&payload);
+        data.extend_from_slice(&(salt.len() as u32).encode());
         data.extend_from_slice(&salt);
         let manual = blake2_256(&data);
         prop_assert_eq!(hash, manual);
@@ -517,6 +521,25 @@ fn bridge_deposit_respects_daily_cap() {
             Polkamarkt::bridge_deposit(RuntimeOrigin::signed(ALICE), USDC_ASSET, 2_000),
             Error::<Test>::BridgeDailyLimitReached
         );
+    });
+}
+
+#[test]
+fn bridge_deposit_locks_funds() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        let pallet_account = Polkamarkt::account_id();
+        let user_before = balance_of(ALICE, USDC_ASSET);
+        let pallet_before = balance_of(pallet_account, USDC_ASSET);
+
+        assert_ok!(Polkamarkt::bridge_deposit(
+            RuntimeOrigin::signed(ALICE),
+            USDC_ASSET,
+            1_000
+        ));
+
+        assert_eq!(balance_of(ALICE, USDC_ASSET), user_before - 1_000);
+        assert_eq!(balance_of(pallet_account, USDC_ASSET), pallet_before + 1_000);
     });
 }
 

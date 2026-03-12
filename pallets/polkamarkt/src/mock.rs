@@ -161,6 +161,10 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     ASSET_BALANCES.with(|balances| balances.borrow_mut().clear());
     set_balance(ALICE, CANONICAL_ASSET, 1_000_000_000_000);
     set_balance(BOB, CANONICAL_ASSET, 1_000_000_000_000);
+    set_balance(ALICE, USDC_ASSET, 1_000_000_000_000);
+    set_balance(ALICE, USDT_ASSET, 1_000_000_000_000);
+    set_balance(BOB, USDC_ASSET, 1_000_000_000_000);
+    set_balance(BOB, USDT_ASSET, 1_000_000_000_000);
 
     let t = frame_system::GenesisConfig::default()
         .build_storage::<Test>()

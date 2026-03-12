@@ -1091,7 +1091,10 @@ pub mod pallet {
                 Self::is_bridge_asset(&asset),
                 Error::<T>::BridgeAssetNotAllowed
             );
-            let day = Self::apply_daily_bridge_cap(&who, amount)?;
+            let (day, new_total) = Self::ensure_daily_bridge_cap(&who, amount)?;
+            let bridge_reserve = Self::account_id();
+            T::Assets::transfer(asset, &who, &bridge_reserve, amount)?;
+            DailyBridgeAmount::<T>::insert(&who, day, new_total);
             BridgeEntitlements::<T>::mutate(&who, |balance| {
                 *balance = balance.saturating_add(amount);
             });
@@ -1527,7 +1530,9 @@ pub mod pallet {
         ) -> CommitmentHash {
             let mut data = who.encode();
             data.extend_from_slice(&market_id.encode());
+            data.extend_from_slice(&(payload.len() as u32).encode());
             data.extend_from_slice(payload);
+            data.extend_from_slice(&(salt.len() as u32).encode());
             data.extend_from_slice(salt);
             blake2_256(&data)
         }
@@ -1582,21 +1587,18 @@ pub mod pallet {
             (now_u / per_day_u).min(u64::MAX as u128) as u64
         }
 
-        fn apply_daily_bridge_cap(
+        fn ensure_daily_bridge_cap(
             user: &T::AccountId,
             amount: T::Balance,
-        ) -> Result<u64, DispatchError> {
+        ) -> Result<(u64, T::Balance), DispatchError> {
             let day = Self::current_day();
-            DailyBridgeAmount::<T>::try_mutate(user, day, |usage| -> DispatchResult {
-                let new_total = usage.saturating_add(amount);
-                ensure!(
-                    new_total <= Self::bridge_daily_cap(),
-                    Error::<T>::BridgeDailyLimitReached
-                );
-                *usage = new_total;
-                Ok(())
-            })?;
-            Ok(day)
+            let usage = DailyBridgeAmount::<T>::get(user, day);
+            let new_total = usage.saturating_add(amount);
+            ensure!(
+                new_total <= Self::bridge_daily_cap(),
+                Error::<T>::BridgeDailyLimitReached
+            );
+            Ok((day, new_total))
         }
 
         fn ensure_account_is_clear(who: &T::AccountId) -> DispatchResult {
