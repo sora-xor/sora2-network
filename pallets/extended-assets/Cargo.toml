@@ -45,7 +45,6 @@ std = [
     "codec/std",
     "common/std",
     "frame-support/std",
-    "frame-benchmarking/std",
     "frame-system/std",
     "pallet-balances/std",
     "pallet-timestamp/std",
@@ -59,6 +58,7 @@ std = [
 
 runtime-benchmarks = [
     "frame-benchmarking",
+    "frame-benchmarking/std",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "hex-literal",

@@ -62,7 +62,6 @@ std = [
     "codec/std",
     "eth-bridge/std",
     "scale-info/std",
-    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "pallet-multisig/std",
@@ -72,6 +71,7 @@ std = [
 
 runtime-benchmarks = [
     "frame-benchmarking",
+    "frame-benchmarking/std",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "hex-literal",

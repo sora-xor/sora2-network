@@ -43,7 +43,6 @@ std = [
     "scale-info/std",
     "common/std",
     "currencies/std",
-    "frame-benchmarking/std",
     "frame-support/std",
     "frame-system/std",
     "sp-core/std",
@@ -55,6 +54,7 @@ std = [
 
 runtime-benchmarks = [
     "frame-benchmarking",
+    "frame-benchmarking/std",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]

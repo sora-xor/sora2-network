@@ -1,0 +1,104 @@
+{
+  "defaults": {
+    "maxMinutes": 120,
+    "perCommandTimeoutSeconds": 1800,
+    "includeNegative": true,
+    "matrix": "full",
+    "commandCache": false
+  },
+  "matrixPresets": {
+    "sora-pairs": "sora-pairs",
+    "sora-core-pairs": "sora-core-pairs",
+    "full": "full"
+  },
+  "modes": {
+    "release": {
+      "defaults": {
+        "maxMinutes": 120,
+        "commandCache": false
+      },
+      "commands": {
+        "preflight": {
+          "enabled": false
+        }
+      },
+      "matrix": "full"
+    },
+    "nightly": {
+      "defaults": {
+        "maxMinutes": 240,
+        "commandCache": false
+      },
+      "commands": {
+        "preflight": {
+          "enabled": false
+        }
+      },
+      "matrix": "full"
+    }
+  },
+  "paths": {
+    "sora2Network": "${repoRoot}",
+    "bridgeRelayer": "${bridgeRelayer}",
+    "sccpEth": "${sccpEth}",
+    "sccpBsc": "${sccpBsc}",
+    "sccpSol": "${sccpSol}",
+    "sccpTon": "${sccpTon}",
+    "sccpTron": "${sccpTron}",
+    "sccpSoraKusama": "${sccpSoraKusama}",
+    "sccpSoraPolkadot": "${sccpSoraPolkadot}"
+  },
+  "commands": {
+    "preflight": {
+      "enabled": false,
+      "cmd": "misc/sccp/run_all_tests.sh",
+      "cwd": "${sora2Network}"
+    },
+    "sora": {
+      "burn": "cargo test -p sccp",
+      "mint_from_source": "cargo test -p framenode-runtime sccp_ -- --nocapture",
+      "attest": "cargo test -p framenode-runtime sccp_ -- --nocapture",
+      "negative": "cargo test -p framenode-runtime sccp_set_required_domains_rejects_duplicates_in_runtime -- --nocapture"
+    },
+    "bridgeRelayer": {
+      "proof_toolchain": "cargo run --quiet --bin bridge-relayer -- sccp --help"
+    },
+    "domains": {
+      "eth": {
+        "burn": "npm test",
+        "mint_verify": "npm test",
+        "negative_verify": "npm test"
+      },
+      "bsc": {
+        "burn": "npm test",
+        "mint_verify": "npm test",
+        "negative_verify": "npm test"
+      },
+      "tron": {
+        "burn": "npm test",
+        "mint_verify": "npm test",
+        "negative_verify": "npm test"
+      },
+      "sol": {
+        "burn": "cargo test",
+        "mint_verify": "cargo test",
+        "negative_verify": "cargo test"
+      },
+      "ton": {
+        "burn": "npm test",
+        "mint_verify": "npm test",
+        "negative_verify": "npm test"
+      },
+      "sora_kusama": {
+        "burn": "cargo test -p sccp-link",
+        "mint_verify": "cargo test -p sccp-link",
+        "negative_verify": "cargo test -p sccp-link"
+      },
+      "sora_polkadot": {
+        "burn": "cargo test -p sccp-link",
+        "mint_verify": "cargo test -p sccp-link",
+        "negative_verify": "cargo test -p sccp-link"
+      }
+    }
+  }
+}

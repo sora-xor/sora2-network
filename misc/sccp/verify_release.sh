@@ -11,11 +11,14 @@ MATRIX_MAX_MINUTES="${SCCP_VERIFY_MATRIX_MAX_MINUTES:-120}"
 STRICT_ADAPTERS="${SCCP_VERIFY_STRICT_ADAPTERS:-1}"
 INCLUDE_NEGATIVE="${SCCP_VERIFY_INCLUDE_NEGATIVE:-1}"
 DISABLE_HUB_CACHE="${SCCP_VERIFY_DISABLE_HUB_CACHE:-1}"
-HUB_CONFIG="${SCCP_VERIFY_HUB_CONFIG:-${ROOT_DIR}/misc/sccp-e2e/config.local.json}"
+HUB_CONFIG="${SCCP_VERIFY_HUB_CONFIG:-${ROOT_DIR}/misc/sccp-e2e/config.release-shadow.json}"
 HUB_MODE="${SCCP_VERIFY_HUB_MODE:-release}"
 SKIP_PREFLIGHT="${SCCP_VERIFY_SKIP_PREFLIGHT:-0}"
 FUZZ_PROFILE="${SCCP_VERIFY_FUZZ_PROFILE:-full}"
 FORMAL_PROFILE="${SCCP_VERIFY_FORMAL_PROFILE:-full}"
+CANARY_SOAK_PROFILE="${SCCP_VERIFY_CANARY_SOAK_PROFILE:-full}"
+INCLUDE_CANARY_SOAK="${SCCP_VERIFY_INCLUDE_CANARY_SOAK:-1}"
+REQUIRE_CLEAN_TREE="${SCCP_VERIFY_REQUIRE_CLEAN_TREE:-1}"
 FAIL_FAST="${SCCP_VERIFY_FAIL_FAST:-0}"
 SCCP_RUSTUP_TOOLCHAIN="${SCCP_VERIFY_RUSTUP_TOOLCHAIN:-${SCCP_RUSTUP_TOOLCHAIN:-${RUSTUP_TOOLCHAIN:-nightly-2025-05-08}}}"
 export RUSTUP_TOOLCHAIN="${SCCP_RUSTUP_TOOLCHAIN}"
@@ -54,6 +57,10 @@ while [[ $# -gt 0 ]]; do
       FORMAL_PROFILE="$2"
       shift 2
       ;;
+    --canary-soak-profile)
+      CANARY_SOAK_PROFILE="$2"
+      shift 2
+      ;;
     --strict-adapters)
       STRICT_ADAPTERS="1"
       shift
@@ -90,9 +97,25 @@ while [[ $# -gt 0 ]]; do
       SKIP_PREFLIGHT="0"
       shift
       ;;
+    --include-canary-soak)
+      INCLUDE_CANARY_SOAK="1"
+      shift
+      ;;
+    --exclude-canary-soak)
+      INCLUDE_CANARY_SOAK="0"
+      shift
+      ;;
+    --require-clean-tree)
+      REQUIRE_CLEAN_TREE="1"
+      shift
+      ;;
+    --allow-dirty-tree)
+      REQUIRE_CLEAN_TREE="0"
+      shift
+      ;;
     *)
       echo "unknown argument: $1" >&2
-      echo "usage: misc/sccp/verify_release.sh [--matrix sora-core-pairs|sora-pairs|full] [--max-minutes N] [--hub-config PATH] [--hub-mode MODE] [--fuzz-profile fast|full] [--formal-profile fast|full] [--strict-adapters|--no-strict-adapters] [--include-negative|--exclude-negative] [--disable-hub-cache|--enable-hub-cache] [--skip-preflight|--run-preflight] [--run-id ID] [--artifacts-base PATH] [--fail-fast]" >&2
+      echo "usage: misc/sccp/verify_release.sh [--matrix sora-core-pairs|sora-pairs|full] [--max-minutes N] [--hub-config PATH] [--hub-mode MODE] [--fuzz-profile fast|full] [--formal-profile fast|full] [--canary-soak-profile fast|full] [--strict-adapters|--no-strict-adapters] [--include-negative|--exclude-negative] [--disable-hub-cache|--enable-hub-cache] [--skip-preflight|--run-preflight] [--include-canary-soak|--exclude-canary-soak] [--require-clean-tree|--allow-dirty-tree] [--run-id ID] [--artifacts-base PATH] [--fail-fast]" >&2
       exit 1
       ;;
   esac
@@ -140,6 +163,8 @@ require_bool_01 "SCCP_VERIFY_STRICT_ADAPTERS" "${STRICT_ADAPTERS}"
 require_bool_01 "SCCP_VERIFY_INCLUDE_NEGATIVE" "${INCLUDE_NEGATIVE}"
 require_bool_01 "SCCP_VERIFY_DISABLE_HUB_CACHE" "${DISABLE_HUB_CACHE}"
 require_bool_01 "SCCP_VERIFY_SKIP_PREFLIGHT" "${SKIP_PREFLIGHT}"
+require_bool_01 "SCCP_VERIFY_INCLUDE_CANARY_SOAK" "${INCLUDE_CANARY_SOAK}"
+require_bool_01 "SCCP_VERIFY_REQUIRE_CLEAN_TREE" "${REQUIRE_CLEAN_TREE}"
 require_bool_01 "SCCP_VERIFY_FAIL_FAST" "${FAIL_FAST}"
 require_positive_int "SCCP_VERIFY_MATRIX_MAX_MINUTES" "${MATRIX_MAX_MINUTES}"
 
@@ -148,6 +173,38 @@ echo "[verify-release] RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN}"
 if [[ ! -f "${HUB_CONFIG}" ]]; then
   echo "hub config not found: ${HUB_CONFIG}" >&2
   exit 1
+fi
+
+if [[ "${REQUIRE_CLEAN_TREE}" == "1" ]]; then
+  repo_parent="$(cd "${ROOT_DIR}/.." && pwd)"
+  dirty_report=""
+  repo_candidates=(
+    "${ROOT_DIR}"
+    "${repo_parent}/sccp-eth"
+    "${repo_parent}/sccp-bsc"
+    "${repo_parent}/sccp-tron"
+    "${repo_parent}/sccp-ton"
+    "${repo_parent}/sccp-sol"
+  )
+  for repo in "${repo_candidates[@]}"; do
+    if [[ ! -d "${repo}" ]] || ! git -C "${repo}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      continue
+    fi
+    repo_dirty="$(git -C "${repo}" status --porcelain --untracked-files=no)"
+    if [[ -n "${repo_dirty}" ]]; then
+      dirty_report+="${repo}"$'\n'
+      while IFS= read -r line; do
+        [[ -z "${line}" ]] && continue
+        dirty_report+="  ${line}"$'\n'
+      done <<< "${repo_dirty}"
+    fi
+  done
+  if [[ -n "${dirty_report}" ]]; then
+    echo "[verify-release] clean-tree check failed; tracked modifications detected:" >&2
+    printf "%s" "${dirty_report}" >&2
+    echo "[verify-release] re-run with --allow-dirty-tree only for non-release diagnostics" >&2
+    exit 1
+  fi
 fi
 
 RUN_DIR="${ARTIFACTS_BASE}/${RUN_ID}"
@@ -258,6 +315,19 @@ else
 fi
 run_stage "hub_matrix" "${HUB_ARGS[@]}"
 
+if [[ "${INCLUDE_CANARY_SOAK}" == "1" ]]; then
+  run_stage "canary_soak" \
+    "misc/sccp/run_canary_soak.sh" \
+    "--profile" "${CANARY_SOAK_PROFILE}" \
+    "--hub-config" "${HUB_CONFIG}" \
+    "--hub-mode" "${HUB_MODE}" \
+    "--strict-adapters" \
+    "--disable-hub-cache" \
+    "--skip-preflight" \
+    "--exclude-negative" \
+    "--artifacts-dir" "${RUN_DIR}/canary-soak"
+fi
+
 run_stage "fuzz_bounded" "misc/sccp/run_fuzz_bounded.sh" "--profile" "${FUZZ_PROFILE}"
 run_stage "fuzz_bounded_siblings" "misc/sccp/run_fuzz_bounded_siblings.sh" "--profile" "${FUZZ_PROFILE}"
 run_stage "formal_assisted" "misc/sccp/run_formal_assisted.sh" "--profile" "${FORMAL_PROFILE}"
@@ -295,6 +365,9 @@ JUNIT_PATH="${RUN_DIR}/junit.xml"
   echo "    \"include_negative\": ${INCLUDE_NEGATIVE},"
   echo "    \"disable_hub_cache\": ${DISABLE_HUB_CACHE},"
   echo "    \"skip_preflight\": ${SKIP_PREFLIGHT},"
+  echo "    \"include_canary_soak\": ${INCLUDE_CANARY_SOAK},"
+  echo "    \"canary_soak_profile\": \"$(json_escape "${CANARY_SOAK_PROFILE}")\","
+  echo "    \"require_clean_tree\": ${REQUIRE_CLEAN_TREE},"
   echo "    \"fuzz_profile\": \"$(json_escape "${FUZZ_PROFILE}")\","
   echo "    \"formal_profile\": \"$(json_escape "${FORMAL_PROFILE}")\","
   echo "    \"fail_fast\": ${FAIL_FAST}"
