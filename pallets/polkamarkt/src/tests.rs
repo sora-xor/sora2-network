@@ -593,6 +593,31 @@ fn bridge_withdraw_applies_tax() {
 }
 
 #[test]
+fn bridge_withdraw_does_not_debit_on_tax_failure() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        provide_credential(ALICE);
+        assert_ok!(Polkamarkt::set_bridge_wallet(
+            RuntimeOrigin::signed(ALICE),
+            BOB
+        ));
+        assert_ok!(Polkamarkt::bridge_deposit(
+            RuntimeOrigin::signed(ALICE),
+            USDC_ASSET,
+            1_000
+        ));
+        let pallet_account = Polkamarkt::account_id();
+        set_balance(pallet_account, USDC_ASSET, 0);
+        set_balance(pallet_account, USDT_ASSET, 0);
+        assert_noop!(
+            Polkamarkt::bridge_withdraw(RuntimeOrigin::signed(ALICE), 1_000),
+            Error::<Test>::ForkTaxRemitFailed
+        );
+        assert_eq!(BridgeEntitlements::<Test>::get(ALICE), 1_000);
+    });
+}
+
+#[test]
 fn bridge_withdraw_requires_credential() {
     new_test_ext().execute_with(|| {
         run_to_block(1);

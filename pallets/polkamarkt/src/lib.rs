@@ -1117,16 +1117,15 @@ pub mod pallet {
             Self::ensure_has_credential(&who)?;
             ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
             let wallet = BridgeWallet::<T>::get(&who).ok_or(Error::<T>::BridgeWalletMissing)?;
-            BridgeEntitlements::<T>::try_mutate(&who, |balance| -> DispatchResult {
-                ensure!(
-                    *balance >= amount,
-                    Error::<T>::BridgeInsufficientEntitlement
-                );
-                *balance = balance.saturating_sub(amount);
-                Ok(())
-            })?;
+            let entitlement = BridgeEntitlements::<T>::get(&who);
+            ensure!(
+                entitlement >= amount,
+                Error::<T>::BridgeInsufficientEntitlement
+            );
+            let remaining = entitlement.saturating_sub(amount);
             let tax = Perbill::from_rational(Self::payout_tax_bps(), 10_000u32) * amount;
             Self::remit_bridge_fork_tax(tax)?;
+            BridgeEntitlements::<T>::insert(&who, remaining);
             Self::deposit_event(Event::BridgeWithdrawalRequested {
                 user: who,
                 wallet,
