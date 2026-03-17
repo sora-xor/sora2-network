@@ -1,6 +1,6 @@
 use crate::{Config, Pallet, UserBorrowingInfo, UserTotalCollateral};
 use common::prelude::Balance;
-use frame_support::log::{error, info};
+use frame_support::__private::log::{error, info};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::traits::StorageVersion;
@@ -65,7 +65,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
         ensure!(
             Pallet::<T>::on_chain_storage_version() == StorageVersion::new(0),
             "must upgrade linearly"
@@ -74,7 +74,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
         let total_migrated_entries = <UserTotalCollateral<T>>::iter().count();
         ensure!(
             total_migrated_entries > 0,

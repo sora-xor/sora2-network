@@ -27,15 +27,14 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 use crate as rewards;
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, OnFinalize, OnInitialize};
+use frame_support::traits::{OnFinalize, OnInitialize};
 use frame_support::weights::{RuntimeDbWeight, Weight};
 use frame_support::{construct_runtime, parameter_types};
 use hex_literal::hex;
 use sp_core::crypto::AccountId32;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, OnValBurned};
@@ -54,12 +53,7 @@ type BlockNumber = u64;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type AssetId = AssetId32<common::PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
-
-pub fn alice() -> AccountId32 {
-    AccountId32::from([1u8; 32])
-}
 
 pub fn tech_account_id() -> TechAccountId {
     TechAccountId::Pure(
@@ -85,17 +79,13 @@ parameter_types! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Runtime {
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
@@ -131,13 +121,14 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let tech_account_id = tech_account_id();
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![(account_id.clone(), balance!(150)), (alice(), balance!(0))],
+            balances: vec![(account_id.clone(), balance!(150))],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -153,7 +144,7 @@ impl ExtBuilder {
             endowed_assets: vec![
                 (
                     PSWAP,
-                    alice(),
+                    account_id.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -164,7 +155,7 @@ impl ExtBuilder {
                 ),
                 (
                     VAL.into(),
-                    alice(),
+                    account_id.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
                     DEFAULT_BALANCE_PRECISION,

@@ -17,7 +17,7 @@
 
 use crate::cli::{Cli, Subcommand};
 use crate::service;
-use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
+use sc_cli::SubstrateCli;
 use sc_service::PartialComponents;
 
 fn set_default_ss58_version() {
@@ -91,10 +91,6 @@ impl SubstrateCli for Cli {
         };
 
         Ok(Box::new(chain_spec))
-    }
-
-    fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-        &framenode_runtime::VERSION
     }
 }
 
@@ -193,7 +189,8 @@ pub fn run() -> sc_cli::Result<()> {
                     } = service::new_partial(&mut config, None)?;
                     let db = backend.expose_db();
                     let storage = backend.expose_storage();
-                    cmd.run(config, client, db, storage)
+                    let shared_trie_cache = backend.expose_shared_trie_cache();
+                    cmd.run(config, client, db, storage, shared_trie_cache)
                 }),
                 BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
                     let PartialComponents { client, .. } = service::new_partial(&mut config, None)?;
@@ -206,38 +203,12 @@ pub fn run() -> sc_cli::Result<()> {
                     }
 
                     runner.sync_run(|config| {
-                        cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
+                        cmd.run_with_spec::<sp_runtime::traits::HashingFor<framenode_runtime::Block>, ()>(Some(config.chain_spec))
                     })
                 }
                 #[allow(unreachable_patterns)]
                 _ => Err(Error::Other("Command not implemented".into()).into()),
             }
-        }
-        #[cfg(feature = "try-runtime")]
-        Some(Subcommand::TryRuntime(cmd)) => {
-            use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
-            type HostFunctionsOf<E> = ExtendedHostFunctions<
-                sp_io::SubstrateHostFunctions,
-                <E as NativeExecutionDispatch>::ExtendHostFunctions,
-            >;
-            let runner = cli.create_runner(cmd)?;
-            set_default_ss58_version();
-
-            use sc_service::TaskManager;
-            let registry = &runner
-                .config()
-                .prometheus_config
-                .as_ref()
-                .map(|cfg| &cfg.registry);
-            let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
-                .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
-
-            runner.async_run(|_config| {
-                Ok((
-                    cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
-                    task_manager,
-                ))
-            })
         }
         #[cfg(feature = "private-net")]
         Some(Subcommand::ForkOff(cmd)) => {

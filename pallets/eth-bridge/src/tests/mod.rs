@@ -36,8 +36,9 @@ use crate::requests::{
 use crate::tests::mock::*;
 use crate::util::majority;
 use common::eth;
-use frame_support::dispatch::{DispatchError, Pays, PostDispatchInfo};
+use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::{assert_ok, ensure};
+use sp_runtime::DispatchError;
 
 use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H256};

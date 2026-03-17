@@ -32,27 +32,24 @@ use core::marker::PhantomData;
 
 use bridge_types::ton::TonBalance;
 use bridge_types::{GenericAccount, GenericAssetId, GenericBalance};
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
+use common::weights::BlockWeights;
 use common::Denominator;
 use frame_support::dispatch::DispatchClass;
-use frame_support::traits::{Currency, OnUnbalanced};
+use frame_support::traits::OnUnbalanced;
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 use frame_support::{
-    dispatch::{DispatchInfo, Dispatchable, GetDispatchInfo, PostDispatchInfo},
+    dispatch::{DispatchInfo, GetDispatchInfo, PostDispatchInfo},
     traits::Contains,
-    RuntimeDebug,
 };
 
-pub use common::weights::{BlockLength, BlockWeights, TransactionByteFee};
 use scale_info::TypeInfo;
 use sp_core::U256;
-use sp_runtime::traits::Convert;
-use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
+use sp_runtime::traits::{Convert, Dispatchable};
+use sp_runtime::{DispatchError, DispatchErrorWithPostInfo, RuntimeDebug};
 
-pub type NegativeImbalanceOf<T> = <<T as pallet_staking::Config>::Currency as Currency<
-    <T as frame_system::Config>::AccountId,
->>::NegativeImbalance;
+pub type NegativeImbalanceOf<T> = pallet_balances::NegativeImbalance<T>;
 
 pub struct CollectiveWeightInfo<T>(PhantomData<T>);
 
@@ -125,6 +122,10 @@ impl pallet_preimage::WeightInfo for PreimageWeightInfo {
     fn unrequest_multi_referenced_preimage() -> Weight {
         <() as pallet_preimage::WeightInfo>::unrequest_multi_referenced_preimage()
     }
+
+    fn ensure_updated(n: u32) -> Weight {
+        <() as pallet_preimage::WeightInfo>::ensure_updated(n)
+    }
 }
 
 impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeightInfo<T> {
@@ -179,6 +180,12 @@ impl<T: frame_system::Config> pallet_collective::WeightInfo for CollectiveWeight
     }
     fn disapprove_proposal(p: u32) -> Weight {
         <() as pallet_collective::WeightInfo>::disapprove_proposal(p)
+    }
+    fn kill(d: u32, p: u32) -> Weight {
+        <() as pallet_collective::WeightInfo>::kill(d, p)
+    }
+    fn release_proposal_cost() -> Weight {
+        <() as pallet_collective::WeightInfo>::release_proposal_cost()
     }
 }
 
@@ -249,17 +256,41 @@ impl pallet_democracy::WeightInfo for DemocracyWeightInfo {
     fn remove_other_vote(r: u32) -> Weight {
         <() as pallet_democracy::WeightInfo>::remove_other_vote(r)
     }
+
+    fn set_external_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::set_external_metadata()
+    }
+
+    fn clear_external_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::clear_external_metadata()
+    }
+
+    fn set_proposal_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::set_proposal_metadata()
+    }
+
+    fn clear_proposal_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::clear_proposal_metadata()
+    }
+
+    fn set_referendum_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::set_referendum_metadata()
+    }
+
+    fn clear_referendum_metadata() -> Weight {
+        <() as pallet_democracy::WeightInfo>::clear_referendum_metadata()
+    }
 }
 
-impl<T: frame_system::Config + pallet_staking::Config> OnUnbalanced<NegativeImbalanceOf<T>>
-    for OnUnbalancedDemocracySlash<T>
+impl<T: frame_system::Config + pallet_staking::Config + pallet_balances::Config>
+    OnUnbalanced<NegativeImbalanceOf<T>> for OnUnbalancedDemocracySlash<T>
 {
     /// This implementation allows us to handle the funds that were burned in democracy pallet.
     /// Democracy pallet already did `slash_reserved` for them.
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
 impl Dispatchable for DispatchableSubstrateBridgeCall {
@@ -272,7 +303,7 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
         self,
         origin: Self::RuntimeOrigin,
     ) -> sp_runtime::DispatchResultWithInfo<Self::PostInfo> {
-        frame_support::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
+        frame_support::__private::log::debug!("Dispatching SubstrateBridgeCall: {:?}", self.0);
         match self.0 {
             bridge_types::substrate::BridgeCall::ParachainApp(msg) => {
                 let call: parachain_bridge_app::Call<crate::Runtime> = msg.into();
@@ -579,33 +610,44 @@ mod test {
 
     #[test]
     fn democracy_weight_info_should_scale_weight_linearly_up_to_max_preimage_size() {
-        fn t(bytes: u32, expected: Weight, name: &str) {
+        fn t(bytes: u32, expected_ref_time: u64, name: &str) {
             let actual = PreimageWeightInfo::note_preimage(bytes);
-            assert_eq!(actual.ref_time(), expected.ref_time(), "{}", name);
+            assert_eq!(actual.ref_time(), expected_ref_time, "{}", name);
             assert!(actual.ref_time() <= MAX_WEIGHT.ref_time(), "{}", name);
         }
 
-        t(u32::MIN, Weight::from_parts(248_828_000, 0), "u32::MIN");
-        t(1, Weight::from_parts(248_829_705, 0), "1");
-        t(500_000, Weight::from_parts(1_101_328_000, 0), "500_000");
-        t(1_000_000, Weight::from_parts(1_953_828_000, 0), "1_000_000");
+        let base = PreimageWeightInfo::note_preimage(0).ref_time();
+        let per_byte = PreimageWeightInfo::note_preimage(1)
+            .ref_time()
+            .saturating_sub(base);
+
+        t(u32::MIN, base, "u32::MIN");
+        t(1, base.saturating_add(per_byte), "1");
+        t(
+            500_000,
+            base.saturating_add(per_byte.saturating_mul(500_000)),
+            "500_000",
+        );
+        t(
+            1_000_000,
+            base.saturating_add(per_byte.saturating_mul(1_000_000)),
+            "1_000_000",
+        );
         t(
             5 * MEBIBYTE,
-            Weight::from_parts(9_187_938_400, 0),
+            base.saturating_add(per_byte.saturating_mul((5 * MEBIBYTE).into())),
             "5 * MEBIBYTE",
         );
     }
 
     #[test]
     fn democracy_weight_info_should_overweight_for_huge_preimages() {
-        fn t(bytes: u32) {
-            let actual = PreimageWeightInfo::note_preimage(bytes);
-            assert_eq!(actual.ref_time(), 1_459_900_160_001_u64);
-            assert!(actual.ref_time() > MAX_WEIGHT.ref_time());
-        }
-
-        t(5 * MEBIBYTE + 1);
-        t(u32::MAX);
+        let overweight = PreimageWeightInfo::note_preimage(5 * MEBIBYTE + 1).ref_time();
+        assert!(overweight > MAX_WEIGHT.ref_time());
+        assert_eq!(
+            PreimageWeightInfo::note_preimage(u32::MAX).ref_time(),
+            overweight
+        );
     }
 
     #[test]

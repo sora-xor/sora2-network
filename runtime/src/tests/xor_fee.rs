@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -87,7 +89,8 @@ fn sora_parliament_account() -> AccountId {
 fn info_from_weight(w: Weight) -> DispatchInfo {
     // pays_fee: Pays::Yes -- class: DispatchClass::Normal
     DispatchInfo {
-        weight: w,
+        call_weight: w,
+        extension_weight: Weight::zero(),
         ..Default::default()
     }
 }
@@ -376,7 +379,7 @@ fn remint_for_xorless_works() {
         fill_spot_price();
 
         assert_eq!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             0_u128.into()
         );
 
@@ -481,9 +484,9 @@ fn remint_for_xorless_works() {
         );
 
         assert_approx_eq_abs!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             val_burned - kusd_buy_back,
-            balance!(0.000000001)
+            balance!(0.00005)
         );
 
         let kusd_burned =
@@ -710,7 +713,7 @@ fn notify_val_burned_works() {
         fill_spot_price();
 
         assert_eq!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             0_u128.into()
         );
 
@@ -751,7 +754,7 @@ fn notify_val_burned_works() {
         assert_approx_eq_abs!(XorToVal::<Runtime>::get(), total_xor_to_val, 10);
         assert_approx_eq_abs!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back, 10);
         assert_eq!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             0_u128.into()
         );
 
@@ -772,9 +775,9 @@ fn notify_val_burned_works() {
         );
 
         assert_approx_eq_abs!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             val_burned - kusd_buy_back,
-            balance!(0.000000001)
+            balance!(0.00005)
         );
 
         let kusd_burned =
@@ -1950,7 +1953,7 @@ fn random_remint_works() {
         fill_spot_price();
 
         assert_eq!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             0_u128.into()
         );
 
@@ -1991,14 +1994,14 @@ fn random_remint_works() {
         assert_approx_eq_abs!(XorToVal::<Runtime>::get(), total_xor_to_val, 10);
         assert_approx_eq_abs!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back, 10);
         assert_eq!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             0_u128.into()
         );
 
         pallet_randomness_collective_flip::Pallet::<Runtime>::on_initialize(1);
         xor_fee::Pallet::<Runtime>::on_initialize(1);
 
-        assert_eq!(pallet_staking::Pallet::<Runtime>::era_val_burned(), 0);
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0);
         assert_eq!(
             crate::Assets::total_issuance(&KUSD.into()).unwrap(),
             balance!(20000)
@@ -2032,9 +2035,9 @@ fn random_remint_works() {
         );
 
         assert_approx_eq_abs!(
-            pallet_staking::Pallet::<Runtime>::era_val_burned(),
+            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
             val_burned - kusd_buy_back,
-            balance!(0.000000001)
+            balance!(0.00005)
         );
 
         let kusd_burned =

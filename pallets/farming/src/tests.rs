@@ -31,7 +31,7 @@
 use frame_support::{assert_noop, assert_ok};
 
 use common::{balance, DEXId, RewardReason, DOT, PSWAP, VAL, XOR, XSTUSD};
-use frame_support::log::debug;
+use frame_support::__private::log::debug;
 use frame_system;
 use frame_system::RawOrigin;
 use pool_xyk::Properties;

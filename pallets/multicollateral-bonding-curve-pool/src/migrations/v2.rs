@@ -7,7 +7,7 @@ use common::{AssetManager, TradingPairSourceManager};
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{
-    log::{error, info},
+    __private::log::{error, info},
     pallet_prelude::StorageVersion,
     traits::GetStorageVersion as _,
 };
@@ -99,7 +99,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
         frame_support::ensure!(
             <T as technical::Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into()).is_err(),
             "TBCD asset already registered"
@@ -116,7 +116,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
         <T as technical::Config>::AssetInfoProvider::ensure_asset_exists(&TBCD.into())?;
         frame_support::ensure!(
             crate::EnabledTargets::<T>::get().contains(&TBCD.into()),

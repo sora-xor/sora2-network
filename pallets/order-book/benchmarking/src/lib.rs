@@ -435,7 +435,7 @@ mod benchmarks_inner {
         }
 
         service_expiration_base {
-            let mut weight = WeightMeter::max_limit();
+            let mut weight = WeightMeter::new();
             let block_number = 0u32.unique_saturated_into();
         }: {
             OrderBookPallet::<T>::service_expiration(block_number, &mut weight);
@@ -443,7 +443,7 @@ mod benchmarks_inner {
         verify {}
 
         service_expiration_block_base {
-            let mut weight = WeightMeter::max_limit();
+            let mut weight = WeightMeter::new();
             let block_number = 0u32.unique_saturated_into();
             // should be the slower layer because cache is not
             // warmed up

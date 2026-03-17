@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -37,6 +39,7 @@ use frame_support::{
     construct_runtime,
     traits::{ConstU16, ConstU32},
 };
+use sp_runtime::BuildStorage;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -63,8 +66,5 @@ mock_pallet_timestamp_config!(Runtime);
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    frame_system::GenesisConfig::default()
-        .build_storage::<Runtime>()
-        .unwrap()
-        .into()
+    SystemConfig::default().build_storage().unwrap().into()
 }

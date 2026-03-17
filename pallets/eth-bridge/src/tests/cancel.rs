@@ -122,8 +122,7 @@ fn should_cancel_ready_outgoing_request() {
             req_hash,
             net_id,
         ));
-        let expected_error: frame_support::dispatch::DispatchError =
-            Error::FailedToUnreserve.into();
+        let expected_error: sp_runtime::DispatchError = Error::FailedToUnreserve.into();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, req_hash),
             Some(RequestStatus::Failed(expected_error))
@@ -517,14 +516,13 @@ fn should_cancel_outgoing_prepared_requests() {
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_before =
-                    frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_before = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 println!("{:?}", request);
                 request.validate().unwrap();
                 request.prepare().unwrap();
                 request.cancel().unwrap();
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_after = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
                 TransactionOutcome::Rollback(DispatchResult::Ok(()))
             })
@@ -675,12 +673,11 @@ fn should_cancel_incoming_prepared_requests() {
                 // Save the current storage root hash, apply transaction preparation,
                 // cancel it and compare with the final root hash.
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_before =
-                    frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_before = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 request.prepare().unwrap();
                 request.cancel().unwrap();
                 frame_system::Pallet::<Runtime>::reset_events();
-                let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
+                let state_hash_after = sp_io::storage::root(sp_runtime::StateVersion::V1);
                 assert_eq!(state_hash_before, state_hash_after);
                 TransactionOutcome::Rollback(DispatchResult::Ok(()))
             })
@@ -730,7 +727,7 @@ fn should_cancel_incoming_cancel_outgoing_request_prepare() {
             network_id: net_id,
         });
 
-        let state_hash_before = frame_support::storage_root(frame_support::StateVersion::V1);
+        let state_hash_before = sp_io::storage::root(sp_runtime::StateVersion::V1);
         request.prepare().unwrap();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, outgoing_request_hash),
@@ -741,7 +738,7 @@ fn should_cancel_incoming_cancel_outgoing_request_prepare() {
             crate::RequestStatuses::<Runtime>::get(net_id, outgoing_request_hash),
             Some(RequestStatus::ApprovalsReady)
         );
-        let state_hash_after = frame_support::storage_root(frame_support::StateVersion::V1);
+        let state_hash_after = sp_io::storage::root(sp_runtime::StateVersion::V1);
         assert_eq!(state_hash_before, state_hash_after);
     });
 }

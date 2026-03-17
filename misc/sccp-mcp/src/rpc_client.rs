@@ -295,7 +295,11 @@ fn parse_bool(raw: Option<String>, default_value: bool) -> bool {
     }
 }
 
-fn parse_bounded_positive_usize(raw: Option<String>, default_value: usize, max_value: usize) -> usize {
+fn parse_bounded_positive_usize(
+    raw: Option<String>,
+    default_value: usize,
+    max_value: usize,
+) -> usize {
     raw.and_then(|value| value.parse::<usize>().ok())
         .filter(|value| *value > 0)
         .map(|value| value.min(max_value))
@@ -317,7 +321,11 @@ fn normalize_queue_pending_per_principal_limit(
 }
 
 fn parse_queue_drr_quantum(raw: Option<String>) -> usize {
-    parse_bounded_positive_usize(raw, DEFAULT_RPC_QUEUE_DRR_QUANTUM, MAX_RPC_QUEUE_DRR_QUANTUM)
+    parse_bounded_positive_usize(
+        raw,
+        DEFAULT_RPC_QUEUE_DRR_QUANTUM,
+        MAX_RPC_QUEUE_DRR_QUANTUM,
+    )
 }
 
 fn parse_principal_default_weight(raw: Option<String>) -> usize {
@@ -389,16 +397,17 @@ fn rpc_queue_policy() -> RpcQueuePolicy {
         std::env::var("SCCP_MCP_RPC_QUEUE_MAX_PENDING_PER_PRINCIPAL").ok(),
         DEFAULT_RPC_QUEUE_MAX_PENDING_PER_PRINCIPAL,
     );
-    let max_pending_per_principal =
-        normalize_queue_pending_per_principal_limit(max_pending, configured_max_pending_per_principal);
+    let max_pending_per_principal = normalize_queue_pending_per_principal_limit(
+        max_pending,
+        configured_max_pending_per_principal,
+    );
     let wait_timeout = parse_timeout_ms(
         std::env::var("SCCP_MCP_RPC_QUEUE_WAIT_TIMEOUT_MS").ok(),
         DEFAULT_RPC_QUEUE_WAIT_TIMEOUT_MS,
     );
     let drr_quantum = parse_queue_drr_quantum(std::env::var("SCCP_MCP_RPC_QUEUE_DRR_QUANTUM").ok());
-    let principal_weight_default = parse_principal_default_weight(
-        std::env::var("SCCP_MCP_RPC_PRINCIPAL_WEIGHT_DEFAULT").ok(),
-    );
+    let principal_weight_default =
+        parse_principal_default_weight(std::env::var("SCCP_MCP_RPC_PRINCIPAL_WEIGHT_DEFAULT").ok());
     let principal_weights =
         parse_principal_weight_map(std::env::var("SCCP_MCP_RPC_PRINCIPAL_WEIGHTS").ok());
 
@@ -854,11 +863,16 @@ fn rpc_agent() -> ureq::Agent {
         DEFAULT_RPC_IO_TIMEOUT_MS,
     );
 
-    ureq::AgentBuilder::new()
-        .timeout_connect(connect_timeout)
-        .timeout_read(io_timeout)
-        .timeout_write(io_timeout)
+    ureq::Agent::config_builder()
+        .timeout_connect(Some(connect_timeout))
+        .timeout_send_request(Some(io_timeout))
+        .timeout_send_body(Some(io_timeout))
+        .timeout_recv_response(Some(io_timeout))
+        .timeout_recv_body(Some(io_timeout))
+        // Keep HTTP status handling in this module for retry/body logging behavior.
+        .http_status_as_error(false)
         .build()
+        .new_agent()
 }
 
 fn rpc_retry_policy() -> RetryPolicy {
@@ -1062,12 +1076,34 @@ pub fn rpc_call(url: &str, method: &str, params: Value) -> AppResult<Value> {
     for attempt in 0..=retry_policy.max_retries {
         let response = agent
             .post(url)
-            .set("content-type", "application/json")
+            .header("content-type", "application/json")
             .send_json(payload.clone());
 
         match response {
-            Ok(response) => {
-                let body: Value = response.into_json().map_err(|err| {
+            Ok(mut response) => {
+                let status = response.status();
+                let code = status.as_u16();
+                if code >= 400 {
+                    let retryable_status = is_retryable_http_status(code);
+                    let can_retry =
+                        retry_safe && attempt < retry_policy.max_retries && retryable_status;
+                    if can_retry {
+                        thread::sleep(retry_delay(retry_policy.backoff, attempt));
+                        continue;
+                    }
+                    if retryable_status {
+                        record_circuit_failure(&key, circuit_policy);
+                    }
+                    let body_text = response
+                        .body_mut()
+                        .read_to_string()
+                        .unwrap_or_else(|_| String::from("<unavailable>"));
+                    return Err(AppError::Rpc(format!(
+                        "rpc request to {url} method {method} failed with HTTP {code}: {body_text}"
+                    )));
+                }
+
+                let body: Value = response.body_mut().read_json().map_err(|err| {
                     AppError::Rpc(format!("rpc response from {url} was not valid JSON: {err}"))
                 })?;
 
@@ -1082,26 +1118,7 @@ pub fn rpc_call(url: &str, method: &str, params: Value) -> AppResult<Value> {
                     AppError::Rpc(format!("rpc response from {url} missing result field"))
                 });
             }
-            Err(ureq::Error::Status(code, response)) => {
-                let retryable_status = is_retryable_http_status(code);
-                let can_retry =
-                    retry_safe && attempt < retry_policy.max_retries && retryable_status;
-                if can_retry {
-                    thread::sleep(retry_delay(retry_policy.backoff, attempt));
-                    continue;
-                }
-                if retryable_status {
-                    record_circuit_failure(&key, circuit_policy);
-                }
-                let status_text = response.status_text().to_owned();
-                let body_text = response
-                    .into_string()
-                    .unwrap_or_else(|_| String::from("<unavailable>"));
-                return Err(AppError::Rpc(format!(
-                    "rpc request to {url} method {method} failed with HTTP {code} ({status_text}): {body_text}"
-                )));
-            }
-            Err(ureq::Error::Transport(err)) => {
+            Err(err) => {
                 let can_retry = retry_safe && attempt < retry_policy.max_retries;
                 if can_retry {
                     thread::sleep(retry_delay(retry_policy.backoff, attempt));
@@ -1177,9 +1194,13 @@ mod tests {
         let mut policy = test_queue_policy();
         policy.enabled = false;
 
-        let permit = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
-            .expect("queue-disabled path should not error");
-        assert!(permit.is_none(), "queue-disabled path should not allocate permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
+                .expect("queue-disabled path should not error");
+        assert!(
+            permit.is_none(),
+            "queue-disabled path should not allocate permit"
+        );
 
         let state = RPC_ADMISSION_QUEUE
             .state
@@ -1197,9 +1218,10 @@ mod tests {
         reset_rpc_admission_queue_state();
         let policy = test_queue_policy();
 
-        let permit = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 2, &policy)
-            .expect("immediate admission should succeed")
-            .expect("queue should return permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 2, &policy)
+                .expect("immediate admission should succeed")
+                .expect("queue should return permit");
         {
             let state = RPC_ADMISSION_QUEUE
                 .state
@@ -1214,7 +1236,10 @@ mod tests {
             .state
             .lock()
             .expect("rpc admission queue mutex should not be poisoned");
-        assert_eq!(state.admitted_total, 0, "dropping permit should release admission slot");
+        assert_eq!(
+            state.admitted_total, 0,
+            "dropping permit should release admission slot"
+        );
     }
 
     #[test]
@@ -1318,8 +1343,12 @@ mod tests {
     fn drr_weighted_fairness_prefers_higher_weight_principal() {
         let mut state = AdmissionState::default();
         let mut policy = test_queue_policy();
-        policy.principal_weights.insert("principal-heavy".to_owned(), 3);
-        policy.principal_weights.insert("principal-light".to_owned(), 1);
+        policy
+            .principal_weights
+            .insert("principal-heavy".to_owned(), 3);
+        policy
+            .principal_weights
+            .insert("principal-light".to_owned(), 1);
         let mut owner_by_request_id = HashMap::<RequestId, String>::new();
 
         for idx in 0..600u64 {
@@ -1337,7 +1366,10 @@ mod tests {
             let request_id = state
                 .admit_next_request(&policy)
                 .expect("admission should be available");
-            match owner_by_request_id.get(&request_id).map(|principal| principal.as_str()) {
+            match owner_by_request_id
+                .get(&request_id)
+                .map(|principal| principal.as_str())
+            {
                 Some("principal-heavy") => heavy = heavy.saturating_add(1),
                 Some("principal-light") => light = light.saturating_add(1),
                 _ => panic!("unexpected principal owner"),
@@ -1369,8 +1401,14 @@ mod tests {
 
         let first_granted = state.promote_admissions(&policy, 2);
         assert_eq!(first_granted, 2, "should only grant up to global limit");
-        assert_eq!(state.admitted_total, 2, "admitted count should track grants");
-        assert_eq!(state.pending_total, 2, "remaining pending should stay queued");
+        assert_eq!(
+            state.admitted_total, 2,
+            "admitted count should track grants"
+        );
+        assert_eq!(
+            state.pending_total, 2,
+            "remaining pending should stay queued"
+        );
 
         let second_granted = state.promote_admissions(&policy, 2);
         assert_eq!(
@@ -1407,18 +1445,26 @@ mod tests {
         policy.max_pending_per_principal = 1;
         policy.wait_timeout = Duration::from_millis(500);
 
-        let permit = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
-            .expect("first permit should be granted")
-            .expect("queue should return permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
+                .expect("first permit should be granted")
+                .expect("queue should return permit");
 
         let policy_for_waiter = policy.clone();
         let waiter = thread::spawn(move || {
-            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy_for_waiter)
+            try_acquire_rpc_queue_permit(
+                "principal-a",
+                "test://rpc",
+                "eth_call",
+                1,
+                &policy_for_waiter,
+            )
         });
 
         thread::sleep(Duration::from_millis(30));
-        let rejected = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
-            .expect_err("second pending request for same principal should be rejected");
+        let rejected =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
+                .expect_err("second pending request for same principal should be rejected");
         let rejected_text = format!("{rejected}");
         assert!(
             rejected_text.contains("per-principal pending limit"),
@@ -1446,18 +1492,26 @@ mod tests {
         policy.max_pending_per_principal = 1;
         policy.wait_timeout = Duration::from_millis(500);
 
-        let permit = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
-            .expect("first permit should be granted")
-            .expect("queue should return permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
+                .expect("first permit should be granted")
+                .expect("queue should return permit");
 
         let policy_for_waiter = policy.clone();
         let waiter = thread::spawn(move || {
-            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy_for_waiter)
+            try_acquire_rpc_queue_permit(
+                "principal-a",
+                "test://rpc",
+                "eth_call",
+                1,
+                &policy_for_waiter,
+            )
         });
 
         thread::sleep(Duration::from_millis(30));
-        let rejected = try_acquire_rpc_queue_permit("principal-b", "test://rpc", "eth_call", 1, &policy)
-            .expect_err("global pending queue should reject additional enqueue");
+        let rejected =
+            try_acquire_rpc_queue_permit("principal-b", "test://rpc", "eth_call", 1, &policy)
+                .expect_err("global pending queue should reject additional enqueue");
         let rejected_text = format!("{rejected}");
         assert!(
             rejected_text.contains("global pending limit"),
@@ -1485,12 +1539,14 @@ mod tests {
         policy.max_pending = 8;
         policy.max_pending_per_principal = 8;
 
-        let permit = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
-            .expect("first permit should be granted")
-            .expect("queue should return permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
+                .expect("first permit should be granted")
+                .expect("queue should return permit");
 
-        let timed_out = try_acquire_rpc_queue_permit("principal-b", "test://rpc", "eth_call", 1, &policy)
-            .expect_err("waiting request should time out when no capacity frees");
+        let timed_out =
+            try_acquire_rpc_queue_permit("principal-b", "test://rpc", "eth_call", 1, &policy)
+                .expect_err("waiting request should time out when no capacity frees");
         let timed_out_text = format!("{timed_out}");
         assert!(
             timed_out_text.contains("queue timeout"),
@@ -1553,13 +1609,20 @@ mod tests {
         policy.max_pending = 8;
         policy.max_pending_per_principal = 8;
 
-        let permit = try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
-            .expect("first permit should be granted")
-            .expect("queue should return permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-a", "test://rpc", "eth_call", 1, &policy)
+                .expect("first permit should be granted")
+                .expect("queue should return permit");
 
         let policy_for_waiter = policy.clone();
         let waiter = thread::spawn(move || {
-            try_acquire_rpc_queue_permit("principal-b", "test://rpc", "eth_call", 1, &policy_for_waiter)
+            try_acquire_rpc_queue_permit(
+                "principal-b",
+                "test://rpc",
+                "eth_call",
+                1,
+                &policy_for_waiter,
+            )
         });
 
         thread::sleep(Duration::from_millis(30));
@@ -1690,9 +1753,8 @@ mod tests {
 
     #[test]
     fn parse_principal_weight_map_trims_whitespace() {
-        let parsed = parse_principal_weight_map(Some(
-            " requester:abc = 2 , auth:def = 5 ".to_owned(),
-        ));
+        let parsed =
+            parse_principal_weight_map(Some(" requester:abc = 2 , auth:def = 5 ".to_owned()));
         assert_eq!(parsed.get("requester:abc"), Some(&2usize));
         assert_eq!(parsed.get("auth:def"), Some(&5usize));
     }
@@ -1946,9 +2008,10 @@ mod tests {
             .clear();
 
         let policy = test_queue_policy();
-        let permit = try_acquire_rpc_queue_permit("principal-cap", "test://rpc", "eth_call", 8, &policy)
-            .expect("permit should be granted")
-            .expect("queue should return permit");
+        let permit =
+            try_acquire_rpc_queue_permit("principal-cap", "test://rpc", "eth_call", 8, &policy)
+                .expect("permit should be granted")
+                .expect("queue should return permit");
 
         let endpoint_key = format!("endpoint-cap-{}", std::process::id());
         let principal_key = format!("principal-cap-{}", std::process::id());
@@ -1971,16 +2034,16 @@ mod tests {
         );
         drop(principal_guard);
 
-        let scope_guard =
-            try_acquire_rpc_scope_inflight_slot(&scope_key, 1).expect("scope slot should be acquirable");
+        let scope_guard = try_acquire_rpc_scope_inflight_slot(&scope_key, 1)
+            .expect("scope slot should be acquirable");
         assert!(
             try_acquire_rpc_scope_inflight_slot(&scope_key, 1).is_none(),
             "scope cap should remain fail-fast"
         );
         drop(scope_guard);
 
-        let method_guard =
-            try_acquire_rpc_method_inflight_slot(&method_key, 1).expect("method slot should be acquirable");
+        let method_guard = try_acquire_rpc_method_inflight_slot(&method_key, 1)
+            .expect("method slot should be acquirable");
         assert!(
             try_acquire_rpc_method_inflight_slot(&method_key, 1).is_none(),
             "method cap should remain fail-fast"
@@ -2008,7 +2071,9 @@ mod tests {
             "principal queue should be fully cleaned when idle"
         );
         assert!(
-            !state.pending_count_by_principal.contains_key("principal-cleanup"),
+            !state
+                .pending_count_by_principal
+                .contains_key("principal-cleanup"),
             "principal pending counter should be removed when idle"
         );
         assert!(
@@ -2136,7 +2201,9 @@ mod tests {
         let mut state = AdmissionState::default();
         let policy = test_queue_policy();
         state.enqueue_request("principal-a", 10);
-        state.deficit_by_principal.insert("principal-a".to_owned(), 7);
+        state
+            .deficit_by_principal
+            .insert("principal-a".to_owned(), 7);
 
         let request_id = state
             .admit_next_request(&policy)
@@ -2175,9 +2242,14 @@ mod tests {
     fn clear_principal_if_idle_cleans_deficit_and_ring() {
         let mut state = AdmissionState::default();
         state.principal_ring.push_back("principal-a".to_owned());
-        state.pending_count_by_principal.insert("principal-a".to_owned(), 0);
-        state.deficit_by_principal.insert("principal-a".to_owned(), 7);
-        state.pending_by_principal
+        state
+            .pending_count_by_principal
+            .insert("principal-a".to_owned(), 0);
+        state
+            .deficit_by_principal
+            .insert("principal-a".to_owned(), 7);
+        state
+            .pending_by_principal
             .insert("principal-a".to_owned(), VecDeque::new());
 
         state.clear_principal_if_idle("principal-a");
@@ -2209,7 +2281,9 @@ mod tests {
         let policy = test_queue_policy();
 
         state.principal_ring.push_back("stale-principal".to_owned());
-        state.pending_count_by_principal.insert("stale-principal".to_owned(), 0);
+        state
+            .pending_count_by_principal
+            .insert("stale-principal".to_owned(), 0);
         state
             .pending_by_principal
             .insert("stale-principal".to_owned(), VecDeque::new());
@@ -2239,8 +2313,12 @@ mod tests {
     fn drr_no_starvation_for_lower_weight_principal() {
         let mut state = AdmissionState::default();
         let mut policy = test_queue_policy();
-        policy.principal_weights.insert("principal-heavy".to_owned(), 8);
-        policy.principal_weights.insert("principal-light".to_owned(), 1);
+        policy
+            .principal_weights
+            .insert("principal-heavy".to_owned(), 8);
+        policy
+            .principal_weights
+            .insert("principal-light".to_owned(), 1);
         let mut owner_by_request_id = HashMap::<RequestId, String>::new();
 
         for idx in 0..500u64 {

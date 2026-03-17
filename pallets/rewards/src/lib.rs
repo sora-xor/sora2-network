@@ -39,27 +39,20 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::DispatchErrorWithPostInfo;
+use codec::{Decode, Encode};
+use frame_support::dispatch::PostDispatchInfo;
 use frame_support::storage::StorageMap as StorageMapTrait;
-use frame_support::RuntimeDebug;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{UniqueSaturatedInto, Zero};
+use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::RuntimeDebug;
 use sp_runtime::{Perbill, Percent};
 use sp_std::prelude::*;
 
-#[cfg(feature = "std")]
 use common::balance;
 use common::eth::EthAddress;
 use common::prelude::FixedWrapper;
-#[cfg(feature = "include-real-files")]
-use common::vec_push;
 use common::AssetIdOf;
 use common::{eth, AccountIdOf, Balance, OnValBurned, VAL};
-
-#[cfg(feature = "include-real-files")]
-use hex_literal::hex;
 
 pub use self::pallet::*;
 
@@ -74,8 +67,10 @@ mod mock;
 mod tests;
 
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
+type DispatchErrorWithPostInfo = sp_runtime::DispatchErrorWithPostInfo<PostDispatchInfo>;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RewardInfo {
     claimable: Balance,
@@ -135,7 +130,7 @@ impl<T: Config> Pallet<T> {
     /// Used in `on_initialize` hook.
     ///
     /// - `elapsed`: elapsed time in blocks
-    fn current_vesting_ratio(elapsed: T::BlockNumber) -> Perbill {
+    fn current_vesting_ratio(elapsed: frame_system::pallet_prelude::BlockNumberFor<T>) -> Perbill {
         let max_percentage = T::MAX_VESTING_RATIO.deconstruct() as u32;
         if elapsed >= T::TIME_TO_SATURATION {
             Perbill::from_percent(max_percentage)
@@ -304,7 +299,9 @@ pub mod pallet {
     use super::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + technical::Config {
+    pub trait Config:
+        frame_system::Config<RuntimeEvent: From<Event<Self>>> + technical::Config
+    {
         /// How often the rewards data are being updated
         const UPDATE_FREQUENCY: BlockNumberFor<Self>;
         /// Vested amount is updated every `BLOCKS_PER_DAY` blocks
@@ -317,7 +314,6 @@ pub mod pallet {
         const TIME_TO_SATURATION: BlockNumberFor<Self>;
         /// Percentage of VAL burned without vesting
         const VAL_BURN_PERCENT: Percent;
-        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
     }
 
@@ -325,14 +321,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let mut consumed_weight: Weight = Weight::zero();
 
             if (now % T::BLOCKS_PER_DAY).is_zero() {
@@ -558,7 +553,6 @@ pub mod pallet {
         pub umi_nfts: Vec<AssetIdOf<T>>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -572,7 +566,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ReservesAcc::<T>::put(&self.reserves_account_id);
 

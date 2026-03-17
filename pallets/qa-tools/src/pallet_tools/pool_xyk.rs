@@ -29,18 +29,21 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::BalanceUnit;
 use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetManager, Balance, DEXInfo, DexIdOf,
     DexInfoProvider, TradingPair, TradingPairSourceManager, XOR,
 };
-use frame_support::dispatch::{DispatchError, RawOrigin};
+use frame_support::dispatch::RawOrigin;
+use frame_support::sp_runtime::DispatchError;
 use sp_arithmetic::traits::CheckedMul;
 use sp_std::fmt::Debug;
 use sp_std::vec::Vec;
 
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct AssetPairInput<DEXId, AssetId> {
     pub dex_id: DEXId,
     pub asset_a: AssetId,

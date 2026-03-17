@@ -41,9 +41,11 @@ pub mod types;
 pub mod utils;
 
 use codec::{Decode, Encode};
-pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
-use frame_support::RuntimeDebug;
+pub use ethereum_types::{H128, H64};
+pub use sp_core::{H160, H256, H512, U256};
+pub type Address = H160;
 use frame_support::traits::Get;
+use sp_runtime::RuntimeDebug;
 
 use derivative::Derivative;
 #[cfg(feature = "std")]
@@ -98,6 +100,8 @@ pub enum SubNetworkId {
     Liberland,
 }
 
+impl codec::DecodeWithMemTracking for SubNetworkId {}
+
 #[derive(
     Encode,
     Decode,
@@ -120,6 +124,8 @@ pub enum GenericNetworkId {
     EVMLegacy(u32),
     TON(TonNetworkId),
 }
+
+impl codec::DecodeWithMemTracking for GenericNetworkId {}
 
 impl Default for GenericNetworkId {
     fn default() -> Self {
@@ -174,11 +180,13 @@ pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
     Liberland(MainnetAccountId),
-    Parachain(xcm::VersionedMultiLocation),
+    Parachain(xcm::VersionedLocation),
     Unknown,
     Root,
     TON(TonAddress),
 }
+
+impl codec::DecodeWithMemTracking for GenericAccount {}
 
 impl TryInto<MainnetAccountId> for GenericAccount {
     type Error = ();
@@ -216,6 +224,8 @@ pub enum GenericTimepoint {
     TON(TonTransactionId),
 }
 
+impl codec::DecodeWithMemTracking for GenericTimepoint {}
+
 #[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derivative(
@@ -232,6 +242,11 @@ pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     EVM(evm::Commitment<MaxMessages, MaxPayload>),
     #[cfg_attr(feature = "std", serde(rename = "ton"))]
     TON(ton::Commitment<MaxPayload>),
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> codec::DecodeWithMemTracking
+    for GenericCommitment<MaxMessages, MaxPayload>
+{
 }
 
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages, MaxPayload> {

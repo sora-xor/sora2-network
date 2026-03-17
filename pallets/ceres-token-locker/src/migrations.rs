@@ -1,6 +1,6 @@
 use crate::{Config, Timestamp, TokenLockInfo, TokenLockerData, Weight};
 use common::{convert_block_number_to_timestamp, AssetIdOf, Balance};
-use frame_support::log;
+use frame_support::__private::log;
 use frame_support::traits::Get;
 use sp_std::vec::Vec;
 
@@ -14,28 +14,33 @@ pub fn migrate_token_locker_data<T: Config>() -> Weight {
 
     let current_timestamp = Timestamp::<T>::get();
     let current_block = frame_system::Pallet::<T>::block_number();
-    TokenLockerData::<T>::translate_values::<Vec<(Balance, T::BlockNumber, AssetIdOf<T>)>, _>(
-        |v| {
-            Some(
-                v.into_iter()
-                    .map(|(tokens, unlocking_block, asset_id)| {
-                        weight += 1;
-                        let unlocking_timestamp = convert_block_number_to_timestamp::<T>(
-                            unlocking_block,
-                            current_block,
-                            current_timestamp,
-                        );
+    TokenLockerData::<T>::translate_values::<
+        Vec<(
+            Balance,
+            frame_system::pallet_prelude::BlockNumberFor<T>,
+            AssetIdOf<T>,
+        )>,
+        _,
+    >(|v| {
+        Some(
+            v.into_iter()
+                .map(|(tokens, unlocking_block, asset_id)| {
+                    weight += 1;
+                    let unlocking_timestamp = convert_block_number_to_timestamp::<T>(
+                        unlocking_block,
+                        current_block,
+                        current_timestamp,
+                    );
 
-                        TokenLockInfo {
-                            tokens,
-                            unlocking_timestamp,
-                            asset_id,
-                        }
-                    })
-                    .collect::<Vec<TokenLockInfo<Balance, T::Moment, AssetIdOf<T>>>>(),
-            )
-        },
-    );
+                    TokenLockInfo {
+                        tokens,
+                        unlocking_timestamp,
+                        asset_id,
+                    }
+                })
+                .collect::<Vec<TokenLockInfo<Balance, T::Moment, AssetIdOf<T>>>>(),
+        )
+    });
 
     log::info!(
         target: "runtime",

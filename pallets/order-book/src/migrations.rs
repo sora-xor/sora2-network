@@ -33,11 +33,11 @@ pub mod burn_xor_in_tech_accounts {
     use crate::{CancelReason, Config, LimitOrders, MarketChange, OrderBooks, Pallet};
     use common::{AssetIdOf, AssetInfoProvider, AssetManager, PriceVariant, XOR};
     use core::marker::PhantomData;
-    use frame_support::dispatch::DispatchError;
     use frame_support::ensure;
     use frame_support::traits::{Get, OnRuntimeUpgrade, StorageVersion};
     use frame_support::weights::Weight;
     use sp_runtime::traits::Zero;
+    use sp_runtime::DispatchError;
     use sp_std::collections::btree_map::BTreeMap;
 
     pub struct Migrate<T>(PhantomData<T>);
@@ -49,7 +49,7 @@ pub mod burn_xor_in_tech_accounts {
         fn on_runtime_upgrade() -> Weight {
             let on_chain = StorageVersion::get::<Pallet<T>>();
             if on_chain != StorageVersion::new(0) {
-                frame_support::log::info!(
+                frame_support::__private::log::info!(
                     "order-book v1 migration skipped, on-chain storage version is {:?}",
                     on_chain
                 );
@@ -151,7 +151,7 @@ pub mod burn_xor_in_tech_accounts {
             });
 
             if let Err(error) = migration_result {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "order-book v1 migration failed and was rolled back: {:?}",
                     error
                 );

@@ -32,7 +32,6 @@
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
 #![feature(int_roundings)]
-#![feature(is_some_and)]
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};
 use common::prelude::{
@@ -114,7 +113,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -135,6 +133,7 @@ pub mod pallet {
         const REGULAR_NUBMER_OF_EXECUTED_ORDERS: usize;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type OrderId: Parameter
             + Member
@@ -157,7 +156,7 @@ pub mod pallet {
         >;
         type Scheduler: AlignmentScheduler
             + ExpirationScheduler<
-                Self::BlockNumber,
+                frame_system::pallet_prelude::BlockNumberFor<Self>,
                 OrderBookId<AssetIdOf<Self>, Self::DEXId>,
                 Self::DEXId,
                 Self::OrderId,
@@ -293,7 +292,7 @@ pub mod pallet {
     pub type ExpirationsAgenda<T: Config> = StorageMap<
         _,
         Identity,
-        T::BlockNumber,
+        BlockNumberFor<T>,
         BoundedVec<(OrderBookId<AssetIdOf<T>, T::DEXId>, T::OrderId), T::MaxExpiringOrdersPerBlock>,
         ValueQuery,
     >;
@@ -314,7 +313,7 @@ pub mod pallet {
     /// so they might be operated later.
     #[pallet::storage]
     #[pallet::getter(fn incomplete_expirations_since)]
-    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, T::BlockNumber>;
+    pub type IncompleteExpirationsSince<T: Config> = StorageValue<_, BlockNumberFor<T>>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -527,18 +526,18 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform scheduled expirations
-        fn on_initialize(current_block: T::BlockNumber) -> Weight {
+        fn on_initialize(current_block: BlockNumberFor<T>) -> Weight {
             let mut expiration_weight_counter =
-                WeightMeter::from_limit(T::MaxExpirationWeightPerBlock::get());
+                WeightMeter::with_limit(T::MaxExpirationWeightPerBlock::get());
             Self::service_expiration(current_block, &mut expiration_weight_counter);
 
             let mut alignment_weight_counter =
-                WeightMeter::from_limit(T::MaxAlignmentWeightPerBlock::get());
+                WeightMeter::with_limit(T::MaxAlignmentWeightPerBlock::get());
             Self::service_alignment(&mut alignment_weight_counter);
 
             expiration_weight_counter
-                .consumed
-                .saturating_add(alignment_weight_counter.consumed)
+                .consumed()
+                .saturating_add(alignment_weight_counter.consumed())
         }
     }
 
@@ -1479,7 +1478,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         input_asset_id: &AssetIdOf<T>,
         output_asset_id: &AssetIdOf<T>,
     ) -> bool {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return false;
         };
 
@@ -1497,7 +1498,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1538,7 +1541,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         recommended_samples_count: usize,
         _deduce_fee: bool,
     ) -> Result<(DiscreteQuotation<AssetIdOf<T>, Balance>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1712,7 +1717,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         output_asset_id: &AssetIdOf<T>,
         desired_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1802,7 +1809,9 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         amount: QuoteAmount<Balance>,
         _deduce_fee: bool,
     ) -> Result<SwapOutcome<Balance, AssetIdOf<T>>, DispatchError> {
-        let Some(order_book_id) = Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id) else {
+        let Some(order_book_id) =
+            Self::assemble_order_book_id(*dex_id, input_asset_id, output_asset_id)
+        else {
             return Err(Error::<T>::UnknownOrderBook.into());
         };
 
@@ -1921,7 +1930,7 @@ pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     // For now denominate only for quote and divisible, if denominate for base and indivisible need add logic for it
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         let factor = BalanceUnit::divisible(*factor);
 
         let quote_books = OrderBooks::<T>::iter()

@@ -30,6 +30,7 @@
 
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![allow(deprecated)] // TODO: migrate SignedExtension-based tests to TransactionExtension.
 
 use crate::extension::ChargeTransactionPayment;
 #[cfg(feature = "wip")] // Xorless fee
@@ -215,7 +216,7 @@ fn it_works_postpone() {
                 Some(balance!(0.0007)),
             )
         );
-        let _ = Balances::deposit_creating(&who, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000) + Balances::minimum_balance());
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         ChargeTransactionPayment::<Runtime>::post_dispatch(
             Some(pre),
@@ -351,7 +352,7 @@ fn it_works_should_post_info_pays_no() {
     ExtBuilder::build().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         let who = bob();
-        let _ = Balances::deposit_creating(&who, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000) + Balances::minimum_balance());
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(
@@ -419,7 +420,8 @@ fn it_works_postpone_with_custom_fee_source() {
                 None,
             )
         );
-        let _ = Balances::deposit_creating(&fee_source, balance!(1000));
+        let _ =
+            Balances::deposit_creating(&fee_source, balance!(1000) + Balances::minimum_balance());
         assert_eq!(
             Balances::usable_balance_for_fees(&fee_source),
             balance!(1000)
@@ -451,7 +453,8 @@ fn it_works_custom_fee_source() {
         let post_info = post_info_from_weight(100.into());
         let result = Ok(());
         assert_eq!(Balances::usable_balance_for_fees(&who), 0);
-        let _ = Balances::deposit_creating(&fee_source, balance!(1000));
+        let _ =
+            Balances::deposit_creating(&fee_source, balance!(1000) + Balances::minimum_balance());
         assert_eq!(
             Balances::usable_balance_for_fees(&fee_source),
             balance!(1000)
@@ -502,7 +505,7 @@ fn it_fails_custom_fee_source() {
         let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![1] });
         let info = info_from_weight(100.into());
         assert_eq!(Balances::usable_balance_for_fees(&fee_source), 0);
-        let _ = Balances::deposit_creating(&who, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000) + Balances::minimum_balance());
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         assert_eq!(
             ChargeTransactionPayment::<Runtime>::new().pre_dispatch(&who, &call, &info, len),
@@ -519,8 +522,8 @@ fn it_works_referrer_refund() {
         set_weight_to_fee_multiplier(1);
         let who = GetReferalAccountId::get();
         let referrer = GetReferrerAccountId::get();
-        let _ = Balances::deposit_creating(&who, balance!(1000));
-        let _ = Balances::deposit_creating(&referrer, balance!(1000));
+        let _ = Balances::deposit_creating(&who, balance!(1000) + Balances::minimum_balance());
+        let _ = Balances::deposit_creating(&referrer, balance!(1000) + Balances::minimum_balance());
         assert_eq!(Balances::usable_balance_for_fees(&who), balance!(1000));
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(
@@ -697,7 +700,7 @@ fn remove_from_white_list_works_correct() {
 #[test]
 fn test_xorless_call_weight() {
     ExtBuilder::build().execute_with(|| {
-        let _ = Balances::deposit_creating(&bob(), balance!(1000));
+        let _ = Balances::deposit_creating(&bob(), balance!(1000) + Balances::minimum_balance());
         let asset_id = Some(VAL.into());
 
         let mock_call = RuntimeCall::Assets(assets::Call::transfer {
@@ -711,8 +714,8 @@ fn test_xorless_call_weight() {
             asset_id,
         })
         .get_dispatch_info()
-        .weight;
-        let mock_call_weight = mock_call.get_dispatch_info().weight;
+        .total_weight();
+        let mock_call_weight = mock_call.get_dispatch_info().total_weight();
 
         let expected_weight =
             <Runtime as Config>::WeightInfo::xorless_call().saturating_add(mock_call_weight);
@@ -745,7 +748,7 @@ fn test_xorless_call_failed_inner_call() {
             to: alice(),
             amount: balance!(1),
         });
-        let mock_call_weight = mock_call.get_dispatch_info().weight;
+        let mock_call_weight = mock_call.get_dispatch_info().total_weight();
 
         let asset_id = None;
 

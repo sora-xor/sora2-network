@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 use crate::pallet::AccountIdOf;
 use codec::Decode;
 use common::prelude::Balance;
@@ -17,6 +19,7 @@ use frame_system;
 use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
+use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
 
 pub use common::mock::*;
@@ -66,7 +69,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -143,9 +146,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,

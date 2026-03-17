@@ -56,6 +56,7 @@
 
 use frame_election_provider_support::VoteWeight;
 use frame_support::traits::Get;
+use sp_staking::currency_to_vote::CurrencyToVote;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -69,8 +70,6 @@ fn existential_weight<T: pallet_staking::Config>(
     total_issuance: u128,
     minimum_balance: u128,
 ) -> VoteWeight {
-    use frame_support::traits::CurrencyToVote;
-
     T::CurrencyToVote::to_vote(
         minimum_balance
             .try_into()

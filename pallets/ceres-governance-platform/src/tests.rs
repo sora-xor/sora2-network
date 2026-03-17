@@ -909,11 +909,11 @@ fn ceres_governance_migration_works() {
             crate::StorageVersion::V3
         );
 
-        let nonce_a: <Runtime as frame_system::Config>::Index = 305u32.into();
+        let nonce_a: <Runtime as frame_system::Config>::Nonce = 305u32.into();
         let encoded = (&first_poll_creator, nonce_a).using_encoded(blake2_256);
         let poll_id_a = H256::from(encoded);
 
-        let nonce_b: <Runtime as frame_system::Config>::Index = 15u32.into();
+        let nonce_b: <Runtime as frame_system::Config>::Nonce = 15u32.into();
         let encoded = (&user_auth, nonce_b).using_encoded(blake2_256);
         let poll_id_b = H256::from(encoded);
 

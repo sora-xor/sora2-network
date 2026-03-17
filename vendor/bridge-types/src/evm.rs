@@ -2,13 +2,25 @@ use crate::MainnetAssetId;
 use crate::{H160, H256, U256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
-use ethabi::Token;
+use ethabi::{
+    ethereum_types::{H160 as AbiH160, U256 as AbiU256},
+    Token,
+};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use frame_support::traits::Get;
 use sp_core::{RuntimeDebug};
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
+
+fn abi_h160(address: H160) -> AbiH160 {
+    AbiH160::from_slice(address.as_bytes())
+}
+
+fn abi_u256(value: U256) -> AbiU256 {
+    let bytes = value.to_big_endian();
+    AbiU256::from_big_endian(&bytes)
+}
 
 #[derive(
     Clone,
@@ -228,21 +240,21 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages
             .iter()
             .map(|message| {
                 Token::Tuple(vec![
-                    Token::Address(message.target),
-                    Token::Uint(message.max_gas),
+                    Token::Address(abi_h160(message.target)),
+                    Token::Uint(abi_u256(message.max_gas)),
                     Token::Bytes(message.payload.clone().into()),
                 ])
             })
             .collect();
         let commitment: Vec<Token> = vec![
-            Token::Uint(self.nonce.into()),
-            Token::Uint(self.total_max_gas),
+            Token::Uint(abi_u256(self.nonce.into())),
+            Token::Uint(abi_u256(self.total_max_gas)),
             Token::Array(messages),
         ];
         // Structs are represented as tuples in ABI
         // https://docs.soliditylang.org/en/v0.8.15/abi-spec.html#mapping-solidity-to-abi-types
         let input = ethabi::encode(&[Token::Tuple(commitment)]);
-        sp_runtime::traits::Keccak256::hash(&input)
+        H256::from_slice(sp_runtime::traits::Keccak256::hash(&input).as_bytes())
     }
 }
 
@@ -271,7 +283,9 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
-        ("evm-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+        ("evm-inbound", self).using_encoded(|encoded| {
+            H256::from_slice(sp_runtime::traits::Keccak256::hash(encoded).as_bytes())
+        })
     }
 }
 
@@ -304,8 +318,9 @@ pub struct StatusReport<MaxMessages: Get<u32>> {
 
 impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
     pub fn hash(&self) -> H256 {
-        ("evm-status-report", self)
-            .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+        ("evm-status-report", self).using_encoded(|encoded| {
+            H256::from_slice(sp_runtime::traits::Keccak256::hash(encoded).as_bytes())
+        })
     }
 }
 
@@ -328,8 +343,9 @@ pub struct BaseFeeUpdate {
 
 impl BaseFeeUpdate {
     pub fn hash(&self) -> H256 {
-        ("base-fee-update", self)
-            .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+        ("base-fee-update", self).using_encoded(|encoded| {
+            H256::from_slice(sp_runtime::traits::Keccak256::hash(encoded).as_bytes())
+        })
     }
 }
 

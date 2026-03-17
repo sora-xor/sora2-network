@@ -34,21 +34,23 @@ use crate::{
     BridgeNetworkId, BridgeSignatureVersion, BridgeSignatureVersions, BridgeTimepoint, Config,
     Error, EthAddress, Pallet, PeerAccountId, RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::AssetInfoProvider;
 use common::Denominator;
 use ethabi::Token;
 use ethereum_types::U256;
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::log::warn;
+use frame_support::__private::log::warn;
+use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
 use frame_support::sp_runtime::app_crypto::sp_core;
-use frame_support::{ensure, sp_io, RuntimeDebug};
 pub use incoming::*;
 pub use outgoing::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
+use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub mod encode_packed;
@@ -248,7 +250,17 @@ impl<T: Config> OutgoingRequest<T> {
 }
 
 /// Types of transaction-requests that can be made from a sidechain.
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingTransactionRequestKind {
     Transfer,
@@ -264,7 +276,17 @@ pub enum IncomingTransactionRequestKind {
 }
 
 /// Types of meta-requests that can be made.
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingMetaRequestKind {
     CancelOutgoingRequest,
@@ -272,7 +294,17 @@ pub enum IncomingMetaRequestKind {
 }
 
 /// Types of requests that can be made from a sidechain.
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
     Transaction(IncomingTransactionRequestKind),
@@ -315,6 +347,8 @@ pub enum IncomingRequest<T: Config> {
     Migrate(IncomingMigrate<T>),
     ChangePeersCompat(IncomingChangePeersCompat<T>),
 }
+
+impl<T: Config> codec::DecodeWithMemTracking for IncomingRequest<T> {}
 
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
@@ -571,6 +605,8 @@ pub enum LoadIncomingRequest<T: Config> {
     Transaction(LoadIncomingTransactionRequest<T>),
     Meta(LoadIncomingMetaRequest<T>, H256),
 }
+
+impl<T: Config> codec::DecodeWithMemTracking for LoadIncomingRequest<T> {}
 
 impl<T: Config> LoadIncomingRequest<T> {
     pub fn hash(&self) -> H256 {
@@ -945,7 +981,7 @@ impl OutgoingRequestEncoded {
 /// - ApprovalsReady: request was approved and can be used in the sidechain.
 /// - Failed: an error occurred in one of the previous stages.
 /// - Done: request was finalized.
-#[derive(PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RequestStatus {
     Pending,

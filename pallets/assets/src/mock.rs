@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -37,11 +39,11 @@ use common::{
     LiquidityProxyTrait, LiquiditySourceFilter, PSWAP, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
+use frame_support::traits::ExistenceRequirement;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::DispatchError;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -52,7 +54,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -133,6 +135,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             sender,
             &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
             amount,
+            ExistenceRequirement::AllowDeath,
         )?;
 
         <Currencies as traits::MultiCurrency<_>>::transfer(
@@ -140,6 +143,7 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
             &MOCK_LIQUIDITY_PROXY_TECH_ACCOUNT,
             receiver,
             amount,
+            ExistenceRequirement::AllowDeath,
         )?;
 
         Ok(SwapOutcome::new(amount, Default::default()))
@@ -164,14 +168,22 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
+        let existential_deposit = <Runtime as pallet_balances::Config>::ExistentialDeposit::get();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self
                 .endowed_accounts
                 .iter()
-                .map(|(acc, _, balance)| (*acc, *balance))
+                .filter_map(|(acc, _, balance)| {
+                    if *balance >= existential_deposit {
+                        Some((*acc, *balance))
+                    } else {
+                        None
+                    }
+                })
                 .collect(),
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

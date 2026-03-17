@@ -60,10 +60,11 @@ use common::{
     balance, fixed_const, fixed_wrapper, BalanceOf, DEXId, LiquidityProxyTrait,
     LiquiditySourceFilter, OnDenominate, OnPoolReservesChanged, PriceVariant, XOR,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use frame_support::{IterableStorageMap, StorageMap as StorageMapT};
+use sp_runtime::DispatchError;
 use sp_std::collections::{btree_map::BTreeMap, vec_deque::VecDeque};
 use sp_std::convert::TryInto;
 
@@ -281,6 +282,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + common::Config + technical::Config + pool_xyk::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
@@ -291,14 +293,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_block_num: T::BlockNumber) -> Weight {
+        fn on_initialize(_block_num: BlockNumberFor<T>) -> Weight {
             let (n, m) = Pallet::<T>::average_prices_calculation_routine();
             <T as Config>::WeightInfo::on_initialize(n, m)
         }
@@ -445,9 +446,9 @@ impl<T: Config> Pallet<T> {
         for asset_id in S::iter_keys() {
             S::mutate(asset_id, |opt_value| {
                 let Some(value) = opt_value.as_mut() else {
-                // Should not happen, because we get asset_id from iter_keys() call
-                return;
-            };
+                    // Should not happen, because we get asset_id from iter_keys() call
+                    return;
+                };
                 for price_variant in [PriceVariant::Buy, PriceVariant::Sell] {
                     let price_info = value.price_mut_of(price_variant);
                     let price = if price_info.needs_update {
@@ -457,7 +458,7 @@ impl<T: Config> Pallet<T> {
                             count_updated += 1;
                             let price = Self::spot_price(&asset_id)
                                 .map_err(|err| {
-                                    frame_support::log::warn!(
+                                    frame_support::__private::log::warn!(
                                         "Failed to get spot price for {asset_id:?}: {err:?}"
                                     );
                                     err
@@ -474,7 +475,7 @@ impl<T: Config> Pallet<T> {
                         if let Err(err) =
                             price_info.incoming_spot_price(val, price_variant, adjust_params)
                         {
-                            frame_support::log::warn!("Failed to add spot price for {asset_id:?} with {price_variant:?} variant and {val} price: {err:?}");
+                            frame_support::__private::log::warn!("Failed to add spot price for {asset_id:?} with {price_variant:?} variant and {val} price: {err:?}");
                         }
                     } else {
                         price_info.incoming_spot_price_failure();
@@ -587,7 +588,7 @@ impl<T: Config> OnPoolReservesChanged<AssetIdOf<T>> for Pallet<T> {
 pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), _factor);
 
         for asset_id in PriceInfos::<T>::iter_keys() {
             PriceInfos::<T>::mutate(asset_id, |price_info| {

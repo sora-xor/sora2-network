@@ -69,10 +69,6 @@ pub enum Subcommand {
     /// Revert the chain to a previous state.
     Revert(sc_cli::RevertCmd),
 
-    /// Try some command against runtime state.
-    #[cfg(feature = "try-runtime")]
-    TryRuntime(try_runtime_cli::TryRuntimeCmd),
-
     /// Generate chainspec for network fork-off
     #[cfg(feature = "private-net")]
     ForkOff(crate::fork_off::ForkOffCmd),

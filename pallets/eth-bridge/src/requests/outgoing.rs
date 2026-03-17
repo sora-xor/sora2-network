@@ -48,21 +48,20 @@ use common::utils::string_serialization;
 use common::Denominator;
 use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL};
 use ethabi::{FixedBytes, Token};
-#[allow(unused_imports)]
-use frame_support::debug;
-use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use sccp::SccpAssetChecker;
+use sp_runtime::DispatchError;
 
 use super::encode_packed::{encode_packed, TokenWrapper};
 use bridge_types::traits::MessageStatusNotifier;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::ensure;
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H256, U256};
+use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
@@ -70,7 +69,7 @@ fn encode_network_id<T: Config>(network_id: BridgeNetworkId<T>) -> Result<H256, 
     let mut encoded_network_id: H256 = H256::default();
     let network_as_u128 = <T::NetworkId as TryInto<u128>>::try_into(network_id)
         .map_err(|_| Error::<T>::InvalidUint)?;
-    U256::from(network_as_u128).to_big_endian(&mut encoded_network_id.0);
+    encoded_network_id.0 = U256::from(network_as_u128).to_big_endian();
     Ok(encoded_network_id)
 }
 
@@ -84,7 +83,7 @@ pub struct OutgoingTransfer<T: Config> {
     pub asset_id: AssetIdOf<T>,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -362,7 +361,7 @@ impl OutgoingTransferEncoded {
 pub struct OutgoingAddAsset<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
     pub asset_id: AssetIdOf<T>,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -498,7 +497,7 @@ pub struct OutgoingAddToken<T: Config> {
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -683,7 +682,7 @@ pub struct OutgoingAddPeer<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
     pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -786,7 +785,7 @@ pub struct OutgoingAddPeerCompat<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
     pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -878,7 +877,7 @@ pub struct OutgoingRemovePeer<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
     pub compat_hash: Option<H256>,
@@ -1010,7 +1009,7 @@ pub struct OutgoingRemovePeerCompat<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -1143,7 +1142,7 @@ impl OutgoingRemovePeerEncoded {
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingPrepareForMigration<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -1235,7 +1234,7 @@ pub struct OutgoingMigrate<T: Config> {
     pub author: <T as frame_system::pallet::Config>::AccountId,
     pub new_contract_address: EthAddress,
     pub erc20_native_tokens: Vec<EthAddress>,
-    pub nonce: <T as frame_system::pallet::Config>::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
     pub new_signature_version: BridgeSignatureVersion,

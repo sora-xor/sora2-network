@@ -29,22 +29,21 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use sp_std::vec::Vec;
 use std::sync::Arc;
 
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
+
 // Runtime API imports.
 pub use dex_manager_runtime_api::DEXManagerAPI as DEXManagerRuntimeAPI;
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait DEXManagerAPI<BlockHash, DEXId> {
     #[method(name = "dexManager_listDEXIds")]
     fn list_dex_ids(&self, at: Option<BlockHash>) -> Result<Vec<DEXId>>;
@@ -75,11 +74,11 @@ where
 {
     fn list_dex_ids(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<DEXId>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_dex_ids(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.list_dex_ids(at)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

@@ -65,12 +65,12 @@ pub mod pallet {
         CERES_ASSET_ID, DAI, KUSD,
     };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
-    use frame_support::log::{debug, warn};
+    use frame_support::__private::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::traits::StorageVersion;
     use frame_support::PalletId;
-    use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
+    use frame_system::offchain::{CreateBare, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
@@ -85,9 +85,10 @@ pub mod pallet {
         + liquidity_proxy::Config
         + trading_pair::Config
         + common::Config
-        + SendTransactionTypes<Call<Self>>
+        + CreateBare<Call<Self>>
     {
         const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
         type LiquidityProxyPallet: LiquidityProxyTrait<
@@ -114,7 +115,6 @@ pub mod pallet {
     pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -603,7 +603,7 @@ pub mod pallet {
             );
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise create new user
-            if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
+            if let Some(user_info) = borrow_info.get_mut(&collateral_asset) {
                 let block_number = <frame_system::Pallet<T>>::block_number();
                 let calculated_interest = Self::calculate_borrowing_interest_and_reward(
                     user_info,
@@ -726,7 +726,7 @@ pub mod pallet {
                 let block_number = <frame_system::Pallet<T>>::block_number();
 
                 let mut borrowing_rewards = 0;
-                for (_, mut user_info) in user_infos.iter_mut() {
+                for (_, user_info) in user_infos.iter_mut() {
                     let interest_and_reward = Self::calculate_borrowing_interest_and_reward(
                         user_info,
                         &pool_info,
@@ -1319,7 +1319,7 @@ pub mod pallet {
             }
 
             // Add borrowing amount, collateral amount and interest to user if exists, otherwise return error
-            if let Some(mut user_info) = borrow_info.get_mut(&collateral_asset) {
+            if let Some(user_info) = borrow_info.get_mut(&collateral_asset) {
                 let block_number = <frame_system::Pallet<T>>::block_number();
                 let calculated_interest = Self::calculate_borrowing_interest_and_reward(
                     user_info,
@@ -1422,7 +1422,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let distribution_rewards = Self::update_interests(now);
             let rates = Self::update_rates(now);
 
@@ -1441,7 +1441,7 @@ pub mod pallet {
         }
 
         /// Off-chain worker procedure - calls liquidations
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -1456,9 +1456,8 @@ pub mod pallet {
                         user: user.clone(),
                         asset_id,
                     };
-                    if let Err(err) =
-                        SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                    {
+                    let tx = T::create_bare(call.into());
+                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
                         warn!(
                             "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
                             user, err
@@ -1774,7 +1773,7 @@ pub mod pallet {
 
             // Update borrowing interests
             for (account_id, mut user_infos) in UserBorrowingInfo::<T>::iter_prefix(pool_asset) {
-                for (_, mut user_info) in user_infos.iter_mut() {
+                for (_, user_info) in user_infos.iter_mut() {
                     let user_interests = Self::calculate_borrowing_interest_and_reward(
                         user_info,
                         &pool_info,
@@ -1793,7 +1792,7 @@ pub mod pallet {
                 .saturating_add(T::DbWeight::get().writes(counter + 4))
         }
 
-        fn update_rates(_current_block: T::BlockNumber) -> Weight {
+        fn update_rates(_current_block: BlockNumberFor<T>) -> Weight {
             let mut counter: u64 = 0;
 
             for (asset_id, mut pool_info) in PoolData::<T>::iter() {

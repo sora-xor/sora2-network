@@ -64,6 +64,7 @@ pub trait WeightInfo {
 }
 
 /// Weights for trading_pair using the Substrate node and recommended hardware.
+#[allow(dead_code)]
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: DEXManager DEXInfos (r:1 w:0)

@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -44,7 +46,7 @@ use frame_support::{construct_runtime, dispatch, parameter_types};
 use frame_system;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 use sp_std::marker::PhantomData;
 use PolySwapActionExample::*;
 
@@ -79,7 +81,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -151,6 +153,7 @@ pub struct GenericPairSwapActionExample {
     pub take_amount: TechBalance,
     pub take_account: TechAccountId,
 }
+impl codec::DecodeWithMemTracking for GenericPairSwapActionExample {}
 
 impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime>
     for GenericPairSwapActionExample
@@ -216,6 +219,7 @@ pub struct MultiSwapActionExample {
     take_amount_d: TechAmount,
     take_amount_e: TechAmount,
 }
+impl codec::DecodeWithMemTracking for MultiSwapActionExample {}
 
 impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for MultiSwapActionExample {
     fn reserve(&self, _source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
@@ -262,6 +266,7 @@ pub struct CrowdSwapActionExample {
     give_amount: TechAmount,
     take_amount: TechAmount,
 }
+impl codec::DecodeWithMemTracking for CrowdSwapActionExample {}
 
 impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for CrowdSwapActionExample {
     fn reserve(&self, _source: &AccountId, _base_asset_id: &AssetId) -> dispatch::DispatchResult {
@@ -308,6 +313,7 @@ pub enum PolySwapActionExample {
     Multi(MultiSwapActionExample),
     Crowd(CrowdSwapActionExample),
 }
+impl codec::DecodeWithMemTracking for PolySwapActionExample {}
 
 impl common::SwapAction<AccountId, TechAccountId, AssetId, Runtime> for PolySwapActionExample {
     fn reserve(&self, source: &AccountId, base_asset_id: &AssetId) -> dispatch::DispatchResult {
@@ -388,10 +394,15 @@ impl common::SwapRulesValidation<AccountId, TechAccountId, AssetId, Runtime>
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
+        let existential_deposit = <Runtime as pallet_balances::Config>::ExistentialDeposit::get();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(get_alice(), 0), (get_bob(), 0)],
+            balances: vec![
+                (get_alice(), existential_deposit),
+                (get_bob(), existential_deposit),
+            ],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

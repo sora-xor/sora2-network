@@ -1,7 +1,4 @@
-use framenode_runtime::{
-    opaque::{Block, BlockId},
-    ResolveTime, Symbol,
-};
+use framenode_runtime::{opaque::Block, ResolveTime, Symbol};
 use oracle_proxy_rpc::OracleProxyRuntimeApi;
 use prometheus_endpoint::{register, Gauge, Opts, PrometheusError, Registry, U64};
 use sp_api::ProvideRuntimeApi;
@@ -63,9 +60,9 @@ where
 
     async fn get_symbols(&self) -> Result<BTreeMap<String, (SymbolStatus, u64)>, String> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(self.client.info().best_hash);
+        let at = self.client.info().best_hash;
         let enabled_symbols = api
-            .list_enabled_symbols(&at)
+            .list_enabled_symbols(at)
             .map_err(|rpc_error| format!("RPC error: {:?}", rpc_error))?
             .map_err(|dispatch_error| format!("Dispatch error: {:?}", dispatch_error))?;
 

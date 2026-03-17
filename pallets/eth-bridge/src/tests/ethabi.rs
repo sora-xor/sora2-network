@@ -28,10 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::H160;
 use common::DAI;
 use common::PSWAP;
 use common::VAL;
-use ethereum_types::H160;
 
 use super::mock::{ExtBuilder, Runtime};
 use crate::requests::*;

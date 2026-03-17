@@ -34,7 +34,6 @@
     anonymous_parameters,
     rust_2018_idioms,
     trivial_casts,
-    trivial_numeric_casts,
     unused,
     // The macro construct_runtime! (in mock.rs) expands to other macros and they have trailing semicolon and the compiler doesn't like it
     //future_incompatible,
@@ -48,12 +47,11 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+use codec::{Decode, Encode};
 use common::permissions::TRANSFER;
 use common::{hash, AssetRegulator};
-use frame_support::codec::{Decode, Encode};
-use frame_support::sp_runtime::DispatchError;
-use frame_support::{ensure, RuntimeDebug};
-#[cfg(feature = "std")]
+use frame_support::ensure;
+use frame_support::sp_runtime::{DispatchError, RuntimeDebug};
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
@@ -73,8 +71,18 @@ pub type OwnerId<T> = <T as frame_system::Config>::AccountId;
 pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-#[derive(PartialEq, Eq, Clone, Copy, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    PartialEq,
+    Eq,
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    scale_info::TypeInfo,
+    Serialize,
+    Deserialize,
+)]
 pub enum Scope {
     Limited(H512),
     Unlimited,
@@ -255,6 +263,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// Permissions pallet's events.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
     }
 
@@ -262,7 +271,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -328,7 +336,6 @@ pub mod pallet {
         pub initial_permissions: Vec<(HolderId<T>, Scope, Vec<PermissionId>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -339,7 +346,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.initial_permission_owners
                 .iter()
@@ -347,7 +354,7 @@ pub mod pallet {
                     let mut can_insert = true;
                     for owner in owners {
                         if frame_system::Pallet::<T>::inc_consumers(owner).is_err() {
-                            frame_support::log::error!(
+                            frame_support::__private::log::error!(
                                 "Permissions genesis failed to increase consumers for owner: {:?}",
                                 owner
                             );
@@ -366,7 +373,7 @@ pub mod pallet {
                     let mut permissions = permissions.clone();
                     permissions.sort();
                     if frame_system::Pallet::<T>::inc_consumers(holder_id).is_err() {
-                        frame_support::log::error!(
+                        frame_support::__private::log::error!(
                             "Permissions genesis failed to increase consumers for holder: {:?}",
                             holder_id
                         );

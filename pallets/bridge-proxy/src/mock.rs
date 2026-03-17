@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -46,9 +48,10 @@ use common::{
     AssetName, AssetSymbol, Balance, DEXId, FromGenericPair, PredefinedAssetId, DAI, ETH, XOR, XST,
 };
 use frame_support::parameter_types;
-use frame_support::traits::{ConstU32, GenesisBuild};
+use frame_support::traits::ConstU32;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::traits::{Convert, IdentifyAccount, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::{DispatchResult, MultiSignature};
 
 use crate as proxy;
@@ -65,7 +68,7 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
         Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -225,9 +228,7 @@ impl TimepointProvider for GenericTimepointProvider {
 pub struct ReferencePriceProvider;
 
 impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider {
-    fn get_reference_price(
-        _asset_id: &AssetId,
-    ) -> Result<Balance, frame_support::dispatch::DispatchError> {
+    fn get_reference_price(_asset_id: &AssetId) -> Result<Balance, sp_runtime::DispatchError> {
         Ok(common::balance!(2.5))
     }
 }
@@ -247,8 +248,8 @@ impl proxy::Config for Test {
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     technical::GenesisConfig::<Test> {
@@ -266,41 +267,40 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &evm_fungible_app::GenesisConfig {
-            apps: vec![(BASE_EVM_NETWORK_ID, H160::repeat_byte(1))],
-            assets: vec![
-                (
-                    BASE_EVM_NETWORK_ID,
-                    XOR,
-                    H160::repeat_byte(3),
-                    AssetKind::Thischain,
-                    18,
-                ),
-                (
-                    BASE_EVM_NETWORK_ID,
-                    DAI,
-                    H160::repeat_byte(4),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-                (
-                    BASE_EVM_NETWORK_ID,
-                    ETH,
-                    H160::repeat_byte(0),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-            ],
-        },
-        &mut storage,
-    )
+    evm_fungible_app::GenesisConfig::<Test> {
+        apps: vec![(BASE_EVM_NETWORK_ID, H160::repeat_byte(1))],
+        assets: vec![
+            (
+                BASE_EVM_NETWORK_ID,
+                XOR,
+                H160::repeat_byte(3),
+                AssetKind::Thischain,
+                18,
+            ),
+            (
+                BASE_EVM_NETWORK_ID,
+                DAI,
+                H160::repeat_byte(4),
+                AssetKind::Sidechain,
+                18,
+            ),
+            (
+                BASE_EVM_NETWORK_ID,
+                ETH,
+                H160::repeat_byte(0),
+                AssetKind::Sidechain,
+                18,
+            ),
+        ],
+    }
+    .assimilate_storage(&mut storage)
     .unwrap();
 
     let bob: AccountId = Keyring::Bob.into();
 
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob.clone(), balance!(1))],
+        dev_accounts: Default::default(),
     }
     .assimilate_storage(&mut storage)
     .unwrap();

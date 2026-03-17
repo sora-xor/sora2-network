@@ -34,10 +34,10 @@ use common::fixed::FixedU256;
 use common::fixed_wrapper_u256::FixedWrapper256;
 use common::prelude::{Balance, FixedWrapper};
 use common::{fixed_wrapper_u256, AssetIdOf, TradingPair};
-use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 
 impl<T: Config> Pallet<T> {
     // https://github.com/Uniswap/uniswap-v2-periphery/blob/dda62473e2da448bc9cb8f4514dadda4aeede5f4/contracts/libraries/UniswapV2Library.sol#L36

@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::traits::{CurrencyLocker, CurrencyUnlocker};
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::prelude::BalanceUnit;
 use common::{OrderBookId, PriceVariant};
 use frame_support::sp_runtime::DispatchError;
@@ -51,7 +51,16 @@ pub type UserOrders<OrderId, MaxOpenedLimitOrdersPerUser> =
 
 /// The public status of the order book that defines the list of allowed operations with the order book.
 #[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Debug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum OrderBookStatus {
     /// All operations are allowed.
@@ -69,7 +78,16 @@ pub enum OrderBookStatus {
 
 /// The internal tech status of the order book which indicates an opportunity to change the attributes or public status.
 #[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Debug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum OrderBookTechStatus {
     /// Order Book is enabled
@@ -80,7 +98,16 @@ pub enum OrderBookTechStatus {
 }
 
 #[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, Debug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    Debug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum CancelReason {
     /// User cancels the limit order by themself
@@ -94,7 +121,16 @@ pub enum CancelReason {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Copy, Debug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    Copy,
+    Debug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum OrderAmount {
@@ -141,7 +177,7 @@ impl OrderAmount {
     pub fn associated_asset<'a, AssetId, DEXId>(
         &'a self,
         order_book_id: &'a OrderBookId<AssetId, DEXId>,
-    ) -> &AssetId {
+    ) -> &'a AssetId {
         match self {
             Self::Base(..) => &order_book_id.base,
             Self::Quote(..) => &order_book_id.quote,

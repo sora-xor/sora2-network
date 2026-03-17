@@ -30,6 +30,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use codec::DecodeWithMemTracking;
 use common::prelude::FixedWrapper;
 use common::{fixed, fixed_wrapper, Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use fallible_iterator::FallibleIterator;
@@ -65,6 +66,8 @@ pub struct FeeCalculationParameters {
     pub min_fee: Fixed,
     pub deviation: Fixed,
 }
+
+impl DecodeWithMemTracking for FeeCalculationParameters {}
 
 pub use pallet::*;
 
@@ -183,7 +186,6 @@ pub mod pallet {
     /// `I` generic argument is used to be able to instantiate this pallet multiple times. One per
     /// every asset category. This will prevent overlapping tickers.
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(_);
@@ -193,6 +195,7 @@ pub mod pallet {
         /// Type of the symbol to be relayed.
         type Symbol: Parameter + Ord;
         /// Event type of this pallet.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self, I>>
             + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Weight information for extrinsics in this pallet.
@@ -204,7 +207,7 @@ pub mod pallet {
         type GetBandRateStalePeriod: Get<<<Self as pallet::Config<I>>::Time as Time>::Moment>;
         /// Rate expiration period in blocks
         #[pallet::constant]
-        type GetBandRateStaleBlockPeriod: Get<Self::BlockNumber>;
+        type GetBandRateStaleBlockPeriod: Get<frame_system::pallet_prelude::BlockNumberFor<Self>>;
         /// Maximum number of symbols that can be relayed within a single call.
         #[pallet::constant]
         type MaxRelaySymbols: Get<u32>;
@@ -229,7 +232,7 @@ pub mod pallet {
     pub type SymbolCheckBlock<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
         _,
         Blake2_128Concat,
-        T::BlockNumber,
+        BlockNumberFor<T>,
         Blake2_128Concat,
         T::Symbol,
         bool,
@@ -282,8 +285,8 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config<I>, I: 'static> Hooks<T::BlockNumber> for Pallet<T, I> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+    impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let mut weight = Weight::zero();
             let mut obsolete_symbols: Vec<T::Symbol> = Vec::new();
             for (symbol, _) in SymbolCheckBlock::<T, I>::iter_prefix(now) {
@@ -591,8 +594,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
     }
 
     pub fn update_rate_if_outdated(
-        rate: &mut BandRate<T::BlockNumber>,
-        new_rate: BandRate<T::BlockNumber>,
+        rate: &mut BandRate<BlockNumberFor<T>>,
+        new_rate: BandRate<BlockNumberFor<T>>,
         symbol: &T::Symbol,
     ) -> Result<(), DispatchError> {
         if rate.last_updated <= new_rate.last_updated {
@@ -613,7 +616,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
         Ok(())
     }
 
-    pub fn calc_expiration_block(block_number: T::BlockNumber) -> T::BlockNumber {
+    pub fn calc_expiration_block(block_number: BlockNumberFor<T>) -> BlockNumberFor<T> {
         block_number + T::GetBandRateStaleBlockPeriod::get()
     }
 }

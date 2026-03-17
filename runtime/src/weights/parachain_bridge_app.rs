@@ -83,43 +83,12 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 		// Minimum execution time: 68_373 nanoseconds.
 		Weight::from_parts(66_646_938, 28522)
 			// Standard Error: 1_731
-			.saturating_add(Weight::from_ref_time(2_540_977).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(2_540_977, 0).saturating_mul(a.into()))
 			.saturating_add(T::DbWeight::get().reads(6))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
 			.saturating_add(T::DbWeight::get().writes(2))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_proof_size(2475).saturating_mul(a.into()))
-	}
-	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfos (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Technical TechAccounts (r:1 w:0)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:1 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
-	/// The range of component `a` is `[1, 100]`.
-	fn bind_sidechain_asset(a: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1709`
-		//  Estimated: `28522 + a * (2475 ±0)`
-		// Minimum execution time: 68_373 nanoseconds.
-		Weight::from_parts(66_646_938, 28522)
-			// Standard Error: 1_731
-			.saturating_add(Weight::from_ref_time(2_540_977).saturating_mul(a.into()))
-			.saturating_add(T::DbWeight::get().reads(6))
-			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
-			.saturating_add(T::DbWeight::get().writes(2))
-			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_proof_size(2475).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
@@ -149,12 +118,12 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 		// Minimum execution time: 143_367 nanoseconds.
 		Weight::from_parts(144_031_928, 42077)
 			// Standard Error: 2_668
-			.saturating_add(Weight::from_ref_time(2_549_037).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(2_549_037, 0).saturating_mul(a.into()))
 			.saturating_add(T::DbWeight::get().reads(9))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
 			.saturating_add(T::DbWeight::get().writes(9))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_proof_size(2475).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
 	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:0 w:1)
 	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
@@ -163,7 +132,7 @@ impl<T: frame_system::Config> parachain_bridge_app::WeightInfo for WeightInfo<T>
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 4_380 nanoseconds.
-		Weight::from_ref_time(4_530_000)
+		Weight::from_parts(4_530_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)

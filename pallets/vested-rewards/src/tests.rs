@@ -44,7 +44,7 @@ use common::{
     balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
     PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP, VAL, XOR, XSTUSD,
 };
-use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+use frame_support::traits::{Currency, GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::Weight;
 use frame_support::{assert_err, assert_noop, assert_ok};
 use frame_system::RawOrigin;
@@ -180,7 +180,7 @@ fn can_claim_crowdloan_reward() {
             }
         );
         assert_balances(vec![
-            (alice(), XOR, balance!(0)),
+            (alice(), XOR, Balances::minimum_balance()),
             (alice(), PSWAP, balance!(0)),
         ]);
         // Too early claim
@@ -189,17 +189,17 @@ fn can_claim_crowdloan_reward() {
             Error::<Runtime>::CrowdloanRewardsDistributionNotStarted
         );
         assert_balances(vec![
-            (alice(), XOR, balance!(0)),
+            (alice(), XOR, Balances::minimum_balance()),
             (alice(), PSWAP, balance!(0)),
         ]);
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 2);
         // Empty crowdloan tech account
         assert_err!(
             VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            sp_runtime::ArithmeticError::Underflow
         );
         assert_balances(vec![
-            (alice(), XOR, balance!(0)),
+            (alice(), XOR, Balances::minimum_balance()),
             (alice(), PSWAP, balance!(0)),
         ]);
         assert_eq!(
@@ -216,7 +216,11 @@ fn can_claim_crowdloan_reward() {
             tag.clone()
         ),);
         assert_balances(vec![
-            (alice(), XOR, balance!(1.351351351351351350)),
+            (
+                alice(),
+                XOR,
+                balance!(1.351351351351351350) + Balances::minimum_balance(),
+            ),
             (alice(), PSWAP, balance!(13.513513513513513500)),
         ]);
         assert_eq!(
@@ -235,7 +239,11 @@ fn can_claim_crowdloan_reward() {
             tag.clone()
         ),);
         assert_balances(vec![
-            (alice(), XOR, balance!(2.702702702702702700)),
+            (
+                alice(),
+                XOR,
+                balance!(2.702702702702702700) + Balances::minimum_balance(),
+            ),
             (alice(), PSWAP, balance!(27.027027027027027000)),
         ]);
         assert_eq!(
@@ -262,11 +270,23 @@ fn can_claim_crowdloan_reward() {
             tag.clone()
         ),);
         assert_balances(vec![
-            (alice(), XOR, balance!(13.513513513513513500)),
+            (
+                alice(),
+                XOR,
+                balance!(13.513513513513513500) + Balances::minimum_balance(),
+            ),
             (alice(), PSWAP, balance!(135.135135135135135000)),
-            (bob(), XOR, balance!(40.540540540540540500)),
+            (
+                bob(),
+                XOR,
+                balance!(40.540540540540540500) + Balances::minimum_balance(),
+            ),
             (bob(), PSWAP, balance!(405.40540540540540500)),
-            (charlie(), XOR, balance!(45.945945945945945900)),
+            (
+                charlie(),
+                XOR,
+                balance!(45.945945945945945900) + Balances::minimum_balance(),
+            ),
             (charlie(), PSWAP, balance!(459.45945945945945900)),
             // It's ok to have some dust after distribution because of calculations precision
             (
@@ -284,7 +304,7 @@ fn can_claim_crowdloan_reward() {
             Assets::total_balance(&XOR, &alice()).unwrap()
                 + Assets::total_balance(&XOR, &bob()).unwrap()
                 + Assets::total_balance(&XOR, &charlie()).unwrap(),
-            balance!(99.999999999999999900)
+            balance!(99.999999999999999900) + Balances::minimum_balance() * 3
         );
         assert_eq!(
             Assets::total_balance(&PSWAP, &alice()).unwrap()
@@ -2525,7 +2545,10 @@ fn auto_claim_works_fine_for_pending_and_block() {
             XOR,
             10,
         ));
-        assert_eq!(Currencies::free_balance(XOR, &eve()), 0);
+        assert_eq!(
+            Currencies::free_balance(XOR, &eve()),
+            Balances::minimum_balance()
+        );
 
         assert_eq!(
             VestedRewards::auto_claim(23, claim_weight),

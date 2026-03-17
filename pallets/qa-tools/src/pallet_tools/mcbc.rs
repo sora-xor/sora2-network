@@ -30,18 +30,21 @@
 
 use crate::Config;
 use crate::{pallet_tools, Error};
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::FixedWrapper;
 use common::{
     AssetIdOf, AssetInfoProvider, Balance, DEXId, GetBaseAssetIdOf, TradingPairSourceManager, TBCD,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
 use pallet_tools::price_tools::AssetPrices;
 
 /// Parameters relevant for TBCD and other collaterals
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct CollateralCommonParameters {
     /// Price of collateral in terms of reference asset. Linearly affects the exchange amounts.
     /// (if collateral costs 10x more sell output should be 10x smaller)
@@ -52,7 +55,9 @@ pub struct CollateralCommonParameters {
 }
 
 /// Input for initializing collateral assets except TBCD.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct OtherCollateralInput<AssetId> {
     /// Collateral asset id
     pub asset: AssetId,
@@ -60,7 +65,9 @@ pub struct OtherCollateralInput<AssetId> {
 }
 
 /// Input for initializing TBCD collateral.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct TbcdCollateralInput {
     pub parameters: CollateralCommonParameters,
     /// Price of XOR in terms of reference asset.
@@ -68,7 +75,9 @@ pub struct TbcdCollateralInput {
     pub ref_xor_prices: Option<AssetPrices>,
 }
 
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct BaseSupply<AccountId> {
     /// Target account for mint/burn for achieving `target` supply
     pub asset_collector: AccountId,

@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 use {
     crate as apollo_platform,
     common::{
@@ -18,17 +20,15 @@ use {
         PriceVariant, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DOT, KSM, KUSD, VXOR, XOR, XST,
     },
     currencies::BasicCurrencyAdapter,
-    frame_support::{
-        construct_runtime,
-        pallet_prelude::Weight,
-        parameter_types,
-        traits::{GenesisBuild, Hooks},
-    },
+    frame_support::{construct_runtime, pallet_prelude::Weight, parameter_types, traits::Hooks},
     frame_system::{
-        self, offchain::SendTransactionTypes, pallet_prelude::BlockNumberFor, RawOrigin,
+        self,
+        offchain::{CreateBare, CreateTransactionBase},
+        pallet_prelude::BlockNumberFor,
+        RawOrigin,
     },
     permissions::{Scope, MANAGE_DEX},
-    sp_runtime::{testing::TestXt, traits::Zero, AccountId32, Perbill},
+    sp_runtime::{traits::Zero, AccountId32, BuildStorage, Perbill},
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
@@ -64,14 +64,14 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         MBCPool: multicollateral_bonding_curve_pool::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -86,8 +86,6 @@ construct_runtime! {
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
     }
 }
-
-pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
 
 mock_apollo_platform_config!(Runtime);
 mock_assets_config!(Runtime);
@@ -111,12 +109,21 @@ mock_tokens_config!(Runtime);
 mock_trading_pair_config!(Runtime);
 mock_vested_rewards_config!(Runtime);
 
-impl<LocalCall> SendTransactionTypes<LocalCall> for Runtime
+impl<LocalCall> CreateTransactionBase<LocalCall> for Runtime
 where
     RuntimeCall: From<LocalCall>,
 {
-    type Extrinsic = MockExtrinsic;
-    type OverarchingCall = RuntimeCall;
+    type Extrinsic = UncheckedExtrinsic;
+    type RuntimeCall = RuntimeCall;
+}
+
+impl<LocalCall> CreateBare<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_bare(call: RuntimeCall) -> Self::Extrinsic {
+        UncheckedExtrinsic::new_bare(call)
+    }
 }
 
 parameter_types! {
@@ -387,7 +394,7 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         common::test_utils::init_logger();
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
@@ -395,6 +402,7 @@ impl ExtBuilder {
                 (bob(), balance!(500)),
                 (charles(), balance!(300000)),
             ],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

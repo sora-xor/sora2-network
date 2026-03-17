@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -32,18 +34,17 @@ use crate::{self as faucet, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper};
 use common::{
-    self, balance, mock_assets_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config,
-    mock_rewards_config, mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName,
-    AssetSymbol, TechPurpose, DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
+    self, mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
+    mock_pallet_balances_config, mock_permissions_config, mock_rewards_config,
+    mock_technical_config, mock_tokens_config, Amount, AssetId32, AssetName, AssetSymbol,
+    TechPurpose, DEFAULT_BALANCE_PRECISION, USDT, VAL, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, BURN, MINT};
 use sp_core::crypto::AccountId32;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -90,7 +91,7 @@ construct_runtime! {
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         Faucet: faucet::{Pallet, Call, Config<T>, Storage, Event<T>},
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -124,19 +125,17 @@ pub struct ExtBuilder {}
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let tech_account_id = tech_account_id();
         let account_id: AccountId = account_id();
 
         BalancesConfig {
-            balances: vec![
-                (
-                    account_id.clone(),
-                    (faucet::DEFAULT_LIMIT * FixedWrapper::from(1.5)).into_balance(),
-                ),
-                (alice(), balance!(0)),
-            ],
+            balances: vec![(
+                account_id.clone(),
+                (faucet::DEFAULT_LIMIT * FixedWrapper::from(1.5)).into_balance(),
+            )],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -155,7 +154,7 @@ impl ExtBuilder {
             endowed_assets: vec![
                 (
                     XOR,
-                    alice(),
+                    account_id.clone(),
                     AssetSymbol(b"XOR".to_vec()),
                     AssetName(b"SORA".to_vec()),
                     DEFAULT_BALANCE_PRECISION,
@@ -166,7 +165,7 @@ impl ExtBuilder {
                 ),
                 (
                     VAL.into(),
-                    alice(),
+                    account_id.clone(),
                     AssetSymbol(b"VAL".to_vec()),
                     AssetName(b"SORA Validator Token".to_vec()),
                     DEFAULT_BALANCE_PRECISION,

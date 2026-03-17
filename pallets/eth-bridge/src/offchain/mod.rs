@@ -47,7 +47,7 @@ use crate::{
     STORAGE_NETWORK_IDS_KEY,
 };
 use alloc::string::String;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::eth;
 use ethabi::ParamType;
 use ethereum_types::U256;
@@ -56,10 +56,12 @@ use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::sp_runtime::MultiSigner;
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 use frame_system::offchain::CreateSignedTransaction;
+#[allow(unused_imports)]
 pub use handle::*;
 use hex_literal::hex;
+#[allow(unused_imports)]
 pub use http::*;
 use rustc_hex::ToHex;
 use sccp::SccpAssetChecker;
@@ -67,6 +69,7 @@ use sccp::SccpAssetChecker;
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt;
 use sp_std::fmt::Formatter;
@@ -225,6 +228,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Signs a message with a peer's secret key.
+    #[allow(dead_code)]
     pub(crate) fn sign_message(
         msg: &[u8],
         secret_key: &secp256k1::SecretKey,
@@ -509,7 +513,16 @@ impl<T: Config> Pallet<T> {
 
 /// Separated components of a secp256k1 signature.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(any(test, feature = "runtime-benchmarks"), derive(Default))]

@@ -63,11 +63,12 @@ use common::{
 use frame_support::pallet_prelude::DispatchResult;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec;
 use sp_std::vec::Vec;
@@ -136,6 +137,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + technical::Config + common::Config {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// AssetId which is convertible to/from XSTUSD
         type GetSyntheticBaseAssetId: Get<AssetIdOf<Self>>;
@@ -166,7 +168,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -429,23 +430,17 @@ pub mod pallet {
         pub initial_synthetic_assets: Vec<(AssetIdOf<T>, T::Symbol, Fixed)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 reference_asset_id: common::DAI.into(),
-                initial_synthetic_assets: [(
-                    XSTUSD.into(),
-                    common::SymbolName::usd().into(),
-                    common::fixed!(0.00666),
-                )]
-                .into(),
+                initial_synthetic_assets: Vec::new(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
 

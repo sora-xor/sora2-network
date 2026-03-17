@@ -62,16 +62,17 @@ use common::{
     AssetType, BalancePrecision, ContentSource, Description, IsValid, LiquidityProxyTrait,
     LiquiditySourceFilter, DEFAULT_BALANCE_PRECISION,
 };
+use frame_support::dispatch::DispatchResult;
 use frame_support::dispatch::DispatchResultWithPostInfo;
-use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::sp_runtime::traits::{MaybeSerializeDeserialize, Member};
-use frame_support::traits::Get;
+use frame_support::traits::{ExistenceRequirement, Get};
 use frame_support::{ensure, Parameter};
 use frame_system::ensure_signed;
 use frame_system::pallet_prelude::OriginFor;
 use sp_core::hash::H512;
 use sp_core::H256;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use tiny_keccak::{Hasher, Keccak};
 use traits::{
@@ -190,6 +191,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + tokens::Config + common::Config {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type ExtraAccountId: Clone
@@ -251,7 +253,7 @@ pub mod pallet {
         /// Currency to transfer, reserve/unreserve, lock/unlock assets
         type Currency: MultiLockableCurrency<
                 Self::AccountId,
-                Moment = Self::BlockNumber,
+                Moment = frame_system::pallet_prelude::BlockNumberFor<Self>,
                 CurrencyId = Self::AssetId,
                 Balance = Balance,
             > + MultiReservableCurrency<Self::AccountId, CurrencyId = Self::AssetId, Balance = Balance>
@@ -271,7 +273,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -626,7 +627,6 @@ pub mod pallet {
         )>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -638,7 +638,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.endowed_assets.iter().cloned().for_each(
                 |(
@@ -883,7 +883,13 @@ impl<T: Config> Pallet<T> {
         amount: Balance,
     ) -> DispatchResult {
         T::AssetRegulator::check_permission(from, to, asset_id, &TRANSFER)?;
-        let r = T::Currency::transfer(*asset_id, from, to, amount);
+        let r = T::Currency::transfer(
+            *asset_id,
+            from,
+            to,
+            amount,
+            ExistenceRequirement::AllowDeath,
+        );
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
         }
@@ -927,7 +933,7 @@ impl<T: Config> Pallet<T> {
         from: &T::AccountId,
         amount: Balance,
     ) -> DispatchResult {
-        let r = T::Currency::withdraw(*asset_id, from, amount);
+        let r = T::Currency::withdraw(*asset_id, from, amount, ExistenceRequirement::AllowDeath);
         if r.is_err() {
             Self::ensure_asset_exists(asset_id)?;
         }

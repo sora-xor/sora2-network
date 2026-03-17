@@ -34,18 +34,17 @@ use bridge_types::{
 };
 use codec::{Codec, Decode, Encode};
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use serde::{Deserialize, Serialize};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 
 use std::sync::Arc;
+
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
 
 pub use bridge_proxy_runtime_api::BridgeProxyAPI as BridgeProxyRuntimeAPI;
 
@@ -56,7 +55,7 @@ pub struct AppsWithSupportedAssets {
     assets: Vec<BridgeAssetInfo>,
 }
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait BridgeProxyAPI<BlockHash, AssetId>
 where
     BlockHash: Codec,
@@ -98,10 +97,10 @@ where
     C::Api: BridgeProxyRuntimeAPI<Block, AssetId>,
 {
     fn list_apps(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<BridgeAppInfo>> {
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
         let api = self.client.runtime_api();
-        api.list_apps(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        api.list_apps(at)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn list_supported_assets(
@@ -109,9 +108,9 @@ where
         network_id: GenericNetworkId,
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<BridgeAssetInfo>> {
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
         let api = self.client.runtime_api();
-        api.list_supported_assets(&at, network_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        api.list_supported_assets(at, network_id)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

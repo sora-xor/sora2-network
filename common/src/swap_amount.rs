@@ -32,13 +32,13 @@ use core::convert::{TryFrom, TryInto};
 use core::ops::{Mul, MulAssign};
 use core::result::Result;
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingMul;
-use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto};
+use sp_runtime::RuntimeDebug;
 use sp_std::mem;
 use sp_std::ops::{Add, Sub};
 
@@ -47,7 +47,17 @@ use crate::primitives::Balance;
 use crate::Fixed;
 
 #[derive(
-    Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Copy,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum QuoteAmount<AmountType> {
@@ -286,7 +296,17 @@ impl TryFrom<QuoteAmount<Balance>> for QuoteAmount<Fixed> {
 /// Used to identify intention of caller to indicate desired input amount or desired output amount.
 /// Similar to SwapAmount, does not hold value in order to be used in external API.
 #[derive(
-    Encode, Decode, Copy, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Copy,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum SwapVariant {
@@ -299,6 +319,7 @@ pub enum SwapVariant {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Copy,
     Clone,
     RuntimeDebug,
@@ -615,7 +636,16 @@ where
 
 /// Amount of output tokens from either price request or actual exchange.
 #[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct SwapOutcome<AmountType, AssetId: Ord> {

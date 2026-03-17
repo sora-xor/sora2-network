@@ -36,9 +36,9 @@ use crate::{
     RegisteredSidechainToken, RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
 };
 use common::{AssetInfoProvider, BalancePrecision};
-use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use sp_core::{H160, H256};
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 impl<T: Config> Pallet<T> {

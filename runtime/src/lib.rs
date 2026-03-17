@@ -29,12 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// `construct_runtime!` does a lot of recursion and requires us to increase the limit to 256.
-#![recursion_limit = "256"]
+// `construct_runtime!` does a lot of recursion and requires a higher recursion limit.
+#![recursion_limit = "512"]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
 extern crate alloc;
+use alloc::borrow::Cow;
 use alloc::string::String;
 use bridge_types::traits::Verifier;
 use bridge_types::{GenericNetworkId, SubNetworkId, H256};
@@ -64,9 +65,15 @@ use bridge_types::U256;
 use codec::Decode;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
-use common::{AssetId32, Description, PredefinedAssetId, DOT, KUSD, XOR, XSTUSD};
+#[cfg(not(feature = "private-net"))]
+use common::DOT;
+use common::{AssetId32, Description, PredefinedAssetId, KUSD, XOR, XSTUSD};
 #[cfg(any(feature = "stage", feature = "private-net"))] // presto
 use common::{PRUSD, SBT_PRACS, SBT_PRCRDT, SBT_PRINVST};
+#[cfg(feature = "private-net")]
+const DOT: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+));
 use constants::currency::{deposit, UNITS};
 use constants::time::*;
 use frame_support::traits::EitherOf;
@@ -76,10 +83,16 @@ use frame_support::weights::ConstantMultiplier;
 #[cfg(all(feature = "std", feature = "build-wasm-binary"))]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use core::time::Duration;
 use currencies::BasicCurrencyAdapter;
-use frame_election_provider_support::{generate_solution_type, onchain, SequentialPhragmen};
-use frame_support::traits::{ConstU128, ConstU32, Currency, EitherOfDiverse};
+use frame_election_provider_support::{
+    bounds::{ElectionBounds, ElectionBoundsBuilder},
+    generate_solution_type, onchain, SequentialPhragmen,
+};
+use frame_support::genesis_builder_helper::{build_state, get_preset};
+use frame_support::traits::tokens::fungible::HoldConsideration;
+use frame_support::traits::{
+    ConstBool, ConstU128, ConstU32, EitherOfDiverse, LinearStoragePrice, Nothing,
+};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use frame_system::EnsureSigned;
@@ -88,9 +101,8 @@ use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_session::historical as pallet_session_historical;
-use pallet_staking::sora::ValBurnedNotifier;
 use sp_api::impl_runtime_apis;
-pub use sp_beefy::crypto::AuthorityId as BeefyId;
+pub use sp_beefy::ecdsa_crypto::AuthorityId as BeefyId;
 #[cfg(feature = "wip")] // Trustless bridges
 use sp_beefy::mmr::MmrLeafVersion;
 use sp_core::crypto::KeyTypeId;
@@ -98,18 +110,22 @@ use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 #[cfg(feature = "std")]
 use sp_runtime::serde::{Serialize, Serializer};
+#[allow(deprecated)]
+use sp_runtime::traits::transaction_extension::AsTransactionExtension;
 use sp_runtime::traits::{
-    BlakeTwo256, Block as BlockT, Convert, IdentifyAccount, IdentityLookup, NumberFor, OpaqueKeys,
-    SaturatedConversion, Verify,
+    BlakeTwo256, Block as BlockT, Convert, Header as HeaderT, IdentifyAccount, IdentityLookup,
+    NumberFor, OpaqueKeys, SaturatedConversion, Verify,
 };
 use sp_runtime::transaction_validity::TransactionLongevity;
 use sp_runtime::transaction_validity::{
     TransactionPriority, TransactionSource, TransactionValidity,
 };
+use sp_runtime::RuntimeAppPublic;
 use sp_runtime::{
-    create_runtime_str, generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError, FixedU128,
-    MultiSignature, Perbill, Percent, Permill, Perquintill,
+    generic, impl_opaque_keys, ApplyExtrinsicResult, DispatchError, FixedU128, MultiSignature,
+    Perbill, Percent, Permill, Perquintill,
 };
+use sp_staking::currency_to_vote::U128CurrencyToVote;
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
@@ -135,13 +151,12 @@ pub use common::{
 };
 use constants::rewards::{PSWAP_BURN_PERCENT, VAL_BURN_PERCENT};
 pub use frame_support::dispatch::DispatchClass;
-pub use frame_support::traits::schedule::Named as ScheduleNamed;
 pub use frame_support::traits::{
-    Contains, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness, U128CurrencyToVote,
+    Contains, KeyOwnerProofSystem, LockIdentifier, OnUnbalanced, Randomness,
 };
 pub use frame_support::weights::constants::{BlockExecutionWeight, RocksDbWeight};
 pub use frame_support::weights::Weight;
-pub use frame_support::{construct_runtime, debug, parameter_types, StorageValue};
+pub use frame_support::{construct_runtime, parameter_types, StorageValue};
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 pub use pallet_staking::StakerStatus;
@@ -256,15 +271,16 @@ pub mod oracle_types {
 pub use oracle_types::*;
 
 /// This runtime version.
+#[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-    spec_name: create_runtime_str!("sora-substrate"),
-    impl_name: create_runtime_str!("sora-substrate"),
+    spec_name: Cow::Borrowed("sora-substrate"),
+    impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
     spec_version: 120,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 119,
-    state_version: 0,
+    system_version: 0,
 };
 
 /// The version infromation used to identify this runtime when compiled natively.
@@ -303,19 +319,13 @@ parameter_types! {
     pub const SessionsPerEra: sp_staking::SessionIndex = 6; // 6 hours
     pub const ReportLongevity: u64 =
         BondingDuration::get() as u64 * SessionsPerEra::get() as u64 * EpochDuration::get();
-    pub const MaxNominatorRewardedPerValidator: u32 = 256;
     pub const ElectionLookahead: BlockNumber = EPOCH_DURATION_IN_BLOCKS / 4;
     pub const MaxIterations: u32 = 10;
     // 0.05%. The higher the value, the more strict solution acceptance becomes.
     pub MinSolutionScoreBump: Perbill = Perbill::from_rational(5u32, 10_000);
-    pub const ValRewardCurve: pallet_staking::sora::ValRewardCurve = pallet_staking::sora::ValRewardCurve {
-        duration_to_reward_flatline: Duration::from_secs(5 * 365 * 24 * 60 * 60),
-        min_val_burned_percentage_reward: Percent::from_percent(35),
-        max_val_burned_percentage_reward: Percent::from_percent(90),
-    };
     pub const SessionPeriod: BlockNumber = 150;
     pub const SessionOffset: BlockNumber = 0;
-    pub const SS58Prefix: u8 = 69;
+    pub const SS58Prefix: u16 = 69;
     /// A limit for off-chain phragmen unsigned solution submission.
     ///
     /// We want to keep it as high as possible, but can't risk having it reject,
@@ -350,6 +360,7 @@ parameter_types! {
     pub const TechnicalCollectiveMotionDuration: BlockNumber = 5 * DAYS;
     pub const TechnicalCollectiveMaxProposals: u32 = 100;
     pub const TechnicalCollectiveMaxMembers: u32 = 100;
+    pub MaxCollectivesProposalWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub SchedulerMaxWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
@@ -364,6 +375,7 @@ parameter_types! {
     /// 13 members initially, to be increased to 23 eventually.
     pub const ElectionsDesiredMembers: u32 = 13;
     pub const ElectionsDesiredRunnersUp: u32 = 20;
+    pub const ElectionsMaxVotesPerVoter: u32 = 16;
     pub const ElectionsMaxVoters: u32 = 10000;
     pub const ElectionsMaxCandidates: u32 = 1000;
     pub const ElectionsModuleId: LockIdentifier = *b"phrelect";
@@ -372,6 +384,7 @@ parameter_types! {
         GetXstAssetId::get(), GetTbcdAssetId::get(), DOT
     ];
     pub const MaxAuthorities: u32 = 100_000;
+    pub const MaxNominators: u32 = 12_500;
     pub const NoPreimagePostponement: Option<u32> = Some(10);
 }
 
@@ -402,10 +415,10 @@ impl frame_system::Config for Runtime {
     type RuntimeOrigin = RuntimeOrigin;
     /// The aggregated dispatch type that is available for extrinsics.
     type RuntimeCall = RuntimeCall;
+    /// The aggregated task type that is available for scheduled tasks.
+    type RuntimeTask = RuntimeTask;
     /// The index type for storing how many extrinsics an account has signed.
-    type Index = Index;
-    /// The index type for blocks.
-    type BlockNumber = BlockNumber;
+    type Nonce = Index;
     /// The type for hashing blocks and tries.
     type Hash = Hash;
     /// The hashing algorithm used.
@@ -414,8 +427,8 @@ impl frame_system::Config for Runtime {
     type AccountId = AccountId;
     /// The lookup mechanism to get account ID from whatever is passed in dispatchers.
     type Lookup = IdentityLookup<AccountId>;
-    /// The header type.
-    type Header = generic::Header<BlockNumber, BlakeTwo256>;
+    /// The block type.
+    type Block = Block;
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
     /// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -432,6 +445,12 @@ impl frame_system::Config for Runtime {
     type SystemWeightInfo = ();
     type SS58Prefix = SS58Prefix;
     type OnSetCode = ();
+    type ExtensionsWeightInfo = ();
+    type SingleBlockMigrations = ();
+    type MultiBlockMigrator = ();
+    type PreInherents = ();
+    type PostInherents = ();
+    type PostTransactions = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
@@ -440,19 +459,13 @@ impl pallet_babe::Config for Runtime {
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
     type DisabledValidators = Session;
-    type KeyOwnerProof = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-        KeyTypeId,
-        pallet_babe::AuthorityId,
-    )>>::Proof;
-    type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-        KeyTypeId,
-        pallet_babe::AuthorityId,
-    )>>::IdentificationTuple;
-    type KeyOwnerProofSystem = Historical;
-    type HandleEquivocation =
-        pallet_babe::EquivocationHandler<Self::KeyOwnerIdentification, Offences, ReportLongevity>;
     type WeightInfo = ();
     type MaxAuthorities = MaxAuthorities;
+    type MaxNominators = MaxNominators;
+    type KeyOwnerProof =
+        <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
+    type EquivocationReportSystem =
+        pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -464,6 +477,11 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
     type MaxMembers = CouncilCollectiveMaxMembers;
     type DefaultVote = pallet_collective::PrimeDefaultVote;
     type WeightInfo = CollectiveWeightInfo<Self>;
+    type SetMembersOrigin = EnsureRoot<AccountId>;
+    type MaxProposalWeight = MaxCollectivesProposalWeight;
+    type DisapproveOrigin = EnsureRoot<AccountId>;
+    type KillOrigin = EnsureRoot<AccountId>;
+    type Consideration = ();
 }
 
 impl pallet_collective::Config<TechnicalCollective> for Runtime {
@@ -475,6 +493,11 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
     type MaxMembers = TechnicalCollectiveMaxMembers;
     type DefaultVote = pallet_collective::PrimeDefaultVote;
     type WeightInfo = CollectiveWeightInfo<Self>;
+    type SetMembersOrigin = EnsureRoot<AccountId>;
+    type MaxProposalWeight = MaxCollectivesProposalWeight;
+    type DisapproveOrigin = EnsureRoot<AccountId>;
+    type KillOrigin = EnsureRoot<AccountId>;
+    type Consideration = ();
 }
 
 impl pallet_democracy::Config for Runtime {
@@ -491,6 +514,7 @@ impl pallet_democracy::Config for Runtime {
     type ExternalMajorityOrigin = AtLeastHalfCouncil;
     /// `external_propose_default` call condition
     type ExternalDefaultOrigin = AtLeastHalfCouncil;
+    type SubmitOrigin = EnsureSigned<AccountId>;
     /// Two thirds of the technical committee can have an ExternalMajority/ExternalDefault vote
     /// be tabled immediately and with a shorter voting/enactment period.
     type FastTrackOrigin = EitherOfDiverse<
@@ -529,7 +553,7 @@ impl pallet_elections_phragmen::Config for Runtime {
     type Currency = Balances;
     type ChangeMembers = Council;
     type InitializeMembers = Council;
-    type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+    type CurrencyToVote = U128CurrencyToVote;
     type CandidacyBond = ElectionsCandidacyBond;
     type VotingBondBase = ElectionsVotingBondBase;
     type VotingBondFactor = ElectionsVotingBondFactor;
@@ -539,6 +563,7 @@ impl pallet_elections_phragmen::Config for Runtime {
     type DesiredRunnersUp = ElectionsDesiredRunnersUp;
     type TermDuration = ElectionsTermDuration;
     type MaxVoters = ElectionsMaxVoters;
+    type MaxVotesPerVoter = ElectionsMaxVotesPerVoter;
     type MaxCandidates = ElectionsMaxCandidates;
     type WeightInfo = ();
 }
@@ -557,30 +582,19 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 }
 
 parameter_types! {
-    pub const MaxSetIdSessionEntries: u32 = BondingDuration::get() * SessionsPerEra::get();
+    pub const MaxSetIdSessionEntries: u64 =
+        BondingDuration::get() as u64 * SessionsPerEra::get() as u64;
 }
 
 impl pallet_grandpa::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-
-    type KeyOwnerProofSystem = Historical;
-
-    type KeyOwnerProof =
-        <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-
-    type KeyOwnerIdentification = <Self::KeyOwnerProofSystem as KeyOwnerProofSystem<(
-        KeyTypeId,
-        GrandpaId,
-    )>>::IdentificationTuple;
-
-    type HandleEquivocation = pallet_grandpa::EquivocationHandler<
-        Self::KeyOwnerIdentification,
-        Offences,
-        ReportLongevity,
-    >;
     type WeightInfo = ();
     type MaxAuthorities = MaxAuthorities;
+    type MaxNominators = MaxNominators;
     type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
+    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
+    type EquivocationReportSystem =
+        pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
 }
 
 parameter_types! {
@@ -602,14 +616,18 @@ impl pallet_session::Config for Runtime {
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
     type RuntimeEvent = RuntimeEvent;
     type ValidatorId = AccountId;
-    type ValidatorIdOf = pallet_staking::StashOf<Self>;
+    type ValidatorIdOf = sp_runtime::traits::ConvertInto;
     type NextSessionRotation = Babe;
+    type DisablingStrategy = pallet_session::disabling::UpToLimitWithReEnablingDisablingStrategy;
     type WeightInfo = ();
+    type Currency = Balances;
+    type KeyDeposit = ();
 }
 
 impl pallet_session::historical::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type FullIdentificationOf = pallet_staking::ExposureOf<Runtime>;
+    type FullIdentificationOf = pallet_staking::DefaultExposureOf<Runtime>;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -625,9 +643,12 @@ impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
 }
 
 parameter_types! {
-    pub const OffendingValidatorsThreshold: Perbill = Perbill::from_percent(17);
-    pub const MaxNominations: u32 = <NposCompactSolution24 as frame_election_provider_support::NposSolution>::LIMIT as u32;
+    pub const MaxExposurePageSize: u32 = 256;
+    pub const MaxControllersInDeprecationBatch: u32 = 5900;
 }
+
+const MAX_QUOTA_NOMINATIONS: u32 =
+    <NposCompactSolution24 as frame_election_provider_support::NposSolution>::LIMIT as u32;
 
 type StakingAdminOrigin = EitherOfDiverse<
     EnsureRoot<AccountId>,
@@ -635,31 +656,35 @@ type StakingAdminOrigin = EitherOfDiverse<
 >;
 
 impl pallet_staking::Config for Runtime {
+    type OldCurrency = Balances;
     type Currency = Balances;
-    type MultiCurrency = Tokens;
+    type RuntimeHoldReason = RuntimeHoldReason;
     type CurrencyBalance = Balance;
-    type ValTokenId = GetValAssetId;
-    type ValRewardCurve = ValRewardCurve;
     type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
+    type RewardRemainder = ();
     type RuntimeEvent = RuntimeEvent;
     type Slash = ();
+    type Reward = ();
     type SessionsPerEra = SessionsPerEra;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
     type AdminOrigin = StakingAdminOrigin;
     type SessionInterface = Self;
+    type EraPayout = ();
     type NextNewSession = Session;
-    type MaxNominatorRewardedPerValidator = MaxNominatorRewardedPerValidator;
+    type MaxValidatorSet = MaxActiveValidators;
     type VoterList = BagsList;
     type ElectionProvider = ElectionProviderMultiPhase;
     type BenchmarkingConfig = StakingBenchmarkingConfig;
     type MaxUnlockingChunks = ConstU32<32>;
-    type OffendingValidatorsThreshold = OffendingValidatorsThreshold;
-    type MaxNominations = MaxNominations;
+    type NominationsQuota = pallet_staking::FixedNominationsQuota<MAX_QUOTA_NOMINATIONS>;
+    type MaxExposurePageSize = MaxExposurePageSize;
+    type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
     type GenesisElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
-    type OnStakerSlash = ();
     type HistoryDepth = frame_support::traits::ConstU32<84>;
+    type EventListeners = ();
+    type Filter = Nothing;
     type TargetList = pallet_staking::UseValidatorsMap<Self>;
     type WeightInfo = ();
 }
@@ -687,7 +712,8 @@ parameter_types! {
     // signed config
     pub const SignedMaxSubmissions: u32 = 16;
     pub const SignedMaxRefunds: u32 = 16 / 4;
-    pub const SignedDepositBase: Balance = deposit(2, 0);
+    pub const SignedFixedDeposit: Balance = deposit(2, 0);
+    pub const SignedDepositIncreaseFactor: Percent = Percent::from_percent(0);
     pub const SignedDepositByte: Balance = deposit(0, 10) / 1024;
     pub SignedRewardBase: Balance =  constants::currency::UNITS / 10;
     pub SolutionImprovementThreshold: Perbill = Perbill::from_rational(5u32, 10_000);
@@ -704,6 +730,15 @@ parameter_types! {
     /// Setup election pallet to support maximum winners upto 1200. This will mean Staking Pallet
     /// cannot have active validators higher than this count.
     pub const MaxActiveValidators: u32 = 1200;
+    pub const MaxBackersPerWinner: u32 = 256;
+    pub ElectionBoundsOnChain: ElectionBounds = ElectionBoundsBuilder::default()
+        .voters_count(MaxElectingVoters::get().into())
+        .targets_count((MaxElectableTargets::get() as u32).into())
+        .build();
+    pub ElectionBoundsMultiPhase: ElectionBounds = ElectionBoundsBuilder::default()
+        .voters_count(MaxElectingVoters::get().into())
+        .targets_count((MaxElectableTargets::get() as u32).into())
+        .build();
     pub NposSolutionPriority: TransactionPriority =
         Perbill::from_percent(90) * TransactionPriority::max_value();
 }
@@ -723,13 +758,14 @@ pub type OnChainAccuracy = sp_runtime::Perbill;
 
 pub struct OnChainSeqPhragmen;
 impl onchain::Config for OnChainSeqPhragmen {
+    type Sort = ConstBool<true>;
     type System = Runtime;
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
     type DataProvider = Staking;
     type WeightInfo = ();
-    type MaxWinners = MaxActiveValidators;
-    type VotersBound = MaxElectingVoters;
-    type TargetsBound = MaxElectableTargets;
+    type Bounds = ElectionBoundsOnChain;
+    type MaxBackersPerWinner = MaxBackersPerWinner;
+    type MaxWinnersPerPage = MaxActiveValidators;
 }
 
 impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
@@ -742,6 +778,8 @@ impl pallet_election_provider_multi_phase::MinerConfig for Runtime {
 		as
 		frame_election_provider_support::ElectionDataProvider
 	>::MaxVotesPerVoter;
+    type MaxWinners = MaxActiveValidators;
+    type MaxBackersPerWinner = MaxBackersPerWinner;
 
     // The unsigned submissions have to respect the weight of the submit_unsigned call, thus their
     // weight estimate function is wired to this call's weight.
@@ -762,7 +800,11 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type SignedMaxSubmissions = SignedMaxSubmissions;
     type SignedMaxRefunds = SignedMaxRefunds;
     type SignedRewardBase = SignedRewardBase;
-    type SignedDepositBase = SignedDepositBase;
+    type SignedDepositBase = pallet_election_provider_multi_phase::GeometricDepositBase<
+        Balance,
+        SignedFixedDeposit,
+        SignedDepositIncreaseFactor,
+    >;
     type SignedDepositByte = SignedDepositByte;
     type SignedDepositWeight = ();
     type SignedMaxWeight =
@@ -771,7 +813,6 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type SlashHandler = (); // burn slashes
     type RewardHandler = (); // nothing to do upon rewards
     type SignedPhase = SignedPhase;
-    type BetterUnsignedThreshold = BetterUnsignedThreshold;
     type BetterSignedThreshold = ();
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
@@ -792,9 +833,9 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
         >,
     >;
     type WeightInfo = ();
-    type MaxElectingVoters = MaxElectingVoters;
-    type MaxElectableTargets = MaxElectableTargets;
     type MaxWinners = MaxActiveValidators;
+    type MaxBackersPerWinner = MaxBackersPerWinner;
+    type ElectionBounds = ElectionBoundsMultiPhase;
 }
 
 parameter_types! {
@@ -806,6 +847,7 @@ impl pallet_bags_list::Config for Runtime {
     type ScoreProvider = Staking;
     type WeightInfo = ();
     type BagThresholds = BagThresholds;
+    type MaxAutoRebagPerBlock = ();
     type Score = sp_npos_elections::VoteWeight;
 }
 
@@ -843,11 +885,14 @@ impl pallet_scheduler::Config for Runtime {
     type WeightInfo = ();
     type OriginPrivilegeCmp = OriginPrivilegeCmp;
     type Preimages = Preimage;
+    type BlockNumberProvider = System;
 }
 
 parameter_types! {
     pub PreimageBaseDeposit: Balance = deposit(2, 64);
     pub PreimageByteDeposit: Balance = deposit(0, 1);
+    pub const PreimageHoldReason: RuntimeHoldReason =
+        RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
 }
 
 impl pallet_preimage::Config for Runtime {
@@ -855,8 +900,12 @@ impl pallet_preimage::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type ManagerOrigin = EnsureRoot<AccountId>;
-    type BaseDeposit = PreimageBaseDeposit;
-    type ByteDeposit = PreimageByteDeposit;
+    type Consideration = HoldConsideration<
+        AccountId,
+        Balances,
+        PreimageHoldReason,
+        LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+    >;
 }
 
 parameter_types! {
@@ -869,15 +918,20 @@ parameter_types! {
 impl pallet_balances::Config for Runtime {
     /// The type for recording an account's balance.
     type Balance = Balance;
+    type RuntimeHoldReason = RuntimeHoldReason;
+    type RuntimeFreezeReason = ();
     type DustRemoval = ();
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
     type WeightInfo = ();
+    type FreezeIdentifier = ();
     type MaxLocks = MaxLocks;
     type MaxReserves = ();
+    type MaxFreezes = ConstU32<0>;
     type ReserveIdentifier = ();
+    type DoneSlashHandler = ();
 }
 
 pub type Amount = i128;
@@ -893,7 +947,6 @@ parameter_types! {
 }
 
 impl tokens::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -1085,10 +1138,15 @@ parameter_types! {
     pub const GetNumSamples: usize = 10;
     pub const BasicDeposit: Balance = balance!(0.01);
     pub const FieldDeposit: Balance = balance!(0.01);
+    pub const UsernameDeposit: Balance = balance!(0.01);
     pub const SubAccountDeposit: Balance = balance!(0.01);
     pub const MaxSubAccounts: u32 = 100;
     pub const MaxAdditionalFields: u32 = 100;
     pub const MaxRegistrars: u32 = 20;
+    pub const PendingUsernameExpiration: BlockNumber = 7 * DAYS;
+    pub const UsernameGracePeriod: BlockNumber = 7 * DAYS;
+    pub const MaxSuffixLength: u32 = 7;
+    pub const MaxUsernameLength: u32 = 32;
     pub const MaxAdditionalDataLengthXorlessTransfer: u32 = 128;
     pub const MaxAdditionalDataLengthSwapTransferBatch: u32 = 2000;
     pub ReferralsReservesAcc: AccountId = {
@@ -1184,6 +1242,7 @@ impl pallet_multisig::Config for Runtime {
     type DepositFactor = DepositFactor;
     type MaxSignatories = MaxSignatories;
     type WeightInfo = ();
+    type BlockNumberProvider = System;
 }
 
 impl iroha_migration::Config for Runtime {
@@ -1195,14 +1254,22 @@ impl pallet_identity::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
     type BasicDeposit = BasicDeposit;
-    type FieldDeposit = FieldDeposit;
+    type ByteDeposit = FieldDeposit;
+    type UsernameDeposit = UsernameDeposit;
     type SubAccountDeposit = SubAccountDeposit;
     type MaxSubAccounts = MaxSubAccounts;
-    type MaxAdditionalFields = MaxAdditionalFields;
+    type IdentityInformation = pallet_identity::legacy::IdentityInfo<MaxAdditionalFields>;
     type MaxRegistrars = MaxRegistrars;
     type Slashed = ();
     type ForceOrigin = MoreThanHalfCouncil;
     type RegistrarOrigin = MoreThanHalfCouncil;
+    type OffchainSignature = Signature;
+    type SigningPublicKey = <Signature as Verify>::Signer;
+    type UsernameAuthorityOrigin = EnsureRoot<AccountId>;
+    type PendingUsernameExpiration = PendingUsernameExpiration;
+    type UsernameGracePeriod = UsernameGracePeriod;
+    type MaxSuffixLength = MaxSuffixLength;
+    type MaxUsernameLength = MaxUsernameLength;
     type WeightInfo = ();
 }
 
@@ -1226,19 +1293,20 @@ impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for R
 where
     RuntimeCall: From<LocalCall>,
 {
-    fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+    fn create_signed_transaction<
+        C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+    >(
         call: RuntimeCall,
         public: <Signature as sp_runtime::traits::Verify>::Signer,
         account: AccountId,
         index: Index,
-    ) -> Option<(
-        RuntimeCall,
-        <UncheckedExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
-    )> {
+    ) -> Option<Self::Extrinsic> {
         let period = BlockHashCount::get() as u64;
         let current_block = System::block_number()
             .saturated_into::<u64>()
             .saturating_sub(1);
+        #[allow(deprecated)]
+        let charge_tx_payment = AsTransactionExtension(ChargeTransactionPayment::<Runtime>::new());
         let extra: SignedExtra = (
             frame_system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
@@ -1246,12 +1314,12 @@ where
             frame_system::CheckEra::<Runtime>::from(generic::Era::mortal(period, current_block)),
             frame_system::CheckNonce::<Runtime>::from(index),
             frame_system::CheckWeight::<Runtime>::new(),
-            ChargeTransactionPayment::<Runtime>::new(),
+            charge_tx_payment,
         );
         #[cfg_attr(not(feature = "std"), allow(unused_variables))]
         let raw_payload = SignedPayload::new(call, extra)
             .map_err(|e| {
-                frame_support::log::warn!("SignedPayload error: {:?}", e);
+                frame_support::__private::log::warn!("SignedPayload error: {:?}", e);
             })
             .ok()?;
 
@@ -1259,7 +1327,18 @@ where
 
         let address = account;
         let (call, extra, _) = raw_payload.deconstruct();
-        Some((call, (address, signature, extra)))
+        Some(UncheckedExtrinsic::new_signed(
+            call, address, signature, extra,
+        ))
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
+        UncheckedExtrinsic::new_bare(call)
     }
 }
 
@@ -1268,12 +1347,12 @@ impl frame_system::offchain::SigningTypes for Runtime {
     type Signature = Signature;
 }
 
-impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
     RuntimeCall: From<C>,
 {
-    type OverarchingCall = RuntimeCall;
     type Extrinsic = UncheckedExtrinsic;
+    type RuntimeCall = RuntimeCall;
 }
 
 impl referrals::Config for Runtime {
@@ -1289,19 +1368,14 @@ impl rewards::Config for Runtime {
     const MAX_VESTING_RATIO: Percent = Percent::from_percent(55);
     const TIME_TO_SATURATION: BlockNumber = 5 * 365 * DAYS; // 5 years
     const VAL_BURN_PERCENT: Percent = VAL_BURN_PERCENT;
-    type RuntimeEvent = RuntimeEvent;
     type WeightInfo = rewards::weights::SubstrateWeight<Runtime>;
 }
 
-pub struct ValBurnedAggregator<T>(sp_std::marker::PhantomData<T>);
+pub struct ValBurnedAggregator;
 
-impl<T> OnValBurned for ValBurnedAggregator<T>
-where
-    T: ValBurnedNotifier<Balance>,
-{
+impl OnValBurned for ValBurnedAggregator {
     fn on_val_burned(amount: Balance) {
         Rewards::on_val_burned(amount);
-        T::notify_val_burned(amount);
     }
 }
 
@@ -1335,7 +1409,6 @@ impl xor_fee::Config for Runtime {
     type DynamicMultiplier = xor_fee_impls::DynamicMultiplier;
     type ForcedMultiplierAt = ForcedMultiplierAt;
     type ForcedMultiplier = ForcedMultiplierValue;
-    type RuntimeEvent = RuntimeEvent;
     // Pass native currency.
     type XorCurrency = Balances;
     type XorId = GetXorAssetId;
@@ -1350,7 +1423,7 @@ impl xor_fee::Config for Runtime {
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
-    type OnValBurned = ValBurnedAggregator<Staking>;
+    type OnValBurned = ValBurnedAggregator;
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
@@ -1400,12 +1473,14 @@ impl pallet_transaction_payment::Config for Runtime {
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
     type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
+    type WeightInfo = ();
 }
 
 #[cfg(feature = "private-net")]
 impl pallet_sudo::Config for Runtime {
     type RuntimeCall = RuntimeCall;
     type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
 }
 
 impl permissions::Config for Runtime {
@@ -1828,7 +1903,6 @@ impl xst::Config for Runtime {
 parameter_types! {
     pub const MaxKeys: u32 = 10_000;
     pub const MaxPeerInHeartbeats: u32 = 10_000;
-    pub const MaxPeerDataEncodingSize: u32 = 1_000;
 }
 
 impl pallet_im_online::Config for Runtime {
@@ -1841,7 +1915,6 @@ impl pallet_im_online::Config for Runtime {
     type WeightInfo = ();
     type MaxKeys = MaxKeys;
     type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
-    type MaxPeerDataEncodingSize = MaxPeerDataEncodingSize;
 }
 
 impl pallet_offences::Config for Runtime {
@@ -1880,26 +1953,75 @@ impl price_tools::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
+pub struct DummyAncestryHelper;
+
+impl<Header: HeaderT> sp_beefy::AncestryHelper<Header> for DummyAncestryHelper {
+    type Proof = ();
+    type ValidationContext = ();
+
+    fn is_proof_optimal(_proof: &Self::Proof) -> bool {
+        false
+    }
+
+    fn extract_validation_context(_header: Header) -> Option<Self::ValidationContext> {
+        None
+    }
+
+    fn is_non_canonical(
+        _commitment: &sp_beefy::Commitment<Header::Number>,
+        _proof: Self::Proof,
+        _context: Self::ValidationContext,
+    ) -> bool {
+        false
+    }
+}
+
+impl<Header: HeaderT> sp_beefy::AncestryHelperWeightInfo<Header> for DummyAncestryHelper {
+    fn is_proof_optimal(_proof: &<Self as sp_beefy::AncestryHelper<Header>>::Proof) -> Weight {
+        Weight::zero()
+    }
+
+    fn extract_validation_context() -> Weight {
+        Weight::zero()
+    }
+
+    fn is_non_canonical(_proof: &<Self as sp_beefy::AncestryHelper<Header>>::Proof) -> Weight {
+        Weight::zero()
+    }
+}
+
 #[cfg(not(feature = "wip"))] // Basic impl for session keys
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
     type MaxAuthorities = MaxAuthorities;
+    type MaxNominators = MaxNominators;
+    type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
     type OnNewValidatorSet = ();
+    type AncestryHelper = DummyAncestryHelper;
+    type WeightInfo = ();
+    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, BeefyId)>>::Proof;
+    type EquivocationReportSystem = ();
 }
 
 #[cfg(feature = "wip")] // Trustless bridges
 impl pallet_beefy::Config for Runtime {
     type BeefyId = BeefyId;
     type MaxAuthorities = MaxAuthorities;
+    type MaxNominators = MaxNominators;
+    type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
     type OnNewValidatorSet = MmrLeaf;
+    type AncestryHelper = MmrLeaf;
+    type WeightInfo = ();
+    type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, BeefyId)>>::Proof;
+    type EquivocationReportSystem = ();
 }
 
 #[cfg(feature = "wip")] // Trustless bridges
 impl pallet_mmr::Config for Runtime {
     const INDEXING_PREFIX: &'static [u8] = b"mmr";
     type Hashing = Keccak256;
-    type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
     type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
+    type BlockHashProvider = pallet_mmr::DefaultBlockHashProvider<Self>;
     type WeightInfo = ();
     type LeafData = pallet_beefy_mmr::Pallet<Runtime>;
 }
@@ -1936,6 +2058,7 @@ impl pallet_beefy_mmr::Config for Runtime {
     type LeafExtra =
         LeafExtraData<<Self as leaf_provider::Config>::Hash, <Self as frame_system::Config>::Hash>;
     type BeefyDataProvider = leaf_provider::Pallet<Runtime>;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -2449,7 +2572,6 @@ impl bridge_proxy::Config for Runtime {
 
 #[cfg(feature = "wip")] // Trustless substrate bridge
 impl beefy_light_client::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
 }
 
@@ -2478,7 +2600,15 @@ impl substrate_bridge_channel::inbound::Config for Runtime {
 
 pub struct MultiVerifier;
 
-#[derive(Clone, Debug, PartialEq, codec::Encode, codec::Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    codec::Encode,
+    codec::Decode,
+    codec::DecodeWithMemTracking,
+    scale_info::TypeInfo,
+)]
 pub enum MultiProof {
     #[cfg(feature = "wip")] // Trustless substrate bridge
     #[codec(index = 0)]
@@ -2720,14 +2850,10 @@ impl denomination::Config for Runtime {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = opaque::Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
-        System: frame_system::{Pallet, Call, Storage, Config, Event<T>} = 0,
+    pub enum Runtime {
+        System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 
-        Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned} = 14,
+        Babe: pallet_babe::{Pallet, Call, Storage, Config<T>, ValidateUnsigned} = 14,
 
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent} = 1,
         // Balances in native currency - XOR.
@@ -2743,11 +2869,11 @@ construct_runtime! {
 
         // Consensus and staking.
         Authorship: pallet_authorship::{Pallet, Storage} = 16,
-        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>} = 17,
+        Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>, HoldReason} = 17,
         Offences: pallet_offences::{Pallet, Storage, Event} = 37,
-        Historical: pallet_session_historical::{Pallet} = 13,
-        Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>} = 12,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config, Event} = 15,
+        Historical: pallet_session_historical::{Pallet, Event<T>} = 13,
+        Session: pallet_session::{Pallet, Call, Storage, Event<T>, Config<T>, HoldReason} = 12,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event} = 15,
         ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
 
         // Non-native tokens - everything apart of XOR.
@@ -2764,7 +2890,7 @@ construct_runtime! {
         Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 27,
         TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>} = 28,
         Democracy: pallet_democracy::{Pallet, Call, Storage, Config<T>, Event<T>} = 29,
-        DEXAPI: dex_api::{Pallet, Call, Storage, Config, Event<T>} = 30,
+        DEXAPI: dex_api::{Pallet, Call, Storage, Config<T>, Event<T>} = 30,
         EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>} = 31,
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Config<T>, Event<T>} = 32,
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>} = 33,
@@ -2789,7 +2915,7 @@ construct_runtime! {
         Band: band::{Pallet, Call, Storage, Event<T>} = 53,
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
-        Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>} = 56,
+        Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
         Kensetsu: kensetsu::{Pallet, Call, Storage, Config<T>, Event<T>, ValidateUnsigned} = 58,
         #[cfg(any(feature = "stage", feature = "private-net"))] // presto
@@ -2812,7 +2938,7 @@ construct_runtime! {
 
         // Trustless substrate bridge
         #[cfg(feature = "wip")] // Trustless substrate bridge
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config} = 104,
+        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>, Config<T>} = 104,
 
         // Federated substrate bridge
         SubstrateBridgeInboundChannel: substrate_bridge_channel::inbound::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 106,
@@ -2878,6 +3004,8 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 pub type SignedBlock = generic::SignedBlock<Block>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
+#[allow(deprecated)]
+type ChargeTxPaymentExtension = AsTransactionExtension<ChargeTransactionPayment<Runtime>>;
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
     frame_system::CheckSpecVersion<Runtime>,
@@ -2886,7 +3014,7 @@ pub type SignedExtra = (
     frame_system::CheckEra<Runtime>,
     frame_system::CheckNonce<Runtime>,
     frame_system::CheckWeight<Runtime>,
-    ChargeTransactionPayment<Runtime>,
+    ChargeTxPaymentExtension,
 );
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
@@ -2912,11 +3040,13 @@ impl_runtime_apis! {
             VERSION
         }
 
-        fn execute_block(block: Block) {
+        fn execute_block(block: <Block as BlockT>::LazyBlock) {
             Executive::execute_block(block)
         }
 
-        fn initialize_block(header: &<Block as BlockT>::Header) {
+        fn initialize_block(
+            header: &<Block as BlockT>::Header,
+        ) -> sp_runtime::ExtrinsicInclusionMode {
             Executive::initialize_block(header)
         }
     }
@@ -2924,6 +3054,14 @@ impl_runtime_apis! {
     impl sp_api::Metadata<Block> for Runtime {
         fn metadata() -> OpaqueMetadata {
             OpaqueMetadata::new(Runtime::metadata().into())
+        }
+
+        fn metadata_at_version(version: u32) -> Option<OpaqueMetadata> {
+            Runtime::metadata_at_version(version)
+        }
+
+        fn metadata_versions() -> sp_std::vec::Vec<u32> {
+            Runtime::metadata_versions()
         }
     }
 
@@ -2942,7 +3080,10 @@ impl_runtime_apis! {
             data.create_extrinsics()
         }
 
-        fn check_inherents(block: Block, data: sp_inherents::InherentData) -> sp_inherents::CheckInherentsResult {
+        fn check_inherents(
+            block: <Block as BlockT>::LazyBlock,
+            data: sp_inherents::InherentData,
+        ) -> sp_inherents::CheckInherentsResult {
             data.check_extrinsics(&block)
         }
 
@@ -3405,13 +3546,88 @@ impl_runtime_apis! {
     }
 
     // For BEEFY gadget
-    impl sp_beefy::BeefyApi<Block> for Runtime {
+    impl sp_beefy::BeefyApi<Block, BeefyId> for Runtime {
+        fn beefy_genesis() -> Option<BlockNumber> {
+            #[cfg(not(feature = "wip"))] // Trustless bridges
+            return None;
+
+            #[cfg(feature = "wip")] // Trustless bridges
+            pallet_beefy::GenesisBlock::<Runtime>::get()
+        }
+
         fn validator_set() -> Option<sp_beefy::ValidatorSet<BeefyId>> {
             #[cfg(not(feature = "wip"))] // Trustless bridges
             return None;
 
             #[cfg(feature = "wip")] // Trustless bridges
             Beefy::validator_set()
+        }
+
+        fn submit_report_double_voting_unsigned_extrinsic(
+            _equivocation_proof: sp_beefy::DoubleVotingProof<
+                BlockNumber,
+                BeefyId,
+                <BeefyId as RuntimeAppPublic>::Signature,
+            >,
+            _key_owner_proof: sp_beefy::OpaqueKeyOwnershipProof,
+        ) -> Option<()> {
+            #[cfg(not(feature = "wip"))] // Trustless bridges
+            return None;
+
+            #[cfg(feature = "wip")] // Trustless bridges
+            {
+                let key_owner_proof = _key_owner_proof.decode()?;
+                Beefy::submit_unsigned_double_voting_report(_equivocation_proof, key_owner_proof)
+            }
+        }
+
+        fn submit_report_fork_voting_unsigned_extrinsic(
+            _equivocation_proof: sp_beefy::ForkVotingProof<
+                <Block as BlockT>::Header,
+                BeefyId,
+                sp_runtime::OpaqueValue,
+            >,
+            _key_owner_proof: sp_beefy::OpaqueKeyOwnershipProof,
+        ) -> Option<()> {
+            #[cfg(not(feature = "wip"))] // Trustless bridges
+            return None;
+
+            #[cfg(feature = "wip")] // Trustless bridges
+            {
+                Beefy::submit_unsigned_fork_voting_report(
+                    _equivocation_proof.try_into()?,
+                    _key_owner_proof.decode()?,
+                )
+            }
+        }
+
+        fn submit_report_future_block_voting_unsigned_extrinsic(
+            _equivocation_proof: sp_beefy::FutureBlockVotingProof<BlockNumber, BeefyId>,
+            _key_owner_proof: sp_beefy::OpaqueKeyOwnershipProof,
+        ) -> Option<()> {
+            #[cfg(not(feature = "wip"))] // Trustless bridges
+            return None;
+
+            #[cfg(feature = "wip")] // Trustless bridges
+            {
+                Beefy::submit_unsigned_future_block_voting_report(
+                    _equivocation_proof,
+                    _key_owner_proof.decode()?,
+                )
+            }
+        }
+
+        fn generate_key_ownership_proof(
+            _set_id: sp_beefy::ValidatorSetId,
+            _authority_id: BeefyId,
+        ) -> Option<sp_beefy::OpaqueKeyOwnershipProof> {
+            #[cfg(not(feature = "wip"))] // Trustless bridges
+            return None;
+
+            #[cfg(feature = "wip")] // Trustless bridges
+            Historical::prove((sp_beefy::KEY_TYPE, _authority_id))
+                .map(|p| p.encode())
+                .map(sp_beefy::OpaqueKeyOwnershipProof::new)
         }
     }
 
@@ -3435,7 +3651,7 @@ impl_runtime_apis! {
         fn generate_proof(
             _block_numbers: Vec<BlockNumber>,
             _best_known_block_number: Option<BlockNumber>,
-        ) -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::Proof<Hash>), mmr::Error> {
+        ) -> Result<(Vec<mmr::EncodableOpaqueLeaf>, mmr::LeafProof<Hash>), mmr::Error> {
             #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
 
@@ -3453,7 +3669,7 @@ impl_runtime_apis! {
             )
         }
 
-        fn verify_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::Proof<Hash>)
+        fn verify_proof(_leaves: Vec<mmr::EncodableOpaqueLeaf>, _proof: mmr::LeafProof<Hash>)
             -> Result<(), mmr::Error>
         {
             #[cfg(not(feature = "wip"))] // Trustless bridges
@@ -3470,10 +3686,21 @@ impl_runtime_apis! {
             }
         }
 
+        fn generate_ancestry_proof(
+            _prev_block_number: BlockNumber,
+            _best_known_block_number: Option<BlockNumber>,
+        ) -> Result<mmr::AncestryProof<Hash>, mmr::Error> {
+            #[cfg(not(feature = "wip"))] // Trustless bridges
+            return Err(mmr::Error::PalletNotIncluded);
+
+            #[cfg(feature = "wip")] // Trustless bridges
+            Mmr::generate_ancestry_proof(_prev_block_number, _best_known_block_number)
+        }
+
         fn verify_proof_stateless(
             _root: Hash,
             _leaves: Vec<mmr::EncodableOpaqueLeaf>,
-            _proof: mmr::Proof<Hash>
+            _proof: mmr::LeafProof<Hash>
         ) -> Result<(), mmr::Error> {
             #[cfg(not(feature = "wip"))] // Trustless bridges
             return Err(mmr::Error::PalletNotIncluded);
@@ -3543,7 +3770,7 @@ impl_runtime_apis! {
             Vec<frame_benchmarking::BenchmarkList>,
             Vec<frame_support::traits::StorageInfo>,
         ) {
-            use frame_benchmarking::{list_benchmark, Benchmarking, BenchmarkList};
+            use frame_benchmarking::{list_benchmark, BenchmarkList};
             use frame_support::traits::StorageInfoTrait;
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
@@ -3618,8 +3845,9 @@ impl_runtime_apis! {
 
         fn dispatch_benchmark(
             config: frame_benchmarking::BenchmarkConfig
-        ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
-            use frame_benchmarking::{Benchmarking, BenchmarkBatch, add_benchmark, TrackedStorageKey};
+        ) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, String> {
+            use frame_benchmarking::{add_benchmark, BenchmarkBatch};
+            use frame_support::traits::TrackedStorageKey;
             use kensetsu_benchmarking::Pallet as KensetsuBench;
             use liquidity_proxy_benchmarking::Pallet as LiquidityProxyBench;
             use pool_xyk_benchmarking::Pallet as XYKPoolBench;
@@ -3740,6 +3968,20 @@ impl_runtime_apis! {
         }
     }
 
+    impl sp_genesis_builder::GenesisBuilder<Block> for Runtime {
+        fn build_state(config: Vec<u8>) -> sp_genesis_builder::Result {
+            build_state::<RuntimeGenesisConfig>(config)
+        }
+
+        fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
+            get_preset::<RuntimeGenesisConfig>(id, |_| None)
+        }
+
+        fn preset_names() -> Vec<sp_genesis_builder::PresetId> {
+            Vec::new()
+        }
+    }
+
     #[cfg(feature = "try-runtime")]
     impl frame_try_runtime::TryRuntime<Block> for Runtime {
         fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
@@ -3749,7 +3991,7 @@ impl_runtime_apis! {
         }
 
         fn execute_block(
-            block: Block,
+            block: <Block as BlockT>::LazyBlock,
             state_root_check: bool,
             signature_check: bool,
             select: frame_try_runtime::TryStateSelect,

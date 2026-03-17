@@ -1,5 +1,5 @@
-use frame_support::dispatch::Weight;
 use frame_support::traits::Get;
+use frame_support::weights::Weight;
 
 use crate::{AccountPools, Config, PoolProviders, Properties};
 

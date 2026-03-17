@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -46,17 +48,14 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{GenesisBuild, Randomness};
-use frame_system::offchain::SendTransactionTypes;
+use frame_support::traits::Randomness;
+use frame_system::offchain::{CreateBare, CreateTransactionBase};
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
-use sp_runtime::{
-    testing::TestXt,
-    traits::{IdentifyAccount, Verify},
-};
-use sp_runtime::{DispatchError, MultiSignature};
+use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 type AssetId = AssetId32<PredefinedAssetId>;
@@ -276,7 +275,7 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
@@ -287,14 +286,21 @@ frame_support::construct_runtime!(
     }
 );
 
-pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
-
-impl<LocalCall> SendTransactionTypes<LocalCall> for TestRuntime
+impl<LocalCall> CreateTransactionBase<LocalCall> for TestRuntime
 where
     RuntimeCall: From<LocalCall>,
 {
-    type Extrinsic = MockExtrinsic;
-    type OverarchingCall = RuntimeCall;
+    type Extrinsic = UncheckedExtrinsic;
+    type RuntimeCall = RuntimeCall;
+}
+
+impl<LocalCall> CreateBare<LocalCall> for TestRuntime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_bare(call: RuntimeCall) -> Self::Extrinsic {
+        UncheckedExtrinsic::new_bare(call)
+    }
 }
 
 parameter_types! {
@@ -354,9 +360,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         )
         .unwrap();
 
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
-        .unwrap();
+    let mut storage = SystemConfig::default().build_storage().unwrap();
     TechnicalConfig {
         register_tech_accounts: vec![
             (

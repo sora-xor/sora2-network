@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -47,7 +49,7 @@ use common::{
 use common::{fixed_u256, fixed_wrapper_u256, FixedWrapper256};
 use currencies::BasicCurrencyAdapter;
 
-use frame_support::traits::{ConstU32, GenesisBuild};
+use frame_support::traits::ConstU32;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, ensure, fail, parameter_types};
 use frame_system;
@@ -57,6 +59,7 @@ use common::fixed::FixedU256;
 use common::prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, DispatchError, Perbill};
 use sp_std::str::FromStr;
 use std::collections::{BTreeSet, HashMap};
@@ -125,7 +128,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -139,7 +142,7 @@ construct_runtime! {
         MockLiquiditySource4: mock_liquidity_source::<Instance4>::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>},
         PoolXyk: pool_xyk::{Pallet, Call, Storage, Event<T>},
@@ -821,12 +824,11 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![(alice(), self.total_supply)],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -881,12 +883,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-            &dex_api::GenesisConfig {
-                source_types: self.source_types,
-            },
-            &mut t,
-        )
+        dex_api::GenesisConfig::<Runtime> {
+            source_types: self.source_types,
+            _phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         assets::GenesisConfig::<Runtime> {

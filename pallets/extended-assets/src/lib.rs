@@ -59,6 +59,7 @@ use common::{
 };
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Time;
 use frame_support::BoundedBTreeSet;
 use sp_core::Get;
 use weights::WeightInfo;
@@ -85,14 +86,17 @@ pub mod pallet {
     use super::*;
     use common::{Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
-    use frame_support::traits::StorageVersion;
+    use frame_support::traits::{StorageVersion, Time};
     use frame_system::pallet_prelude::*;
     use sp_core::TryCollect;
+    use sp_std::vec;
+    use sp_std::vec::Vec;
 
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + technical::Config + pallet_timestamp::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// To retrieve asset info
@@ -118,7 +122,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -431,7 +434,6 @@ pub mod pallet {
         pub assets_metadata: Vec<(AssetIdOf<T>, Option<ContentSource>, AssetIdOf<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -441,7 +443,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.assets_metadata.iter().cloned().for_each(
                 |(sbt_asset_id, external_url, regulated_asset)| {

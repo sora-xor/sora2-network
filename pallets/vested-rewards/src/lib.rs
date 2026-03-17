@@ -42,17 +42,18 @@ use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetManager, BalanceOf, CrowdloanTag, FromGenericPair,
     OnDenominate, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP, TBCD, XOR,
 };
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::traits::{Defensive, LockIdentifier};
+use frame_support::__private::log;
+use frame_support::dispatch::DispatchResult;
+use frame_support::traits::{Defensive, ExistenceRequirement, LockIdentifier};
 use frame_support::traits::{Get, IsType};
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, log, BoundedVec};
+use frame_support::{ensure, fail, BoundedVec};
 use frame_system::pallet_prelude::BlockNumberFor;
-use log::error;
 use serde::{Deserialize, Serialize};
 use sp_core::bounded::BoundedBTreeSet;
 use sp_runtime::traits::BlockNumberProvider;
 use sp_runtime::traits::{CheckedAdd, CheckedMul, CheckedSub, StaticLookup, Zero};
+use sp_runtime::DispatchError;
 use sp_runtime::{Permill, Perquintill};
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
@@ -212,7 +213,13 @@ impl<T: Config> Pallet<T> {
             .checked_add(schedule_amount)
             .ok_or(Error::<T>::ArithmeticError)?;
 
-        T::Currency::transfer(asset_id, from, to, schedule_amount)?;
+        T::Currency::transfer(
+            asset_id,
+            from,
+            to,
+            schedule_amount,
+            ExistenceRequirement::AllowDeath,
+        )?;
         T::Currency::set_lock(VESTING_LOCK_ID, asset_id, to, total_amount)?;
         <VestingSchedules<T>>::try_append(to, schedule.clone())
             .map_err(|_| Error::<T>::MaxVestingSchedulesExceeded)?;
@@ -672,8 +679,8 @@ impl<T: Config> Pallet<T> {
 
     /// Calculate amount of tokens to send to user
     pub fn calculate_claimable_crowdloan_reward(
-        now: &T::BlockNumber,
-        info: &CrowdloanInfo<AssetIdOf<T>, T::BlockNumber, T::AccountId>,
+        now: &BlockNumberFor<T>,
+        info: &CrowdloanInfo<AssetIdOf<T>, BlockNumberFor<T>, T::AccountId>,
         total_rewards: Balance,
         contribution: Balance,
         rewarded: Balance,
@@ -705,8 +712,8 @@ impl<T: Config> Pallet<T> {
     /// Returns total amount of tokens sent to user for this crowdloan
     pub fn claim_crowdloan_reward_for_asset(
         user: &T::AccountId,
-        now: &T::BlockNumber,
-        info: &CrowdloanInfo<AssetIdOf<T>, T::BlockNumber, T::AccountId>,
+        now: &BlockNumberFor<T>,
+        info: &CrowdloanInfo<AssetIdOf<T>, BlockNumberFor<T>, T::AccountId>,
         asset_id: &AssetIdOf<T>,
         total_rewards: Balance,
         contribution: Balance,
@@ -771,8 +778,8 @@ impl<T: Config> Pallet<T> {
 
     pub fn register_crowdloan_unchecked(
         tag: CrowdloanTag,
-        start_block: T::BlockNumber,
-        length: T::BlockNumber,
+        start_block: BlockNumberFor<T>,
+        length: BlockNumberFor<T>,
         rewards: Vec<(AssetIdOf<T>, Balance)>,
         contributions: Vec<(T::AccountId, Balance)>,
     ) -> DispatchResult {
@@ -843,7 +850,7 @@ pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         let accounts: Vec<T::AccountId> = VestingSchedules::<T>::iter_keys().collect();
         let block_number = <frame_system::Pallet<T>>::block_number();
         for account in accounts {
@@ -911,11 +918,8 @@ pub mod pallet {
     use sp_std::collections::btree_map::BTreeMap;
     use vesting_currencies::VestingScheduleVariant;
 
-    pub(crate) type VestingScheduleOf<T> = VestingScheduleVariant<
-        <T as frame_system::Config>::BlockNumber,
-        AssetIdOf<T>,
-        AccountIdOf<T>,
-    >;
+    pub(crate) type VestingScheduleOf<T> =
+        VestingScheduleVariant<BlockNumberFor<T>, AssetIdOf<T>, AccountIdOf<T>>;
 
     pub(crate) type ClaimOf<T> = Claim<AssetIdOf<T>, AccountIdOf<T>>;
 
@@ -924,6 +928,7 @@ pub mod pallet {
         frame_system::Config + common::Config + multicollateral_bonding_curve_pool::Config
     {
         const BLOCKS_PER_DAY: BlockNumberFor<Self>;
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// Accounts holding PSWAP dedicated for rewards.
         #[pallet::constant]
@@ -949,7 +954,7 @@ pub mod pallet {
         type MaxVestingSchedules: Get<u32>;
         type Currency: MultiLockableCurrency<
             Self::AccountId,
-            Moment = Self::BlockNumber,
+            Moment = frame_system::pallet_prelude::BlockNumberFor<Self>,
             CurrencyId = AssetIdOf<Self>,
             Balance = Balance,
         >;
@@ -965,7 +970,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -1031,8 +1035,8 @@ pub mod pallet {
         pub fn register_crowdloan(
             origin: OriginFor<T>,
             tag: CrowdloanTag,
-            start_block: T::BlockNumber,
-            length: T::BlockNumber,
+            start_block: BlockNumberFor<T>,
+            length: BlockNumberFor<T>,
             rewards: Vec<(AssetIdOf<T>, Balance)>,
             contributions: Vec<(T::AccountId, Balance)>,
         ) -> DispatchResultWithPostInfo {
@@ -1275,7 +1279,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         CrowdloanTag,
-        CrowdloanInfo<AssetIdOf<T>, T::BlockNumber, T::AccountId>,
+        CrowdloanInfo<AssetIdOf<T>, BlockNumberFor<T>, T::AccountId>,
         OptionQuery,
     >;
 

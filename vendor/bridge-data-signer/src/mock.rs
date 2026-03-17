@@ -50,7 +50,7 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DataSigner: data_signer::{Pallet, Call, Storage, Event<T>},
     }
 );
@@ -146,7 +146,7 @@ impl<OuterOrigin: Default> frame_support::traits::EnsureOrigin<OuterOrigin> for 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut ext: sp_io::TestExternalities = system::GenesisConfig::default()
-        .build_storage::<Test>()
+        .build_storage()
         .unwrap()
         .into();
     ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(

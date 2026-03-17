@@ -2,9 +2,9 @@ use common::{
     generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol,
     AssetType, ContentSource, CurrencyIdOf, Description,
 };
-use frame_support::dispatch::Weight;
 use frame_support::pallet_prelude::{StorageValue, ValueQuery};
 use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use orml_tokens::{AccountData, Accounts};
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::collections::btree_set::BTreeSet;

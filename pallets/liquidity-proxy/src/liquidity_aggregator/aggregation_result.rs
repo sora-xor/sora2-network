@@ -30,7 +30,7 @@
 
 use codec::{Decode, Encode};
 use common::prelude::{OutcomeFee, SwapAmount, SwapVariant};
-use frame_support::RuntimeDebug;
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 

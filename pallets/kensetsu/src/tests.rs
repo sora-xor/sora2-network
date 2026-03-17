@@ -565,7 +565,7 @@ fn test_deposit_collateral_not_enough_balance() {
 
         assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
-            pallet_balances::Error::<TestRuntime>::InsufficientBalance
+            ArithmeticError::Underflow
         );
     });
 }

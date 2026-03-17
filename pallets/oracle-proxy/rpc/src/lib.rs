@@ -29,23 +29,22 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use sp_runtime::DispatchError;
 use std::sync::Arc;
+
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
 
 // Runtime API imports.
 pub use oracle_proxy_runtime_api::OracleProxyAPI as OracleProxyRuntimeApi;
 use oracle_proxy_runtime_api::RateInfo;
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait OracleProxyApi<BlockHash, Symbol, Rate, ResolveTime> {
     #[method(name = "oracleProxy_quote")]
     fn quote(
@@ -94,12 +93,12 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Option<RateInfo>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.quote(&at, symbol)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.quote(at, symbol)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn list_enabled_symbols(
@@ -107,11 +106,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> RpcResult<Result<Vec<(Symbol, ResolveTime)>, DispatchError>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_symbols(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.list_enabled_symbols(at)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

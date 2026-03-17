@@ -61,7 +61,7 @@ fn add_rewards<T: Config>(n: u32) {
     PswapWaifuOwners::<T>::insert(&eth_addr, 300);
 }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+fn assert_last_event<T: Config>(generic_event: <T as frame_system::Config>::RuntimeEvent) {
     let events = frame_system::Pallet::<T>::events();
     let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record

@@ -64,7 +64,7 @@ use fallible_iterator::FallibleIterator as _;
 use frame_support::dispatch::PostDispatchInfo;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
 use itertools::Itertools as _;
 use liquidity_aggregator::AggregatedSwapOutcome;
@@ -72,6 +72,7 @@ use liquidity_aggregator::LiquidityAggregator;
 pub use pallet::*;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
@@ -351,7 +352,7 @@ impl<T: Config> ExchangePath<T> {
                 &mut path_builder
             }
         };
-        frame_support::log::trace!("Found paths: {:?}", path_builder);
+        frame_support::__private::log::trace!("Found paths: {:?}", path_builder);
         if path_builder.paths.is_empty() {
             None
         } else {
@@ -1823,7 +1824,17 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, AssetIdOf<T>> for Pa
 }
 
 #[derive(
-    Encode, Decode, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    codec::DecodeWithMemTracking,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
 #[scale_info(skip_type_params(T))]
 pub struct BatchReceiverInfo<AccountId> {
@@ -1841,7 +1852,16 @@ impl<AccountId> BatchReceiverInfo<AccountId> {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    codec::DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
 #[scale_info(skip_type_params(T))]
 pub struct SwapBatchInfo<AssetId, DEXId, AccountId> {
@@ -1941,6 +1961,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config + assets::Config {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityRegistry: LiquidityRegistry<
             Self::DEXId,
@@ -1989,7 +2010,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);

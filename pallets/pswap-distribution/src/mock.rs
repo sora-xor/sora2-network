@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -40,7 +42,6 @@ use common::{
     ContentSource, Description, Fixed, FromGenericPair, DEFAULT_BALANCE_PRECISION, PSWAP, VXOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -48,6 +49,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_runtime::traits::Zero;
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, Perbill};
 
 pub type AccountId = AccountId32;
@@ -132,7 +134,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -293,29 +295,32 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let mut vec = self
             .endowed_accounts
             .iter()
-            .map(|(acc, ..)| (acc.clone(), 0))
+            .map(|(acc, ..)| (acc.clone(), 1))
             .chain(vec![
-                (alice(), 0),
-                (fees_account_a(), 0),
-                (fees_account_b(), 0),
-                (liquidity_provider_a(), 0),
-                (liquidity_provider_b(), 0),
-                (liquidity_provider_c(), 0),
-                (GetPswapDistributionAccountId::get(), 0),
-                (GetParliamentAccountId::get(), 0),
+                (alice(), 1),
+                (fees_account_a(), 1),
+                (fees_account_b(), 1),
+                (liquidity_provider_a(), 1),
+                (liquidity_provider_b(), 1),
+                (liquidity_provider_c(), 1),
+                (GetPswapDistributionAccountId::get(), 1),
+                (GetParliamentAccountId::get(), 1),
             ])
             .collect::<Vec<_>>();
 
         vec.sort_by_key(|x| x.0.clone());
         vec.dedup_by(|x, y| x.0 == y.0);
-        BalancesConfig { balances: vec }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        BalancesConfig {
+            balances: vec,
+            dev_accounts: None,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         PermissionsConfig {
             initial_permissions: self.initial_permissions,

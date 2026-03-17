@@ -37,6 +37,7 @@ use common::{
     XOR,
 };
 use frame_support::ensure;
+use frame_system::pallet_prelude::BlockNumberFor;
 use hex_literal::hex;
 use sp_arithmetic::traits::Saturating;
 
@@ -52,7 +53,7 @@ pub use weights::WeightInfo;
 
 type System<T> = frame_system::Pallet<T>;
 type Technical<T> = technical::Pallet<T>;
-type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+type BlockNumberOf<T> = BlockNumberFor<T>;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"faucet";
@@ -81,6 +82,7 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config + rewards::Config + technical::Config {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
     }
@@ -89,7 +91,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -231,7 +232,6 @@ pub mod pallet {
         pub reserves_account_id: T::TechAccountId,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -241,7 +241,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ReservesAcc::<T>::put(&self.reserves_account_id);
         }

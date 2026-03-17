@@ -4,11 +4,11 @@ use crate::{
 use alloc::string::String;
 use codec::{Decode, Encode};
 use common::BoundedString;
-use frame_support::dispatch::Weight;
-use frame_support::log;
+use frame_support::__private::log;
 use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use frame_support::BoundedVec;
-use frame_support::RuntimeDebug;
+use sp_runtime::RuntimeDebug;
 
 #[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {

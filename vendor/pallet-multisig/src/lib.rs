@@ -52,7 +52,7 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::{
     dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, PostDispatchInfo},
     traits::{Currency, Get, ReservableCurrency},
@@ -66,7 +66,6 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::{self as system, ensure_signed, RawOrigin};
 use scale_info::prelude::vec;
 use scale_info::TypeInfo;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_256;
 use sp_runtime::DispatchError;
@@ -103,6 +102,7 @@ pub mod pallet {
     /// Configuration trait.
     pub trait Config: frame_system::Config {
         /// The overarching event type.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// The overarching call type.
@@ -635,7 +635,6 @@ pub mod pallet {
         pub accounts: Vec<(T::AccountId, MultisigAccount<T::AccountId>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -644,27 +643,30 @@ pub mod pallet {
         }
     }
 
+    // Keep this as a compile-time guard: runtime genesis generation requires
+    // `GenesisConfig<T>: Default` in both `std` and `no_std` builds.
+    const _: fn() = || {
+        fn assert_default<T: Config>()
+        where
+            GenesisConfig<T>: Default,
+        {
+        }
+    };
+
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
-            {
-                let data = &self.accounts;
-                let data: &vec::Vec<(T::AccountId, MultisigAccount<T::AccountId>)> = data;
-                data.iter().for_each(|(k, v)| {
-                    <Accounts<T> as frame_support::storage::StorageMap<
-                        T::AccountId,
-                        MultisigAccount<T::AccountId>,
-                    >>::insert::<&T::AccountId, &MultisigAccount<T::AccountId>>(
-                        k, v
-                    );
-                });
-            }
+            self.accounts
+                .iter()
+                .for_each(|(account_id, multisig)| Accounts::<T>::insert(account_id, multisig));
         }
     }
 }
 
 /// Represents height on either Thischain of Sidechain.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum MultiChainHeight<BlockNumber> {
     Thischain(BlockNumber),
@@ -680,7 +682,18 @@ impl<BlockNumber: Default> Default for MultiChainHeight<BlockNumber> {
 /// A global extrinsic index, formed as the extrinsic index within a block, together with that
 /// block's height. This allows a transaction in which a multisig operation of a particular
 /// composite was created to be uniquely identified.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+#[derive(
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Default,
+    RuntimeDebug,
+    TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BridgeTimepoint<BlockNumber> {
     /// The height of the chain at the point in time.
@@ -690,7 +703,9 @@ pub struct BridgeTimepoint<BlockNumber> {
 }
 
 /// An open multisig operation.
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+#[derive(
+    Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Default, RuntimeDebug, TypeInfo,
+)]
 pub struct Multisig<BlockNumber, Balance, AccountId> {
     /// The extrinsic when the multisig operation was opened.
     pub when: BridgeTimepoint<BlockNumber>,
@@ -702,8 +717,19 @@ pub struct Multisig<BlockNumber, Balance, AccountId> {
     pub approvals: Vec<AccountId>,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(
+    Clone,
+    Eq,
+    PartialEq,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Default,
+    RuntimeDebug,
+    TypeInfo,
+    Serialize,
+    Deserialize,
+)]
 pub struct MultisigAccount<AccountId> {
     /// Parties of the account.
     pub signatories: Vec<AccountId>,
@@ -817,7 +843,7 @@ impl<T: Config> Pallet<T> {
     pub fn multi_account_id(
         creator: &T::AccountId,
         block_number: BlockNumberFor<T>,
-        salt: T::Index,
+        salt: <T as frame_system::Config>::Nonce,
     ) -> T::AccountId {
         let entropy = (b"modlpy/utilisuba", creator, block_number, salt).using_encoded(blake2_256);
         T::AccountId::decode(&mut &entropy[..]).unwrap()
@@ -882,7 +908,7 @@ impl<T: Config> Pallet<T> {
             if let Some(call) = maybe_approved_call {
                 // verify weight
                 ensure!(
-                    max_weight.all_gte(call.get_dispatch_info().weight),
+                    max_weight.all_gte(call.get_dispatch_info().total_weight()),
                     Error::<T>::WeightTooLow
                 );
                 <Multisigs<T>>::remove(&id, call_hash);

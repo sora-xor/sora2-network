@@ -180,7 +180,7 @@ benchmarks! {
         let sk = secp256k1::SecretKey::parse(&[1; 32]).unwrap();
         let public = secp256k1::PublicKey::from_secret_key(&sk);
         let address = public_key_to_eth_address(&public);
-        let public = ecdsa::Public(public.serialize_compressed());
+        let public = sp_core::ecdsa::Public::from_raw(public.serialize_compressed());
         let account_id = <T as frame_system::pallet::Config>::AccountId::decode(&mut &MultiSigner::Ecdsa(public.clone()).into_account().encode()[..]).unwrap();
         Pallet::<T>::force_add_peer(RawOrigin::Root.into(), account_id.clone(), address, net_id).unwrap();
         let (signature, _) = Pallet::<T>::sign_message(encoded_request.as_raw(), &sk);
@@ -215,7 +215,7 @@ benchmarks! {
         let sk = secp256k1::SecretKey::parse(&[1; 32]).unwrap();
         let public = secp256k1::PublicKey::from_secret_key(&sk);
         let address = public_key_to_eth_address(&public);
-        let public = ecdsa::Public(public.serialize_compressed());
+        let public = sp_core::ecdsa::Public::from_raw(public.serialize_compressed());
         let account_id = <T as frame_system::pallet::Config>::AccountId::decode(&mut &MultiSigner::Ecdsa(public.clone()).into_account().encode()[..]).unwrap();
         Pallet::<T>::force_add_peer(RawOrigin::Root.into(), account_id.clone(), address, net_id).unwrap();
         let (signature, _) = Pallet::<T>::sign_message(encoded_request.as_raw(), &sk);

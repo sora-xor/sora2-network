@@ -20,19 +20,19 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 common = { path = "../../common", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 pswap-distribution = { path = "../pswap-distribution", default-features = false }
 vested-rewards = { path = "../vested-rewards", default-features = false }
 trading-pair = { path = "../trading-pair", default-features = false }
 technical = { path = "../technical", default-features = false }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 hex-literal = "0.4.1"
 
 [dev-dependencies]
@@ -40,9 +40,9 @@ assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 currencies = { workspace = true }
 demeter-farming-platform = { path = "../demeter-farming-platform" }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 tokens = { workspace = true }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 permissions = { path = "../permissions" }
 technical = { path = "../technical" }
 pswap-distribution = { path = "../pswap-distribution" }

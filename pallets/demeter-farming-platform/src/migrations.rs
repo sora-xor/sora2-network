@@ -1,9 +1,9 @@
 use crate::{AssetIdOf, Config, PoolData, Pools, UserInfo, UserInfos};
 use codec::{Decode, Encode};
 use common::{Balance, XOR};
-use frame_support::dispatch::Weight;
-use frame_support::log;
+use frame_support::__private::log;
 use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]

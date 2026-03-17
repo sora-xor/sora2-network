@@ -47,7 +47,7 @@ use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::traits::Hooks;
 use frame_system::RawOrigin;
-use sp_keyring::AccountKeyring as Keyring;
+use sp_keyring::sr25519::Keyring;
 
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
@@ -160,7 +160,7 @@ fn burn_failed() {
                 GenericAccount::EVM(H160::default()),
                 1000,
             ),
-            pallet_balances::Error::<Test>::InsufficientBalance
+            sp_runtime::TokenError::FundsUnavailable
         );
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),

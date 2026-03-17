@@ -13,6 +13,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTC_BOOTSTRAP: "1"
 
 jobs:
   sccp_mcp:
@@ -23,8 +24,22 @@ jobs:
 
       - name: Setup Rust nightly toolchain
         run: |
-          rustup toolchain install nightly-2023-03-21 --profile minimal --component rustfmt
-          rustup default nightly-2023-03-21
+          rustup toolchain install nightly-2025-05-08 --profile minimal --component rustfmt
+          rustup default nightly-2025-05-08
+
+      - name: Export LLVM env
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v llvm-config >/dev/null 2>&1; then
+            llvm_libdir="$(llvm-config --libdir)"
+            echo "LIBCLANG_PATH=${llvm_libdir}" >> "$GITHUB_ENV"
+            echo "LD_LIBRARY_PATH=${llvm_libdir}:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+            echo "DYLD_FALLBACK_LIBRARY_PATH=${llvm_libdir}:${DYLD_FALLBACK_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          elif [[ -d /usr/lib/llvm-14/lib ]]; then
+            echo "LIBCLANG_PATH=/usr/lib/llvm-14/lib" >> "$GITHUB_ENV"
+            echo "LD_LIBRARY_PATH=/usr/lib/llvm-14/lib:${LD_LIBRARY_PATH:-}" >> "$GITHUB_ENV"
+          fi
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@3cf7f8cc28d1b4e7d01e3783be10a97d55d483c8

@@ -35,9 +35,10 @@
 use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{AssetIdOf, AssetInfoProvider, FromGenericPair, SwapAction, SwapRulesValidation};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
+use sp_runtime::DispatchError;
 use sp_runtime::RuntimeDebug;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
@@ -260,10 +261,12 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_std::vec::Vec;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + common::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Like Asset but deterministically maked from purpose.
@@ -318,7 +321,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -424,7 +426,6 @@ pub mod pallet {
         pub register_tech_accounts: Vec<(AccountIdOf<T>, TechAccountIdOf<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -434,7 +435,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.register_tech_accounts.iter().for_each(|(k, v)| {
                 frame_system::Pallet::<T>::inc_providers(k);

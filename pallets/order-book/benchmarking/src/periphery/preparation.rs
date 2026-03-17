@@ -44,7 +44,7 @@ use framenode_runtime::order_book_benchmarking as order_book_benchmarking_import
 
 use common::prelude::{QuoteAmount, Scalar};
 use common::{balance, AssetIdOf, AssetManager, Balance, OrderBookId, PriceVariant, ETH, VAL, XOR};
-use frame_benchmarking::log::debug;
+use frame_support::__private::log::debug;
 use frame_support::traits::Time;
 use frame_system::RawOrigin;
 use order_book_imported::test_utils::accounts;

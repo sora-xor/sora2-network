@@ -27,7 +27,7 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#![allow(dead_code)]
+#![allow(deprecated, dead_code, unused_imports)]
 use crate as referrals;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
@@ -42,7 +42,7 @@ use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::crypto::AccountId32;
-use sp_runtime::{self, Perbill};
+use sp_runtime::{self, BuildStorage, Perbill};
 
 type DEXId = common::DEXId;
 type AccountId = AccountId32;
@@ -72,7 +72,7 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -96,16 +96,16 @@ parameter_types! {
 }
 
 pub fn test_ext() -> sp_io::TestExternalities {
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Runtime>()
-        .unwrap();
+    let mut t = SystemConfig::default().build_storage().unwrap();
+    let existential_deposit = <Runtime as pallet_balances::Config>::ExistentialDeposit::get();
 
     pallet_balances::GenesisConfig::<Runtime> {
         balances: vec![
-            (ALICE, 0u128.into()),
-            (BOB, 0u128.into()),
-            (MINTING_ACCOUNT, 0u128.into()),
+            (ALICE, existential_deposit),
+            (BOB, existential_deposit),
+            (MINTING_ACCOUNT, existential_deposit),
         ],
+        dev_accounts: None,
     }
     .assimilate_storage(&mut t)
     .unwrap();

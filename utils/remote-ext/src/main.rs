@@ -6,17 +6,17 @@ use codec::Decode;
 use frame_remote_externalities::{
     Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
 };
-use jsonrpsee::ws_client::{WsClient, WsClientBuilder};
+use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use sp_core::H256;
+use sp_runtime::generic::Preamble;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
 
 use anyhow::Result as AnyResult;
 use sp_runtime::traits::Dispatchable;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 async fn create_ext<B>(
-    client: Arc<WsClient>,
+    client: HttpClient,
     at: Option<H256>,
     snapshot_path: Option<PathBuf>,
 ) -> AnyResult<RemoteExternalities<B>>
@@ -67,18 +67,17 @@ struct Cli {
 async fn main() -> AnyResult<()> {
     env_logger::init();
     let cli = Cli::parse();
-    let client = WsClientBuilder::default()
-        .max_request_body_size(u32::MAX)
-        .build(cli.uri)
-        .await?;
-    let client = Arc::new(client);
-    let mut ext =
-        create_ext::<framenode_runtime::Block>(client.clone(), cli.at, cli.snapshot_path).await?;
+    let client = HttpClientBuilder::default()
+        .max_request_size(u32::MAX)
+        .build(cli.uri)?;
+    let mut ext = create_ext::<framenode_runtime::Block>(client, cli.at, cli.snapshot_path).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
         let xt_encoded = hex::decode(&cli.xt).unwrap();
-        let xt = framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
-        if let Some((account, _signature, _extra)) = xt.signature {
-            xt.function
+        let framenode_runtime::UncheckedExtrinsic {
+            preamble, function, ..
+        } = framenode_runtime::UncheckedExtrinsic::decode(&mut &xt_encoded[..]).unwrap();
+        if let Preamble::Signed(account, _signature, _extra) = preamble {
+            function
                 .dispatch(framenode_runtime::RuntimeOrigin::signed(account))
                 .unwrap();
         }

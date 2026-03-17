@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 use crate::{self as ceres_launchpad, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
@@ -23,6 +25,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::{MultiSignature, Perbill};
 
 pub type BlockNumber = u64;
@@ -42,7 +45,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -224,7 +227,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,
