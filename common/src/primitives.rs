@@ -31,24 +31,23 @@
 use crate::traits::{IsRepresentation, PureOrWrapped};
 use crate::{Fixed, IsValid};
 use bridge_types::GenericAssetId;
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use core::{fmt::Debug, str::FromStr};
-use frame_support::dispatch::TypeInfo;
 use frame_support::traits::ConstU32;
-use frame_support::{ensure, BoundedVec, RuntimeDebug};
+use frame_support::{ensure, BoundedVec};
 use hex_literal::hex;
+use scale_info::TypeInfo;
+use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::traits::Get;
+use sp_runtime::RuntimeDebug;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
 
 #[cfg(feature = "std")]
 use {
-    rustc_hex::ToHex,
-    serde::{Deserialize, Serialize},
-    sp_std::convert::TryInto,
-    sp_std::fmt::Display,
+    rustc_hex::ToHex, sp_std::convert::TryInto, sp_std::fmt::Display,
     static_assertions::_core::fmt::Formatter,
 };
 
@@ -93,6 +92,7 @@ impl From<BalanceWrapper> for Balance {
 
 /// Information about state of particular DEX.
 #[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DEXInfo<AssetId> {
     /// AssetId of Base Asset in DEX.
@@ -108,6 +108,7 @@ pub struct DEXInfo<AssetId> {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Copy,
@@ -119,6 +120,7 @@ pub struct DEXInfo<AssetId> {
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TradingPair<AssetId> {
     /// Base token of exchange.
@@ -149,10 +151,9 @@ pub use _allowed_deprecated::PredefinedAssetId;
 mod _allowed_deprecated {
     #![allow(deprecated)]
 
-    use codec::{Decode, Encode, MaxEncodedLen};
-    use frame_support::RuntimeDebug;
+    use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
+    use sp_runtime::RuntimeDebug;
 
-    #[cfg(feature = "std")]
     use serde::{Deserialize, Serialize};
 
     /// Asset identifier.
@@ -162,6 +163,7 @@ mod _allowed_deprecated {
     #[derive(
         Encode,
         Decode,
+        DecodeWithMemTracking,
         Eq,
         PartialEq,
         Copy,
@@ -172,6 +174,7 @@ mod _allowed_deprecated {
         scale_info::TypeInfo,
         MaxEncodedLen,
     )]
+    #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
     #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
     #[repr(u8)]
     pub enum PredefinedAssetId {
@@ -247,7 +250,7 @@ pub const KSM: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
 ));
 #[cfg(feature = "private-net")]
 pub const ROC: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
-    "0x00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
+    "00dc9b4341fde46c9ac80b623d0d43afd9ac205baabdc087cadaa06f92b309c7"
 ));
 // `private-net` is not used in prod
 #[allow(deprecated)]
@@ -277,6 +280,7 @@ impl Default for PredefinedAssetId {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Copy,
@@ -314,8 +318,19 @@ pub type AssetId32Code = [u8; 32];
 /// This is wrapped structure, this is like H256 or Р512, extra
 /// PhantomData is added for typing reasons.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Copy, Clone, PartialOrd, Ord, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Copy,
+    Clone,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetId32<AssetId> {
     /// Internal data representing given AssetId.
@@ -363,7 +378,7 @@ impl<AssetId> TryFrom<GenericAssetId> for AssetId32<AssetId> {
 
     fn try_from(asset_id: GenericAssetId) -> Result<Self, Self::Error> {
         match asset_id {
-            GenericAssetId::Sora(id) => Ok(id.into()),
+            GenericAssetId::Sora(id) => Ok(Self::from_bytes(id.0)),
             _ => Err("Non SORA assets is not supported"),
         }
     }
@@ -522,6 +537,7 @@ impl AssetId32<PredefinedSbtAssetId> {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Copy,
@@ -554,8 +570,18 @@ pub type BalancePrecision = u8;
 pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION as u8;
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetSymbol(pub Vec<u8>);
 
@@ -607,8 +633,18 @@ impl IsValid for AssetSymbol {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct AssetName(pub Vec<u8>);
 
@@ -670,6 +706,7 @@ impl MaxEncodedLen for AssetName {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Clone,
@@ -679,6 +716,7 @@ impl MaxEncodedLen for AssetName {
     Default,
     scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct ContentSource(pub Vec<u8>);
 
@@ -715,6 +753,7 @@ impl MaxEncodedLen for ContentSource {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Clone,
@@ -724,6 +763,7 @@ impl MaxEncodedLen for ContentSource {
     Default,
     scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct Description(pub Vec<u8>);
 
@@ -760,6 +800,7 @@ impl MaxEncodedLen for Description {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Clone,
@@ -769,6 +810,7 @@ impl MaxEncodedLen for Description {
     Default,
     scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct SymbolName(pub Vec<u8>);
 
@@ -817,6 +859,7 @@ const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Clone,
@@ -859,8 +902,20 @@ impl IsValid for CrowdloanTag {
 }
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Debug,
+    Copy,
+    Clone,
+    Hash,
+    scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAssetId<AssetId> {
     Wrapped(AssetId),
@@ -870,6 +925,7 @@ pub enum TechAssetId<AssetId> {
 #[derive(
     Encode, Decode, Eq, PartialEq, PartialOrd, Ord, Debug, Copy, Clone, Hash, scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AssetIdExtraAssetRecordArg<DEXId, LstId, AccountId> {
     DEXId(DEXId),
@@ -893,6 +949,7 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     RuntimeDebug,
     PartialEq,
     Eq,
@@ -904,6 +961,7 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     MaxEncodedLen,
     strum::EnumIter,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum LiquiditySourceType {
@@ -918,7 +976,10 @@ pub enum LiquiditySourceType {
     OrderBook,
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, scale_info::TypeInfo,
+)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum FilterMode {
@@ -936,7 +997,10 @@ impl Default for FilterMode {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, scale_info::TypeInfo,
+)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum ManagementMode {
@@ -954,7 +1018,16 @@ impl Default for ManagementMode {
 
 /// Identification of liquidity source.
 #[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
 )]
 pub struct LiquiditySourceId<DEXId: Copy, LiquiditySourceIndex: Copy> {
     /// Identification of target DEX.
@@ -988,7 +1061,19 @@ impl<AssetId> PureOrWrapped<AssetId> for TechAssetId<AssetId> {
 }
 
 /// Code of purpose for technical account.
-#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
+)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
@@ -1004,8 +1089,19 @@ pub enum TechPurpose<AssetId> {
 /// Enum record `WrappedRepr` is wrapped represention of `Pure` variant of enum, this is useful then
 /// representation is known but backward mapping is not known.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, Default, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    PartialOrd,
+    Ord,
+    Debug,
+    Default,
+    scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum TechAccountId<AccountId, AssetId, DEXId> {
     Pure(DEXId, TechPurpose<AssetId>),
@@ -1197,8 +1293,19 @@ impl From<InvokeRPCError> for i32 {
 
 /// Reason for particular reward during swap.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Copy, PartialOrd, Ord, Debug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    Copy,
+    PartialOrd,
+    Ord,
+    Debug,
+    scale_info::TypeInfo,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RewardReason {
     /// Reason is unknown.
@@ -1227,7 +1334,16 @@ pub struct PswapRemintInfo {
 }
 
 #[derive(
-    Encode, Decode, PartialEq, Eq, Copy, Clone, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    Copy,
+    Clone,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum PriceVariant {
     Buy,
@@ -1244,7 +1360,20 @@ impl PriceVariant {
 }
 
 /// List of available oracles
-#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    RuntimeDebug,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Oracle {
     BandChainFeed,
@@ -1275,6 +1404,8 @@ impl<N: Get<u32>> codec::Decode for BoundedString<N> {
         Ok(Self(inner))
     }
 }
+
+impl<N: Get<u32>> codec::DecodeWithMemTracking for BoundedString<N> {}
 
 impl<N: Get<u32>> Clone for BoundedString<N> {
     fn clone(&self) -> Self {
@@ -1323,6 +1454,7 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Clone,
@@ -1333,6 +1465,7 @@ impl<N: Get<u32>> Ord for BoundedString<N> {
     scale_info::TypeInfo,
     Default,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum AssetType {
@@ -1358,6 +1491,7 @@ pub struct AssetInfo {
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Copy,
@@ -1369,6 +1503,7 @@ pub struct AssetInfo {
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OrderBookId<AssetId, DEXId> {
     /// DEX id

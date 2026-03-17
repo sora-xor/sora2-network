@@ -648,8 +648,8 @@ fn should_fail_add_peer_compat_without_corresponding_add_peer_request() {
         let (compat_request, compat_hash, add_hash) = crate::RequestsQueue::<Runtime>::get(net_id)
             .into_iter()
             .fold((None, None, None), |(compat_req, compat_h, add_h), hash| {
-                let Some((req, req_hash)) = crate::Requests::<Runtime>::get(net_id, hash)
-                    .and_then(|r| r.into_outgoing())
+                let Some((req, req_hash)) =
+                    crate::Requests::<Runtime>::get(net_id, hash).and_then(|r| r.into_outgoing())
                 else {
                     return (compat_req, compat_h, add_h);
                 };
@@ -746,10 +746,10 @@ fn should_fail_remove_peer_compat_without_corresponding_remove_peer_request() {
                     (None, None, None),
                     |(compat_req, compat_h, remove_h), hash| {
                         let Some((req, req_hash)) = crate::Requests::<Runtime>::get(net_id, hash)
-                    .and_then(|r| r.into_outgoing())
-                else {
-                    return (compat_req, compat_h, remove_h);
-                };
+                            .and_then(|r| r.into_outgoing())
+                        else {
+                            return (compat_req, compat_h, remove_h);
+                        };
                         match req {
                             crate::requests::OutgoingRequest::RemovePeerCompat(_) => {
                                 (Some(req), Some(req_hash), remove_h)
@@ -804,10 +804,10 @@ fn should_fail_remove_peer_without_corresponding_compat_request() {
                     (None, None, None),
                     |(compat_h, remove_req, remove_h), hash| {
                         let Some((req, req_hash)) = crate::Requests::<Runtime>::get(net_id, hash)
-                    .and_then(|r| r.into_outgoing())
-                else {
-                    return (compat_h, remove_req, remove_h);
-                };
+                            .and_then(|r| r.into_outgoing())
+                        else {
+                            return (compat_h, remove_req, remove_h);
+                        };
                         match req {
                             crate::requests::OutgoingRequest::RemovePeerCompat(_) => {
                                 (Some(req_hash), remove_req, remove_h)

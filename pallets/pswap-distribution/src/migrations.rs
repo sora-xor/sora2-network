@@ -33,7 +33,7 @@ use core::marker::PhantomData;
 use frame_support::traits::OnRuntimeUpgrade;
 
 pub mod v2 {
-    use frame_support::{log::info, traits::StorageVersion};
+    use frame_support::{__private::log::info, traits::StorageVersion};
     use sp_std::prelude::Vec;
 
     use super::*;
@@ -47,7 +47,7 @@ pub mod v2 {
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version 1, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
@@ -71,26 +71,34 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, frame_support::pallet_prelude::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
-                "Wrong storage version before upgrade"
+                frame_support::pallet_prelude::DispatchError::Other(
+                    "Wrong storage version before upgrade",
+                )
             );
             Ok(Vec::new())
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(
+            _state: Vec<u8>,
+        ) -> Result<(), frame_support::pallet_prelude::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-                "Wrong storage version after upgrade"
+                frame_support::pallet_prelude::DispatchError::Other(
+                    "Wrong storage version after upgrade",
+                )
             );
             let pools = &G::get();
 
             for (_, pool_account) in pools {
                 frame_support::ensure!(
                     !SubscribedAccounts::<T>::contains_key(pool_account),
-                    "Synthetic pools still referenced in SubscribedAccounts storage map in PswapDistribution pallet"
+                    frame_support::pallet_prelude::DispatchError::Other(
+                        "Synthetic pools still referenced in SubscribedAccounts storage map in PswapDistribution pallet",
+                    )
                 );
             }
             Ok(())

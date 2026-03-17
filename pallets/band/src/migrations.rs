@@ -109,7 +109,7 @@ pub mod v1 {
     {
         fn on_runtime_upgrade() -> Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(0) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version 0, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
@@ -133,19 +133,23 @@ pub mod v1 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, frame_support::pallet_prelude::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(0),
-                "must upgrade linearly"
+                frame_support::pallet_prelude::DispatchError::Other("must upgrade linearly")
             );
             Ok(Vec::new())
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(
+            _state: Vec<u8>,
+        ) -> Result<(), frame_support::pallet_prelude::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
-                "should be upgraded to version 1"
+                frame_support::pallet_prelude::DispatchError::Other(
+                    "should be upgraded to version 1",
+                )
             );
             Ok(())
         }
@@ -208,7 +212,7 @@ pub mod v2 {
     {
         fn on_runtime_upgrade() -> Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version 1, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
@@ -239,19 +243,23 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, frame_support::pallet_prelude::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
-                "must upgrade linearly"
+                frame_support::pallet_prelude::DispatchError::Other("must upgrade linearly")
             );
             Ok(Vec::new())
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(
+            _state: Vec<u8>,
+        ) -> Result<(), frame_support::pallet_prelude::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
-                "should be upgraded to version 1"
+                frame_support::pallet_prelude::DispatchError::Other(
+                    "should be upgraded to version 1",
+                )
             );
             Ok(())
         }

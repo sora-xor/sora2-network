@@ -16,19 +16,19 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 hex-literal = { version = "0.4.1", default-features = false }
 secp256k1 = { version = "0.7", features = [
     "hmac",
     "static-context",
 ], default-features = false, package = "libsecp256k1" }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0", default-features = false }
+serde = { version = "1.0.101", default-features = false, features = ["alloc", "derive"] }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 orml-traits = { workspace = true }
 
 common = { path = "../../common", default-features = false }
@@ -36,8 +36,8 @@ technical = { path = "../technical", default-features = false }
 
 [dev-dependencies]
 currencies = { workspace = true }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 tokens = { workspace = true }
 
 assets = { path = "../assets" }
@@ -53,11 +53,15 @@ std = [
     "scale-info/std",
     'frame-support/std',
     'frame-system/std',
+    'orml-traits/std',
     'serde/std',
     'sp-core/std',
     'sp-io/std',
+    'sp-runtime/std',
     'sp-std/std',
     'secp256k1/std',
+    'common/std',
+    'technical/std',
 ]
 
 runtime-benchmarks = [
@@ -65,5 +69,7 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
 ]
+
+include-real-files = []
 
 try-runtime = ["frame-support/try-runtime"]

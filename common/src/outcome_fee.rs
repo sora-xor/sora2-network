@@ -31,16 +31,25 @@
 use crate::fixed_wrapper::FixedWrapper;
 use crate::{Balance, Fixed};
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use fixnum::ops::Zero as _;
-use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{Saturating, Zero};
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_map::BTreeMap;
 
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, Ord, PartialOrd, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    Ord,
+    PartialOrd,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutcomeFee<AssetId: Ord, AmountType>(pub BTreeMap<AssetId, AmountType>);

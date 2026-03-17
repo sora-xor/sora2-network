@@ -28,22 +28,21 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 
 use std::sync::Arc;
 
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
+
 // Runtime API imports.
 pub use iroha_migration_runtime_api::IrohaMigrationAPI as IrohaMigrationRuntimeAPI;
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait IrohaMigrationAPI<BlockHash> {
     #[method(name = "irohaMigration_needsMigration")]
     fn needs_migration(&self, iroha_address: String, at: Option<BlockHash>) -> Result<bool>;
@@ -73,11 +72,11 @@ where
 {
     fn needs_migration(&self, iroha_address: String, at: Option<Block::Hash>) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.needs_migration(&at, iroha_address)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.needs_migration(at, iroha_address)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

@@ -32,12 +32,13 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::storage::PrefixIterator;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::{ensure, fail, Parameter};
 use frame_system::ensure_signed;
+use sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 
@@ -948,7 +949,7 @@ pub struct DenominateXor<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), _factor);
         for dex_id in T::DexInfoProvider::list_dex_ids() {
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             if dex_info.base_asset_id == XOR.into() {
@@ -991,7 +992,7 @@ pub struct DenominateTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
     fn on_denominate(_factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), _factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), _factor);
         for dex_id in T::DexInfoProvider::list_dex_ids() {
             let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
             if let Some((pool_account, _fee_account)) =
@@ -1045,6 +1046,7 @@ pub mod pallet {
         const MIN_XOR: Balance;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         //TODO: implement and use + Into<SwapActionOf<T> for this types.
@@ -1107,7 +1109,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -1126,10 +1127,12 @@ pub mod pallet {
             for dex_id in T::DexInfoProvider::list_dex_ids() {
                 weight = weight.saturating_add(T::DbWeight::get().reads(2));
                 let Ok(dex_info) = T::DexInfoProvider::get_dex_info(&dex_id) else {
-                    frame_support::log::warn!("Failed to get DEX info for {:?}", dex_id);
+                    frame_support::__private::log::warn!("Failed to get DEX info for {:?}", dex_id);
                     continue;
                 };
-                let Some((_, targets)) = <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(&dex_info.base_asset_id) else {
+                let Some((_, targets)) = <T::GetChameleonPools as orml_traits::GetByKey<_, _>>::get(
+                    &dex_info.base_asset_id,
+                ) else {
                     continue;
                 };
                 for target in targets {
@@ -1139,7 +1142,7 @@ pub mod pallet {
                         &target,
                         &mut weight,
                     ) {
-                        frame_support::log::warn!(
+                        frame_support::__private::log::warn!(
                             "Failed to adjust liquidity for [{:?}] {:?} -> {:?}: {:?}",
                             dex_id,
                             dex_info.base_asset_id,

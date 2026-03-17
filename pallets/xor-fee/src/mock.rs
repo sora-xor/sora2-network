@@ -30,6 +30,7 @@
 
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![allow(deprecated)]
 
 use common::mock::ExistentialDeposits;
 use common::prelude::{Balance, FixedWrapper, QuoteAmount, SwapAmount, SwapOutcome};
@@ -50,9 +51,7 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::{DispatchInfo, Pays, PostDispatchInfo};
 use frame_support::pallet_prelude::{Hooks, ValueQuery};
-use frame_support::traits::{
-    Currency, ExistenceRequirement, GenesisBuild, Randomness, WithdrawReasons,
-};
+use frame_support::traits::{Currency, ExistenceRequirement, Randomness, WithdrawReasons};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types, storage_alias};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -60,7 +59,7 @@ use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
-use sp_runtime::{AccountId32, DispatchError, Percent};
+use sp_runtime::{AccountId32, BuildStorage, DispatchError, Percent};
 use traits::MultiCurrency;
 
 pub use crate::{self as xor_fee, Config, Pallet};
@@ -72,6 +71,7 @@ pub type BlockNumber = u64;
 type AssetId = AssetId32<common::PredefinedAssetId>;
 type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
 type DEXId = common::DEXId;
+#[allow(dead_code)]
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
@@ -116,7 +116,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -226,6 +226,25 @@ impl OnValBurned for ValBurnedAggregator {
 pub struct WithdrawFee;
 
 impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
+    fn can_withdraw_fee(
+        _who: &AccountId,
+        fee_source: &AccountId,
+        _call: &RuntimeCall,
+        fee: Balance,
+    ) -> Result<(), DispatchError> {
+        let current_balance = Balances::free_balance(fee_source);
+        let resulting_balance = current_balance
+            .checked_sub(fee)
+            .ok_or(xor_fee::Error::<Runtime>::FeeCalculationFailed)?;
+        Balances::ensure_can_withdraw(
+            fee_source,
+            fee,
+            WithdrawReasons::TRANSACTION_PAYMENT,
+            resulting_balance,
+        )?;
+        Ok(())
+    }
+
     fn withdraw_fee(
         _who: &AccountId,
         fee_source: &AccountId,
@@ -264,7 +283,6 @@ impl Randomness<H256, BlockNumber> for MockRandomness {
 }
 
 impl Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type XorCurrency = Balances;
     type KusdId = KusdId;
     type TbcdId = TbcdId;
@@ -377,7 +395,12 @@ impl MockLiquidityProxy {
             ),
         };
         if let Some((sender, receiver)) = sender.zip(receiver) {
-            Currencies::withdraw(*input_asset_id, sender, input_amount)?;
+            Currencies::withdraw(
+                *input_asset_id,
+                sender,
+                input_amount,
+                ExistenceRequirement::AllowDeath,
+            )?;
             Currencies::deposit(*output_asset_id, receiver, output_amount)?;
         }
         if is_reversed {
@@ -431,12 +454,13 @@ pub struct ExtBuilder;
 
 impl ExtBuilder {
     pub fn build() -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![(GetXorFeeAccountId::get(), initial_balance())],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -511,7 +535,8 @@ impl ExtBuilder {
 pub fn info_from_weight(w: Weight) -> DispatchInfo {
     // pays_fee: Pays::Yes -- class: DispatchClass::Normal
     DispatchInfo {
-        weight: w,
+        call_weight: w,
+        extension_weight: Weight::zero(),
         ..Default::default()
     }
 }
@@ -519,7 +544,8 @@ pub fn info_from_weight(w: Weight) -> DispatchInfo {
 pub fn info_pays_no(w: Weight) -> DispatchInfo {
     DispatchInfo {
         pays_fee: Pays::No,
-        weight: w,
+        call_weight: w,
+        extension_weight: Weight::zero(),
         ..Default::default()
     }
 }

@@ -77,14 +77,14 @@ use crate::util::majority;
 use alloc::string::String;
 use bridge_types::traits::BridgeApp;
 use bridge_types::GenericNetworkId;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::Balance;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
 use core::stringify;
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::log::{debug, error, info, warn};
+use frame_support::__private::log::{debug, error, info, warn};
+use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
@@ -96,7 +96,7 @@ use frame_support::sp_runtime::KeyTypeId;
 use frame_support::sp_runtime::RuntimeAppPublic;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, Parameter, RuntimeDebug};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction};
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
@@ -104,9 +104,10 @@ use hex_literal::hex;
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
+use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::borrow::Cow;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug};
@@ -187,7 +188,7 @@ pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
 type Timepoint<T> =
-    bridge_multisig::BridgeTimepoint<<T as frame_system::pallet::Config>::BlockNumber>;
+    bridge_multisig::BridgeTimepoint<frame_system::pallet_prelude::BlockNumberFor<T>>;
 type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
@@ -217,7 +218,15 @@ pub struct NetworkParams<AccountId: Ord> {
 }
 
 /// Network configuration.
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    not(feature = "std"),
+    serde(bound(
+        serialize = "<T as frame_system::pallet::Config>::AccountId: Serialize, <T as assets::Config>::AssetId: Serialize",
+        deserialize = "<T as frame_system::pallet::Config>::AccountId: Deserialize<'de>, <T as assets::Config>::AssetId: Deserialize<'de>"
+    ))
+)]
 #[cfg_attr(
     feature = "std",
     serde(bound(
@@ -285,6 +294,7 @@ impl Default for BridgeStatus {
 }
 
 /// Bridge asset parameters.
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum AssetConfig<AssetId> {
@@ -331,7 +341,17 @@ impl<AssetId> AssetConfig<AssetId> {
 
 /// Bridge function signature version
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+)]
 pub enum BridgeSignatureVersion {
     V1,
     // Fix signature overlapping for addPeer, removePeer and prepareForMigration
@@ -350,7 +370,7 @@ pub mod pallet {
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use common::{ContentSource, Description};
-    use frame_support::log;
+    use frame_support::__private::log;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;
@@ -368,6 +388,7 @@ pub mod pallet {
         + bridge_multisig::Config<RuntimeCall = <Self as Config>::RuntimeCall>
         + fmt::Debug
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// The identifier type for an offchain worker.
         type PeerId: AppCrypto<Self::Public, Self::Signature>;
@@ -425,7 +446,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -442,7 +462,7 @@ pub mod pallet {
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
-        fn offchain_worker(block_number: <T as frame_system::pallet::Config>::BlockNumber) {
+        fn offchain_worker(block_number: frame_system::pallet_prelude::BlockNumberFor<T>) {
             debug!("Entering off-chain workers {:?}", block_number);
             let marker_ref = StorageValueRef::persistent(STORAGE_PEER_MARKER_KEY);
             let legacy_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
@@ -1435,7 +1455,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Identity,
         H256,
-        <T as frame_system::pallet::Config>::BlockNumber,
+        frame_system::pallet_prelude::BlockNumberFor<T>,
         ValueQuery,
     >;
 
@@ -1647,7 +1667,6 @@ pub mod pallet {
         pub networks: Vec<NetworkConfig<T>>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -1660,7 +1679,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             if let Some(authority_account) = self.authority_account.as_ref() {
                 AuthorityAccount::<T>::put(authority_account);

@@ -72,7 +72,7 @@ pub mod pallet {
     use common::prelude::Balance;
     use common::BoundedString;
     use common::{AssetIdOf, AssetManager};
-    use frame_support::log;
+    use frame_support::__private::log;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::pallet_prelude::*;
@@ -104,6 +104,7 @@ pub mod pallet {
         type DescriptionLimit: Get<u32>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Weight information for extrinsics in this pallet.
@@ -114,7 +115,6 @@ pub mod pallet {
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -417,7 +417,7 @@ pub mod pallet {
                 );
 
                 if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
-                    log::error!("Failed to migrate: {}", err);
+                    log::error!("Failed to migrate: {:?}", err);
                 } else {
                     PalletStorageVersion::<T>::put(StorageVersion::V3);
                 }

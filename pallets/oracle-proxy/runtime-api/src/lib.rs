@@ -41,7 +41,7 @@ use serde::{Deserialize, Serialize};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
-#[derive(Eq, PartialEq, Encode, Decode, Default)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 pub struct RateInfo {
     #[cfg_attr(

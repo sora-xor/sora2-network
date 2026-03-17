@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -40,6 +42,7 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::traits::ConstU32;
 use frame_support::{construct_runtime, parameter_types};
 use sp_runtime::traits::{IdentifyAccount, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::MultiSignature;
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -80,7 +83,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -93,8 +96,5 @@ construct_runtime! {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
-        .unwrap()
-        .into()
+    SystemConfig::default().build_storage().unwrap().into()
 }

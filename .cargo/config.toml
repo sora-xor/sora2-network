@@ -7,3 +7,8 @@ opt-level = 's'
 
 [profile.test]
 debug = false
+
+[env]
+LLVM_CONFIG_PATH = "/opt/homebrew/opt/llvm/bin/llvm-config"
+LIBCLANG_PATH = "/opt/homebrew/opt/llvm/lib"
+DYLD_FALLBACK_LIBRARY_PATH = "/opt/homebrew/opt/llvm/lib"

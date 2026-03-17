@@ -30,10 +30,10 @@
 
 use alloc::boxed::Box;
 use ethabi::Function;
-#[cfg(feature = "std")]
-use frame_support::RuntimeDebug;
 use once_cell::race::OnceBox;
 use sp_core::H256;
+#[cfg(feature = "std")]
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_map::BTreeMap;
 
 /// Avoid of Contract struct never used warning

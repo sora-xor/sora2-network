@@ -30,14 +30,13 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use derivative::Derivative;
-use ethereum_types::H128;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use frame_support::traits::Get;
-use sp_core::{RuntimeDebug, H256};
+use sp_core::RuntimeDebug;
 use sp_runtime::{traits::Hash, BoundedVec};
 
-use crate::{MainnetAssetId, MainnetBalance};
+use crate::{H128, H256, MainnetAssetId, MainnetBalance};
 
 #[derive(
     Encode,
@@ -293,6 +292,8 @@ pub struct InboundCommitment<MaxPayload: Get<u32>> {
 
 impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
     pub fn hash(&self) -> H256 {
-        ("ton-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+        ("ton-inbound", self).using_encoded(|encoded| {
+            H256::from_slice(sp_runtime::traits::Keccak256::hash(encoded).as_bytes())
+        })
     }
 }

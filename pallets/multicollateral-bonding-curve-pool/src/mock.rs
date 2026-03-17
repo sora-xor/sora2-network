@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -56,6 +58,7 @@ use orml_traits::MultiCurrency;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Zero;
+use sp_runtime::BuildStorage;
 use sp_runtime::{DispatchError, DispatchResult, Perbill};
 use std::collections::HashMap;
 
@@ -131,7 +134,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
@@ -302,7 +305,7 @@ impl MockDEXApi {
     fn get_price(input_asset_id: &AssetId, output_asset_id: &AssetId) -> Balance {
         MockPrices::get(&(*input_asset_id, *output_asset_id))
             .or_else(|| {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Failed to get price {:?} -> {:?}",
                     input_asset_id,
                     output_asset_id
@@ -782,29 +785,25 @@ impl ExtBuilder {
 
     pub fn build(self) -> sp_io::TestExternalities {
         common::test_utils::init_logger();
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
+
+        let mut balances = self
+            .endowed_accounts
+            .iter()
+            .cloned()
+            .filter_map(|(account_id, asset_id, balance, ..)| {
+                if asset_id == GetBaseAssetId::get() && balance >= 1 {
+                    Some((account_id, balance))
+                } else {
+                    None
+                }
+            })
+            .collect::<HashMap<_, _>>();
+        balances.entry(alice()).or_insert(1);
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: self
-                .endowed_accounts
-                .iter()
-                .cloned()
-                .filter_map(|(account_id, asset_id, balance, ..)| {
-                    if asset_id == GetBaseAssetId::get() {
-                        Some((account_id, balance))
-                    } else {
-                        None
-                    }
-                })
-                .chain(vec![
-                    (bob(), 0),
-                    (assets_owner(), 0),
-                    (incentives_account(), 0),
-                    (free_reserves_account(), 0),
-                ])
-                .collect(),
+            balances: balances.into_iter().collect(),
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

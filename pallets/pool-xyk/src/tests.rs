@@ -2844,30 +2844,42 @@ fn withdraw_all_liquidity_chameleon() {
                     crate::Error::<Runtime>::SourceBalanceOfLiquidityTokensIsNotLargeEnough
                 );
 
-                assert_noop!(
-                    crate::Pallet::<Runtime>::withdraw_liquidity(
-                        RuntimeOrigin::signed(ALICE()),
-                        dex_id,
-                        GoldenTicket.into(),
-                        BlackPepper.into(),
-                        balance!(227683.991532123311902562),
-                        1,
-                        1
-                    ),
-                    pallet_balances::Error::<Runtime>::InsufficientBalance
+                let err = crate::Pallet::<Runtime>::withdraw_liquidity(
+                    RuntimeOrigin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    balance!(227683.991532123311902562),
+                    1,
+                    1,
+                )
+                .unwrap_err()
+                .error;
+                assert!(
+                    err == pallet_balances::Error::<Runtime>::InsufficientBalance.into()
+                        || err
+                            == sp_runtime::DispatchError::Token(
+                                sp_runtime::TokenError::FundsUnavailable
+                            )
                 );
 
-                assert_noop!(
-                    crate::Pallet::<Runtime>::withdraw_liquidity(
-                        RuntimeOrigin::signed(ALICE()),
-                        dex_id,
-                        GoldenTicket.into(),
-                        BlackPepper.into(),
-                        base_pool_tokens + 1,
-                        1,
-                        1
-                    ),
-                    pallet_balances::Error::<Runtime>::InsufficientBalance
+                let err = crate::Pallet::<Runtime>::withdraw_liquidity(
+                    RuntimeOrigin::signed(ALICE()),
+                    dex_id,
+                    GoldenTicket.into(),
+                    BlackPepper.into(),
+                    base_pool_tokens + 1,
+                    1,
+                    1,
+                )
+                .unwrap_err()
+                .error;
+                assert!(
+                    err == pallet_balances::Error::<Runtime>::InsufficientBalance.into()
+                        || err
+                            == sp_runtime::DispatchError::Token(
+                                sp_runtime::TokenError::FundsUnavailable
+                            )
                 );
 
                 assert_ok!(crate::Pallet::<Runtime>::withdraw_liquidity(

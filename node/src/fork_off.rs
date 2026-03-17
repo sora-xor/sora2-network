@@ -36,6 +36,7 @@ use frame_remote_externalities::{
 use sc_cli::CliConfiguration;
 use sc_service::Configuration;
 use sp_core::bytes::to_hex;
+use sp_state_machine::{Backend as _, IterArgs, StorageIterator as _};
 
 const SKIPPED_PALLETS: [&str; 7] = [
     "System",
@@ -85,7 +86,7 @@ impl ForkOffCmd {
     pub async fn run(&self, mut cfg: Configuration) -> Result<(), sc_cli::Error> {
         let transport: Transport = self.url.clone().into();
         let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());
-        let ext: RemoteExternalities<framenode_runtime::Block> =
+        let mut ext: RemoteExternalities<framenode_runtime::Block> =
             Builder::<framenode_runtime::Block>::default()
                 .mode(if let Some(state_snapshot) = maybe_state_snapshot {
                     Mode::OfflineOrElseOnline(
@@ -128,8 +129,14 @@ impl ForkOffCmd {
                 }
             })
             .collect();
-        let kv = ext.as_backend().essence().pairs();
-        for (k, v) in kv {
+        let backend = ext.as_backend();
+        let mut kv = backend
+            .raw_iter(IterArgs::default())
+            .map_err(|e| sc_cli::Error::Input(format!("Failed to iterate remote storage: {e}")))?;
+        while let Some(next_pair) = kv.next_pair(&backend) {
+            let (k, v) = next_pair.map_err(|e| {
+                sc_cli::Error::Input(format!("Failed to read remote storage pair: {e}"))
+            })?;
             if k.len() >= 32
                 && (!skipped_prefixes.contains(&k[..16]) || included_prefixes.contains(&k[..32]))
             {

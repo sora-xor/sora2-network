@@ -9,15 +9,15 @@ description = "Stateless MCP server for SCCP across SORA and sibling chains"
 
 [dependencies]
 anyhow = "1.0"
-base64 = "0.21"
+base64 = "0.22"
 blake2 = "0.10"
 ethabi = "18"
 hex = "0.4"
-once_cell = "1.19"
+once_cell = "1.21"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "=1.0.108"
+serde_json = "1.0"
 sha3 = "0.10"
-thiserror = "1.0"
-toml = "=0.5.11"
-twox-hash = "1.6"
-ureq = { version = "=2.5.0", features = ["json"] }
+thiserror = "2"
+toml = "1"
+twox-hash = "2"
+ureq = { version = "3", features = ["json"] }

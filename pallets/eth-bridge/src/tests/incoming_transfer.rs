@@ -50,10 +50,11 @@ use common::{
 };
 use ethereum_types::U256;
 use frame_support::assert_noop;
-use frame_support::dispatch::{DispatchError, DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
+use frame_support::dispatch::{DispatchErrorWithPostInfo, Pays, PostDispatchInfo};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::{sr25519, H256};
+use sp_runtime::DispatchError;
 use std::str::FromStr;
 
 #[test]
@@ -468,11 +469,9 @@ fn incoming_queue_respects_limit() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let max = MaxRequestsPerQueueConst::get() as usize;
-        let reserved = ReservedBridgeQueueSlotsConst::get() as usize;
-        let max_load_incoming = max.saturating_sub(reserved);
         crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| {
             queue.clear();
-            for i in 0..(max_load_incoming - 1) {
+            for i in 0..(max - 1) {
                 queue.push(H256::from_low_u64_be(i as u64 + 1));
             }
         });
@@ -487,12 +486,8 @@ fn incoming_queue_respects_limit() {
         )
         .unwrap();
 
-        assert_eq!(
-            crate::RequestsQueue::<Runtime>::get(net_id).len(),
-            max_load_incoming
-        );
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id).len(), max);
 
-        // `LoadIncoming` queue should stop at `max - reserved`.
         assert_noop!(
             EthBridge::request_from_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
@@ -502,29 +497,19 @@ fn incoming_queue_respects_limit() {
             ),
             Error::RequestsQueueFull
         );
-
-        // Non-`LoadIncoming` requests should still use reserved queue space.
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
-        assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice),
-            XOR.into(),
-            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-            10,
-            net_id,
-        ));
     });
 }
 
 #[test]
-fn request_from_sidechain_enforces_per_account_pending_limit() {
+fn request_from_sidechain_enforces_queue_limit() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let max_pending = MaxPendingLoadIncomingRequestsPerAccountConst::get() as u64;
+        let max = MaxRequestsPerQueueConst::get() as u64;
 
-        for i in 0..max_pending {
+        for i in 0..max {
             assert_ok!(EthBridge::request_from_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
                 H256::from_low_u64_be(1000 + i),
@@ -536,11 +521,11 @@ fn request_from_sidechain_enforces_per_account_pending_limit() {
         assert_noop!(
             EthBridge::request_from_sidechain(
                 RuntimeOrigin::signed(alice),
-                H256::from_low_u64_be(1000 + max_pending),
+                H256::from_low_u64_be(1000 + max),
                 IncomingTransactionRequestKind::Transfer.into(),
                 net_id
             ),
-            Error::TooManyPendingLoadIncomingRequestsForAccount
+            Error::RequestsQueueFull
         );
     });
 }

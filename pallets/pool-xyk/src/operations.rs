@@ -28,13 +28,15 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::{Balance, OutcomeFee};
 use sp_runtime::RuntimeDebug;
 
 use crate::bounds::*;
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+)]
 pub struct Resource<AssetId, Balance> {
     // This is `AssetId` of `Resource`.
     pub asset: AssetId,
@@ -42,13 +44,17 @@ pub struct Resource<AssetId, Balance> {
     pub amount: Bounds<Balance>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+)]
 pub struct ResourcePair<AssetId, Balance>(
     pub Resource<AssetId, Balance>,
     pub Resource<AssetId, Balance>,
 );
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+)]
 pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
@@ -63,7 +69,9 @@ pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     pub dex_id: DEXId,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+)]
 pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account: Option<AccountId>,
@@ -73,7 +81,9 @@ pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub min_liquidity: Option<Balance>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+)]
 pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
     pub receiver_account_a: Option<AccountId>,
@@ -83,7 +93,9 @@ pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub destination: ResourcePair<AssetId, Balance>,
 }
 
-#[derive(Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, scale_info::TypeInfo)]
+#[derive(
+    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+)]
 pub enum PolySwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     PairSwap(PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>),
     DepositLiquidity(DepositLiquidityAction<AssetId, AccountId, TechAccountId>),

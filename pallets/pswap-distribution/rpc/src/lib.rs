@@ -30,23 +30,22 @@
 
 use codec::Codec;
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
 
 use std::sync::Arc;
+
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
 
 // Runtime API imports.
 use pswap_distribution_runtime_api::BalanceInfo;
 pub use pswap_distribution_runtime_api::PswapDistributionAPI as PswapDistributionRuntimeAPI;
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait PswapDistributionAPI<BlockHash, AccountId, BalanceInfo> {
     #[method(name = "pswapDistribution_claimableAmount")]
     fn claimable_amount(&self, account_id: AccountId, at: Option<BlockHash>)
@@ -85,11 +84,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<BalanceInfo<Balance>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.claimable_amount(&at, account_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.claimable_amount(at, account_id)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

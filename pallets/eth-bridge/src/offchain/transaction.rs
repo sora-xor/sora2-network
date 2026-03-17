@@ -37,21 +37,22 @@ use crate::{
 };
 use alloc::boxed::Box;
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, GetCallMetadata};
-use frame_support::log::{debug, error};
-use frame_support::sp_io::hashing::blake2_256;
+use frame_support::__private::log::{debug, error};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{BlockNumberProvider, IdentifyAccount, Saturating};
 use frame_support::sp_runtime::RuntimeAppPublic;
+use frame_support::traits::GetCallMetadata;
 use frame_support::traits::GetCallName;
 use frame_support::{ensure, fail};
 #[cfg(test)]
 use frame_system::offchain::SignMessage;
 use frame_system::offchain::{
-    Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, SendTransactionTypes,
+    Account, AppCrypto, CreateSignedTransaction, CreateTransactionBase, SendSignedTransaction,
     Signer,
 };
 use sp_core::H256;
+use sp_io::hashing::blake2_256;
+use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -96,7 +97,6 @@ impl<T: Config> SignedTransactionData<T> {
     where
         T: CreateSignedTransaction<LocalCall>,
     {
-        use frame_support::inherent::Extrinsic;
         let overarching_call: Call<T> = call.clone().into();
         let account_data = frame_system::Account::<T>::get(&account.id);
         let nonce = if submitted_at.is_some() {
@@ -104,14 +104,12 @@ impl<T: Config> SignedTransactionData<T> {
         } else {
             account_data.nonce
         };
-        let (call, signature) =
-            <T as CreateSignedTransaction<LocalCall>>::create_transaction::<T::PeerId>(
-                <T as SendTransactionTypes<LocalCall>>::OverarchingCall::from(call),
-                account.public.clone(),
-                account.id.clone(),
-                nonce,
-            )?;
-        let xt = <T as SendTransactionTypes<LocalCall>>::Extrinsic::new(call, Some(signature))?;
+        let xt = <T as CreateSignedTransaction<LocalCall>>::create_signed_transaction::<T::PeerId>(
+            <T as CreateTransactionBase<LocalCall>>::RuntimeCall::from(call.clone()),
+            account.public.clone(),
+            account.id.clone(),
+            nonce,
+        )?;
         let vec = xt.encode();
         // TODO (optimize): consider skipping the hash calculation if the extrinsic weren't submitted.
         let ext_hash = H256(blake2_256(&vec));

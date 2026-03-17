@@ -1,14 +1,14 @@
 use crate::requests::RequestStatus;
 use codec::Decode;
 use codec::Encode;
-use frame_support::dispatch::GetStorageVersion;
 use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::sp_runtime::ModuleError;
 use frame_support::traits::Get;
+use frame_support::traits::GetStorageVersion;
 use frame_support::traits::StorageVersion;
 use frame_support::weights::Weight;
-use frame_support::RuntimeDebug;
+use sp_runtime::RuntimeDebug;
 
 use crate::Config;
 use crate::Pallet;
@@ -81,7 +81,7 @@ mod tests {
     use crate::tests::mock::Runtime;
     use crate::Pallet;
     use crate::RequestStatuses;
-    use ethereum_types::H256;
+    use bridge_types::H256;
     use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
     use frame_support::sp_runtime::legacy::byte_sized_error::ModuleError as OldModuleError;
     use frame_support::sp_runtime::DispatchError;

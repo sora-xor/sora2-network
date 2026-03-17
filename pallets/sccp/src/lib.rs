@@ -29,9 +29,9 @@ mod tron_proof;
 use bridge_types::{
     traits::AuxiliaryDigestHandler, types::AuxiliaryDigestItem, GenericNetworkId, SubNetworkId,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::{hash, prelude::Balance, AssetInfoProvider, AssetName, AssetSymbol};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::EnsureOrigin;
 use frame_support::{ensure, transactional};
@@ -40,6 +40,7 @@ use permissions::{Scope, BURN, MINT};
 use sp_core::{H160, H256};
 use sp_io::hashing::keccak_256;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 pub mod weights;
@@ -307,7 +308,16 @@ fn default_required_domains_for_bound<S: Get<u32>>() -> BoundedVec<u32, S> {
 }
 
 #[derive(
-    Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum TokenStatus {
     Pending,
@@ -316,7 +326,15 @@ pub enum TokenStatus {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct TokenState<BlockNumber> {
     pub status: TokenStatus,
@@ -337,7 +355,15 @@ impl<BlockNumber> TokenState<BlockNumber> {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct BurnPayloadV1 {
     pub version: u8,
@@ -350,7 +376,15 @@ pub struct BurnPayloadV1 {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct BurnRecord<AccountId, AssetId, BlockNumber> {
     pub sender: AccountId,
@@ -364,7 +398,16 @@ pub struct BurnRecord<AccountId, AssetId, BlockNumber> {
 
 /// Governance-defined finality mode for inbound proofs to SORA per source domain.
 #[derive(
-    Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum InboundFinalityMode {
     /// Inbound from this domain is disabled (fail-closed).
@@ -397,7 +440,15 @@ pub enum InboundFinalityMode {
 /// This is a fail-closed mechanism: without an anchor, inbound EVM proofs are rejected.
 /// A future upgrade should replace governance anchors with per-chain light clients.
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct EvmInboundAnchor {
     pub block_number: u64,
@@ -406,7 +457,15 @@ pub struct EvmInboundAnchor {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct BscLightClientParams {
     pub epoch_length: u64,
@@ -423,7 +482,15 @@ pub struct BscLightClientParams {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct BscHeaderMeta {
     pub hash: H256,
@@ -433,7 +500,15 @@ pub struct BscHeaderMeta {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct TronLightClientParams {
     /// TRON address prefix for witness addresses (typically `0x41` on mainnet).
@@ -445,7 +520,15 @@ pub struct TronLightClientParams {
 }
 
 #[derive(
-    Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub struct TronHeaderMeta {
     pub hash: H256,
@@ -479,7 +562,9 @@ struct TronParsedHeader {
 /// EVM inbound burn proof (v1).
 ///
 /// The proof is verified against a governance-provided anchor `state_root` for the given domain.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
 pub struct EvmBurnProofV1 {
     pub anchor_block_hash: H256,
     /// EVM state trie proof for the SCCP router account (RLP-encoded MPT nodes).
@@ -502,6 +587,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + technical::Config + permissions::Config + common::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Governance-protected origin for managing SCCP configuration.
@@ -790,7 +876,6 @@ pub mod pallet {
         pub required_domains: RequiredDomainsOf<T>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -801,7 +886,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             InboundGracePeriod::<T>::set(self.inbound_grace_period);
             let normalized =
@@ -814,7 +899,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -2090,7 +2174,7 @@ pub mod pallet {
             // chains via BEEFY+MMR light clients.
             T::AuxiliaryDigestHandler::add_item(AuxiliaryDigestItem::Commitment(
                 digest_network_id_for_domain(dest_domain),
-                message_id,
+                bridge_types::H256::from_slice(message_id.as_bytes()),
             ));
 
             Self::deposit_event(Event::SccpBurned {
@@ -2330,7 +2414,7 @@ pub mod pallet {
             AttestedOutbound::<T>::insert(message_id, true);
             T::AuxiliaryDigestHandler::add_item(AuxiliaryDigestItem::Commitment(
                 digest_network_id_for_domain(payload.dest_domain),
-                message_id,
+                bridge_types::H256::from_slice(message_id.as_bytes()),
             ));
 
             Self::deposit_event(Event::SccpBurnAttested {

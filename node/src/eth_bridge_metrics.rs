@@ -23,7 +23,7 @@ pub struct Metrics<B> {
 impl<B> Metrics<B>
 where
     B: sc_client_api::Backend<Block> + Send + Sync + 'static,
-    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashFor<Block>>,
+    B::State: sc_client_api::StateBackend<sp_runtime::traits::HashingFor<Block>>,
 {
     pub fn register(
         registry: &Registry,

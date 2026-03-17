@@ -47,6 +47,7 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system::{EnsureRoot, EnsureSigned};
 use permissions::Scope;
 use sp_runtime::AccountId32;
+use sp_runtime::BuildStorage;
 
 pub type AccountId = AccountId32;
 pub type AssetId = AssetId32<PredefinedAssetId>;
@@ -70,7 +71,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -204,9 +205,7 @@ pub fn ext() -> sp_io::TestExternalities {
         )
         .unwrap();
 
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<Runtime>()
-        .unwrap();
+    let mut storage = SystemConfig::default().build_storage().unwrap();
 
     TechnicalConfig {
         register_tech_accounts: vec![

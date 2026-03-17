@@ -30,14 +30,13 @@
 
 use crate::pallet_tools;
 use crate::{Config, Error};
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::fixnum::ops::CheckedSub;
 use common::prelude::{BalanceUnit, QuoteAmount};
 use common::{fixed, AssetIdOf, AssetName, AssetSymbol, Balance, Fixed, Oracle, PriceVariant};
-use frame_support::dispatch::{
-    DispatchError, DispatchResult, DispatchResultWithPostInfo, RawOrigin,
-};
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo, RawOrigin};
 use frame_support::ensure;
+use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use pallet_tools::price_tools::AssetPrices;
@@ -54,13 +53,17 @@ pub struct BaseXorPrices {
 }
 
 /// Price initialization parameters of `xst`'s synthetic base asset (in terms of reference asset)
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct BaseInput {
     pub reference_per_synthetic_base_buy: Balance,
     pub reference_per_synthetic_base_sell: Balance,
 }
 
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub enum SyntheticExistence<Symbol> {
     AlreadyExists,
     RegisterNewAsset {
@@ -71,13 +74,17 @@ pub enum SyntheticExistence<Symbol> {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub enum SyntheticQuoteDirection {
     SyntheticBaseToSynthetic,
     SyntheticToSyntheticBase,
 }
 
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct SyntheticQuote {
     pub direction: SyntheticQuoteDirection,
     pub amount: QuoteAmount<Balance>,
@@ -89,7 +96,9 @@ pub struct SyntheticQuote {
 ///
 /// We can't control it granularly for each asset, so we just deduce it from the existing
 /// pricing and price provided for the given variant
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct SyntheticInput<AssetId, Symbol> {
     pub asset_id: AssetId,
     /// Quote call with expected output.
@@ -99,7 +108,9 @@ pub struct SyntheticInput<AssetId, Symbol> {
 }
 
 /// Resulting of initialization for `asset_id`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+#[derive(
+    Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+)]
 pub struct SyntheticOutput<AssetId> {
     pub asset_id: AssetId,
     /// Quote call with output.

@@ -33,8 +33,8 @@ use core::ops::*;
 use core::result::Result;
 
 use fixnum::ArithmeticError;
-use frame_support::RuntimeDebug;
 use sp_core::U256;
+use sp_runtime::RuntimeDebug;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::arithmetic::checked::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};

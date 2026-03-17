@@ -13,7 +13,6 @@ use common::{
     mock_tokens_config, DEXId, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
@@ -21,11 +20,13 @@ use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::traits::Convert;
+use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
 use sp_std::cell::RefCell;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::marker::PhantomData;
 
+#[allow(unused_imports)]
 pub use common::mock::*;
 
 pub type BlockNumber = u64;
@@ -36,7 +37,6 @@ pub type AssetId = common::AssetId32<common::mock::ComicAssetId>;
 pub type TechAssetId = common::TechAssetId<common::mock::ComicAssetId>;
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 parameter_types! {
@@ -58,19 +58,15 @@ parameter_type_with_key! {
 }
 
 construct_runtime! {
-    pub enum Runtime where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage},
-        Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Sccp: sccp::{Pallet, Call, Storage, Event<T>},
+    pub enum Runtime {
+        System: frame_system,
+        Permissions: permissions,
+        Balances: pallet_balances,
+        Tokens: tokens,
+        Currencies: currencies,
+        Assets: assets,
+        Technical: technical,
+        Sccp: sccp,
     }
 }
 
@@ -228,7 +224,7 @@ pub struct ExtBuilder {
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
-            endowed_accounts: vec![(alice(), GetBaseAssetId::get(), 0u32.into())],
+            endowed_accounts: vec![(alice(), GetBaseAssetId::get(), 1u32.into())],
             required_domains: None,
         }
     }
@@ -241,7 +237,9 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
+            .unwrap();
 
         // Reset thread-local "legacy bridge" state between tests.
         LEGACY_BRIDGE_ASSETS.with(|s| s.borrow_mut().clear());
@@ -257,18 +255,19 @@ impl ExtBuilder {
                 .iter()
                 .map(|(acc, _, balance)| (acc.clone(), *balance))
                 .collect(),
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        PermissionsConfig {
+        permissions::GenesisConfig::<Runtime> {
             initial_permission_owners: vec![],
             initial_permissions: vec![],
         }
         .assimilate_storage(&mut t)
         .unwrap();
 
-        TokensConfig {
+        tokens::GenesisConfig::<Runtime> {
             balances: self.endowed_accounts,
         }
         .assimilate_storage(&mut t)

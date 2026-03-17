@@ -28,9 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(deprecated)] // TODO: migrate SignedExtension to TransactionExtension.
+
 use core::fmt::Debug;
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::dispatch::{DispatchClass, DispatchInfo, PostDispatchInfo};
 use pallet_transaction_payment as ptp;
 use ptp::OnChargeTransaction;
@@ -45,7 +47,7 @@ use sp_runtime::{
 
 use crate::{BalanceOf, Config, CustomFeeDetailsOf, LiquidityInfo};
 
-#[derive(Encode, Decode, Clone, Eq, PartialEq, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct ChargeTransactionPayment<T: Config> {
     #[codec(compact)]

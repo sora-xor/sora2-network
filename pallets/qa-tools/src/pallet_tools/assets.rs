@@ -30,7 +30,7 @@
 
 use crate::Config;
 use common::{AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, FixedInner};
-use frame_support::dispatch::DispatchError;
+use frame_support::sp_runtime::DispatchError;
 use sp_std::cmp::Ordering;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -39,8 +39,17 @@ pub enum Error {
     Other(DispatchError),
 }
 
-impl<T: Into<DispatchError>> From<T> for Error {
-    fn from(value: T) -> Self {
+impl From<DispatchError> for Error {
+    fn from(value: DispatchError) -> Self {
+        Self::Other(value.into())
+    }
+}
+
+impl<T> From<crate::Error<T>> for Error
+where
+    crate::Error<T>: Into<DispatchError>,
+{
+    fn from(value: crate::Error<T>) -> Self {
         Self::Other(value.into())
     }
 }

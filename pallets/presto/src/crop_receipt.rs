@@ -30,7 +30,7 @@
 
 use crate::{Config, Error, MomentOf};
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::{AccountIdOf, Balance, BoundedString};
 use derivative::Derivative;
 use frame_support::ensure;
@@ -51,7 +51,16 @@ pub enum Status {
 
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum Rating {
     AAA,
@@ -68,7 +77,16 @@ pub enum Rating {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 pub enum Country {
     Brazil,

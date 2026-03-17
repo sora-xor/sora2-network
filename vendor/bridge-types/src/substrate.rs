@@ -45,9 +45,10 @@ use crate::{types::AssetKind, GenericTimepoint, MainnetAccountId, MainnetAssetId
 use crate::{GenericAccount, GenericAssetId, GenericBalance};
 
 pub use xcm::v3::{Junction, Junctions};
-pub use xcm::VersionedMultiLocation;
+pub use xcm::VersionedLocation;
+pub type VersionedMultiLocation = xcm::VersionedLocation;
 
-pub type ParachainAccountId = VersionedMultiLocation;
+pub type ParachainAccountId = VersionedLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
 
@@ -83,11 +84,15 @@ pub enum ParachainAppCall {
         transfer_status: XCMAppTransferStatus,
     },
 }
+
+impl codec::DecodeWithMemTracking for ParachainAppCall {}
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppTransferStatus {
     Success,
     XCMTransferError,
 }
+
+impl codec::DecodeWithMemTracking for XCMAppTransferStatus {}
 
 impl SubstrateBridgeMessageEncode for ParachainAppCall {
     fn prepare_message(self) -> Vec<u8> {
@@ -121,6 +126,8 @@ pub enum SubstrateAppCall {
     },
 }
 
+impl codec::DecodeWithMemTracking for SubstrateAppCall {}
+
 impl SubstrateBridgeMessageEncode for SubstrateAppCall {
     fn prepare_message(self) -> Vec<u8> {
         BridgeCall::SubstrateApp(self).encode()
@@ -142,6 +149,8 @@ pub enum FAAppCall {
     },
 }
 
+impl codec::DecodeWithMemTracking for FAAppCall {}
+
 impl SubstrateBridgeMessageEncode for FAAppCall {
     fn prepare_message(self) -> Vec<u8> {
         BridgeCall::FAApp(self).encode()
@@ -158,6 +167,8 @@ pub enum JettonAppCall {
         amount: TonBalance,
     },
 }
+
+impl codec::DecodeWithMemTracking for JettonAppCall {}
 
 impl SubstrateBridgeMessageEncode for JettonAppCall {
     fn prepare_message(self) -> Vec<u8> {
@@ -186,6 +197,8 @@ pub enum XCMAppCall {
     },
 }
 
+impl codec::DecodeWithMemTracking for XCMAppCall {}
+
 impl SubstrateBridgeMessageEncode for XCMAppCall {
     fn prepare_message(self) -> Vec<u8> {
         BridgeCall::XCMApp(self).encode()
@@ -199,6 +212,8 @@ pub enum DataSignerCall {
     RemovePeer { peer: ecdsa::Public },
 }
 
+impl codec::DecodeWithMemTracking for DataSignerCall {}
+
 impl SubstrateBridgeMessageEncode for DataSignerCall {
     fn prepare_message(self) -> Vec<u8> {
         BridgeCall::DataSigner(self).encode()
@@ -211,6 +226,8 @@ pub enum MultisigVerifierCall {
     AddPeer { peer: ecdsa::Public },
     RemovePeer { peer: ecdsa::Public },
 }
+
+impl codec::DecodeWithMemTracking for MultisigVerifierCall {}
 
 impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
     fn prepare_message(self) -> Vec<u8> {
@@ -229,6 +246,8 @@ pub enum BridgeCall {
     FAApp(FAAppCall),
     JettonApp(JettonAppCall),
 }
+
+impl codec::DecodeWithMemTracking for BridgeCall {}
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
     fn prepare_message(self) -> Vec<u8> {
@@ -251,6 +270,8 @@ pub struct BridgeMessage<MaxPayload: Get<u32>> {
     pub payload: BoundedVec<u8, MaxPayload>,
     pub timepoint: GenericTimepoint,
 }
+
+impl<MaxPayload: Get<u32>> codec::DecodeWithMemTracking for BridgeMessage<MaxPayload> {}
 
 #[derive(
     Clone,
@@ -291,7 +312,7 @@ pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
 
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
-        sp_runtime::traits::Keccak256::hash_of(self)
+        H256::from_slice(sp_runtime::traits::Keccak256::hash_of(self).as_bytes())
     }
 }
 

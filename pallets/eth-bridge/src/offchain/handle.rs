@@ -47,17 +47,17 @@ use crate::{
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode};
-use frame_support::log::{debug, error, info, trace, warn};
-use frame_support::sp_io::hashing::blake2_256;
+use frame_support::__private::log::{debug, error, info, trace, warn};
 use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{IdentifyAccount, One, Saturating, Zero};
 use frame_support::sp_runtime::RuntimeAppPublic;
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, log};
+use frame_support::{ensure, fail};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
 use sp_core::ByteArray;
 use sp_core::H256;
+use sp_io::hashing::blake2_256;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::TryInto;
@@ -100,11 +100,7 @@ impl<T: Config> Pallet<T> {
             }
 
             let Some(signature) =
-                frame_support::sp_io::crypto::ecdsa_sign_prehashed(
-                    crate::KEY_TYPE,
-                    &ocw_public,
-                    &message,
-                )
+                sp_io::crypto::ecdsa_sign_prehashed(crate::KEY_TYPE, &ocw_public, &message)
             else {
                 error!("[{:?}] Failed to sign approve payload", signer_account);
                 continue;
@@ -177,7 +173,7 @@ impl<T: Config> Pallet<T> {
     /// (`SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION`), it's re-sent.
     fn handle_substrate_block(
         block: SubstrateBlockLimited,
-        current_height: <T as frame_system::pallet::Config>::BlockNumber,
+        current_height: frame_system::pallet_prelude::BlockNumberFor<T>,
     ) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
@@ -472,7 +468,7 @@ impl<T: Config> Pallet<T> {
     }
 
     pub(crate) fn handle_substrate(
-    ) -> Result<<T as frame_system::pallet::Config>::BlockNumber, Error<T>>
+    ) -> Result<frame_system::pallet_prelude::BlockNumberFor<T>, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
@@ -491,7 +487,7 @@ impl<T: Config> Pallet<T> {
             Self::handle_failed_transactions_queue();
         }
 
-        let substrate_finalized_height: <T as frame_system::pallet::Config>::BlockNumber =
+        let substrate_finalized_height: frame_system::pallet_prelude::BlockNumberFor<T> =
             substrate_finalized_block
                 .number
                 .as_u64()
@@ -500,7 +496,7 @@ impl<T: Config> Pallet<T> {
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY);
         let from_block_opt = s_sub_to_handle_from_height
-            .get::<<T as frame_system::pallet::Config>::BlockNumber>()
+            .get::<frame_system::pallet_prelude::BlockNumberFor<T>>()
             .map_err(|_| Error::<T>::ReadStorageError)?;
         if from_block_opt.is_none() {
             s_sub_to_handle_from_height.set(&substrate_finalized_height);
@@ -508,10 +504,9 @@ impl<T: Config> Pallet<T> {
         let mut from_block = from_block_opt.unwrap_or(substrate_finalized_height);
         let to_block = from_block + SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK.into();
         while from_block <= substrate_finalized_height && from_block < to_block {
-            log::debug!(
+            debug!(
                 "Handle substrate block: {:?}, finalized block: {:?}",
-                from_block,
-                substrate_finalized_height
+                from_block, substrate_finalized_height
             );
             match Self::load_substrate_block(from_block)
                 .and_then(|block| Self::handle_substrate_block(block, from_block))
@@ -525,7 +520,7 @@ impl<T: Config> Pallet<T> {
                     return Ok(substrate_finalized_height);
                 }
             };
-            from_block += <T as frame_system::pallet::Config>::BlockNumber::one();
+            from_block += frame_system::pallet_prelude::BlockNumberFor::<T>::one();
             // Will not process block with height bigger than finalized height
             s_sub_to_handle_from_height.set(&from_block);
         }
@@ -639,12 +634,12 @@ impl<T: Config> Pallet<T> {
     /// are added to local storage to not be handled twice by the off-chain worker.
     pub(crate) fn handle_network(
         network_id: T::NetworkId,
-        substrate_finalized_height: <T as frame_system::pallet::Config>::BlockNumber,
+        substrate_finalized_height: frame_system::pallet_prelude::BlockNumberFor<T>,
     ) where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         if !Self::is_peer_for_network(network_id) {
-            log::debug!("Node is not peer for network {:?}, skipping", network_id);
+            debug!("Node is not peer for network {:?}, skipping", network_id);
             return;
         }
         let current_eth_height = match Self::handle_ethereum(network_id) {
@@ -655,7 +650,7 @@ impl<T: Config> Pallet<T> {
         };
 
         if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into()
-            == <T as frame_system::pallet::Config>::BlockNumber::zero()
+            == frame_system::pallet_prelude::BlockNumberFor::<T>::zero()
         {
             Self::handle_pending_multisig_calls(network_id, current_eth_height);
         }
@@ -670,24 +665,24 @@ impl<T: Config> Pallet<T> {
                 }
             };
             if request.should_be_skipped() {
-                log::debug!("Temporary skip request: {:?}", request_hash);
+                debug!("Temporary skip request: {:?}", request_hash);
                 continue;
             }
-            let request_submission_height: <T as frame_system::pallet::Config>::BlockNumber =
+            let request_submission_height: frame_system::pallet_prelude::BlockNumberFor<T> =
                 Self::request_submission_height(network_id, &request_hash);
-            let number = <T as frame_system::pallet::Config>::BlockNumber::from(
+            let number = frame_system::pallet_prelude::BlockNumberFor::<T>::from(
                 MAX_PENDING_TX_BLOCKS_PERIOD,
             );
             let diff = substrate_finalized_height.saturating_sub(request_submission_height);
             let should_reapprove = diff >= number
-                && diff % number == <T as frame_system::pallet::Config>::BlockNumber::zero();
+                && diff % number == frame_system::pallet_prelude::BlockNumberFor::<T>::zero();
             if !should_reapprove && substrate_finalized_height < request_submission_height {
                 continue;
             }
             let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
             let s_handled_request = StorageValueRef::persistent(handled_key.as_bytes());
             let height_opt = s_handled_request
-                .get::<<T as frame_system::pallet::Config>::BlockNumber>()
+                .get::<frame_system::pallet_prelude::BlockNumberFor<T>>()
                 .ok()
                 .flatten();
 

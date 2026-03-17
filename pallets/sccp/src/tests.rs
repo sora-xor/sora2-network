@@ -6191,7 +6191,7 @@ fn bsc_light_client_rejects_malleable_high_s_header_signature() {
 
         let s2_u = n_u - s_u;
         assert!(s2_u > half_u, "malleated signature must be high-s");
-        s2_u.to_big_endian(&mut s_bytes);
+        s_bytes = s2_u.to_big_endian();
         sig[32..64].copy_from_slice(&s_bytes);
         sig[64] ^= 1;
 

@@ -73,6 +73,7 @@ pub fn rlp_decode<'a>(input: &'a [u8]) -> Option<RlpItem<'a>> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub struct BscHeaderMinimal<'a> {
     pub parent_hash: &'a [u8; 32],
     pub beneficiary: &'a [u8; 20],
@@ -87,6 +88,7 @@ pub struct BscHeaderMinimal<'a> {
 ///
 /// This helper is pure and fail-closed. It is shared by tests/fuzzing to harden RLP parsing
 /// invariants without touching pallet storage or runtime state.
+#[allow(dead_code)]
 pub fn parse_bsc_header_minimal(header_rlp: &[u8]) -> Option<BscHeaderMinimal<'_>> {
     let item = rlp_decode(header_rlp)?;
     let RlpItem::List(items) = item else {
@@ -427,6 +429,34 @@ mod tests {
         rlp_encode_list(&items)
     }
 
+    fn encode_bsc_header_for_test(
+        parent_hash: &[u8],
+        beneficiary: &[u8],
+        state_root: &[u8],
+        difficulty: &[u8],
+        number: &[u8],
+        extra_data: &[u8],
+    ) -> Vec<u8> {
+        let mut fields: Vec<Vec<u8>> = vec![Vec::new(); 15];
+        fields[0] = parent_hash.to_vec();
+        fields[1] = vec![0x00; 32]; // ommers hash placeholder
+        fields[2] = beneficiary.to_vec();
+        fields[3] = state_root.to_vec();
+        fields[4] = vec![0x44; 32]; // tx root placeholder
+        fields[5] = vec![0x55; 32]; // receipts root placeholder
+        fields[6] = vec![0x66; 256]; // logs bloom placeholder
+        fields[7] = difficulty.to_vec();
+        fields[8] = number.to_vec();
+        fields[9] = vec![0x01]; // gas limit placeholder
+        fields[10] = vec![0x02]; // gas used placeholder
+        fields[11] = vec![0x03]; // timestamp placeholder
+        fields[12] = extra_data.to_vec();
+        fields[13] = vec![0x77; 32]; // mix hash placeholder
+        fields[14] = vec![0x88; 8]; // nonce placeholder
+        let encoded_fields: Vec<Vec<u8>> = fields.iter().map(|f| rlp_encode_bytes(f)).collect();
+        rlp_encode_list(&encoded_fields)
+    }
+
     #[test]
     fn rlp_decode_rejects_trailing_bytes() {
         let encoded = rlp_encode_bytes(b"abc");
@@ -434,6 +464,115 @@ mod tests {
         with_trailing.push(0x00);
         assert!(rlp_decode(&encoded).is_some());
         assert!(rlp_decode(&with_trailing).is_none());
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_accepts_valid_header() {
+        let parent_hash = [0x11u8; 32];
+        let beneficiary = [0x22u8; 20];
+        let state_root = [0x33u8; 32];
+        let difficulty = [0x01u8, 0x02u8];
+        let number = [0x7bu8];
+
+        let mut extra_data = vec![0xaau8; 32];
+        extra_data.extend_from_slice(&[0xbbu8; 4]);
+        let mut signature = [0u8; 65];
+        for (i, b) in signature.iter_mut().enumerate() {
+            *b = i as u8;
+        }
+        extra_data.extend_from_slice(&signature);
+
+        let header = encode_bsc_header_for_test(
+            &parent_hash,
+            &beneficiary,
+            &state_root,
+            &difficulty,
+            &number,
+            &extra_data,
+        );
+        let parsed = parse_bsc_header_minimal(&header).expect("valid minimal BSC header");
+
+        assert_eq!(parsed.parent_hash, &parent_hash);
+        assert_eq!(parsed.beneficiary, &beneficiary);
+        assert_eq!(parsed.state_root, &state_root);
+        assert_eq!(parsed.difficulty, 0x0102);
+        assert_eq!(parsed.number, 0x7b);
+        assert_eq!(
+            parsed.extra_data_no_sig,
+            &extra_data[..extra_data.len() - 65]
+        );
+        assert_eq!(parsed.signature, signature);
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_rejects_short_extra_data() {
+        let header = encode_bsc_header_for_test(
+            &[0x11u8; 32],
+            &[0x22u8; 20],
+            &[0x33u8; 32],
+            &[0x01u8],
+            &[0x01u8],
+            &[0x44u8; 96], // must be at least 97 bytes (32 vanity + 65 signature)
+        );
+        assert!(parse_bsc_header_minimal(&header).is_none());
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_rejects_wrong_parent_hash_length() {
+        let mut extra_data = vec![0xaau8; 32];
+        extra_data.extend_from_slice(&[0xbbu8; 65]);
+        let header = encode_bsc_header_for_test(
+            &[0x11u8; 31], // invalid hash length
+            &[0x22u8; 20],
+            &[0x33u8; 32],
+            &[0x01u8],
+            &[0x01u8],
+            &extra_data,
+        );
+        assert!(parse_bsc_header_minimal(&header).is_none());
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_rejects_non_list_root() {
+        let encoded = rlp_encode_bytes(&[0x11u8; 32]);
+        assert!(parse_bsc_header_minimal(&encoded).is_none());
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_rejects_too_few_fields() {
+        let fields: Vec<Vec<u8>> = (0..14).map(|_| rlp_encode_bytes(&[0x01u8])).collect();
+        let header = rlp_encode_list(&fields);
+        assert!(parse_bsc_header_minimal(&header).is_none());
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_accepts_exact_minimum_extra_data_length() {
+        let mut extra_data = vec![0xaau8; 32];
+        extra_data.extend_from_slice(&[0xbbu8; 65]);
+        let header = encode_bsc_header_for_test(
+            &[0x11u8; 32],
+            &[0x22u8; 20],
+            &[0x33u8; 32],
+            &[0x01u8],
+            &[0x01u8],
+            &extra_data,
+        );
+        assert!(parse_bsc_header_minimal(&header).is_some());
+    }
+
+    #[test]
+    fn parse_bsc_header_minimal_rejects_oversized_difficulty_field() {
+        let mut extra_data = vec![0xaau8; 32];
+        extra_data.extend_from_slice(&[0xbbu8; 65]);
+        let header = encode_bsc_header_for_test(
+            &[0x11u8; 32],
+            &[0x22u8; 20],
+            &[0x33u8; 32],
+            &[0x01u8; 9], // be_u64 must reject > 8-byte integers
+            &[0x01u8],
+            &extra_data,
+        );
+        assert!(parse_bsc_header_minimal(&header).is_none());
     }
 
     #[test]

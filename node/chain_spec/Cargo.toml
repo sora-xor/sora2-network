@@ -9,16 +9,17 @@ codec = { package = "parity-scale-codec", version = "3", features = [
     "derive",
     "chain-error",
 ] }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 hex-literal = "0.4.1"
-sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-network-common = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+sc-finality-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-network-common = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-service = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+serde_json = "1"
+sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 
 bridge-multisig = { path = "../../vendor/pallet-multisig", package = "pallet-multisig" }
 
@@ -34,7 +35,6 @@ xor-fee = { path = "../../pallets/xor-fee" }
 [dev-dependencies]
 common = { path = "../../common", features = ["test"] }
 hex = "0.4"
-serde_json = "1"
 
 [features]
 include-real-files = []
@@ -45,3 +45,4 @@ runtime-wasm = ["framenode-runtime/build-wasm-binary"]
 private-net = ["faucet", "framenode-runtime/private-net"]
 wip = ["framenode-runtime/wip"]
 stage = ["framenode-runtime/stage"]
+runtime-benchmarks = ["framenode-runtime/runtime-benchmarks"]

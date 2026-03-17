@@ -40,7 +40,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
-#![feature(is_some_and)]
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -56,6 +55,7 @@ pub mod weights;
 pub mod pallet {
     use super::*;
 
+    use codec::DecodeWithMemTracking;
     use common::{
         AccountIdOf, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision,
         ContentSource, DEXInfo, Description, DexIdOf, DexInfoProvider, ExtendedAssetsManager,
@@ -90,6 +90,7 @@ pub mod pallet {
         + multicollateral_bonding_curve_pool::Config
     {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
@@ -195,7 +196,9 @@ pub mod pallet {
         FailToInitializeRegulatedAssets,
     }
 
-    #[derive(Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, Debug)]
+    #[derive(
+        Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo, Debug,
+    )]
     pub enum InputAssetId<AssetId> {
         McbcReference,
         XstReference,

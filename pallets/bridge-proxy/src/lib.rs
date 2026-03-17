@@ -21,12 +21,13 @@ use bridge_types::{
     types::{AssetKind, MessageDirection, MessageStatus},
     GenericAccount, GenericNetworkId, GenericTimepoint, MainnetAccountId, H160, H256,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::{prelude::FixedWrapper, AssetIdOf, Balance, BalanceOf, OnDenominate};
 use common::{AssetInfoProvider, AssetManager, ReferencePriceProvider};
-use frame_support::dispatch::{DispatchResult, RuntimeDebug};
+use frame_support::__private::log;
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
-use frame_support::log;
+use frame_support::sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
@@ -42,7 +43,7 @@ use sccp_pallet::SccpAssetChecker;
 pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b"bridge-fee";
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+#[derive(Clone, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct BridgeRequest<AssetId> {
     source: GenericAccount,
@@ -55,7 +56,7 @@ pub struct BridgeRequest<AssetId> {
     direction: MessageDirection,
 }
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+#[derive(Clone, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 pub struct TransferLimitSettings<BlockNumber> {
     max_amount: Balance,
     period_blocks: BlockNumber,
@@ -83,6 +84,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + pallet_timestamp::Config + technical::Config + permissions::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type SccpAssetChecker: sccp_pallet::SccpAssetChecker<AssetIdOf<Self>>;
@@ -185,7 +187,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -806,7 +807,7 @@ impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>> for Pallet<T> {
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for Pallet<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         LockedAssets::<T>::translate(|_, asset_id, value| {
             if asset_id == common::XOR.into() || asset_id == common::TBCD.into() {
                 Some(value / factor)

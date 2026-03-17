@@ -34,9 +34,9 @@ use crate::evm::{AdditionalEVMInboundData, EVMAppInfo, EVMAssetInfo, EVMLegacyAs
 use crate::substrate::SubAssetInfo;
 use crate::ton::{AdditionalTONInboundData, TonAppInfo, TonAssetInfo};
 use crate::{GenericTimepoint, H256};
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use derivative::Derivative;
-use frame_support::RuntimeDebug;
+use sp_runtime::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
@@ -53,13 +53,27 @@ pub enum MessageDirection {
     Outbound,
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+impl codec::DecodeWithMemTracking for MessageDirection {}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+)]
 pub struct MessageId {
     sender: GenericNetworkId,
     receiver: GenericNetworkId,
     batch_nonce: Option<BatchNonce>,
     message_nonce: MessageNonce,
 }
+
+impl codec::DecodeWithMemTracking for MessageId {}
 
 impl MessageId {
     /// Creates MessageId for message in batch.
@@ -92,7 +106,7 @@ impl MessageId {
     }
 
     pub fn hash(&self) -> H256 {
-        sp_runtime::traits::Keccak256::hash_of(self)
+        H256::from_slice(sp_runtime::traits::Keccak256::hash_of(self).as_bytes())
     }
 }
 
@@ -105,6 +119,8 @@ pub type MessageNonce = u64;
 pub struct AuxiliaryDigest {
     pub logs: Vec<AuxiliaryDigestItem>,
 }
+
+impl codec::DecodeWithMemTracking for AuxiliaryDigest {}
 
 impl From<Digest> for AuxiliaryDigest {
     fn from(digest: Digest) -> Self {
@@ -126,6 +142,8 @@ pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
     Commitment(GenericNetworkId, H256),
 }
+
+impl codec::DecodeWithMemTracking for AuxiliaryDigestItem {}
 
 impl From<AuxiliaryDigestItem> for DigestItem {
     fn from(item: AuxiliaryDigestItem) -> DigestItem {
@@ -203,6 +221,8 @@ pub enum MessageStatus {
     Refunded,
     Approved,
 }
+
+impl codec::DecodeWithMemTracking for MessageStatus {}
 
 #[derive(
     Clone,
@@ -291,6 +311,15 @@ pub struct CallOriginOutput<NetworkId, MessageId, Additional> {
     pub additional: Additional,
 }
 
+impl<NetworkId, MessageId, Additional> codec::DecodeWithMemTracking
+    for CallOriginOutput<NetworkId, MessageId, Additional>
+where
+    NetworkId: codec::DecodeWithMemTracking,
+    MessageId: codec::DecodeWithMemTracking,
+    Additional: codec::DecodeWithMemTracking,
+{
+}
+
 impl<NetworkId: Default, Additional: Default> crate::traits::BridgeOriginOutput
     for CallOriginOutput<NetworkId, H256, Additional>
 {
@@ -349,6 +378,13 @@ pub struct GenericCommitmentWithBlock<BlockNumber, MaxMessages: Get<u32>, MaxPay
     pub commitment: crate::GenericCommitment<MaxMessages, MaxPayload>,
 }
 
+impl<BlockNumber, MaxMessages: Get<u32>, MaxPayload: Get<u32>> codec::DecodeWithMemTracking
+    for GenericCommitmentWithBlock<BlockNumber, MaxMessages, MaxPayload>
+where
+    BlockNumber: codec::DecodeWithMemTracking,
+{
+}
+
 #[derive(
     Clone,
     Copy,
@@ -369,6 +405,8 @@ pub enum GenericAdditionalInboundData {
     EVM(AdditionalEVMInboundData),
     TON(AdditionalTONInboundData),
 }
+
+impl codec::DecodeWithMemTracking for GenericAdditionalInboundData {}
 
 impl From<AdditionalEVMInboundData> for GenericAdditionalInboundData {
     fn from(value: AdditionalEVMInboundData) -> Self {

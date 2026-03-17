@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 use crate as ceres_governance_platform;
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
@@ -11,12 +13,13 @@ use common::{
     Description, CERES_ASSET_ID, VXOR,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::{GenesisBuild, Hooks};
+use frame_support::traits::Hooks;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Zero;
+use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
@@ -31,7 +34,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -139,7 +142,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self
@@ -147,6 +150,7 @@ impl ExtBuilder {
                 .iter()
                 .map(|(acc, _, balance)| (acc.clone(), *balance))
                 .collect(),
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

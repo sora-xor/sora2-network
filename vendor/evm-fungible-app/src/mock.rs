@@ -67,7 +67,7 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
@@ -297,7 +297,7 @@ impl fungible_app::Config for Test {
 
 pub fn new_tester() -> sp_io::TestExternalities {
     let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+        .build_storage()
         .unwrap();
 
     let bob: AccountId = Keyring::Bob.into();

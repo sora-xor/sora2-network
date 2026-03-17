@@ -2,7 +2,7 @@ use crate::Config;
 use crate::Pallet;
 use common::AssetIdOf;
 use common::Balance;
-use frame_support::log::{error, info};
+use frame_support::__private::log::{error, info};
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
@@ -50,7 +50,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
         let state = old_storage::PendingFreeReserves::<T>::get().encode();
         ensure!(
             Pallet::<T>::on_chain_storage_version() == 3,
@@ -60,7 +60,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
         ensure!(
             !old_storage::PendingFreeReserves::<T>::exists(),
             "Old storage value still present"
@@ -81,7 +81,8 @@ where
                 .next()
                 .ok_or("Empty pending free reserves")?;
             ensure!(
-                block_number == frame_system::Pallet::<T>::block_number() + T::BlockNumber::one(),
+                block_number
+                    == frame_system::Pallet::<T>::block_number() + BlockNumberFor::<T>::one(),
                 "Pending free reserves have wrong block number"
             );
 

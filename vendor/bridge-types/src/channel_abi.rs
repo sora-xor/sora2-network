@@ -31,9 +31,13 @@
 #![allow(deprecated)]
 
 use crate::H160;
-use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use frame_support::RuntimeDebug;
+use ethabi::{ethereum_types::H160 as AbiH160, Function, Param, ParamType, StateMutability, Token};
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
+
+fn abi_h160(address: H160) -> AbiH160 {
+    AbiH160::from_slice(address.as_bytes())
+}
 
 fn register_app_function() -> Function {
     Function {
@@ -72,7 +76,7 @@ pub struct RemoveAppPayload {
 impl RemoveAppPayload {
     /// ABI-encode this payload
     pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
+        let tokens = &[Token::Address(abi_h160(self.app))];
         remove_app_function().encode_input(tokens.as_ref())
     }
 }
@@ -86,7 +90,7 @@ pub struct RegisterAppPayload {
 impl RegisterAppPayload {
     /// ABI-encode this payload
     pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
+        let tokens = &[Token::Address(abi_h160(self.app))];
         register_app_function().encode_input(tokens.as_ref())
     }
 }

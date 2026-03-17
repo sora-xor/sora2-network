@@ -42,11 +42,11 @@ use crate::{
 };
 use codec::Encode;
 use common::{DEFAULT_BALANCE_PRECISION, VAL, XOR};
-use frame_support::dispatch::DispatchError;
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
 use sp_core::offchain::OffchainStorage;
 use sp_core::{sr25519, H256};
+use sp_runtime::DispatchError;
 use std::str::FromStr;
 
 #[test]

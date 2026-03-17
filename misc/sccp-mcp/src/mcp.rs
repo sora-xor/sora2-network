@@ -582,7 +582,10 @@ mod tests {
         });
         assert_eq!(
             requester_principal_from_params(&with_multibyte_requester),
-            format!("requester:{}", principal_fingerprint(requester_id.as_bytes()))
+            format!(
+                "requester:{}",
+                principal_fingerprint(requester_id.as_bytes())
+            )
         );
     }
 
@@ -722,7 +725,7 @@ mod tests {
             .expect_err("non-string requester_id must be rejected");
         assert!(
             err.to_string()
-            .contains("missing required params.requester_id"),
+                .contains("missing required params.requester_id"),
             "unexpected error: {err}"
         );
     }
@@ -1766,12 +1769,9 @@ mod tests {
             ctx.config.auth.max_token_bytes = 8;
             ctx.config.auth.min_required_token_bytes = 1;
 
-            let err = ensure_method_authorized(
-                &ctx,
-                "tools/call",
-                &json!({"auth_token": "0123456789"}),
-            )
-            .expect_err("oversized token should fail authorization");
+            let err =
+                ensure_method_authorized(&ctx, "tools/call", &json!({"auth_token": "0123456789"}))
+                    .expect_err("oversized token should fail authorization");
             assert!(
                 err.to_string().contains("exceeds max allowed bytes"),
                 "unexpected error: {err}"

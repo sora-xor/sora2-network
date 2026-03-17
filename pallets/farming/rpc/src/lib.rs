@@ -30,17 +30,17 @@
 
 use codec::Codec;
 pub use farming_runtime_api::FarmingApi as FarmingRuntimeApi;
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::{generic::BlockId, traits::Block as BlockT};
+use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
 
-#[rpc(client, server)]
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
+
+#[rpc(server)]
 pub trait FarmingApi<BlockHash, AssetId> {
     #[method(name = "farming_rewardDoublingAssets")]
     fn reward_doubling_assets(&self, at: Option<BlockHash>) -> RpcResult<Vec<AssetId>>;
@@ -72,9 +72,9 @@ where
 {
     fn reward_doubling_assets(&self, at: Option<Block::Hash>) -> RpcResult<Vec<AssetId>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or_else(|| self.client.info().best_hash));
+        let at = at.unwrap_or_else(|| self.client.info().best_hash);
 
-        api.reward_doubling_assets(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        api.reward_doubling_assets(at)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

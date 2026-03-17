@@ -37,6 +37,7 @@ use common::{
     SBT_PRCRDT, SBT_PRINVST, XST,
 };
 use frame_support::sp_runtime::{DispatchError, DispatchResult};
+use frame_support::traits::Time;
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
 
 fn system_asset_account_id<T: Config>() -> Result<AccountIdOf<T>, DispatchError> {

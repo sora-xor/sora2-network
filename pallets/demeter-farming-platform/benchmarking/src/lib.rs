@@ -3,6 +3,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![allow(dead_code)]
 
 use codec::Decode;
 use common::{
@@ -103,14 +104,12 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
 
 fn run_to_block<T: Config>(n: u32) {
     while frame_system::Pallet::<T>::block_number() < n.into() {
-        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number().into());
+        frame_system::Pallet::<T>::on_finalize(frame_system::Pallet::<T>::block_number());
         frame_system::Pallet::<T>::set_block_number(
             frame_system::Pallet::<T>::block_number() + 1u32.into(),
         );
-        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number().into());
-        DemeterFarmingPlatform::<T>::on_initialize(
-            frame_system::Pallet::<T>::block_number().into(),
-        );
+        frame_system::Pallet::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
+        DemeterFarmingPlatform::<T>::on_initialize(frame_system::Pallet::<T>::block_number());
     }
 }
 

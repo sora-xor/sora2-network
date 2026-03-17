@@ -18,14 +18,14 @@ pub mod init {
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(0) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version 0, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
                 return frame_support::weights::Weight::zero();
             }
 
-            frame_support::log::info!("Migrating PswapDistribution to v2");
+            frame_support::__private::log::info!("Migrating PswapDistribution to v2");
 
             let assets = ListAssets::get();
             let network_id = NetworkId::get();
@@ -33,7 +33,7 @@ pub mod init {
             for (asset_id, locked) in assets {
                 reads_writes += 1;
                 crate::LockedAssets::<T>::insert(network_id, asset_id, locked);
-                frame_support::log::debug!("Add locked asset {asset_id:?}: {locked:?}");
+                frame_support::__private::log::debug!("Add locked asset {asset_id:?}: {locked:?}");
             }
 
             StorageVersion::new(1).put::<Pallet<T>>();
@@ -42,7 +42,7 @@ pub mod init {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(0),
                 "Wrong storage version before upgrade"
@@ -51,7 +51,7 @@ pub mod init {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version after upgrade"
@@ -111,14 +111,14 @@ pub mod generic_account_v2 {
     impl<T: Config> OnRuntimeUpgrade for LiberlandGenericAccount<T> {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() >= StorageVersion::new(2) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version less than 2, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
                 return frame_support::weights::Weight::zero();
             }
 
-            frame_support::log::info!("Migrating BridgeProxy to v2");
+            frame_support::__private::log::info!("Migrating BridgeProxy to v2");
 
             let mut reads_writes = 0;
 
@@ -129,7 +129,7 @@ pub mod generic_account_v2 {
                 },
             );
 
-            frame_support::log::info!(
+            frame_support::__private::log::info!(
                 "BridgeProxy Migration to v2: {:?} BridgeRequests translated",
                 reads_writes
             );
@@ -140,7 +140,7 @@ pub mod generic_account_v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version before upgrade"
@@ -149,7 +149,7 @@ pub mod generic_account_v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
                 "Wrong storage version after upgrade"
@@ -197,7 +197,7 @@ pub mod generic_account_v2 {
     pub enum OldGenericAccount {
         EVM(H160),
         Sora(MainnetAccountId),
-        Parachain(xcm::VersionedMultiLocation),
+        Parachain(xcm::VersionedLocation),
         Unknown,
         Root,
     }
@@ -212,7 +212,7 @@ pub mod generic_account_v2 {
                     match codec::Decode::decode(&mut &encoded[..]) {
                         Ok(location) => GenericAccount::Parachain(location),
                         Err(_) => {
-                            frame_support::log::error!(
+                            frame_support::__private::log::error!(
                                 "Failed to decode parachain account in v2 migration"
                             );
                             GenericAccount::Unknown
@@ -229,7 +229,7 @@ pub mod generic_account_v2 {
     mod tests {
         use super::*;
         use crate::mock::{new_tester, AssetId, Test};
-        use sp_keyring::AccountKeyring as Keyring;
+        use sp_keyring::sr25519::Keyring;
 
         #[test]
         fn test() {
@@ -239,7 +239,7 @@ pub mod generic_account_v2 {
 
                 // Create old bridge request
                 let old_bridge_request = OldBridgeRequest {
-                    source: OldGenericAccount::Parachain(xcm::VersionedMultiLocation::V3(
+                    source: OldGenericAccount::Parachain(xcm::VersionedLocation::V3(
                         xcm::v3::MultiLocation::here(),
                     )),
                     dest: OldGenericAccount::Sora(MainnetAccountId::new([0; 32])),
@@ -254,7 +254,7 @@ pub mod generic_account_v2 {
                 // Create some correct bridge request that should not be changed
                 let parachain_here = {
                     let encoded =
-                        xcm::VersionedMultiLocation::V3(xcm::v3::MultiLocation::here()).encode();
+                        xcm::VersionedLocation::V3(xcm::v3::MultiLocation::here()).encode();
                     codec::Decode::decode(&mut &encoded[..])
                         .expect("v3 multilocation should decode")
                 };

@@ -29,21 +29,20 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Codec;
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use sp_std::vec::Vec;
 use std::sync::Arc;
 
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
+
 pub use trading_pair_runtime_api::TradingPairAPI as TradingPairRuntimeAPI;
 
-#[rpc(client, server)]
+#[rpc(server)]
 pub trait TradingPairAPI<BlockHash, DEXId, TradingPair, AssetId, LiquiditySourceType> {
     #[method(name = "tradingPair_listEnabledPairs")]
     fn list_enabled_pairs(&self, dex_id: DEXId, at: Option<BlockHash>) -> Result<Vec<TradingPair>>;
@@ -111,12 +110,12 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<TradingPair>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_pairs(&at, dex_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.list_enabled_pairs(at, dex_id)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn is_pair_enabled(
@@ -127,12 +126,12 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.is_pair_enabled(&at, dex_id, base_asset_id, target_asset_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.is_pair_enabled(at, dex_id, base_asset_id, target_asset_id)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn list_enabled_sources_for_pair(
@@ -143,12 +142,12 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<LiquiditySourceType>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_enabled_sources_for_pair(&at, dex_id, base_asset_id, target_asset_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.list_enabled_sources_for_pair(at, dex_id, base_asset_id, target_asset_id)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn is_source_enabled_for_pair(
@@ -160,11 +159,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.is_source_enabled_for_pair(&at, dex_id, base_asset_id, target_asset_id, source_type)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.is_source_enabled_for_pair(at, dex_id, base_asset_id, target_asset_id, source_type)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

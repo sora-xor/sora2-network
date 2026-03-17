@@ -31,8 +31,7 @@
 use core::marker::PhantomData;
 
 use crate::{AggregatedPriceInfo, Config, FastPriceInfos, Pallet, PriceInfos};
-use frame_support::dispatch::GetStorageVersion;
-use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
+use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
 use sp_core::Get;
 #[cfg(feature = "try-runtime")]
 use sp_std::prelude::*;
@@ -47,7 +46,7 @@ impl<T: Config> OnRuntimeUpgrade for AddFastPriceInfos<T> {
             }
             StorageVersion::new(3).put::<Pallet<T>>()
         } else {
-            frame_support::log::error!(
+            frame_support::__private::log::error!(
                 "Current version {:?}, expected 2",
                 Pallet::<T>::on_chain_storage_version()
             );
@@ -56,20 +55,20 @@ impl<T: Config> OnRuntimeUpgrade for AddFastPriceInfos<T> {
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
         if FastPriceInfos::<T>::iter().count() > 0 {
-            return Err("FastPriceInfos storage should not have values");
+            return Err("FastPriceInfos storage should not have values".into());
         }
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
         for key in PriceInfos::<T>::iter_keys() {
             if FastPriceInfos::<T>::get(key).ok_or("Expected key not found")?
                 != AggregatedPriceInfo::default()
             {
-                return Err("Unexpected storage value");
+                return Err("Unexpected storage value".into());
             }
         }
         Ok(())

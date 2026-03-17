@@ -404,7 +404,7 @@ fn should_not_lock_insufficient_base_asset() {
                 &XOR,
                 amount_to_lock.into()
             ),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            sp_runtime::DispatchError::Token(sp_runtime::TokenError::FundsUnavailable)
         );
     });
 }
@@ -513,7 +513,7 @@ fn should_not_unlock_more_base_that_tech_account_has() {
                 &XOR,
                 amount_to_try_unlock.into()
             ),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
+            sp_runtime::DispatchError::Token(sp_runtime::TokenError::FundsUnavailable)
         );
     });
 }

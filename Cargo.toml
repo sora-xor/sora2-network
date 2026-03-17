@@ -1,92 +1,86 @@
 [patch.crates-io]
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-benchmarking-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-democracy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-elections-phragmen = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-im-online = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-membership = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-multisig = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-offences = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-sudo = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-basic-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-chain-spec = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-client-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-slots = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-executor = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-informant = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-telemetry = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-application-crypto = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-arithmetic = { path = "vendor/sp-arithmetic" }
-sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-core = { path = "vendor/sp-core" }
-sp-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-inherents = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-io = { path = "vendor/sp-io" }
-sp-keystore = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-npos-elections = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime-interface = { path = "vendor/runtime-interface" }
-sp-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-std = { path = "vendor/std" }
-sp-storage = { path = "vendor/storage" }
-sp-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-trie = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-maybe-compressed-blob = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-frame-rpc-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-prometheus-endpoint = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-collective = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-democracy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-elections-phragmen = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-identity = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-im-online = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-membership = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-offences = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-randomness-collective-flip = { package = "pallet-insecure-randomness-collective-flip", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-scheduler = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-sudo = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-transaction-payment = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-chain-spec = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-client-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus-slots = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-executor = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-finality-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-informant = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-service = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-telemetry = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-application-crypto = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-block-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-offchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-npos-elections = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-storage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-trie = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-version = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-mmr-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-maybe-compressed-blob = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+substrate-prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+beefy-gadget = { package = "sc-consensus-beefy", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+beefy-gadget-rpc = { package = "sc-consensus-beefy-rpc", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+pallet-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 
 #jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
@@ -104,143 +98,44 @@ thread_local = { git = "https://github.com/sora-xor/thread_local-rs.git", branch
 #orml-currencies = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 #orml-traits = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
 #orml-tokens = { git = "https://github.com/KalitaAlexey/open-runtime-module-library.git", branch = "use-master" }
+orml-currencies = { path = "vendor/open-runtime-module-library-v1/currencies" }
+orml-tokens = { path = "vendor/open-runtime-module-library-v1/tokens" }
+orml-traits = { path = "vendor/open-runtime-module-library-v1/traits" }
+orml-utilities = { path = "vendor/open-runtime-module-library-v1/utilities" }
 
 [patch."https://github.com/open-web3-stack/open-runtime-module-library.git"]
-orml-tokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-traits = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-currencies = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-utilities = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
-orml-xtokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38" }
+orml-tokens = { path = "vendor/open-runtime-module-library-v1/tokens" }
+orml-traits = { path = "vendor/open-runtime-module-library-v1/traits" }
+orml-currencies = { path = "vendor/open-runtime-module-library-v1/currencies" }
+orml-utilities = { path = "vendor/open-runtime-module-library-v1/utilities" }
 
-[patch."https://github.com/paritytech/substrate.git"]
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-benchmarking-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-democracy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-elections-phragmen = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-im-online = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-membership = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-multisig = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-offences = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-sudo = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-bags-list = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-election-provider-multi-phase = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-basic-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-chain-spec = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-client-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-slots = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-executor = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-informant = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-telemetry = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-application-crypto = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-arithmetic = { path = "vendor/sp-arithmetic" }
-sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-core = { path = "vendor/sp-core" }
-sp-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-inherents = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-io = { path = "vendor/sp-io" }
-sp-keystore = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-npos-elections = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime-interface = { path = "vendor/runtime-interface" }
-sp-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-std = { path = "vendor/std" }
-sp-storage = { path = "vendor/storage" }
-sp-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-trie = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-maybe-compressed-blob = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-frame-rpc-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-prometheus-endpoint = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-
-[patch."https://github.com/sora-xor/substrate.git"]
-sp-arithmetic = { path = "vendor/sp-arithmetic" }
-sp-debug-derive = { path = "vendor/debug-derive" }
-sp-core = { path = "vendor/sp-core" }
-sp-externalities = { path = "vendor/externalities" }
-sp-io = { path = "vendor/sp-io" }
-sp-runtime-interface = { path = "vendor/runtime-interface" }
-sp-serializer = { path = "vendor/serializer" }
-sp-std = { path = "vendor/std" }
-sp-storage = { path = "vendor/storage" }
-sp-tracing = { path = "vendor/tracing" }
-sp-wasm-interface = { path = "vendor/wasm-interface" }
-
-# [patch."https://github.com/sora-xor/sora2-common.git"]
-# beefy-light-client = { path = "../sora2-common/pallets/beefy-light-client" }
-# beefy-light-client-rpc = { path = "../sora2-common/pallets/beefy-light-client/rpc" }
-# beefy-light-client-runtime-api = { path = "../sora2-common/pallets/beefy-light-client/runtime-api" }
-# leaf-provider = { path = "../sora2-common/pallets/leaf-provider" }
-# leaf-provider-rpc = { path = "../sora2-common/pallets/leaf-provider/rpc" }
-# leaf-provider-runtime-api = { path = "../sora2-common/pallets/leaf-provider/runtime-api" }
-# bridge-common = { path = "../sora2-common/pallets/bridge-common" }
-# dispatch = { path = "../sora2-common/pallets/dispatch" }
-# parachain-bridge-app = { path = "../sora2-common/pallets/parachain-app" }
-# substrate-bridge-app = { path = "../sora2-common/pallets/substrate-app" }
-# substrate-bridge-channel = { path = "../sora2-common/pallets/substrate-channel" }
-# bridge-types = { path = "../sora2-common/pallets/types" }
-# bridge-data-signer = { path = "../sora2-common/pallets/data-signer" }
-# multisig-verifier = { path = "../sora2-common/pallets/multisig-verifier" }
-# evm-fungible-app = { path = "../sora2-common/pallets/evm-fungible-app" }
-# bridge-channel = { path = "../sora2-common/pallets/channel" }
+[patch."https://github.com/sora-xor/open-runtime-module-library.git"]
+orml-tokens = { path = "vendor/open-runtime-module-library-v1/tokens" }
+orml-traits = { path = "vendor/open-runtime-module-library-v1/traits" }
+orml-currencies = { path = "vendor/open-runtime-module-library-v1/currencies" }
+orml-utilities = { path = "vendor/open-runtime-module-library-v1/utilities" }
 
 [patch."https://github.com/sora-xor/sora2-common.git"]
-bridge-types = { path = "vendor/bridge-types" }
-bridge-data-signer = { path = "vendor/bridge-data-signer" }
-evm-fungible-app = { path = "vendor/evm-fungible-app" }
-jetton-app = { path = "vendor/jetton-app" }
+bridge-types = { path = "vendor/sora2-common/pallets/types" }
+bridge-data-signer = { path = "vendor/sora2-common/pallets/data-signer" }
+evm-fungible-app = { path = "vendor/sora2-common/pallets/evm-fungible-app" }
+jetton-app = { path = "vendor/sora2-common/pallets/jetton-app" }
+beefy-light-client = { path = "vendor/sora2-common/pallets/beefy-light-client" }
+beefy-light-client-rpc = { path = "vendor/sora2-common/pallets/beefy-light-client/rpc" }
+beefy-light-client-runtime-api = { path = "vendor/sora2-common/pallets/beefy-light-client/runtime-api" }
+bridge-channel = { path = "vendor/sora2-common/pallets/channel" }
+bridge-common = { path = "vendor/sora2-common/pallets/bridge-common" }
+dispatch = { path = "vendor/sora2-common/pallets/dispatch" }
+leaf-provider = { path = "vendor/sora2-common/pallets/leaf-provider" }
+leaf-provider-rpc = { path = "vendor/sora2-common/pallets/leaf-provider/rpc" }
+leaf-provider-runtime-api = { path = "vendor/sora2-common/pallets/leaf-provider/runtime-api" }
+multisig-verifier = { path = "vendor/sora2-common/pallets/multisig-verifier" }
+parachain-bridge-app = { path = "vendor/sora2-common/pallets/parachain-app" }
+substrate-bridge-app = { path = "vendor/sora2-common/pallets/substrate-app" }
+substrate-bridge-channel = { path = "vendor/sora2-common/pallets/substrate-channel" }
+
+[patch."https://github.com/sora-xor/fixnum"]
+fixnum = { path = "vendor/fixnum" }
 
 [workspace]
 members = [
@@ -295,200 +190,155 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-currencies = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies", default-features = false }
-tokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-tokens", default-features = false }
-orml-tokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-tokens", default-features = false }
-traits = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false }
-orml-traits = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false }
-xtokens = { git = "https://github.com/sora-xor/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-xtokens", default-features = false }
+log = { version = "0.4.20", default-features = false }
+serde = { version = "1.0.189" }
+scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+parity-scale-codec = { version = "3.6.5", default-features = false, features = ["max-encoded-len"] }
+num-traits = { version = "0.2.14", default-features = false }
+impl-trait-for-tuples = "0.2.2"
+paste = "1.0"
+
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+binary-merkle-tree = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+pallet-elections-phragmen = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+pallet-treasury = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-beefy = { package = "sp-consensus-beefy", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-mmr-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+xcm = { package = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
+ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
+
+currencies = { path = "vendor/open-runtime-module-library-v1/currencies", package = "orml-currencies", default-features = false }
+tokens = { path = "vendor/open-runtime-module-library-v1/tokens", package = "orml-tokens", default-features = false }
+orml-tokens = { path = "vendor/open-runtime-module-library-v1/tokens", package = "orml-tokens", default-features = false }
+traits = { path = "vendor/open-runtime-module-library-v1/traits", package = "orml-traits", default-features = false }
+orml-traits = { path = "vendor/open-runtime-module-library-v1/traits", package = "orml-traits", default-features = false }
 
 
 [profile.release]
 panic = 'unwind'
 
-[patch."https://github.com/paritytech/polkadot-sdk"]
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-benchmarking-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-democracy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-elections-phragmen = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-im-online = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-membership = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-multisig = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-offences = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-sudo = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-bags-list = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-election-provider-multi-phase = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-basic-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-chain-spec = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-client-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-slots = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-executor = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-informant = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-telemetry = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-application-crypto = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-arithmetic = { path = "vendor/sp-arithmetic" }
-sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-core = { path = "vendor/sp-core" }
-sp-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-inherents = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-io = { path = "vendor/sp-io" }
-sp-keystore = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-npos-elections = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime-interface = { path = "vendor/runtime-interface" }
-sp-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-std = { path = "vendor/std" }
-sp-storage = { path = "vendor/storage" }
-sp-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-trie = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-maybe-compressed-blob = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-frame-rpc-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-prometheus-endpoint = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-
+[patch."https://github.com/sora-xor/substrate.git"]
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 
 [patch."https://github.com/sora-xor/polkadot-sdk.git"]
-frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-benchmarking-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-executive = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-system-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-frame-election-provider-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-collective = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-democracy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-elections-phragmen = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-identity = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-im-online = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-membership = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-multisig = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-offences = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-randomness-collective-flip = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-scheduler = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-sudo = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-utility = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-bags-list = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-election-provider-multi-phase = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-basic-authorship = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-chain-spec = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-client-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-consensus-slots = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-executor = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-informant = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-network = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-rpc-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-service = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sc-telemetry = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-api = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-application-crypto = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-arithmetic = { path = "vendor/sp-arithmetic" }
-sp-block-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-blockchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-aura = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-consensus-babe = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-core = { path = "vendor/sp-core" }
-sp-finality-grandpa = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-inherents = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-io = { path = "vendor/sp-io" }
-sp-keystore = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-offchain = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-npos-elections = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-runtime-interface = { path = "vendor/runtime-interface" }
-sp-session = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-std = { path = "vendor/std" }
-sp-storage = { path = "vendor/storage" }
-sp-timestamp = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-transaction-pool = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-trie = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-version = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-keyring = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-mmr-primitives = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-maybe-compressed-blob = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-frame-rpc-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-mmr-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-prometheus-endpoint = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-sp-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-gadget-rpc = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-beefy-merkle-tree = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-pallet-preimage = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-substrate-wasm-builder = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
-try-runtime-cli = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-election-provider-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+frame-system-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-im-online = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-offences = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-randomness-collective-flip = { package = "pallet-insecure-randomness-collective-flip", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-scheduler = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-sudo = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-transaction-payment = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-chain-spec = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-client-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-network = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-service = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-api-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-application-crypto = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-arithmetic = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-block-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-blockchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-consensus-grandpa = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-crypto-hashing = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-crypto-hashing-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-debug-derive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-inherents = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-mmr-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-offchain = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-runtime-interface-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-session = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-storage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-tracing = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-trie = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-version = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-version-proc-macro = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-wasm-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-weights = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+substrate-prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-collective = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-democracy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-elections-phragmen = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-identity = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-membership = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-bags-list = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-election-provider-multi-phase = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-consensus-slots = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-executor = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-finality-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-informant = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sc-telemetry = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-npos-elections = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+sp-maybe-compressed-blob = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+beefy-gadget = { package = "sc-consensus-beefy", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+beefy-gadget-rpc = { package = "sc-consensus-beefy-rpc", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
+substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 
-pallet-staking = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadotsdk-v1.1.0" }
+pallet-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }

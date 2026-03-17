@@ -5,9 +5,8 @@ use codec::{Decode, Encode};
 use common::balance;
 use common::{AssetInfoProvider, AssetManager, FromGenericPair};
 use common::{Balance, Fixed, PSWAP, VAL, XSTUSD};
-use frame_support::dispatch::GetStorageVersion;
-use frame_support::log;
-use frame_support::traits::{Get, OnRuntimeUpgrade, StorageVersion};
+use frame_support::__private::log;
+use frame_support::traits::{Get, GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::Weight;
 use serde::{Deserialize, Serialize};
 use sp_io::MultiRemovalResults;
@@ -78,7 +77,7 @@ pub mod v4 {
         <T as frame_system::Config>::AccountId,
         Blake2_128Concat,
         AssetIdOf<T>,
-        <T as frame_system::Config>::BlockNumber,
+        BlockNumberFor<T>,
         ValueQuery,
     >;
 
@@ -99,7 +98,7 @@ pub mod v4 {
                 );
                 if let Err(err) = common::with_transaction(migrate::<T>) {
                     log::error!(
-                        "Failed to migrate crowdloan rewards, state reverted: {}",
+                        "Failed to migrate crowdloan rewards, state reverted: {:?}",
                         err
                     );
                 } else {
@@ -116,7 +115,7 @@ pub mod v4 {
         }
     }
 
-    pub fn migrate<T: Config>() -> Result<(), &'static str> {
+    pub fn migrate<T: Config>() -> Result<(), sp_runtime::DispatchError> {
         let tag = CrowdloanTag(
             CROWDLOAN_TAG
                 .to_vec()
@@ -152,7 +151,7 @@ pub mod v4 {
                 } else if asset_id == XSTUSD.into() {
                     reward_info.xstusd_reward
                 } else {
-                    return Err("wrong asset id in CrowdloanClaimHistoryStorage");
+                    return Err("wrong asset id in CrowdloanClaimHistoryStorage".into());
                 };
 
                 let reward = reward

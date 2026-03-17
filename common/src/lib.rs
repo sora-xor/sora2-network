@@ -78,6 +78,7 @@ pub mod prelude {
     pub use super::outcome_fee::*;
     pub use super::permissions;
     pub use super::primitives::*;
+    #[allow(unused_imports)]
     pub use super::serialization::*;
     pub use super::swap_amount::*;
     pub use super::traits::*;
@@ -88,6 +89,7 @@ pub mod prelude {
 use sp_core::crypto::AccountId32;
 
 pub use fixed_wrapper_u256::*;
+#[allow(unused_imports)]
 pub use macros::*;
 pub use primitives::*;
 pub use traits::*;
@@ -189,7 +191,7 @@ impl IsRepresentation for AccountId32 {
     }
 }
 
-type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
+type BlockNumberOf<T> = frame_system::pallet_prelude::BlockNumberFor<T>;
 type MomentOf<T> = <T as pallet_timestamp::Config>::Moment;
 /// Converts block_number to timestamp
 pub fn convert_block_number_to_timestamp<T: Config + pallet_timestamp::Config>(

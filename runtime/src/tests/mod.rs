@@ -52,7 +52,7 @@ mod tests {
                 RuntimeOrigin::root(),
                 alice(),
                 XOR.into(),
-                SMALL_FEE as i128
+                (SMALL_FEE * 3) as i128
             ));
             Referrals::reserve(RuntimeOrigin::signed(alice()), SMALL_FEE).unwrap();
             assert_eq!(

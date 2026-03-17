@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::Config;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::{
     balance, AssetIdOf, AssetManager, Balance, OrderBookId, PriceVariant, TradingPairSourceManager,
 };
@@ -45,7 +45,9 @@ use sp_std::ops::{Range, RangeInclusive};
 use sp_std::prelude::*;
 
 /// Parameters for filling one order book side
-#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo,
+)]
 pub struct SideFillInput<Moment> {
     /// the best price for bids; the worst for asks
     pub highest_price: Balance,
@@ -59,8 +61,9 @@ pub struct SideFillInput<Moment> {
     pub amount_range_inclusive: Option<RandomAmount>,
 }
 
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo,
+)]
 pub struct OrderBookAttributes {
     pub tick_size: Balance,
     pub step_lot_size: Balance,
@@ -81,7 +84,9 @@ impl Default for OrderBookAttributes {
 }
 
 /// Parameters for orders amount generation
-#[derive(Encode, Decode, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, Copy, Debug, PartialEq, Eq, scale_info::TypeInfo,
+)]
 pub struct RandomAmount {
     min: Balance,
     max: Balance,
@@ -109,8 +114,9 @@ impl RandomAmount {
     }
 }
 
-#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug))]
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo,
+)]
 pub struct FillInput<Moment, BlockNumber> {
     /// Best price = lowest, worst = highest.
     pub asks: Option<SideFillInput<Moment>>,
