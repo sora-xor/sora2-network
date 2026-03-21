@@ -334,7 +334,6 @@ macro_rules! mock_bridge_channel_outbound_config {
             pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
         }
         impl bridge_channel::outbound::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
             type MaxMessagePayloadSize = MaxMessagePayloadSize;
             type MaxMessagesPerCommit = MaxMessagesPerCommit;
             type MessageStatusNotifier = BridgeProxy;
@@ -556,7 +555,6 @@ macro_rules! mock_dispatch_config {
             type MessageId = MessageId;
             type Origin = RuntimeOrigin;
             type OriginOutput = OriginOutput;
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };
@@ -577,7 +575,6 @@ macro_rules! mock_evm_fungible_app_config {
             type MessageStatusNotifier = BridgeProxy;
             type OutboundChannel = BridgeOutboundChannel;
             type PriorityFee = frame_support::traits::ConstU128<100>;
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };

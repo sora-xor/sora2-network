@@ -1,0 +1,4 @@
+testMode: property
+seqLen: 64
+testLimit: 50000
+corpusDir: fuzz-artifacts/echidna-corpus

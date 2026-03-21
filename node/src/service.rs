@@ -61,7 +61,11 @@ use std::sync::Arc;
 use std::time::Duration;
 use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 
-type HostFunctions = sp_io::SubstrateHostFunctions;
+type HostFunctions = (
+    sp_io::SubstrateHostFunctions,
+    solana_proof_runtime_interface::solana_proof_api::HostFunctions,
+    ton_proof_runtime_interface::ton_proof_api::HostFunctions,
+);
 type FullClient = sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
@@ -92,7 +96,11 @@ pub struct ExecutorDispatch;
 
 #[cfg(feature = "runtime-benchmarks")]
 impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
-    type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+    type ExtendHostFunctions = (
+        frame_benchmarking::benchmarking::HostFunctions,
+        solana_proof_runtime_interface::solana_proof_api::HostFunctions,
+        ton_proof_runtime_interface::ton_proof_api::HostFunctions,
+    );
 
     fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
         framenode_runtime::api::dispatch(method, data)

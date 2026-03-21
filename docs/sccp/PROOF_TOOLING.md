@@ -8,27 +8,18 @@ For inbound-to-SORA proof generation (source chain -> SORA), see:
 
 ## Source Of Truth
 
-Proof generation is implemented in the sibling repository:
+SCCP proof tooling now lives in this repository:
 
-- `bridge-relayer` CLI group: `sccp`
+- `sccp/tools/sccp-proof.sh` for local SCCP proof-helper dispatch
+- `sccp/chains/sol/scripts/encode_sora_burn_proof.py` for Solana verifier-ready Borsh proof bytes
+- `sccp/chains/ton/scripts/encode_sora_proof_cell.mjs` for TON verifier-ready proof cells
+- `sccp/chains/eth`, `sccp/chains/bsc`, `sccp/chains/tron` for destination verifier contracts and chain-native helper scripts
 
-Commands:
-
-1. `sccp evm init`
-2. `sccp sol init`
-3. `sccp ton init`
-4. `sccp evm import-root`
-5. `sccp sol import-root`
-6. `sccp ton import-root`
-7. `sccp evm mint-proof`
-8. `sccp sol mint-proof`
-9. `sccp ton mint-proof`
-
-These commands target EVM-style SCCP verifiers (`sccp-eth`, `sccp-bsc`, `sccp-tron`) and also emit verifier-ready payloads for Solana and TON.
+The old external SCCP proof CLI is deprecated for this repo.
 
 ## Command Overview
 
-### 1) Export validator sets (`sccp * init`)
+### 1) Export validator sets
 
 Purpose:
 - collect `latest_beefy_block`
@@ -39,7 +30,7 @@ Chain-specific outputs:
 - `sccp sol init`: Borsh instruction bytes for Solana verifier `Initialize`
 - `sccp ton init`: TON message body BOC for `SccpVerifierInitialize`
 
-### 2) Import finalized MMR root (`sccp * import-root`)
+### 2) Import finalized MMR root
 
 Input:
 - SORA block containing BEEFY justification
@@ -57,7 +48,7 @@ Chain-specific outputs:
   - latest leaf proof cell
   - submit message body
 
-### 3) Build mint proof (`sccp * mint-proof`)
+### 3) Build mint proof
 
 Input:
 - `burn_block` where SORA committed SCCP `messageId` into auxiliary digest
@@ -70,9 +61,9 @@ Output:
 - optional ABI-packed bytes (`--abi`) for Solidity verifier calls
 
 Chain-specific outputs:
-- `sccp evm mint-proof`: JSON fields + optional ABI bytes
-- `sccp sol mint-proof`: Borsh proof bytes for `SoraBurnProofV1`
-- `sccp ton mint-proof`: proof cell BOC for verifier mint messages
+- Solana: Borsh proof bytes for `SoraBurnProofV1`
+- TON: proof cell BOC for verifier mint messages
+- EVM chains: verifier-ready inputs consumed by their in-repo contracts and scripts
 
 ## Safety Properties
 

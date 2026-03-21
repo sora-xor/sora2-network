@@ -1,0 +1,62 @@
+# Solidity / Ethereum tooling
+# Hardhat, Foundry, Truffle, Remix, ethers-related generated artifacts
+artifacts/
+out/
+cache/
+broadcast/
+broadcast/**
+coverage/
+coverage/**
+coverage.json
+coverage.json.gz
+build/
+.cache/
+.cache/**
+dist/
+tmp/
+fuzz-artifacts/
+crytic-export/
+
+# Solidity dependency/plugin caches
+deps/
+states/
+.typechain/
+.typechain-types/
+
+# Node / JS tooling
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors and local config
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# Debug / metadata
+*.dbg.json
+*.tsbuildinfo
+
+# OpenZeppelin / network state artifacts
+.openzeppelin/
+openzeppelin-upgrades-export.json
+
+# Optional environment files
+.env
+.env.local
+.env.*.local
+
+# Python artifacts
+__pycache__/
+**/__pycache__/
+*.py[cod]

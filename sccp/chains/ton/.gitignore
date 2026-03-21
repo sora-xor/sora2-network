@@ -1,0 +1,24 @@
+# Dependencies
+node_modules
+
+# Tact / TON build artifacts
+artifacts
+build
+
+# Node / misc
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+
+# (Legacy) Keep old entries in case this repo was ever bootstrapped differently
+.psci_modules
+.spago
+bower_components
+.psci
+output
+
+# Python artifacts
+__pycache__/
+**/__pycache__/
+*.py[cod]

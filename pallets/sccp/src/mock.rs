@@ -6,6 +6,7 @@
 use crate as sccp;
 use bridge_types::traits::AuxiliaryDigestHandler;
 use bridge_types::types::AuxiliaryDigestItem;
+use codec::Encode;
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
@@ -99,8 +100,9 @@ impl sccp::Config for Runtime {
     type LegacyBridgeAssetChecker = MockLegacyBridgeChecker;
     type AuxiliaryDigestHandler = MockAuxiliaryDigestHandler;
     type EthFinalizedStateProvider = MockEthFinalizedStateProvider;
+    type EthFinalizedBurnProofVerifier = MockEthFinalizedBurnProofVerifier;
+    type EthZkFinalizedBurnProofVerifier = MockEthZkFinalizedBurnProofVerifier;
     type SolanaFinalizedBurnProofVerifier = MockSolanaFinalizedBurnProofVerifier;
-    type TonFinalizedBurnProofVerifier = MockTonFinalizedBurnProofVerifier;
     type SubstrateFinalizedBurnProofVerifier = MockSubstrateFinalizedBurnProofVerifier;
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
     type MaxDomains = SccpMaxDomains;
@@ -113,8 +115,9 @@ thread_local! {
     static LEGACY_BRIDGE_ASSETS: RefCell<BTreeSet<AssetId>> = RefCell::new(BTreeSet::new());
     static AUX_DIGEST_ITEMS: RefCell<Vec<AuxiliaryDigestItem>> = RefCell::new(Vec::new());
     static ETH_FINALIZED_STATE: RefCell<Option<(H256, H256)>> = RefCell::new(None);
+    static ETH_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
+    static ETH_ZK_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
     static SOLANA_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
-    static TON_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
     static SUBSTRATE_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
 }
 
@@ -138,8 +141,69 @@ impl sccp::EthFinalizedStateProvider for MockEthFinalizedStateProvider {
     }
 }
 
-pub fn set_eth_finalized_state(block_hash: H256, state_root: H256) {
-    ETH_FINALIZED_STATE.with(|s| *s.borrow_mut() = Some((block_hash, state_root)));
+pub struct MockEthFinalizedBurnProofVerifier;
+
+impl sccp::EthFinalizedBurnProofVerifier for MockEthFinalizedBurnProofVerifier {
+    fn is_available() -> bool {
+        ETH_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
+    }
+
+    fn verify_finalized_burn(
+        message_id: H256,
+        payload: &sccp::BurnPayloadV1,
+        proof: &[u8],
+    ) -> Option<bool> {
+        let Some(decoded) = sccp::decode_eth_finalized_burn_proof_v1(proof) else {
+            return Some(false);
+        };
+        if decoded.version != sccp::ETH_FINALIZED_RECEIPT_BURN_PROOF_VERSION_V1 {
+            return Some(false);
+        }
+        let mut preimage = sccp::SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage.extend(payload.encode());
+        if message_id != H256::from_slice(&sp_io::hashing::keccak_256(&preimage)) {
+            return Some(false);
+        }
+        ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
+    }
+}
+
+pub fn set_eth_finalized_verify_result(result: Option<bool>) {
+    ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
+}
+
+pub struct MockEthZkFinalizedBurnProofVerifier;
+
+impl sccp::EthZkFinalizedBurnProofVerifier for MockEthZkFinalizedBurnProofVerifier {
+    fn is_available() -> bool {
+        ETH_ZK_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
+    }
+
+    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
+        let Some(decoded) = sccp::decode_eth_zk_finalized_burn_proof_v1(proof) else {
+            return Some(false);
+        };
+        if decoded.public_inputs.message_id != message_id {
+            return Some(false);
+        }
+        let Some(router_address) = sccp::Pallet::<Runtime>::domain_endpoint(sccp::SCCP_DOMAIN_ETH)
+        else {
+            return Some(false);
+        };
+        if decoded.public_inputs.router_address.as_slice() != router_address.as_slice() {
+            return Some(false);
+        }
+        if decoded.public_inputs.burn_storage_key
+            != sccp::evm_burn_storage_key_for_message_id(message_id)
+        {
+            return Some(false);
+        }
+        ETH_ZK_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
+    }
+}
+
+pub fn set_eth_zk_finalized_verify_result(result: Option<bool>) {
+    ETH_ZK_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
 }
 
 pub struct MockSolanaFinalizedBurnProofVerifier;
@@ -149,29 +213,19 @@ impl sccp::SolanaFinalizedBurnProofVerifier for MockSolanaFinalizedBurnProofVeri
         SOLANA_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
     }
 
-    fn verify_finalized_burn(_message_id: H256, _proof: &[u8]) -> Option<bool> {
+    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
+        let Some(decoded) = sccp::decode_solana_finalized_burn_proof_v1(proof) else {
+            return Some(false);
+        };
+        if decoded.public_inputs.message_id != message_id {
+            return Some(false);
+        }
         SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
     }
 }
 
 pub fn set_solana_finalized_verify_result(result: Option<bool>) {
     SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
-}
-
-pub struct MockTonFinalizedBurnProofVerifier;
-
-impl sccp::TonFinalizedBurnProofVerifier for MockTonFinalizedBurnProofVerifier {
-    fn is_available() -> bool {
-        TON_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
-    }
-
-    fn verify_finalized_burn(_message_id: H256, _proof: &[u8]) -> Option<bool> {
-        TON_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
-    }
-}
-
-pub fn set_ton_finalized_verify_result(result: Option<bool>) {
-    TON_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
 }
 
 pub struct MockSubstrateFinalizedBurnProofVerifier;
@@ -246,7 +300,6 @@ impl ExtBuilder {
         AUX_DIGEST_ITEMS.with(|v| v.borrow_mut().clear());
         ETH_FINALIZED_STATE.with(|s| *s.borrow_mut() = None);
         SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
-        TON_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
         SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
 
         pallet_balances::GenesisConfig::<Runtime> {

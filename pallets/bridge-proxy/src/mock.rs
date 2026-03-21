@@ -126,8 +126,8 @@ impl sccp::Config for Test {
     type LegacyBridgeAssetChecker = ();
     type AuxiliaryDigestHandler = ();
     type EthFinalizedStateProvider = ();
+    type EthZkFinalizedBurnProofVerifier = ();
     type SolanaFinalizedBurnProofVerifier = ();
-    type TonFinalizedBurnProofVerifier = ();
     type SubstrateFinalizedBurnProofVerifier = ();
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
     type MaxDomains = SccpMaxDomains;

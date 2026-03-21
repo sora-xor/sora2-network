@@ -235,6 +235,105 @@ fn lock_liquidity_ok_with_first_fee_option() {
 }
 
 #[test]
+fn lock_liquidity_zero_percentage_should_fail() {
+    preset_initial(|dex_id| {
+        let base_asset: AssetId = XOR.into();
+        let target_asset: AssetId = CERES_ASSET_ID.into();
+
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE),
+            dex_id,
+            base_asset,
+            target_asset,
+            balance!(360000),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+        ));
+
+        assert_err!(
+            ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+                RuntimeOrigin::signed(ALICE),
+                base_asset,
+                target_asset,
+                pallet_timestamp::Pallet::<Runtime>::get() + 5,
+                balance!(0),
+                true
+            ),
+            ceres_liquidity_locker::Error::<Runtime>::InvalidPercentage
+        );
+
+        assert!(ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE).is_empty());
+    });
+}
+
+#[test]
+fn lock_liquidity_event_contains_locked_amount_and_unlock_time() {
+    preset_initial(|dex_id| {
+        let base_asset: AssetId = XOR.into();
+        let target_asset: AssetId = CERES_ASSET_ID.into();
+        System::set_block_number(1);
+
+        assert_ok!(pool_xyk::Pallet::<Runtime>::deposit_liquidity(
+            RuntimeOrigin::signed(ALICE),
+            dex_id,
+            base_asset,
+            target_asset,
+            balance!(360000),
+            balance!(144000),
+            balance!(360000),
+            balance!(144000),
+        ));
+
+        let pool_account: AccountId =
+            <Runtime as ceres_liquidity_locker::Config>::XYKPool::properties(
+                base_asset,
+                target_asset,
+            )
+            .expect("Pool does not exist")
+            .0;
+        let pool_tokens: Balance =
+            <Runtime as ceres_liquidity_locker::Config>::XYKPool::pool_providers(
+                pool_account,
+                ALICE,
+            )
+            .expect("User is not pool provider");
+        let lp_percentage = balance!(0.5);
+        let locked_pool_tokens = (FixedWrapper::from(pool_tokens)
+            * FixedWrapper::from(lp_percentage))
+        .try_into_balance()
+        .unwrap_or(0);
+        let unlocking_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 5;
+
+        System::reset_events();
+        assert_ok!(ceres_liquidity_locker::Pallet::<Runtime>::lock_liquidity(
+            RuntimeOrigin::signed(ALICE),
+            base_asset,
+            target_asset,
+            unlocking_timestamp,
+            lp_percentage,
+            true
+        ));
+
+        let event = System::events()
+            .into_iter()
+            .find_map(|record| match record.event {
+                RuntimeEvent::CeresLiquidityLocker(ceres_liquidity_locker::Event::Locked(
+                    who,
+                    amount,
+                    timestamp,
+                )) => Some((who, amount, timestamp)),
+                _ => None,
+            })
+            .expect("locker event expected");
+
+        assert_eq!(event.0, ALICE);
+        assert_eq!(event.1, locked_pool_tokens);
+        assert_eq!(event.2, unlocking_timestamp);
+    });
+}
+
+#[test]
 fn lock_liquidity_ok_with_second_fee_option() {
     preset_initial(|dex_id| {
         let base_asset: AssetId = XOR.into();

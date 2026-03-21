@@ -189,7 +189,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             ensure!(
-                percentage_of_pool_tokens <= balance!(1),
+                percentage_of_pool_tokens > balance!(0) && percentage_of_pool_tokens <= balance!(1),
                 Error::<T>::InvalidPercentage
             );
 
@@ -286,13 +286,15 @@ pub mod pallet {
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
+            let locked_pool_tokens = lock_info.pool_tokens;
+            let lock_unlocking_timestamp = lock_info.unlocking_timestamp;
             <LockerData<T>>::append(&user, lock_info);
 
             // Emit an event
             Self::deposit_event(Event::Locked(
                 user,
-                percentage_of_pool_tokens,
-                current_timestamp,
+                locked_pool_tokens,
+                lock_unlocking_timestamp,
             ));
 
             // Return a successful DispatchResult

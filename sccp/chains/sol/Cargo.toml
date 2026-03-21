@@ -1,0 +1,13 @@
+[package]
+name = "sccp-sol"
+version = "0.1.0"
+edition = "2021"
+license = "BSD-4-Clause"
+
+[dependencies]
+tiny-keccak = { version = "2", features = ["keccak"] }
+
+[dev-dependencies]
+hex = "0.4"
+parity-scale-codec = { version = "3", package = "parity-scale-codec", features = ["derive"] }
+

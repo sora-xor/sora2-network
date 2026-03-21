@@ -1,0 +1,29 @@
+[package]
+name = "ton-proof-runtime-interface"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+
+everscale-crypto = { version = "0.2", features = ["tl-proto"], optional = true }
+everscale-types = { version = "0.1.2", default-features = false, features = ["models", "sync"], optional = true }
+ed25519-dalek = { version = "2.1.1", optional = true }
+tl-proto = { version = "0.4", optional = true }
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "sp-runtime-interface/std",
+    "sp-std/std",
+    "dep:everscale-crypto",
+    "dep:everscale-types",
+    "dep:ed25519-dalek",
+    "dep:tl-proto",
+]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(substrate_runtime)'] }

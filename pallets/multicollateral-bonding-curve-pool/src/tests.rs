@@ -3637,6 +3637,31 @@ mod tests {
     }
 
     #[test]
+    fn should_disallow_negative_optional_reward_multiplier() {
+        ExtBuilder::default().build().execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                USDT,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            assert_noop!(
+                MBCPool::set_optional_reward_multiplier(
+                    RuntimeOrigin::signed(alice()),
+                    USDT,
+                    Some(fixed!(-0.1)),
+                ),
+                Error::<Runtime>::InvalidRewardMultiplier
+            );
+        });
+    }
+
+    #[test]
     fn price_without_impact_small_amount() {
         ExtBuilder::new(vec![
             (

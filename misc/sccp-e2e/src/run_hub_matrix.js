@@ -154,16 +154,18 @@ function resolveWithVars(input, vars) {
 
 function resolveConfig(rawConfig, harnessRoot) {
   const repoRoot = path.resolve(harnessRoot, '..', '..');
+  const defaultDestinationProofToolchain = path.resolve(repoRoot, 'sccp', 'tools');
   const vars = {
     harnessRoot,
     repoRoot,
     sora2Network: repoRoot,
-    bridgeRelayer: path.resolve(repoRoot, '..', 'bridge-relayer'),
-    sccpEth: path.resolve(repoRoot, '..', 'sccp-eth'),
-    sccpBsc: path.resolve(repoRoot, '..', 'sccp-bsc'),
-    sccpSol: path.resolve(repoRoot, '..', 'sccp-sol'),
-    sccpTon: path.resolve(repoRoot, '..', 'sccp-ton'),
-    sccpTron: path.resolve(repoRoot, '..', 'sccp-tron'),
+    bridgeRelayer: defaultDestinationProofToolchain,
+    destinationProofToolchain: defaultDestinationProofToolchain,
+    sccpEth: path.resolve(repoRoot, 'sccp', 'chains', 'eth'),
+    sccpBsc: path.resolve(repoRoot, 'sccp', 'chains', 'bsc'),
+    sccpSol: path.resolve(repoRoot, 'sccp', 'chains', 'sol'),
+    sccpTon: path.resolve(repoRoot, 'sccp', 'chains', 'ton'),
+    sccpTron: path.resolve(repoRoot, 'sccp', 'chains', 'tron'),
     sora2Parachain: path.resolve(repoRoot, '..', 'sora2-parachain'),
     sccpSoraKusama: path.resolve(repoRoot, '..', 'sora2-parachain'),
     sccpSoraPolkadot: path.resolve(repoRoot, '..', 'sora2-parachain'),
@@ -204,6 +206,17 @@ function resolveConfig(rawConfig, harnessRoot) {
   merged.repoRoot = repoRoot;
   merged.vars = vars;
   return merged;
+}
+
+function resolveDestinationProofToolchainPath(config) {
+  return config.paths.destinationProofToolchain || config.paths.bridgeRelayer;
+}
+
+function resolveDestinationProofToolchainCommand(config) {
+  return (
+    config.commands?.destinationProofToolchain?.proof_toolchain ||
+    config.commands?.bridgeRelayer?.proof_toolchain
+  );
 }
 
 function deepMerge(base, override) {
@@ -496,8 +509,8 @@ function classifyFailure(step) {
   if (step.kind === 'domain' && step.action === 'burn') {
     return 'SOURCE_BURN_FAILED';
   }
-  if (step.kind === 'bridgeRelayer') {
-    return 'RELAYER_PROOF_BUILD_FAILED';
+  if (step.kind === 'destinationProofToolchain' || step.kind === 'bridgeRelayer') {
+    return 'DEST_PROOF_BUILD_FAILED';
   }
   if (step.kind === 'domain' && step.action === 'mint_verify') {
     return 'DEST_MINT_FAILED';
@@ -593,9 +606,9 @@ function checkRequiredPaths(config, scenarios) {
   const required = new Map();
   required.set('sora2Network', config.paths.sora2Network);
 
-  const needBridgeRelayer = scenarios.some((scenario) => scenario.dst !== 'sora');
-  if (needBridgeRelayer) {
-    required.set('bridgeRelayer', config.paths.bridgeRelayer);
+  const needDestinationProofToolchain = scenarios.some((scenario) => scenario.dst !== 'sora');
+  if (needDestinationProofToolchain) {
+    required.set('destinationProofToolchain', resolveDestinationProofToolchainPath(config));
   }
 
   const neededDomains = new Set();
@@ -657,20 +670,28 @@ async function runScenario({
     };
   };
 
-  const runBridgeRelayerCommand = () => {
-    const cmd = config.commands?.bridgeRelayer?.proof_toolchain;
+  const runDestinationProofToolchainCommand = () => {
+    const cmd = resolveDestinationProofToolchainCommand(config);
+    const cwd = resolveDestinationProofToolchainPath(config);
     if (!cmd) {
       return {
         ok: false,
         skipped: true,
-        reason: 'Missing bridgeRelayer.proof_toolchain command mapping',
+        reason: 'Missing destinationProofToolchain.proof_toolchain command mapping',
+      };
+    }
+    if (!cwd) {
+      return {
+        ok: false,
+        skipped: true,
+        reason: 'Missing destinationProofToolchain path',
       };
     }
     return {
       type: 'command',
       cmd,
-      cwd: config.paths.bridgeRelayer,
-      cacheKey: `bridgeRelayer:${config.paths.bridgeRelayer}:${cmd}`,
+      cwd,
+      cacheKey: `destinationProofToolchain:${cwd}:${cmd}`,
     };
   };
 
@@ -721,7 +742,13 @@ async function runScenario({
     if (scenario.src !== 'sora') {
       addStep('sora_attest', 'sora', 'sora', 'attest', runSoraCommand('attest'));
     }
-    addStep('proof_toolchain', 'bridgeRelayer', 'bridgeRelayer', 'proof_toolchain', runBridgeRelayerCommand());
+    addStep(
+      'destination_proof_toolchain',
+      'destinationProofToolchain',
+      'destinationProofToolchain',
+      'proof_toolchain',
+      runDestinationProofToolchainCommand()
+    );
     addStep(
       'dest_mint_verify',
       'domain',

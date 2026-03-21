@@ -2,8 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DEV_DIR="$(cd "${ROOT_DIR}/.." && pwd)"
-PROGRAM_DIR="${DEV_DIR}/sccp-sol/program"
+PROGRAM_DIR="${ROOT_DIR}/sccp/chains/sol/program"
 
 SCCP_SOL_STRESS_RUNS="${SCCP_SOL_STRESS_RUNS:-20}"
 SCCP_SOL_STRESS_TEST_THREADS="${SCCP_SOL_STRESS_TEST_THREADS:-1}"

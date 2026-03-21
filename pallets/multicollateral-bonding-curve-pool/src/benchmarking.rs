@@ -276,7 +276,10 @@ benchmarks! {
         ).unwrap();
     }
     verify {
-        assert_last_event::<T>(Event::<T>::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123))).into())
+        assert_last_event::<T>(
+            Event::<T>::OptionalRewardMultiplierUpdated(USDT.into(), Some(fixed!(123)))
+                .into(),
+        )
     }
 
     on_initialize {

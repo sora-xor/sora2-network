@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DEV_DIR="${SCCP_DEV_DIR:-$(cd "${ROOT_DIR}/.." && pwd)}"
+SCCP_REPOS_DIR="${ROOT_DIR}/sccp/chains"
 
 PROFILE="${SCCP_FUZZ_PROFILE:-full}"
 
@@ -75,19 +75,19 @@ esac
 echo "[sccp-fuzz-siblings] profile=${PROFILE} fastcheck_runs=${SCCP_FUZZ_FASTCHECK_RUNS} foundry_runs=${SCCP_FUZZ_FOUNDRY_RUNS} echidna_timeout=${SCCP_FUZZ_ECHIDNA_TIMEOUT_SECS}"
 echo "[sccp-fuzz-siblings] sol_burn_seconds=${SCCP_SOL_FUZZ_BURN_SECONDS} sol_attest_seconds=${SCCP_SOL_FUZZ_ATTEST_SECONDS} sol_verifier_seconds=${SCCP_SOL_FUZZ_VERIFIER_SECONDS}"
 
-require_dir "${DEV_DIR}/sccp-eth"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-eth' && npm run test:fuzz"
+require_dir "${SCCP_REPOS_DIR}/eth"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/eth' && npm run test:fuzz"
 
-require_dir "${DEV_DIR}/sccp-bsc"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-bsc' && npm run test:fuzz"
+require_dir "${SCCP_REPOS_DIR}/bsc"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/bsc' && npm run test:fuzz"
 
-require_dir "${DEV_DIR}/sccp-tron"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-tron' && npm run test:fuzz"
+require_dir "${SCCP_REPOS_DIR}/tron"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/tron' && npm run test:fuzz"
 
-require_dir "${DEV_DIR}/sccp-ton"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-ton' && npm run test:fuzz"
+require_dir "${SCCP_REPOS_DIR}/ton"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/ton' && npm run test:fuzz"
 
-require_dir "${DEV_DIR}/sccp-sol"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-sol' && ./scripts/run_fuzz_bounded.sh --profile '${PROFILE}'"
+require_dir "${SCCP_REPOS_DIR}/sol"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/sol' && ./scripts/run_fuzz_bounded.sh --profile '${PROFILE}'"
 
 echo "[sccp-fuzz-siblings] OK"

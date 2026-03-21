@@ -2448,6 +2448,64 @@ fn finish_ilo_filled_hard_cap_ok() {
 }
 
 #[test]
+fn finish_ilo_team_vesting_locks_rounding_remainder() {
+    preset_initial(|| {
+        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let base_asset = XOR;
+        let team_vesting_total_tokens = balance!(1.000000000000000003);
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+            RuntimeOrigin::signed(ALICE),
+            base_asset,
+            CERES_ASSET_ID,
+            balance!(1),
+            balance!(1),
+            balance!(3),
+            balance!(0.01),
+            balance!(0.02),
+            balance!(0.01),
+            balance!(1),
+            false,
+            balance!(0.75),
+            balance!(4),
+            31,
+            current_timestamp + 5,
+            current_timestamp + 10,
+            team_vesting_total_tokens,
+            balance!(0.25),
+            30u32.into(),
+            balance!(0.25),
+            balance!(1),
+            1u32.into(),
+            balance!(0)
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
+
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+            RuntimeOrigin::signed(CHARLES),
+            CERES_ASSET_ID,
+            balance!(0.01)
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
+
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+            RuntimeOrigin::signed(ALICE),
+            CERES_ASSET_ID
+        ));
+
+        let locks = ceres_token_locker::TokenLockerData::<Runtime>::get(ALICE);
+        let locked_total: Balance = locks.iter().map(|lock| lock.tokens).sum();
+        let expected_locked_total = (FixedWrapper::from(team_vesting_total_tokens)
+            * FixedWrapper::from(balance!(0.75)))
+        .try_into_balance()
+        .unwrap_or(0);
+
+        assert_eq!(locked_total, expected_locked_total);
+    });
+}
+
+#[test]
 fn finish_ilo_filled_hard_cap_base_asset_xstusd_ok() {
     preset_initial(|| {
         let mut current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
@@ -2961,9 +3019,91 @@ fn claim_ok() {
         contribution_info = pallet::Contributions::<Runtime>::get(CERES_ASSET_ID, CHARLES);
         assert_eq!(
             Assets::free_balance(&CERES_ASSET_ID, &CHARLES).expect("Failed to query free balance."),
-            balance!(5000) + first_release + tokens_per_claim * 5
+            balance!(5000) + contribution_info.tokens_bought
         );
         assert!(contribution_info.claiming_finished);
+    });
+}
+
+#[test]
+fn claim_rounding_sweeps_remaining_dust() {
+    preset_initial(|| {
+        let current_timestamp = pallet_timestamp::Pallet::<Runtime>::get();
+        let base_asset = XOR;
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::create_ilo(
+            RuntimeOrigin::signed(ALICE),
+            base_asset,
+            CERES_ASSET_ID,
+            balance!(1),
+            balance!(1),
+            balance!(3),
+            balance!(0.01),
+            balance!(0.02),
+            balance!(0.01),
+            balance!(1),
+            false,
+            balance!(0.75),
+            balance!(4),
+            31,
+            current_timestamp + 5,
+            current_timestamp + 10,
+            balance!(0),
+            balance!(0),
+            0u32.into(),
+            balance!(0),
+            balance!(0.25),
+            30u32.into(),
+            balance!(0.25)
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 6);
+
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::contribute(
+            RuntimeOrigin::signed(CHARLES),
+            CERES_ASSET_ID,
+            balance!(0.01)
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 11);
+
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::finish_ilo(
+            RuntimeOrigin::signed(ALICE),
+            CERES_ASSET_ID
+        ));
+
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+            RuntimeOrigin::signed(CHARLES),
+            CERES_ASSET_ID,
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 41);
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+            RuntimeOrigin::signed(CHARLES),
+            CERES_ASSET_ID,
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 71);
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+            RuntimeOrigin::signed(CHARLES),
+            CERES_ASSET_ID,
+        ));
+
+        pallet_timestamp::Pallet::<Runtime>::set_timestamp(current_timestamp + 101);
+        assert_ok!(CeresLaunchpadPallet::<Runtime>::claim(
+            RuntimeOrigin::signed(CHARLES),
+            CERES_ASSET_ID,
+        ));
+
+        let contribution_info = pallet::Contributions::<Runtime>::get(CERES_ASSET_ID, CHARLES);
+        assert!(contribution_info.claiming_finished);
+        assert_eq!(
+            contribution_info.tokens_claimed,
+            contribution_info.tokens_bought
+        );
+        assert_eq!(
+            Assets::free_balance(&CERES_ASSET_ID, &CHARLES).expect("Failed to query free balance."),
+            balance!(5000) + contribution_info.tokens_bought
+        );
     });
 }
 

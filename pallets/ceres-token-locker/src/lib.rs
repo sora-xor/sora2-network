@@ -252,7 +252,7 @@ pub mod pallet {
             // Get current timestamp
             let current_timestamp = Timestamp::<T>::get();
             ensure!(
-                unlocking_timestamp < current_timestamp,
+                unlocking_timestamp <= current_timestamp,
                 Error::<T>::NotUnlockedYet
             );
 

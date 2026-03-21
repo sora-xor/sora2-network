@@ -206,6 +206,33 @@ mod tests {
     }
 
     #[test]
+    fn withdraw_tokens_at_exact_unlock_timestamp_ok() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let unlocking_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
+            let locked_tokens = balance!(2000);
+
+            assert_ok!(CeresTokenLocker::lock_tokens(
+                RuntimeOrigin::signed(ALICE),
+                CERES_ASSET_ID,
+                unlocking_timestamp,
+                locked_tokens
+            ));
+
+            pallet_timestamp::Pallet::<Runtime>::set_timestamp(unlocking_timestamp);
+
+            assert_ok!(CeresTokenLocker::withdraw_tokens(
+                RuntimeOrigin::signed(ALICE),
+                CERES_ASSET_ID,
+                unlocking_timestamp,
+                locked_tokens
+            ));
+
+            assert_eq!(pallet::TokenLockerData::<Runtime>::get(&ALICE).len(), 0);
+        });
+    }
+
+    #[test]
     fn change_fee_unauthorized() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {

@@ -46,17 +46,21 @@ assets = { path = "../assets", default-features = false }
 default = ['std']
 std = [
     'assets/std',
+    'common/std',
     'codec/std',
     "scale-info/std",
     'currencies/std',
     'frame-support/std',
     'frame-system/std',
-    'sp-runtime/std',
-    'sp-std/std',
+    'pallet-timestamp/std',
+    'permissions/std',
+    'pool-xyk/std',
+    'pswap-distribution/std',
     'sp-core/std',
     'sp-io/std',
+    'sp-runtime/std',
+    'sp-std/std',
     'tokens/std',
-    'pool-xyk/std',
     'technical/std',
 ]
 runtime-benchmarks = [

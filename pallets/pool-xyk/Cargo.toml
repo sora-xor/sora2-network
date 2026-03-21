@@ -55,13 +55,24 @@ extended-assets = { path = "../extended-assets", features = ["test"] }
 default = ['std']
 
 std = [
+    "ceres-liquidity-locker/std",
+    "common/std",
     'codec/std',
     "scale-info/std",
     'currencies/std',
+    "demeter-farming-platform/std",
+    "dex-manager/std",
     'frame-support/std',
     'frame-system/std',
+    "orml-tokens/std",
+    "orml-traits/std",
+    "pallet-timestamp/std",
+    "permissions/std",
     'sp-core/std',
+    "sp-runtime/std",
     'sp-std/std',
+    "technical/std",
+    "trading-pair/std",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

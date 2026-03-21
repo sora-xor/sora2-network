@@ -1,0 +1,36 @@
+{
+  "name": "sccp-ton",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "build": "node ./scripts/compile.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "encode-proof-cell": "node ./scripts/encode_sora_proof_cell.mjs",
+    "encode-attester-proof": "node ./scripts/encode_attester_quorum_proof.mjs",
+    "encode-ton-burn-proof-to-sora": "node ./scripts/encode_ton_burn_proof_to_sora.mjs",
+    "deploy:mainnet": "python3 ./scripts/deploy_mainnet.py",
+    "test:deploy-scripts": "bash ./scripts/test_deploy_scripts.sh",
+    "check:repo-hygiene": "bash ./scripts/check_repo_hygiene.sh",
+    "test:ci-formal": "bash ./scripts/test_ci_formal.sh",
+    "test:formal-assisted": "npm run build && node --test tests/sccp_codec.test.mjs",
+    "test:formal-assisted:ci": "bash ./scripts/test_formal_assisted.sh",
+    "test:fuzz:codec": "npm run build && node --test tests/fuzz/codec.fastcheck.test.mjs",
+    "test:fuzz:proof-cell": "node --test tests/fuzz/proof-cell.fastcheck.test.mjs",
+    "test:fuzz": "npm run test:fuzz:codec && npm run test:fuzz:proof-cell",
+    "test:fuzz:nightly": "bash ./scripts/test_fuzz_nightly.sh",
+    "test:ci-fuzz": "bash ./scripts/test_ci_fuzz.sh",
+    "test:ci-all": "bash ./scripts/test_ci_all.sh"
+  },
+  "dependencies": {
+    "@ton/core": "0.63.1",
+    "@ton/sandbox": "0.41.0",
+    "@ton/tolk-js": "1.2.0",
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+    "fast-check": "^3.23.2"
+  }
+}

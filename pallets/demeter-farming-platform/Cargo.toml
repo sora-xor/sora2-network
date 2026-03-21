@@ -53,6 +53,7 @@ vested-rewards = { path = "../vested-rewards" }
 default = ["std"]
 
 std = [
+    "scale-info/std",
     "codec/std",
     "dex-manager/std",
     "frame-support/std",

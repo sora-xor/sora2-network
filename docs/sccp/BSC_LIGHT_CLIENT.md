@@ -31,10 +31,12 @@ Where:
 ### Helper Tooling (Off-chain)
 
 To fetch the canonical block header RLP bytes from an EVM RPC (and optionally extract the epoch validator list from `extraData`),
-use the sibling `bridge-relayer` CLI:
+use the in-repo `sccp/chains/bsc` tooling:
 
 ```bash
-bridge-relayer --evm-url <BSC_RPC_URL> sccp evm header-rlp \
+cd sccp/chains/bsc
+npm run build-bsc-header-rlp -- \
+  --rpc-url <BSC_RPC_URL> \
   --block-number <CHECKPOINT_BLOCK_NUMBER> \
   --bsc-epoch-length <EPOCH_LENGTH>
 ```
@@ -70,12 +72,23 @@ For BSC, `anchor_block_hash` **must equal** the on-chain `bsc_finalized.hash`.
 
 The proof is verified against `bsc_finalized.state_root`.
 
+Canonical proof builder:
+
+```bash
+cd sccp/chains/bsc
+npm run build-burn-proof-to-sora -- \
+  --rpc-url <BSC_RPC_URL> \
+  --router <ROUTER_ADDRESS_0x...> \
+  --payload <PAYLOAD_0x...> \
+  --block <FINALIZED_BLOCK_NUMBER>
+```
+
 ## Security Notes / Current Limitations
 
 - The verifier currently accepts **linear extension only** (it does not implement fork-choice). If a fork occurs and a
   non-canonical branch is imported, the verifier can get stuck (fail-closed for SCCP minting).
 - Validator-set updates are applied only when an epoch header is available in the imported header history and the
   Parlia activation point is reached. Governance should still monitor the verifier and be prepared to intervene
-  (pause inbound from BSC, re-initialize, etc.) in case of consensus-rule mismatches or unexpected fork behavior.
+  with SORA-side incident controls in case of consensus-rule mismatches or unexpected fork behavior.
 - This verifier is intended to be upgraded over time to fully match BSC consensus/finality details (including trustless
   validator-set rotation and fast-finality attestations) as needed.

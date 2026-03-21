@@ -1604,7 +1604,8 @@ pub mod pallet {
                     tax_percent: Self::tbcd_borrow_tax(),
                     remint_percent: Percent::zero(),
                 });
-                total_borrow_tax_percent = total_borrow_tax_percent + Percent::from_percent(2);
+                total_borrow_tax_percent = total_borrow_tax_percent + Self::karma_borrow_tax();
+                total_borrow_tax_percent = total_borrow_tax_percent + Self::tbcd_borrow_tax();
             }
 
             let borrow_amount_safe = FixedU128::from_inner(borrow_amount_safe_with_tax)

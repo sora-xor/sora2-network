@@ -55,11 +55,11 @@ Governance must pick a checkpoint block that is already known to be irreversible
 4. Keep the header chain progressing (permissionless):
    - `sccp.submit_tron_header(raw_data, witness_signature)`
 
-Operator helper (sibling repo `bridge-relayer`):
+Operator helper:
 
 ```bash
-bridge-relayer sccp tron header \
-  --tron-api-url <TRON_API_BASE_URL> \
+bash ./sccp/tools/sccp-proof.sh tron header \
+  --rpc <TRON_API_BASE_URL> \
   --block-number <TRON_BLOCK_NUMBER>
 ```
 
@@ -79,4 +79,4 @@ Once `TronLightClient` mode is active, `mint_from_proof` / `attest_burn` for `so
 - against the `accountStateRoot` of the **finalized** TRON header (`sccp.tron_finalized().state_root`)
 - proving that the SCCP router contract storage contains a non-zero record for `burns[messageId].sender`
 
-This is the same proof format as `EvmAnchor` mode, but the root is obtained **trustlessly** from the TRON light client.
+This is the same EVM account/storage proof format used for BSC finalized-state verification, but the root is obtained **trustlessly** from the TRON light client.

@@ -51,16 +51,21 @@ assets = { path = "../assets" }
 default = ['std']
 
 std = [
+    "common/std",
     'codec/std',
     "scale-info/std",
     'currencies/std',
+    "dex-manager/std",
     'frame-support/std',
     'frame-system/std',
+    "pallet-balances/std",
+    "pallet-timestamp/std",
     'permissions/std',
     'sp-arithmetic/std',
     'sp-core/std',
     'sp-io/std',
     'sp-std/std',
+    "technical/std",
     'tokens/std',
     'traits/std',
 ]

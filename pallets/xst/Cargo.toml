@@ -58,24 +58,26 @@ oracle-proxy = { path = "../oracle-proxy" }
 [features]
 default = ['std']
 std = [
+    'common/std',
     'codec/std',
     "scale-info/std",
     'currencies/std',
+    'dex-api/std',
     'frame-support/std',
     'frame-system/std',
+    'pallet-timestamp/std',
+    'permissions/std',
+    'pool-xyk/std',
+    'price-tools/std',
+    'pswap-distribution/std',
     'serde',
     'sp-arithmetic/std',
+    'sp-core/std',
     'sp-runtime/std',
     'sp-std/std',
-    'sp-core/std',
     'tokens/std',
-    'pool-xyk/std',
-    'pallet-timestamp/std',
-    'trading-pair/std',
     'technical/std',
-    'permissions/std',
-    'dex-api/std',
-    'common/std',
+    'trading-pair/std',
 ]
 
 try-runtime = ["frame-support/try-runtime"]

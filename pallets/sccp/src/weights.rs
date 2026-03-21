@@ -64,15 +64,14 @@ pub trait WeightInfo {
 	fn set_remote_token() -> Weight;
 	fn set_domain_endpoint() -> Weight;
 	fn clear_domain_endpoint() -> Weight;
-	fn set_evm_anchor_mode_enabled() -> Weight;
 	fn init_bsc_light_client(a: u32, ) -> Weight;
 	fn submit_bsc_header(a: u32, ) -> Weight;
 	fn set_bsc_validators(a: u32, ) -> Weight;
 	fn init_tron_light_client(a: u32, ) -> Weight;
 	fn submit_tron_header(a: u32, ) -> Weight;
 	fn set_tron_witnesses(a: u32, ) -> Weight;
-	fn set_inbound_attesters(a: u32, ) -> Weight;
-	fn clear_inbound_attesters() -> Weight;
+	fn set_solana_vote_authorities(a: u32, ) -> Weight;
+	fn clear_solana_vote_authorities() -> Weight;
 	fn activate_token() -> Weight;
 	fn remove_token() -> Weight;
 	fn finalize_remove() -> Weight;
@@ -148,16 +147,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Sccp DomainEndpoint (r:0 w:1)
 	/// Proof Skipped: Sccp DomainEndpoint (max_values: None, max_size: None, mode: Measured)
 	fn clear_domain_endpoint() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 4_000_000 picoseconds.
-		Weight::from_parts(5_000_000, 0)
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	/// Storage: Sccp EvmAnchorModeEnabled (r:0 w:1)
-	/// Proof Skipped: Sccp EvmAnchorModeEnabled (max_values: None, max_size: None, mode: Measured)
-	fn set_evm_anchor_mode_enabled() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -264,7 +253,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Sccp InboundAttesters (r:0 w:1)
 	/// Proof Skipped: Sccp InboundAttesters (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 64]`.
-	fn set_inbound_attesters(a: u32, ) -> Weight {
+	fn set_solana_vote_authorities(a: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -278,7 +267,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Sccp InboundAttesterThreshold (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundAttesters (r:0 w:1)
 	/// Proof Skipped: Sccp InboundAttesters (max_values: None, max_size: None, mode: Measured)
-	fn clear_inbound_attesters() -> Weight {
+	fn clear_solana_vote_authorities() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -559,16 +548,6 @@ impl WeightInfo for () {
 		Weight::from_parts(5_000_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: Sccp EvmAnchorModeEnabled (r:0 w:1)
-	/// Proof Skipped: Sccp EvmAnchorModeEnabled (max_values: None, max_size: None, mode: Measured)
-	fn set_evm_anchor_mode_enabled() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `0`
-		//  Estimated: `0`
-		// Minimum execution time: 4_000_000 picoseconds.
-		Weight::from_parts(5_000_000, 0)
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
 	/// Storage: Sccp BscHead (r:0 w:1)
 	/// Proof Skipped: Sccp BscHead (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Sccp BscFinalized (r:0 w:1)
@@ -668,7 +647,7 @@ impl WeightInfo for () {
 	/// Storage: Sccp InboundAttesters (r:0 w:1)
 	/// Proof Skipped: Sccp InboundAttesters (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 64]`.
-	fn set_inbound_attesters(a: u32, ) -> Weight {
+	fn set_solana_vote_authorities(a: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -682,7 +661,7 @@ impl WeightInfo for () {
 	/// Proof Skipped: Sccp InboundAttesterThreshold (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundAttesters (r:0 w:1)
 	/// Proof Skipped: Sccp InboundAttesters (max_values: None, max_size: None, mode: Measured)
-	fn clear_inbound_attesters() -> Weight {
+	fn clear_solana_vote_authorities() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`

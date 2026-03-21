@@ -73,7 +73,7 @@ xml_escape() {
 require_bool_01 "SCCP_VERIFY_PR_FAIL_FAST" "${FAIL_FAST}"
 
 if [[ -z "${SMOKE_CONFIG}" ]]; then
-  if [[ -d "${ROOT_DIR}/siblings/bridge-relayer" && -d "${ROOT_DIR}/siblings/sccp-eth" ]]; then
+  if [[ -d "${ROOT_DIR}/sccp/chains/eth" ]]; then
     SMOKE_CONFIG="${ROOT_DIR}/misc/sccp-e2e/config.ci.json"
     : "${SMOKE_MODE:=pr}"
   else
