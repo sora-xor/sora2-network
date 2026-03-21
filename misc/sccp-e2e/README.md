@@ -1,14 +1,14 @@
 # SCCP Hub E2E Harness
 
-This directory provides a cross-repo SCCP matrix harness for local integration testing across:
+This directory provides an SCCP matrix harness for local integration testing across:
 
 - `sora2-network`
-- `../sccp-eth`
-- `../sccp-bsc`
-- `../sccp-tron`
-- `../sccp-sol`
-- `../sccp-ton`
-- `../bridge-relayer`
+- `sccp/chains/eth`
+- `sccp/chains/bsc`
+- `sccp/chains/tron`
+- `sccp/chains/sol`
+- `sccp/chains/ton`
+- `sccp/tools`
 
 ## What It Runs
 
@@ -22,13 +22,13 @@ For each scenario, the harness executes these steps:
 
 1. Source burn check (`sora` command or domain adapter/fallback)
 2. SORA attest/mint step (when applicable)
-3. Bridge relayer proof-toolchain check (non-SORA destination)
+3. Destination proof-toolchain check (non-SORA destination; backed by `sccp/tools/sccp-proof.sh` by default)
 4. Destination mint verification
 5. Negative verification step
 
 ## Adapter Contract
 
-If a sibling repo exposes `scripts/sccp_e2e_adapter.sh`, it is preferred.
+If an SCCP chain directory exposes `scripts/sccp_e2e_adapter.sh`, it is preferred.
 
 Interface:
 
@@ -51,22 +51,10 @@ Payload example:
 If adapter scripts are missing, the harness falls back to commands in `config.local.json`.
 Use `--strict-adapters` to fail when adapters are missing.
 
-Install adapters into sibling repos from this repo:
-
-```bash
-misc/sccp-e2e/install_sibling_adapters.sh
-```
-
 Notes:
 - Core SCCP adapters (`sccp-eth`, `sccp-bsc`, `sccp-tron`, `sccp-sol`, `sccp-ton`) are required.
 - `sora2-parachain` adapter install is optional; it is used for `sora_kusama` / `sora_polkadot`
   scenarios in full-matrix runs.
-
-Install adapters into an explicit sibling root (CI/workspace layout):
-
-```bash
-misc/sccp-e2e/install_sibling_adapters.sh --siblings-root "$PWD/siblings"
-```
 
 ## Usage
 
@@ -119,7 +107,7 @@ Failed scenarios are classified with:
 
 - `SOURCE_BURN_FAILED`
 - `SORA_ATTEST_OR_MINT_FAILED`
-- `RELAYER_PROOF_BUILD_FAILED`
+- `DEST_PROOF_BUILD_FAILED`
 - `DEST_MINT_FAILED`
 - `INVARIANT_FAILED`
 - `BUDGET_EXCEEDED`
@@ -131,7 +119,7 @@ Edit `misc/sccp-e2e/config.local.json` to tune:
 - timeouts and max run time
 - preflight command (`misc/sccp/run_all_tests.sh` by default)
 - SORA step commands
-- bridge-relayer command
+- destination proof-toolchain command
 - per-domain fallback commands
 - matrix presets (`matrixPresets`)
 - mode presets (`modes`) for:
@@ -140,13 +128,16 @@ Edit `misc/sccp-e2e/config.local.json` to tune:
   - mode-specific `commands.preflight.enabled`
   - default matrix selection (`mode.matrix`)
 
+The canonical config key is `destinationProofToolchain`. The default backend now points at
+the in-repo `sccp/tools` directory.
+
 CI layout config:
 
-- `misc/sccp-e2e/config.ci.json` expects sibling repos under
-  `sora2-network/siblings/*` and keeps preflight disabled by default.
+- `misc/sccp-e2e/config.ci.json` expects the in-repo SCCP layout under
+  `sora2-network/sccp/chains/*` and keeps preflight disabled by default.
 - `misc/sccp-e2e/config.release-shadow.json` is the release-validation default
   used by `misc/sccp/verify_release.sh`; it is preflight-disabled and intended
-  for prod-shadow confidence runs across sibling repos.
+  for prod-shadow confidence runs across the in-repo SCCP chains.
 
 Local config modes:
 

@@ -1,0 +1,6 @@
+packages:
+  - "sccp/chains/eth"
+  - "sccp/chains/bsc"
+  - "sccp/chains/tron"
+  - "sccp/chains/ton"
+  - "sccp/chains/sol/js/solana-finalized-burn-proof"

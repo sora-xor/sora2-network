@@ -20,6 +20,7 @@ assets = { path = "../assets", default-features = false }
 technical = { path = "../technical", default-features = false }
 permissions = { path = "../permissions", default-features = false }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+ton-proof-runtime-interface = { path = "../../utils/ton-proof-runtime-interface", default-features = false }
 
 [dev-dependencies]
 currencies = { workspace = true }
@@ -28,7 +29,7 @@ orml-traits = { workspace = true }
 pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 tokens = { workspace = true }
 rlp = "0.5.2"
-proptest = "=1.4.0"
+proptest = "1.10.0"
 
 [features]
 default = ["std"]
@@ -46,6 +47,7 @@ std = [
     "technical/std",
     "permissions/std",
     "bridge-types/std",
+    "ton-proof-runtime-interface/std",
 ]
 
 fuzzing = []

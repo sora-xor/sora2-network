@@ -24,6 +24,11 @@ log = { version = "0.4.14", default-features = false }
 serde = { features = [
     'derive',
 ], default-features = false, optional = true, version = '1.0.101' }
+winter-air = { version = "0.13.1", default-features = false }
+winter-verifier = { version = "0.13.1", default-features = false }
+snowbridge-pallet-ethereum-client = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+snowbridge-beacon-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+snowbridge-ethereum = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 
 bridge-multisig = { path = "../vendor/pallet-multisig", package = "pallet-multisig", default-features = false }
 sp-beefy = { package = "sp-consensus-beefy", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
@@ -167,6 +172,7 @@ currencies = { workspace = true }
 tokens = { workspace = true }
 traits = { workspace = true }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false, optional = true }
+solana-proof-runtime-interface = { path = "../utils/solana-proof-runtime-interface", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.10.0"
@@ -176,6 +182,8 @@ sp-tracing = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "po
 frame-remote-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2" }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false, features = ["disable_panic_handler", "disable_oom"] }
 rlp = "0.5.2"
+winterfell = "0.13.1"
+snowbridge-pallet-ethereum-client = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false, features = ["std", "fuzzing"] }
 
 [features]
 default = ["std"]
@@ -195,6 +203,9 @@ std = [
     "beefy-light-client-runtime-api/std",
     "codec/std",
     "scale-info/std",
+    "snowbridge-pallet-ethereum-client/std",
+    "snowbridge-beacon-primitives/std",
+    "snowbridge-ethereum/std",
     "common/std",
     "ceres-governance-platform/std",
     "ceres-launchpad/std",
@@ -293,11 +304,14 @@ std = [
     "sp-npos-elections/std",
     "substrate-bridge-app/std",
     "soratopia/std",
+    "solana-proof-runtime-interface/std",
     "technical/std",
     "trading-pair-runtime-api/std",
     "trading-pair/std",
     "vested-rewards/std",
     "vested-rewards-runtime-api/std",
+    "winter-air/std",
+    "winter-verifier/std",
     "xor-fee/std",
     "xst/std",
 ]

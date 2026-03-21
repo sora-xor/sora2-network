@@ -1,0 +1,13 @@
+{
+  "name": "@sccp-sol/solana-finalized-burn-proof",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0",
+    "@solana/web3.js": "^1.98.4"
+  }
+}

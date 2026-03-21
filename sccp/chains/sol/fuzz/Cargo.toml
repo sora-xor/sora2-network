@@ -1,0 +1,38 @@
+[package]
+name = "sccp-sol-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+borsh = "0.10"
+libfuzzer-sys = "=0.4.0"
+sccp-sol = { path = ".." }
+sccp-sol-verifier-program = { path = "../verifier-program" }
+
+[[bin]]
+name = "burn_codec"
+path = "fuzz_targets/burn_codec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "attest_hash"
+path = "fuzz_targets/attest_hash.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "verifier_borsh_decode"
+path = "fuzz_targets/verifier_borsh_decode.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]

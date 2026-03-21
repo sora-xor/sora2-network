@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DEV_DIR="${SCCP_DEV_DIR:-$(cd "${ROOT_DIR}/.." && pwd)}"
+SCCP_REPOS_DIR="${ROOT_DIR}/sccp/chains"
 
 PROFILE="${SCCP_FORMAL_PROFILE:-full}"
 SCCP_RUSTUP_TOOLCHAIN="${SCCP_RUSTUP_TOOLCHAIN:-${RUSTUP_TOOLCHAIN:-nightly-2025-05-08}}"
@@ -48,25 +48,25 @@ echo "[sccp-formal-siblings] RUSTUP_TOOLCHAIN=${RUSTUP_TOOLCHAIN}"
 echo "[sccp-formal-siblings] profile=${PROFILE}"
 export SCCP_FORMAL_PROFILE="${PROFILE}"
 
-require_dir "${DEV_DIR}/sccp-eth"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-eth' && npm run test:formal-assisted"
+require_dir "${SCCP_REPOS_DIR}/eth"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/eth' && npm run test:formal-assisted"
 
-require_dir "${DEV_DIR}/sccp-bsc"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-bsc' && npm run test:formal-assisted"
+require_dir "${SCCP_REPOS_DIR}/bsc"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/bsc' && npm run test:formal-assisted"
 
-require_dir "${DEV_DIR}/sccp-tron"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-tron' && npm run test:formal-assisted"
+require_dir "${SCCP_REPOS_DIR}/tron"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/tron' && npm run test:formal-assisted"
 
-require_dir "${DEV_DIR}/sccp-ton"
-run_cmd bash -lc "cd '${DEV_DIR}/sccp-ton' && npm run test:formal-assisted"
+require_dir "${SCCP_REPOS_DIR}/ton"
+run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/ton' && npm run test:formal-assisted"
 
-require_dir "${DEV_DIR}/sccp-sol"
+require_dir "${SCCP_REPOS_DIR}/sol"
 if [[ "${PROFILE}" == "fast" ]]; then
-  run_cmd bash -lc "cd '${DEV_DIR}/sccp-sol' && cargo test formal_assisted_burn_payload_roundtrip_bounded -- --nocapture"
-  run_cmd bash -lc "cd '${DEV_DIR}/sccp-sol' && cargo test formal_assisted_message_id_and_attest_hash_sensitivity_bounded -- --nocapture"
-  run_cmd bash -lc "cd '${DEV_DIR}/sccp-sol' && cargo test formal_assisted_prefix_literals_remain_stable -- --nocapture"
+  run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/sol' && cargo test formal_assisted_burn_payload_roundtrip_bounded -- --nocapture"
+  run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/sol' && cargo test formal_assisted_message_id_and_attest_hash_sensitivity_bounded -- --nocapture"
+  run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/sol' && cargo test formal_assisted_prefix_literals_remain_stable -- --nocapture"
 else
-  run_cmd bash -lc "cd '${DEV_DIR}/sccp-sol' && cargo test formal_assisted_ -- --nocapture"
+  run_cmd bash -lc "cd '${SCCP_REPOS_DIR}/sol' && cargo test formal_assisted_ -- --nocapture"
 fi
 
 echo "[sccp-formal-siblings] OK"

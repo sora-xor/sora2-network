@@ -65,7 +65,7 @@ sccp_pallet_index = 0
 block_number_bytes = 4
 notes = "Local/private SORA endpoint only"
 
-# EVM siblings: sccp-eth, sccp-bsc, sccp-tron
+# In-repo EVM chains: sccp/chains/eth, sccp/chains/bsc, sccp/chains/tron
 [networks.eth_local]
 kind = "evm"
 rpc_url = "http://127.0.0.1:8545"
@@ -86,13 +86,13 @@ rpc_url = "http://127.0.0.1:8547"
 router_address = "0x0000000000000000000000000000000000000000"
 notes = "Local/private TRON JSON-RPC endpoint only"
 
-# Solana sibling: sccp-sol
+# In-repo Solana chain: sccp/chains/sol
 [networks.solana_local]
 kind = "solana"
 rpc_url = "http://127.0.0.1:8899"
 notes = "Local/private Solana endpoint only"
 
-# TON sibling: sccp-ton
+# In-repo TON chain: sccp/chains/ton
 [networks.ton_local]
 kind = "ton"
 rpc_url = "http://127.0.0.1:8081/jsonRPC"

@@ -46,6 +46,8 @@ mod bags_thresholds;
 pub mod constants;
 mod impls;
 pub mod migrations;
+mod sccp_eth_finalized;
+mod sccp_eth_zk;
 mod xor_fee_impls;
 
 #[cfg(test)]
@@ -101,6 +103,8 @@ use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
 use pallet_session::historical as pallet_session_historical;
+use snowbridge_beacon_primitives::{Fork, ForkVersions};
+use solana_proof_runtime_interface::{SolanaVerifyRequest, SolanaVoteAuthorityConfigV1};
 use sp_api::impl_runtime_apis;
 pub use sp_beefy::ecdsa_crypto::AuthorityId as BeefyId;
 #[cfg(feature = "wip")] // Trustless bridges
@@ -2027,7 +2031,6 @@ impl pallet_mmr::Config for Runtime {
 }
 
 impl leaf_provider::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type Hash = <Keccak256 as sp_runtime::traits::Hash>::Output;
     type Randomness = pallet_babe::RandomnessFromTwoEpochsAgo<Self>;
@@ -2307,7 +2310,6 @@ pub type SignedPayload = generic::SignedPayload<RuntimeCall, SignedExtra>;
 // Ethereum bridge pallets
 
 impl dispatch::Config<dispatch::Instance1> for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type OriginOutput = bridge_types::types::CallOriginOutput<
         GenericNetworkId,
         H256,
@@ -2346,7 +2348,6 @@ parameter_types! {
 }
 
 impl bridge_channel::inbound::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
     type MessageDispatch = Dispatch;
     type WeightInfo = ();
@@ -2370,7 +2371,6 @@ impl bridge_channel::inbound::Config for Runtime {
 }
 
 impl bridge_channel::outbound::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
     type MessageStatusNotifier = BridgeProxy;
@@ -2403,7 +2403,6 @@ parameter_types! {
 
 #[cfg(feature = "wip")] // EVM bridge
 impl evm_fungible_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = BridgeOutboundChannel;
     type CallOrigin = dispatch::EnsureAccount<
         bridge_types::types::CallOriginOutput<
@@ -2424,7 +2423,6 @@ impl evm_fungible_app::Config for Runtime {
 }
 
 impl jetton_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type CallOrigin = dispatch::EnsureAccount<
         bridge_types::types::CallOriginOutput<
             GenericNetworkId,
@@ -2470,6 +2468,206 @@ impl sccp::LegacyBridgeAssetChecker<AssetId> for LegacyBridgeChecker {
         let on_ton_bridge = JettonApp::token_address(asset_id.clone()).is_some();
 
         on_evm_bridge || on_ton_bridge
+    }
+}
+
+trait SccpSolanaBurnProofBackend {
+    fn is_available() -> bool;
+    fn verify_finalized_burn(_request: &SolanaVerifyRequest) -> bool;
+}
+
+impl SccpSolanaBurnProofBackend for () {
+    fn is_available() -> bool {
+        false
+    }
+
+    fn verify_finalized_burn(_request: &SolanaVerifyRequest) -> bool {
+        false
+    }
+}
+
+struct SccpSolanaVoteQuorumBackend;
+
+impl SccpSolanaBurnProofBackend for SccpSolanaVoteQuorumBackend {
+    fn is_available() -> bool {
+        sccp::Pallet::<Runtime>::solana_vote_authorities().is_some()
+    }
+
+    fn verify_finalized_burn(request: &SolanaVerifyRequest) -> bool {
+        solana_proof_runtime_interface::solana_proof_api::verify_solana_finalized_burn_proof(
+            request.clone(),
+        )
+    }
+}
+
+type SccpSolanaBurnProofBackendImpl = SccpSolanaVoteQuorumBackend;
+
+pub struct SccpEthFinalizedBurnProofVerifier;
+
+impl sccp::EthFinalizedBurnProofVerifier for SccpEthFinalizedBurnProofVerifier {
+    fn is_available() -> bool {
+        EthereumBeaconClient::latest_finalized_block_root() != H256::zero()
+    }
+
+    fn verify_finalized_burn(
+        message_id: H256,
+        payload: &sccp::BurnPayloadV1,
+        proof: &[u8],
+    ) -> Option<bool> {
+        if !Self::is_available() {
+            return None;
+        }
+
+        let Some(decoded) = sccp::decode_eth_finalized_burn_proof_v1(proof) else {
+            return Some(false);
+        };
+
+        let Some(router_address) = sccp::Pallet::<Runtime>::domain_endpoint(sccp::SCCP_DOMAIN_ETH)
+        else {
+            return Some(false);
+        };
+        if router_address.len() != 20 {
+            return Some(false);
+        }
+
+        let mut router = [0u8; 20];
+        router.copy_from_slice(&router_address);
+
+        Some(crate::sccp_eth_finalized::verify_finalized_burn_proof_v1(
+            message_id, payload, router, &decoded,
+        ))
+    }
+}
+
+trait SccpEthZkBurnProofBackend {
+    fn is_available() -> bool;
+    fn verify_finalized_burn(_proof: &sccp::EthZkFinalizedBurnProofV1) -> bool;
+}
+
+impl SccpEthZkBurnProofBackend for () {
+    fn is_available() -> bool {
+        false
+    }
+
+    fn verify_finalized_burn(_proof: &sccp::EthZkFinalizedBurnProofV1) -> bool {
+        false
+    }
+}
+
+struct SccpEthZkStarkBackend;
+
+impl SccpEthZkBurnProofBackend for SccpEthZkStarkBackend {
+    fn is_available() -> bool {
+        true
+    }
+
+    fn verify_finalized_burn(proof: &sccp::EthZkFinalizedBurnProofV1) -> bool {
+        crate::sccp_eth_zk::verify_evm_burn_proof_binding_v1(proof)
+            && crate::sccp_eth_zk::verify_stark_v1(proof)
+    }
+}
+
+type SccpEthZkBurnProofBackendImpl = SccpEthZkStarkBackend;
+
+pub struct SccpEthZkFinalizedBurnProofVerifier;
+
+impl sccp::EthZkFinalizedBurnProofVerifier for SccpEthZkFinalizedBurnProofVerifier {
+    fn is_available() -> bool {
+        <SccpEthZkBurnProofBackendImpl as SccpEthZkBurnProofBackend>::is_available()
+    }
+
+    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
+        if !Self::is_available() {
+            return None;
+        }
+
+        let Some(decoded) = sccp::decode_eth_zk_finalized_burn_proof_v1(proof) else {
+            return Some(false);
+        };
+        if decoded.public_inputs.message_id != message_id {
+            return Some(false);
+        }
+
+        let Some(router_address) = sccp::Pallet::<Runtime>::domain_endpoint(sccp::SCCP_DOMAIN_ETH)
+        else {
+            return Some(false);
+        };
+        if router_address.len() != 20
+            || decoded.public_inputs.router_address.as_slice() != router_address.as_slice()
+        {
+            return Some(false);
+        }
+        if decoded.public_inputs.burn_storage_key
+            != sccp::evm_burn_storage_key_for_message_id(message_id)
+        {
+            return Some(false);
+        }
+
+        Some(
+            <SccpEthZkBurnProofBackendImpl as SccpEthZkBurnProofBackend>::verify_finalized_burn(
+                &decoded,
+            ),
+        )
+    }
+}
+
+pub struct SccpSolanaFinalizedBurnProofVerifier;
+
+impl sccp::SolanaFinalizedBurnProofVerifier for SccpSolanaFinalizedBurnProofVerifier {
+    fn is_available() -> bool {
+        <SccpSolanaBurnProofBackendImpl as SccpSolanaBurnProofBackend>::is_available()
+    }
+
+    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
+        if !Self::is_available() {
+            return None;
+        }
+
+        let Some(router_program_id) =
+            sccp::Pallet::<Runtime>::domain_endpoint(sccp::SCCP_DOMAIN_SOL)
+        else {
+            return Some(false);
+        };
+        if router_program_id.len() != 32 {
+            return Some(false);
+        }
+
+        let Some(authorities) = sccp::Pallet::<Runtime>::solana_vote_authorities() else {
+            return None;
+        };
+        if authorities.is_empty() {
+            return Some(false);
+        }
+
+        let mut total_stake = 0u64;
+        let mut authority_configs = Vec::with_capacity(authorities.len());
+        for authority in authorities.into_inner() {
+            total_stake = total_stake.checked_add(authority.stake)?;
+            authority_configs.push(SolanaVoteAuthorityConfigV1 {
+                authority_pubkey: authority.authority_pubkey,
+                stake: authority.stake,
+            });
+        }
+        let threshold_stake = total_stake
+            .checked_mul(2)
+            .and_then(|v| v.checked_div(3))
+            .and_then(|v| v.checked_add(1))?;
+
+        let mut expected_router_program_id = [0u8; 32];
+        expected_router_program_id.copy_from_slice(router_program_id.as_slice());
+        let request = SolanaVerifyRequest {
+            proof: proof.to_vec(),
+            expected_message_id: message_id.0,
+            expected_router_program_id,
+            authorities: authority_configs,
+            threshold_stake,
+        };
+
+        Some(
+            <SccpSolanaBurnProofBackendImpl as SccpSolanaBurnProofBackend>::verify_finalized_burn(
+                &request,
+            ),
+        )
     }
 }
 
@@ -2526,6 +2724,48 @@ impl sccp::SubstrateFinalizedBurnProofVerifier for SccpSubstrateFinalizedBurnPro
     }
 }
 
+parameter_types! {
+    pub const EthereumMainnetForkVersions: ForkVersions = ForkVersions {
+        genesis: Fork {
+            version: hex!("00000000"),
+            epoch: 0,
+        },
+        altair: Fork {
+            version: hex!("01000000"),
+            epoch: 74240,
+        },
+        bellatrix: Fork {
+            version: hex!("02000000"),
+            epoch: 144896,
+        },
+        capella: Fork {
+            version: hex!("03000000"),
+            epoch: 194048,
+        },
+        deneb: Fork {
+            version: hex!("04000000"),
+            epoch: 269568,
+        },
+        electra: Fork {
+            version: hex!("05000000"),
+            epoch: 364032,
+        },
+        fulu: Fork {
+            version: hex!("06000000"),
+            epoch: 411392,
+        },
+    };
+}
+
+impl snowbridge_pallet_ethereum_client::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type ForkVersions = EthereumMainnetForkVersions;
+    type FreeHeadersInterval = frame_support::traits::ConstU32<
+        { snowbridge_pallet_ethereum_client::config::SLOTS_PER_EPOCH as u32 },
+    >;
+    type WeightInfo = ();
+}
+
 impl sccp::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ManagerOrigin = EitherOfDiverse<AtLeastHalfCouncil, EnsureRoot<AccountId>>;
@@ -2534,8 +2774,9 @@ impl sccp::Config for Runtime {
     type LegacyBridgeAssetChecker = LegacyBridgeChecker;
     type AuxiliaryDigestHandler = LeafProvider;
     type EthFinalizedStateProvider = ();
-    type SolanaFinalizedBurnProofVerifier = ();
-    type TonFinalizedBurnProofVerifier = ();
+    type EthFinalizedBurnProofVerifier = SccpEthFinalizedBurnProofVerifier;
+    type EthZkFinalizedBurnProofVerifier = SccpEthZkFinalizedBurnProofVerifier;
+    type SolanaFinalizedBurnProofVerifier = SccpSolanaFinalizedBurnProofVerifier;
     type SubstrateFinalizedBurnProofVerifier = SccpSubstrateFinalizedBurnProofVerifier;
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
     type MaxDomains = SccpMaxDomains;
@@ -2576,7 +2817,6 @@ impl beefy_light_client::Config for Runtime {
 }
 
 impl dispatch::Config<dispatch::Instance2> for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
     type Origin = RuntimeOrigin;
     type MessageId = bridge_types::types::MessageId;
@@ -2587,7 +2827,6 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
 }
 
 impl substrate_bridge_channel::inbound::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type Verifier = MultiVerifier;
     type MessageDispatch = SubstrateDispatch;
     type UnsignedPriority = DataSignerPriority;
@@ -2671,7 +2910,6 @@ impl bridge_types::traits::TimepointProvider for GenericTimepointProvider {
 }
 
 impl substrate_bridge_channel::outbound::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type MessageStatusNotifier = BridgeProxy;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
     type MaxMessagesPerCommit = BridgeMaxMessagesPerCommit;
@@ -2684,7 +2922,6 @@ impl substrate_bridge_channel::outbound::Config for Runtime {
 }
 
 impl parachain_bridge_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin =
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
@@ -2698,7 +2935,6 @@ impl parachain_bridge_app::Config for Runtime {
 }
 
 impl substrate_bridge_app::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin =
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
@@ -2721,7 +2957,6 @@ parameter_types! {
 }
 
 impl bridge_data_signer::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
     type CallOrigin =
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
@@ -2732,7 +2967,6 @@ impl bridge_data_signer::Config for Runtime {
 }
 
 impl multisig_verifier::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
     type CallOrigin =
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type OutboundChannel = SubstrateBridgeOutboundChannel;
@@ -2949,6 +3183,7 @@ construct_runtime! {
         MultisigVerifier: multisig_verifier::{Pallet, Storage, Event<T>, Call} = 111,
 
         SubstrateBridgeApp: substrate_bridge_app::{Pallet, Storage, Event<T>, Call} = 113,
+        EthereumBeaconClient: snowbridge_pallet_ethereum_client::{Pallet, Call, Storage, Event<T>} = 118,
 
         // SCCP (SORA Cross-Chain Protocol)
         Sccp: sccp::{Pallet, Call, Storage, Event<T>, Config<T>} = 117,

@@ -176,15 +176,14 @@ if [[ ! -f "${HUB_CONFIG}" ]]; then
 fi
 
 if [[ "${REQUIRE_CLEAN_TREE}" == "1" ]]; then
-  repo_parent="$(cd "${ROOT_DIR}/.." && pwd)"
   dirty_report=""
   repo_candidates=(
     "${ROOT_DIR}"
-    "${repo_parent}/sccp-eth"
-    "${repo_parent}/sccp-bsc"
-    "${repo_parent}/sccp-tron"
-    "${repo_parent}/sccp-ton"
-    "${repo_parent}/sccp-sol"
+    "${ROOT_DIR}/sccp/chains/eth"
+    "${ROOT_DIR}/sccp/chains/bsc"
+    "${ROOT_DIR}/sccp/chains/tron"
+    "${ROOT_DIR}/sccp/chains/ton"
+    "${ROOT_DIR}/sccp/chains/sol"
   )
   for repo in "${repo_candidates[@]}"; do
     if [[ ! -d "${repo}" ]] || ! git -C "${repo}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

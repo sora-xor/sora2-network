@@ -294,6 +294,9 @@ pub mod pallet {
                 Self::enabled_targets().contains(&collateral_asset_id),
                 Error::<T>::UnsupportedCollateralAssetId
             );
+            if let Some(multiplier) = multiplier {
+                ensure!(multiplier >= fixed!(0), Error::<T>::InvalidRewardMultiplier);
+            }
             // NOTE: not using insert() here because it unwraps Option, which is not intended
             AssetsWithOptionalRewardMultiplier::<T>::mutate(&collateral_asset_id, |opt| {
                 *opt = multiplier.clone()
@@ -391,6 +394,8 @@ pub mod pallet {
         RewardsSupplyShortage,
         /// Indicated collateral asset is not enabled for pool.
         UnsupportedCollateralAssetId,
+        /// Reward multiplier must be non-negative.
+        InvalidRewardMultiplier,
         /// Could not calculate fee including sell penalty.
         FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.

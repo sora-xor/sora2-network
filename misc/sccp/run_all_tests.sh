@@ -2,7 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-DEV_DIR="${SCCP_DEV_DIR:-$(cd "${ROOT_DIR}/.." && pwd)}"
+SCCP_REPOS_DIR="${ROOT_DIR}/sccp/chains"
+SCCP_ETH_DIR="${SCCP_REPOS_DIR}/eth"
+SCCP_BSC_DIR="${SCCP_REPOS_DIR}/bsc"
+SCCP_TRON_DIR="${SCCP_REPOS_DIR}/tron"
+SCCP_SOL_DIR="${SCCP_REPOS_DIR}/sol"
+SCCP_SOL_PROGRAM_DIR="${SCCP_SOL_DIR}/program"
+SCCP_TON_DIR="${SCCP_REPOS_DIR}/ton"
 SOLANA_TEST_RUST_LOG="${SOLANA_TEST_RUST_LOG:-warn}"
 SCCP_SOL_PROGRAM_RETRIES="${SCCP_SOL_PROGRAM_RETRIES:-2}"
 SCCP_SOL_PROGRAM_TEST_THREADS="${SCCP_SOL_PROGRAM_TEST_THREADS:-1}"
@@ -106,13 +112,13 @@ run_sccp_sol_program_tests() {
   if [[ "${SCCP_SOL_PROGRAM_NOCAPTURE}" == "1" ]]; then
     nocapture_arg=" --nocapture"
   fi
-  local repro_cmd="cd \"${DEV_DIR}/sccp-sol/program\" && RUST_LOG=\"${SOLANA_TEST_RUST_LOG}\" ${repro_cmd_prefix}cargo test -- --test-threads=\"${SCCP_SOL_PROGRAM_TEST_THREADS}\"${nocapture_arg}"
+  local repro_cmd="cd \"${SCCP_SOL_PROGRAM_DIR}\" && RUST_LOG=\"${SOLANA_TEST_RUST_LOG}\" ${repro_cmd_prefix}cargo test -- --test-threads=\"${SCCP_SOL_PROGRAM_TEST_THREADS}\"${nocapture_arg}"
   mkdir -p "${SCCP_SOL_PROGRAM_LOG_DIR}"
   while true; do
     attempt_log="${SCCP_SOL_PROGRAM_LOG_DIR}/sccp-sol-program.${run_id}.attempt-${attempt}.log"
     echo "[sccp-sol/program] cargo test (attempt ${attempt}/${SCCP_SOL_PROGRAM_RETRIES})"
     echo "[sccp-sol/program] logging to ${attempt_log}"
-    if (cd "${DEV_DIR}/sccp-sol/program" && RUST_LOG="${SOLANA_TEST_RUST_LOG}" "${test_cmd[@]}") 2>&1 | tee "${attempt_log}"; then
+    if (cd "${SCCP_SOL_PROGRAM_DIR}" && RUST_LOG="${SOLANA_TEST_RUST_LOG}" "${test_cmd[@]}") 2>&1 | tee "${attempt_log}"; then
       if [[ "${SCCP_SOL_PROGRAM_PRESERVE_LOGS}" == "0" ]]; then
         rm -f "${attempt_log}"
       fi
@@ -128,7 +134,7 @@ run_sccp_sol_program_tests() {
       local failed_test_name=""
       failed_test_name="$(sed -n 's/^---- \(.*\) stdout ----$/\1/p' "${attempt_log}" | head -n 1)"
       if [[ -n "${failed_test_name}" ]]; then
-        local focused_repro_cmd="cd \"${DEV_DIR}/sccp-sol/program\" && RUST_LOG=\"${SOLANA_TEST_RUST_LOG}\" cargo test \"${failed_test_name}\" -- --exact --test-threads=\"${SCCP_SOL_PROGRAM_TEST_THREADS}\"${nocapture_arg}"
+        local focused_repro_cmd="cd \"${SCCP_SOL_PROGRAM_DIR}\" && RUST_LOG=\"${SOLANA_TEST_RUST_LOG}\" cargo test \"${failed_test_name}\" -- --exact --test-threads=\"${SCCP_SOL_PROGRAM_TEST_THREADS}\"${nocapture_arg}"
         echo "[sccp-sol/program] focused rerun for first failed test: ${focused_repro_cmd}" >&2
       fi
     fi
@@ -158,23 +164,23 @@ echo "[sora2-network] cargo test -p eth-bridge"
 echo "[sora2-network] cargo test -p framenode-runtime sccp_ -- --nocapture"
 (cd "${ROOT_DIR}" && cargo test -p framenode-runtime sccp_ -- --nocapture)
 
-require_dir "${DEV_DIR}/sccp-eth"
+require_dir "${SCCP_ETH_DIR}"
 echo "[sccp-eth] npm test"
-(cd "${DEV_DIR}/sccp-eth" && npm test)
+(cd "${SCCP_ETH_DIR}" && npm test)
 
-require_dir "${DEV_DIR}/sccp-bsc"
+require_dir "${SCCP_BSC_DIR}"
 echo "[sccp-bsc] npm test"
-(cd "${DEV_DIR}/sccp-bsc" && npm test)
+(cd "${SCCP_BSC_DIR}" && npm test)
 
-require_dir "${DEV_DIR}/sccp-tron"
+require_dir "${SCCP_TRON_DIR}"
 echo "[sccp-tron] npm test"
-(cd "${DEV_DIR}/sccp-tron" && npm test)
+(cd "${SCCP_TRON_DIR}" && npm test)
 
-require_dir "${DEV_DIR}/sccp-sol"
+require_dir "${SCCP_SOL_DIR}"
 echo "[sccp-sol] cargo test"
-(cd "${DEV_DIR}/sccp-sol" && cargo test)
+(cd "${SCCP_SOL_DIR}" && cargo test)
 
-require_dir "${DEV_DIR}/sccp-sol/program"
+require_dir "${SCCP_SOL_PROGRAM_DIR}"
 if ! run_sccp_sol_program_tests; then
   if [[ "${SCCP_SOL_PROGRAM_ALLOW_FAILURE}" == "1" ]]; then
     echo "[sccp-sol/program] WARNING: tests failed after ${SCCP_SOL_PROGRAM_RETRIES} attempts; continuing because SCCP_SOL_PROGRAM_ALLOW_FAILURE=1" >&2
@@ -184,8 +190,8 @@ if ! run_sccp_sol_program_tests; then
   fi
 fi
 
-require_dir "${DEV_DIR}/sccp-ton"
+require_dir "${SCCP_TON_DIR}"
 echo "[sccp-ton] npm test"
-(cd "${DEV_DIR}/sccp-ton" && npm test)
+(cd "${SCCP_TON_DIR}" && npm test)
 
 echo "OK"

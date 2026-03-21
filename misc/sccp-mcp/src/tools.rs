@@ -2,11 +2,11 @@ use crate::config::{Config, NetworkKind, NetworkProfile, Policy, MUTATING_TOOL_N
 use crate::error::{AppError, AppResult};
 use crate::payload::{
     message_id, parse_hex_fixed, parse_payload, validate_payload, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH,
-    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA_KUSAMA, SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON,
-    SCCP_DOMAIN_TRON,
+    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_SORA_KUSAMA, SCCP_DOMAIN_SORA_POLKADOT,
+    SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
 };
 use crate::rpc_client::{rpc_call, with_rpc_fairness_scope};
-use crate::sora_calls::{encode_attester_quorum_proof, encode_sora_call, supported_sora_calls};
+use crate::sora_calls::{encode_sora_call, supported_sora_calls};
 use crate::substrate_storage::{
     decode_optional_bsc_header, decode_optional_bsc_params, decode_optional_bytes,
     decode_optional_tron_header, decode_optional_tron_params, decode_storage_bool,
@@ -16,6 +16,9 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine as _;
 use ethabi::{ethereum_types::U256, param_type::Reader, ParamType, Token};
 use serde_json::{json, Value};
+use sha3::{Digest, Keccak256};
+
+const SCCP_EVM_BURNS_MAPPING_SLOT: u64 = 4;
 
 pub struct ToolContext {
     pub config: Config,
@@ -72,19 +75,6 @@ fn all_tool_definitions() -> Vec<Value> {
                 "required": ["payload"],
                 "properties": {
                     "payload": {"type":"object"}
-                },
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "sccp_encode_attester_quorum_proof",
-            "Encode SCCP AttesterQuorum proof bytes (0x01 || SCALE(Vec<[u8;65]>)).",
-            json!({
-                "type":"object",
-                "required": ["signatures"],
-                "properties": {
-                    "version": {"type":"integer"},
-                    "signatures": {"type":"array", "items": {"type":"string"}}
                 },
                 "additionalProperties": false
             }),
@@ -243,6 +233,23 @@ fn all_tool_definitions() -> Vec<Value> {
             }),
         ),
         tool(
+            "evm_sccp_build_burn_proof",
+            "Build SCALE-encoded EvmBurnProofV1 bytes from eth_getProof for SORA pallet-sccp.",
+            json!({
+                "type":"object",
+                "required": ["network"],
+                "properties": {
+                    "network": {"type":"string"},
+                    "payload": {"type":"object"},
+                    "message_id": {"type":"string"},
+                    "router": {"type":"string"},
+                    "block": {"type":"string"},
+                    "block_hash": {"type":"string"}
+                },
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "evm_sccp_build_tx",
             "Build EVM transaction envelope for external signing; ABI encoding supported via signature+args.",
             json!({
@@ -377,7 +384,6 @@ pub fn dispatch(ctx: &ToolContext, name: &str, arguments: &Value) -> AppResult<V
         "sccp_health" => sccp_health(ctx, arguments),
         "sccp_get_message_id" => sccp_get_message_id(arguments),
         "sccp_validate_payload" => sccp_validate_payload(arguments),
-        "sccp_encode_attester_quorum_proof" => sccp_encode_attester_quorum_proof(arguments),
         "sccp_list_supported_calls" => sccp_list_supported_calls(ctx, arguments),
         "sccp_get_token_state" => sccp_get_token_state(ctx, arguments),
         "sccp_get_remote_token" => sccp_get_remote_token(ctx, arguments),
@@ -389,6 +395,7 @@ pub fn dispatch(ctx: &ToolContext, name: &str, arguments: &Value) -> AppResult<V
         "sora_sccp_estimate_fee" => sora_sccp_estimate_fee(ctx, arguments),
         "sora_sccp_submit_signed_extrinsic" => sora_sccp_submit_signed_extrinsic(ctx, arguments),
         "evm_sccp_read_contract" => evm_sccp_read_contract(ctx, arguments),
+        "evm_sccp_build_burn_proof" => evm_sccp_build_burn_proof(ctx, arguments),
         "evm_sccp_build_tx" => evm_sccp_build_tx(ctx, arguments),
         "evm_sccp_submit_signed_tx" => evm_sccp_submit_signed_tx(ctx, arguments),
         "sol_sccp_get_account" => sol_sccp_get_account(ctx, arguments),
@@ -580,41 +587,6 @@ fn sccp_validate_payload(args: &Value) -> AppResult<Value> {
     Ok(json!({
         "valid": true,
         "notes": notes,
-    }))
-}
-
-fn sccp_encode_attester_quorum_proof(args: &Value) -> AppResult<Value> {
-    let version = match args.get("version") {
-        Some(value) => {
-            let raw = value.as_u64().ok_or_else(|| {
-                AppError::InvalidArgument(
-                    "field 'version' must be integer when provided".to_owned(),
-                )
-            })?;
-            u8::try_from(raw).map_err(|_| {
-                AppError::InvalidArgument("field 'version' does not fit u8".to_owned())
-            })?
-        }
-        None => 1u8,
-    };
-
-    let signatures_value = args
-        .get("signatures")
-        .and_then(Value::as_array)
-        .ok_or_else(|| AppError::InvalidArgument("missing array field 'signatures'".to_owned()))?;
-    let mut signatures = Vec::with_capacity(signatures_value.len());
-    for (idx, value) in signatures_value.iter().enumerate() {
-        let text = value.as_str().ok_or_else(|| {
-            AppError::InvalidArgument(format!("signatures[{idx}] must be hex string"))
-        })?;
-        signatures.push(parse_hex_fixed(text, 65, &format!("signatures[{idx}]"))?);
-    }
-
-    let proof = encode_attester_quorum_proof(&signatures, version)?;
-    Ok(json!({
-        "version": version,
-        "signature_count": signatures.len(),
-        "proof_hex": format!("0x{}", hex::encode(proof)),
     }))
 }
 
@@ -1081,6 +1053,134 @@ fn evm_sccp_read_contract(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
     }))
 }
 
+fn evm_sccp_build_burn_proof(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
+    let (network_name, profile) = require_evm_network(ctx, args)?;
+
+    let router = optional_string(args, "router")?
+        .or_else(|| profile.router_address.clone())
+        .ok_or_else(|| {
+            AppError::InvalidArgument("missing 'router' and no router_address in config".to_owned())
+        })?;
+    let router_bytes = parse_hex_fixed(&router, 20, "router")?;
+
+    let payload_json = args.get("payload").cloned();
+    let explicit_message_id = optional_string(args, "message_id")?;
+    let message_id =
+        resolve_burn_message_id(payload_json.as_ref(), explicit_message_id.as_deref())?;
+    let message_bytes = parse_hex_fixed(&message_id, 32, "message_id")?;
+
+    let requested_block = optional_string(args, "block")?;
+    let requested_block_hash = optional_string(args, "block_hash")?;
+    if requested_block.is_some() && requested_block_hash.is_some() {
+        return Err(AppError::InvalidArgument(
+            "provide either 'block' or 'block_hash', not both".to_owned(),
+        ));
+    }
+
+    let block_param = if let Some(block_hash) = requested_block_hash.as_deref() {
+        parse_hex_fixed(block_hash, 32, "block_hash")?;
+        let block = rpc_call(
+            &profile.rpc_url,
+            "eth_getBlockByHash",
+            json!([block_hash, false]),
+        )?;
+        let (resolved_hash, block_number, _) = parse_evm_block_header(&block)?;
+        let resolved_hash_hex = format!("0x{}", hex::encode(resolved_hash));
+        if !hex_eq(block_hash, &resolved_hash_hex) {
+            return Err(AppError::Rpc(format!(
+                "eth_getBlockByHash returned hash {} that does not match requested block_hash {}",
+                resolved_hash_hex, block_hash
+            )));
+        }
+        format!("0x{:x}", block_number)
+    } else {
+        normalize_evm_block_param(requested_block.as_deref().unwrap_or("finalized"))?
+    };
+
+    let burns_slot_base = evm_burn_storage_slot_base(&message_bytes)?;
+    let burns_slot_base_hex = format!("0x{}", hex::encode(burns_slot_base));
+    let storage_trie_key = evm_burn_storage_trie_key(&burns_slot_base);
+    let storage_trie_key_hex = format!("0x{}", hex::encode(storage_trie_key));
+
+    let proof_response = rpc_call(
+        &profile.rpc_url,
+        "eth_getProof",
+        json!([router, [burns_slot_base_hex.clone()], block_param]),
+    )?;
+    let block_response = rpc_call(
+        &profile.rpc_url,
+        "eth_getBlockByNumber",
+        json!([block_param, false]),
+    )?;
+
+    let artifact = build_evm_burn_proof_artifact(
+        &router_bytes,
+        &burns_slot_base,
+        &proof_response,
+        &block_response,
+    )?;
+    let proof_bytes = encode_evm_burn_proof_v1(
+        &artifact.anchor_block_hash,
+        &artifact.account_proof,
+        &artifact.storage_proof,
+    )?;
+    if proof_bytes.len() > ctx.config.limits.max_proof_bytes {
+        return Err(AppError::InvalidArgument(format!(
+            "encoded proof is {} bytes, above configured max_proof_bytes {}",
+            proof_bytes.len(),
+            ctx.config.limits.max_proof_bytes
+        )));
+    }
+
+    let payload = payload_json.unwrap_or(Value::Null);
+    let suggested_call = payload
+        .as_object()
+        .and_then(|_| payload.get("dest_domain").and_then(Value::as_u64))
+        .map(|dest_domain| {
+            if dest_domain == u64::from(SCCP_DOMAIN_SORA) {
+                "mint_from_proof"
+            } else {
+                "attest_burn"
+            }
+        });
+    let call_args = suggested_call.map(|call_name| {
+        json!({
+            "call_name": call_name,
+            "args": {
+                "source_domain": payload.get("source_domain").and_then(Value::as_u64),
+                "payload": payload,
+                "proof": format!("0x{}", hex::encode(&proof_bytes)),
+            }
+        })
+    });
+
+    Ok(json!({
+        "network": network_name,
+        "router": format!("0x{}", hex::encode(router_bytes)),
+        "message_id": message_id,
+        "payload": payload,
+        "burns_slot_base": burns_slot_base_hex,
+        "storage_trie_key": storage_trie_key_hex,
+        "requested_block": requested_block.unwrap_or_else(|| {
+            requested_block_hash.unwrap_or_else(|| "finalized".to_owned())
+        }),
+        "block": {
+            "number": format!("0x{:x}", artifact.block_number),
+            "hash": format!("0x{}", hex::encode(artifact.anchor_block_hash)),
+            "state_root": format!("0x{}", hex::encode(artifact.state_root)),
+        },
+        "storage_value": artifact.storage_value,
+        "proof_scale_hex": format!("0x{}", hex::encode(&proof_bytes)),
+        "proof_scale_bytes": proof_bytes.len(),
+        "proof_node_counts": {
+            "account": artifact.account_proof.len(),
+            "storage": artifact.storage_proof.len(),
+        },
+        "proof_node_bytes_total": artifact.total_proof_bytes,
+        "suggested_sora_call": call_args,
+    }))
+}
+
 fn evm_sccp_build_tx(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
     let (network_name, profile) = require_evm_network(ctx, args)?;
 
@@ -1162,6 +1262,299 @@ fn evm_sccp_submit_signed_tx(ctx: &ToolContext, args: &Value) -> AppResult<Value
         "network": network_name,
         "tx_hash": tx_hash,
     }))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EvmBurnProofArtifact {
+    block_number: u64,
+    anchor_block_hash: [u8; 32],
+    state_root: [u8; 32],
+    account_proof: Vec<Vec<u8>>,
+    storage_proof: Vec<Vec<u8>>,
+    storage_value: String,
+    total_proof_bytes: usize,
+}
+
+fn resolve_burn_message_id(
+    payload: Option<&Value>,
+    explicit_message_id: Option<&str>,
+) -> AppResult<String> {
+    match (payload, explicit_message_id) {
+        (Some(payload_value), Some(message_id_text)) => {
+            let payload = parse_payload(payload_value)?;
+            let computed = message_id(&payload)?;
+            parse_hex_fixed(message_id_text, 32, "message_id")?;
+            if !hex_eq(&computed, message_id_text) {
+                return Err(AppError::InvalidArgument(format!(
+                    "payload-derived message_id {} does not match explicit message_id {}",
+                    computed, message_id_text
+                )));
+            }
+            Ok(computed)
+        }
+        (Some(payload_value), None) => {
+            let payload = parse_payload(payload_value)?;
+            message_id(&payload)
+        }
+        (None, Some(message_id_text)) => {
+            parse_hex_fixed(message_id_text, 32, "message_id")?;
+            Ok(format!(
+                "0x{}",
+                hex::encode(parse_hex_fixed(message_id_text, 32, "message_id")?)
+            ))
+        }
+        (None, None) => Err(AppError::InvalidArgument(
+            "provide either 'payload' or 'message_id'".to_owned(),
+        )),
+    }
+}
+
+fn normalize_evm_block_param(value: &str) -> AppResult<String> {
+    match value {
+        "latest" | "pending" | "earliest" | "safe" | "finalized" => Ok(value.to_owned()),
+        _ if value.starts_with("0x") => {
+            let number = parse_hex_u64(value)?;
+            Ok(format!("0x{:x}", number))
+        }
+        _ if value.bytes().all(|byte| byte.is_ascii_digit()) => {
+            let number = value.parse::<u64>().map_err(|err| {
+                AppError::InvalidArgument(format!("invalid decimal block number '{value}': {err}"))
+            })?;
+            Ok(format!("0x{:x}", number))
+        }
+        _ => Err(AppError::InvalidArgument(format!(
+            "invalid EVM block selector '{value}'; expected tag, decimal block number, or 0x-prefixed block number"
+        ))),
+    }
+}
+
+fn evm_burn_storage_slot_base(message_id: &[u8]) -> AppResult<[u8; 32]> {
+    if message_id.len() != 32 {
+        return Err(AppError::InvalidArgument(format!(
+            "message_id must be 32 bytes, got {}",
+            message_id.len()
+        )));
+    }
+
+    let mut slot_bytes = [0u8; 32];
+    slot_bytes[24..].copy_from_slice(&SCCP_EVM_BURNS_MAPPING_SLOT.to_be_bytes());
+
+    let mut preimage = [0u8; 64];
+    preimage[..32].copy_from_slice(message_id);
+    preimage[32..].copy_from_slice(&slot_bytes);
+    Ok(Keccak256::digest(preimage).into())
+}
+
+fn evm_burn_storage_trie_key(slot_base: &[u8; 32]) -> [u8; 32] {
+    Keccak256::digest(slot_base).into()
+}
+
+fn build_evm_burn_proof_artifact(
+    router: &[u8],
+    requested_storage_slot_base: &[u8; 32],
+    proof_response: &Value,
+    block_response: &Value,
+) -> AppResult<EvmBurnProofArtifact> {
+    if router.len() != 20 {
+        return Err(AppError::InvalidArgument(format!(
+            "router must be 20 bytes, got {}",
+            router.len()
+        )));
+    }
+
+    let (anchor_block_hash, block_number, state_root) = parse_evm_block_header(block_response)?;
+    let proof_obj = proof_response
+        .as_object()
+        .ok_or_else(|| AppError::Rpc("eth_getProof returned non-object response".to_owned()))?;
+
+    let proof_address = required_rpc_string(proof_obj, "address")?;
+    let proof_address_bytes = parse_hex_fixed(proof_address, 20, "eth_getProof.address")?;
+    if proof_address_bytes.as_slice() != router {
+        return Err(AppError::Rpc(format!(
+            "eth_getProof.address {} does not match requested router 0x{}",
+            proof_address,
+            hex::encode(router)
+        )));
+    }
+
+    let account_proof = parse_rpc_hex_vec_array(
+        proof_obj.get("accountProof").ok_or_else(|| {
+            AppError::Rpc("eth_getProof response missing accountProof".to_owned())
+        })?,
+        "eth_getProof.accountProof",
+    )?;
+    if account_proof.is_empty() {
+        return Err(AppError::Rpc(
+            "eth_getProof.accountProof must contain at least one trie node".to_owned(),
+        ));
+    }
+
+    let storage_proof_items = proof_obj
+        .get("storageProof")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            AppError::Rpc("eth_getProof response missing storageProof array".to_owned())
+        })?;
+    let requested_key = U256::from_big_endian(requested_storage_slot_base);
+
+    let storage_entry = storage_proof_items
+        .iter()
+        .find_map(|item| {
+            let key = item.get("key")?.as_str()?;
+            let parsed = parse_rpc_hex_quantity_u256(key).ok()?;
+            if parsed == requested_key {
+                Some(item)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| {
+            AppError::Rpc(format!(
+                "eth_getProof.storageProof did not include requested storage slot 0x{}",
+                hex::encode(requested_storage_slot_base)
+            ))
+        })?;
+
+    let storage_value_text = storage_entry
+        .get("value")
+        .and_then(Value::as_str)
+        .ok_or_else(|| AppError::Rpc("eth_getProof.storageProof[0].value missing".to_owned()))?;
+    let storage_value = parse_rpc_hex_quantity_u256(storage_value_text)?;
+    if storage_value.is_zero() {
+        return Err(AppError::Rpc(format!(
+            "eth_getProof returned zero storage value for burns[messageId].sender at slot 0x{}",
+            hex::encode(requested_storage_slot_base)
+        )));
+    }
+
+    let storage_proof = parse_rpc_hex_vec_array(
+        storage_entry.get("proof").ok_or_else(|| {
+            AppError::Rpc("eth_getProof.storageProof[0] missing proof array".to_owned())
+        })?,
+        "eth_getProof.storageProof[0].proof",
+    )?;
+    if storage_proof.is_empty() {
+        return Err(AppError::Rpc(
+            "eth_getProof.storageProof[0].proof must contain at least one trie node".to_owned(),
+        ));
+    }
+
+    let total_proof_bytes = account_proof
+        .iter()
+        .chain(storage_proof.iter())
+        .fold(0usize, |acc, node| acc.saturating_add(node.len()));
+
+    Ok(EvmBurnProofArtifact {
+        block_number,
+        anchor_block_hash,
+        state_root,
+        account_proof,
+        storage_proof,
+        storage_value: format!("0x{:x}", storage_value),
+        total_proof_bytes,
+    })
+}
+
+fn parse_evm_block_header(value: &Value) -> AppResult<([u8; 32], u64, [u8; 32])> {
+    let obj = value
+        .as_object()
+        .ok_or_else(|| AppError::Rpc("EVM block RPC returned non-object response".to_owned()))?;
+    let hash = required_rpc_string(obj, "hash")?;
+    let number = required_rpc_string(obj, "number")?;
+    let state_root = required_rpc_string(obj, "stateRoot")?;
+    let hash_bytes = parse_hex_fixed(hash, 32, "block.hash")?;
+    let state_root_bytes = parse_hex_fixed(state_root, 32, "block.stateRoot")?;
+
+    let mut hash_array = [0u8; 32];
+    hash_array.copy_from_slice(&hash_bytes);
+    let mut state_root_array = [0u8; 32];
+    state_root_array.copy_from_slice(&state_root_bytes);
+
+    Ok((hash_array, parse_hex_u64(number)?, state_root_array))
+}
+
+fn required_rpc_string<'a>(
+    object: &'a serde_json::Map<String, Value>,
+    field: &str,
+) -> AppResult<&'a str> {
+    object
+        .get(field)
+        .and_then(Value::as_str)
+        .ok_or_else(|| AppError::Rpc(format!("RPC response missing string field '{field}'")))
+}
+
+fn parse_rpc_hex_vec_array(value: &Value, field: &str) -> AppResult<Vec<Vec<u8>>> {
+    let items = value
+        .as_array()
+        .ok_or_else(|| AppError::Rpc(format!("{field} must be an array of hex strings")))?;
+    let mut out = Vec::with_capacity(items.len());
+    for (idx, item) in items.iter().enumerate() {
+        let text = item
+            .as_str()
+            .ok_or_else(|| AppError::Rpc(format!("{field}[{idx}] must be a hex string")))?;
+        out.push(parse_hex_bytes(text, &format!("{field}[{idx}]"))?);
+    }
+    Ok(out)
+}
+
+fn parse_rpc_hex_quantity_u256(value: &str) -> AppResult<U256> {
+    let normalized = value
+        .strip_prefix("0x")
+        .ok_or_else(|| AppError::Rpc(format!("RPC quantity '{value}' must be 0x-prefixed hex")))?;
+    if normalized.is_empty() {
+        return Ok(U256::zero());
+    }
+    if !normalized.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(AppError::Rpc(format!(
+            "RPC quantity '{value}' contains non-hex characters"
+        )));
+    }
+    U256::from_str_radix(normalized, 16)
+        .map_err(|err| AppError::Rpc(format!("failed to parse RPC quantity '{value}': {err}")))
+}
+
+fn encode_evm_burn_proof_v1(
+    anchor_block_hash: &[u8; 32],
+    account_proof: &[Vec<u8>],
+    storage_proof: &[Vec<u8>],
+) -> AppResult<Vec<u8>> {
+    let mut out = Vec::new();
+    out.extend_from_slice(anchor_block_hash);
+    push_scale_vec_of_bytes(&mut out, account_proof)?;
+    push_scale_vec_of_bytes(&mut out, storage_proof)?;
+    Ok(out)
+}
+
+fn push_scale_vec_of_bytes(out: &mut Vec<u8>, values: &[Vec<u8>]) -> AppResult<()> {
+    push_scale_compact_len(out, values.len())?;
+    for value in values {
+        push_scale_compact_len(out, value.len())?;
+        out.extend_from_slice(value);
+    }
+    Ok(())
+}
+
+fn push_scale_compact_len(out: &mut Vec<u8>, len: usize) -> AppResult<()> {
+    if len <= 0b0011_1111 {
+        out.push((len as u8) << 2);
+        return Ok(());
+    }
+
+    if len <= 0b0011_1111_1111_1111 {
+        let encoded = ((len as u16) << 2) | 0b01;
+        out.extend_from_slice(&encoded.to_le_bytes());
+        return Ok(());
+    }
+
+    if len <= 0x3fff_ffff {
+        let encoded = ((len as u32) << 2) | 0b10;
+        out.extend_from_slice(&encoded.to_le_bytes());
+        return Ok(());
+    }
+
+    Err(AppError::InvalidArgument(
+        "SCALE compact lengths > 0x3fff_ffff are not supported in this encoder".to_owned(),
+    ))
 }
 
 fn sol_sccp_get_account(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
@@ -1822,7 +2215,121 @@ mod tests {
         assert!(is_high_risk_tool("sol_sccp_submit_signed_transaction"));
         assert!(is_high_risk_tool("ton_sccp_submit_signed_message"));
         assert!(!is_high_risk_tool("sccp_preflight_activation"));
+        assert!(!is_high_risk_tool("evm_sccp_build_burn_proof"));
         assert!(!is_high_risk_tool("sccp_list_networks"));
+    }
+
+    #[test]
+    fn normalize_evm_block_param_accepts_tags_and_numbers() {
+        assert_eq!(normalize_evm_block_param("finalized").unwrap(), "finalized");
+        assert_eq!(normalize_evm_block_param("42").unwrap(), "0x2a");
+        assert_eq!(normalize_evm_block_param("0x002a").unwrap(), "0x2a");
+    }
+
+    #[test]
+    fn resolve_burn_message_id_rejects_mismatch() {
+        let payload = json!({
+            "version": 1,
+            "source_domain": 1,
+            "dest_domain": 0,
+            "nonce": 7,
+            "sora_asset_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "amount": "12345",
+            "recipient": "0x0101010101010101010101010101010101010101010101010101010101010101"
+        });
+        let error = resolve_burn_message_id(
+            Some(&payload),
+            Some("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+        )
+        .expect_err("mismatched message id should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("does not match explicit message_id"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn build_evm_burn_proof_artifact_encodes_scale_bytes() {
+        let router = [0x11u8; 20];
+        let message_id = [0x22u8; 32];
+        let slot_base =
+            evm_burn_storage_slot_base(&message_id).expect("storage slot base must compute");
+        let storage_trie_key = evm_burn_storage_trie_key(&slot_base);
+        let block_hash = [0x33u8; 32];
+        let state_root = [0x44u8; 32];
+        let account_node = vec![0xde, 0xad];
+        let storage_node = vec![0xbe, 0xef, 0xca, 0xfe];
+
+        let proof_response = json!({
+            "address": format!("0x{}", hex::encode(router)),
+            "accountProof": [format!("0x{}", hex::encode(&account_node))],
+            "storageProof": [{
+                "key": format!("0x{}", hex::encode(slot_base)),
+                "value": "0x1",
+                "proof": [format!("0x{}", hex::encode(&storage_node))]
+            }]
+        });
+        let block_response = json!({
+            "hash": format!("0x{}", hex::encode(block_hash)),
+            "number": "0x2a",
+            "stateRoot": format!("0x{}", hex::encode(state_root))
+        });
+
+        let artifact =
+            build_evm_burn_proof_artifact(&router, &slot_base, &proof_response, &block_response)
+                .expect("artifact should build");
+        assert_eq!(artifact.block_number, 42);
+        assert_eq!(artifact.storage_value, "0x1");
+        assert_ne!(slot_base, storage_trie_key);
+
+        let encoded = encode_evm_burn_proof_v1(
+            &artifact.anchor_block_hash,
+            &artifact.account_proof,
+            &artifact.storage_proof,
+        )
+        .expect("proof should encode");
+
+        let mut expected = Vec::new();
+        expected.extend_from_slice(&block_hash);
+        expected.push(4);
+        expected.push(8);
+        expected.extend_from_slice(&account_node);
+        expected.push(4);
+        expected.push(16);
+        expected.extend_from_slice(&storage_node);
+        assert_eq!(encoded, expected);
+    }
+
+    #[test]
+    fn build_evm_burn_proof_artifact_rejects_zero_storage_value() {
+        let router = [0x11u8; 20];
+        let message_id = [0x22u8; 32];
+        let slot_base =
+            evm_burn_storage_slot_base(&message_id).expect("storage slot base must compute");
+        let proof_response = json!({
+            "address": format!("0x{}", hex::encode(router)),
+            "accountProof": ["0x01"],
+            "storageProof": [{
+                "key": format!("0x{}", hex::encode(slot_base)),
+                "value": "0x0",
+                "proof": ["0x02"]
+            }]
+        });
+        let block_response = json!({
+            "hash": format!("0x{}", hex::encode([0x33u8; 32])),
+            "number": "0x1",
+            "stateRoot": format!("0x{}", hex::encode([0x44u8; 32]))
+        });
+
+        let error =
+            build_evm_burn_proof_artifact(&router, &slot_base, &proof_response, &block_response)
+                .expect_err("zero storage proof must fail");
+        assert!(
+            error.to_string().contains("returned zero storage value"),
+            "unexpected error: {error}"
+        );
     }
 
     #[test]
@@ -3004,232 +3511,6 @@ mod tests {
                 .contains("invalid amount decimal"),
             "unexpected error: {message_id_err}"
         );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_unsupported_proof_version() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 2,
-                "signatures": [],
-            }),
-        )
-        .expect_err("version != 1 must fail");
-
-        assert!(
-            error
-                .to_string()
-                .contains("attester quorum proof version must currently be 1"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_non_integer_version() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": "1",
-                "signatures": []
-            }),
-        )
-        .expect_err("string version must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("field 'version' must be integer"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_missing_signatures_field() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1
-            }),
-        )
-        .expect_err("missing signatures must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("missing array field 'signatures'"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_non_array_signatures_field() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1,
-                "signatures": "0x"
-            }),
-        )
-        .expect_err("non-array signatures must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("missing array field 'signatures'"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_non_string_signature_entries() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1,
-                "signatures": [7]
-            }),
-        )
-        .expect_err("non-string signatures must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("signatures[0] must be hex string"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_wrong_signature_length() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1,
-                "signatures": ["0x11"]
-            }),
-        )
-        .expect_err("non-65-byte signature should fail");
-        assert!(
-            error.to_string().contains("signatures[0] must be 65 bytes"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_uppercase_hex_prefix_signature() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1,
-                "signatures": [format!("0X{}", "11".repeat(65))]
-            }),
-        )
-        .expect_err("uppercase 0X signatures should fail closed");
-        assert!(
-            error.to_string().contains("signatures[0] must be hex"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_rejects_version_out_of_u8_range() {
-        let ctx = context_with_policy(Policy::default());
-        let error = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 256,
-                "signatures": [format!("0x{}", "11".repeat(65))]
-            }),
-        )
-        .expect_err("version > u8::MAX must fail");
-        assert!(
-            error
-                .to_string()
-                .contains("field 'version' does not fit u8"),
-            "unexpected error: {error}"
-        );
-    }
-
-    #[test]
-    fn attester_quorum_tool_defaults_version_and_encodes_expected_prefix() {
-        let ctx = context_with_policy(Policy::default());
-        let result = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({ "signatures": [format!("0x{}", "11".repeat(65))] }),
-        )
-        .expect("default version should encode attester proof");
-
-        assert_eq!(result["version"], json!(1));
-        assert_eq!(result["signature_count"], json!(1));
-        let proof_hex = result["proof_hex"]
-            .as_str()
-            .expect("proof_hex should be string");
-        assert!(
-            proof_hex.starts_with("0x0104"),
-            "unexpected proof prefix: {proof_hex}"
-        );
-        // 1 byte version + 1 byte compact-len + 65-byte signature = 67 bytes -> 134 hex chars + 0x.
-        assert_eq!(proof_hex.len(), 136, "unexpected proof hex length");
-    }
-
-    #[test]
-    fn attester_quorum_tool_encodes_empty_signature_set() {
-        let ctx = context_with_policy(Policy::default());
-        let result = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1,
-                "signatures": []
-            }),
-        )
-        .expect("empty signature set should still encode");
-
-        assert_eq!(result["version"], json!(1));
-        assert_eq!(result["signature_count"], json!(0));
-        assert_eq!(result["proof_hex"], json!("0x0100")); // version=1, compact vec len=0
-    }
-
-    #[test]
-    fn attester_quorum_tool_encodes_compact_len_mode1_boundary() {
-        let ctx = context_with_policy(Policy::default());
-        let signature = format!("0x{}", "11".repeat(65));
-        let signatures = std::iter::repeat(signature).take(64).collect::<Vec<_>>();
-        let result = dispatch(
-            &ctx,
-            "sccp_encode_attester_quorum_proof",
-            &json!({
-                "version": 1,
-                "signatures": signatures
-            }),
-        )
-        .expect("64 signatures should encode using compact mode=1 length");
-
-        assert_eq!(result["version"], json!(1));
-        assert_eq!(result["signature_count"], json!(64));
-        let proof_hex = result["proof_hex"]
-            .as_str()
-            .expect("proof_hex should be string");
-        // 0x01(version), 0x01 0x01(compact-u32 len=64), then 64x65-byte signatures.
-        assert!(
-            proof_hex.starts_with("0x010101"),
-            "unexpected proof prefix: {proof_hex}"
-        );
-        let expected_len = 2 + ((1 + 2 + (64 * 65)) * 2);
-        assert_eq!(proof_hex.len(), expected_len, "unexpected proof hex length");
     }
 
     #[test]

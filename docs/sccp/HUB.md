@@ -37,7 +37,15 @@ Operational proof-generation commands are documented in:
 
 - `docs/sccp/PROOF_TOOLING.md`
 
-Implementation lives in the sibling `bridge-relayer` repository under CLI group `sccp`.
+Source-chain proof generation is chain-specific. For BSC -> SORA trustless burns, use the
+canonical tooling in `sccp/chains/bsc`:
+
+- `npm run extract-burn-proof-inputs`
+- `npm run build-burn-proof-to-sora`
+- `npm run build-bsc-header-rlp`
+
+Destination-side proof encoders live alongside the in-repo chain code under `sccp/chains/*`,
+with local helper dispatch available via `sccp/tools/sccp-proof.sh`.
 
 ## Destination-Chain Minting
 

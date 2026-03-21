@@ -198,9 +198,6 @@ benchmarks! {
             .map_err(|_| "set_domain_endpoint setup failed")?;
     }: _(RawOrigin::Root, SCCP_DOMAIN_ETH)
 
-    set_evm_anchor_mode_enabled {
-    }: _(RawOrigin::Root, SCCP_DOMAIN_ETH, true)
-
     init_bsc_light_client {
         let a in 1 .. 2;
         let _ = a;
@@ -285,25 +282,29 @@ benchmarks! {
         }
     }: _(RawOrigin::Root, witnesses)
 
-    set_inbound_attesters {
+    set_solana_vote_authorities {
         let a in 1 .. T::MaxAttesters::get();
-        let mut attesters = Vec::new();
+        let mut authorities = Vec::new();
         for i in 0..a {
-            attesters.push(H160::from_low_u64_be((i + 1) as u64));
+            let mut authority_pubkey = [0u8; 32];
+            authority_pubkey[24..].copy_from_slice(&((i + 1) as u64).to_be_bytes());
+            authorities.push(SolanaVoteAuthorityV1 {
+                authority_pubkey,
+                stake: (i + 1) as u64,
+            });
         }
-        let threshold = 1u32;
-    }: _(RawOrigin::Root, SCCP_DOMAIN_SOL, attesters, threshold)
+    }: _(RawOrigin::Root, authorities)
 
-    clear_inbound_attesters {
-        let attester = H160::from_low_u64_be(1);
-        Pallet::<T>::set_inbound_attesters(
+    clear_solana_vote_authorities {
+        Pallet::<T>::set_solana_vote_authorities(
             RawOrigin::Root.into(),
-            SCCP_DOMAIN_SOL,
-            vec![attester],
-            1,
+            vec![SolanaVoteAuthorityV1 {
+                authority_pubkey: [1u8; 32],
+                stake: 1,
+            }],
         )
-        .map_err(|_| "set_inbound_attesters setup failed")?;
-    }: _(RawOrigin::Root, SCCP_DOMAIN_SOL)
+        .map_err(|_| "set_solana_vote_authorities setup failed")?;
+    }: _(RawOrigin::Root)
 
     activate_token {
         let owner: T::AccountId = whitelisted_caller();
@@ -340,7 +341,7 @@ benchmarks! {
     }: _(RawOrigin::Root, domains)
 
     set_inbound_finality_mode {
-    }: _(RawOrigin::Root, SCCP_DOMAIN_SOL, InboundFinalityMode::AttesterQuorum)
+    }: _(RawOrigin::Root, SCCP_DOMAIN_SOL, InboundFinalityMode::SolanaLightClient)
 
     set_inbound_domain_paused {
     }: _(RawOrigin::Root, SCCP_DOMAIN_ETH, true)
@@ -377,23 +378,9 @@ benchmarks! {
         Pallet::<T>::set_inbound_finality_mode(
             RawOrigin::Root.into(),
             SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EvmAnchor,
+            InboundFinalityMode::EthZkProof,
         )
         .map_err(|_| "set_inbound_finality_mode setup failed")?;
-        Pallet::<T>::set_evm_anchor_mode_enabled(
-            RawOrigin::Root.into(),
-            SCCP_DOMAIN_ETH,
-            true,
-        )
-        .map_err(|_| "set_evm_anchor_mode_enabled setup failed")?;
-        Pallet::<T>::set_evm_inbound_anchor(
-            RawOrigin::Root.into(),
-            SCCP_DOMAIN_ETH,
-            1,
-            H256::repeat_byte(0x33),
-            H256::repeat_byte(0x44),
-        )
-        .map_err(|_| "set_evm_inbound_anchor setup failed")?;
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
@@ -422,23 +409,9 @@ benchmarks! {
         Pallet::<T>::set_inbound_finality_mode(
             RawOrigin::Root.into(),
             SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EvmAnchor,
+            InboundFinalityMode::EthZkProof,
         )
         .map_err(|_| "set_inbound_finality_mode setup failed")?;
-        Pallet::<T>::set_evm_anchor_mode_enabled(
-            RawOrigin::Root.into(),
-            SCCP_DOMAIN_ETH,
-            true,
-        )
-        .map_err(|_| "set_evm_anchor_mode_enabled setup failed")?;
-        Pallet::<T>::set_evm_inbound_anchor(
-            RawOrigin::Root.into(),
-            SCCP_DOMAIN_ETH,
-            1,
-            H256::repeat_byte(0x55),
-            H256::repeat_byte(0x66),
-        )
-        .map_err(|_| "set_evm_inbound_anchor setup failed")?;
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {

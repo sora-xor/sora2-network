@@ -50,12 +50,12 @@
   },
   "paths": {
     "sora2Network": "${repoRoot}",
-    "bridgeRelayer": "${repoRoot}/siblings/bridge-relayer",
-    "sccpEth": "${repoRoot}/siblings/sccp-eth",
-    "sccpBsc": "${repoRoot}/siblings/sccp-bsc",
-    "sccpSol": "${repoRoot}/siblings/sccp-sol",
-    "sccpTon": "${repoRoot}/siblings/sccp-ton",
-    "sccpTron": "${repoRoot}/siblings/sccp-tron",
+    "destinationProofToolchain": "${repoRoot}/sccp/tools",
+    "sccpEth": "${repoRoot}/sccp/chains/eth",
+    "sccpBsc": "${repoRoot}/sccp/chains/bsc",
+    "sccpSol": "${repoRoot}/sccp/chains/sol",
+    "sccpTon": "${repoRoot}/sccp/chains/ton",
+    "sccpTron": "${repoRoot}/sccp/chains/tron",
     "sccpSoraKusama": "${repoRoot}/siblings/sora2-parachain",
     "sccpSoraPolkadot": "${repoRoot}/siblings/sora2-parachain"
   },
@@ -71,8 +71,8 @@
       "attest": "cargo test -p framenode-runtime sccp_ -- --nocapture",
       "negative": "cargo test -p framenode-runtime sccp_set_required_domains_rejects_duplicates_in_runtime -- --nocapture"
     },
-    "bridgeRelayer": {
-      "proof_toolchain": "cargo run --quiet --bin bridge-relayer -- sccp --help"
+    "destinationProofToolchain": {
+      "proof_toolchain": "bash ./sccp-proof.sh --help"
     },
     "domains": {
       "eth": {

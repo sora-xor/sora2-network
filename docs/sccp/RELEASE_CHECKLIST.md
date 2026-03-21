@@ -4,18 +4,18 @@ This checklist defines the release-gate evidence package for SCCP-critical code.
 
 ## Preconditions
 
-- `sora2-network` is checked out with sibling repos available:
-  - `../bridge-relayer`
-  - `../sccp-eth`
-  - `../sccp-bsc`
-  - `../sccp-tron`
-  - `../sccp-sol`
-  - `../sccp-ton`
+- `sora2-network` is checked out with the in-repo SCCP chain directories available:
+  - `sccp/tools`
+  - `sccp/chains/eth`
+  - `sccp/chains/bsc`
+  - `sccp/chains/tron`
+  - `sccp/chains/sol`
+  - `sccp/chains/ton`
   - `../sora2-parachain` (for `sora_kusama` / `sora_polkadot` matrix domains)
 - Rust toolchain for `sora2-network` SCCP validation is `nightly-2025-05-08`.
 - `sora2-parachain` SCCP adapter checks are pinned to `nightly-2023-03-21`
   (via `SCCP_PARACHAIN_RUSTUP_TOOLCHAIN`, default set in the adapter script).
-- Node.js `22.x` is used for EVM/TON sibling test execution.
+- Node.js `22.x` is used for EVM/TON SCCP chain test execution.
 
 ## Required Command
 
@@ -39,7 +39,6 @@ PR-fast artifacts:
 Useful overrides:
 
 ```bash
-SCCP_DEV_DIR=/path/to/siblings \
 SCCP_VERIFY_HUB_CONFIG=misc/sccp-e2e/config.ci.json \
 SCCP_VERIFY_HUB_MODE=release \
 SCCP_VERIFY_MATRIX_MODE=full \
@@ -55,7 +54,7 @@ The release gate is blocking if any stage fails.
 2. `hub_matrix`
 3. `fuzz_bounded`
 4. `fuzz_bounded_siblings`
-5. `formal_assisted` (includes sibling `../sccp*` formal-assisted checks)
+5. `formal_assisted` (includes in-repo `sccp/chains/*` formal-assisted checks)
 
 ## Required Artifacts
 

@@ -105,21 +105,6 @@ const SPECS: &[SoraCallSpec] = &[
         args: &["domain_id: u32"],
     },
     SoraCallSpec {
-        name: "set_evm_inbound_anchor",
-        call_index: 14,
-        args: &[
-            "domain_id: u32",
-            "block_number: u64",
-            "block_hash: 0x<32-byte>",
-            "state_root: 0x<32-byte>",
-        ],
-    },
-    SoraCallSpec {
-        name: "clear_evm_inbound_anchor",
-        call_index: 15,
-        args: &["domain_id: u32"],
-    },
-    SoraCallSpec {
         name: "init_bsc_light_client",
         call_index: 16,
         args: &[
@@ -145,11 +130,6 @@ const SPECS: &[SoraCallSpec] = &[
         name: "set_outbound_domain_paused",
         call_index: 19,
         args: &["domain_id: u32", "paused: bool"],
-    },
-    SoraCallSpec {
-        name: "set_evm_anchor_mode_enabled",
-        call_index: 20,
-        args: &["domain_id: u32", "enabled: bool"],
     },
     SoraCallSpec {
         name: "attest_burn",
@@ -184,20 +164,6 @@ const SPECS: &[SoraCallSpec] = &[
         name: "set_tron_witnesses",
         call_index: 25,
         args: &["witnesses: [0x<20-byte>, ...]"],
-    },
-    SoraCallSpec {
-        name: "set_inbound_attesters",
-        call_index: 26,
-        args: &[
-            "domain_id: u32",
-            "attesters: [0x<20-byte>, ...]",
-            "threshold: u32",
-        ],
-    },
-    SoraCallSpec {
-        name: "clear_inbound_attesters",
-        call_index: 27,
-        args: &["domain_id: u32"],
     },
 ];
 
@@ -313,23 +279,9 @@ pub fn encode_sora_call(
             push_vec_bytes(&mut out, &required_hex_bytes(args, "endpoint_id")?)?;
             out
         }
-        "clear_domain_endpoint" | "clear_evm_inbound_anchor" | "clear_inbound_attesters" => {
+        "clear_domain_endpoint" => {
             let mut out = Vec::new();
             push_u32(&mut out, required_u32(args, "domain_id")?);
-            out
-        }
-        "set_evm_inbound_anchor" => {
-            let mut out = Vec::new();
-            push_u32(&mut out, required_u32(args, "domain_id")?);
-            push_u64(&mut out, required_u64(args, "block_number")?);
-            out.extend_from_slice(&required_h256(args, "block_hash")?);
-            out.extend_from_slice(&required_h256(args, "state_root")?);
-            out
-        }
-        "set_evm_anchor_mode_enabled" => {
-            let mut out = Vec::new();
-            push_u32(&mut out, required_u32(args, "domain_id")?);
-            push_bool(&mut out, required_bool(args, "enabled")?);
             out
         }
         "init_bsc_light_client" => {
@@ -384,13 +336,6 @@ pub fn encode_sora_call(
         "set_tron_witnesses" => {
             let mut out = Vec::new();
             push_vec_h160(&mut out, &required_h160_array(args, "witnesses")?)?;
-            out
-        }
-        "set_inbound_attesters" => {
-            let mut out = Vec::new();
-            push_u32(&mut out, required_u32(args, "domain_id")?);
-            push_vec_h160(&mut out, &required_h160_array(args, "attesters")?)?;
-            push_u32(&mut out, required_u32(args, "threshold")?);
             out
         }
         other => {
@@ -553,11 +498,11 @@ fn required_finality_mode(value: &Value, field: &str) -> AppResult<u8> {
     if let Some(index) = raw.as_u64() {
         let parsed = u8::try_from(index)
             .map_err(|_| AppError::InvalidArgument("mode does not fit u8".to_owned()))?;
-        if parsed <= 8 {
+        if matches!(parsed, 0 | 2 | 4 | 5 | 6 | 7 | 8 | 10) {
             return Ok(parsed);
         }
         return Err(AppError::InvalidArgument(
-            "mode index must be in 0..=8".to_owned(),
+            "supported mode indexes are 0, 2, 4, 5, 6, 7, 8, 10".to_owned(),
         ));
     }
 
@@ -567,14 +512,13 @@ fn required_finality_mode(value: &Value, field: &str) -> AppResult<u8> {
 
     match text {
         "disabled" | "Disabled" => Ok(0),
-        "evm_anchor" | "EvmAnchor" => Ok(1),
         "bsc_light_client" | "BscLightClient" => Ok(2),
-        "bsc_light_client_or_anchor" | "BscLightClientOrAnchor" => Ok(3),
         "eth_beacon_light_client" | "EthBeaconLightClient" => Ok(4),
         "solana_light_client" | "SolanaLightClient" => Ok(5),
         "ton_light_client" | "TonLightClient" => Ok(6),
         "tron_light_client" | "TronLightClient" => Ok(7),
-        "attester_quorum" | "AttesterQuorum" => Ok(8),
+        "substrate_light_client" | "SubstrateLightClient" => Ok(8),
+        "eth_zk_proof" | "EthZkProof" => Ok(10),
         _ => Err(AppError::InvalidArgument(format!(
             "unknown finality mode '{text}'"
         ))),
@@ -680,12 +624,12 @@ mod tests {
     fn finality_mode_parses_string() {
         let args = json!({
             "domain_id": 1,
-            "mode": "AttesterQuorum",
+            "mode": "EthZkProof",
         });
         let encoded = encode_sora_call("set_inbound_finality_mode", &args, 1, 4, 1024, 1024)
             .expect("must encode");
         assert_eq!(encoded.call_index, 22);
-        assert_eq!(encoded.arg_bytes[4], 8);
+        assert_eq!(encoded.arg_bytes[4], 10);
     }
 
     #[test]

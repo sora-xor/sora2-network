@@ -24,7 +24,6 @@ pub const DEFAULT_READ_ONLY_ALLOW_TOOLS: &[&str] = &[
     "sccp_health",
     "sccp_get_message_id",
     "sccp_validate_payload",
-    "sccp_encode_attester_quorum_proof",
     "sccp_list_supported_calls",
     "sccp_get_token_state",
     "sccp_get_remote_token",
@@ -35,6 +34,7 @@ pub const DEFAULT_READ_ONLY_ALLOW_TOOLS: &[&str] = &[
     "sora_sccp_build_call",
     "sora_sccp_estimate_fee",
     "evm_sccp_read_contract",
+    "evm_sccp_build_burn_proof",
     "evm_sccp_build_tx",
     "sol_sccp_get_account",
     "sol_sccp_build_transaction",
@@ -462,6 +462,7 @@ mod tests {
         let policy = Policy::default();
         assert!(policy.allows("sccp_list_networks"));
         assert!(policy.allows("evm_sccp_read_contract"));
+        assert!(policy.allows("evm_sccp_build_burn_proof"));
         assert!(!policy.allows("sora_sccp_submit_signed_extrinsic"));
     }
 

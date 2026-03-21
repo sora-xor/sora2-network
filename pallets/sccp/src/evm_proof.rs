@@ -84,6 +84,11 @@ pub struct BscHeaderMinimal<'a> {
     pub signature: [u8; 65],
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionHeaderMinimal<'a> {
+    pub state_root: &'a [u8; 32],
+}
+
 /// Parse only the minimal BSC header fields SCCP needs before signature verification.
 ///
 /// This helper is pure and fail-closed. It is shared by tests/fuzzing to harden RLP parsing
@@ -130,6 +135,27 @@ pub fn parse_bsc_header_minimal(header_rlp: &[u8]) -> Option<BscHeaderMinimal<'_
         extra_data_no_sig,
         signature,
     })
+}
+
+/// Parse only the execution `state_root` from a generic Ethereum execution header.
+///
+/// This helper is intentionally minimal: it does not validate consensus rules, only the RLP shape
+/// needed to bind a submitted MPT proof to a specific execution header.
+pub fn parse_execution_header_minimal(header_rlp: &[u8]) -> Option<ExecutionHeaderMinimal<'_>> {
+    let item = rlp_decode(header_rlp)?;
+    let RlpItem::List(items) = item else {
+        return None;
+    };
+    if items.len() < 4 {
+        return None;
+    }
+
+    let state_root = match items.get(3)? {
+        RlpItem::Bytes(bytes) => <&[u8; 32]>::try_from(*bytes).ok()?,
+        RlpItem::List(_) => return None,
+    };
+
+    Some(ExecutionHeaderMinimal { state_root })
 }
 
 fn rlp_decode_item<'a>(input: &'a [u8]) -> Result<(RlpItem<'a>, usize), ()> {
@@ -573,6 +599,31 @@ mod tests {
             &extra_data,
         );
         assert!(parse_bsc_header_minimal(&header).is_none());
+    }
+
+    #[test]
+    fn parse_execution_header_minimal_accepts_state_root_field() {
+        let mut fields: Vec<Vec<u8>> = vec![Vec::new(); 4];
+        fields[0] = vec![0x11; 32];
+        fields[1] = vec![0x22; 32];
+        fields[2] = vec![0x33; 20];
+        fields[3] = vec![0x44; 32];
+        let encoded_fields: Vec<Vec<u8>> = fields.iter().map(|f| rlp_encode_bytes(f)).collect();
+        let header = rlp_encode_list(&encoded_fields);
+        let parsed = parse_execution_header_minimal(&header).expect("valid execution header");
+        assert_eq!(parsed.state_root, &[0x44; 32]);
+    }
+
+    #[test]
+    fn parse_execution_header_minimal_rejects_short_state_root() {
+        let mut fields: Vec<Vec<u8>> = vec![Vec::new(); 4];
+        fields[0] = vec![0x11; 32];
+        fields[1] = vec![0x22; 32];
+        fields[2] = vec![0x33; 20];
+        fields[3] = vec![0x44; 31];
+        let encoded_fields: Vec<Vec<u8>> = fields.iter().map(|f| rlp_encode_bytes(f)).collect();
+        let header = rlp_encode_list(&encoded_fields);
+        assert!(parse_execution_header_minimal(&header).is_none());
     }
 
     #[test]

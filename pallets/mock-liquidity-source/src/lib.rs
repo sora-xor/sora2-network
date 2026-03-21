@@ -36,7 +36,8 @@ use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
+    balance, fixed, Balance, DexInfoProvider, Fixed, FixedInner, GetPoolReserves, LiquiditySource,
+    RewardReason,
 };
 use core::convert::TryInto;
 use frame_support::ensure;
@@ -653,11 +654,18 @@ pub mod pallet {
             origin: OriginFor<T>,
             dex_id: T::DEXId,
             target_id: T::AssetId,
-            base_reserve: Fixed,
-            target_reserve: Fixed,
+            base_reserve: FixedInner,
+            target_reserve: FixedInner,
         ) -> DispatchResultWithPostInfo {
             let _who = ensure_signed(origin)?;
-            <Reserves<T, I>>::insert(dex_id, target_id, (base_reserve, target_reserve));
+            <Reserves<T, I>>::insert(
+                dex_id,
+                target_id,
+                (
+                    Fixed::from_bits(base_reserve),
+                    Fixed::from_bits(target_reserve),
+                ),
+            );
             Ok(().into())
         }
     }

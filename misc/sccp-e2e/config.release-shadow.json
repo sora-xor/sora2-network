@@ -39,7 +39,7 @@
   },
   "paths": {
     "sora2Network": "${repoRoot}",
-    "bridgeRelayer": "${bridgeRelayer}",
+    "destinationProofToolchain": "${destinationProofToolchain}",
     "sccpEth": "${sccpEth}",
     "sccpBsc": "${sccpBsc}",
     "sccpSol": "${sccpSol}",
@@ -60,8 +60,8 @@
       "attest": "cargo test -p framenode-runtime sccp_ -- --nocapture",
       "negative": "cargo test -p framenode-runtime sccp_set_required_domains_rejects_duplicates_in_runtime -- --nocapture"
     },
-    "bridgeRelayer": {
-      "proof_toolchain": "cargo run --quiet --bin bridge-relayer -- sccp --help"
+    "destinationProofToolchain": {
+      "proof_toolchain": "bash ./sccp-proof.sh --help"
     },
     "domains": {
       "eth": {

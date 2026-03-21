@@ -13,10 +13,12 @@ use common::{AssetName, AssetSymbol, DEFAULT_BALANCE_PRECISION};
 use frame_support::{assert_noop, assert_ok};
 use framenode_chain_spec::ext;
 use sccp::{
-    BurnPayloadV1, InboundFinalityMode, LegacyBridgeAssetChecker, SCCP_CORE_REMOTE_DOMAINS,
+    evm_burn_storage_key_for_message_id, BurnPayloadV1, EthZkEvmBurnProofV1,
+    EthZkFinalizedBurnProofV1, EthZkFinalizedBurnPublicInputsV1, InboundFinalityMode,
+    LegacyBridgeAssetChecker, ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1, SCCP_CORE_REMOTE_DOMAINS,
     SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_SORA_KUSAMA,
     SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON, SCCP_MAX_BSC_HEADER_RLP_BYTES,
-    SCCP_MAX_TRON_RAW_DATA_BYTES, SCCP_MSG_PREFIX_ATTEST_V1, SCCP_MSG_PREFIX_BURN_V1,
+    SCCP_MAX_TRON_RAW_DATA_BYTES, SCCP_MSG_PREFIX_BURN_V1,
 };
 use sp_core::{ecdsa, keccak_256, Pair, H256};
 use sp_runtime::DispatchError;
@@ -74,6 +76,87 @@ fn sccp_test_message_id(payload: &BurnPayloadV1) -> H256 {
     H256::from_slice(&keccak_256(&preimage))
 }
 
+fn sccp_test_evm_leaf_path_for_hashed_key(key32: &[u8; 32]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(33);
+    out.push(0x20);
+    out.extend_from_slice(key32);
+    out
+}
+
+fn sccp_test_evm_rlp_leaf_node(compact_path: &[u8], value: &[u8]) -> Vec<u8> {
+    let mut stream = rlp::RlpStream::new_list(2);
+    stream.append(&compact_path);
+    stream.append(&value);
+    stream.out().to_vec()
+}
+
+fn sccp_test_evm_rlp_account_value(storage_root: H256) -> Vec<u8> {
+    let mut stream = rlp::RlpStream::new_list(4);
+    stream.append(&1u8);
+    stream.append(&0u8);
+    stream.append(&storage_root.as_bytes());
+    stream.append(&[7u8; 32].as_slice());
+    stream.out().to_vec()
+}
+
+fn sccp_test_eth_execution_header_rlp(state_root: H256) -> Vec<u8> {
+    let mut stream = rlp::RlpStream::new_list(4);
+    stream.append(&[0x31u8; 32].as_slice());
+    stream.append(&[0x32u8; 32].as_slice());
+    stream.append(&[0x33u8; 20].as_slice());
+    stream.append(&state_root.as_bytes());
+    stream.out().to_vec()
+}
+
+fn sccp_test_eth_zk_evm_burn_proof(
+    message_id: H256,
+    router_address: [u8; 20],
+) -> (H256, H256, Vec<u8>) {
+    let storage_key = evm_burn_storage_key_for_message_id(message_id);
+    let storage_path = sccp_test_evm_leaf_path_for_hashed_key(&storage_key.0);
+    let storage_leaf = sccp_test_evm_rlp_leaf_node(&storage_path, &[0x01]);
+    let storage_root = H256::from_slice(&keccak_256(&storage_leaf));
+
+    let account_key = keccak_256(&router_address);
+    let account_path = sccp_test_evm_leaf_path_for_hashed_key(&account_key);
+    let account_value = sccp_test_evm_rlp_account_value(storage_root);
+    let account_leaf = sccp_test_evm_rlp_leaf_node(&account_path, &account_value);
+    let execution_state_root = H256::from_slice(&keccak_256(&account_leaf));
+    let execution_header_rlp = sccp_test_eth_execution_header_rlp(execution_state_root);
+    let finalized_block_hash = H256::from_slice(&keccak_256(&execution_header_rlp));
+
+    let evm_burn_proof = EthZkEvmBurnProofV1 {
+        execution_header_rlp,
+        account_proof: vec![account_leaf],
+        storage_proof: vec![storage_leaf],
+    }
+    .encode();
+
+    (finalized_block_hash, execution_state_root, evm_burn_proof)
+}
+
+fn sccp_test_eth_zk_stark_proof(payload: &BurnPayloadV1) -> Vec<u8> {
+    let message_id = sccp_test_message_id(payload);
+    let mut router_address = [0u8; 20];
+    router_address.copy_from_slice(&sccp_test_domain_endpoint_bytes(SCCP_DOMAIN_ETH));
+    let (finalized_block_hash, execution_state_root, evm_burn_proof) =
+        sccp_test_eth_zk_evm_burn_proof(message_id, router_address);
+    let public_inputs = EthZkFinalizedBurnPublicInputsV1 {
+        message_id,
+        finalized_block_hash,
+        execution_state_root,
+        router_address,
+        burn_storage_key: evm_burn_storage_key_for_message_id(message_id),
+    };
+    let proof = EthZkFinalizedBurnProofV1 {
+        version: ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1,
+        public_inputs: public_inputs.clone(),
+        evm_burn_proof,
+        zk_proof: crate::sccp_eth_zk::build_test_fixture_v1(&public_inputs),
+    };
+    proof.encode()
+}
+
 fn sccp_test_eth_address_from_pair(pair: &ecdsa::Pair) -> H160 {
     let msg = H256([9u8; 32]);
     let sig = pair.sign_prehashed(&msg.0);
@@ -82,25 +165,6 @@ fn sccp_test_eth_address_from_pair(pair: &ecdsa::Pair) -> H160 {
         Err(_) => panic!("valid test signature"),
     };
     H160::from_slice(&keccak_256(&public_key)[12..])
-}
-
-fn sccp_test_attester_quorum_proof(message_id: H256) -> (Vec<H160>, Vec<u8>) {
-    let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-    let p1 = ecdsa::Pair::from_seed(&[2u8; 32]);
-    let p2 = ecdsa::Pair::from_seed(&[3u8; 32]);
-    let a0 = sccp_test_eth_address_from_pair(&p0);
-    let a1 = sccp_test_eth_address_from_pair(&p1);
-    let a2 = sccp_test_eth_address_from_pair(&p2);
-
-    let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-    preimage.extend_from_slice(&message_id.0);
-    let sig_hash = H256::from_slice(&keccak_256(&preimage));
-    let sig0 = p0.sign_prehashed(&sig_hash.0);
-    let sig1 = p1.sign_prehashed(&sig_hash.0);
-
-    let mut proof = vec![1u8];
-    proof.extend(vec![sig0.0, sig1.0].encode());
-    (vec![a0, a1, a2], proof)
 }
 
 fn sccp_test_pb_varint(mut value: u64) -> Vec<u8> {
@@ -744,13 +808,43 @@ fn sccp_set_inbound_finality_mode_rejects_unsupported_mode_for_domain_in_runtime
 }
 
 #[test]
+fn sccp_set_inbound_finality_mode_rejects_deprecated_modes_in_runtime() {
+    ext().execute_with(|| {
+        assert_noop!(
+            Sccp::set_inbound_finality_mode(
+                RuntimeOrigin::root(),
+                SCCP_DOMAIN_ETH,
+                InboundFinalityMode::EvmAnchor,
+            ),
+            sccp::Error::<Runtime>::InboundFinalityModeUnsupported
+        );
+        assert_noop!(
+            Sccp::set_inbound_finality_mode(
+                RuntimeOrigin::root(),
+                SCCP_DOMAIN_BSC,
+                InboundFinalityMode::BscLightClientOrAnchor,
+            ),
+            sccp::Error::<Runtime>::InboundFinalityModeUnsupported
+        );
+        assert_noop!(
+            Sccp::set_inbound_finality_mode(
+                RuntimeOrigin::root(),
+                SCCP_DOMAIN_SOL,
+                InboundFinalityMode::AttesterQuorum,
+            ),
+            sccp::Error::<Runtime>::InboundFinalityModeUnsupported
+        );
+    });
+}
+
+#[test]
 fn sccp_set_inbound_finality_mode_rejects_sora_domain_in_runtime() {
     ext().execute_with(|| {
         assert_noop!(
             Sccp::set_inbound_finality_mode(
                 RuntimeOrigin::root(),
                 SCCP_DOMAIN_SORA,
-                InboundFinalityMode::EvmAnchor,
+                InboundFinalityMode::EthZkProof,
             ),
             sccp::Error::<Runtime>::DomainUnsupported
         );
@@ -764,7 +858,7 @@ fn sccp_set_inbound_finality_mode_rejects_unknown_domain_in_runtime() {
             Sccp::set_inbound_finality_mode(
                 RuntimeOrigin::root(),
                 777,
-                InboundFinalityMode::EvmAnchor,
+                InboundFinalityMode::EthZkProof,
             ),
             sccp::Error::<Runtime>::DomainUnsupported
         );
@@ -810,262 +904,22 @@ fn sccp_set_inbound_finality_mode_overwrite_updates_override_in_runtime() {
     ext().execute_with(|| {
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
         ));
         assert_eq!(
-            Sccp::inbound_finality_mode_override(SCCP_DOMAIN_SOL),
-            Some(InboundFinalityMode::AttesterQuorum)
+            Sccp::inbound_finality_mode_override(SCCP_DOMAIN_ETH),
+            Some(InboundFinalityMode::EthZkProof)
         );
 
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::SolanaLightClient,
-        ));
-        assert_eq!(
-            Sccp::inbound_finality_mode_override(SCCP_DOMAIN_SOL),
-            Some(InboundFinalityMode::SolanaLightClient)
-        );
-    });
-}
-
-#[test]
-fn sccp_set_evm_inbound_anchor_updates_state_and_emits_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        let block_number = 123u64;
-        let block_hash = H256::repeat_byte(0x11);
-        let state_root = H256::repeat_byte(0x22);
-        assert_ok!(Sccp::set_evm_inbound_anchor(
-            RuntimeOrigin::root(),
             SCCP_DOMAIN_ETH,
-            block_number,
-            block_hash,
-            state_root,
+            InboundFinalityMode::EthBeaconLightClient,
         ));
-
-        let anchor = Sccp::evm_inbound_anchor(SCCP_DOMAIN_ETH);
         assert_eq!(
-            anchor,
-            Some(sccp::EvmInboundAnchor {
-                block_number,
-                block_hash,
-                state_root,
-            })
-        );
-
-        let event = frame_system::Pallet::<Runtime>::events()
-            .into_iter()
-            .rev()
-            .find_map(|record| match record.event {
-                crate::RuntimeEvent::Sccp(sccp::Event::EvmInboundAnchorSet {
-                    domain_id,
-                    block_number,
-                    block_hash,
-                    state_root,
-                }) => Some((domain_id, block_number, block_hash, state_root)),
-                _ => None,
-            });
-        assert_eq!(
-            event,
-            Some((SCCP_DOMAIN_ETH, block_number, block_hash, state_root))
-        );
-    });
-}
-
-#[test]
-fn sccp_set_evm_inbound_anchor_rejects_non_evm_domain_in_runtime() {
-    ext().execute_with(|| {
-        assert_noop!(
-            Sccp::set_evm_inbound_anchor(
-                RuntimeOrigin::root(),
-                SCCP_DOMAIN_SOL,
-                1,
-                H256::repeat_byte(0x01),
-                H256::repeat_byte(0x02),
-            ),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-    });
-}
-
-#[test]
-fn sccp_set_evm_inbound_anchor_rejects_non_manager_origin_in_runtime() {
-    ext().execute_with(|| {
-        assert_noop!(
-            Sccp::set_evm_inbound_anchor(
-                RuntimeOrigin::signed(common::mock::alice()),
-                SCCP_DOMAIN_ETH,
-                1,
-                H256::repeat_byte(0x03),
-                H256::repeat_byte(0x04),
-            ),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
-fn sccp_set_evm_inbound_anchor_failure_does_not_emit_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        let events_before = frame_system::Pallet::<Runtime>::events().len();
-        assert_noop!(
-            Sccp::set_evm_inbound_anchor(
-                RuntimeOrigin::root(),
-                SCCP_DOMAIN_SOL,
-                1,
-                H256::repeat_byte(0x05),
-                H256::repeat_byte(0x06),
-            ),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_eq!(
-            frame_system::Pallet::<Runtime>::events().len(),
-            events_before
-        );
-    });
-}
-
-#[test]
-fn sccp_clear_evm_inbound_anchor_clears_state_and_emits_event_in_runtime() {
-    ext().execute_with(|| {
-        assert_ok!(Sccp::set_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_BSC,
-            10,
-            H256::repeat_byte(0x0a),
-            H256::repeat_byte(0x0b),
-        ));
-        assert!(Sccp::evm_inbound_anchor(SCCP_DOMAIN_BSC).is_some());
-
-        System::set_block_number(1);
-        assert_ok!(Sccp::clear_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_BSC,
-        ));
-        assert!(Sccp::evm_inbound_anchor(SCCP_DOMAIN_BSC).is_none());
-
-        let event = frame_system::Pallet::<Runtime>::events()
-            .into_iter()
-            .rev()
-            .find_map(|record| match record.event {
-                crate::RuntimeEvent::Sccp(sccp::Event::EvmInboundAnchorCleared { domain_id }) => {
-                    Some(domain_id)
-                }
-                _ => None,
-            });
-        assert_eq!(event, Some(SCCP_DOMAIN_BSC));
-    });
-}
-
-#[test]
-fn sccp_clear_evm_inbound_anchor_rejects_non_evm_domain_or_origin_in_runtime() {
-    ext().execute_with(|| {
-        assert_noop!(
-            Sccp::clear_evm_inbound_anchor(RuntimeOrigin::root(), SCCP_DOMAIN_TON),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::clear_evm_inbound_anchor(
-                RuntimeOrigin::signed(common::mock::alice()),
-                SCCP_DOMAIN_ETH,
-            ),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
-fn sccp_clear_evm_inbound_anchor_failure_does_not_emit_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        let events_before = frame_system::Pallet::<Runtime>::events().len();
-        assert_noop!(
-            Sccp::clear_evm_inbound_anchor(RuntimeOrigin::root(), SCCP_DOMAIN_SOL),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_eq!(
-            frame_system::Pallet::<Runtime>::events().len(),
-            events_before
-        );
-    });
-}
-
-#[test]
-fn sccp_set_evm_anchor_mode_enabled_updates_state_and_emits_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_TRON,
-            true,
-        ));
-        assert!(Sccp::evm_anchor_mode_enabled(SCCP_DOMAIN_TRON));
-
-        let event = frame_system::Pallet::<Runtime>::events()
-            .into_iter()
-            .rev()
-            .find_map(|record| match record.event {
-                crate::RuntimeEvent::Sccp(sccp::Event::EvmAnchorModeEnabledSet {
-                    domain_id,
-                    enabled,
-                }) => Some((domain_id, enabled)),
-                _ => None,
-            });
-        assert_eq!(event, Some((SCCP_DOMAIN_TRON, true)));
-    });
-}
-
-#[test]
-fn sccp_set_evm_anchor_mode_enabled_toggle_roundtrip_in_runtime() {
-    ext().execute_with(|| {
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            true,
-        ));
-        assert!(Sccp::evm_anchor_mode_enabled(SCCP_DOMAIN_ETH));
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            false,
-        ));
-        assert!(!Sccp::evm_anchor_mode_enabled(SCCP_DOMAIN_ETH));
-    });
-}
-
-#[test]
-fn sccp_set_evm_anchor_mode_enabled_rejects_non_evm_domain_or_origin_in_runtime() {
-    ext().execute_with(|| {
-        assert_noop!(
-            Sccp::set_evm_anchor_mode_enabled(RuntimeOrigin::root(), SCCP_DOMAIN_SOL, true),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_evm_anchor_mode_enabled(
-                RuntimeOrigin::signed(common::mock::alice()),
-                SCCP_DOMAIN_ETH,
-                true,
-            ),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
-fn sccp_set_evm_anchor_mode_enabled_failure_does_not_emit_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        let events_before = frame_system::Pallet::<Runtime>::events().len();
-        assert_noop!(
-            Sccp::set_evm_anchor_mode_enabled(RuntimeOrigin::root(), SCCP_DOMAIN_TON, true),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_eq!(
-            frame_system::Pallet::<Runtime>::events().len(),
-            events_before
+            Sccp::inbound_finality_mode_override(SCCP_DOMAIN_ETH),
+            Some(InboundFinalityMode::EthBeaconLightClient)
         );
     });
 }
@@ -1830,106 +1684,90 @@ fn sccp_set_tron_witnesses_failure_does_not_emit_event_in_runtime() {
 }
 
 #[test]
-fn sccp_set_inbound_attesters_updates_state_and_emits_event_in_runtime() {
+fn sccp_set_solana_vote_authorities_updates_state_and_emits_event_in_runtime() {
     ext().execute_with(|| {
         System::set_block_number(1);
         let input = vec![
-            H160::repeat_byte(0x33),
-            H160::repeat_byte(0x11),
-            H160::repeat_byte(0x22),
+            sccp::SolanaVoteAuthorityV1 {
+                authority_pubkey: [0x33u8; 32],
+                stake: 30,
+            },
+            sccp::SolanaVoteAuthorityV1 {
+                authority_pubkey: [0x11u8; 32],
+                stake: 10,
+            },
+            sccp::SolanaVoteAuthorityV1 {
+                authority_pubkey: [0x22u8; 32],
+                stake: 20,
+            },
         ];
-        let threshold = 2u32;
-        assert_ok!(Sccp::set_inbound_attesters(
+        assert_ok!(Sccp::set_solana_vote_authorities(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
             input.clone(),
-            threshold,
         ));
 
         let mut sorted = input;
-        sorted.sort();
+        sorted.sort_by(|a, b| a.authority_pubkey.cmp(&b.authority_pubkey));
+        let total_stake = sorted.iter().map(|authority| authority.stake).sum::<u64>();
+        let threshold_stake = (total_stake * 2) / 3 + 1;
         let expected_hash = H256::from_slice(&keccak_256(&sorted.encode()));
 
-        let stored = Sccp::inbound_attesters(SCCP_DOMAIN_ETH).map(|v| v.into_inner());
-        assert_eq!(stored, Some(sorted));
         assert_eq!(
-            Sccp::inbound_attester_threshold(SCCP_DOMAIN_ETH),
-            Some(threshold)
+            Sccp::solana_vote_authorities().map(|v| v.into_inner()),
+            Some(sorted)
         );
 
         let event = frame_system::Pallet::<Runtime>::events()
             .into_iter()
             .rev()
             .find_map(|record| match record.event {
-                crate::RuntimeEvent::Sccp(sccp::Event::InboundAttestersSet {
-                    domain_id,
-                    attesters_hash,
-                    threshold,
-                }) => Some((domain_id, attesters_hash, threshold)),
+                crate::RuntimeEvent::Sccp(sccp::Event::SolanaVoteAuthoritiesSet {
+                    authorities_hash,
+                    total_stake,
+                    threshold_stake,
+                }) => Some((authorities_hash, total_stake, threshold_stake)),
                 _ => None,
             });
-        assert_eq!(event, Some((SCCP_DOMAIN_ETH, expected_hash, threshold)));
+        assert_eq!(event, Some((expected_hash, total_stake, threshold_stake)));
     });
 }
 
 #[test]
-fn sccp_set_inbound_attesters_rejects_duplicate_entries_in_runtime() {
+fn sccp_set_solana_vote_authorities_rejects_invalid_entries_and_origin_in_runtime() {
     ext().execute_with(|| {
         assert_noop!(
-            Sccp::set_inbound_attesters(
+            Sccp::set_solana_vote_authorities(
                 RuntimeOrigin::root(),
-                SCCP_DOMAIN_ETH,
-                vec![H160::repeat_byte(0x11), H160::repeat_byte(0x11)],
-                1,
+                vec![
+                    sccp::SolanaVoteAuthorityV1 {
+                        authority_pubkey: [0x11u8; 32],
+                        stake: 1,
+                    },
+                    sccp::SolanaVoteAuthorityV1 {
+                        authority_pubkey: [0x11u8; 32],
+                        stake: 2,
+                    },
+                ],
             ),
-            sccp::Error::<Runtime>::InboundAttestersInvalid
+            sccp::Error::<Runtime>::SolanaVoteAuthoritiesInvalid
         );
-    });
-}
-
-#[test]
-fn sccp_set_inbound_attesters_rejects_invalid_threshold_in_runtime() {
-    ext().execute_with(|| {
-        let attesters = vec![H160::repeat_byte(0x11), H160::repeat_byte(0x22)];
         assert_noop!(
-            Sccp::set_inbound_attesters(
+            Sccp::set_solana_vote_authorities(
                 RuntimeOrigin::root(),
-                SCCP_DOMAIN_ETH,
-                attesters.clone(),
-                0,
+                vec![sccp::SolanaVoteAuthorityV1 {
+                    authority_pubkey: [0x22u8; 32],
+                    stake: 0,
+                }],
             ),
-            sccp::Error::<Runtime>::InboundAttestersInvalid
+            sccp::Error::<Runtime>::SolanaVoteAuthoritiesInvalid
         );
         assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_ETH, attesters, 3,),
-            sccp::Error::<Runtime>::InboundAttestersInvalid
-        );
-    });
-}
-
-#[test]
-fn sccp_set_inbound_attesters_rejects_invalid_domain_or_origin_in_runtime() {
-    ext().execute_with(|| {
-        let attesters = vec![H160::repeat_byte(0x11)];
-        assert_noop!(
-            Sccp::set_inbound_attesters(
-                RuntimeOrigin::root(),
-                SCCP_DOMAIN_SORA,
-                attesters.clone(),
-                1,
-            ),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), 777, attesters.clone(), 1),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_inbound_attesters(
+            Sccp::set_solana_vote_authorities(
                 RuntimeOrigin::signed(common::mock::alice()),
-                SCCP_DOMAIN_ETH,
-                attesters,
-                1,
+                vec![sccp::SolanaVoteAuthorityV1 {
+                    authority_pubkey: [0x33u8; 32],
+                    stake: 1,
+                }],
             ),
             DispatchError::BadOrigin
         );
@@ -1937,93 +1775,29 @@ fn sccp_set_inbound_attesters_rejects_invalid_domain_or_origin_in_runtime() {
 }
 
 #[test]
-fn sccp_set_inbound_attesters_failure_does_not_emit_event_in_runtime() {
+fn sccp_clear_solana_vote_authorities_clears_state_and_emits_event_in_runtime() {
     ext().execute_with(|| {
         System::set_block_number(1);
-        let events_before = frame_system::Pallet::<Runtime>::events().len();
-        assert_noop!(
-            Sccp::set_inbound_attesters(
-                RuntimeOrigin::root(),
-                SCCP_DOMAIN_ETH,
-                vec![H160::repeat_byte(0x11), H160::repeat_byte(0x11)],
-                1,
-            ),
-            sccp::Error::<Runtime>::InboundAttestersInvalid
-        );
-        assert_eq!(
-            frame_system::Pallet::<Runtime>::events().len(),
-            events_before
-        );
-    });
-}
-
-#[test]
-fn sccp_clear_inbound_attesters_clears_state_and_emits_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        assert_ok!(Sccp::set_inbound_attesters(
+        assert_ok!(Sccp::set_solana_vote_authorities(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            vec![H160::repeat_byte(0x11), H160::repeat_byte(0x22)],
-            1,
+            vec![sccp::SolanaVoteAuthorityV1 {
+                authority_pubkey: [0x44u8; 32],
+                stake: 10,
+            }],
         ));
-        assert!(Sccp::inbound_attesters(SCCP_DOMAIN_ETH).is_some());
-        assert!(Sccp::inbound_attester_threshold(SCCP_DOMAIN_ETH).is_some());
+        assert!(Sccp::solana_vote_authorities().is_some());
 
-        assert_ok!(Sccp::clear_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-        ));
-        assert!(Sccp::inbound_attesters(SCCP_DOMAIN_ETH).is_none());
-        assert!(Sccp::inbound_attester_threshold(SCCP_DOMAIN_ETH).is_none());
+        assert_ok!(Sccp::clear_solana_vote_authorities(RuntimeOrigin::root()));
+        assert!(Sccp::solana_vote_authorities().is_none());
 
         let event = frame_system::Pallet::<Runtime>::events()
             .into_iter()
             .rev()
             .find_map(|record| match record.event {
-                crate::RuntimeEvent::Sccp(sccp::Event::InboundAttestersCleared { domain_id }) => {
-                    Some(domain_id)
-                }
+                crate::RuntimeEvent::Sccp(sccp::Event::SolanaVoteAuthoritiesCleared) => Some(()),
                 _ => None,
             });
-        assert_eq!(event, Some(SCCP_DOMAIN_ETH));
-    });
-}
-
-#[test]
-fn sccp_clear_inbound_attesters_rejects_domain_or_origin_in_runtime() {
-    ext().execute_with(|| {
-        assert_noop!(
-            Sccp::clear_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SORA),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::clear_inbound_attesters(RuntimeOrigin::root(), 777),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::clear_inbound_attesters(
-                RuntimeOrigin::signed(common::mock::alice()),
-                SCCP_DOMAIN_ETH,
-            ),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
-fn sccp_clear_inbound_attesters_failure_does_not_emit_event_in_runtime() {
-    ext().execute_with(|| {
-        System::set_block_number(1);
-        let events_before = frame_system::Pallet::<Runtime>::events().len();
-        assert_noop!(
-            Sccp::clear_inbound_attesters(RuntimeOrigin::root(), 777),
-            sccp::Error::<Runtime>::DomainUnsupported
-        );
-        assert_eq!(
-            frame_system::Pallet::<Runtime>::events().len(),
-            events_before
-        );
+        assert_eq!(event, Some(()));
     });
 }
 
@@ -2319,6 +2093,72 @@ fn sccp_mint_from_proof_rejects_inbound_finality_unavailable_in_runtime() {
 }
 
 #[test]
+fn sccp_mint_from_proof_accepts_eth_zk_stark_proof_in_runtime() {
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        let owner = common::mock::alice();
+        assert_ok!(Currencies::update_balance(
+            RuntimeOrigin::root(),
+            owner.clone(),
+            common::XOR.into(),
+            1i128,
+        ));
+        let asset_id = Assets::register_from(
+            &owner,
+            AssetSymbol(b"SEZKP".to_vec()),
+            AssetName(b"SCCP ETH ZK".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            0u128,
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        )
+        .unwrap();
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        for domain in SCCP_CORE_REMOTE_DOMAINS {
+            assert_ok!(Sccp::set_remote_token(
+                RuntimeOrigin::root(),
+                asset_id,
+                domain,
+                sccp_test_remote_token_bytes(domain),
+            ));
+            assert_ok!(Sccp::set_domain_endpoint(
+                RuntimeOrigin::root(),
+                domain,
+                sccp_test_domain_endpoint_bytes(domain),
+            ));
+        }
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+        assert_ok!(Sccp::set_inbound_finality_mode(
+            RuntimeOrigin::root(),
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
+        ));
+
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_ETH,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 78,
+            sora_asset_id: asset_h256.0,
+            amount: 6u128,
+            recipient: [0x32u8; 32],
+        };
+        let message_id = sccp_test_message_id(&payload);
+        let proof = sccp_test_eth_zk_stark_proof(&payload);
+        assert_ok!(Sccp::mint_from_proof(
+            RuntimeOrigin::signed(owner),
+            SCCP_DOMAIN_ETH,
+            payload,
+            proof,
+        ));
+        assert!(Sccp::processed_inbound(message_id));
+    });
+}
+
+#[test]
 fn sccp_mint_from_proof_rejects_inbound_paused_domain_in_runtime() {
     ext().execute_with(|| {
         assert_ok!(Sccp::set_domain_endpoint(
@@ -2329,13 +2169,7 @@ fn sccp_mint_from_proof_rejects_inbound_paused_domain_in_runtime() {
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
             SCCP_DOMAIN_ETH,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            vec![H160::from_low_u64_be(1)],
-            1,
+            InboundFinalityMode::EthZkProof,
         ));
         assert_ok!(Sccp::set_inbound_domain_paused(
             RuntimeOrigin::root(),
@@ -2606,7 +2440,7 @@ fn sccp_mint_from_proof_marks_message_processed_and_emits_event_in_runtime() {
             AssetSymbol(b"SCCPMFP".to_vec()),
             AssetName(b"SCCP Mint Proof Success".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -2632,7 +2466,7 @@ fn sccp_mint_from_proof_marks_message_processed_and_emits_event_in_runtime() {
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
             version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
+            source_domain: SCCP_DOMAIN_ETH,
             dest_domain: SCCP_DOMAIN_SORA,
             nonce: 77,
             sora_asset_id: asset_h256.0,
@@ -2640,22 +2474,16 @@ fn sccp_mint_from_proof_marks_message_processed_and_emits_event_in_runtime() {
             recipient: [0x31u8; 32],
         };
         let message_id = sccp_test_message_id(&payload);
-        let (attesters, proof) = sccp_test_attester_quorum_proof(message_id);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            attesters,
-            2
-        ));
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
         ));
+        let proof = sccp_test_eth_zk_stark_proof(&payload);
 
         assert_ok!(Sccp::mint_from_proof(
             RuntimeOrigin::signed(owner),
-            SCCP_DOMAIN_SOL,
+            SCCP_DOMAIN_ETH,
             payload.clone(),
             proof,
         ));
@@ -2698,7 +2526,7 @@ fn sccp_mint_from_proof_rejects_replay_after_success_in_runtime() {
             AssetSymbol(b"SCCPMRP".to_vec()),
             AssetName(b"SCCP Mint Replay Reject".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -2724,30 +2552,23 @@ fn sccp_mint_from_proof_rejects_replay_after_success_in_runtime() {
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
             version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
+            source_domain: SCCP_DOMAIN_ETH,
             dest_domain: SCCP_DOMAIN_SORA,
             nonce: 78,
             sora_asset_id: asset_h256.0,
             amount: 6u128,
             recipient: [0x32u8; 32],
         };
-        let message_id = sccp_test_message_id(&payload);
-        let (attesters, proof) = sccp_test_attester_quorum_proof(message_id);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            attesters,
-            2
-        ));
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
         ));
+        let proof = sccp_test_eth_zk_stark_proof(&payload);
 
         assert_ok!(Sccp::mint_from_proof(
             RuntimeOrigin::signed(owner.clone()),
-            SCCP_DOMAIN_SOL,
+            SCCP_DOMAIN_ETH,
             payload.clone(),
             proof.clone(),
         ));
@@ -2755,7 +2576,7 @@ fn sccp_mint_from_proof_rejects_replay_after_success_in_runtime() {
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(owner),
-                SCCP_DOMAIN_SOL,
+                SCCP_DOMAIN_ETH,
                 payload,
                 proof,
             ),
@@ -2785,7 +2606,7 @@ fn sccp_mint_from_proof_truncated_attester_proofs_fail_closed_without_replay_poi
             AssetSymbol(b"SCCPMTP".to_vec()),
             AssetName(b"SCCP Mint Truncated Proof".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -2811,7 +2632,7 @@ fn sccp_mint_from_proof_truncated_attester_proofs_fail_closed_without_replay_poi
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
             version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
+            source_domain: SCCP_DOMAIN_ETH,
             dest_domain: SCCP_DOMAIN_SORA,
             nonce: 278,
             sora_asset_id: asset_h256.0,
@@ -2819,24 +2640,18 @@ fn sccp_mint_from_proof_truncated_attester_proofs_fail_closed_without_replay_poi
             recipient: [0x33u8; 32],
         };
         let message_id = sccp_test_message_id(&payload);
-        let (attesters, proof) = sccp_test_attester_quorum_proof(message_id);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            attesters,
-            2
-        ));
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
         ));
+        let proof = sccp_test_eth_zk_stark_proof(&payload);
 
         let events_before = frame_system::Pallet::<Runtime>::events().len();
         for cut in 0..proof.len() {
             let result = Sccp::mint_from_proof(
                 RuntimeOrigin::signed(owner.clone()),
-                SCCP_DOMAIN_SOL,
+                SCCP_DOMAIN_ETH,
                 payload.clone(),
                 proof[..cut].to_vec(),
             );
@@ -2854,7 +2669,7 @@ fn sccp_mint_from_proof_truncated_attester_proofs_fail_closed_without_replay_poi
 
         assert_ok!(Sccp::mint_from_proof(
             RuntimeOrigin::signed(owner.clone()),
-            SCCP_DOMAIN_SOL,
+            SCCP_DOMAIN_ETH,
             payload.clone(),
             proof.clone(),
         ));
@@ -2863,7 +2678,7 @@ fn sccp_mint_from_proof_truncated_attester_proofs_fail_closed_without_replay_poi
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(owner),
-                SCCP_DOMAIN_SOL,
+                SCCP_DOMAIN_ETH,
                 payload,
                 proof
             ),
@@ -2888,7 +2703,7 @@ fn sccp_attest_burn_records_attestation_and_emits_event_in_runtime() {
             AssetSymbol(b"SCCPABS".to_vec()),
             AssetName(b"SCCP Attest Burn Success".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -2914,30 +2729,24 @@ fn sccp_attest_burn_records_attestation_and_emits_event_in_runtime() {
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
             version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_ETH,
+            source_domain: SCCP_DOMAIN_ETH,
+            dest_domain: SCCP_DOMAIN_BSC,
             nonce: 79,
             sora_asset_id: asset_h256.0,
             amount: 7u128,
             recipient: sccp_test_canonical_evm_recipient(),
         };
         let message_id = sccp_test_message_id(&payload);
-        let (attesters, proof) = sccp_test_attester_quorum_proof(message_id);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            attesters,
-            2
-        ));
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
         ));
+        let proof = sccp_test_eth_zk_stark_proof(&payload);
 
         assert_ok!(Sccp::attest_burn(
             RuntimeOrigin::signed(owner),
-            SCCP_DOMAIN_SOL,
+            SCCP_DOMAIN_ETH,
             payload.clone(),
             proof,
         ));
@@ -2971,8 +2780,8 @@ fn sccp_attest_burn_records_attestation_and_emits_event_in_runtime() {
         assert_eq!(event.0, message_id);
         assert_eq!(event.1, asset_id);
         assert_eq!(event.2, payload.amount);
-        assert_eq!(event.3, SCCP_DOMAIN_SOL);
-        assert_eq!(event.4, SCCP_DOMAIN_ETH);
+        assert_eq!(event.3, SCCP_DOMAIN_ETH);
+        assert_eq!(event.4, SCCP_DOMAIN_BSC);
         assert_eq!(event.5, payload.recipient);
         assert_eq!(event.6, payload.nonce);
     });
@@ -2994,7 +2803,7 @@ fn sccp_attest_burn_rejects_replay_after_success_in_runtime() {
             AssetSymbol(b"SCCPABR".to_vec()),
             AssetName(b"SCCP Attest Replay Reject".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3020,30 +2829,23 @@ fn sccp_attest_burn_rejects_replay_after_success_in_runtime() {
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
             version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_ETH,
+            source_domain: SCCP_DOMAIN_ETH,
+            dest_domain: SCCP_DOMAIN_BSC,
             nonce: 80,
             sora_asset_id: asset_h256.0,
             amount: 8u128,
             recipient: sccp_test_canonical_evm_recipient(),
         };
-        let message_id = sccp_test_message_id(&payload);
-        let (attesters, proof) = sccp_test_attester_quorum_proof(message_id);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            attesters,
-            2
-        ));
         assert_ok!(Sccp::set_inbound_finality_mode(
             RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
         ));
+        let proof = sccp_test_eth_zk_stark_proof(&payload);
 
         assert_ok!(Sccp::attest_burn(
             RuntimeOrigin::signed(owner.clone()),
-            SCCP_DOMAIN_SOL,
+            SCCP_DOMAIN_ETH,
             payload.clone(),
             proof.clone(),
         ));
@@ -3051,7 +2853,7 @@ fn sccp_attest_burn_rejects_replay_after_success_in_runtime() {
         assert_noop!(
             Sccp::attest_burn(
                 RuntimeOrigin::signed(owner),
-                SCCP_DOMAIN_SOL,
+                SCCP_DOMAIN_ETH,
                 payload,
                 proof,
             ),
@@ -3233,7 +3035,7 @@ fn sccp_burn_rejects_token_not_active_in_runtime() {
             AssetSymbol(b"SCCPBRP".to_vec()),
             AssetName(b"SCCP Burn Pending".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3299,7 +3101,7 @@ fn sccp_burn_records_burn_and_emits_event_in_runtime() {
             AssetSymbol(b"SCCPBOK".to_vec()),
             AssetName(b"SCCP Burn Success".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3399,7 +3201,7 @@ fn sccp_add_token_rejects_token_already_exists_in_runtime() {
             AssetSymbol(b"SCCPADP".to_vec()),
             AssetName(b"SCCP Add Duplicate".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3430,7 +3232,7 @@ fn sccp_add_token_failure_does_not_emit_event_in_runtime() {
             AssetSymbol(b"SCCPADE".to_vec()),
             AssetName(b"SCCP Add Event".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3466,7 +3268,7 @@ fn sccp_add_token_emits_event_and_stores_pending_state_in_runtime() {
             AssetSymbol(b"SCCPADD".to_vec()),
             AssetName(b"SCCP Add Event Success".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3505,7 +3307,7 @@ fn sccp_activate_token_rejects_non_manager_origin_in_runtime() {
             AssetSymbol(b"SCCPACN".to_vec()),
             AssetName(b"SCCP Activate NonManager".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3558,7 +3360,7 @@ fn sccp_activate_token_rejects_token_not_pending_in_runtime() {
             AssetSymbol(b"SCCPACT".to_vec()),
             AssetName(b"SCCP Activate Twice".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3619,7 +3421,7 @@ fn sccp_activate_token_emits_event_on_success_in_runtime() {
             AssetSymbol(b"SCCPACE".to_vec()),
             AssetName(b"SCCP Activate Event".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3709,7 +3511,7 @@ fn sccp_remove_token_updates_state_and_event_until_according_to_grace_period_in_
             AssetSymbol(b"SCCPRUS".to_vec()),
             AssetName(b"SCCP Remove Until State".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3797,7 +3599,7 @@ fn sccp_finalize_remove_rejects_token_not_removing_in_runtime() {
             AssetSymbol(b"SCCPFNR".to_vec()),
             AssetName(b"SCCP Finalize NotRemoving".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3843,7 +3645,7 @@ fn sccp_finalize_remove_grace_period_not_expired_does_not_emit_event_in_runtime(
             AssetSymbol(b"SCCPFGN".to_vec()),
             AssetName(b"SCCP Finalize Grace Event".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3900,7 +3702,7 @@ fn sccp_activate_requires_remote_tokens_for_all_core_domains_with_partial_config
             AssetSymbol(b"SCCPART".to_vec()),
             AssetName(b"SCCP Partial Remote Tokens".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3949,7 +3751,7 @@ fn sccp_activate_requires_domain_endpoints_for_all_core_domains_with_partial_con
             AssetSymbol(b"SCCPAEP".to_vec()),
             AssetName(b"SCCP Partial Endpoints".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -3997,7 +3799,7 @@ fn sccp_activate_token_succeeds_with_all_core_domain_prerequisites_in_runtime() 
             AssetSymbol(b"SCCPACT".to_vec()),
             AssetName(b"SCCP Activate Success".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4042,7 +3844,7 @@ fn sccp_set_remote_token_rejects_invalid_length_for_eth_domain_in_runtime() {
             AssetSymbol(b"SCCPRLE".to_vec()),
             AssetName(b"SCCP Remote Len ETH".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4079,7 +3881,7 @@ fn sccp_set_remote_token_rejects_invalid_length_for_solana_domain_in_runtime() {
             AssetSymbol(b"SCCPRLS".to_vec()),
             AssetName(b"SCCP Remote Len SOL".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4138,7 +3940,7 @@ fn sccp_set_remote_token_rejects_sora_domain_in_runtime() {
             AssetSymbol(b"SCCPRSD".to_vec()),
             AssetName(b"SCCP Remote SORA Domain".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4174,7 +3976,7 @@ fn sccp_set_remote_token_rejects_unknown_domain_in_runtime() {
             AssetSymbol(b"SCCPRUD".to_vec()),
             AssetName(b"SCCP Remote Unknown Domain".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4225,7 +4027,7 @@ fn sccp_set_remote_token_rejects_non_manager_origin_in_runtime() {
             AssetSymbol(b"SCCPRNO".to_vec()),
             AssetName(b"SCCP Remote Non Manager".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4327,7 +4129,7 @@ fn sccp_set_remote_token_emits_event_with_expected_hash_in_runtime() {
             AssetSymbol(b"SCCPREV".to_vec()),
             AssetName(b"SCCP Remote Event Hash".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4405,7 +4207,7 @@ fn sccp_set_remote_token_overwrite_updates_storage_and_event_hash_in_runtime() {
             AssetSymbol(b"SCCPROW".to_vec()),
             AssetName(b"SCCP Remote Overwrite".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4577,7 +4379,7 @@ fn sccp_activate_token_rejects_after_clearing_endpoint_for_core_domain_in_runtim
             AssetSymbol(b"SCCPCLE".to_vec()),
             AssetName(b"SCCP Cleared Endpoint".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4627,7 +4429,7 @@ fn sccp_remove_and_finalize_clears_token_and_remote_ids_in_runtime() {
             AssetSymbol(b"SCCPRMF".to_vec()),
             AssetName(b"SCCP Remove Finalize".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4651,10 +4453,7 @@ fn sccp_remove_and_finalize_clears_token_and_remote_ids_in_runtime() {
         }
         assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
 
-        assert_ok!(Sccp::set_inbound_grace_period(
-            RuntimeOrigin::root(),
-            0u32.into(),
-        ));
+        assert_ok!(Sccp::set_inbound_grace_period(RuntimeOrigin::root(), 0u32,));
 
         System::set_block_number(1);
         assert_ok!(Sccp::remove_token(RuntimeOrigin::root(), asset_id));
@@ -4689,7 +4488,7 @@ fn sccp_remove_and_finalize_emit_expected_events_in_runtime() {
             AssetSymbol(b"SCCPREM".to_vec()),
             AssetName(b"SCCP Remove Events".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4712,10 +4511,7 @@ fn sccp_remove_and_finalize_emit_expected_events_in_runtime() {
             ));
         }
         assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-        assert_ok!(Sccp::set_inbound_grace_period(
-            RuntimeOrigin::root(),
-            0u32.into(),
-        ));
+        assert_ok!(Sccp::set_inbound_grace_period(RuntimeOrigin::root(), 0u32,));
 
         System::set_block_number(1);
         assert_ok!(Sccp::remove_token(RuntimeOrigin::root(), asset_id));
@@ -4771,7 +4567,7 @@ fn sccp_add_token_rejects_asset_with_pending_legacy_eth_add_asset_request() {
             AssetSymbol(b"SCCPPA".to_vec()),
             AssetName(b"SCCP Pending Add".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4810,7 +4606,7 @@ fn sccp_add_token_rejects_asset_on_secondary_legacy_eth_bridge_network() {
             AssetSymbol(b"SCCP2E".to_vec()),
             AssetName(b"SCCP Legacy EVM Net".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4856,7 +4652,7 @@ fn sccp_add_token_rejects_asset_with_pending_legacy_eth_add_asset_on_secondary_n
             AssetSymbol(b"SCCPP2".to_vec()),
             AssetName(b"SCCP Pending Other Net".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4901,7 +4697,7 @@ fn sccp_add_token_rejects_asset_on_legacy_ton_bridge() {
             AssetSymbol(b"SCCPTON".to_vec()),
             AssetName(b"SCCP TON Legacy".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4939,7 +4735,7 @@ fn sccp_add_token_accepts_non_legacy_asset() {
             AssetSymbol(b"SCCPNL".to_vec()),
             AssetName(b"SCCP Non Legacy".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -4969,7 +4765,7 @@ fn sccp_asset_blocks_eth_bridge_add_asset_in_runtime() {
             AssetSymbol(b"SCCPEVM".to_vec()),
             AssetName(b"SCCP EVM Blocked".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5001,7 +4797,7 @@ fn sccp_asset_does_not_block_eth_bridge_add_sidechain_token_for_new_asset_id() {
             AssetSymbol(b"SCCPEST".to_vec()),
             AssetName(b"SCCP Eth Sidechain Token".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5043,7 +4839,7 @@ fn sccp_asset_blocks_jetton_register_network_with_existing_asset_in_runtime() {
             AssetSymbol(b"SCCPTOB".to_vec()),
             AssetName(b"SCCP TON Blocked".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5082,7 +4878,7 @@ fn sccp_asset_blocks_bridge_proxy_burn_in_runtime() {
             AssetSymbol(b"SCCPBP".to_vec()),
             AssetName(b"SCCP BridgeProxy Burn".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5120,7 +4916,7 @@ fn sccp_asset_blocks_eth_bridge_transfer_to_sidechain_in_runtime() {
             AssetSymbol(b"SCCPET".to_vec()),
             AssetName(b"SCCP Eth Transfer".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5158,7 +4954,7 @@ fn sccp_failed_incoming_transfer_rolls_back_bridge_lock_accounting_in_runtime() 
             AssetSymbol(b"SCCPIR".to_vec()),
             AssetName(b"SCCP Incoming Revert".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5220,7 +5016,7 @@ fn sccp_failed_incoming_transfer_rolls_back_bridge_lock_accounting_in_runtime() 
         );
         assert_eq!(
             crate::BridgeProxy::locked_assets(network_id, asset_id),
-            0u32.into()
+            0u128
         );
     });
 }
@@ -5401,7 +5197,7 @@ fn sccp_import_incoming_registration_failure_aborts_load_request_in_runtime() {
             AssetSymbol(b"SCCPIM".to_vec()),
             AssetName(b"SCCP Import Failure".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5557,7 +5353,7 @@ fn sccp_asset_blocks_bridge_proxy_manage_asset_in_runtime() {
             AssetSymbol(b"SCCPBM".to_vec()),
             AssetName(b"SCCP BridgeProxy Manage".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5589,7 +5385,7 @@ fn sccp_asset_blocks_eth_bridge_register_existing_sidechain_asset_in_runtime() {
             AssetSymbol(b"SCCPER".to_vec()),
             AssetName(b"SCCP Eth Register".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5626,7 +5422,7 @@ fn sccp_asset_blocks_bridge_proxy_refund_in_runtime() {
             AssetSymbol(b"SCCPRF".to_vec()),
             AssetName(b"SCCP BridgeProxy Refund".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,
@@ -5664,7 +5460,7 @@ fn sccp_asset_blocks_bridge_proxy_lock_unlock_and_fee_paths_in_runtime() {
             AssetSymbol(b"SCCPLF".to_vec()),
             AssetName(b"SCCP BridgeProxy Lock Fee".to_vec()),
             DEFAULT_BALANCE_PRECISION,
-            0u32.into(),
+            0u128,
             true,
             common::AssetType::Regular,
             None,

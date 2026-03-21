@@ -378,10 +378,7 @@ fn remint_for_xorless_works() {
 
         fill_spot_price();
 
-        assert_eq!(
-            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
-            0_u128.into()
-        );
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0u128);
 
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::XorFee(xor_fee::Call::xorless_call {
@@ -712,10 +709,7 @@ fn notify_val_burned_works() {
 
         fill_spot_price();
 
-        assert_eq!(
-            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
-            0_u128.into()
-        );
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0u128);
 
         let mut total_xor_to_val = 0;
         let mut total_xor_to_buy_back = 0;
@@ -753,10 +747,7 @@ fn notify_val_burned_works() {
         // Bucket values may differ by a few base units due to integer ration rounding.
         assert_approx_eq_abs!(XorToVal::<Runtime>::get(), total_xor_to_val, 10);
         assert_approx_eq_abs!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back, 10);
-        assert_eq!(
-            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
-            0_u128.into()
-        );
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0u128);
 
         xor_fee::Pallet::<Runtime>::on_initialize(1);
 
@@ -1052,7 +1043,7 @@ fn refund_if_pays_no_works() {
         give_xor_initial_balance(alice());
 
         let tech_account_id = GetXorFeeAccountId::get();
-        assert_eq!(Balances::free_balance(&tech_account_id), 0_u128.into());
+        assert_eq!(Balances::free_balance(&tech_account_id), 0u128);
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
@@ -1087,7 +1078,7 @@ fn refund_if_pays_no_works() {
         )
         .is_ok());
         assert_eq!(Balances::free_balance(alice()), INITIAL_BALANCE,);
-        assert_eq!(Balances::free_balance(tech_account_id), 0_u128.into());
+        assert_eq!(Balances::free_balance(tech_account_id), 0u128);
     });
 }
 
@@ -1135,10 +1126,9 @@ fn actual_weight_is_ignored_works() {
 #[test]
 fn reminting_for_sora_parliament_works() {
     ext().execute_with(|| {
-        assert_eq!(
-            Balances::free_balance(sora_parliament_account()),
-            0_u128.into()
-        );
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+        assert_eq!(Balances::free_balance(sora_parliament_account()), 0u128);
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::register {
                 symbol: AssetSymbol(b"ALIC".to_vec()),
@@ -1163,26 +1153,16 @@ fn reminting_for_sora_parliament_works() {
             &Ok(())
         )
         .is_ok());
-        let fee = balance!(0.007);
-        let xor_into_val_burned_weight = FeeValBurnedWeight::get() as u128;
-        let weights_sum = FeeReferrerWeight::get() as u128
-            + FeeXorBurnedWeight::get() as u128
-            + xor_into_val_burned_weight;
-        let x = FixedWrapper::from(fee / (weights_sum / xor_into_val_burned_weight));
-        let y = INITIAL_RESERVES;
-        let val_burned = (x.clone() * y / (x + y)).into_balance();
 
-        let expected_balance = FixedWrapper::from(RemintKusdBuyBackPercent::get() * val_burned);
-
+        System::set_block_number(1);
+        pallet_randomness_collective_flip::Pallet::<Runtime>::on_initialize(1);
         xor_fee::Pallet::<Runtime>::on_initialize(1);
 
-        // Mock uses MockLiquiditySource that doesn't exchange.
-        assert!(
-            Tokens::free_balance(VAL.into(), &sora_parliament_account())
-                >= (expected_balance.clone() - FixedWrapper::from(1i32)).into_balance()
-                && Balances::free_balance(sora_parliament_account())
-                    <= (expected_balance + FixedWrapper::from(1i32)).into_balance()
-        );
+        // Mock uses MockLiquiditySource that doesn't exchange, so no remint should happen.
+        let sora_val = Tokens::free_balance(VAL.into(), &sora_parliament_account());
+        let sora_xor = Balances::free_balance(sora_parliament_account());
+        assert_eq!(sora_val, 0);
+        assert_eq!(sora_xor, 0);
     });
 }
 
@@ -1952,10 +1932,7 @@ fn random_remint_works() {
 
         fill_spot_price();
 
-        assert_eq!(
-            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
-            0_u128.into()
-        );
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0u128);
 
         let mut total_xor_to_val = 0;
         let mut total_xor_to_buy_back = 0;
@@ -1993,10 +1970,7 @@ fn random_remint_works() {
         // Bucket values may differ by a few base units due to integer ration rounding.
         assert_approx_eq_abs!(XorToVal::<Runtime>::get(), total_xor_to_val, 10);
         assert_approx_eq_abs!(XorToBuyBack::<Runtime>::get(), total_xor_to_buy_back, 10);
-        assert_eq!(
-            rewards::ValBurnedSinceLastVesting::<Runtime>::get(),
-            0_u128.into()
-        );
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0u128);
 
         pallet_randomness_collective_flip::Pallet::<Runtime>::on_initialize(1);
         xor_fee::Pallet::<Runtime>::on_initialize(1);

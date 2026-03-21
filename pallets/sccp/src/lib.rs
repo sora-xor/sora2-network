@@ -16,10 +16,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-#[cfg(any(test, feature = "fuzzing"))]
 pub mod evm_proof;
-#[cfg(not(any(test, feature = "fuzzing")))]
-mod evm_proof;
 
 #[cfg(any(test, feature = "fuzzing"))]
 pub mod tron_proof;
@@ -87,6 +84,56 @@ impl EthFinalizedStateProvider for () {
     }
 }
 
+/// Pluggable on-chain verifier hook for finalized Ethereum burn proofs.
+///
+/// Implementations should return:
+/// - `Some(true)` when the proof is valid and finalized under Ethereum consensus,
+/// - `Some(false)` when the proof is invalid,
+/// - `None` when finalized ETH verification is currently unavailable (fail-closed).
+pub trait EthFinalizedBurnProofVerifier {
+    fn is_available() -> bool;
+    fn verify_finalized_burn(
+        message_id: H256,
+        payload: &BurnPayloadV1,
+        proof: &[u8],
+    ) -> Option<bool>;
+}
+
+impl EthFinalizedBurnProofVerifier for () {
+    fn is_available() -> bool {
+        false
+    }
+
+    fn verify_finalized_burn(
+        _message_id: H256,
+        _payload: &BurnPayloadV1,
+        _proof: &[u8],
+    ) -> Option<bool> {
+        None
+    }
+}
+
+/// Pluggable on-chain verifier hook for zk-proven Ethereum finalized burns.
+///
+/// Implementations should return:
+/// - `Some(true)` when the proof is valid and finalized under Ethereum consensus,
+/// - `Some(false)` when the proof is invalid,
+/// - `None` when finalized ETH zk-proof verification is currently unavailable (fail-closed).
+pub trait EthZkFinalizedBurnProofVerifier {
+    fn is_available() -> bool;
+    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool>;
+}
+
+impl EthZkFinalizedBurnProofVerifier for () {
+    fn is_available() -> bool {
+        false
+    }
+
+    fn verify_finalized_burn(_message_id: H256, _proof: &[u8]) -> Option<bool> {
+        None
+    }
+}
+
 /// Pluggable on-chain verifier hook for Solana -> SORA burn proofs.
 ///
 /// Implementations should return:
@@ -99,27 +146,6 @@ pub trait SolanaFinalizedBurnProofVerifier {
 }
 
 impl SolanaFinalizedBurnProofVerifier for () {
-    fn is_available() -> bool {
-        false
-    }
-
-    fn verify_finalized_burn(_message_id: H256, _proof: &[u8]) -> Option<bool> {
-        None
-    }
-}
-
-/// Pluggable on-chain verifier hook for TON -> SORA burn proofs.
-///
-/// Implementations should return:
-/// - `Some(true)` when the proof is valid and finalized under TON consensus,
-/// - `Some(false)` when the proof is invalid,
-/// - `None` when finalized TON verification is currently unavailable (fail-closed).
-pub trait TonFinalizedBurnProofVerifier {
-    fn is_available() -> bool;
-    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool>;
-}
-
-impl TonFinalizedBurnProofVerifier for () {
     fn is_available() -> bool {
         false
     }
@@ -176,8 +202,14 @@ pub const SCCP_CORE_REMOTE_DOMAINS: [u32; 7] = [
 ];
 
 pub const SCCP_MSG_PREFIX_BURN_V1: &[u8] = b"sccp:burn:v1";
-/// Prefix for attester signatures over `messageId` (see `InboundFinalityMode::AttesterQuorum`).
+/// Domain-separated prefix used by legacy SCCP attestation hashes retained for fixture stability.
 pub const SCCP_MSG_PREFIX_ATTEST_V1: &[u8] = b"sccp:attest:v1";
+pub const ETH_FINALIZED_RECEIPT_BURN_PROOF_VERSION_V1: u8 = 1;
+pub const ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1: u8 = 1;
+pub const SOLANA_FINALIZED_BURN_PROOF_VERSION_V1: u8 = 1;
+pub const SCCP_MAX_SOLANA_MERKLE_DEPTH: usize = 32;
+pub const SCCP_MAX_SOLANA_ACCOUNT_DATA_BYTES: usize = 64 * 1024;
+pub const SCCP_MAX_SOLANA_MESSAGE_BYTES: usize = 4 * 1024;
 
 #[cfg(any(test, feature = "fuzzing"))]
 pub fn decode_attester_quorum_proof_for_fuzz(
@@ -290,6 +322,21 @@ pub const SCCP_MAX_TRON_RAW_DATA_BYTES: usize = 1024;
 /// Number of TRON headers retained by the on-chain light client state.
 pub const SCCP_TRON_HEADER_RETENTION: u64 = 4096;
 
+/// Hard bounds for the repo-defined TON -> SORA proof bundle.
+pub const SCCP_MAX_TON_PROOF_SECTION_BYTES: usize = 64 * 1024;
+pub const SCCP_MAX_TON_PROOF_TOTAL_BYTES: usize = 256 * 1024;
+/// Hard bound for the repo-defined finalized ETH burn proof payload submitted to SCCP.
+pub const SCCP_MAX_ETH_FINALIZED_BURN_PROOF_BYTES: usize = 256 * 1024;
+/// Hard bound for the repo-defined ETH zk proof payload submitted to SCCP.
+pub const SCCP_MAX_ETH_ZK_PROOF_BYTES: usize = 256 * 1024;
+/// Canonical ETH zk public input count for `EthZkFinalizedBurnProofV1`.
+pub const ETH_ZK_PUBLIC_INPUT_COUNT_V1: usize = 10;
+/// keccak256("SccpBurned(bytes32,bytes32,address,uint128,uint32,bytes32,uint64,bytes)")
+pub const SCCP_ETH_BURN_EVENT_TOPIC0: H256 = H256([
+    0xd8, 0x50, 0xac, 0x8d, 0x39, 0xa7, 0x95, 0x16, 0x0f, 0x3b, 0xaa, 0x24, 0xb8, 0x25, 0xb4, 0xb7,
+    0x7b, 0xb2, 0x5f, 0x5d, 0x05, 0x77, 0x6d, 0x29, 0x35, 0x01, 0x63, 0x03, 0x55, 0x2b, 0x4d, 0x41,
+]);
+
 /// secp256k1 curve order / 2 (EIP-2), for rejecting malleable ECDSA signatures (high-`s`).
 pub const SECP256K1N_HALF_ORDER: [u8; 32] = [
     0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -396,6 +443,278 @@ pub struct BurnRecord<AccountId, AssetId, BlockNumber> {
     pub block_number: BlockNumber,
 }
 
+pub fn evm_burn_storage_key_for_message_id(message_id: H256) -> H256 {
+    let mut slot_bytes = [0u8; 32];
+    slot_bytes[24..].copy_from_slice(&SCCP_EVM_BURNS_MAPPING_SLOT.to_be_bytes());
+    let mut preimage = [0u8; 64];
+    preimage[..32].copy_from_slice(&message_id.0);
+    preimage[32..].copy_from_slice(&slot_bytes);
+    let slot_base = keccak_256(&preimage);
+    H256::from_slice(&keccak_256(&slot_base))
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+pub struct EthZkFinalizedBurnPublicInputsV1 {
+    pub message_id: H256,
+    pub finalized_block_hash: H256,
+    pub execution_state_root: H256,
+    pub router_address: [u8; 20],
+    pub burn_storage_key: H256,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct EthZkFinalizedBurnProofV1 {
+    pub version: u8,
+    pub public_inputs: EthZkFinalizedBurnPublicInputsV1,
+    pub evm_burn_proof: Vec<u8>,
+    pub zk_proof: Vec<u8>,
+}
+
+/// ETH zk mode execution proof bundle (v1).
+///
+/// This is separate from `EvmBurnProofV1`: zk mode binds an execution header to the public inputs
+/// and then proves account/storage inclusion against the header's `state_root`.
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct EthZkEvmBurnProofV1 {
+    /// RLP-encoded Ethereum execution header. The runtime derives `block_hash` and `state_root`
+    /// from this header and matches them against the zk proof public inputs.
+    pub execution_header_rlp: Vec<u8>,
+    /// EVM state trie proof for the SCCP router account (RLP-encoded MPT nodes).
+    pub account_proof: Vec<Vec<u8>>,
+    /// EVM storage trie proof for `burns[messageId].sender` (RLP-encoded MPT nodes).
+    pub storage_proof: Vec<Vec<u8>>,
+}
+
+fn encode_eth_zk_bytes_as_u128_pair(bytes: &[u8]) -> [u128; 2] {
+    debug_assert!(bytes.len() <= 32);
+    let mut padded = [0u8; 32];
+    padded[32 - bytes.len()..].copy_from_slice(bytes);
+    [
+        u128::from_be_bytes(
+            padded[..16]
+                .try_into()
+                .expect("left-padded public input must fit into 16 bytes"),
+        ),
+        u128::from_be_bytes(
+            padded[16..]
+                .try_into()
+                .expect("left-padded public input must fit into 16 bytes"),
+        ),
+    ]
+}
+
+/// Canonical ETH zk public-input packing for `EthZkFinalizedBurnProofV1`.
+///
+/// Concrete proof-system backends map these 10 `u128` limbs into their proving field in-order.
+pub fn eth_zk_public_inputs_v1(
+    public_inputs: &EthZkFinalizedBurnPublicInputsV1,
+) -> [u128; ETH_ZK_PUBLIC_INPUT_COUNT_V1] {
+    let message_id = encode_eth_zk_bytes_as_u128_pair(&public_inputs.message_id.0);
+    let finalized_block_hash =
+        encode_eth_zk_bytes_as_u128_pair(&public_inputs.finalized_block_hash.0);
+    let execution_state_root =
+        encode_eth_zk_bytes_as_u128_pair(&public_inputs.execution_state_root.0);
+    let router_address = encode_eth_zk_bytes_as_u128_pair(&public_inputs.router_address);
+    let burn_storage_key = encode_eth_zk_bytes_as_u128_pair(&public_inputs.burn_storage_key.0);
+
+    [
+        message_id[0],
+        message_id[1],
+        finalized_block_hash[0],
+        finalized_block_hash[1],
+        execution_state_root[0],
+        execution_state_root[1],
+        router_address[0],
+        router_address[1],
+        burn_storage_key[0],
+        burn_storage_key[1],
+    ]
+}
+
+pub fn decode_eth_zk_finalized_burn_proof_v1(proof: &[u8]) -> Option<EthZkFinalizedBurnProofV1> {
+    let mut input = proof;
+    let decoded = EthZkFinalizedBurnProofV1::decode(&mut input).ok()?;
+    if !input.is_empty()
+        || decoded.version != ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1
+        || decoded.evm_burn_proof.len() > SCCP_MAX_ETH_ZK_PROOF_BYTES
+        || decoded.zk_proof.len() > SCCP_MAX_ETH_ZK_PROOF_BYTES
+    {
+        return None;
+    }
+    Some(decoded)
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+pub struct SolanaFinalizedBurnPublicInputsV1 {
+    pub message_id: H256,
+    pub finalized_slot: u64,
+    pub finalized_bank_hash: H256,
+    pub finalized_slot_hash: H256,
+    pub router_program_id: [u8; 32],
+    pub burn_record_pda: [u8; 32],
+    pub burn_record_owner: [u8; 32],
+    pub burn_record_data_hash: H256,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+pub struct SolanaVoteAuthorityV1 {
+    pub authority_pubkey: [u8; 32],
+    pub stake: u64,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct SolanaMerkleProofV1 {
+    pub path: Vec<u8>,
+    pub siblings: Vec<Vec<H256>>,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct SolanaAccountInfoV1 {
+    pub pubkey: [u8; 32],
+    pub lamports: u64,
+    pub owner: [u8; 32],
+    pub executable: bool,
+    pub rent_epoch: u64,
+    pub data: Vec<u8>,
+    pub write_version: u64,
+    pub slot: u64,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct SolanaAccountDeltaProofV1 {
+    pub account: SolanaAccountInfoV1,
+    pub merkle_proof: SolanaMerkleProofV1,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct SolanaBankHashProofV1 {
+    pub slot: u64,
+    pub bank_hash: H256,
+    pub account_delta_root: H256,
+    pub parent_bank_hash: H256,
+    pub blockhash: H256,
+    pub num_sigs: u64,
+    pub account_proof: SolanaAccountDeltaProofV1,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct SolanaVoteProofV1 {
+    pub authority_pubkey: [u8; 32],
+    pub signature: [u8; 64],
+    pub signed_message: Vec<u8>,
+    pub vote_slot: u64,
+    pub vote_bank_hash: H256,
+    pub rooted_slot: Option<u64>,
+    pub slot_hashes_proof: SolanaBankHashProofV1,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct SolanaFinalizedBurnProofV1 {
+    pub version: u8,
+    pub public_inputs: SolanaFinalizedBurnPublicInputsV1,
+    pub burn_proof: SolanaBankHashProofV1,
+    pub vote_proofs: Vec<SolanaVoteProofV1>,
+}
+
+pub fn decode_solana_finalized_burn_proof_v1(proof: &[u8]) -> Option<SolanaFinalizedBurnProofV1> {
+    let mut input = proof;
+    let decoded = SolanaFinalizedBurnProofV1::decode(&mut input).ok()?;
+    if !input.is_empty()
+        || decoded.version != SOLANA_FINALIZED_BURN_PROOF_VERSION_V1
+        || decoded.vote_proofs.is_empty()
+        || decoded.burn_proof.account_proof.account.data.len() > SCCP_MAX_SOLANA_ACCOUNT_DATA_BYTES
+        || decoded.burn_proof.account_proof.merkle_proof.path.len() > SCCP_MAX_SOLANA_MERKLE_DEPTH
+        || decoded.burn_proof.account_proof.merkle_proof.path.len()
+            != decoded.burn_proof.account_proof.merkle_proof.siblings.len()
+    {
+        return None;
+    }
+    for vote in &decoded.vote_proofs {
+        if vote.signed_message.len() > SCCP_MAX_SOLANA_MESSAGE_BYTES
+            || vote.slot_hashes_proof.account_proof.account.data.len()
+                > SCCP_MAX_SOLANA_ACCOUNT_DATA_BYTES
+            || vote.slot_hashes_proof.account_proof.merkle_proof.path.len()
+                > SCCP_MAX_SOLANA_MERKLE_DEPTH
+            || vote.slot_hashes_proof.account_proof.merkle_proof.path.len()
+                != vote
+                    .slot_hashes_proof
+                    .account_proof
+                    .merkle_proof
+                    .siblings
+                    .len()
+        {
+            return None;
+        }
+        if vote
+            .slot_hashes_proof
+            .account_proof
+            .merkle_proof
+            .siblings
+            .iter()
+            .any(|level| level.len() > 15)
+        {
+            return None;
+        }
+    }
+    if decoded
+        .burn_proof
+        .account_proof
+        .merkle_proof
+        .siblings
+        .iter()
+        .any(|level| level.len() > 15)
+    {
+        return None;
+    }
+    Some(decoded)
+}
+
 /// Governance-defined finality mode for inbound proofs to SORA per source domain.
 #[derive(
     Encode,
@@ -411,34 +730,47 @@ pub struct BurnRecord<AccountId, AssetId, BlockNumber> {
 )]
 pub enum InboundFinalityMode {
     /// Inbound from this domain is disabled (fail-closed).
+    #[codec(index = 0)]
     Disabled,
-    /// Governance-provided EVM anchor `(block_hash, state_root)` + MPT proof.
-    EvmAnchor,
+    /// Reserved legacy slot for the removed governance-pinned EVM anchor mode.
+    #[codec(index = 1)]
+    LegacyEvmAnchor,
     /// BSC on-chain header verifier finalized state root only.
+    #[codec(index = 2)]
     BscLightClient,
-    /// BSC on-chain header verifier, or governance anchor fallback.
-    BscLightClientOrAnchor,
+    /// Reserved legacy slot for the removed BSC light-client-or-anchor fallback mode.
+    #[codec(index = 3)]
+    LegacyBscLightClientOrAnchor,
     /// Ethereum beacon light client.
+    #[codec(index = 4)]
     EthBeaconLightClient,
     /// Solana finalized-slot light client.
+    #[codec(index = 5)]
     SolanaLightClient,
     /// TON masterchain light client.
+    #[codec(index = 6)]
     TonLightClient,
     /// TRON witness light client: on-chain header verifier + "solidified block" finality (>70% witnesses).
+    #[codec(index = 7)]
     TronLightClient,
     /// Substrate light client for SORA parachain domains (Kusama/Polkadot relay contexts).
+    #[codec(index = 8)]
     SubstrateLightClient,
-    /// Attester quorum: threshold ECDSA signatures over `messageId`, with an on-chain attester set per domain.
-    ///
-    /// This is a CCTP-style mode intended as a practical fallback for chains without an integrated
-    /// trustless light client on SORA.
-    AttesterQuorum,
+    /// Reserved legacy slot for the removed attester quorum mode.
+    #[codec(index = 9)]
+    LegacyAttesterQuorum,
+    /// Ethereum finalized-burn zk proof verified on-chain by the SORA runtime.
+    #[codec(index = 10)]
+    EthZkProof,
 }
 
-/// Governance-provided EVM anchor used for inbound-to-SORA verification.
-///
-/// This is a fail-closed mechanism: without an anchor, inbound EVM proofs are rejected.
-/// A future upgrade should replace governance anchors with per-chain light clients.
+#[allow(non_upper_case_globals)]
+impl InboundFinalityMode {
+    pub const EvmAnchor: Self = Self::LegacyEvmAnchor;
+    pub const BscLightClientOrAnchor: Self = Self::LegacyBscLightClientOrAnchor;
+    pub const AttesterQuorum: Self = Self::LegacyAttesterQuorum;
+}
+
 #[derive(
     Encode,
     Decode,
@@ -454,6 +786,59 @@ pub struct EvmInboundAnchor {
     pub block_number: u64,
     pub block_hash: H256,
     pub state_root: H256,
+}
+
+/// Governance-pinned TON finalized checkpoint used as the trust root for inbound TON proofs.
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+pub struct TonTrustedCheckpoint {
+    pub mc_seqno: u32,
+    pub mc_block_hash: H256,
+}
+
+/// Canonical TON burn-record fields stored in the SCCP jetton master under `burns[messageId]`.
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct TonBurnRecordV1 {
+    pub dest_domain: u32,
+    pub recipient32: [u8; 32],
+    pub jetton_amount: Balance,
+    pub nonce: u64,
+}
+
+/// Versioned TON -> SORA proof bundle emitted by `sccp-ton`.
+///
+/// The proof is intentionally self-contained and binds the submitted burn to:
+/// - a governance-pinned TON finalized checkpoint,
+/// - the configured jetton master account id (`remote_token_id`), and
+/// - the configured jetton master code hash (`domain_endpoint`).
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct TonBurnProofV1 {
+    pub version: u8,
+    pub trusted_checkpoint_seqno: u32,
+    pub trusted_checkpoint_hash: H256,
+    pub target_mc_seqno: u32,
+    pub target_mc_block_hash: H256,
+    pub jetton_master_account_id: [u8; 32],
+    pub jetton_master_code_hash: H256,
+    pub burn_message_id: H256,
+    pub burn_record: TonBurnRecordV1,
+    pub masterchain_proof: Vec<u8>,
+    pub shard_proof: Vec<u8>,
+    pub account_proof: Vec<u8>,
+    pub burns_dict_proof: Vec<u8>,
 }
 
 #[derive(
@@ -573,6 +958,49 @@ pub struct EvmBurnProofV1 {
     pub storage_proof: Vec<Vec<u8>>,
 }
 
+/// Ethereum finalized receipt burn proof (v1).
+///
+/// The proof is self-contained for the burn event itself:
+/// - `execution_proof` proves an Ethereum execution payload is finalized under the on-chain ETH
+///   beacon verifier,
+/// - `receipt_proof` proves receipt inclusion under that execution payload's `receipts_root`,
+/// - SCCP then matches the canonical `SccpBurned` log against the submitted burn payload.
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
+pub struct EthFinalizedBurnProofV1 {
+    pub version: u8,
+    /// SCALE-encoded `snowbridge_beacon_primitives::ExecutionProof`.
+    pub execution_proof: Vec<u8>,
+    /// Ethereum receipt trie proof (RLP-encoded MPT nodes).
+    pub receipt_proof: Vec<Vec<u8>>,
+}
+
+pub fn decode_eth_finalized_burn_proof_v1(proof: &[u8]) -> Option<EthFinalizedBurnProofV1> {
+    let mut input = proof;
+    let decoded = EthFinalizedBurnProofV1::decode(&mut input).ok()?;
+    if !input.is_empty()
+        || decoded.version != ETH_FINALIZED_RECEIPT_BURN_PROOF_VERSION_V1
+        || decoded.execution_proof.len() > SCCP_MAX_ETH_FINALIZED_BURN_PROOF_BYTES
+        || decoded.receipt_proof.len() > SCCP_MAX_EVM_PROOF_NODES
+    {
+        return None;
+    }
+
+    let mut total = 0usize;
+    for node in decoded.receipt_proof.iter() {
+        if node.len() > SCCP_MAX_EVM_PROOF_NODE_BYTES {
+            return None;
+        }
+        total = total.saturating_add(node.len());
+        if total > SCCP_MAX_EVM_PROOF_TOTAL_BYTES {
+            return None;
+        }
+    }
+
+    Some(decoded)
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -622,17 +1050,22 @@ pub mod pallet {
         /// keeps ETH inbound verification fail-closed.
         type EthFinalizedStateProvider: EthFinalizedStateProvider;
 
+        /// Provider for finalized Ethereum burn-log verification used by
+        /// `EthBeaconLightClient` mode.
+        ///
+        /// Returning unavailable keeps ETH inbound verification fail-closed.
+        type EthFinalizedBurnProofVerifier: EthFinalizedBurnProofVerifier;
+
+        /// Provider for zk-proven Ethereum finalized burn verification used by `EthZkProof` mode.
+        ///
+        /// Returning unavailable keeps ETH inbound verification fail-closed for zk-proof mode.
+        type EthZkFinalizedBurnProofVerifier: EthZkFinalizedBurnProofVerifier;
+
         /// Provider for trustless Solana finalized-slot burn verification used by
         /// `SolanaLightClient` mode.
         ///
         /// Returning unavailable keeps SOL inbound verification fail-closed.
         type SolanaFinalizedBurnProofVerifier: SolanaFinalizedBurnProofVerifier;
-
-        /// Provider for trustless TON masterchain burn verification used by `TonLightClient`
-        /// mode.
-        ///
-        /// Returning unavailable keeps TON inbound verification fail-closed.
-        type TonFinalizedBurnProofVerifier: TonFinalizedBurnProofVerifier;
 
         /// Provider for trustless Substrate finalized burn verification used by
         /// `SubstrateLightClient` mode.
@@ -652,7 +1085,7 @@ pub mod pallet {
         #[pallet::constant]
         type MaxBscValidators: Get<u32>;
 
-        /// Max number of inbound attesters for `AttesterQuorum` mode.
+        /// Max number of external authorities tracked for SCCP proof systems.
         #[pallet::constant]
         type MaxAttesters: Get<u32>;
 
@@ -663,7 +1096,8 @@ pub mod pallet {
     pub type RemoteTokenIdOf<T> = BoundedVec<u8, <T as Config>::MaxRemoteTokenIdLen>;
     pub type RequiredDomainsOf<T> = BoundedVec<u32, <T as Config>::MaxDomains>;
     pub type BscValidatorsOf<T> = BoundedVec<H160, <T as Config>::MaxBscValidators>;
-    pub type AttestersOf<T> = BoundedVec<H160, <T as Config>::MaxAttesters>;
+    pub type SolanaVoteAuthoritiesOf<T> =
+        BoundedVec<SolanaVoteAuthorityV1, <T as Config>::MaxAttesters>;
 
     #[pallet::storage]
     #[pallet::getter(fn token_state)]
@@ -707,17 +1141,14 @@ pub mod pallet {
     pub(super) type InboundFinalityModes<T: Config> =
         StorageMap<_, Blake2_128Concat, u32, InboundFinalityMode, OptionQuery>;
 
-    /// Domain-specific inbound attester set for `InboundFinalityMode::AttesterQuorum`.
+    /// Governance-pinned Solana vote-authority set used for trustless SOL -> SORA proofs.
+    ///
+    /// Each entry binds an authorized vote signer to its stake weight for the relevant Solana
+    /// epoch. The SORA verifier requires a strict >2/3 supermajority over this set.
     #[pallet::storage]
-    #[pallet::getter(fn inbound_attesters)]
-    pub(super) type InboundAttesters<T: Config> =
-        StorageMap<_, Blake2_128Concat, u32, AttestersOf<T>, OptionQuery>;
-
-    /// Domain-specific signature threshold for `InboundFinalityMode::AttesterQuorum`.
-    #[pallet::storage]
-    #[pallet::getter(fn inbound_attester_threshold)]
-    pub(super) type InboundAttesterThreshold<T: Config> =
-        StorageMap<_, Blake2_128Concat, u32, u32, OptionQuery>;
+    #[pallet::getter(fn solana_vote_authorities)]
+    pub(super) type SolanaVoteAuthorities<T: Config> =
+        StorageValue<_, SolanaVoteAuthoritiesOf<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn remote_token)]
@@ -765,24 +1196,6 @@ pub mod pallet {
     #[pallet::getter(fn invalidated_inbound)]
     pub(super) type InvalidatedInbound<T: Config> =
         StorageDoubleMap<_, Blake2_128Concat, u32, Blake2_128Concat, H256, bool, ValueQuery>;
-
-    /// Governance-provided finalized anchors for EVM-like domains (ETH/BSC/TRON).
-    ///
-    /// An anchor represents a specific finalized EVM block and provides its execution `state_root`.
-    /// Inbound proofs can then be verified via MPT proofs against that `state_root`.
-    #[pallet::storage]
-    #[pallet::getter(fn evm_inbound_anchor)]
-    pub(super) type EvmInboundAnchors<T: Config> =
-        StorageMap<_, Blake2_128Concat, u32, EvmInboundAnchor, OptionQuery>;
-
-    /// Governance switch for enabling the unsafe "EVM anchor" mode for a given domain.
-    ///
-    /// Anchor mode is not trustless finality; it is a temporary stopgap and must be explicitly
-    /// enabled by governance for each domain.
-    #[pallet::storage]
-    #[pallet::getter(fn evm_anchor_mode_enabled)]
-    pub(super) type EvmAnchorModeEnabled<T: Config> =
-        StorageMap<_, Blake2_128Concat, u32, bool, ValueQuery>;
 
     // === BSC light client (inbound-to-SORA finality) ===
 
@@ -858,6 +1271,13 @@ pub mod pallet {
     #[pallet::getter(fn tron_header_by_number)]
     pub(super) type TronHeadersByNumber<T: Config> =
         StorageMap<_, Blake2_128Concat, u64, TronHeaderMeta, OptionQuery>;
+
+    // === TON inbound trust root ===
+
+    #[pallet::storage]
+    #[pallet::getter(fn ton_trusted_checkpoint)]
+    pub(super) type TonTrustedCheckpointState<T: Config> =
+        StorageValue<_, TonTrustedCheckpoint, OptionQuery>;
 
     #[pallet::type_value]
     pub fn DefaultInboundGracePeriod<T: Config>() -> BlockNumberFor<T> {
@@ -956,14 +1376,12 @@ pub mod pallet {
             domain_id: u32,
             mode: InboundFinalityMode,
         },
-        InboundAttestersSet {
-            domain_id: u32,
-            attesters_hash: H256,
-            threshold: u32,
+        SolanaVoteAuthoritiesSet {
+            authorities_hash: H256,
+            total_stake: u64,
+            threshold_stake: u64,
         },
-        InboundAttestersCleared {
-            domain_id: u32,
-        },
+        SolanaVoteAuthoritiesCleared,
         InboundMessageInvalidated {
             source_domain: u32,
             message_id: H256,
@@ -971,19 +1389,6 @@ pub mod pallet {
         InboundMessageRevalidated {
             source_domain: u32,
             message_id: H256,
-        },
-        EvmInboundAnchorSet {
-            domain_id: u32,
-            block_number: u64,
-            block_hash: H256,
-            state_root: H256,
-        },
-        EvmInboundAnchorCleared {
-            domain_id: u32,
-        },
-        EvmAnchorModeEnabledSet {
-            domain_id: u32,
-            enabled: bool,
         },
         BscLightClientInitialized {
             head_hash: H256,
@@ -1024,7 +1429,11 @@ pub mod pallet {
             number: u64,
             witnesses_hash: H256,
         },
-
+        TonTrustedCheckpointSet {
+            mc_seqno: u32,
+            mc_block_hash: H256,
+        },
+        TonTrustedCheckpointCleared,
         SccpBurned {
             message_id: H256,
             asset_id: AssetIdOf<T>,
@@ -1083,7 +1492,6 @@ pub mod pallet {
         AssetOnLegacyBridge,
         RequiredDomainsInvalid,
         InboundFinalityModeUnsupported,
-        EvmInboundAnchorMissing,
         InboundFinalityUnavailable,
         BscLightClientNotInitialized,
         BscHeaderTooLarge,
@@ -1093,7 +1501,15 @@ pub mod pallet {
         TronHeaderTooLarge,
         TronHeaderInvalid,
         TronWitnessesInvalid,
-        InboundAttestersInvalid,
+        TonProofTooLarge,
+        SolanaVoteAuthoritiesInvalid,
+    }
+
+    #[allow(non_upper_case_globals)]
+    impl<T> Error<T> {
+        pub const InboundFinalityModeDeprecated: Self = Self::InboundFinalityModeUnsupported;
+        pub const EvmInboundAnchorMissing: Self = Self::InboundFinalityUnavailable;
+        pub const InboundAttestersInvalid: Self = Self::SolanaVoteAuthoritiesInvalid;
     }
 
     #[pallet::call]
@@ -1174,95 +1590,6 @@ pub mod pallet {
             let id_hash = H256::from_slice(&keccak_256(bounded.as_slice()));
             DomainEndpoint::<T>::insert(domain_id, bounded);
             Self::deposit_event(Event::DomainEndpointSet { domain_id, id_hash });
-            Ok(())
-        }
-
-        /// Set the finalized EVM anchor (governance).
-        ///
-        /// This enables inbound proof verification from EVM-like chains by providing the
-        /// corresponding execution `state_root` of a finalized block.
-        ///
-        /// NOTE: This is a governance-managed mode and should be replaced by trustless
-        /// per-chain light clients in a future upgrade.
-        #[pallet::call_index(14)]
-        #[pallet::weight(<T as Config>::WeightInfo::set_domain_endpoint())]
-        #[transactional]
-        pub fn set_evm_inbound_anchor(
-            origin: OriginFor<T>,
-            domain_id: u32,
-            block_number: u64,
-            block_hash: H256,
-            state_root: H256,
-        ) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            ensure!(domain_id != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
-            Self::ensure_supported_domain(domain_id)?;
-            ensure!(
-                matches!(
-                    domain_id,
-                    SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON
-                ),
-                Error::<T>::DomainUnsupported
-            );
-            EvmInboundAnchors::<T>::insert(
-                domain_id,
-                EvmInboundAnchor {
-                    block_number,
-                    block_hash,
-                    state_root,
-                },
-            );
-            Self::deposit_event(Event::EvmInboundAnchorSet {
-                domain_id,
-                block_number,
-                block_hash,
-                state_root,
-            });
-            Ok(())
-        }
-
-        /// Clear the finalized EVM anchor (governance).
-        #[pallet::call_index(15)]
-        #[pallet::weight(<T as Config>::WeightInfo::clear_domain_endpoint())]
-        pub fn clear_evm_inbound_anchor(origin: OriginFor<T>, domain_id: u32) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            ensure!(domain_id != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
-            Self::ensure_supported_domain(domain_id)?;
-            ensure!(
-                matches!(
-                    domain_id,
-                    SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON
-                ),
-                Error::<T>::DomainUnsupported
-            );
-            EvmInboundAnchors::<T>::remove(domain_id);
-            Self::deposit_event(Event::EvmInboundAnchorCleared { domain_id });
-            Ok(())
-        }
-
-        /// Enable or disable the unsafe "EVM anchor" inbound finality mode for a domain (governance).
-        ///
-        /// When disabled (default), ETH/TRON inbound-to-SORA proofs are fail-closed until a real
-        /// light client is integrated.
-        #[pallet::call_index(20)]
-        #[pallet::weight(<T as Config>::WeightInfo::set_evm_anchor_mode_enabled())]
-        pub fn set_evm_anchor_mode_enabled(
-            origin: OriginFor<T>,
-            domain_id: u32,
-            enabled: bool,
-        ) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            ensure!(domain_id != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
-            Self::ensure_supported_domain(domain_id)?;
-            ensure!(
-                matches!(
-                    domain_id,
-                    SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON
-                ),
-                Error::<T>::DomainUnsupported
-            );
-            EvmAnchorModeEnabled::<T>::insert(domain_id, enabled);
-            Self::deposit_event(Event::EvmAnchorModeEnabledSet { domain_id, enabled });
             Ok(())
         }
 
@@ -1873,6 +2200,36 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Set the trusted TON finalized checkpoint used by `TonLightClient` mode (governance).
+        #[pallet::call_index(28)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_domain_endpoint())]
+        pub fn set_ton_trusted_checkpoint(
+            origin: OriginFor<T>,
+            mc_seqno: u32,
+            mc_block_hash: H256,
+        ) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            TonTrustedCheckpointState::<T>::put(TonTrustedCheckpoint {
+                mc_seqno,
+                mc_block_hash,
+            });
+            Self::deposit_event(Event::TonTrustedCheckpointSet {
+                mc_seqno,
+                mc_block_hash,
+            });
+            Ok(())
+        }
+
+        /// Clear the trusted TON finalized checkpoint (governance).
+        #[pallet::call_index(29)]
+        #[pallet::weight(<T as Config>::WeightInfo::clear_domain_endpoint())]
+        pub fn clear_ton_trusted_checkpoint(origin: OriginFor<T>) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            TonTrustedCheckpointState::<T>::kill();
+            Self::deposit_event(Event::TonTrustedCheckpointCleared);
+            Ok(())
+        }
+
         /// Activate a previously-added token (governance).
         ///
         /// Requires remote token identifiers and domain endpoints for:
@@ -2278,7 +2635,8 @@ pub mod pallet {
 
             // Verify burn proof using the configured inbound finality mode. This is fail-closed:
             // if the required light client (or anchor) is unavailable, minting must not happen.
-            let verified = Self::verify_burn_proof(source_domain, message_id, &proof)?;
+            let verified =
+                Self::verify_burn_proof(source_domain, &asset_id, &payload, message_id, &proof)?;
             ensure!(verified, Error::<T>::ProofVerificationFailed);
 
             let recipient: T::AccountId = T::AccountIdConverter::convert(payload.recipient);
@@ -2408,7 +2766,8 @@ pub mod pallet {
                 Error::<T>::BurnAlreadyAttested
             );
 
-            let verified = Self::verify_burn_proof(source_domain, message_id, &proof)?;
+            let verified =
+                Self::verify_burn_proof(source_domain, &asset_id, &payload, message_id, &proof)?;
             ensure!(verified, Error::<T>::ProofVerificationFailed);
 
             AttestedOutbound::<T>::insert(message_id, true);
@@ -2429,12 +2788,101 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Configure the inbound attester set for `AttesterQuorum` mode (governance).
+        /// Configure the Solana vote-authority set used by `SolanaLightClient` mode (governance).
         ///
-        /// Attesters are EVM-style secp256k1 addresses (`H160`) and must be unique.
-        #[pallet::call_index(26)]
-        #[pallet::weight(<T as Config>::WeightInfo::set_inbound_attesters(attesters.len() as u32))]
-        #[transactional]
+        /// The configured set is expected to match the trusted Solana epoch vote authorities and
+        /// their stake weights. Verification requires a strict >2/3 supermajority by stake.
+        #[pallet::call_index(30)]
+        #[pallet::weight(<T as Config>::WeightInfo::set_solana_vote_authorities(authorities.len() as u32))]
+        pub fn set_solana_vote_authorities(
+            origin: OriginFor<T>,
+            authorities: Vec<SolanaVoteAuthorityV1>,
+        ) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            ensure!(
+                !authorities.is_empty(),
+                Error::<T>::SolanaVoteAuthoritiesInvalid
+            );
+
+            let mut sorted = authorities;
+            sorted.sort_by(|a, b| a.authority_pubkey.cmp(&b.authority_pubkey));
+            ensure!(
+                sorted
+                    .windows(2)
+                    .all(|w| w[0].authority_pubkey != w[1].authority_pubkey),
+                Error::<T>::SolanaVoteAuthoritiesInvalid
+            );
+            ensure!(
+                sorted.iter().all(|a| a.stake > 0),
+                Error::<T>::SolanaVoteAuthoritiesInvalid
+            );
+
+            let total_stake = sorted
+                .iter()
+                .try_fold(0u64, |acc, authority| acc.checked_add(authority.stake))
+                .ok_or(Error::<T>::SolanaVoteAuthoritiesInvalid)?;
+            ensure!(total_stake > 0, Error::<T>::SolanaVoteAuthoritiesInvalid);
+
+            let bounded: SolanaVoteAuthoritiesOf<T> = sorted
+                .clone()
+                .try_into()
+                .map_err(|_| Error::<T>::SolanaVoteAuthoritiesInvalid)?;
+            SolanaVoteAuthorities::<T>::put(bounded);
+
+            let authorities_hash = H256::from_slice(&keccak_256(&sorted.encode()));
+            let threshold_stake = total_stake
+                .checked_mul(2)
+                .and_then(|v| v.checked_div(3))
+                .and_then(|v| v.checked_add(1))
+                .ok_or(Error::<T>::SolanaVoteAuthoritiesInvalid)?;
+            Self::deposit_event(Event::SolanaVoteAuthoritiesSet {
+                authorities_hash,
+                total_stake,
+                threshold_stake,
+            });
+            Ok(())
+        }
+
+        /// Clear the Solana vote-authority set used by `SolanaLightClient` mode (governance).
+        #[pallet::call_index(31)]
+        #[pallet::weight(<T as Config>::WeightInfo::clear_solana_vote_authorities())]
+        pub fn clear_solana_vote_authorities(origin: OriginFor<T>) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            SolanaVoteAuthorities::<T>::kill();
+            Self::deposit_event(Event::SolanaVoteAuthoritiesCleared);
+            Ok(())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        pub fn set_evm_inbound_anchor(
+            origin: OriginFor<T>,
+            domain_id: u32,
+            block_number: u64,
+            block_hash: H256,
+            state_root: H256,
+        ) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            let _ = (domain_id, block_number, block_hash, state_root);
+            Err(Error::<T>::InboundFinalityModeUnsupported.into())
+        }
+
+        pub fn clear_evm_inbound_anchor(origin: OriginFor<T>, domain_id: u32) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            let _ = domain_id;
+            Err(Error::<T>::InboundFinalityModeUnsupported.into())
+        }
+
+        pub fn set_evm_anchor_mode_enabled(
+            origin: OriginFor<T>,
+            domain_id: u32,
+            enabled: bool,
+        ) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+            let _ = (domain_id, enabled);
+            Err(Error::<T>::InboundFinalityModeUnsupported.into())
+        }
+
         pub fn set_inbound_attesters(
             origin: OriginFor<T>,
             domain_id: u32,
@@ -2442,53 +2890,34 @@ pub mod pallet {
             threshold: u32,
         ) -> DispatchResult {
             T::ManagerOrigin::ensure_origin(origin)?;
-            ensure!(domain_id != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
-            Self::ensure_supported_domain(domain_id)?;
-
-            let mut sorted = attesters.clone();
-            sorted.sort();
-            ensure!(
-                sorted.windows(2).all(|w| w[0] != w[1]),
-                Error::<T>::InboundAttestersInvalid
-            );
-            let bounded: AttestersOf<T> = sorted
-                .clone()
-                .try_into()
-                .map_err(|_| Error::<T>::InboundAttestersInvalid)?;
-            ensure!(!bounded.is_empty(), Error::<T>::InboundAttestersInvalid);
-            ensure!(
-                threshold > 0 && (threshold as usize) <= bounded.len(),
-                Error::<T>::InboundAttestersInvalid
-            );
-
-            InboundAttesters::<T>::insert(domain_id, bounded);
-            InboundAttesterThreshold::<T>::insert(domain_id, threshold);
-
-            let attesters_hash = H256::from_slice(&keccak_256(&sorted.encode()));
-            Self::deposit_event(Event::InboundAttestersSet {
-                domain_id,
-                attesters_hash,
-                threshold,
-            });
-            Ok(())
+            let _ = (domain_id, attesters, threshold);
+            Err(Error::<T>::InboundFinalityModeUnsupported.into())
         }
 
-        /// Clear the inbound attester set for `AttesterQuorum` mode (governance).
-        #[pallet::call_index(27)]
-        #[pallet::weight(<T as Config>::WeightInfo::clear_inbound_attesters())]
         pub fn clear_inbound_attesters(origin: OriginFor<T>, domain_id: u32) -> DispatchResult {
             T::ManagerOrigin::ensure_origin(origin)?;
-            ensure!(domain_id != SCCP_DOMAIN_SORA, Error::<T>::DomainUnsupported);
-            Self::ensure_supported_domain(domain_id)?;
-
-            InboundAttesters::<T>::remove(domain_id);
-            InboundAttesterThreshold::<T>::remove(domain_id);
-            Self::deposit_event(Event::InboundAttestersCleared { domain_id });
-            Ok(())
+            let _ = domain_id;
+            Err(Error::<T>::InboundFinalityModeUnsupported.into())
         }
-    }
 
-    impl<T: Config> Pallet<T> {
+        pub fn evm_inbound_anchor(_domain_id: u32) -> Option<EvmInboundAnchor> {
+            None
+        }
+
+        pub fn evm_anchor_mode_enabled(_domain_id: u32) -> bool {
+            false
+        }
+
+        pub fn inbound_attesters(
+            _domain_id: u32,
+        ) -> Option<BoundedVec<H160, <T as Config>::MaxAttesters>> {
+            None
+        }
+
+        pub fn inbound_attester_threshold(_domain_id: u32) -> Option<u32> {
+            None
+        }
+
         /// Returns true if `asset_id` is currently managed by SCCP (any status).
         pub fn is_sccp_asset(asset_id: &AssetIdOf<T>) -> bool {
             Tokens::<T>::contains_key(asset_id)
@@ -2855,35 +3284,39 @@ pub mod pallet {
 
         fn verify_burn_proof(
             source_domain: u32,
+            asset_id: &AssetIdOf<T>,
+            payload: &BurnPayloadV1,
             message_id: H256,
             proof: &[u8],
         ) -> Result<bool, DispatchError> {
             // Inbound-to-SORA verification is mode- and source-chain-specific.
             match Self::inbound_finality_mode_for_domain(source_domain) {
                 InboundFinalityMode::Disabled => Err(Error::<T>::InboundFinalityUnavailable.into()),
+                InboundFinalityMode::LegacyEvmAnchor
+                | InboundFinalityMode::LegacyBscLightClientOrAnchor
+                | InboundFinalityMode::LegacyAttesterQuorum => {
+                    Err(Error::<T>::InboundFinalityModeUnsupported.into())
+                }
                 InboundFinalityMode::EthBeaconLightClient => {
                     ensure!(
                         source_domain == SCCP_DOMAIN_ETH,
                         Error::<T>::InboundFinalityModeUnsupported
                     );
-                    let (hash, state_root) = T::EthFinalizedStateProvider::latest_finalized_state()
-                        .ok_or(Error::<T>::InboundFinalityUnavailable)?;
-                    Self::verify_evm_burn_proof_at_root(
-                        source_domain,
-                        message_id,
-                        proof,
-                        hash,
-                        state_root,
+                    T::EthFinalizedBurnProofVerifier::verify_finalized_burn(
+                        message_id, payload, proof,
                     )
+                    .ok_or(Error::<T>::InboundFinalityUnavailable.into())
                 }
-                InboundFinalityMode::EvmAnchor => {
-                    Self::verify_evm_burn_proof(source_domain, message_id, proof, true, false)
+                InboundFinalityMode::EthZkProof => {
+                    ensure!(
+                        source_domain == SCCP_DOMAIN_ETH,
+                        Error::<T>::InboundFinalityModeUnsupported
+                    );
+                    T::EthZkFinalizedBurnProofVerifier::verify_finalized_burn(message_id, proof)
+                        .ok_or(Error::<T>::InboundFinalityUnavailable.into())
                 }
                 InboundFinalityMode::BscLightClient => {
-                    Self::verify_evm_burn_proof(source_domain, message_id, proof, false, true)
-                }
-                InboundFinalityMode::BscLightClientOrAnchor => {
-                    Self::verify_evm_burn_proof(source_domain, message_id, proof, true, true)
+                    Self::verify_evm_burn_proof(source_domain, message_id, proof)
                 }
                 InboundFinalityMode::TronLightClient => {
                     ensure!(
@@ -2913,8 +3346,7 @@ pub mod pallet {
                         source_domain == SCCP_DOMAIN_TON,
                         Error::<T>::InboundFinalityModeUnsupported
                     );
-                    T::TonFinalizedBurnProofVerifier::verify_finalized_burn(message_id, proof)
-                        .ok_or(Error::<T>::InboundFinalityUnavailable.into())
+                    Self::verify_ton_burn_proof(asset_id, payload, message_id, proof)
                 }
                 InboundFinalityMode::SubstrateLightClient => {
                     ensure!(
@@ -2931,136 +3363,125 @@ pub mod pallet {
                     )
                     .ok_or(Error::<T>::InboundFinalityUnavailable.into())
                 }
-                InboundFinalityMode::AttesterQuorum => {
-                    Self::verify_attester_quorum(source_domain, message_id, proof)
-                }
             }
         }
 
-        fn verify_attester_quorum(
-            source_domain: u32,
+        fn verify_ton_burn_proof(
+            asset_id: &AssetIdOf<T>,
+            payload: &BurnPayloadV1,
             message_id: H256,
             proof: &[u8],
         ) -> Result<bool, DispatchError> {
-            let attesters = InboundAttesters::<T>::get(source_domain)
+            let checkpoint = TonTrustedCheckpointState::<T>::get()
                 .ok_or(Error::<T>::InboundFinalityUnavailable)?;
-            let threshold = InboundAttesterThreshold::<T>::get(source_domain)
-                .ok_or(Error::<T>::InboundFinalityUnavailable)?;
-            if threshold == 0 || (threshold as usize) > attesters.len() {
-                return Err(Error::<T>::InboundFinalityUnavailable.into());
-            }
 
-            // Proof format:
-            // - version: u8 (=1)
-            // - signatures: BoundedVec<[u8;65], MaxAttesters>
             let mut input = proof;
-            let v = u8::decode(&mut input).map_err(|_| Error::<T>::ProofVerificationFailed)?;
-            if v != 1 {
-                return Ok(false);
-            }
-            let sigs: BoundedVec<[u8; 65], <T as Config>::MaxAttesters> =
-                BoundedVec::decode(&mut input).map_err(|_| Error::<T>::ProofVerificationFailed)?;
+            let decoded = match TonBurnProofV1::decode(&mut input) {
+                Ok(decoded) => decoded,
+                Err(_) => return Ok(false),
+            };
             if !input.is_empty() {
                 return Ok(false);
             }
 
-            let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-            preimage.extend_from_slice(&message_id.0);
-            let msg_hash = H256::from_slice(&keccak_256(&preimage));
-
-            let mut seen: Vec<H160> = Vec::with_capacity(sigs.len());
-            let mut ok: u32 = 0;
-            for sig_raw in sigs.into_inner().into_iter() {
-                let mut sig = sig_raw;
-                // Normalize v from 27/28 to 0/1 if needed.
-                if sig[64] >= 27 {
-                    sig[64] = sig[64].saturating_sub(27);
-                }
-                // Accept only canonical recovery ids.
-                if sig[64] > 3 {
-                    continue;
-                }
-
-                // Reject malleable / invalid ECDSA signatures (high-`s`).
-                let r_bytes = &sig[0..32];
-                let s_bytes = &sig[32..64];
-                if !r_bytes.iter().any(|&b| b != 0) || !s_bytes.iter().any(|&b| b != 0) {
-                    continue;
-                }
-                let mut s_ok = true;
-                for i in 0..32 {
-                    if s_bytes[i] < SECP256K1N_HALF_ORDER[i] {
-                        break;
-                    }
-                    if s_bytes[i] > SECP256K1N_HALF_ORDER[i] {
-                        s_ok = false;
-                        break;
-                    }
-                }
-                if !s_ok {
-                    continue;
-                }
-
-                let pk = match sp_io::crypto::secp256k1_ecdsa_recover(&sig, &msg_hash.0) {
-                    Ok(pk) => pk,
-                    Err(_) => continue,
-                };
-                let addr = H160::from_slice(&keccak_256(&pk)[12..]);
-                if !attesters.iter().any(|a| *a == addr) {
-                    continue;
-                }
-                if seen.iter().any(|x| *x == addr) {
-                    // Fail closed: duplicates reduce uniqueness of quorum.
-                    return Ok(false);
-                }
-                seen.push(addr);
-                ok = ok.saturating_add(1);
-                if ok >= threshold {
-                    return Ok(true);
-                }
+            if decoded.version != 1 {
+                return Ok(false);
             }
-            Ok(false)
+            if decoded.trusted_checkpoint_seqno != checkpoint.mc_seqno
+                || decoded.trusted_checkpoint_hash != checkpoint.mc_block_hash
+            {
+                return Ok(false);
+            }
+            if decoded.target_mc_seqno < decoded.trusted_checkpoint_seqno {
+                return Ok(false);
+            }
+            if decoded.target_mc_seqno == decoded.trusted_checkpoint_seqno
+                && decoded.target_mc_block_hash != decoded.trusted_checkpoint_hash
+            {
+                return Ok(false);
+            }
+            if decoded.burn_message_id != message_id {
+                return Ok(false);
+            }
+            if decoded.burn_record.dest_domain != SCCP_DOMAIN_SORA
+                || decoded.burn_record.dest_domain != payload.dest_domain
+            {
+                return Ok(false);
+            }
+            if decoded.burn_record.recipient32 != payload.recipient
+                || decoded.burn_record.jetton_amount != payload.amount
+                || decoded.burn_record.nonce != payload.nonce
+            {
+                return Ok(false);
+            }
+
+            let expected_master = match RemoteToken::<T>::get(asset_id, SCCP_DOMAIN_TON) {
+                Some(remote) if remote.len() == 32 => {
+                    let mut out = [0u8; 32];
+                    out.copy_from_slice(remote.as_slice());
+                    out
+                }
+                _ => return Ok(false),
+            };
+            let expected_code_hash = match DomainEndpoint::<T>::get(SCCP_DOMAIN_TON) {
+                Some(endpoint) if endpoint.len() == 32 => H256::from_slice(endpoint.as_slice()),
+                _ => return Ok(false),
+            };
+
+            if decoded.jetton_master_account_id != expected_master
+                || decoded.jetton_master_code_hash != expected_code_hash
+            {
+                return Ok(false);
+            }
+
+            let section_lens = [
+                decoded.masterchain_proof.len(),
+                decoded.shard_proof.len(),
+                decoded.account_proof.len(),
+                decoded.burns_dict_proof.len(),
+            ];
+            if section_lens.iter().any(|len| *len == 0) {
+                return Ok(false);
+            }
+            if section_lens
+                .iter()
+                .any(|len| *len > SCCP_MAX_TON_PROOF_SECTION_BYTES)
+            {
+                return Err(Error::<T>::TonProofTooLarge.into());
+            }
+            let total_len = section_lens.iter().copied().sum::<usize>();
+            if total_len > SCCP_MAX_TON_PROOF_TOTAL_BYTES {
+                return Err(Error::<T>::TonProofTooLarge.into());
+            }
+
+            Ok(
+                ton_proof_runtime_interface::ton_proof_api::verify_ton_burn_proof(
+                    ton_proof_runtime_interface::TonVerifyRequest {
+                        trusted_checkpoint_seqno: checkpoint.mc_seqno,
+                        trusted_checkpoint_hash: checkpoint.mc_block_hash.0,
+                        proof: proof.to_vec(),
+                        expected_master_account_id: expected_master,
+                        expected_code_hash: expected_code_hash.0,
+                        expected_message_id: message_id.0,
+                        expected_dest_domain: payload.dest_domain,
+                        expected_recipient32: payload.recipient,
+                        expected_amount: payload.amount,
+                        expected_nonce: payload.nonce,
+                    },
+                ),
+            )
         }
 
         fn verify_evm_burn_proof(
             source_domain: u32,
             message_id: H256,
             proof: &[u8],
-            allow_bsc_anchor_fallback: bool,
-            prefer_bsc_light_client: bool,
         ) -> Result<bool, DispatchError> {
             let (expected_block_hash, state_root) = match source_domain {
                 SCCP_DOMAIN_BSC => {
-                    if prefer_bsc_light_client {
-                        if let Some(f) = BscFinalized::<T>::get() {
-                            (f.hash, f.state_root)
-                        } else if allow_bsc_anchor_fallback
-                            && EvmAnchorModeEnabled::<T>::get(source_domain)
-                        {
-                            let anchor = EvmInboundAnchors::<T>::get(source_domain)
-                                .ok_or(Error::<T>::EvmInboundAnchorMissing)?;
-                            (anchor.block_hash, anchor.state_root)
-                        } else {
-                            return Err(Error::<T>::InboundFinalityUnavailable.into());
-                        }
-                    } else if allow_bsc_anchor_fallback
-                        && EvmAnchorModeEnabled::<T>::get(source_domain)
-                    {
-                        let anchor = EvmInboundAnchors::<T>::get(source_domain)
-                            .ok_or(Error::<T>::EvmInboundAnchorMissing)?;
-                        (anchor.block_hash, anchor.state_root)
-                    } else {
-                        return Err(Error::<T>::InboundFinalityUnavailable.into());
-                    }
-                }
-                SCCP_DOMAIN_ETH | SCCP_DOMAIN_TRON => {
-                    ensure!(
-                        EvmAnchorModeEnabled::<T>::get(source_domain),
-                        Error::<T>::InboundFinalityUnavailable
-                    );
-                    let anchor = EvmInboundAnchors::<T>::get(source_domain)
-                        .ok_or(Error::<T>::EvmInboundAnchorMissing)?;
-                    (anchor.block_hash, anchor.state_root)
+                    let finalized =
+                        BscFinalized::<T>::get().ok_or(Error::<T>::InboundFinalityUnavailable)?;
+                    (finalized.hash, finalized.state_root)
                 }
                 _ => return Ok(false),
             };
@@ -3122,13 +3543,7 @@ pub mod pallet {
             // Storage trie key for burns[messageId].sender:
             // slot_base = keccak256(messageId || u256(mapping_slot))
             // storage_key = keccak256(slot_base)
-            let mut slot_bytes = [0u8; 32];
-            slot_bytes[24..].copy_from_slice(&SCCP_EVM_BURNS_MAPPING_SLOT.to_be_bytes());
-            let mut preimage = [0u8; 64];
-            preimage[..32].copy_from_slice(&message_id.0);
-            preimage[32..].copy_from_slice(&slot_bytes);
-            let slot_base = keccak_256(&preimage);
-            let storage_key = keccak_256(&slot_base);
+            let storage_key = evm_burn_storage_key_for_message_id(message_id);
 
             let account_val_rlp =
                 crate::evm_proof::mpt_get(state_root, &account_key, &p.account_proof)
@@ -3136,7 +3551,7 @@ pub mod pallet {
             let storage_root = crate::evm_proof::evm_account_storage_root(&account_val_rlp)
                 .ok_or(Error::<T>::ProofVerificationFailed)?;
             let storage_val_rlp =
-                crate::evm_proof::mpt_get(storage_root, &storage_key, &p.storage_proof)
+                crate::evm_proof::mpt_get(storage_root, &storage_key.0, &p.storage_proof)
                     .ok_or(Error::<T>::ProofVerificationFailed)?;
 
             let payload =
@@ -3181,46 +3596,32 @@ pub mod pallet {
                 SCCP_DOMAIN_ETH => matches!(
                     mode,
                     InboundFinalityMode::Disabled
-                        | InboundFinalityMode::EvmAnchor
                         | InboundFinalityMode::EthBeaconLightClient
-                        | InboundFinalityMode::AttesterQuorum
+                        | InboundFinalityMode::EthZkProof
                 ),
                 SCCP_DOMAIN_BSC => matches!(
                     mode,
-                    InboundFinalityMode::Disabled
-                        | InboundFinalityMode::EvmAnchor
-                        | InboundFinalityMode::BscLightClient
-                        | InboundFinalityMode::BscLightClientOrAnchor
-                        | InboundFinalityMode::AttesterQuorum
+                    InboundFinalityMode::Disabled | InboundFinalityMode::BscLightClient
                 ),
                 SCCP_DOMAIN_SOL => {
                     matches!(
                         mode,
-                        InboundFinalityMode::Disabled
-                            | InboundFinalityMode::SolanaLightClient
-                            | InboundFinalityMode::AttesterQuorum
+                        InboundFinalityMode::Disabled | InboundFinalityMode::SolanaLightClient
                     )
                 }
                 SCCP_DOMAIN_TON => {
                     matches!(
                         mode,
-                        InboundFinalityMode::Disabled
-                            | InboundFinalityMode::TonLightClient
-                            | InboundFinalityMode::AttesterQuorum
+                        InboundFinalityMode::Disabled | InboundFinalityMode::TonLightClient
                     )
                 }
                 SCCP_DOMAIN_TRON => matches!(
                     mode,
-                    InboundFinalityMode::Disabled
-                        | InboundFinalityMode::EvmAnchor
-                        | InboundFinalityMode::TronLightClient
-                        | InboundFinalityMode::AttesterQuorum
+                    InboundFinalityMode::Disabled | InboundFinalityMode::TronLightClient
                 ),
                 SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT => matches!(
                     mode,
-                    InboundFinalityMode::Disabled
-                        | InboundFinalityMode::SubstrateLightClient
-                        | InboundFinalityMode::AttesterQuorum
+                    InboundFinalityMode::Disabled | InboundFinalityMode::SubstrateLightClient
                 ),
                 _ => false,
             };
@@ -3231,23 +3632,10 @@ pub mod pallet {
         fn ensure_inbound_finality_available(source_domain: u32) -> DispatchResult {
             match Self::inbound_finality_mode_for_domain(source_domain) {
                 InboundFinalityMode::Disabled => Err(Error::<T>::InboundFinalityUnavailable.into()),
-                InboundFinalityMode::EvmAnchor => {
-                    ensure!(
-                        matches!(
-                            source_domain,
-                            SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON
-                        ),
-                        Error::<T>::InboundFinalityModeUnsupported
-                    );
-                    ensure!(
-                        EvmAnchorModeEnabled::<T>::get(source_domain),
-                        Error::<T>::InboundFinalityUnavailable
-                    );
-                    ensure!(
-                        EvmInboundAnchors::<T>::contains_key(source_domain),
-                        Error::<T>::EvmInboundAnchorMissing
-                    );
-                    Ok(())
+                InboundFinalityMode::LegacyEvmAnchor
+                | InboundFinalityMode::LegacyBscLightClientOrAnchor
+                | InboundFinalityMode::LegacyAttesterQuorum => {
+                    Err(Error::<T>::InboundFinalityModeUnsupported.into())
                 }
                 InboundFinalityMode::BscLightClient => {
                     ensure!(
@@ -3258,17 +3646,6 @@ pub mod pallet {
                         BscFinalized::<T>::get().is_some(),
                         Error::<T>::InboundFinalityUnavailable
                     );
-                    Ok(())
-                }
-                InboundFinalityMode::BscLightClientOrAnchor => {
-                    ensure!(
-                        source_domain == SCCP_DOMAIN_BSC,
-                        Error::<T>::InboundFinalityModeUnsupported
-                    );
-                    let has_lc = BscFinalized::<T>::get().is_some();
-                    let has_anchor = EvmAnchorModeEnabled::<T>::get(source_domain)
-                        && EvmInboundAnchors::<T>::contains_key(source_domain);
-                    ensure!(has_lc || has_anchor, Error::<T>::InboundFinalityUnavailable);
                     Ok(())
                 }
                 InboundFinalityMode::TronLightClient => {
@@ -3288,7 +3665,18 @@ pub mod pallet {
                         Error::<T>::InboundFinalityModeUnsupported
                     );
                     ensure!(
-                        T::EthFinalizedStateProvider::latest_finalized_state().is_some(),
+                        T::EthFinalizedBurnProofVerifier::is_available(),
+                        Error::<T>::InboundFinalityUnavailable
+                    );
+                    Ok(())
+                }
+                InboundFinalityMode::EthZkProof => {
+                    ensure!(
+                        source_domain == SCCP_DOMAIN_ETH,
+                        Error::<T>::InboundFinalityModeUnsupported
+                    );
+                    ensure!(
+                        T::EthZkFinalizedBurnProofVerifier::is_available(),
                         Error::<T>::InboundFinalityUnavailable
                     );
                     Ok(())
@@ -3310,7 +3698,7 @@ pub mod pallet {
                         Error::<T>::InboundFinalityModeUnsupported
                     );
                     ensure!(
-                        T::TonFinalizedBurnProofVerifier::is_available(),
+                        TonTrustedCheckpointState::<T>::get().is_some(),
                         Error::<T>::InboundFinalityUnavailable
                     );
                     Ok(())
@@ -3325,21 +3713,6 @@ pub mod pallet {
                     );
                     ensure!(
                         T::SubstrateFinalizedBurnProofVerifier::is_available(source_domain),
-                        Error::<T>::InboundFinalityUnavailable
-                    );
-                    Ok(())
-                }
-                InboundFinalityMode::AttesterQuorum => {
-                    ensure!(
-                        source_domain != SCCP_DOMAIN_SORA,
-                        Error::<T>::InboundFinalityModeUnsupported
-                    );
-                    let attesters = InboundAttesters::<T>::get(source_domain)
-                        .ok_or(Error::<T>::InboundFinalityUnavailable)?;
-                    let threshold = InboundAttesterThreshold::<T>::get(source_domain)
-                        .ok_or(Error::<T>::InboundFinalityUnavailable)?;
-                    ensure!(
-                        threshold > 0 && (threshold as usize) <= attesters.len(),
                         Error::<T>::InboundFinalityUnavailable
                     );
                     Ok(())

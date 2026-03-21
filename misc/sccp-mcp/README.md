@@ -3,11 +3,11 @@
 Stateless MCP (`stdio`) server for SCCP operations across:
 
 - `sora2-network` (`pallets/sccp`)
-- `sccp-eth`
-- `sccp-bsc`
-- `sccp-tron`
-- `sccp-sol`
-- `sccp-ton`
+- `sccp/chains/eth`
+- `sccp/chains/bsc`
+- `sccp/chains/tron`
+- `sccp/chains/sol`
+- `sccp/chains/ton`
 
 ## Design
 
@@ -109,19 +109,20 @@ SORA SCCP:
 - `sora_sccp_estimate_fee`
 - `sora_sccp_submit_signed_extrinsic`
 
-EVM SCCP (`sccp-eth`, `sccp-bsc`, `sccp-tron`):
+EVM SCCP (`sccp/chains/eth`, `sccp/chains/bsc`, `sccp/chains/tron`):
 
 - `evm_sccp_read_contract`
+- `evm_sccp_build_burn_proof` (calls `eth_getProof` and returns SCALE `EvmBurnProofV1` bytes for `pallet-sccp`)
 - `evm_sccp_build_tx`
 - `evm_sccp_submit_signed_tx`
 
-Solana SCCP (`sccp-sol`):
+Solana SCCP (`sccp/chains/sol`):
 
 - `sol_sccp_get_account`
 - `sol_sccp_build_transaction`
 - `sol_sccp_submit_signed_transaction`
 
-TON SCCP (`sccp-ton`):
+TON SCCP (`sccp/chains/ton`):
 
 - `ton_sccp_get_method` (read-only TON RPC methods: `get*` and `runGetMethod`)
 - `ton_sccp_build_message`
@@ -130,6 +131,7 @@ TON SCCP (`sccp-ton`):
 ## Notes
 
 - `sora_sccp_build_call` returns unsigned call envelopes for external signing workflow.
+- `evm_sccp_build_burn_proof` accepts either `payload` or `message_id`, computes the canonical `burns_slot_base = keccak256(messageId || u256(mapping_slot))`, fetches proof data from the configured EVM RPC using that raw slot preimage, reports the derived `storage_trie_key = keccak256(burns_slot_base)`, and returns `proof_scale_hex` ready for `sccp.mint_from_proof` or `sccp.attest_burn`.
 - SORA call building requires correct `sccp_pallet_index` in profile (or `pallet_index` argument override).
 - `block_number_bytes` controls SCALE encoding width for SORA `BlockNumber` arguments (`4` or `8`).
 - `sol_sccp_build_transaction` and `ton_sccp_build_message` return signer-oriented templates (not signed payloads).

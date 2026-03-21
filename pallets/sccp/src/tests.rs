@@ -5,10 +5,14 @@
 
 use crate::mock::*;
 use crate::{
-    BurnPayloadV1, Error, EvmBurnProofV1, InboundFinalityMode, SCCP_CORE_REMOTE_DOMAINS,
-    SCCP_DIGEST_NETWORK_ID, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA,
-    SCCP_DOMAIN_SORA_KUSAMA, SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
-    SCCP_EVM_BURNS_MAPPING_SLOT, SCCP_MSG_PREFIX_ATTEST_V1, SCCP_MSG_PREFIX_BURN_V1,
+    BurnPayloadV1, Error, EthZkFinalizedBurnProofV1, EthZkFinalizedBurnPublicInputsV1,
+    EvmBurnProofV1, InboundFinalityMode, SolanaFinalizedBurnProofV1,
+    SolanaFinalizedBurnPublicInputsV1, TonBurnProofV1, TonTrustedCheckpoint,
+    ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1, SCCP_CORE_REMOTE_DOMAINS, SCCP_DIGEST_NETWORK_ID,
+    SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_SORA_KUSAMA,
+    SCCP_DOMAIN_SORA_POLKADOT, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON, SCCP_EVM_BURNS_MAPPING_SLOT,
+    SCCP_MAX_TON_PROOF_SECTION_BYTES, SCCP_MSG_PREFIX_ATTEST_V1, SCCP_MSG_PREFIX_BURN_V1,
+    SOLANA_FINALIZED_BURN_PROOF_VERSION_V1,
 };
 use bridge_types::{types::AuxiliaryDigestItem, GenericNetworkId, SubNetworkId};
 use codec::{Decode, Encode};
@@ -21,6 +25,7 @@ use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::BoundedVec;
 use sp_runtime::DispatchError;
+use ton_proof_runtime_interface::{build_test_fixture, TonTestFixture, TonTestFixtureInput};
 
 fn register_mintable_asset(asset_id: AssetId) {
     assert_ok!(assets::Pallet::<Runtime>::register_asset_id(
@@ -125,24 +130,116 @@ fn set_default_domain_endpoints() {
     ));
 }
 
-fn set_dummy_evm_anchor(domain_id: u32) {
+fn solana_finalized_burn_proof_bytes(message_id: H256) -> Vec<u8> {
+    SolanaFinalizedBurnProofV1 {
+        version: SOLANA_FINALIZED_BURN_PROOF_VERSION_V1,
+        public_inputs: SolanaFinalizedBurnPublicInputsV1 {
+            message_id,
+            finalized_slot: 42,
+            finalized_bank_hash: H256([0x40; 32]),
+            finalized_slot_hash: H256([0x41; 32]),
+            router_program_id: [14u8; 32],
+            burn_record_pda: [0x42u8; 32],
+            burn_record_owner: [0x43u8; 32],
+            burn_record_data_hash: H256([0x44; 32]),
+        },
+        burn_proof: crate::SolanaBankHashProofV1 {
+            slot: 42,
+            bank_hash: H256([0x45; 32]),
+            account_delta_root: H256([0x46; 32]),
+            parent_bank_hash: H256([0x47; 32]),
+            blockhash: H256([0x48; 32]),
+            num_sigs: 1,
+            account_proof: crate::SolanaAccountDeltaProofV1 {
+                account: crate::SolanaAccountInfoV1 {
+                    pubkey: [0x49; 32],
+                    lamports: 1,
+                    owner: [0x4a; 32],
+                    executable: false,
+                    rent_epoch: 0,
+                    data: vec![0x51, 0x52],
+                    write_version: 1,
+                    slot: 42,
+                },
+                merkle_proof: crate::SolanaMerkleProofV1 {
+                    path: vec![0x53],
+                    siblings: vec![vec![H256([0x54; 32])]],
+                },
+            },
+        },
+        vote_proofs: vec![crate::SolanaVoteProofV1 {
+            authority_pubkey: [0x55; 32],
+            signature: [0x56; 64],
+            signed_message: vec![0x57],
+            vote_slot: 42,
+            vote_bank_hash: H256([0x58; 32]),
+            rooted_slot: Some(42),
+            slot_hashes_proof: crate::SolanaBankHashProofV1 {
+                slot: 42,
+                bank_hash: H256([0x59; 32]),
+                account_delta_root: H256([0x5a; 32]),
+                parent_bank_hash: H256([0x5b; 32]),
+                blockhash: H256([0x5c; 32]),
+                num_sigs: 1,
+                account_proof: crate::SolanaAccountDeltaProofV1 {
+                    account: crate::SolanaAccountInfoV1 {
+                        pubkey: [0x5d; 32],
+                        lamports: 1,
+                        owner: [0x5e; 32],
+                        executable: false,
+                        rent_epoch: 0,
+                        data: vec![0x5f],
+                        write_version: 1,
+                        slot: 42,
+                    },
+                    merkle_proof: crate::SolanaMerkleProofV1 {
+                        path: vec![0x5f],
+                        siblings: vec![vec![H256([0x60; 32])]],
+                    },
+                },
+            },
+        }],
+    }
+    .encode()
+}
+
+fn eth_zk_finalized_burn_proof_bytes(message_id: H256, router_address: [u8; 20]) -> Vec<u8> {
+    EthZkFinalizedBurnProofV1 {
+        version: ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1,
+        public_inputs: EthZkFinalizedBurnPublicInputsV1 {
+            message_id,
+            finalized_block_hash: H256([0x81; 32]),
+            execution_state_root: H256([0x82; 32]),
+            router_address,
+            burn_storage_key: crate::evm_burn_storage_key_for_message_id(message_id),
+        },
+        evm_burn_proof: vec![],
+        zk_proof: vec![0x99, 0x02],
+    }
+    .encode()
+}
+
+fn set_eth_zk_finality_available_for_test() {
     assert_ok!(Sccp::set_inbound_finality_mode(
         RuntimeOrigin::root(),
-        domain_id,
-        InboundFinalityMode::EvmAnchor
+        SCCP_DOMAIN_ETH,
+        InboundFinalityMode::EthZkProof,
     ));
-    assert_ok!(Sccp::set_evm_anchor_mode_enabled(
+    set_eth_zk_finalized_verify_result(Some(false));
+}
+
+fn set_bsc_light_client_finality_for_test(block_hash: H256, state_root: H256) {
+    assert_ok!(Sccp::set_inbound_finality_mode(
         RuntimeOrigin::root(),
-        domain_id,
-        true
+        SCCP_DOMAIN_BSC,
+        InboundFinalityMode::BscLightClient,
     ));
-    assert_ok!(Sccp::set_evm_inbound_anchor(
-        RuntimeOrigin::root(),
-        domain_id,
-        1,
-        H256([1u8; 32]),
-        H256([2u8; 32]),
-    ));
+    crate::pallet::BscFinalized::<Runtime>::set(Some(crate::BscHeaderMeta {
+        hash: block_hash,
+        number: 1,
+        state_root,
+        signer: sp_core::H160::zero(),
+    }));
 }
 
 fn setup_active_token(asset_id: AssetId) {
@@ -163,6 +260,42 @@ fn attest_hash_for_test(message_id: &H256) -> H256 {
     let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
     preimage.extend_from_slice(&message_id.0);
     H256::from_slice(&keccak_256(&preimage))
+}
+
+fn set_ton_checkpoint_for_test(checkpoint: &TonTrustedCheckpoint) {
+    assert_ok!(Sccp::set_ton_trusted_checkpoint(
+        RuntimeOrigin::root(),
+        checkpoint.mc_seqno,
+        checkpoint.mc_block_hash,
+    ));
+}
+
+fn ton_fixture_for_test(
+    asset_id: AssetId,
+    payload: &BurnPayloadV1,
+) -> (TonTestFixture, TonTrustedCheckpoint) {
+    let fixture = build_test_fixture(TonTestFixtureInput {
+        message_id: burn_message_id_for_test(payload).0,
+        recipient32: payload.recipient,
+        jetton_amount: payload.amount,
+        nonce: payload.nonce,
+    });
+    assert_ok!(Sccp::set_remote_token(
+        RuntimeOrigin::root(),
+        asset_id,
+        SCCP_DOMAIN_TON,
+        fixture.jetton_master_account_id.to_vec(),
+    ));
+    assert_ok!(Sccp::set_domain_endpoint(
+        RuntimeOrigin::root(),
+        SCCP_DOMAIN_TON,
+        fixture.jetton_master_code_hash.to_vec(),
+    ));
+    let checkpoint = TonTrustedCheckpoint {
+        mc_seqno: fixture.trusted_checkpoint_seqno,
+        mc_block_hash: H256(fixture.trusted_checkpoint_hash),
+    };
+    (fixture, checkpoint)
 }
 
 #[test]
@@ -1125,7 +1258,7 @@ fn add_activate_and_burn_creates_burn_record() {
         // Balance reduced.
         assert_eq!(
             assets::Pallet::<Runtime>::free_balance(&asset_id, &alice()).unwrap(),
-            900u32.into()
+            900u128
         );
 
         // Burn record stored under the expected message id.
@@ -1245,7 +1378,7 @@ fn pause_outbound_domain_blocks_burn() {
         // Balance unchanged.
         assert_eq!(
             assets::Pallet::<Runtime>::free_balance(&asset_id, &alice()).unwrap(),
-            1_000u32.into()
+            1_000u128
         );
     });
 }
@@ -2035,7 +2168,7 @@ fn mint_from_proof_rejects_inbound_disabled_and_already_processed() {
 
     ext.execute_with(|| {
         setup_active_token(asset_id);
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
@@ -2083,24 +2216,12 @@ fn mint_from_proof_rejects_inbound_disabled_and_already_processed() {
 }
 
 #[test]
-fn mint_from_proof_rejects_zero_amount_zero_recipient_and_missing_anchor() {
+fn mint_from_proof_rejects_zero_amount_zero_recipient_and_missing_finality() {
     let mut ext = ExtBuilder::default().build();
     let asset_id: AssetId = common::mock::ComicAssetId::Apple.into();
 
     ext.execute_with(|| {
         setup_active_token(asset_id);
-
-        // Explicitly require EVM anchor mode for ETH but do not configure an anchor.
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EvmAnchor,
-        ));
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            true
-        ));
 
         let asset_h256: H256 = asset_id.into();
         let base_payload = BurnPayloadV1 {
@@ -2120,22 +2241,10 @@ fn mint_from_proof_rejects_zero_amount_zero_recipient_and_missing_anchor() {
                 base_payload.clone(),
                 vec![],
             ),
-            Error::<Runtime>::EvmInboundAnchorMissing
+            Error::<Runtime>::InboundFinalityUnavailable
         );
 
-        // Switch to attester quorum so amount/recipient guards are reached before proof decoding.
-        let a0 = sp_core::H160::from_low_u64_be(1);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            vec![a0],
-            1
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            InboundFinalityMode::AttesterQuorum,
-        ));
+        set_eth_zk_finality_available_for_test();
 
         let mut amount_zero = base_payload.clone();
         amount_zero.amount = 0u32.into();
@@ -2170,12 +2279,12 @@ fn mint_from_proof_rejects_evm_proof_structural_guardrails() {
 
     ext.execute_with(|| {
         setup_active_token(asset_id);
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_bsc_light_client_finality_for_test(H256([1u8; 32]), H256([2u8; 32]));
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
             version: 1,
-            source_domain: SCCP_DOMAIN_ETH,
+            source_domain: SCCP_DOMAIN_BSC,
             dest_domain: SCCP_DOMAIN_SORA,
             nonce: 39,
             sora_asset_id: asset_h256.0,
@@ -2191,7 +2300,7 @@ fn mint_from_proof_rejects_evm_proof_structural_guardrails() {
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
+                SCCP_DOMAIN_BSC,
                 payload.clone(),
                 wrong_anchor.encode(),
             ),
@@ -2206,7 +2315,7 @@ fn mint_from_proof_rejects_evm_proof_structural_guardrails() {
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
+                SCCP_DOMAIN_BSC,
                 payload.clone(),
                 too_many_nodes.encode(),
             ),
@@ -2221,7 +2330,7 @@ fn mint_from_proof_rejects_evm_proof_structural_guardrails() {
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
+                SCCP_DOMAIN_BSC,
                 payload.clone(),
                 oversized_node.encode(),
             ),
@@ -2239,7 +2348,7 @@ fn mint_from_proof_rejects_evm_proof_structural_guardrails() {
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
+                SCCP_DOMAIN_BSC,
                 payload.clone(),
                 total_overflow.encode(),
             ),
@@ -2256,7 +2365,7 @@ fn mint_from_proof_rejects_evm_proof_structural_guardrails() {
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
+                SCCP_DOMAIN_BSC,
                 payload,
                 trailing_bytes,
             ),
@@ -2335,7 +2444,7 @@ fn mint_from_proof_rejects_token_not_found_with_corrupted_remote_token_storage()
     ext.execute_with(|| {
         // Configure source domain and finality as available.
         set_default_domain_endpoints();
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
 
         // Insert remote-token mapping without creating token state.
         let remote: BoundedVec<u8, <Runtime as crate::Config>::MaxRemoteTokenIdLen> =
@@ -2379,28 +2488,6 @@ fn governance_calls_reject_bad_origin_for_domain_controls() {
         );
         assert_noop!(
             Sccp::clear_domain_endpoint(RuntimeOrigin::signed(alice()), SCCP_DOMAIN_ETH),
-            DispatchError::BadOrigin
-        );
-        assert_noop!(
-            Sccp::set_evm_inbound_anchor(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
-                1,
-                H256([1u8; 32]),
-                H256([2u8; 32]),
-            ),
-            DispatchError::BadOrigin
-        );
-        assert_noop!(
-            Sccp::clear_evm_inbound_anchor(RuntimeOrigin::signed(alice()), SCCP_DOMAIN_ETH),
-            DispatchError::BadOrigin
-        );
-        assert_noop!(
-            Sccp::set_evm_anchor_mode_enabled(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
-                true
-            ),
             DispatchError::BadOrigin
         );
         assert_noop!(
@@ -2524,42 +2611,6 @@ fn governance_domain_controls_reject_sora_and_unknown_domains() {
             Error::<Runtime>::DomainUnsupported
         );
         assert_noop!(
-            Sccp::set_evm_inbound_anchor(
-                RuntimeOrigin::root(),
-                SCCP_DOMAIN_SORA,
-                1,
-                H256([1u8; 32]),
-                H256([2u8; 32]),
-            ),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_evm_inbound_anchor(
-                RuntimeOrigin::root(),
-                SCCP_DOMAIN_SOL,
-                1,
-                H256([1u8; 32]),
-                H256([2u8; 32]),
-            ),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::clear_evm_inbound_anchor(RuntimeOrigin::root(), SCCP_DOMAIN_SORA),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::clear_evm_inbound_anchor(RuntimeOrigin::root(), SCCP_DOMAIN_SOL),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_evm_anchor_mode_enabled(RuntimeOrigin::root(), SCCP_DOMAIN_SORA, true),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_evm_anchor_mode_enabled(RuntimeOrigin::root(), SCCP_DOMAIN_SOL, true),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
             Sccp::set_inbound_domain_paused(RuntimeOrigin::root(), SCCP_DOMAIN_SORA, true),
             Error::<Runtime>::DomainUnsupported
         );
@@ -2646,7 +2697,7 @@ fn set_inbound_finality_mode_rejects_bad_origin_and_domain_guards() {
             Sccp::set_inbound_finality_mode(
                 RuntimeOrigin::signed(alice()),
                 SCCP_DOMAIN_ETH,
-                InboundFinalityMode::EvmAnchor
+                InboundFinalityMode::EthZkProof
             ),
             DispatchError::BadOrigin
         );
@@ -2654,7 +2705,7 @@ fn set_inbound_finality_mode_rejects_bad_origin_and_domain_guards() {
             Sccp::set_inbound_finality_mode(
                 RuntimeOrigin::root(),
                 SCCP_DOMAIN_SORA,
-                InboundFinalityMode::EvmAnchor
+                InboundFinalityMode::EthZkProof
             ),
             Error::<Runtime>::DomainUnsupported
         );
@@ -2662,7 +2713,7 @@ fn set_inbound_finality_mode_rejects_bad_origin_and_domain_guards() {
             Sccp::set_inbound_finality_mode(
                 RuntimeOrigin::root(),
                 99,
-                InboundFinalityMode::EvmAnchor
+                InboundFinalityMode::EthZkProof
             ),
             Error::<Runtime>::DomainUnsupported
         );
@@ -2709,7 +2760,7 @@ fn set_domain_endpoint_and_set_remote_token_reject_invalid_lengths_directly() {
 }
 
 #[test]
-fn clear_domain_endpoint_and_clear_evm_anchor_are_idempotent() {
+fn clear_domain_endpoint_is_idempotent() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_ok!(Sccp::clear_domain_endpoint(
@@ -2720,43 +2771,11 @@ fn clear_domain_endpoint_and_clear_evm_anchor_are_idempotent() {
             RuntimeOrigin::root(),
             SCCP_DOMAIN_ETH
         ));
-
-        assert_ok!(Sccp::clear_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH
-        ));
-        assert_ok!(Sccp::clear_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH
-        ));
     });
 }
 
 #[test]
-fn set_evm_anchor_mode_enabled_toggles_storage() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            true
-        ));
-        assert!(crate::pallet::EvmAnchorModeEnabled::<Runtime>::get(
-            SCCP_DOMAIN_ETH
-        ));
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            false
-        ));
-        assert!(!crate::pallet::EvmAnchorModeEnabled::<Runtime>::get(
-            SCCP_DOMAIN_ETH
-        ));
-    });
-}
-
-#[test]
-fn clear_domain_endpoint_and_clear_evm_anchor_remove_stored_values() {
+fn clear_domain_endpoint_removes_stored_values() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
         assert_ok!(Sccp::set_domain_endpoint(
@@ -2770,20 +2789,6 @@ fn clear_domain_endpoint_and_clear_evm_anchor_remove_stored_values() {
             SCCP_DOMAIN_ETH
         ));
         assert!(crate::pallet::DomainEndpoint::<Runtime>::get(SCCP_DOMAIN_ETH).is_none());
-
-        assert_ok!(Sccp::set_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            100,
-            H256([1u8; 32]),
-            H256([2u8; 32]),
-        ));
-        assert!(crate::pallet::EvmInboundAnchors::<Runtime>::get(SCCP_DOMAIN_ETH).is_some());
-        assert_ok!(Sccp::clear_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH
-        ));
-        assert!(crate::pallet::EvmInboundAnchors::<Runtime>::get(SCCP_DOMAIN_ETH).is_none());
     });
 }
 
@@ -3320,7 +3325,7 @@ fn pause_inbound_domain_blocks_mint_from_proof() {
         set_default_remote_tokens(asset_id);
         assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
 
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
         assert_ok!(Sccp::set_inbound_domain_paused(
             RuntimeOrigin::root(),
             SCCP_DOMAIN_ETH,
@@ -3361,7 +3366,7 @@ fn invalidated_inbound_message_blocks_mint_from_proof() {
         set_default_domain_endpoints();
         set_default_remote_tokens(asset_id);
         assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
@@ -3440,20 +3445,53 @@ fn set_inbound_finality_mode_rejects_unsupported_mode_for_domain() {
 }
 
 #[test]
+fn set_inbound_finality_mode_rejects_deprecated_modes() {
+    let mut ext = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        assert_noop!(
+            Sccp::set_inbound_finality_mode(
+                RuntimeOrigin::root(),
+                SCCP_DOMAIN_ETH,
+                InboundFinalityMode::EvmAnchor,
+            ),
+            Error::<Runtime>::InboundFinalityModeUnsupported
+        );
+        assert_noop!(
+            Sccp::set_inbound_finality_mode(
+                RuntimeOrigin::root(),
+                SCCP_DOMAIN_BSC,
+                InboundFinalityMode::BscLightClientOrAnchor,
+            ),
+            Error::<Runtime>::InboundFinalityModeUnsupported
+        );
+        assert_noop!(
+            Sccp::set_inbound_finality_mode(
+                RuntimeOrigin::root(),
+                SCCP_DOMAIN_SOL,
+                InboundFinalityMode::AttesterQuorum,
+            ),
+            Error::<Runtime>::InboundFinalityModeUnsupported
+        );
+    });
+}
+
+#[test]
 fn set_inbound_finality_mode_validates_full_domain_mode_matrix() {
     let mut ext = ExtBuilder::default().build();
 
     ext.execute_with(|| {
         let all_modes = vec![
             InboundFinalityMode::Disabled,
-            InboundFinalityMode::EvmAnchor,
             InboundFinalityMode::BscLightClient,
-            InboundFinalityMode::BscLightClientOrAnchor,
             InboundFinalityMode::TronLightClient,
             InboundFinalityMode::EthBeaconLightClient,
+            InboundFinalityMode::EthZkProof,
             InboundFinalityMode::SolanaLightClient,
             InboundFinalityMode::TonLightClient,
             InboundFinalityMode::SubstrateLightClient,
+            InboundFinalityMode::EvmAnchor,
+            InboundFinalityMode::BscLightClientOrAnchor,
             InboundFinalityMode::AttesterQuorum,
         ];
 
@@ -3462,19 +3500,15 @@ fn set_inbound_finality_mode_validates_full_domain_mode_matrix() {
                 SCCP_DOMAIN_ETH,
                 vec![
                     InboundFinalityMode::Disabled,
-                    InboundFinalityMode::EvmAnchor,
                     InboundFinalityMode::EthBeaconLightClient,
-                    InboundFinalityMode::AttesterQuorum,
+                    InboundFinalityMode::EthZkProof,
                 ],
             ),
             (
                 SCCP_DOMAIN_BSC,
                 vec![
                     InboundFinalityMode::Disabled,
-                    InboundFinalityMode::EvmAnchor,
                     InboundFinalityMode::BscLightClient,
-                    InboundFinalityMode::BscLightClientOrAnchor,
-                    InboundFinalityMode::AttesterQuorum,
                 ],
             ),
             (
@@ -3482,7 +3516,6 @@ fn set_inbound_finality_mode_validates_full_domain_mode_matrix() {
                 vec![
                     InboundFinalityMode::Disabled,
                     InboundFinalityMode::SolanaLightClient,
-                    InboundFinalityMode::AttesterQuorum,
                 ],
             ),
             (
@@ -3490,16 +3523,13 @@ fn set_inbound_finality_mode_validates_full_domain_mode_matrix() {
                 vec![
                     InboundFinalityMode::Disabled,
                     InboundFinalityMode::TonLightClient,
-                    InboundFinalityMode::AttesterQuorum,
                 ],
             ),
             (
                 SCCP_DOMAIN_TRON,
                 vec![
                     InboundFinalityMode::Disabled,
-                    InboundFinalityMode::EvmAnchor,
                     InboundFinalityMode::TronLightClient,
-                    InboundFinalityMode::AttesterQuorum,
                 ],
             ),
             (
@@ -3507,7 +3537,6 @@ fn set_inbound_finality_mode_validates_full_domain_mode_matrix() {
                 vec![
                     InboundFinalityMode::Disabled,
                     InboundFinalityMode::SubstrateLightClient,
-                    InboundFinalityMode::AttesterQuorum,
                 ],
             ),
             (
@@ -3515,7 +3544,6 @@ fn set_inbound_finality_mode_validates_full_domain_mode_matrix() {
                 vec![
                     InboundFinalityMode::Disabled,
                     InboundFinalityMode::SubstrateLightClient,
-                    InboundFinalityMode::AttesterQuorum,
                 ],
             ),
         ];
@@ -3758,15 +3786,134 @@ fn eth_beacon_mode_uses_finalized_state_provider_for_proof_path() {
             Error::<Runtime>::InboundFinalityUnavailable
         );
 
-        // Provide finalized ETH state. Availability gate passes and execution reaches proof
-        // verification (empty proof => verification failure).
-        set_eth_finalized_state(H256([0x11; 32]), H256([0x22; 32]));
+        // Provide finalized ETH verifier availability. Execution reaches proof verification
+        // (empty proof => verification failure).
+        set_eth_finalized_verify_result(Some(false));
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
                 SCCP_DOMAIN_ETH,
                 payload,
                 vec![],
+            ),
+            Error::<Runtime>::ProofVerificationFailed
+        );
+    });
+}
+
+#[test]
+fn eth_zk_mode_uses_verifier_hook_for_proof_path() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Future.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+
+        assert_ok!(Sccp::set_inbound_finality_mode(
+            RuntimeOrigin::root(),
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
+        ));
+
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_ETH,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 206,
+            sora_asset_id: asset_h256.0,
+            amount: 9u32.into(),
+            recipient: [0x77u8; 32],
+        };
+
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_ETH,
+                payload.clone(),
+                vec![],
+            ),
+            Error::<Runtime>::InboundFinalityUnavailable
+        );
+
+        set_eth_zk_finalized_verify_result(Some(true));
+        let mut router_address = [0u8; 20];
+        router_address.copy_from_slice(
+            Sccp::domain_endpoint(SCCP_DOMAIN_ETH)
+                .expect("eth endpoint configured")
+                .as_slice(),
+        );
+        let proof =
+            eth_zk_finalized_burn_proof_bytes(burn_message_id_for_test(&payload), router_address);
+        assert_ok!(Sccp::mint_from_proof(
+            RuntimeOrigin::signed(alice()),
+            SCCP_DOMAIN_ETH,
+            payload,
+            proof,
+        ));
+    });
+}
+
+#[test]
+fn eth_zk_mode_rejects_wrong_storage_key() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Future.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+        assert_ok!(Sccp::set_inbound_finality_mode(
+            RuntimeOrigin::root(),
+            SCCP_DOMAIN_ETH,
+            InboundFinalityMode::EthZkProof,
+        ));
+        set_eth_zk_finalized_verify_result(Some(true));
+
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_ETH,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 207,
+            sora_asset_id: asset_h256.0,
+            amount: 10u32.into(),
+            recipient: [0x78u8; 32],
+        };
+        let message_id = burn_message_id_for_test(&payload);
+
+        let mut router_address = [0u8; 20];
+        router_address.copy_from_slice(
+            Sccp::domain_endpoint(SCCP_DOMAIN_ETH)
+                .expect("eth endpoint configured")
+                .as_slice(),
+        );
+        let mut decoded = EthZkFinalizedBurnProofV1 {
+            version: ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1,
+            public_inputs: EthZkFinalizedBurnPublicInputsV1 {
+                message_id,
+                finalized_block_hash: H256([0x81; 32]),
+                execution_state_root: H256([0x82; 32]),
+                router_address,
+                burn_storage_key: H256([0x55; 32]),
+            },
+            evm_burn_proof: vec![],
+            zk_proof: vec![0x01],
+        };
+        decoded.public_inputs.burn_storage_key = H256([0x55; 32]);
+
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_ETH,
+                payload,
+                decoded.encode(),
             ),
             Error::<Runtime>::ProofVerificationFailed
         );
@@ -3800,6 +3947,7 @@ fn solana_light_client_mode_uses_provider_for_proof_path() {
             preimage.extend(payload.encode());
             H256::from_slice(&keccak_256(&preimage))
         };
+        let proof = solana_finalized_burn_proof_bytes(message_id);
 
         // Without a Solana finalized-proof verifier, mode is fail-closed.
         assert_noop!(
@@ -3807,9 +3955,30 @@ fn solana_light_client_mode_uses_provider_for_proof_path() {
                 RuntimeOrigin::signed(alice()),
                 SCCP_DOMAIN_SOL,
                 payload.clone(),
-                vec![],
+                proof.clone(),
             ),
             Error::<Runtime>::InboundFinalityUnavailable
+        );
+
+        // Provider available, malformed or mismatched envelopes fail before backend success.
+        set_solana_finalized_verify_result(Some(true));
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_SOL,
+                payload.clone(),
+                vec![0x01, 0x02, 0x03],
+            ),
+            Error::<Runtime>::ProofVerificationFailed
+        );
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_SOL,
+                payload.clone(),
+                solana_finalized_burn_proof_bytes(H256([0x55; 32])),
+            ),
+            Error::<Runtime>::ProofVerificationFailed
         );
 
         // Provider available, invalid proof path => verification failure.
@@ -3819,7 +3988,7 @@ fn solana_light_client_mode_uses_provider_for_proof_path() {
                 RuntimeOrigin::signed(alice()),
                 SCCP_DOMAIN_SOL,
                 payload.clone(),
-                vec![],
+                proof.clone(),
             ),
             Error::<Runtime>::ProofVerificationFailed
         );
@@ -3830,14 +3999,14 @@ fn solana_light_client_mode_uses_provider_for_proof_path() {
             RuntimeOrigin::signed(alice()),
             SCCP_DOMAIN_SOL,
             payload,
-            vec![],
+            proof,
         ));
         assert!(Sccp::processed_inbound(message_id));
     });
 }
 
 #[test]
-fn ton_light_client_mode_uses_provider_for_proof_path() {
+fn ton_light_client_mode_requires_checkpoint_and_native_proof() {
     let mut ext = ExtBuilder::default().build();
     let asset_id: AssetId = common::mock::ComicAssetId::Pan.into();
 
@@ -3863,8 +4032,9 @@ fn ton_light_client_mode_uses_provider_for_proof_path() {
             preimage.extend(payload.encode());
             H256::from_slice(&keccak_256(&preimage))
         };
+        let (fixture, checkpoint) = ton_fixture_for_test(asset_id, &payload);
 
-        // Without a TON finalized-proof verifier, mode is fail-closed.
+        // Without a trusted checkpoint, TON remains fail-closed.
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
@@ -3875,8 +4045,9 @@ fn ton_light_client_mode_uses_provider_for_proof_path() {
             Error::<Runtime>::InboundFinalityUnavailable
         );
 
-        // Provider available, invalid proof path => verification failure.
-        set_ton_finalized_verify_result(Some(false));
+        set_ton_checkpoint_for_test(&checkpoint);
+
+        // With checkpoint available, malformed proof path is rejected fail-closed.
         assert_noop!(
             Sccp::mint_from_proof(
                 RuntimeOrigin::signed(alice()),
@@ -3887,15 +4058,101 @@ fn ton_light_client_mode_uses_provider_for_proof_path() {
             Error::<Runtime>::ProofVerificationFailed
         );
 
-        // Provider available, valid proof path => mint succeeds.
-        set_ton_finalized_verify_result(Some(true));
+        // A repo-defined TON proof that matches the configured master/code-hash and payload mints.
         assert_ok!(Sccp::mint_from_proof(
             RuntimeOrigin::signed(alice()),
             SCCP_DOMAIN_TON,
             payload,
-            vec![],
+            fixture.proof,
         ));
         assert!(Sccp::processed_inbound(message_id));
+    });
+}
+
+#[test]
+fn ton_light_client_mode_rejects_checkpoint_or_master_mismatch() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Pan.into();
+
+    ext.execute_with(|| {
+        setup_active_token(asset_id);
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_TON,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 208,
+            sora_asset_id: asset_h256.0,
+            amount: 10u32.into(),
+            recipient: [0x7au8; 32],
+        };
+        let (fixture, checkpoint) = ton_fixture_for_test(asset_id, &payload);
+        set_ton_checkpoint_for_test(&checkpoint);
+
+        let mut wrong_checkpoint = fixture.proof.clone();
+        let mut decoded = TonBurnProofV1::decode(&mut wrong_checkpoint.as_slice()).unwrap();
+        decoded.trusted_checkpoint_hash = H256([0x44; 32]);
+        wrong_checkpoint = decoded.encode();
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_TON,
+                payload.clone(),
+                wrong_checkpoint,
+            ),
+            Error::<Runtime>::ProofVerificationFailed
+        );
+
+        let mut wrong_master = fixture.proof.clone();
+        let mut decoded = TonBurnProofV1::decode(&mut wrong_master.as_slice()).unwrap();
+        decoded.jetton_master_account_id = [0x99; 32];
+        wrong_master = decoded.encode();
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_TON,
+                payload,
+                wrong_master,
+            ),
+            Error::<Runtime>::ProofVerificationFailed
+        );
+    });
+}
+
+#[test]
+fn ton_light_client_mode_rejects_oversized_proof_sections() {
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::Pan.into();
+
+    ext.execute_with(|| {
+        setup_active_token(asset_id);
+        let asset_h256: H256 = asset_id.into();
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_TON,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 209,
+            sora_asset_id: asset_h256.0,
+            amount: 11u32.into(),
+            recipient: [0x7bu8; 32],
+        };
+        let (fixture, checkpoint) = ton_fixture_for_test(asset_id, &payload);
+        set_ton_checkpoint_for_test(&checkpoint);
+
+        let mut proof = fixture.proof;
+        let mut decoded = TonBurnProofV1::decode(&mut proof.as_slice()).unwrap();
+        decoded.masterchain_proof = vec![0xaa; SCCP_MAX_TON_PROOF_SECTION_BYTES + 1];
+        proof = decoded.encode();
+
+        assert_noop!(
+            Sccp::mint_from_proof(
+                RuntimeOrigin::signed(alice()),
+                SCCP_DOMAIN_TON,
+                payload,
+                proof,
+            ),
+            Error::<Runtime>::TonProofTooLarge
+        );
     });
 }
 
@@ -4070,7 +4327,7 @@ fn attest_burn_to_sora_parachain_domain_uses_substrate_digest_network_id() {
             RuntimeOrigin::signed(alice()),
             SCCP_DOMAIN_SOL,
             payload,
-            vec![],
+            solana_finalized_burn_proof_bytes(message_id),
         ));
         assert_eq!(
             take_aux_digest_items(),
@@ -4078,859 +4335,6 @@ fn attest_burn_to_sora_parachain_domain_uses_substrate_digest_network_id() {
                 GenericNetworkId::Sub(SubNetworkId::Polkadot),
                 message_id
             )]
-        );
-    });
-}
-
-#[test]
-fn solana_attester_quorum_mode_allows_mint_from_proof() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Apple.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        // Configure attester quorum for SOL (2-of-3).
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let p1 = ecdsa::Pair::from_seed(&[2u8; 32]);
-        let p2 = ecdsa::Pair::from_seed(&[3u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        let a1 = eth_address_from_pair(&p1);
-        let a2 = eth_address_from_pair(&p2);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0, a1, a2],
-            2
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 900,
-            sora_asset_id: asset_h256.0,
-            amount: 2u32.into(),
-            recipient: [0x11u8; 32],
-        };
-        let message_id = {
-            let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-            preimage.extend(payload.encode());
-            H256::from_slice(&keccak_256(&preimage))
-        };
-
-        let sig_hash = {
-            let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-            preimage.extend_from_slice(&message_id.0);
-            H256::from_slice(&keccak_256(&preimage))
-        };
-        let sig0 = p0.sign_prehashed(&sig_hash.0);
-        let sig1 = p1.sign_prehashed(&sig_hash.0);
-
-        let sigs: BoundedVec<[u8; 65], SccpMaxAttesters> = vec![sig0.0, sig1.0].try_into().unwrap();
-        let mut proof = vec![1u8];
-        proof.extend(sigs.encode());
-
-        assert_ok!(Sccp::mint_from_proof(
-            RuntimeOrigin::signed(alice()),
-            SCCP_DOMAIN_SOL,
-            payload,
-            proof
-        ));
-        assert!(Sccp::processed_inbound(message_id));
-    });
-}
-
-#[test]
-fn ton_attester_quorum_mode_allows_mint_from_proof() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Tomato.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        // Configure attester quorum for TON (2-of-3).
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let p1 = ecdsa::Pair::from_seed(&[2u8; 32]);
-        let p2 = ecdsa::Pair::from_seed(&[3u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        let a1 = eth_address_from_pair(&p1);
-        let a2 = eth_address_from_pair(&p2);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_TON,
-            vec![a0, a1, a2],
-            2
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_TON,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_TON,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 901,
-            sora_asset_id: asset_h256.0,
-            amount: 2u32.into(),
-            recipient: [0x22u8; 32],
-        };
-        let message_id = {
-            let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-            preimage.extend(payload.encode());
-            H256::from_slice(&keccak_256(&preimage))
-        };
-
-        let sig_hash = {
-            let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-            preimage.extend_from_slice(&message_id.0);
-            H256::from_slice(&keccak_256(&preimage))
-        };
-        let sig0 = p0.sign_prehashed(&sig_hash.0);
-        let sig1 = p1.sign_prehashed(&sig_hash.0);
-
-        let sigs: BoundedVec<[u8; 65], SccpMaxAttesters> = vec![sig0.0, sig1.0].try_into().unwrap();
-        let mut proof = vec![1u8];
-        proof.extend(sigs.encode());
-
-        assert_ok!(Sccp::mint_from_proof(
-            RuntimeOrigin::signed(alice()),
-            SCCP_DOMAIN_TON,
-            payload,
-            proof
-        ));
-        assert!(Sccp::processed_inbound(message_id));
-    });
-}
-
-#[test]
-fn set_inbound_attesters_rejects_duplicate_addresses() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let a0 = sp_core::H160::from_low_u64_be(1);
-
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SOL, vec![a0, a0], 1),
-            Error::<Runtime>::InboundAttestersInvalid
-        );
-        assert!(crate::InboundAttesters::<Runtime>::get(SCCP_DOMAIN_SOL).is_none());
-        assert!(crate::InboundAttesterThreshold::<Runtime>::get(SCCP_DOMAIN_SOL).is_none());
-    });
-}
-
-#[test]
-fn set_inbound_attesters_rejects_zero_and_excess_thresholds() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let a0 = sp_core::H160::from_low_u64_be(1);
-        let a1 = sp_core::H160::from_low_u64_be(2);
-
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SOL, vec![a0, a1], 0),
-            Error::<Runtime>::InboundAttestersInvalid
-        );
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SOL, vec![a0, a1], 3),
-            Error::<Runtime>::InboundAttestersInvalid
-        );
-        assert!(crate::InboundAttesters::<Runtime>::get(SCCP_DOMAIN_SOL).is_none());
-        assert!(crate::InboundAttesterThreshold::<Runtime>::get(SCCP_DOMAIN_SOL).is_none());
-    });
-}
-
-#[test]
-fn set_inbound_attesters_rejects_attester_set_overflow() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let count = SccpMaxAttesters::get() as usize + 1;
-        let attesters: Vec<sp_core::H160> = (0..count)
-            .map(|i| sp_core::H160::from_low_u64_be((i + 1) as u64))
-            .collect();
-
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SOL, attesters, 1),
-            Error::<Runtime>::InboundAttestersInvalid
-        );
-    });
-}
-
-#[test]
-fn set_inbound_attesters_rejects_non_manager_origin() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let a0 = sp_core::H160::from_low_u64_be(1);
-        assert_noop!(
-            Sccp::set_inbound_attesters(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                vec![a0],
-                1
-            ),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
-fn set_inbound_attesters_rejects_sora_and_unknown_domains() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        let a0 = sp_core::H160::from_low_u64_be(1);
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SORA, vec![a0], 1),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::set_inbound_attesters(RuntimeOrigin::root(), 99, vec![a0], 1),
-            Error::<Runtime>::DomainUnsupported
-        );
-    });
-}
-
-#[test]
-fn clear_inbound_attesters_rejects_non_manager_origin() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        assert_noop!(
-            Sccp::clear_inbound_attesters(RuntimeOrigin::signed(alice()), SCCP_DOMAIN_SOL),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
-fn clear_inbound_attesters_rejects_sora_and_unknown_domains() {
-    let mut ext = ExtBuilder::default().build();
-    ext.execute_with(|| {
-        assert_noop!(
-            Sccp::clear_inbound_attesters(RuntimeOrigin::root(), SCCP_DOMAIN_SORA),
-            Error::<Runtime>::DomainUnsupported
-        );
-        assert_noop!(
-            Sccp::clear_inbound_attesters(RuntimeOrigin::root(), 99),
-            Error::<Runtime>::DomainUnsupported
-        );
-    });
-}
-
-#[test]
-fn clear_inbound_attesters_disables_attester_quorum_fail_closed() {
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Table.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let a0 = sp_core::H160::from_low_u64_be(1);
-        let a1 = sp_core::H160::from_low_u64_be(2);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0, a1],
-            1,
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        assert_ok!(Sccp::clear_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL
-        ));
-        assert!(crate::InboundAttesters::<Runtime>::get(SCCP_DOMAIN_SOL).is_none());
-        assert!(crate::InboundAttesterThreshold::<Runtime>::get(SCCP_DOMAIN_SOL).is_none());
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 777,
-            sora_asset_id: asset_h256.0,
-            amount: 1u32.into(),
-            recipient: [0x55u8; 32],
-        };
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload,
-                vec![],
-            ),
-            Error::<Runtime>::InboundFinalityUnavailable
-        );
-    });
-}
-
-#[test]
-fn attester_quorum_rejects_malformed_and_trailing_bytes_proofs() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Future.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0],
-            1
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 903,
-            sora_asset_id: asset_h256.0,
-            amount: 1u32.into(),
-            recipient: [0x77u8; 32],
-        };
-
-        // Malformed: cannot decode proof format at all.
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload.clone(),
-                vec![],
-            ),
-            Error::<Runtime>::ProofVerificationFailed
-        );
-
-        // Valid outer structure with trailing bytes must fail closed.
-        let sigs: BoundedVec<[u8; 65], SccpMaxAttesters> = vec![].try_into().unwrap();
-        let mut trailing = vec![1u8];
-        trailing.extend(sigs.encode());
-        trailing.push(0x42);
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload,
-                trailing,
-            ),
-            Error::<Runtime>::ProofVerificationFailed
-        );
-    });
-}
-
-#[test]
-fn attester_quorum_rejects_unsupported_proof_version() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Teapot.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0],
-            1
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 904,
-            sora_asset_id: asset_h256.0,
-            amount: 1u32.into(),
-            recipient: [0x88u8; 32],
-        };
-
-        let sigs: BoundedVec<[u8; 65], SccpMaxAttesters> = vec![].try_into().unwrap();
-        let mut wrong_version = vec![2u8];
-        wrong_version.extend(sigs.encode());
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload,
-                wrong_version,
-            ),
-            Error::<Runtime>::ProofVerificationFailed
-        );
-    });
-}
-
-#[test]
-fn attester_quorum_rejects_duplicate_signer_signatures() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Pan.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let p1 = ecdsa::Pair::from_seed(&[2u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        let a1 = eth_address_from_pair(&p1);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0, a1],
-            2
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 902,
-            sora_asset_id: asset_h256.0,
-            amount: 2u32.into(),
-            recipient: [0x66u8; 32],
-        };
-        let message_id = {
-            let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-            preimage.extend(payload.encode());
-            H256::from_slice(&keccak_256(&preimage))
-        };
-
-        let sig_hash = {
-            let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-            preimage.extend_from_slice(&message_id.0);
-            H256::from_slice(&keccak_256(&preimage))
-        };
-        let sig0 = p0.sign_prehashed(&sig_hash.0);
-        let sigs: BoundedVec<[u8; 65], SccpMaxAttesters> = vec![sig0.0, sig0.0].try_into().unwrap();
-        let mut proof = vec![1u8];
-        proof.extend(sigs.encode());
-
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload,
-                proof,
-            ),
-            Error::<Runtime>::ProofVerificationFailed
-        );
-        assert!(!Sccp::processed_inbound(message_id));
-    });
-}
-
-#[test]
-fn attester_quorum_rejects_non_attester_and_invalid_recovery_id_signatures() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Tomato.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let p1 = ecdsa::Pair::from_seed(&[2u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0],
-            1
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 904,
-            sora_asset_id: asset_h256.0,
-            amount: 1u32.into(),
-            recipient: [0x78u8; 32],
-        };
-        let message_id = {
-            let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-            preimage.extend(payload.encode());
-            H256::from_slice(&keccak_256(&preimage))
-        };
-        let sig_hash = {
-            let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-            preimage.extend_from_slice(&message_id.0);
-            H256::from_slice(&keccak_256(&preimage))
-        };
-
-        // Signature from non-attester should not count.
-        let sig_non_attester = p1.sign_prehashed(&sig_hash.0);
-        let sigs_non_attester: BoundedVec<[u8; 65], SccpMaxAttesters> =
-            vec![sig_non_attester.0].try_into().unwrap();
-        let mut proof_non_attester = vec![1u8];
-        proof_non_attester.extend(sigs_non_attester.encode());
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload.clone(),
-                proof_non_attester,
-            ),
-            Error::<Runtime>::ProofVerificationFailed
-        );
-
-        // Invalid recovery id (>3) should be rejected.
-        let mut sig_invalid_v = p0.sign_prehashed(&sig_hash.0).0;
-        sig_invalid_v[64] = 7;
-        let sigs_invalid_v: BoundedVec<[u8; 65], SccpMaxAttesters> =
-            vec![sig_invalid_v].try_into().unwrap();
-        let mut proof_invalid_v = vec![1u8];
-        proof_invalid_v.extend(sigs_invalid_v.encode());
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload,
-                proof_invalid_v,
-            ),
-            Error::<Runtime>::ProofVerificationFailed
-        );
-    });
-}
-
-#[test]
-fn attester_quorum_accepts_legacy_27_28_recovery_id_signatures() {
-    use sp_core::ecdsa;
-    use sp_core::Pair;
-
-    fn eth_address_from_pair(pair: &ecdsa::Pair) -> sp_core::H160 {
-        let msg = H256([9u8; 32]);
-        let sig = pair.sign_prehashed(&msg.0);
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
-            .ok()
-            .unwrap();
-        sp_core::H160::from_slice(&keccak_256(&pk)[12..])
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Potato.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let p0 = ecdsa::Pair::from_seed(&[1u8; 32]);
-        let a0 = eth_address_from_pair(&p0);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0],
-            1
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 905,
-            sora_asset_id: asset_h256.0,
-            amount: 2u32.into(),
-            recipient: [0x79u8; 32],
-        };
-        let message_id = {
-            let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-            preimage.extend(payload.encode());
-            H256::from_slice(&keccak_256(&preimage))
-        };
-        let sig_hash = {
-            let mut preimage = SCCP_MSG_PREFIX_ATTEST_V1.to_vec();
-            preimage.extend_from_slice(&message_id.0);
-            H256::from_slice(&keccak_256(&preimage))
-        };
-
-        // Legacy Ethereum style recovery id in {27,28}.
-        let mut sig = p0.sign_prehashed(&sig_hash.0).0;
-        sig[64] = sig[64].saturating_add(27);
-        let sigs: BoundedVec<[u8; 65], SccpMaxAttesters> = vec![sig].try_into().unwrap();
-        let mut proof = vec![1u8];
-        proof.extend(sigs.encode());
-
-        assert_ok!(Sccp::mint_from_proof(
-            RuntimeOrigin::signed(alice()),
-            SCCP_DOMAIN_SOL,
-            payload,
-            proof
-        ));
-        assert!(Sccp::processed_inbound(message_id));
-    });
-}
-
-#[test]
-fn attester_quorum_fails_closed_when_threshold_storage_is_corrupted() {
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Mango.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let a0 = sp_core::H160::from_low_u64_be(1);
-        assert_ok!(Sccp::set_inbound_attesters(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            vec![a0],
-            1
-        ));
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_SOL,
-            InboundFinalityMode::AttesterQuorum,
-        ));
-        // Simulate storage corruption: threshold exceeds attester set length.
-        crate::InboundAttesterThreshold::<Runtime>::insert(SCCP_DOMAIN_SOL, 2);
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_SOL,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 906,
-            sora_asset_id: asset_h256.0,
-            amount: 1u32.into(),
-            recipient: [0x80u8; 32],
-        };
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_SOL,
-                payload,
-                vec![],
-            ),
-            Error::<Runtime>::InboundFinalityUnavailable
-        );
-    });
-}
-
-#[test]
-fn bsc_light_client_mode_disables_anchor_fallback() {
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Apple.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        // Only anchor is configured; no BSC finalized header exists.
-        set_dummy_evm_anchor(SCCP_DOMAIN_BSC);
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_BSC,
-            InboundFinalityMode::BscLightClient,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_BSC,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 11,
-            sora_asset_id: asset_h256.0,
-            amount: 10u32.into(),
-            recipient: [7u8; 32],
-        };
-
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_BSC,
-                payload,
-                vec![],
-            ),
-            Error::<Runtime>::InboundFinalityUnavailable
-        );
-    });
-}
-
-#[test]
-fn bsc_evm_anchor_mode_allows_proof_path_without_light_client() {
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::Table.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        set_dummy_evm_anchor(SCCP_DOMAIN_BSC);
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_BSC,
-            InboundFinalityMode::EvmAnchor,
-        ));
-
-        let asset_h256: H256 = asset_id.into();
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_BSC,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 12,
-            sora_asset_id: asset_h256.0,
-            amount: 10u32.into(),
-            recipient: [8u8; 32],
-        };
-
-        // Finality availability passes (anchor mode), then fails on empty proof verification.
-        assert_noop!(
-            Sccp::mint_from_proof(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_BSC,
-                payload,
-                vec![],
-            ),
-            Error::<Runtime>::ProofVerificationFailed
         );
     });
 }
@@ -4966,269 +4370,6 @@ fn init_bsc_light_client_rejects_duplicate_entries() {
             ),
             Error::<Runtime>::BscValidatorsInvalid
         );
-    });
-}
-
-#[test]
-fn evm_storage_proof_against_anchor_mints_on_sora() {
-    use rlp::RlpStream;
-
-    fn leaf_path_for_hashed_key(key32: &[u8; 32]) -> Vec<u8> {
-        // Even length (64 nibbles) leaf => 0x20 prefix, then raw key bytes.
-        let mut out = Vec::with_capacity(33);
-        out.push(0x20);
-        out.extend_from_slice(key32);
-        out
-    }
-
-    fn rlp_leaf_node(compact_path: &[u8], value: &[u8]) -> Vec<u8> {
-        let mut s = RlpStream::new_list(2);
-        s.append(&compact_path);
-        s.append(&value);
-        s.out().to_vec()
-    }
-
-    fn rlp_account_value(storage_root: H256) -> Vec<u8> {
-        let mut s = RlpStream::new_list(4);
-        s.append(&1u8); // nonce
-        s.append(&0u8); // balance
-        s.append(&storage_root.as_bytes());
-        s.append(&[7u8; 32].as_slice()); // dummy code hash
-        s.out().to_vec()
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::GreenPromise.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let asset_h256: H256 = asset_id.into();
-        let amount: Balance = 10u32.into();
-        let recipient = [9u8; 32];
-
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_ETH,
-            dest_domain: SCCP_DOMAIN_SORA,
-            nonce: 1,
-            sora_asset_id: asset_h256.0,
-            amount,
-            recipient,
-        };
-        let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-        preimage.extend(payload.encode());
-        let message_id = H256::from_slice(&keccak_256(&preimage));
-
-        // Router address configured via `set_default_domain_endpoints()`.
-        let router_addr = vec![11u8; 20];
-
-        // Compute storage trie key for burns[messageId].sender.
-        let mut slot_bytes = [0u8; 32];
-        slot_bytes[24..].copy_from_slice(&SCCP_EVM_BURNS_MAPPING_SLOT.to_be_bytes());
-        let mut slot_preimage = [0u8; 64];
-        slot_preimage[..32].copy_from_slice(&message_id.0);
-        slot_preimage[32..].copy_from_slice(&slot_bytes);
-        let slot_base = keccak_256(&slot_preimage);
-        let storage_key = keccak_256(&slot_base);
-
-        // Storage trie: a single leaf proving a non-zero value at `storage_key`.
-        let storage_path = leaf_path_for_hashed_key(&storage_key);
-        let storage_value_rlp = vec![0x01u8]; // RLP(uint256(1)) = 0x01
-        let storage_leaf = rlp_leaf_node(&storage_path, &storage_value_rlp);
-        let storage_root = H256::from_slice(&keccak_256(&storage_leaf));
-
-        // Account trie: a single leaf for router account, with `storageRoot = storage_root`.
-        let mut addr20 = [0u8; 20];
-        addr20.copy_from_slice(&router_addr);
-        let account_key = keccak_256(&addr20);
-        let account_path = leaf_path_for_hashed_key(&account_key);
-        let account_value = rlp_account_value(storage_root);
-        let account_leaf = rlp_leaf_node(&account_path, &account_value);
-        let state_root = H256::from_slice(&keccak_256(&account_leaf));
-
-        let anchor_block_hash = H256([3u8; 32]);
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EvmAnchor,
-        ));
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            true
-        ));
-        assert_ok!(Sccp::set_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            123,
-            anchor_block_hash,
-            state_root,
-        ));
-
-        let proof = EvmBurnProofV1 {
-            anchor_block_hash,
-            account_proof: vec![account_leaf],
-            storage_proof: vec![storage_leaf],
-        };
-
-        let recipient_acc = AccountId::from(recipient);
-        let before = assets::Pallet::<Runtime>::free_balance(&asset_id, &recipient_acc)
-            .unwrap_or_else(|_| 0u32.into());
-
-        assert_ok!(Sccp::mint_from_proof(
-            RuntimeOrigin::signed(alice()),
-            SCCP_DOMAIN_ETH,
-            payload,
-            proof.encode(),
-        ));
-
-        let after = assets::Pallet::<Runtime>::free_balance(&asset_id, &recipient_acc).unwrap();
-        assert_eq!(after - before, amount);
-    });
-}
-
-#[test]
-fn evm_storage_proof_against_anchor_attests_burn_and_commits_digest() {
-    use rlp::RlpStream;
-
-    fn leaf_path_for_hashed_key(key32: &[u8; 32]) -> Vec<u8> {
-        // Even length (64 nibbles) leaf => 0x20 prefix, then raw key bytes.
-        let mut out = Vec::with_capacity(33);
-        out.push(0x20);
-        out.extend_from_slice(key32);
-        out
-    }
-
-    fn rlp_leaf_node(compact_path: &[u8], value: &[u8]) -> Vec<u8> {
-        let mut s = RlpStream::new_list(2);
-        s.append(&compact_path);
-        s.append(&value);
-        s.out().to_vec()
-    }
-
-    fn rlp_account_value(storage_root: H256) -> Vec<u8> {
-        let mut s = RlpStream::new_list(4);
-        s.append(&1u8); // nonce
-        s.append(&0u8); // balance
-        s.append(&storage_root.as_bytes());
-        s.append(&[7u8; 32].as_slice()); // dummy code hash
-        s.out().to_vec()
-    }
-
-    let mut ext = ExtBuilder::default().build();
-    let asset_id: AssetId = common::mock::ComicAssetId::GreenPromise.into();
-
-    ext.execute_with(|| {
-        register_mintable_asset(asset_id);
-        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
-        set_default_domain_endpoints();
-        set_default_remote_tokens(asset_id);
-        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-
-        let asset_h256: H256 = asset_id.into();
-        let amount: Balance = 10u32.into();
-        let recipient = [9u8; 32];
-
-        let payload = BurnPayloadV1 {
-            version: 1,
-            source_domain: SCCP_DOMAIN_ETH,
-            dest_domain: SCCP_DOMAIN_SOL,
-            nonce: 1,
-            sora_asset_id: asset_h256.0,
-            amount,
-            recipient,
-        };
-        let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
-        preimage.extend(payload.encode());
-        let message_id = H256::from_slice(&keccak_256(&preimage));
-
-        // Router address configured via `set_default_domain_endpoints()`.
-        let router_addr = vec![11u8; 20];
-
-        // Compute storage trie key for burns[messageId].sender.
-        let mut slot_bytes = [0u8; 32];
-        slot_bytes[24..].copy_from_slice(&SCCP_EVM_BURNS_MAPPING_SLOT.to_be_bytes());
-        let mut slot_preimage = [0u8; 64];
-        slot_preimage[..32].copy_from_slice(&message_id.0);
-        slot_preimage[32..].copy_from_slice(&slot_bytes);
-        let slot_base = keccak_256(&slot_preimage);
-        let storage_key = keccak_256(&slot_base);
-
-        // Storage trie: a single leaf proving a non-zero value at `storage_key`.
-        let storage_path = leaf_path_for_hashed_key(&storage_key);
-        let storage_value_rlp = vec![0x01u8]; // RLP(uint256(1)) = 0x01
-        let storage_leaf = rlp_leaf_node(&storage_path, &storage_value_rlp);
-        let storage_root = H256::from_slice(&keccak_256(&storage_leaf));
-
-        // Account trie: a single leaf for router account, with `storageRoot = storage_root`.
-        let mut addr20 = [0u8; 20];
-        addr20.copy_from_slice(&router_addr);
-        let account_key = keccak_256(&addr20);
-        let account_path = leaf_path_for_hashed_key(&account_key);
-        let account_value = rlp_account_value(storage_root);
-        let account_leaf = rlp_leaf_node(&account_path, &account_value);
-        let state_root = H256::from_slice(&keccak_256(&account_leaf));
-
-        let anchor_block_hash = H256([3u8; 32]);
-        assert_ok!(Sccp::set_inbound_finality_mode(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EvmAnchor,
-        ));
-        assert_ok!(Sccp::set_evm_anchor_mode_enabled(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            true
-        ));
-        assert_ok!(Sccp::set_evm_inbound_anchor(
-            RuntimeOrigin::root(),
-            SCCP_DOMAIN_ETH,
-            123,
-            anchor_block_hash,
-            state_root,
-        ));
-
-        let proof = EvmBurnProofV1 {
-            anchor_block_hash,
-            account_proof: vec![account_leaf],
-            storage_proof: vec![storage_leaf],
-        };
-
-        assert_ok!(Sccp::attest_burn(
-            RuntimeOrigin::signed(alice()),
-            SCCP_DOMAIN_ETH,
-            payload.clone(),
-            proof.encode(),
-        ));
-
-        // Committed into auxiliary digest for BEEFY+MMR proofs to other chains.
-        let digest_items = take_aux_digest_items();
-        assert_eq!(
-            digest_items,
-            vec![AuxiliaryDigestItem::Commitment(
-                SCCP_DIGEST_NETWORK_ID,
-                message_id
-            )]
-        );
-
-        assert!(Sccp::attested_outbound(message_id));
-
-        assert_noop!(
-            Sccp::attest_burn(
-                RuntimeOrigin::signed(alice()),
-                SCCP_DOMAIN_ETH,
-                payload,
-                proof.encode(),
-            ),
-            Error::<Runtime>::BurnAlreadyAttested
-        );
-        assert!(take_aux_digest_items().is_empty());
-        assert!(Sccp::attested_outbound(message_id));
     });
 }
 
@@ -5397,7 +4538,7 @@ fn attest_burn_rejects_inbound_disabled_token_state() {
 
     ext.execute_with(|| {
         setup_active_token(asset_id);
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
 
         crate::pallet::Tokens::<Runtime>::mutate(asset_id, |state| {
             let s = state.as_mut().expect("token exists");
@@ -5437,8 +4578,7 @@ fn attest_burn_respects_inbound_and_outbound_pause_controls() {
         set_default_domain_endpoints();
         set_default_remote_tokens(asset_id);
         assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-        // Make ETH inbound finality available so the invalidation gate is reached.
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
@@ -5499,7 +4639,7 @@ fn attest_burn_rejects_invalidated_message() {
         set_default_domain_endpoints();
         set_default_remote_tokens(asset_id);
         assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
@@ -5609,7 +4749,7 @@ fn attest_burn_fails_closed_when_source_finality_is_unavailable() {
 }
 
 #[test]
-fn attest_burn_eth_requires_explicit_anchor_override_when_eth_light_client_unavailable() {
+fn attest_burn_eth_zk_override_enables_proof_path_when_beacon_unavailable() {
     let mut ext = ExtBuilder::default().build();
     let asset_id: AssetId = common::mock::ComicAssetId::BluePromise.into();
 
@@ -5642,8 +4782,7 @@ fn attest_burn_eth_requires_explicit_anchor_override_when_eth_light_client_unava
             Error::<Runtime>::InboundFinalityUnavailable
         );
 
-        // Explicit governance override to EVM anchor mode enables the proof path.
-        set_dummy_evm_anchor(SCCP_DOMAIN_ETH);
+        set_eth_zk_finality_available_for_test();
         assert_noop!(
             Sccp::attest_burn(
                 RuntimeOrigin::signed(alice()),
@@ -5895,6 +5034,294 @@ fn bsc_light_client_finalized_state_root_allows_mint_from_proof() {
             SCCP_DOMAIN_BSC,
             payload,
             proof.encode(),
+        ));
+
+        let after = assets::Pallet::<Runtime>::free_balance(&asset_id, &recipient_acc).unwrap();
+        assert_eq!(after - before, amount);
+    });
+}
+
+#[test]
+fn bsc_light_client_accepts_canonical_sccp_bsc_proof_bytes() {
+    use rlp::RlpStream;
+    use sp_core::ecdsa;
+    use sp_core::Pair;
+    use sp_core::H160;
+
+    fn leaf_path_for_hashed_key(key32: &[u8; 32]) -> Vec<u8> {
+        // Even length (64 nibbles) leaf => 0x20 prefix, then raw key bytes.
+        let mut out = Vec::with_capacity(33);
+        out.push(0x20);
+        out.extend_from_slice(key32);
+        out
+    }
+
+    fn rlp_leaf_node(compact_path: &[u8], value: &[u8]) -> Vec<u8> {
+        let mut s = RlpStream::new_list(2);
+        s.append(&compact_path);
+        s.append(&value);
+        s.out().to_vec()
+    }
+
+    fn rlp_account_value(storage_root: H256) -> Vec<u8> {
+        let mut s = RlpStream::new_list(4);
+        s.append(&1u8); // nonce
+        s.append(&0u8); // balance
+        s.append(&storage_root.as_bytes());
+        s.append(&[7u8; 32].as_slice()); // dummy code hash
+        s.out().to_vec()
+    }
+
+    fn header_rlp(
+        parent_hash: H256,
+        beneficiary: H160,
+        state_root: H256,
+        number: u64,
+        difficulty: u64,
+        extra_data: &[u8],
+    ) -> Vec<u8> {
+        let ommers_hash = [0x11u8; 32];
+        let tx_root = [0x33u8; 32];
+        let receipts_root = [0x44u8; 32];
+        let logs_bloom = [0u8; 256];
+        let gas_limit = 1_000_000u64;
+        let gas_used = 0u64;
+        let timestamp = number;
+        let mix_hash = [0u8; 32];
+        let nonce = [0u8; 8];
+
+        let mut s = RlpStream::new_list(15);
+        s.append(&parent_hash.as_bytes());
+        s.append(&ommers_hash.as_ref());
+        s.append(&beneficiary.as_bytes());
+        s.append(&state_root.as_bytes());
+        s.append(&tx_root.as_ref());
+        s.append(&receipts_root.as_ref());
+        s.append(&logs_bloom.as_ref());
+        s.append(&difficulty);
+        s.append(&number);
+        s.append(&gas_limit);
+        s.append(&gas_used);
+        s.append(&timestamp);
+        s.append(&extra_data);
+        s.append(&mix_hash.as_ref());
+        s.append(&nonce.as_ref());
+        s.out().to_vec()
+    }
+
+    fn eth_address_from_pair(pair: &ecdsa::Pair) -> H160 {
+        let msg = H256([9u8; 32]);
+        let sig = pair.sign_prehashed(&msg.0);
+        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&sig.0, &msg.0)
+            .ok()
+            .unwrap();
+        H160::from_slice(&keccak_256(&pk)[12..])
+    }
+
+    fn build_signed_header(
+        parent_hash: H256,
+        state_root: H256,
+        number: u64,
+        difficulty: u64,
+        signer: &ecdsa::Pair,
+    ) -> (Vec<u8>, H256) {
+        let vanity = [0u8; 32];
+        let chain_id = 56u64;
+        let beneficiary = eth_address_from_pair(signer);
+        let seal_rlp = {
+            // Mirror `bnb-chain/bsc/core/types.EncodeSigHeader` for legacy 15-field headers:
+            // rlp([chainId, header_fields..., extra_no_sig]).
+            let ommers_hash = [0x11u8; 32];
+            let tx_root = [0x33u8; 32];
+            let receipts_root = [0x44u8; 32];
+            let logs_bloom = [0u8; 256];
+            let gas_limit = 1_000_000u64;
+            let gas_used = 0u64;
+            let timestamp = number;
+            let mix_hash = [0u8; 32];
+            let nonce = [0u8; 8];
+
+            let mut s = RlpStream::new_list(16);
+            s.append(&chain_id);
+            s.append(&parent_hash.as_bytes());
+            s.append(&ommers_hash.as_ref());
+            s.append(&beneficiary.as_bytes());
+            s.append(&state_root.as_bytes());
+            s.append(&tx_root.as_ref());
+            s.append(&receipts_root.as_ref());
+            s.append(&logs_bloom.as_ref());
+            s.append(&difficulty);
+            s.append(&number);
+            s.append(&gas_limit);
+            s.append(&gas_used);
+            s.append(&timestamp);
+            s.append(&vanity.as_slice()); // extra without signature
+            s.append(&mix_hash.as_ref());
+            s.append(&nonce.as_ref());
+            s.out().to_vec()
+        };
+        let seal_hash = H256::from_slice(&keccak_256(&seal_rlp));
+        let sig = signer.sign_prehashed(&seal_hash.0);
+
+        let mut extra = vanity.to_vec();
+        extra.extend_from_slice(&sig.0);
+        let full_rlp = header_rlp(
+            parent_hash,
+            beneficiary,
+            state_root,
+            number,
+            difficulty,
+            &extra,
+        );
+        let full_hash = H256::from_slice(&keccak_256(&full_rlp));
+        (full_rlp, full_hash)
+    }
+
+    fn scale_compact_len(len: usize) -> Vec<u8> {
+        assert!(len < (1usize << 30), "length out of range for test");
+        if len < (1 << 6) {
+            return vec![(len as u8) << 2];
+        }
+        if len < (1 << 14) {
+            let encoded = ((len as u16) << 2) | 0b01;
+            return encoded.to_le_bytes().to_vec();
+        }
+        let encoded = ((len as u32) << 2) | 0b10;
+        encoded.to_le_bytes().to_vec()
+    }
+
+    fn scale_vec_of_bytes(items: &[Vec<u8>]) -> Vec<u8> {
+        let mut out = scale_compact_len(items.len());
+        for item in items {
+            out.extend(scale_compact_len(item.len()));
+            out.extend_from_slice(item);
+        }
+        out
+    }
+
+    fn manual_evm_burn_proof_bytes(
+        anchor_block_hash: H256,
+        account_proof: &[Vec<u8>],
+        storage_proof: &[Vec<u8>],
+    ) -> Vec<u8> {
+        let mut out = anchor_block_hash.as_bytes().to_vec();
+        out.extend(scale_vec_of_bytes(account_proof));
+        out.extend(scale_vec_of_bytes(storage_proof));
+        out
+    }
+
+    let mut ext = ExtBuilder::default().build();
+    let asset_id: AssetId = common::mock::ComicAssetId::BlackPepper.into();
+
+    ext.execute_with(|| {
+        register_mintable_asset(asset_id);
+        assert_ok!(Sccp::add_token(RuntimeOrigin::root(), asset_id));
+        set_default_domain_endpoints();
+        set_default_remote_tokens(asset_id);
+        assert_ok!(Sccp::activate_token(RuntimeOrigin::root(), asset_id));
+
+        // Burn payload on BSC -> mint on SORA.
+        let asset_h256: H256 = asset_id.into();
+        let amount: Balance = 10u32.into();
+        let recipient = [8u8; 32];
+        let payload = BurnPayloadV1 {
+            version: 1,
+            source_domain: SCCP_DOMAIN_BSC,
+            dest_domain: SCCP_DOMAIN_SORA,
+            nonce: 2,
+            sora_asset_id: asset_h256.0,
+            amount,
+            recipient,
+        };
+        let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+        preimage.extend(payload.encode());
+        let message_id = H256::from_slice(&keccak_256(&preimage));
+
+        // Router address configured via `set_default_domain_endpoints()`.
+        let router_addr = vec![12u8; 20];
+
+        // Mirror `sccp-bsc/scripts/build_burn_proof_to_sora.mjs` slot derivation:
+        // burns_slot_base = keccak256(messageId || u256_be(4)), storage_trie_key = keccak256(slot_base).
+        let mut slot_bytes = [0u8; 32];
+        slot_bytes[24..].copy_from_slice(&SCCP_EVM_BURNS_MAPPING_SLOT.to_be_bytes());
+        let mut slot_preimage = [0u8; 64];
+        slot_preimage[..32].copy_from_slice(&message_id.0);
+        slot_preimage[32..].copy_from_slice(&slot_bytes);
+        let slot_base = keccak_256(&slot_preimage);
+        let storage_key = keccak_256(&slot_base);
+        assert_eq!(
+            H256::from_slice(&storage_key),
+            crate::evm_burn_storage_key_for_message_id(message_id)
+        );
+
+        // Storage trie: a single leaf proving a non-zero value at `storage_key`.
+        let storage_path = leaf_path_for_hashed_key(&storage_key);
+        let storage_value_rlp = vec![0x01u8]; // RLP(uint256(1)) = 0x01
+        let storage_leaf = rlp_leaf_node(&storage_path, &storage_value_rlp);
+        let storage_root = H256::from_slice(&keccak_256(&storage_leaf));
+
+        // Account trie: a single leaf for router account, with `storageRoot = storage_root`.
+        let mut addr20 = [0u8; 20];
+        addr20.copy_from_slice(&router_addr);
+        let account_key = keccak_256(&addr20);
+        let account_path = leaf_path_for_hashed_key(&account_key);
+        let account_value = rlp_account_value(storage_root);
+        let account_leaf = rlp_leaf_node(&account_path, &account_value);
+        let state_root = H256::from_slice(&keccak_256(&account_leaf));
+
+        // Initialize BSC light client with 3 validators.
+        let v0 = ecdsa::Pair::from_seed(&[1u8; 32]);
+        let v1 = ecdsa::Pair::from_seed(&[2u8; 32]);
+        let v2 = ecdsa::Pair::from_seed(&[3u8; 32]);
+        let mut validators = vec![
+            (eth_address_from_pair(&v0), v0),
+            (eth_address_from_pair(&v1), v1),
+            (eth_address_from_pair(&v2), v2),
+        ];
+        validators.sort_by_key(|(addr, _)| addr.0);
+        let validator_addrs: Vec<H160> = validators.iter().map(|(a, _)| *a).collect();
+
+        // Checkpoint header #0 signed by validator[0].
+        let (checkpoint_rlp, checkpoint_hash) =
+            build_signed_header(H256([0u8; 32]), H256([1u8; 32]), 0, 2, &validators[0].1);
+        assert_ok!(Sccp::init_bsc_light_client(
+            RuntimeOrigin::root(),
+            checkpoint_rlp,
+            validator_addrs.clone(),
+            200,
+            0,  // finalized == head
+            56, // BSC chain id
+            1,  // turn length
+        ));
+
+        // Header #1 contains the desired `state_root`, signed by validator[1].
+        let (h1_rlp, h1_hash) =
+            build_signed_header(checkpoint_hash, state_root, 1, 2, &validators[1].1);
+        assert_ok!(Sccp::submit_bsc_header(
+            RuntimeOrigin::signed(alice()),
+            h1_rlp
+        ));
+
+        let account_proof = vec![account_leaf];
+        let storage_proof = vec![storage_leaf];
+        let manual_proof_bytes =
+            manual_evm_burn_proof_bytes(h1_hash, &account_proof, &storage_proof);
+        let proof = EvmBurnProofV1 {
+            anchor_block_hash: h1_hash,
+            account_proof: account_proof.clone(),
+            storage_proof: storage_proof.clone(),
+        };
+        assert_eq!(manual_proof_bytes, proof.encode());
+
+        let recipient_acc = AccountId::from(recipient);
+        let before = assets::Pallet::<Runtime>::free_balance(&asset_id, &recipient_acc)
+            .unwrap_or_else(|_| 0u32.into());
+
+        assert_ok!(Sccp::mint_from_proof(
+            RuntimeOrigin::signed(alice()),
+            SCCP_DOMAIN_BSC,
+            payload,
+            manual_proof_bytes,
         ));
 
         let after = assets::Pallet::<Runtime>::free_balance(&asset_id, &recipient_acc).unwrap();
