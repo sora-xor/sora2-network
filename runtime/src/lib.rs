@@ -47,7 +47,6 @@ pub mod constants;
 mod impls;
 pub mod migrations;
 mod sccp_eth_finalized;
-mod sccp_eth_zk;
 mod xor_fee_impls;
 
 #[cfg(test)]
@@ -2539,78 +2538,6 @@ impl sccp::EthFinalizedBurnProofVerifier for SccpEthFinalizedBurnProofVerifier {
     }
 }
 
-trait SccpEthZkBurnProofBackend {
-    fn is_available() -> bool;
-    fn verify_finalized_burn(_proof: &sccp::EthZkFinalizedBurnProofV1) -> bool;
-}
-
-impl SccpEthZkBurnProofBackend for () {
-    fn is_available() -> bool {
-        false
-    }
-
-    fn verify_finalized_burn(_proof: &sccp::EthZkFinalizedBurnProofV1) -> bool {
-        false
-    }
-}
-
-struct SccpEthZkStarkBackend;
-
-impl SccpEthZkBurnProofBackend for SccpEthZkStarkBackend {
-    fn is_available() -> bool {
-        true
-    }
-
-    fn verify_finalized_burn(proof: &sccp::EthZkFinalizedBurnProofV1) -> bool {
-        crate::sccp_eth_zk::verify_evm_burn_proof_binding_v1(proof)
-            && crate::sccp_eth_zk::verify_stark_v1(proof)
-    }
-}
-
-type SccpEthZkBurnProofBackendImpl = SccpEthZkStarkBackend;
-
-pub struct SccpEthZkFinalizedBurnProofVerifier;
-
-impl sccp::EthZkFinalizedBurnProofVerifier for SccpEthZkFinalizedBurnProofVerifier {
-    fn is_available() -> bool {
-        <SccpEthZkBurnProofBackendImpl as SccpEthZkBurnProofBackend>::is_available()
-    }
-
-    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
-        if !Self::is_available() {
-            return None;
-        }
-
-        let Some(decoded) = sccp::decode_eth_zk_finalized_burn_proof_v1(proof) else {
-            return Some(false);
-        };
-        if decoded.public_inputs.message_id != message_id {
-            return Some(false);
-        }
-
-        let Some(router_address) = sccp::Pallet::<Runtime>::domain_endpoint(sccp::SCCP_DOMAIN_ETH)
-        else {
-            return Some(false);
-        };
-        if router_address.len() != 20
-            || decoded.public_inputs.router_address.as_slice() != router_address.as_slice()
-        {
-            return Some(false);
-        }
-        if decoded.public_inputs.burn_storage_key
-            != sccp::evm_burn_storage_key_for_message_id(message_id)
-        {
-            return Some(false);
-        }
-
-        Some(
-            <SccpEthZkBurnProofBackendImpl as SccpEthZkBurnProofBackend>::verify_finalized_burn(
-                &decoded,
-            ),
-        )
-    }
-}
-
 pub struct SccpSolanaFinalizedBurnProofVerifier;
 
 impl sccp::SolanaFinalizedBurnProofVerifier for SccpSolanaFinalizedBurnProofVerifier {
@@ -2773,9 +2700,7 @@ impl sccp::Config for Runtime {
     type AssetInfoProvider = Assets;
     type LegacyBridgeAssetChecker = LegacyBridgeChecker;
     type AuxiliaryDigestHandler = LeafProvider;
-    type EthFinalizedStateProvider = ();
     type EthFinalizedBurnProofVerifier = SccpEthFinalizedBurnProofVerifier;
-    type EthZkFinalizedBurnProofVerifier = SccpEthZkFinalizedBurnProofVerifier;
     type SolanaFinalizedBurnProofVerifier = SccpSolanaFinalizedBurnProofVerifier;
     type SubstrateFinalizedBurnProofVerifier = SccpSubstrateFinalizedBurnProofVerifier;
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;

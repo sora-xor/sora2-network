@@ -99,9 +99,7 @@ impl sccp::Config for Runtime {
     type AssetInfoProvider = Assets;
     type LegacyBridgeAssetChecker = MockLegacyBridgeChecker;
     type AuxiliaryDigestHandler = MockAuxiliaryDigestHandler;
-    type EthFinalizedStateProvider = MockEthFinalizedStateProvider;
     type EthFinalizedBurnProofVerifier = MockEthFinalizedBurnProofVerifier;
-    type EthZkFinalizedBurnProofVerifier = MockEthZkFinalizedBurnProofVerifier;
     type SolanaFinalizedBurnProofVerifier = MockSolanaFinalizedBurnProofVerifier;
     type SubstrateFinalizedBurnProofVerifier = MockSubstrateFinalizedBurnProofVerifier;
     type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
@@ -114,9 +112,7 @@ impl sccp::Config for Runtime {
 thread_local! {
     static LEGACY_BRIDGE_ASSETS: RefCell<BTreeSet<AssetId>> = RefCell::new(BTreeSet::new());
     static AUX_DIGEST_ITEMS: RefCell<Vec<AuxiliaryDigestItem>> = RefCell::new(Vec::new());
-    static ETH_FINALIZED_STATE: RefCell<Option<(H256, H256)>> = RefCell::new(None);
     static ETH_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
-    static ETH_ZK_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
     static SOLANA_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
     static SUBSTRATE_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
 }
@@ -131,14 +127,6 @@ impl AuxiliaryDigestHandler for MockAuxiliaryDigestHandler {
 
 pub fn take_aux_digest_items() -> Vec<AuxiliaryDigestItem> {
     AUX_DIGEST_ITEMS.with(|v| core::mem::take(&mut *v.borrow_mut()))
-}
-
-pub struct MockEthFinalizedStateProvider;
-
-impl sccp::EthFinalizedStateProvider for MockEthFinalizedStateProvider {
-    fn latest_finalized_state() -> Option<(H256, H256)> {
-        ETH_FINALIZED_STATE.with(|s| *s.borrow())
-    }
 }
 
 pub struct MockEthFinalizedBurnProofVerifier;
@@ -170,40 +158,6 @@ impl sccp::EthFinalizedBurnProofVerifier for MockEthFinalizedBurnProofVerifier {
 
 pub fn set_eth_finalized_verify_result(result: Option<bool>) {
     ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
-}
-
-pub struct MockEthZkFinalizedBurnProofVerifier;
-
-impl sccp::EthZkFinalizedBurnProofVerifier for MockEthZkFinalizedBurnProofVerifier {
-    fn is_available() -> bool {
-        ETH_ZK_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
-    }
-
-    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
-        let Some(decoded) = sccp::decode_eth_zk_finalized_burn_proof_v1(proof) else {
-            return Some(false);
-        };
-        if decoded.public_inputs.message_id != message_id {
-            return Some(false);
-        }
-        let Some(router_address) = sccp::Pallet::<Runtime>::domain_endpoint(sccp::SCCP_DOMAIN_ETH)
-        else {
-            return Some(false);
-        };
-        if decoded.public_inputs.router_address.as_slice() != router_address.as_slice() {
-            return Some(false);
-        }
-        if decoded.public_inputs.burn_storage_key
-            != sccp::evm_burn_storage_key_for_message_id(message_id)
-        {
-            return Some(false);
-        }
-        ETH_ZK_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
-    }
-}
-
-pub fn set_eth_zk_finalized_verify_result(result: Option<bool>) {
-    ETH_ZK_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
 }
 
 pub struct MockSolanaFinalizedBurnProofVerifier;
@@ -298,7 +252,7 @@ impl ExtBuilder {
         // Reset thread-local "legacy bridge" state between tests.
         LEGACY_BRIDGE_ASSETS.with(|s| s.borrow_mut().clear());
         AUX_DIGEST_ITEMS.with(|v| v.borrow_mut().clear());
-        ETH_FINALIZED_STATE.with(|s| *s.borrow_mut() = None);
+        ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
         SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
         SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
 

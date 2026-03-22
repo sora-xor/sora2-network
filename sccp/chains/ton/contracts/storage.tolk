@@ -33,6 +33,7 @@ struct SccpBurnRecord {
 
 struct SccpStorageExtra {
     soraAssetId: uint256
+    tokenState: uint8
     nonce: uint64
     inboundPausedMask: uint64
     outboundPausedMask: uint64
@@ -40,6 +41,7 @@ struct SccpStorageExtra {
     // Incident controls.
     invalidatedInbound: map<uint256, bool>
     processedInbound: map<uint256, bool>
+    processedGovernance: map<uint256, bool>
 
     // On-chain burn records keyed by SCCP messageId.
     burns: map<uint256, Cell<SccpBurnRecord>>

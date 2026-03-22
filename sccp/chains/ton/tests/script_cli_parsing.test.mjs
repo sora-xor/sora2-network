@@ -250,13 +250,106 @@ test('deploy script rejects unknown and positional arguments cleanly', () => {
   }
 });
 
+test('deploy script dry-run emits verifier bind payload artifacts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sccp-ton-deploy-payload-'));
+  const mnemonicPath = join(dir, 'mnemonic.txt');
+  writeFileSync(
+    mnemonicPath,
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\n',
+    'utf8',
+  );
+
+  try {
+    const res = spawnSync(
+      process.execPath,
+      [
+        deployMainnetScript,
+        '--mnemonic-file',
+        mnemonicPath,
+        '--governor',
+        ZERO_ADDR,
+        '--sora-asset-id',
+        SAMPLE_SORA_ASSET_ID,
+      ],
+      {
+        encoding: 'utf8',
+      },
+    );
+
+    assert.equal(res.status, 0);
+    const out = JSON.parse(res.stdout);
+    assert.equal(out.mode, 'dry-run');
+    assert.equal(out.bootstrap.bindVerifier.target, out.master.address);
+    assert.equal(out.bootstrap.bindVerifier.verifierAddress, out.verifier.address);
+    assert.match(out.bootstrap.bindVerifier.bodyBocBase64, /^[A-Za-z0-9+/=]+$/);
+    assert.match(out.bootstrap.bindVerifier.bodyBocHex, /^[0-9a-f]+$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('deploy script dry-run emits verifier initialize payload when bootstrap inputs are provided', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sccp-ton-deploy-init-payload-'));
+  const mnemonicPath = join(dir, 'mnemonic.txt');
+  writeFileSync(
+    mnemonicPath,
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\n',
+    'utf8',
+  );
+
+  try {
+    const res = spawnSync(
+      process.execPath,
+      [
+        deployMainnetScript,
+        '--mnemonic-file',
+        mnemonicPath,
+        '--governor',
+        ZERO_ADDR,
+        '--sora-asset-id',
+        SAMPLE_SORA_ASSET_ID,
+        '--latest-beefy-block',
+        '7',
+        '--current-validator-set-id',
+        '1',
+        '--current-validator-set-len',
+        '4',
+        '--current-validator-set-root',
+        `0x${'22'.repeat(32)}`,
+        '--next-validator-set-id',
+        '2',
+        '--next-validator-set-len',
+        '4',
+        '--next-validator-set-root',
+        `0x${'33'.repeat(32)}`,
+      ],
+      {
+        encoding: 'utf8',
+      },
+    );
+
+    assert.equal(res.status, 0);
+    const out = JSON.parse(res.stdout);
+    assert.equal(out.mode, 'dry-run');
+    assert.equal(out.bootstrap.verifierInitialize.target, out.verifier.address);
+    assert.equal(out.bootstrap.verifierInitialize.inputsComplete, true);
+    assert.deepEqual(out.bootstrap.verifierInitialize.missingInputs, []);
+    assert.match(out.bootstrap.verifierInitialize.bodyBocBase64, /^[A-Za-z0-9+/=]+$/);
+    assert.match(out.bootstrap.verifierInitialize.bodyBocHex, /^[0-9a-f]+$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('python deploy wrapper resolves relative output paths before handing off to node', () => {
   const stubToolDir = mkdtempSync(join(tmpdir(), 'sccp-ton-stub-node-'));
   const callerDir = mkdtempSync(join(tmpdir(), 'sccp-ton-python-wrapper-'));
   const resolvedCallerDir = realpathSync(callerDir);
   const capturePath = join(callerDir, 'capture.json');
   const mnemonicPath = join(callerDir, 'mnemonic.txt');
+  const governorMnemonicPath = join(callerDir, 'governor-mnemonic.txt');
   writeFileSync(mnemonicPath, 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\n', 'utf8');
+  writeFileSync(governorMnemonicPath, 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about\n', 'utf8');
   writeFileSync(
     join(stubToolDir, 'node'),
     `#!/bin/sh
@@ -287,6 +380,26 @@ exit 0
         ZERO_ADDR,
         '--sora-asset-id',
         SAMPLE_SORA_ASSET_ID,
+        '--governor-mnemonic-file',
+        governorMnemonicPath,
+        '--bind-verifier-value',
+        '0.07',
+        '--initialize-verifier-value',
+        '0.09',
+        '--latest-beefy-block',
+        '7',
+        '--current-validator-set-id',
+        '1',
+        '--current-validator-set-len',
+        '4',
+        '--current-validator-set-root',
+        `0x${'22'.repeat(32)}`,
+        '--next-validator-set-id',
+        '2',
+        '--next-validator-set-len',
+        '4',
+        '--next-validator-set-root',
+        `0x${'33'.repeat(32)}`,
         '--out',
         'out.json',
         '--state-file',
@@ -303,10 +416,28 @@ exit 0
     const capture = JSON.parse(readFileSync(capturePath, 'utf8'));
     const outIndex = capture.argv.indexOf('--out');
     const stateIndex = capture.argv.indexOf('--state-file');
+    const governorMnemonicIndex = capture.argv.indexOf('--governor-mnemonic-file');
+    const bindValueIndex = capture.argv.indexOf('--bind-verifier-value');
+    const initializeValueIndex = capture.argv.indexOf('--initialize-verifier-value');
+    const latestBeefyBlockIndex = capture.argv.indexOf('--latest-beefy-block');
+    const currentValidatorSetRootIndex = capture.argv.indexOf('--current-validator-set-root');
+    const nextValidatorSetRootIndex = capture.argv.indexOf('--next-validator-set-root');
     assert.notEqual(outIndex, -1);
     assert.notEqual(stateIndex, -1);
+    assert.notEqual(governorMnemonicIndex, -1);
+    assert.notEqual(bindValueIndex, -1);
+    assert.notEqual(initializeValueIndex, -1);
+    assert.notEqual(latestBeefyBlockIndex, -1);
+    assert.notEqual(currentValidatorSetRootIndex, -1);
+    assert.notEqual(nextValidatorSetRootIndex, -1);
     assert.equal(capture.argv[outIndex + 1], join(resolvedCallerDir, 'out.json'));
     assert.equal(capture.argv[stateIndex + 1], join(resolvedCallerDir, 'state.json'));
+    assert.equal(capture.argv[governorMnemonicIndex + 1], join(resolvedCallerDir, 'governor-mnemonic.txt'));
+    assert.equal(capture.argv[bindValueIndex + 1], '0.07');
+    assert.equal(capture.argv[initializeValueIndex + 1], '0.09');
+    assert.equal(capture.argv[latestBeefyBlockIndex + 1], '7');
+    assert.equal(capture.argv[currentValidatorSetRootIndex + 1], `0x${'22'.repeat(32)}`);
+    assert.equal(capture.argv[nextValidatorSetRootIndex + 1], `0x${'33'.repeat(32)}`);
   } finally {
     rmSync(stubToolDir, { recursive: true, force: true });
     rmSync(callerDir, { recursive: true, force: true });

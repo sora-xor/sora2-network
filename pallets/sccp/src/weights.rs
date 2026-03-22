@@ -73,6 +73,8 @@ pub trait WeightInfo {
 	fn set_solana_vote_authorities(a: u32, ) -> Weight;
 	fn clear_solana_vote_authorities() -> Weight;
 	fn activate_token() -> Weight;
+	fn pause_token() -> Weight;
+	fn resume_token() -> Weight;
 	fn remove_token() -> Weight;
 	fn finalize_remove() -> Weight;
 	fn set_inbound_grace_period() -> Weight;
@@ -292,6 +294,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(12_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+	fn pause_token() -> Weight {
+		Self::activate_token()
+	}
+	fn resume_token() -> Weight {
+		Self::activate_token()
+	}
 	/// Storage: Sccp InboundGracePeriod (r:1 w:0)
 	/// Proof Skipped: Sccp InboundGracePeriod (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Sccp Tokens (r:1 w:1)
@@ -428,10 +436,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Sccp DomainEndpoint (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundFinalityModes (r:1 w:0)
 	/// Proof Skipped: Sccp InboundFinalityModes (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmAnchorModeEnabled (r:1 w:0)
-	/// Proof Skipped: Sccp EvmAnchorModeEnabled (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmInboundAnchors (r:1 w:0)
-	/// Proof Skipped: Sccp EvmInboundAnchors (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundDomainPaused (r:1 w:0)
 	/// Proof Skipped: Sccp InboundDomainPaused (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp RemoteToken (r:1 w:0)
@@ -459,10 +463,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Sccp DomainEndpoint (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundFinalityModes (r:1 w:0)
 	/// Proof Skipped: Sccp InboundFinalityModes (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmAnchorModeEnabled (r:1 w:0)
-	/// Proof Skipped: Sccp EvmAnchorModeEnabled (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmInboundAnchors (r:1 w:0)
-	/// Proof Skipped: Sccp EvmInboundAnchors (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp Tokens (r:1 w:0)
 	/// Proof Skipped: Sccp Tokens (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp RemoteToken (r:2 w:0)
@@ -686,6 +686,12 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(12_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+	fn pause_token() -> Weight {
+		Self::activate_token()
+	}
+	fn resume_token() -> Weight {
+		Self::activate_token()
+	}
 	/// Storage: Sccp InboundGracePeriod (r:1 w:0)
 	/// Proof Skipped: Sccp InboundGracePeriod (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: Sccp Tokens (r:1 w:1)
@@ -822,10 +828,6 @@ impl WeightInfo for () {
 	/// Proof Skipped: Sccp DomainEndpoint (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundFinalityModes (r:1 w:0)
 	/// Proof Skipped: Sccp InboundFinalityModes (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmAnchorModeEnabled (r:1 w:0)
-	/// Proof Skipped: Sccp EvmAnchorModeEnabled (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmInboundAnchors (r:1 w:0)
-	/// Proof Skipped: Sccp EvmInboundAnchors (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundDomainPaused (r:1 w:0)
 	/// Proof Skipped: Sccp InboundDomainPaused (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp RemoteToken (r:1 w:0)
@@ -853,10 +855,6 @@ impl WeightInfo for () {
 	/// Proof Skipped: Sccp DomainEndpoint (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp InboundFinalityModes (r:1 w:0)
 	/// Proof Skipped: Sccp InboundFinalityModes (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmAnchorModeEnabled (r:1 w:0)
-	/// Proof Skipped: Sccp EvmAnchorModeEnabled (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Sccp EvmInboundAnchors (r:1 w:0)
-	/// Proof Skipped: Sccp EvmInboundAnchors (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp Tokens (r:1 w:0)
 	/// Proof Skipped: Sccp Tokens (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Sccp RemoteToken (r:2 w:0)

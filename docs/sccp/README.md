@@ -5,12 +5,15 @@ SCCP is a burn/mint cross-chain protocol intended to be **fully on-chain**:
 - burns create on-chain burn records + deterministic `messageId`
 - mints require an on-chain verifiable proof that the burn `messageId` is finalized
 - SORA governance only manages configuration and incident response; verification is intended to be light-client based
-- token activation on SORA enforces deployed remote representations + endpoints on all SCCP core target domains (ETH/BSC/SOL/TON/TRON)
-- SCCP required-domain config is canonicalized and validated at both governance update time and genesis build time (fail-fast on invalid genesis values); for first release it is pinned to the exact SCCP core domain set (ETH/BSC/SOL/TON/TRON)
+- token activation on SORA enforces deployed remote representations + endpoints on all SCCP core target domains (`ETH/BSC/SOL/TON/TRON/SORA_KUSAMA/SORA_POLKADOT`)
+- SCCP required-domain config is canonicalized and validated at both governance update time and genesis build time (fail-fast on invalid genesis values); it is currently pinned to the exact SCCP core domain set (`ETH/BSC/SOL/TON/TRON/SORA_KUSAMA/SORA_POLKADOT`)
+- canonical router/verifier/master addresses are still deployed first, then whitelisted on SORA via `set_domain_endpoint` and `set_remote_token`
+- initial verifier bootstrap remains a deployment/bootstrap step on Solana/TON; it is not redesigned into a SORA governance proof flow
+- steady-state destination token lifecycle is proof-driven on every destination: SORA emits governance commitments, destinations verify one canonical `messageId`, and lifecycle changes are `addTokenFromProof` / `pauseTokenFromProof` / `resumeTokenFromProof`
+- Solana steady state uses deterministic PDA mints only, and TON steady state uses the canonical predeployed jetton master only
 - SCCP token registration is exclusive with legacy bridge routes: `add_token` rejects assets already on legacy bridges (EVM/TON), including queued legacy EVM `add_asset` requests
 - inbound finality modes for ETH/SOL are wired through on-chain verifier hooks:
-  `EthFinalizedStateProvider`, `EthZkFinalizedBurnProofVerifier`, `SolanaFinalizedBurnProofVerifier`
-- ETH `EthZkProof` is backed by a native no-trusted-setup STARK/FRI verifier in the runtime
+  `EthFinalizedBurnProofVerifier`, `SolanaFinalizedBurnProofVerifier`
 - TON inbound verification is native to `pallet-sccp` via checkpointed `TonBurnProofV1` decoding and config binding
 
 ## Docs In This Repo (SORA)
@@ -52,10 +55,12 @@ SORA -> destination verifier encoders now live with the imported chain code:
 
 - `sccp/chains/sol/scripts/encode_sora_burn_proof.py`
 - `sccp/chains/ton/scripts/encode_sora_proof_cell.mjs`
+- governance payload/message-id helpers are implemented in the destination chain codecs for EVM, Solana, and TON
 
 MCP server for AI agents (stateless, external-signer-only):
 
 - `misc/sccp-mcp` (`cargo run` in that directory; configure networks via `config.toml` and set `SCCP_MCP_AUTH_TOKEN` unless using inline `[auth].required_token`)
+- SORA governance surfaces include `pause_token` and `resume_token` alongside existing SCCP configuration calls
 
 Coverage-guided proof-helper fuzzing:
 

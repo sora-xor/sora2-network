@@ -23,11 +23,17 @@ const SCCP_SET_OUTBOUND_PAUSED = 0x91f4c2a7;
 const SCCP_INVALIDATE_INBOUND = 0x4a28c9d7;
 const SCCP_REVALIDATE_INBOUND = 0x6c1e27b4;
 const SCCP_MINT_FROM_VERIFIER = 0x23e4c1a0;
+const SCCP_ADD_TOKEN_FROM_VERIFIER = 0x23e4c1a1;
+const SCCP_PAUSE_TOKEN_FROM_VERIFIER = 0x23e4c1a2;
+const SCCP_RESUME_TOKEN_FROM_VERIFIER = 0x23e4c1a3;
 const SCCP_BURN_TO_DOMAIN = 0x4f80d7e1;
 const SCCP_VERIFIER_INITIALIZE = 0x35f2bca1;
 const SCCP_VERIFIER_SUBMIT_SIGNATURE_COMMITMENT = 0x6a4df0b3;
 const SCCP_VERIFIER_MINT_FROM_SORA_PROOF = 0x1a9b2c7d;
 const SCCP_VERIFIER_MINT_FROM_SORA_PROOF_V2 = 0x1a9b2c7e;
+const SCCP_VERIFIER_ADD_TOKEN_FROM_SORA_PROOF = 0x1a9b2c80;
+const SCCP_VERIFIER_PAUSE_TOKEN_FROM_SORA_PROOF = 0x1a9b2c81;
+const SCCP_VERIFIER_RESUME_TOKEN_FROM_SORA_PROOF = 0x1a9b2c82;
 
 // SCCP domains (must match other repos + SORA pallet).
 const DOMAIN_SORA = 0;
@@ -55,6 +61,11 @@ const ERROR_SCCP_INVALID_VALIDATOR_PROOF = 1019;
 const ERROR_SCCP_INVALID_SIGNATURE = 1020;
 const ERROR_SCCP_OUTBOUND_PAUSED = 1021;
 const ERROR_SCCP_ADMIN_PATH_DISABLED = 1022;
+const ERROR_SCCP_TOKEN_NOT_ACTIVE = 1023;
+const ERROR_SCCP_TOKEN_NOT_PAUSED = 1024;
+
+const TOKEN_STATE_PAUSED = 0;
+const TOKEN_STATE_ACTIVE = 1;
 const SECP256K1N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
 
 function loadArtifact(name) {
@@ -67,6 +78,73 @@ function codeFromArtifact(artifact) {
 
 function addressToU256(addr) {
   return BigInt('0x' + addr.hash.toString('hex'));
+}
+
+function u32le(value) {
+  const out = Buffer.alloc(4);
+  out.writeUInt32LE(value);
+  return out;
+}
+
+function u64le(value) {
+  const out = Buffer.alloc(8);
+  out.writeBigUInt64LE(BigInt(value));
+  return out;
+}
+
+function u256be(value) {
+  return Buffer.from(BigInt(value).toString(16).padStart(64, '0'), 'hex');
+}
+
+function asciiFixed32(str) {
+  const buf = Buffer.alloc(32);
+  const src = Buffer.from(str, 'ascii');
+  assert.ok(src.length <= 32, 'asciiFixed32 overflow');
+  src.copy(buf);
+  return buf;
+}
+
+function tokenAddMessageId({
+  targetDomain,
+  governanceNonce,
+  soraAssetIdU256,
+  decimals,
+  nameBytes32,
+  symbolBytes32,
+}) {
+  const payload = Buffer.concat([
+    Buffer.from('sccp:token:add:v1', 'utf8'),
+    Buffer.from([1]),
+    u32le(targetDomain),
+    u64le(governanceNonce),
+    u256be(soraAssetIdU256),
+    Buffer.from([decimals]),
+    Buffer.from(nameBytes32),
+    Buffer.from(symbolBytes32),
+  ]);
+  return BigInt(ethers.keccak256(payload));
+}
+
+function tokenPauseMessageId({ targetDomain, governanceNonce, soraAssetIdU256 }) {
+  const payload = Buffer.concat([
+    Buffer.from('sccp:token:pause:v1', 'utf8'),
+    Buffer.from([1]),
+    u32le(targetDomain),
+    u64le(governanceNonce),
+    u256be(soraAssetIdU256),
+  ]);
+  return BigInt(ethers.keccak256(payload));
+}
+
+function tokenResumeMessageId({ targetDomain, governanceNonce, soraAssetIdU256 }) {
+  const payload = Buffer.concat([
+    Buffer.from('sccp:token:resume:v1', 'utf8'),
+    Buffer.from([1]),
+    u32le(targetDomain),
+    u64le(governanceNonce),
+    u256be(soraAssetIdU256),
+  ]);
+  return BigInt(ethers.keccak256(payload));
 }
 
 function txExitCode(tx) {
@@ -87,11 +165,13 @@ function buildMasterData({ governor, verifier, walletCode, metadataUri, soraAsse
 
   const sccpExtraB = beginCell();
   sccpExtraB.storeUint(soraAssetIdU256, 256);
+  sccpExtraB.storeUint(TOKEN_STATE_PAUSED, 8); // tokenState
   sccpExtraB.storeUint(0, 64); // nonce
   sccpExtraB.storeUint(0, 64); // inboundPausedMask
   sccpExtraB.storeUint(0, 64); // outboundPausedMask
   emptyBoolMap.store(sccpExtraB); // invalidatedInbound
   emptyBoolMap.store(sccpExtraB); // processedInbound
+  emptyBoolMap.store(sccpExtraB); // processedGovernance
   emptyBurnsMap.store(sccpExtraB); // burns
   const sccpExtra = sccpExtraB.endCell();
 
@@ -195,6 +275,36 @@ class SccpJettonMaster {
     await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
   }
 
+  async sendAddTokenFromVerifier(provider, via, value, { messageIdU256, soraAssetIdU256 }) {
+    const body = beginCell()
+      .storeUint(SCCP_ADD_TOKEN_FROM_VERIFIER, 32)
+      .storeUint(0, 64)
+      .storeUint(messageIdU256, 256)
+      .storeUint(soraAssetIdU256, 256)
+      .endCell();
+    await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
+  }
+
+  async sendPauseTokenFromVerifier(provider, via, value, { messageIdU256, soraAssetIdU256 }) {
+    const body = beginCell()
+      .storeUint(SCCP_PAUSE_TOKEN_FROM_VERIFIER, 32)
+      .storeUint(0, 64)
+      .storeUint(messageIdU256, 256)
+      .storeUint(soraAssetIdU256, 256)
+      .endCell();
+    await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
+  }
+
+  async sendResumeTokenFromVerifier(provider, via, value, { messageIdU256, soraAssetIdU256 }) {
+    const body = beginCell()
+      .storeUint(SCCP_RESUME_TOKEN_FROM_VERIFIER, 32)
+      .storeUint(0, 64)
+      .storeUint(messageIdU256, 256)
+      .storeUint(soraAssetIdU256, 256)
+      .endCell();
+    await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
+  }
+
   async getSccpConfig(provider) {
     const res = await provider.get('get_sccp_config');
     const governor = res.stack.readAddress();
@@ -235,6 +345,11 @@ class SccpJettonMaster {
   async getBurnRecord(provider, messageIdU256) {
     const res = await provider.get('get_sccp_burn_record', [{ type: 'int', value: BigInt(messageIdU256) }]);
     return res.stack.readCellOpt();
+  }
+
+  async getSccpTokenState(provider) {
+    const res = await provider.get('get_sccp_token_state');
+    return Number(res.stack.readBigNumber());
   }
 }
 
@@ -414,6 +529,63 @@ class SccpSoraVerifier {
       .endCell();
     await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
   }
+
+  async sendAddTokenFromSoraProof(provider, via, value, {
+    targetDomain,
+    governanceNonce,
+    soraAssetIdU256,
+    decimals,
+    nameBytes32,
+    symbolBytes32,
+    proofCell,
+  }) {
+    const body = beginCell()
+      .storeUint(SCCP_VERIFIER_ADD_TOKEN_FROM_SORA_PROOF, 32)
+      .storeUint(0, 64)
+      .storeUint(targetDomain, 32)
+      .storeUint(governanceNonce, 64)
+      .storeUint(soraAssetIdU256, 256)
+      .storeUint(decimals, 8)
+      .storeUint(BigInt(`0x${Buffer.from(nameBytes32).toString('hex')}`), 256)
+      .storeUint(BigInt(`0x${Buffer.from(symbolBytes32).toString('hex')}`), 256)
+      .storeRef(proofCell)
+      .endCell();
+    await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
+  }
+
+  async sendPauseTokenFromSoraProof(provider, via, value, {
+    targetDomain,
+    governanceNonce,
+    soraAssetIdU256,
+    proofCell,
+  }) {
+    const body = beginCell()
+      .storeUint(SCCP_VERIFIER_PAUSE_TOKEN_FROM_SORA_PROOF, 32)
+      .storeUint(0, 64)
+      .storeUint(targetDomain, 32)
+      .storeUint(governanceNonce, 64)
+      .storeUint(soraAssetIdU256, 256)
+      .storeRef(proofCell)
+      .endCell();
+    await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
+  }
+
+  async sendResumeTokenFromSoraProof(provider, via, value, {
+    targetDomain,
+    governanceNonce,
+    soraAssetIdU256,
+    proofCell,
+  }) {
+    const body = beginCell()
+      .storeUint(SCCP_VERIFIER_RESUME_TOKEN_FROM_SORA_PROOF, 32)
+      .storeUint(0, 64)
+      .storeUint(targetDomain, 32)
+      .storeUint(governanceNonce, 64)
+      .storeUint(soraAssetIdU256, 256)
+      .storeRef(proofCell)
+      .endCell();
+    await provider.internal(via, { value, sendMode: SendMode.PAY_GAS_SEPARATELY, body });
+  }
 }
 
 test('SCCP Jetton master is fail-closed until verifier is set', async () => {
@@ -513,7 +685,7 @@ test('SCCP Jetton master accepts mint-from-verifier only from configured verifie
     SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
   );
   await master.sendDeploy(governor.getSender(), 1_000_000_000n);
-  await master.sendSetVerifier(verifier.getSender(), 1_000_000_000n, verifier.address);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
 
   const aliceRecipient32 = addressToU256(alice.address);
   const out = await master.sendMintFromVerifier(alice.getSender(), 1_000_000_000n, {
@@ -542,7 +714,7 @@ test('SCCP Jetton master refuses verifier reassignment after bootstrap', async (
     SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
   );
   await master.sendDeploy(governor.getSender(), 1_000_000_000n);
-  await master.sendSetVerifier(verifier.getSender(), 1_000_000_000n, verifier.address);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
   const out = await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, null);
 
   const tx = findTxByAddress(out.transactions, master.address);
@@ -565,7 +737,7 @@ test('SCCP Jetton master rejects zero recipient in verifier mint path', async ()
     SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
   );
   await master.sendDeploy(governor.getSender(), 1_000_000_000n);
-  await master.sendSetVerifier(verifier.getSender(), 1_000_000_000n, verifier.address);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
 
   const out = await master.sendMintFromVerifier(verifier.getSender(), 1_000_000_000n, {
     sourceDomain: DOMAIN_SORA,
@@ -594,7 +766,7 @@ test('SCCP Jetton master rejects unsupported verifier source domains', async () 
     SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
   );
   await master.sendDeploy(governor.getSender(), 1_000_000_000n);
-  await master.sendSetVerifier(verifier.getSender(), 1_000_000_000n, verifier.address);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
 
   const aliceRecipient32 = addressToU256(alice.address);
   const out = await master.sendMintFromVerifier(verifier.getSender(), 1_000_000_000n, {
@@ -625,7 +797,7 @@ test('SCCP Jetton master rejects local verifier source domain', async () => {
     SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
   );
   await master.sendDeploy(governor.getSender(), 1_000_000_000n);
-  await master.sendSetVerifier(verifier.getSender(), 1_000_000_000n, verifier.address);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
 
   const aliceRecipient32 = addressToU256(alice.address);
   const out = await master.sendMintFromVerifier(verifier.getSender(), 1_000_000_000n, {
@@ -656,7 +828,7 @@ test('SCCP Jetton master rejects disabled local admin controls', async () => {
     SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
   );
   await master.sendDeploy(governor.getSender(), 1_000_000_000n);
-  await master.sendSetVerifier(verifier.getSender(), 1_000_000_000n, verifier.address);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
 
   let out = await master.sendSetInboundPaused(governor.getSender(), 1_000_000_000n, DOMAIN_TON, true);
   let tx = findTxByAddress(out.transactions, master.address);
@@ -686,6 +858,73 @@ test('SCCP Jetton master rejects disabled local admin controls', async () => {
   tx = findTxByAddress(out.transactions, master.address);
   assert.ok(tx, 'expected a master tx for revalidation');
   assert.equal(txExitCode(tx), ERROR_SCCP_ADMIN_PATH_DISABLED);
+});
+
+test('SCCP Jetton master accepts lifecycle mutations only from configured verifier and rejects governance replays', async () => {
+  const masterArtifact = loadArtifact('sccp-jetton-master.compiled.json');
+  const walletArtifact = loadArtifact('sccp-jetton-wallet.compiled.json');
+  const masterCode = codeFromArtifact(masterArtifact);
+  const walletCode = codeFromArtifact(walletArtifact);
+
+  const blockchain = await Blockchain.create();
+  const governor = await blockchain.treasury('governor');
+  const verifier = await blockchain.treasury('verifier');
+  const stranger = await blockchain.treasury('stranger');
+
+  const soraAssetIdU256 = BigInt('0x' + '11'.repeat(32));
+  const master = blockchain.openContract(
+    SccpJettonMaster.createFromArtifacts(masterCode, walletCode, governor.address, soraAssetIdU256),
+  );
+  await master.sendDeploy(governor.getSender(), 1_000_000_000n);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
+
+  const addMessageIdU256 = BigInt('0x' + 'aa'.repeat(32));
+  const pauseMessageIdU256 = BigInt('0x' + 'bb'.repeat(32));
+  const resumeMessageIdU256 = BigInt('0x' + 'cc'.repeat(32));
+
+  let out = await master.sendAddTokenFromVerifier(stranger.getSender(), 1_000_000_000n, {
+    messageIdU256: addMessageIdU256,
+    soraAssetIdU256,
+  });
+  let tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx');
+  assert.equal(txExitCode(tx), ERROR_SCCP_NOT_VERIFIER);
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_PAUSED);
+
+  out = await master.sendAddTokenFromVerifier(verifier.getSender(), 1_000_000_000n, {
+    messageIdU256: addMessageIdU256,
+    soraAssetIdU256,
+  });
+  tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx');
+  assert.equal(txExitCode(tx), 0);
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_ACTIVE);
+
+  out = await master.sendPauseTokenFromVerifier(verifier.getSender(), 1_000_000_000n, {
+    messageIdU256: pauseMessageIdU256,
+    soraAssetIdU256,
+  });
+  tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx');
+  assert.equal(txExitCode(tx), 0);
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_PAUSED);
+
+  out = await master.sendPauseTokenFromVerifier(verifier.getSender(), 1_000_000_000n, {
+    messageIdU256: pauseMessageIdU256,
+    soraAssetIdU256,
+  });
+  tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx');
+  assert.equal(txExitCode(tx), ERROR_SCCP_MESSAGE_ALREADY_PROCESSED);
+
+  out = await master.sendResumeTokenFromVerifier(verifier.getSender(), 1_000_000_000n, {
+    messageIdU256: resumeMessageIdU256,
+    soraAssetIdU256,
+  });
+  tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx');
+  assert.equal(txExitCode(tx), 0);
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_ACTIVE);
 });
 
 test('SCCP verifier V2 rejects unsupported source domains', async () => {
@@ -795,7 +1034,7 @@ test('SCCP verifier rejects submit-signature-commitment before initialization', 
   assert.equal(txExitCode(tx), ERROR_SCCP_VERIFIER_NOT_INITIALIZED);
 });
 
-test('SCCP verifier initialize is permissionless once', async () => {
+test('SCCP verifier initialize requires the configured governor', async () => {
   const verifierArtifact = loadArtifact('sccp-sora-verifier.compiled.json');
   const verifierCode = codeFromArtifact(verifierArtifact);
 
@@ -821,10 +1060,10 @@ test('SCCP verifier initialize is permissionless once', async () => {
   });
   const tx = findTxByAddress(out.transactions, verifier.address);
   assert.ok(tx, 'expected a verifier tx');
-  assert.equal(txExitCode(tx), 0);
+  assert.equal(txExitCode(tx), ERROR_NOT_OWNER);
 });
 
-test('SCCP verifier initialize self-registers the jetton master once', async () => {
+test('SCCP verifier initialize no longer self-registers the jetton master', async () => {
   const masterArtifact = loadArtifact('sccp-jetton-master.compiled.json');
   const walletArtifact = loadArtifact('sccp-jetton-wallet.compiled.json');
   const verifierArtifact = loadArtifact('sccp-sora-verifier.compiled.json');
@@ -834,7 +1073,7 @@ test('SCCP verifier initialize self-registers the jetton master once', async () 
 
   const blockchain = await Blockchain.create();
   const governor = await blockchain.treasury('governor');
-  const alice = await blockchain.treasury('alice');
+  const stranger = await blockchain.treasury('stranger');
 
   const soraAssetIdU256 = BigInt('0x' + '11'.repeat(32));
   const master = blockchain.openContract(
@@ -847,7 +1086,7 @@ test('SCCP verifier initialize self-registers the jetton master once', async () 
   );
   await verifier.sendDeploy(governor.getSender(), 1_000_000_000n);
 
-  await verifier.sendInitialize(alice.getSender(), 1_000_000_000n, {
+  await verifier.sendInitialize(governor.getSender(), 1_000_000_000n, {
     latestBeefyBlock: 0,
     currentValidatorSetId: 1n,
     currentValidatorSetLen: 1,
@@ -857,7 +1096,20 @@ test('SCCP verifier initialize self-registers the jetton master once', async () 
     nextValidatorSetRootU256: 0n,
   });
 
-  const cfg = await master.getSccpConfig();
+  let cfg = await master.getSccpConfig();
+  assert.equal(cfg.verifier, null);
+
+  let out = await master.sendSetVerifier(stranger.getSender(), 1_000_000_000n, verifier.address);
+  let tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx for unauthorized bind');
+  assert.equal(txExitCode(tx), ERROR_SCCP_ADMIN_PATH_DISABLED);
+
+  out = await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
+  tx = findTxByAddress(out.transactions, master.address);
+  assert.ok(tx, 'expected a master tx for governor bind');
+  assert.equal(txExitCode(tx), 0);
+
+  cfg = await master.getSccpConfig();
   assert.equal(cfg.verifier?.toString(), verifier.address.toString());
 });
 
@@ -1168,6 +1420,7 @@ test('SCCP Jetton flow: mint (verifier-gated), replay blocked, admin paths disab
     SccpSoraVerifier.createFromArtifacts(verifierCode, governor.address, master.address, soraAssetIdU256),
   );
   await verifier.sendDeploy(governor.getSender(), 1_000_000_000n);
+  await master.sendSetVerifier(governor.getSender(), 1_000_000_000n, verifier.address);
 
   // Build a single SORA "leaf provider" digest that commits to multiple SCCP messageIds.
   const mintNonce1 = 777n;
@@ -1176,10 +1429,34 @@ test('SCCP Jetton flow: mint (verifier-gated), replay blocked, admin paths disab
   const mintAmountEth = 7n;
   const mintNonce2 = 888n;
   const mintAmount2 = 1n;
+  const addGovernanceNonce = 1n;
+  const pauseGovernanceNonce = 2n;
+  const resumeGovernanceNonce = 3n;
+  const tokenDecimals = 9;
+  const tokenName = asciiFixed32('SORA Token');
+  const tokenSymbol = asciiFixed32('SCCP');
 
   const msgId1 = await master.getInboundMessageId(DOMAIN_SORA, mintNonce1, mintAmount1, aliceRecipient32);
   const msgIdEth = await master.getInboundMessageId(DOMAIN_ETH, mintNonceEth, mintAmountEth, aliceRecipient32);
   const msgId2 = await master.getInboundMessageId(DOMAIN_SORA, mintNonce2, mintAmount2, aliceRecipient32);
+  const addMsgId = tokenAddMessageId({
+    targetDomain: DOMAIN_TON,
+    governanceNonce: addGovernanceNonce,
+    soraAssetIdU256,
+    decimals: tokenDecimals,
+    nameBytes32: tokenName,
+    symbolBytes32: tokenSymbol,
+  });
+  const pauseMsgId = tokenPauseMessageId({
+    targetDomain: DOMAIN_TON,
+    governanceNonce: pauseGovernanceNonce,
+    soraAssetIdU256,
+  });
+  const resumeMsgId = tokenResumeMessageId({
+    targetDomain: DOMAIN_TON,
+    governanceNonce: resumeGovernanceNonce,
+    soraAssetIdU256,
+  });
 
   function buildDigestScaleForMessageIds(messageIds) {
     // SCALE Vec<AuxiliaryDigestItem>, where we only support AuxiliaryDigestItem::Commitment(GenericNetworkId::EVMLegacy(u32), H256).
@@ -1200,6 +1477,8 @@ test('SCCP Jetton flow: mint (verifier-gated), replay blocked, admin paths disab
 
   const digestScale = buildDigestScaleForMessageIds([msgId1, msgIdEth, msgId2]);
   const digestHash32 = Buffer.from(ethers.keccak256(digestScale).slice(2), 'hex');
+  const addDigestScale = buildDigestScaleForMessageIds([addMsgId]);
+  const addDigestHash32 = Buffer.from(ethers.keccak256(addDigestScale).slice(2), 'hex');
 
   // --- Synthetic validator set (BEEFY) ---
   //
@@ -1281,6 +1560,12 @@ test('SCCP Jetton flow: mint (verifier-gated), replay blocked, admin paths disab
     nextAuthoritySetLen,
     nextAuthoritySetRootU256,
   });
+  const addProofCell = buildSoraLeafProofWithDigest({
+    digestScaleBytes: addDigestScale,
+    nextAuthoritySetId,
+    nextAuthoritySetLen,
+    nextAuthoritySetRootU256,
+  });
 
   // Verifier bootstrap must happen once before any proof-backed operation.
   const mintNotInit = await verifier.sendMintFromSoraProof(alice.getSender(), 1_000_000_000n, {
@@ -1317,6 +1602,68 @@ test('SCCP Jetton flow: mint (verifier-gated), replay blocked, admin paths disab
     assert.ok(tx, 'expected a verifier tx');
     assert.equal(txExitCode(tx), ERROR_SCCP_UNKNOWN_MMR_ROOT);
   }
+
+  const addLeafScale = Buffer.alloc(145);
+  addLeafScale[0] = 0;
+  addLeafScale.writeUInt32LE(0, 1);
+  addLeafScale.writeBigUInt64LE(nextAuthoritySetId, 37);
+  addLeafScale.writeUInt32LE(nextAuthoritySetLen, 45);
+  Buffer.from(nextAuthoritySetRootU256.toString(16).padStart(64, '0'), 'hex').copy(addLeafScale, 49);
+  addDigestHash32.copy(addLeafScale, 113);
+  const addMmrRoot32 = keccak256Buf(addLeafScale);
+  const addCommitmentMmrRootU256 = BigInt('0x' + addMmrRoot32.toString('hex'));
+
+  const addCommitmentBlockNumber = 9;
+  const addCommitmentScale = Buffer.alloc(48);
+  addCommitmentScale[0] = 0x04;
+  addCommitmentScale[1] = 'm'.charCodeAt(0);
+  addCommitmentScale[2] = 'h'.charCodeAt(0);
+  addCommitmentScale[3] = 0x80;
+  addMmrRoot32.copy(addCommitmentScale, 4);
+  addCommitmentScale.writeUInt32LE(addCommitmentBlockNumber, 36);
+  addCommitmentScale.writeBigUInt64LE(currentValidatorSetId, 40);
+  const addCommitmentHashHex = ethers.keccak256(addCommitmentScale);
+  const addSigningEntries = [0, 1, 2].map((idx) => {
+    const v = validators[idx];
+    const sk = new ethers.SigningKey(v.pk);
+    const sig = sk.sign(addCommitmentHashHex);
+    return {
+      v: 27 + sig.yParity,
+      r: BigInt(sig.r),
+      s: BigInt(sig.s),
+      pos: idx,
+      merkleProofSiblings32: validatorProofs32[idx],
+    };
+  });
+  const addValidatorProofCell = buildValidatorProofCell(addSigningEntries);
+  const submitAddOut = await verifier.sendSubmitSignatureCommitment(alice.getSender(), 1_000_000_000n, {
+    commitmentMmrRootU256: addCommitmentMmrRootU256,
+    commitmentBlockNumber: addCommitmentBlockNumber,
+    commitmentValidatorSetId: currentValidatorSetId,
+    validatorProofCell: addValidatorProofCell,
+    latestLeafProofCell: addProofCell,
+  });
+  {
+    const tx = findTxByAddress(submitAddOut.transactions, verifier.address);
+    assert.ok(tx, 'expected a verifier tx');
+    assert.equal(txExitCode(tx), 0);
+  }
+
+  const addTokenOut = await verifier.sendAddTokenFromSoraProof(alice.getSender(), 1_000_000_000n, {
+    targetDomain: DOMAIN_TON,
+    governanceNonce: addGovernanceNonce,
+    soraAssetIdU256,
+    decimals: tokenDecimals,
+    nameBytes32: tokenName,
+    symbolBytes32: tokenSymbol,
+    proofCell: addProofCell,
+  });
+  {
+    const tx = findTxByAddress(addTokenOut.transactions, master.address);
+    assert.ok(tx, 'expected a master tx');
+    assert.equal(txExitCode(tx), 0);
+  }
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_ACTIVE);
 
   // --- Submit a synthetic BEEFY commitment that imports the proof root as a known MMR root ---
   const leafScale = Buffer.alloc(145);
@@ -1783,6 +2130,183 @@ test('SCCP Jetton flow: mint (verifier-gated), replay blocked, admin paths disab
     assert.ok(tx, 'expected a master tx');
     assert.equal(txExitCode(tx), ERROR_SCCP_ADMIN_PATH_DISABLED);
   }
+
+  // Pause via governance proof, which must block both mint and burn until resume.
+  const pauseDigestScale = buildDigestScaleForMessageIds([pauseMsgId]);
+  const pauseDigestHash32 = Buffer.from(ethers.keccak256(pauseDigestScale).slice(2), 'hex');
+  const pauseProofCell = buildSoraLeafProofWithDigest({
+    digestScaleBytes: pauseDigestScale,
+    nextAuthoritySetId,
+    nextAuthoritySetLen,
+    nextAuthoritySetRootU256,
+  });
+  const pauseLeafScale = Buffer.alloc(145);
+  pauseLeafScale[0] = 0;
+  pauseLeafScale.writeUInt32LE(0, 1);
+  pauseLeafScale.writeBigUInt64LE(nextAuthoritySetId, 37);
+  pauseLeafScale.writeUInt32LE(nextAuthoritySetLen, 45);
+  Buffer.from(nextAuthoritySetRootU256.toString(16).padStart(64, '0'), 'hex').copy(pauseLeafScale, 49);
+  pauseDigestHash32.copy(pauseLeafScale, 113);
+  const pauseMmrRoot32 = keccak256Buf(pauseLeafScale);
+  const pauseCommitmentMmrRootU256 = BigInt('0x' + pauseMmrRoot32.toString('hex'));
+  const pauseCommitmentBlockNumber = malformedKindCommitmentBlockNumber + 1;
+  const pauseCommitmentScale = Buffer.alloc(48);
+  pauseCommitmentScale[0] = 0x04;
+  pauseCommitmentScale[1] = 'm'.charCodeAt(0);
+  pauseCommitmentScale[2] = 'h'.charCodeAt(0);
+  pauseCommitmentScale[3] = 0x80;
+  pauseMmrRoot32.copy(pauseCommitmentScale, 4);
+  pauseCommitmentScale.writeUInt32LE(pauseCommitmentBlockNumber, 36);
+  pauseCommitmentScale.writeBigUInt64LE(commitmentValidatorSetId, 40);
+  const pauseCommitmentHashHex = ethers.keccak256(pauseCommitmentScale);
+  const pauseSigningEntries = [0, 1, 2].map((idx) => {
+    const v = validators[idx];
+    const sk = new ethers.SigningKey(v.pk);
+    const sig = sk.sign(pauseCommitmentHashHex);
+    return {
+      v: 27 + sig.yParity,
+      r: BigInt(sig.r),
+      s: BigInt(sig.s),
+      pos: idx,
+      merkleProofSiblings32: validatorProofs32[idx],
+    };
+  });
+  const pauseValidatorProofCell = buildValidatorProofCell(pauseSigningEntries);
+  const submitPauseOut = await verifier.sendSubmitSignatureCommitment(
+    alice.getSender(),
+    1_000_000_000n,
+    {
+      commitmentMmrRootU256: pauseCommitmentMmrRootU256,
+      commitmentBlockNumber: pauseCommitmentBlockNumber,
+      commitmentValidatorSetId,
+      validatorProofCell: pauseValidatorProofCell,
+      latestLeafProofCell: pauseProofCell,
+    },
+  );
+  {
+    const tx = findTxByAddress(submitPauseOut.transactions, verifier.address);
+    assert.ok(tx, 'expected a verifier tx');
+    assert.equal(txExitCode(tx), 0);
+  }
+  const pauseOut = await verifier.sendPauseTokenFromSoraProof(alice.getSender(), 1_000_000_000n, {
+    targetDomain: DOMAIN_TON,
+    governanceNonce: pauseGovernanceNonce,
+    soraAssetIdU256,
+    proofCell: pauseProofCell,
+  });
+  {
+    const tx = findTxByAddress(pauseOut.transactions, master.address);
+    assert.ok(tx, 'expected a master tx');
+    assert.equal(txExitCode(tx), 0);
+  }
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_PAUSED);
+
+  const pauseReplay = await verifier.sendPauseTokenFromSoraProof(alice.getSender(), 1_000_000_000n, {
+    targetDomain: DOMAIN_TON,
+    governanceNonce: pauseGovernanceNonce,
+    soraAssetIdU256,
+    proofCell: pauseProofCell,
+  });
+  {
+    const tx = findTxByAddress(pauseReplay.transactions, master.address);
+    assert.ok(tx, 'expected a master tx');
+    assert.equal(txExitCode(tx), ERROR_SCCP_MESSAGE_ALREADY_PROCESSED);
+  }
+
+  const mint2Paused = await verifier.sendMintFromSoraProof(alice.getSender(), 1_000_000_000n, {
+    burnNonce: mintNonce2,
+    jettonAmount: mintAmount2,
+    recipient32: aliceRecipient32,
+    proofCell,
+  });
+  {
+    const tx = findTxByAddress(mint2Paused.transactions, master.address);
+    assert.ok(tx, 'expected a master tx');
+    assert.equal(txExitCode(tx), ERROR_SCCP_TOKEN_NOT_ACTIVE);
+  }
+
+  const walletBeforePausedBurn = await wallet.getWalletData();
+  const pausedBurnOut = await wallet.sendSccpBurnToDomain(alice.getSender(), 1_000_000_000n, {
+    jettonAmount: 1n,
+    destDomain: DOMAIN_SORA,
+    recipient32: BigInt('0x' + '33'.repeat(32)),
+  });
+  {
+    const tx = findTxByAddress(pausedBurnOut.transactions, master.address);
+    assert.ok(tx, 'expected a master tx');
+    assert.equal(txExitCode(tx), ERROR_SCCP_TOKEN_NOT_ACTIVE);
+  }
+  const walletAfterPausedBurn = await wallet.getWalletData();
+  assert.equal(walletAfterPausedBurn.jettonBalance, walletBeforePausedBurn.jettonBalance);
+
+  const resumeDigestScale = buildDigestScaleForMessageIds([resumeMsgId]);
+  const resumeDigestHash32 = Buffer.from(ethers.keccak256(resumeDigestScale).slice(2), 'hex');
+  const resumeProofCell = buildSoraLeafProofWithDigest({
+    digestScaleBytes: resumeDigestScale,
+    nextAuthoritySetId,
+    nextAuthoritySetLen,
+    nextAuthoritySetRootU256,
+  });
+  const resumeLeafScale = Buffer.alloc(145);
+  resumeLeafScale[0] = 0;
+  resumeLeafScale.writeUInt32LE(0, 1);
+  resumeLeafScale.writeBigUInt64LE(nextAuthoritySetId, 37);
+  resumeLeafScale.writeUInt32LE(nextAuthoritySetLen, 45);
+  Buffer.from(nextAuthoritySetRootU256.toString(16).padStart(64, '0'), 'hex').copy(resumeLeafScale, 49);
+  resumeDigestHash32.copy(resumeLeafScale, 113);
+  const resumeMmrRoot32 = keccak256Buf(resumeLeafScale);
+  const resumeCommitmentMmrRootU256 = BigInt('0x' + resumeMmrRoot32.toString('hex'));
+  const resumeCommitmentBlockNumber = pauseCommitmentBlockNumber + 1;
+  const resumeCommitmentScale = Buffer.alloc(48);
+  resumeCommitmentScale[0] = 0x04;
+  resumeCommitmentScale[1] = 'm'.charCodeAt(0);
+  resumeCommitmentScale[2] = 'h'.charCodeAt(0);
+  resumeCommitmentScale[3] = 0x80;
+  resumeMmrRoot32.copy(resumeCommitmentScale, 4);
+  resumeCommitmentScale.writeUInt32LE(resumeCommitmentBlockNumber, 36);
+  resumeCommitmentScale.writeBigUInt64LE(commitmentValidatorSetId, 40);
+  const resumeCommitmentHashHex = ethers.keccak256(resumeCommitmentScale);
+  const resumeSigningEntries = [0, 1, 2].map((idx) => {
+    const v = validators[idx];
+    const sk = new ethers.SigningKey(v.pk);
+    const sig = sk.sign(resumeCommitmentHashHex);
+    return {
+      v: 27 + sig.yParity,
+      r: BigInt(sig.r),
+      s: BigInt(sig.s),
+      pos: idx,
+      merkleProofSiblings32: validatorProofs32[idx],
+    };
+  });
+  const resumeValidatorProofCell = buildValidatorProofCell(resumeSigningEntries);
+  const submitResumeOut = await verifier.sendSubmitSignatureCommitment(
+    alice.getSender(),
+    1_000_000_000n,
+    {
+      commitmentMmrRootU256: resumeCommitmentMmrRootU256,
+      commitmentBlockNumber: resumeCommitmentBlockNumber,
+      commitmentValidatorSetId,
+      validatorProofCell: resumeValidatorProofCell,
+      latestLeafProofCell: resumeProofCell,
+    },
+  );
+  {
+    const tx = findTxByAddress(submitResumeOut.transactions, verifier.address);
+    assert.ok(tx, 'expected a verifier tx');
+    assert.equal(txExitCode(tx), 0);
+  }
+  const resumeOut = await verifier.sendResumeTokenFromSoraProof(alice.getSender(), 1_000_000_000n, {
+    targetDomain: DOMAIN_TON,
+    governanceNonce: resumeGovernanceNonce,
+    soraAssetIdU256,
+    proofCell: resumeProofCell,
+  });
+  {
+    const tx = findTxByAddress(resumeOut.transactions, master.address);
+    assert.ok(tx, 'expected a master tx');
+    assert.equal(txExitCode(tx), 0);
+  }
+  assert.equal(await master.getSccpTokenState(), TOKEN_STATE_ACTIVE);
 
   const mint2Live = await verifier.sendMintFromSoraProof(alice.getSender(), 1_000_000_000n, {
     burnNonce: mintNonce2,

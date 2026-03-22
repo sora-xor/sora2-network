@@ -29,8 +29,8 @@ function usageAndExit(code) {
       '  node scripts/derive_master_address.mjs --governor <legacy_seed_addr> --sora-asset-id <64hex> [--verifier <ton_addr>] [--metadata-uri <string>]',
       '',
       'Notes:',
-      '  - governor is a legacy address-derivation seed only; it does not retain post-deploy admin powers',
-      '  - verifier is usually omitted because the verifier self-registers during one-time bootstrap',
+      '  - governor is the address allowed to pin verifierAddress exactly once after deployment',
+      '  - verifier is usually omitted here because the final verifier address is typically bound in a follow-up governor transaction',
       '',
       'Outputs:',
       '  - master_address (friendly)',
@@ -92,11 +92,13 @@ function buildMasterData({ governor, verifier, walletCode, metadataUri, soraAsse
 
   const sccpExtraB = beginCell();
   sccpExtraB.storeUint(soraAssetIdU256, 256);
+  sccpExtraB.storeUint(0, 8); // tokenState = Paused until SORA activates via proof
   sccpExtraB.storeUint(0, 64); // nonce
   sccpExtraB.storeUint(0, 64); // inboundPausedMask
   sccpExtraB.storeUint(0, 64); // outboundPausedMask
   emptyBoolMap.store(sccpExtraB); // invalidatedInbound
   emptyBoolMap.store(sccpExtraB); // processedInbound
+  emptyBoolMap.store(sccpExtraB); // processedGovernance
   emptyBurnsMap.store(sccpExtraB); // burns
   const sccpExtra = sccpExtraB.endCell();
 

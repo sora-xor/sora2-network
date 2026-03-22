@@ -3,7 +3,7 @@
 // Trustless SCCP on-chain verifier for TON that verifies SORA burns using a BEEFY+MMR light client.
 //
 // Model (same as EVM/Solana verifier repos):
-// - Anyone can perform the one-time bootstrap for initial validator sets + latest BEEFY block.
+// - The configured governor performs the one-time bootstrap for initial validator sets + latest BEEFY block.
 // - Anyone can import finalized SORA MMR roots by submitting:
 //   - a BEEFY commitment (payload = MMR root, block number, validator set id)
 //   - >=2/3 validator signatures + merkle membership proofs against the stored validator set root
@@ -63,6 +63,9 @@ type AllowedMessageToVerifier =
     | SccpVerifierSubmitSignatureCommitment
     | SccpVerifierMintFromSoraProof
     | SccpVerifierMintFromSoraProofV2
+    | SccpVerifierAddTokenFromSoraProof
+    | SccpVerifierPauseTokenFromSoraProof
+    | SccpVerifierResumeTokenFromSoraProof
     | TopUpTons
 
 // Proof encoding (project-specific, shared with tests):
@@ -700,6 +703,7 @@ fun onInternalMessage(in: InMessage) {
 
         SccpVerifierInitialize => {
             var storage = lazy VerifierStorage.load();
+            assert (in.senderAddress == storage.governorAddress) throw ERROR_NOT_OWNER;
 
             var st = lazy storage.state.load();
             assert (!st.initialized) throw ERROR_SCCP_VERIFIER_ALREADY_INITIALIZED;
@@ -723,17 +727,6 @@ fun onInternalMessage(in: InMessage) {
 
             storage.state = st.toCell();
             storage.save();
-
-            val registerMsg = createMessage({
-                bounce: BounceMode.NoBounce,
-                dest: storage.jettonMasterAddress,
-                value: 0,
-                body: SccpSetVerifier {
-                    queryId: msg.queryId,
-                    newVerifier: contract.getAddress(),
-                }
-            });
-            registerMsg.send(SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
         }
 
         SccpVerifierSubmitSignatureCommitment => {
@@ -855,6 +848,99 @@ fun onInternalMessage(in: InMessage) {
                 }
             });
             mintMsg.send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_BOUNCE_ON_ACTION_FAIL);
+        }
+
+        SccpVerifierAddTokenFromSoraProof => {
+            var storage = lazy VerifierStorage.load();
+            val st = lazy storage.state.load();
+            assert (st.initialized) throw ERROR_SCCP_VERIFIER_NOT_INITIALIZED;
+            assert (msg.targetDomain == SCCP_DOMAIN_TON) throw ERROR_SCCP_DOMAIN_UNSUPPORTED;
+            assert (msg.soraAssetId == storage.soraAssetId) throw ERROR_INVALID_MESSAGE;
+
+            val messageId = sccpTokenAddMessageIdV1(
+                msg.targetDomain,
+                msg.governanceNonce,
+                msg.soraAssetId,
+                msg.decimals,
+                msg.name,
+                msg.symbol,
+            );
+            val (root, digestScale, _nextId, _nextLen, _nextRoot) = computeProofRootAndNextSet(msg.proof);
+
+            assert (st.knownRoots.get(root).isFound) throw ERROR_SCCP_UNKNOWN_MMR_ROOT;
+            assert (digestHasSccpCommitment(digestScale, messageId)) throw ERROR_SCCP_COMMITMENT_NOT_FOUND;
+
+            val lifecycleMsg = createMessage({
+                bounce: BounceMode.NoBounce,
+                dest: storage.jettonMasterAddress,
+                value: 0,
+                body: SccpAddTokenFromVerifier {
+                    queryId: msg.queryId,
+                    messageId,
+                    soraAssetId: msg.soraAssetId,
+                }
+            });
+            lifecycleMsg.send(SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
+        }
+
+        SccpVerifierPauseTokenFromSoraProof => {
+            var storage = lazy VerifierStorage.load();
+            val st = lazy storage.state.load();
+            assert (st.initialized) throw ERROR_SCCP_VERIFIER_NOT_INITIALIZED;
+            assert (msg.targetDomain == SCCP_DOMAIN_TON) throw ERROR_SCCP_DOMAIN_UNSUPPORTED;
+            assert (msg.soraAssetId == storage.soraAssetId) throw ERROR_INVALID_MESSAGE;
+
+            val messageId = sccpTokenPauseMessageIdV1(
+                msg.targetDomain,
+                msg.governanceNonce,
+                msg.soraAssetId,
+            );
+            val (root, digestScale, _nextId, _nextLen, _nextRoot) = computeProofRootAndNextSet(msg.proof);
+
+            assert (st.knownRoots.get(root).isFound) throw ERROR_SCCP_UNKNOWN_MMR_ROOT;
+            assert (digestHasSccpCommitment(digestScale, messageId)) throw ERROR_SCCP_COMMITMENT_NOT_FOUND;
+
+            val lifecycleMsg = createMessage({
+                bounce: BounceMode.NoBounce,
+                dest: storage.jettonMasterAddress,
+                value: 0,
+                body: SccpPauseTokenFromVerifier {
+                    queryId: msg.queryId,
+                    messageId,
+                    soraAssetId: msg.soraAssetId,
+                }
+            });
+            lifecycleMsg.send(SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
+        }
+
+        SccpVerifierResumeTokenFromSoraProof => {
+            var storage = lazy VerifierStorage.load();
+            val st = lazy storage.state.load();
+            assert (st.initialized) throw ERROR_SCCP_VERIFIER_NOT_INITIALIZED;
+            assert (msg.targetDomain == SCCP_DOMAIN_TON) throw ERROR_SCCP_DOMAIN_UNSUPPORTED;
+            assert (msg.soraAssetId == storage.soraAssetId) throw ERROR_INVALID_MESSAGE;
+
+            val messageId = sccpTokenResumeMessageIdV1(
+                msg.targetDomain,
+                msg.governanceNonce,
+                msg.soraAssetId,
+            );
+            val (root, digestScale, _nextId, _nextLen, _nextRoot) = computeProofRootAndNextSet(msg.proof);
+
+            assert (st.knownRoots.get(root).isFound) throw ERROR_SCCP_UNKNOWN_MMR_ROOT;
+            assert (digestHasSccpCommitment(digestScale, messageId)) throw ERROR_SCCP_COMMITMENT_NOT_FOUND;
+
+            val lifecycleMsg = createMessage({
+                bounce: BounceMode.NoBounce,
+                dest: storage.jettonMasterAddress,
+                value: 0,
+                body: SccpResumeTokenFromVerifier {
+                    queryId: msg.queryId,
+                    messageId,
+                    soraAssetId: msg.soraAssetId,
+                }
+            });
+            lifecycleMsg.send(SEND_MODE_IGNORE_ERRORS | SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
         }
 
         TopUpTons => {

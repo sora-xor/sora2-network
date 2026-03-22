@@ -21,8 +21,11 @@ use solana_program::{
 };
 
 use sccp_sol::{
-    burn_message_id, decode_burn_payload_v1, BurnPayloadV1, H256, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH,
-    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
+    burn_message_id, decode_burn_payload_v1, decode_token_add_payload_v1,
+    decode_token_control_payload_v1, token_add_message_id, token_pause_message_id,
+    token_resume_message_id, BurnPayloadV1, H256, TokenAddPayloadV1, TokenControlPayloadV1,
+    SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON,
+    SCCP_DOMAIN_TRON,
 };
 
 use spl_token::{
@@ -71,6 +74,10 @@ pub enum SccpError {
     FreezeAuthorityMismatch = 28,
     AdminPathDisabled = 29,
     VerifierProgramAlreadySet = 30,
+    TokenNotActive = 31,
+    TokenNotPaused = 32,
+    InvalidGovernancePayload = 33,
+    TokenMetadataInvalid = 34,
 }
 
 impl From<SccpError> for ProgramError {
@@ -81,21 +88,45 @@ impl From<SccpError> for ProgramError {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq)]
 pub enum SccpInstruction {
-    Initialize { governor: Pubkey },
-    SetGovernor { governor: Pubkey },
+    Initialize {
+        governor: Pubkey,
+    },
+    SetGovernor {
+        governor: Pubkey,
+    },
     /// One-time verifier bootstrap. Once configured, the verifier program id is immutable.
-    SetVerifierProgram { verifier_program: Pubkey },
+    SetVerifierProgram {
+        verifier_program: Pubkey,
+    },
     /// Deterministically create an SPL mint PDA for `sora_asset_id` and register it.
-    DeployToken { sora_asset_id: [u8; 32], decimals: u8 },
-    RegisterToken { sora_asset_id: [u8; 32], mint: Pubkey },
+    DeployToken {
+        sora_asset_id: [u8; 32],
+        decimals: u8,
+    },
+    RegisterToken {
+        sora_asset_id: [u8; 32],
+        mint: Pubkey,
+    },
     /// Deprecated compatibility surface; always rejected with `AdminPathDisabled`.
-    SetInboundDomainPaused { source_domain: u32, paused: bool },
+    SetInboundDomainPaused {
+        source_domain: u32,
+        paused: bool,
+    },
     /// Deprecated compatibility surface; always rejected with `AdminPathDisabled`.
-    SetOutboundDomainPaused { dest_domain: u32, paused: bool },
+    SetOutboundDomainPaused {
+        dest_domain: u32,
+        paused: bool,
+    },
     /// Deprecated compatibility surface; always rejected with `AdminPathDisabled`.
-    InvalidateInboundMessage { source_domain: u32, message_id: [u8; 32] },
+    InvalidateInboundMessage {
+        source_domain: u32,
+        message_id: [u8; 32],
+    },
     /// Deprecated compatibility surface; always rejected with `AdminPathDisabled`.
-    ClearInvalidatedInboundMessage { source_domain: u32, message_id: [u8; 32] },
+    ClearInvalidatedInboundMessage {
+        source_domain: u32,
+        message_id: [u8; 32],
+    },
 
     /// Burn SPL tokens on Solana and create an on-chain burn record PDA.
     Burn {
@@ -110,6 +141,19 @@ pub enum SccpInstruction {
     /// Fail-closed until a verifier program is configured.
     MintFromProof {
         source_domain: u32,
+        payload: Vec<u8>,
+        proof: Vec<u8>,
+    },
+    /// Proof-driven canonical token lifecycle activation on Solana.
+    AddTokenFromProof {
+        payload: Vec<u8>,
+        proof: Vec<u8>,
+    },
+    PauseTokenFromProof {
+        payload: Vec<u8>,
+        proof: Vec<u8>,
+    },
+    ResumeTokenFromProof {
         payload: Vec<u8>,
         proof: Vec<u8>,
     },
@@ -130,16 +174,23 @@ impl Config {
     pub const LEN: usize = 1 + 1 + 32 + 32 + 8 + 8 + 8;
 }
 
+#[derive(BorshSerialize, BorshDeserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenState {
+    Active = 1,
+    Paused = 2,
+}
+
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct TokenConfig {
     pub version: u8,
     pub bump: u8,
     pub sora_asset_id: [u8; 32],
     pub mint: Pubkey,
+    pub state: TokenState,
 }
 
 impl TokenConfig {
-    pub const LEN: usize = 1 + 1 + 32 + 32;
+    pub const LEN: usize = 1 + 1 + 32 + 32 + 1;
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq)]
@@ -191,19 +242,22 @@ pub fn process_instruction(
         SccpInstruction::SetVerifierProgram { verifier_program } => {
             set_verifier(program_id, accounts, verifier_program)
         }
-        SccpInstruction::DeployToken { sora_asset_id, decimals } => {
-            deploy_token(program_id, accounts, sora_asset_id, decimals)
-        }
-        SccpInstruction::RegisterToken { sora_asset_id, mint } => {
-            register_token(program_id, accounts, sora_asset_id, mint)
-        }
+        SccpInstruction::DeployToken {
+            sora_asset_id,
+            decimals,
+        } => deploy_token(program_id, accounts, sora_asset_id, decimals),
+        SccpInstruction::RegisterToken {
+            sora_asset_id,
+            mint,
+        } => register_token(program_id, accounts, sora_asset_id, mint),
         SccpInstruction::SetInboundDomainPaused {
             source_domain,
             paused,
         } => set_inbound_domain_paused(program_id, accounts, source_domain, paused),
-        SccpInstruction::SetOutboundDomainPaused { dest_domain, paused } => {
-            set_outbound_domain_paused(program_id, accounts, dest_domain, paused)
-        }
+        SccpInstruction::SetOutboundDomainPaused {
+            dest_domain,
+            paused,
+        } => set_outbound_domain_paused(program_id, accounts, dest_domain, paused),
         SccpInstruction::InvalidateInboundMessage {
             source_domain,
             message_id,
@@ -217,12 +271,28 @@ pub fn process_instruction(
             amount,
             dest_domain,
             recipient,
-        } => burn(program_id, accounts, sora_asset_id, amount, dest_domain, recipient),
+        } => burn(
+            program_id,
+            accounts,
+            sora_asset_id,
+            amount,
+            dest_domain,
+            recipient,
+        ),
         SccpInstruction::MintFromProof {
             source_domain,
             payload,
             proof,
         } => mint_from_proof(program_id, accounts, source_domain, &payload, &proof),
+        SccpInstruction::AddTokenFromProof { payload, proof } => {
+            add_token_from_proof(program_id, accounts, &payload, &proof)
+        }
+        SccpInstruction::PauseTokenFromProof { payload, proof } => {
+            pause_token_from_proof(program_id, accounts, &payload, &proof)
+        }
+        SccpInstruction::ResumeTokenFromProof { payload, proof } => {
+            resume_token_from_proof(program_id, accounts, &payload, &proof)
+        }
     }
 }
 
@@ -231,6 +301,7 @@ fn initialize(program_id: &Pubkey, accounts: &[AccountInfo], governor: Pubkey) -
     let payer = next_account_info(&mut it)?;
     let config_acc = next_account_info(&mut it)?;
     let system_program = next_account_info(&mut it)?;
+    let governor_authority = it.next();
 
     if !payer.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
@@ -238,6 +309,7 @@ fn initialize(program_id: &Pubkey, accounts: &[AccountInfo], governor: Pubkey) -
     if *system_program.key != solana_program::system_program::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
+    require_governor_authority(governor_authority.unwrap_or(payer), &governor)?;
 
     let (expected, bump) = config_pda(program_id);
     if *config_acc.key != expected {
@@ -275,15 +347,17 @@ fn set_governor(program_id: &Pubkey, accounts: &[AccountInfo], governor: Pubkey)
     Err(SccpError::AdminPathDisabled.into())
 }
 
-fn set_verifier(program_id: &Pubkey, accounts: &[AccountInfo], verifier_program: Pubkey) -> ProgramResult {
+fn set_verifier(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    verifier_program: Pubkey,
+) -> ProgramResult {
     let mut it = accounts.iter();
     let signer = next_account_info(&mut it)?;
     let config_acc = next_account_info(&mut it)?;
 
     let mut cfg = load_config(program_id, config_acc)?;
-    if !signer.is_signer {
-        return Err(ProgramError::MissingRequiredSignature);
-    }
+    require_governor_authority(signer, &cfg.governor)?;
     if cfg.verifier_program != Pubkey::default() {
         return Err(SccpError::VerifierProgramAlreadySet.into());
     }
@@ -306,11 +380,16 @@ fn deploy_token(
     let system_program = next_account_info(&mut it)?;
     let token_program = next_account_info(&mut it)?;
     let rent_sysvar = next_account_info(&mut it)?;
+    let governor_authority = it.next();
 
     if !payer.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let _cfg = load_config(program_id, config_acc)?;
+    let cfg = load_config(program_id, config_acc)?;
+    require_governor_authority(governor_authority.unwrap_or(payer), &cfg.governor)?;
+    if cfg.verifier_program != Pubkey::default() {
+        return Err(SccpError::AdminPathDisabled.into());
+    }
 
     if *system_program.key != solana_program::system_program::id() {
         return Err(ProgramError::IncorrectProgramId);
@@ -368,6 +447,7 @@ fn deploy_token(
         bump: token_bump,
         sora_asset_id,
         mint: *mint_acc.key,
+        state: TokenState::Active,
     };
     write_borsh::<TokenConfig>(token_cfg_acc, &t)?;
 
@@ -386,11 +466,16 @@ fn register_token(
     let token_cfg_acc = next_account_info(&mut it)?;
     let mint_acc = next_account_info(&mut it)?;
     let system_program = next_account_info(&mut it)?;
+    let governor_authority = it.next();
 
     if !payer.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    let _cfg = load_config(program_id, config_acc)?;
+    let cfg = load_config(program_id, config_acc)?;
+    require_governor_authority(governor_authority.unwrap_or(payer), &cfg.governor)?;
+    if cfg.verifier_program != Pubkey::default() {
+        return Err(SccpError::AdminPathDisabled.into());
+    }
     if *system_program.key != solana_program::system_program::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
@@ -430,6 +515,7 @@ fn register_token(
         bump,
         sora_asset_id,
         mint,
+        state: TokenState::Active,
     };
     write_borsh::<TokenConfig>(token_cfg_acc, &t)?;
     Ok(())
@@ -473,6 +559,264 @@ fn clear_invalidated_inbound_message(
 ) -> ProgramResult {
     let _ = (program_id, accounts, source_domain, message_id);
     Err(SccpError::AdminPathDisabled.into())
+}
+
+fn add_token_from_proof(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    payload: &[u8],
+    proof: &[u8],
+) -> ProgramResult {
+    if payload.len() != TokenAddPayloadV1::ENCODED_LEN {
+        return Err(SccpError::PayloadInvalidLength.into());
+    }
+    if proof.len() > 16 * 1024 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    let mut it = accounts.iter();
+    let payer = next_account_info(&mut it)?;
+    let config_acc = next_account_info(&mut it)?;
+    let token_cfg_acc = next_account_info(&mut it)?;
+    let mint_acc = next_account_info(&mut it)?;
+    let marker_acc = next_account_info(&mut it)?;
+    let system_program = next_account_info(&mut it)?;
+    let token_program = next_account_info(&mut it)?;
+    let rent_sysvar = next_account_info(&mut it)?;
+
+    if !payer.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    if *system_program.key != solana_program::system_program::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    if *token_program.key != spl_token::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    if *rent_sysvar.key != solana_program::sysvar::rent::id() {
+        return Err(ProgramError::InvalidArgument);
+    }
+
+    let cfg = load_config(program_id, config_acc)?;
+    if cfg.verifier_program == Pubkey::default() {
+        return Err(SccpError::VerifierNotSet.into());
+    }
+
+    let p = decode_token_add_payload_v1(payload)
+        .map_err(|_| ProgramError::from(SccpError::PayloadInvalidLength))?;
+    if p.version != 1 {
+        return Err(SccpError::InvalidGovernancePayload.into());
+    }
+    if p.target_domain != SCCP_DOMAIN_SOL {
+        return Err(SccpError::DomainUnsupported.into());
+    }
+    validate_governance_label(&p.name)?;
+    validate_governance_label(&p.symbol)?;
+
+    let message_id = token_add_message_id(payload);
+    let (expected_marker, marker_bump) = inbound_marker_pda(program_id, SCCP_DOMAIN_SORA, &message_id);
+    if *marker_acc.key != expected_marker {
+        return Err(SccpError::InvalidPda.into());
+    }
+    ensure_message_unprocessed(program_id, marker_acc)?;
+
+    let verifier_program_acc = next_account_info(&mut it)?;
+    let verifier_accounts: Vec<AccountInfo> = it.cloned().collect();
+    invoke_generic_verifier(
+        &cfg,
+        verifier_program_acc,
+        &verifier_accounts,
+        build_governance_verifier_data(&message_id, proof),
+    )?;
+
+    let (expected_token_cfg, token_bump) = token_config_pda(program_id, &p.sora_asset_id);
+    if *token_cfg_acc.key != expected_token_cfg {
+        return Err(SccpError::InvalidPda.into());
+    }
+    let (expected_mint, mint_bump) = mint_pda(program_id, &p.sora_asset_id);
+    if *mint_acc.key != expected_mint {
+        return Err(SccpError::InvalidPda.into());
+    }
+
+    if mint_acc.owner == &spl_token::id() {
+        let mint_state =
+            TokenMint::unpack(&mint_acc.data.borrow()).map_err(|_| ProgramError::InvalidAccountData)?;
+        ensure_bridge_controlled_mint(&mint_state, config_acc.key)?;
+        if mint_state.decimals != p.decimals {
+            return Err(SccpError::MintMismatch.into());
+        }
+    } else {
+        create_pda_account(
+            payer,
+            mint_acc,
+            spl_token::state::Mint::LEN,
+            token_program.key,
+            &[SEED_PREFIX, SEED_MINT, &p.sora_asset_id, &[mint_bump]],
+        )?;
+        let init_ix = token_ix::initialize_mint(
+            token_program.key,
+            mint_acc.key,
+            config_acc.key,
+            Some(config_acc.key),
+            p.decimals,
+        )?;
+        invoke(&init_ix, &[mint_acc.clone(), rent_sysvar.clone()])?;
+    }
+
+    if token_cfg_acc.owner == program_id {
+        let mut token_cfg = load_token_config(token_cfg_acc)?;
+        if token_cfg.sora_asset_id != p.sora_asset_id || token_cfg.mint != *mint_acc.key {
+            return Err(SccpError::MintMismatch.into());
+        }
+        token_cfg.state = TokenState::Active;
+        write_borsh::<TokenConfig>(token_cfg_acc, &token_cfg)?;
+    } else {
+        create_pda_account(
+            payer,
+            token_cfg_acc,
+            TokenConfig::LEN,
+            program_id,
+            &[SEED_PREFIX, SEED_TOKEN, &p.sora_asset_id, &[token_bump]],
+        )?;
+        let token_cfg = TokenConfig {
+            version: ACCOUNT_VERSION_V1,
+            bump: token_bump,
+            sora_asset_id: p.sora_asset_id,
+            mint: *mint_acc.key,
+            state: TokenState::Active,
+        };
+        write_borsh::<TokenConfig>(token_cfg_acc, &token_cfg)?;
+    }
+
+    ensure_marker_account(
+        program_id,
+        payer,
+        marker_acc,
+        SCCP_DOMAIN_SORA,
+        &message_id,
+        marker_bump,
+    )?;
+    mark_message_processed(marker_acc)?;
+    Ok(())
+}
+
+fn pause_token_from_proof(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    payload: &[u8],
+    proof: &[u8],
+) -> ProgramResult {
+    process_token_control_from_proof(
+        program_id,
+        accounts,
+        payload,
+        proof,
+        TokenState::Active,
+        TokenState::Paused,
+        token_pause_message_id,
+    )
+}
+
+fn resume_token_from_proof(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    payload: &[u8],
+    proof: &[u8],
+) -> ProgramResult {
+    process_token_control_from_proof(
+        program_id,
+        accounts,
+        payload,
+        proof,
+        TokenState::Paused,
+        TokenState::Active,
+        token_resume_message_id,
+    )
+}
+
+fn process_token_control_from_proof(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    payload: &[u8],
+    proof: &[u8],
+    expected_state: TokenState,
+    next_state: TokenState,
+    message_id_fn: fn(&[u8]) -> H256,
+) -> ProgramResult {
+    if payload.len() != TokenControlPayloadV1::ENCODED_LEN {
+        return Err(SccpError::PayloadInvalidLength.into());
+    }
+    if proof.len() > 16 * 1024 {
+        return Err(ProgramError::InvalidInstructionData);
+    }
+
+    let mut it = accounts.iter();
+    let payer = next_account_info(&mut it)?;
+    let config_acc = next_account_info(&mut it)?;
+    let token_cfg_acc = next_account_info(&mut it)?;
+    let marker_acc = next_account_info(&mut it)?;
+
+    if !payer.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    let cfg = load_config(program_id, config_acc)?;
+    if cfg.verifier_program == Pubkey::default() {
+        return Err(SccpError::VerifierNotSet.into());
+    }
+
+    let p = decode_token_control_payload_v1(payload)
+        .map_err(|_| ProgramError::from(SccpError::PayloadInvalidLength))?;
+    if p.version != 1 {
+        return Err(SccpError::InvalidGovernancePayload.into());
+    }
+    if p.target_domain != SCCP_DOMAIN_SOL {
+        return Err(SccpError::DomainUnsupported.into());
+    }
+
+    let message_id = message_id_fn(payload);
+    let (expected_marker, marker_bump) = inbound_marker_pda(program_id, SCCP_DOMAIN_SORA, &message_id);
+    if *marker_acc.key != expected_marker {
+        return Err(SccpError::InvalidPda.into());
+    }
+    ensure_message_unprocessed(program_id, marker_acc)?;
+
+    let (expected_token_cfg, _token_bump) = token_config_pda(program_id, &p.sora_asset_id);
+    if *token_cfg_acc.key != expected_token_cfg {
+        return Err(SccpError::InvalidPda.into());
+    }
+    let mut token_cfg = load_token_config(token_cfg_acc)?;
+    if token_cfg.sora_asset_id != p.sora_asset_id {
+        return Err(SccpError::InvalidGovernancePayload.into());
+    }
+    match (expected_state, token_cfg.state) {
+        (TokenState::Active, TokenState::Active) => {}
+        (TokenState::Paused, TokenState::Paused) => {}
+        (TokenState::Active, _) => return Err(SccpError::TokenNotActive.into()),
+        (TokenState::Paused, _) => return Err(SccpError::TokenNotPaused.into()),
+    }
+
+    let verifier_program_acc = next_account_info(&mut it)?;
+    let verifier_accounts: Vec<AccountInfo> = it.cloned().collect();
+    invoke_generic_verifier(
+        &cfg,
+        verifier_program_acc,
+        &verifier_accounts,
+        build_governance_verifier_data(&message_id, proof),
+    )?;
+
+    token_cfg.state = next_state;
+    write_borsh::<TokenConfig>(token_cfg_acc, &token_cfg)?;
+    ensure_marker_account(
+        program_id,
+        payer,
+        marker_acc,
+        SCCP_DOMAIN_SORA,
+        &message_id,
+        marker_bump,
+    )?;
+    mark_message_processed(marker_acc)?;
+    Ok(())
 }
 
 fn burn(
@@ -546,6 +890,9 @@ fn burn(
     if token_cfg.mint != *mint_acc.key {
         return Err(SccpError::MintMismatch.into());
     }
+    if token_cfg.state != TokenState::Active {
+        return Err(SccpError::TokenNotActive.into());
+    }
 
     // Ensure the user token account belongs to the user and is for the expected mint.
     if user_token_acc.owner != &spl_token::id() {
@@ -601,7 +948,10 @@ fn burn(
         &[],
         amount,
     )?;
-    invoke(&ix, &[user_token_acc.clone(), mint_acc.clone(), user.clone()])?;
+    invoke(
+        &ix,
+        &[user_token_acc.clone(), mint_acc.clone(), user.clone()],
+    )?;
 
     // Create burn record PDA.
     create_pda_account(
@@ -691,7 +1041,8 @@ fn mint_from_proof(
         }
     }
 
-    let p = decode_burn_payload_v1(payload).map_err(|_| ProgramError::from(SccpError::PayloadInvalidLength))?;
+    let p = decode_burn_payload_v1(payload)
+        .map_err(|_| ProgramError::from(SccpError::PayloadInvalidLength))?;
     if p.version != 1 {
         return Err(SccpError::DomainUnsupported.into());
     }
@@ -719,6 +1070,9 @@ fn mint_from_proof(
     let token_cfg = load_token_config(token_cfg_acc)?;
     if token_cfg.mint != *mint_acc.key {
         return Err(SccpError::MintMismatch.into());
+    }
+    if token_cfg.state != TokenState::Active {
+        return Err(SccpError::TokenNotActive.into());
     }
 
     // Ensure the recipient token account is owned by the recipient encoded in the payload.
@@ -797,7 +1151,11 @@ fn mint_from_proof(
     )?;
     invoke_signed(
         &mint_to_ix,
-        &[mint_acc.clone(), recipient_token_acc.clone(), config_acc.clone()],
+        &[
+            mint_acc.clone(),
+            recipient_token_acc.clone(),
+            config_acc.clone(),
+        ],
         &[&[SEED_PREFIX, SEED_CONFIG, &[config_bump]]],
     )?;
 
@@ -836,19 +1194,20 @@ fn burn_record_pda(program_id: &Pubkey, message_id: &H256) -> (Pubkey, u8) {
 
 fn inbound_marker_pda(program_id: &Pubkey, source_domain: u32, message_id: &H256) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[SEED_PREFIX, SEED_INBOUND, &source_domain.to_le_bytes(), message_id],
+        &[
+            SEED_PREFIX,
+            SEED_INBOUND,
+            &source_domain.to_le_bytes(),
+            message_id,
+        ],
         program_id,
     )
 }
 
 fn ensure_supported_domain(domain: u32) -> Result<(), ProgramError> {
     match domain {
-        SCCP_DOMAIN_SORA
-        | SCCP_DOMAIN_ETH
-        | SCCP_DOMAIN_BSC
-        | SCCP_DOMAIN_SOL
-        | SCCP_DOMAIN_TON
-        | SCCP_DOMAIN_TRON => Ok(()),
+        SCCP_DOMAIN_SORA | SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_SOL
+        | SCCP_DOMAIN_TON | SCCP_DOMAIN_TRON => Ok(()),
         _ => Err(SccpError::DomainUnsupported.into()),
     }
 }
@@ -876,6 +1235,25 @@ fn load_token_config(token_cfg_acc: &AccountInfo) -> Result<TokenConfig, Program
     Ok(token_cfg)
 }
 
+fn validate_governance_label(label: &[u8; 32]) -> ProgramResult {
+    let mut seen_zero = false;
+    let mut non_zero_len = 0usize;
+    for byte in label {
+        if *byte == 0 {
+            seen_zero = true;
+            continue;
+        }
+        if seen_zero || !(0x20..=0x7e).contains(byte) {
+            return Err(SccpError::TokenMetadataInvalid.into());
+        }
+        non_zero_len += 1;
+    }
+    if non_zero_len == 0 {
+        return Err(SccpError::TokenMetadataInvalid.into());
+    }
+    Ok(())
+}
+
 fn load_inbound_marker(marker_acc: &AccountInfo) -> Result<InboundMarker, ProgramError> {
     let marker = read_borsh::<InboundMarker>(marker_acc)?;
     if marker.version != ACCOUNT_VERSION_V1 {
@@ -893,6 +1271,71 @@ fn ensure_bridge_controlled_mint(mint_state: &TokenMint, config_key: &Pubkey) ->
         COption::Some(authority) if authority == *config_key => Ok(()),
         _ => Err(SccpError::FreezeAuthorityMismatch.into()),
     }
+}
+
+fn require_governor_authority(authority: &AccountInfo, governor: &Pubkey) -> ProgramResult {
+    if !authority.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    if authority.key != governor {
+        return Err(SccpError::NotGovernor.into());
+    }
+    Ok(())
+}
+
+fn build_governance_verifier_data(message_id: &H256, proof: &[u8]) -> Vec<u8> {
+    let mut verifier_data = Vec::with_capacity(1 + 32 + proof.len());
+    verifier_data.push(4u8); // verifyGovernanceProof:v1
+    verifier_data.extend_from_slice(message_id);
+    verifier_data.extend_from_slice(proof);
+    verifier_data
+}
+
+fn invoke_generic_verifier<'a>(
+    cfg: &Config,
+    verifier_program_acc: &AccountInfo<'a>,
+    verifier_accounts: &[AccountInfo<'a>],
+    data: Vec<u8>,
+) -> Result<(), ProgramError> {
+    if *verifier_program_acc.key != cfg.verifier_program || !verifier_program_acc.executable {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    let verifier_metas: Vec<AccountMeta> = verifier_accounts
+        .iter()
+        .map(|a| AccountMeta {
+            pubkey: *a.key,
+            is_signer: a.is_signer,
+            is_writable: a.is_writable,
+        })
+        .collect();
+
+    let verifier_ix = Instruction {
+        program_id: cfg.verifier_program,
+        accounts: verifier_metas,
+        data,
+    };
+    let mut verifier_cpi_accounts = verifier_accounts.to_vec();
+    verifier_cpi_accounts.push(verifier_program_acc.clone());
+    invoke(&verifier_ix, &verifier_cpi_accounts)
+        .map_err(|_| ProgramError::from(SccpError::ProofVerificationFailed))
+}
+
+fn ensure_message_unprocessed(program_id: &Pubkey, marker_acc: &AccountInfo) -> ProgramResult {
+    if marker_acc.owner == program_id {
+        let marker = load_inbound_marker(marker_acc)?;
+        match marker.status {
+            InboundStatus::Processed => return Err(SccpError::InboundAlreadyProcessed.into()),
+            InboundStatus::Invalidated => return Err(SccpError::ProofInvalidated.into()),
+            InboundStatus::None => {}
+        }
+    }
+    Ok(())
+}
+
+fn mark_message_processed(marker_acc: &AccountInfo) -> ProgramResult {
+    let mut marker = load_inbound_marker(marker_acc)?;
+    marker.status = InboundStatus::Processed;
+    write_borsh::<InboundMarker>(marker_acc, &marker)
 }
 
 fn create_pda_account<'a>(
@@ -913,8 +1356,13 @@ fn create_pda_account<'a>(
     let lamports = rent.minimum_balance(space);
 
     if new_acc.lamports() == 0 {
-        let ix =
-            system_instruction::create_account(payer.key, new_acc.key, lamports, space as u64, owner);
+        let ix = system_instruction::create_account(
+            payer.key,
+            new_acc.key,
+            lamports,
+            space as u64,
+            owner,
+        );
         invoke_signed(&ix, &[payer.clone(), new_acc.clone()], &[signer_seeds])?;
         return Ok(());
     }
@@ -973,5 +1421,6 @@ fn read_borsh<T: BorshDeserialize>(acc: &AccountInfo) -> Result<T, ProgramError>
 
 fn write_borsh<T: BorshSerialize>(acc: &AccountInfo, v: &T) -> Result<(), ProgramError> {
     let mut data = acc.data.borrow_mut();
-    v.serialize(&mut &mut data[..]).map_err(|_| ProgramError::AccountDataTooSmall)
+    v.serialize(&mut &mut data[..])
+        .map_err(|_| ProgramError::AccountDataTooSmall)
 }

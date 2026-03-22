@@ -16,6 +16,8 @@ SCCP proof tooling now lives in this repository:
 - `sccp/chains/eth`, `sccp/chains/bsc`, `sccp/chains/tron` for destination verifier contracts and chain-native helper scripts
 
 The old external SCCP proof CLI is deprecated for this repo.
+Governance payloads are first-class here as well: destination codecs and verifiers share the same canonical
+message-id model for burn minting and token lifecycle proofs.
 
 ## Command Overview
 
@@ -24,7 +26,9 @@ The old external SCCP proof CLI is deprecated for this repo.
 Purpose:
 - collect `latest_beefy_block`
 - collect current/next BEEFY validator sets (`id`, `len`, `root`)
-- initialize destination verifier governance state
+- build the one-time governor-authorized bootstrap payload for each destination verifier
+
+Note: these bootstrap payloads are local destination-chain initialization messages, not finalized SORA governance proofs.
 
 Chain-specific outputs:
 - `sccp sol init`: Borsh instruction bytes for Solana verifier `Initialize`
@@ -65,6 +69,25 @@ Chain-specific outputs:
 - TON: proof cell BOC for verifier mint messages
 - EVM chains: verifier-ready inputs consumed by their in-repo contracts and scripts
 
+### 4) Build governance proof
+
+Input:
+- SORA block where governance committed one lifecycle `messageId`
+- `message_id` for one of:
+  - `keccak256("sccp:token:add:v1" || TokenAddPayloadV1_scale_bytes)`
+  - `keccak256("sccp:token:pause:v1" || TokenControlPayloadV1_scale_bytes)`
+  - `keccak256("sccp:token:resume:v1" || TokenControlPayloadV1_scale_bytes)`
+
+Output:
+- the same finalized MMR leaf/proof material used for mint proofs
+- digest bytes proving that the canonical governance `messageId` was committed by SORA
+- destination-native verifier artifacts for add/pause/resume flows
+
+Chain-specific outputs:
+- EVM chains: verifier call params consumed by `addTokenFromProof`, `pauseTokenFromProof`, `resumeTokenFromProof`
+- Solana: Borsh instruction bytes plus governance payload/message-id helpers in `sccp/chains/sol`
+- TON: verifier proof cell BOCs plus governance payload/message-id helpers in `sccp/chains/ton`
+
 ## Safety Properties
 
 The flow is fail-closed:
@@ -73,7 +96,7 @@ The flow is fail-closed:
 - destination verifier checks MMR inclusion of leaf + digest hash binding
 - destination verifier checks digest includes exactly one SCCP commitment for the submitted `messageId`
 
-If any condition fails, mint must fail.
+If any condition fails, mint or lifecycle mutation must fail.
 
 ## Runtime Requirements On SORA
 

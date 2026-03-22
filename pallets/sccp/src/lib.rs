@@ -46,7 +46,7 @@ pub use weights::WeightInfo;
 
 /// A lightweight interface for other pallets to check whether an asset is SCCP-managed.
 ///
-/// Implementations should return `true` for any SCCP token state (Pending/Active/Removing).
+/// Implementations should return `true` for any SCCP token state (Pending/Active/Paused/Removing).
 pub trait SccpAssetChecker<AssetId> {
     fn is_sccp_asset(asset_id: &AssetId) -> bool;
 }
@@ -74,16 +74,6 @@ impl<AssetId> LegacyBridgeAssetChecker<AssetId> for () {
 ///
 /// Implementations should return `(finalized_block_hash, finalized_state_root)` from an on-chain ETH
 /// light-client source. Returning `None` keeps SCCP fail-closed for ETH beacon mode.
-pub trait EthFinalizedStateProvider {
-    fn latest_finalized_state() -> Option<(H256, H256)>;
-}
-
-impl EthFinalizedStateProvider for () {
-    fn latest_finalized_state() -> Option<(H256, H256)> {
-        None
-    }
-}
-
 /// Pluggable on-chain verifier hook for finalized Ethereum burn proofs.
 ///
 /// Implementations should return:
@@ -109,27 +99,6 @@ impl EthFinalizedBurnProofVerifier for () {
         _payload: &BurnPayloadV1,
         _proof: &[u8],
     ) -> Option<bool> {
-        None
-    }
-}
-
-/// Pluggable on-chain verifier hook for zk-proven Ethereum finalized burns.
-///
-/// Implementations should return:
-/// - `Some(true)` when the proof is valid and finalized under Ethereum consensus,
-/// - `Some(false)` when the proof is invalid,
-/// - `None` when finalized ETH zk-proof verification is currently unavailable (fail-closed).
-pub trait EthZkFinalizedBurnProofVerifier {
-    fn is_available() -> bool;
-    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool>;
-}
-
-impl EthZkFinalizedBurnProofVerifier for () {
-    fn is_available() -> bool {
-        false
-    }
-
-    fn verify_finalized_burn(_message_id: H256, _proof: &[u8]) -> Option<bool> {
         None
     }
 }
@@ -202,10 +171,12 @@ pub const SCCP_CORE_REMOTE_DOMAINS: [u32; 7] = [
 ];
 
 pub const SCCP_MSG_PREFIX_BURN_V1: &[u8] = b"sccp:burn:v1";
+pub const SCCP_MSG_PREFIX_TOKEN_ADD_V1: &[u8] = b"sccp:token:add:v1";
+pub const SCCP_MSG_PREFIX_TOKEN_PAUSE_V1: &[u8] = b"sccp:token:pause:v1";
+pub const SCCP_MSG_PREFIX_TOKEN_RESUME_V1: &[u8] = b"sccp:token:resume:v1";
 /// Domain-separated prefix used by legacy SCCP attestation hashes retained for fixture stability.
 pub const SCCP_MSG_PREFIX_ATTEST_V1: &[u8] = b"sccp:attest:v1";
 pub const ETH_FINALIZED_RECEIPT_BURN_PROOF_VERSION_V1: u8 = 1;
-pub const ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1: u8 = 1;
 pub const SOLANA_FINALIZED_BURN_PROOF_VERSION_V1: u8 = 1;
 pub const SCCP_MAX_SOLANA_MERKLE_DEPTH: usize = 32;
 pub const SCCP_MAX_SOLANA_ACCOUNT_DATA_BYTES: usize = 64 * 1024;
@@ -327,10 +298,6 @@ pub const SCCP_MAX_TON_PROOF_SECTION_BYTES: usize = 64 * 1024;
 pub const SCCP_MAX_TON_PROOF_TOTAL_BYTES: usize = 256 * 1024;
 /// Hard bound for the repo-defined finalized ETH burn proof payload submitted to SCCP.
 pub const SCCP_MAX_ETH_FINALIZED_BURN_PROOF_BYTES: usize = 256 * 1024;
-/// Hard bound for the repo-defined ETH zk proof payload submitted to SCCP.
-pub const SCCP_MAX_ETH_ZK_PROOF_BYTES: usize = 256 * 1024;
-/// Canonical ETH zk public input count for `EthZkFinalizedBurnProofV1`.
-pub const ETH_ZK_PUBLIC_INPUT_COUNT_V1: usize = 10;
 /// keccak256("SccpBurned(bytes32,bytes32,address,uint128,uint32,bytes32,uint64,bytes)")
 pub const SCCP_ETH_BURN_EVENT_TOPIC0: H256 = H256([
     0xd8, 0x50, 0xac, 0x8d, 0x39, 0xa7, 0x95, 0x16, 0x0f, 0x3b, 0xaa, 0x24, 0xb8, 0x25, 0xb4, 0xb7,
@@ -369,6 +336,7 @@ fn default_required_domains_for_bound<S: Get<u32>>() -> BoundedVec<u32, S> {
 pub enum TokenStatus {
     Pending,
     Active,
+    Paused,
     Removing,
 }
 
@@ -433,6 +401,45 @@ pub struct BurnPayloadV1 {
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
+pub struct TokenAddPayloadV1 {
+    pub version: u8,
+    pub target_domain: u32,
+    pub nonce: u64,
+    pub sora_asset_id: [u8; 32],
+    pub decimals: u8,
+    pub name: [u8; 32],
+    pub symbol: [u8; 32],
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
+pub struct TokenControlPayloadV1 {
+    pub version: u8,
+    pub target_domain: u32,
+    pub nonce: u64,
+    pub sora_asset_id: [u8; 32],
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+)]
 pub struct BurnRecord<AccountId, AssetId, BlockNumber> {
     pub sender: AccountId,
     pub asset_id: AssetId,
@@ -451,111 +458,6 @@ pub fn evm_burn_storage_key_for_message_id(message_id: H256) -> H256 {
     preimage[32..].copy_from_slice(&slot_bytes);
     let slot_base = keccak_256(&preimage);
     H256::from_slice(&keccak_256(&slot_base))
-}
-
-#[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-pub struct EthZkFinalizedBurnPublicInputsV1 {
-    pub message_id: H256,
-    pub finalized_block_hash: H256,
-    pub execution_state_root: H256,
-    pub router_address: [u8; 20],
-    pub burn_storage_key: H256,
-}
-
-#[derive(
-    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
-)]
-pub struct EthZkFinalizedBurnProofV1 {
-    pub version: u8,
-    pub public_inputs: EthZkFinalizedBurnPublicInputsV1,
-    pub evm_burn_proof: Vec<u8>,
-    pub zk_proof: Vec<u8>,
-}
-
-/// ETH zk mode execution proof bundle (v1).
-///
-/// This is separate from `EvmBurnProofV1`: zk mode binds an execution header to the public inputs
-/// and then proves account/storage inclusion against the header's `state_root`.
-#[derive(
-    Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
-)]
-pub struct EthZkEvmBurnProofV1 {
-    /// RLP-encoded Ethereum execution header. The runtime derives `block_hash` and `state_root`
-    /// from this header and matches them against the zk proof public inputs.
-    pub execution_header_rlp: Vec<u8>,
-    /// EVM state trie proof for the SCCP router account (RLP-encoded MPT nodes).
-    pub account_proof: Vec<Vec<u8>>,
-    /// EVM storage trie proof for `burns[messageId].sender` (RLP-encoded MPT nodes).
-    pub storage_proof: Vec<Vec<u8>>,
-}
-
-fn encode_eth_zk_bytes_as_u128_pair(bytes: &[u8]) -> [u128; 2] {
-    debug_assert!(bytes.len() <= 32);
-    let mut padded = [0u8; 32];
-    padded[32 - bytes.len()..].copy_from_slice(bytes);
-    [
-        u128::from_be_bytes(
-            padded[..16]
-                .try_into()
-                .expect("left-padded public input must fit into 16 bytes"),
-        ),
-        u128::from_be_bytes(
-            padded[16..]
-                .try_into()
-                .expect("left-padded public input must fit into 16 bytes"),
-        ),
-    ]
-}
-
-/// Canonical ETH zk public-input packing for `EthZkFinalizedBurnProofV1`.
-///
-/// Concrete proof-system backends map these 10 `u128` limbs into their proving field in-order.
-pub fn eth_zk_public_inputs_v1(
-    public_inputs: &EthZkFinalizedBurnPublicInputsV1,
-) -> [u128; ETH_ZK_PUBLIC_INPUT_COUNT_V1] {
-    let message_id = encode_eth_zk_bytes_as_u128_pair(&public_inputs.message_id.0);
-    let finalized_block_hash =
-        encode_eth_zk_bytes_as_u128_pair(&public_inputs.finalized_block_hash.0);
-    let execution_state_root =
-        encode_eth_zk_bytes_as_u128_pair(&public_inputs.execution_state_root.0);
-    let router_address = encode_eth_zk_bytes_as_u128_pair(&public_inputs.router_address);
-    let burn_storage_key = encode_eth_zk_bytes_as_u128_pair(&public_inputs.burn_storage_key.0);
-
-    [
-        message_id[0],
-        message_id[1],
-        finalized_block_hash[0],
-        finalized_block_hash[1],
-        execution_state_root[0],
-        execution_state_root[1],
-        router_address[0],
-        router_address[1],
-        burn_storage_key[0],
-        burn_storage_key[1],
-    ]
-}
-
-pub fn decode_eth_zk_finalized_burn_proof_v1(proof: &[u8]) -> Option<EthZkFinalizedBurnProofV1> {
-    let mut input = proof;
-    let decoded = EthZkFinalizedBurnProofV1::decode(&mut input).ok()?;
-    if !input.is_empty()
-        || decoded.version != ETH_ZK_FINALIZED_BURN_PROOF_VERSION_V1
-        || decoded.evm_burn_proof.len() > SCCP_MAX_ETH_ZK_PROOF_BYTES
-        || decoded.zk_proof.len() > SCCP_MAX_ETH_ZK_PROOF_BYTES
-    {
-        return None;
-    }
-    Some(decoded)
 }
 
 #[derive(
@@ -732,15 +634,9 @@ pub enum InboundFinalityMode {
     /// Inbound from this domain is disabled (fail-closed).
     #[codec(index = 0)]
     Disabled,
-    /// Reserved legacy slot for the removed governance-pinned EVM anchor mode.
-    #[codec(index = 1)]
-    LegacyEvmAnchor,
     /// BSC on-chain header verifier finalized state root only.
     #[codec(index = 2)]
     BscLightClient,
-    /// Reserved legacy slot for the removed BSC light-client-or-anchor fallback mode.
-    #[codec(index = 3)]
-    LegacyBscLightClientOrAnchor,
     /// Ethereum beacon light client.
     #[codec(index = 4)]
     EthBeaconLightClient,
@@ -756,36 +652,6 @@ pub enum InboundFinalityMode {
     /// Substrate light client for SORA parachain domains (Kusama/Polkadot relay contexts).
     #[codec(index = 8)]
     SubstrateLightClient,
-    /// Reserved legacy slot for the removed attester quorum mode.
-    #[codec(index = 9)]
-    LegacyAttesterQuorum,
-    /// Ethereum finalized-burn zk proof verified on-chain by the SORA runtime.
-    #[codec(index = 10)]
-    EthZkProof,
-}
-
-#[allow(non_upper_case_globals)]
-impl InboundFinalityMode {
-    pub const EvmAnchor: Self = Self::LegacyEvmAnchor;
-    pub const BscLightClientOrAnchor: Self = Self::LegacyBscLightClientOrAnchor;
-    pub const AttesterQuorum: Self = Self::LegacyAttesterQuorum;
-}
-
-#[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-)]
-pub struct EvmInboundAnchor {
-    pub block_number: u64,
-    pub block_hash: H256,
-    pub state_root: H256,
 }
 
 /// Governance-pinned TON finalized checkpoint used as the trust root for inbound TON proofs.
@@ -1038,28 +904,17 @@ pub mod pallet {
         /// Checks whether an asset is already registered on the legacy bridge.
         type LegacyBridgeAssetChecker: LegacyBridgeAssetChecker<AssetIdOf<Self>>;
 
-        /// Handler used to append SCCP burn commitments to the on-chain auxiliary digest.
+        /// Handler used to append SCCP burn and governance commitments to the on-chain auxiliary digest.
         ///
         /// In production this should be configured to `LeafProvider`, so burns can be proven to
         /// external chains via BEEFY+MMR.
         type AuxiliaryDigestHandler: AuxiliaryDigestHandler;
-
-        /// Provider for finalized ETH execution state roots used by `EthBeaconLightClient` mode.
-        ///
-        /// This should be wired to an on-chain Ethereum light client integration. Returning `None`
-        /// keeps ETH inbound verification fail-closed.
-        type EthFinalizedStateProvider: EthFinalizedStateProvider;
 
         /// Provider for finalized Ethereum burn-log verification used by
         /// `EthBeaconLightClient` mode.
         ///
         /// Returning unavailable keeps ETH inbound verification fail-closed.
         type EthFinalizedBurnProofVerifier: EthFinalizedBurnProofVerifier;
-
-        /// Provider for zk-proven Ethereum finalized burn verification used by `EthZkProof` mode.
-        ///
-        /// Returning unavailable keeps ETH inbound verification fail-closed for zk-proof mode.
-        type EthZkFinalizedBurnProofVerifier: EthZkFinalizedBurnProofVerifier;
 
         /// Provider for trustless Solana finalized-slot burn verification used by
         /// `SolanaLightClient` mode.
@@ -1165,6 +1020,10 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn nonce)]
     pub(super) type Nonce<T: Config> = StorageValue<_, u64, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn governance_nonce)]
+    pub(super) type GovernanceNonce<T: Config> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn burns)]
@@ -1316,7 +1175,7 @@ pub mod pallet {
         }
     }
 
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -1349,6 +1208,12 @@ pub mod pallet {
             domain_id: u32,
         },
         TokenActivated {
+            asset_id: AssetIdOf<T>,
+        },
+        TokenPaused {
+            asset_id: AssetIdOf<T>,
+        },
+        TokenResumed {
             asset_id: AssetIdOf<T>,
         },
         TokenRemoved {
@@ -1467,6 +1332,7 @@ pub mod pallet {
         TokenNotFound,
         TokenNotPending,
         TokenNotActive,
+        TokenNotPaused,
         TokenNotRemoving,
         OutboundDisabled,
         InboundDisabled,
@@ -1488,6 +1354,7 @@ pub mod pallet {
         ProofInvalidated,
         ProofVerificationFailed,
         AssetSupplyNotMintable,
+        AssetMetadataInvalid,
         RecipientNotCanonical,
         AssetOnLegacyBridge,
         RequiredDomainsInvalid,
@@ -1503,13 +1370,6 @@ pub mod pallet {
         TronWitnessesInvalid,
         TonProofTooLarge,
         SolanaVoteAuthoritiesInvalid,
-    }
-
-    #[allow(non_upper_case_globals)]
-    impl<T> Error<T> {
-        pub const InboundFinalityModeDeprecated: Self = Self::InboundFinalityModeUnsupported;
-        pub const EvmInboundAnchorMissing: Self = Self::InboundFinalityUnavailable;
-        pub const InboundAttestersInvalid: Self = Self::SolanaVoteAuthoritiesInvalid;
     }
 
     #[pallet::call]
@@ -2200,6 +2060,80 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Pause a previously-activated token and emit governance proof targets for every destination.
+        #[pallet::call_index(14)]
+        #[pallet::weight(<T as Config>::WeightInfo::pause_token())]
+        #[transactional]
+        pub fn pause_token(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+
+            let state = Tokens::<T>::get(&asset_id).ok_or(Error::<T>::TokenNotFound)?;
+            ensure!(
+                matches!(state.status, TokenStatus::Active),
+                Error::<T>::TokenNotActive
+            );
+
+            let nonce = Self::next_governance_nonce()?;
+            let commitments =
+                Self::token_control_commitments(&asset_id, nonce, SCCP_MSG_PREFIX_TOKEN_PAUSE_V1)?;
+
+            Tokens::<T>::try_mutate(&asset_id, |state| -> DispatchResult {
+                let Some(state) = state.as_mut() else {
+                    return Err(Error::<T>::TokenNotFound.into());
+                };
+                ensure!(
+                    matches!(state.status, TokenStatus::Active),
+                    Error::<T>::TokenNotActive
+                );
+                state.status = TokenStatus::Paused;
+                state.outbound_enabled = false;
+                state.inbound_enabled = false;
+                state.inbound_enabled_until = None;
+                Ok(())
+            })?;
+
+            Self::emit_governance_commitments(commitments);
+            Self::deposit_event(Event::TokenPaused { asset_id });
+            Ok(())
+        }
+
+        /// Resume a paused token and emit governance proof targets for every destination.
+        #[pallet::call_index(15)]
+        #[pallet::weight(<T as Config>::WeightInfo::resume_token())]
+        #[transactional]
+        pub fn resume_token(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
+            T::ManagerOrigin::ensure_origin(origin)?;
+
+            let state = Tokens::<T>::get(&asset_id).ok_or(Error::<T>::TokenNotFound)?;
+            ensure!(
+                matches!(state.status, TokenStatus::Paused),
+                Error::<T>::TokenNotPaused
+            );
+
+            let nonce = Self::next_governance_nonce()?;
+            let commitments =
+                Self::token_control_commitments(&asset_id, nonce, SCCP_MSG_PREFIX_TOKEN_RESUME_V1)?;
+
+            Tokens::<T>::try_mutate(&asset_id, |state| -> DispatchResult {
+                let Some(state) = state.as_mut() else {
+                    return Err(Error::<T>::TokenNotFound.into());
+                };
+                ensure!(
+                    matches!(state.status, TokenStatus::Paused),
+                    Error::<T>::TokenNotPaused
+                );
+                state.status = TokenStatus::Active;
+                state.outbound_enabled = true;
+                state.inbound_enabled = true;
+                state.inbound_enabled_until = None;
+                Ok(())
+            })?;
+
+            Self::emit_governance_commitments(commitments);
+            Self::deposit_event(Event::TokenResumed { asset_id });
+            Ok(())
+        }
+
         /// Set the trusted TON finalized checkpoint used by `TonLightClient` mode (governance).
         #[pallet::call_index(28)]
         #[pallet::weight(<T as Config>::WeightInfo::set_domain_endpoint())]
@@ -2240,6 +2174,22 @@ pub mod pallet {
         #[transactional]
         pub fn activate_token(origin: OriginFor<T>, asset_id: AssetIdOf<T>) -> DispatchResult {
             T::ManagerOrigin::ensure_origin(origin)?;
+
+            let state = Tokens::<T>::get(&asset_id).ok_or(Error::<T>::TokenNotFound)?;
+            ensure!(
+                matches!(state.status, TokenStatus::Pending),
+                Error::<T>::TokenNotPending
+            );
+            for domain_id in RequiredDomains::<T>::get().into_inner().into_iter() {
+                Self::ensure_token_domain_activation_configured(&asset_id, domain_id)?;
+            }
+            for domain_id in SCCP_CORE_REMOTE_DOMAINS.into_iter() {
+                Self::ensure_token_domain_activation_configured(&asset_id, domain_id)?;
+            }
+
+            let nonce = Self::next_governance_nonce()?;
+            let commitments = Self::token_add_commitments(&asset_id, nonce)?;
+
             Tokens::<T>::try_mutate(&asset_id, |state| -> DispatchResult {
                 let Some(state) = state.as_mut() else {
                     return Err(Error::<T>::TokenNotFound.into());
@@ -2248,22 +2198,13 @@ pub mod pallet {
                     matches!(state.status, TokenStatus::Pending),
                     Error::<T>::TokenNotPending
                 );
-                // Ensure remote token IDs are configured for governance-required domains.
-                for domain_id in RequiredDomains::<T>::get().into_inner().into_iter() {
-                    Self::ensure_token_domain_activation_configured(&asset_id, domain_id)?;
-                }
-
-                // Security invariant: SCCP tokens must have deployed representations and
-                // configured endpoints on every core target chain.
-                for domain_id in SCCP_CORE_REMOTE_DOMAINS.into_iter() {
-                    Self::ensure_token_domain_activation_configured(&asset_id, domain_id)?;
-                }
                 state.status = TokenStatus::Active;
                 state.outbound_enabled = true;
                 state.inbound_enabled = true;
                 state.inbound_enabled_until = None;
                 Ok(())
             })?;
+            Self::emit_governance_commitments(commitments);
             Self::deposit_event(Event::TokenActivated { asset_id });
             Ok(())
         }
@@ -2283,6 +2224,10 @@ pub mod pallet {
                 let Some(state) = state.as_mut() else {
                     return Err(Error::<T>::TokenNotFound.into());
                 };
+                ensure!(
+                    matches!(state.status, TokenStatus::Paused),
+                    Error::<T>::TokenNotPaused
+                );
                 state.status = TokenStatus::Removing;
                 state.outbound_enabled = false;
                 state.inbound_enabled = false;
@@ -2612,14 +2557,9 @@ pub mod pallet {
 
             // Token must be active or in grace period.
             let state = Tokens::<T>::get(&asset_id).ok_or(Error::<T>::TokenNotFound)?;
-            let now = frame_system::Pallet::<T>::block_number();
             let inbound_allowed = match state.status {
                 TokenStatus::Active => state.inbound_enabled,
-                TokenStatus::Removing => state
-                    .inbound_enabled_until
-                    .map(|until| now <= until)
-                    .unwrap_or(false),
-                TokenStatus::Pending => false,
+                TokenStatus::Pending | TokenStatus::Paused | TokenStatus::Removing => false,
             };
             ensure!(inbound_allowed, Error::<T>::InboundDisabled);
 
@@ -2735,14 +2675,9 @@ pub mod pallet {
 
             // Token must exist and accept inbound operations.
             let state = Tokens::<T>::get(&asset_id).ok_or(Error::<T>::TokenNotFound)?;
-            let now = frame_system::Pallet::<T>::block_number();
             let inbound_allowed = match state.status {
                 TokenStatus::Active => state.inbound_enabled,
-                TokenStatus::Removing => state
-                    .inbound_enabled_until
-                    .map(|until| now <= until)
-                    .unwrap_or(false),
-                TokenStatus::Pending => false,
+                TokenStatus::Pending | TokenStatus::Paused | TokenStatus::Removing => false,
             };
             ensure!(inbound_allowed, Error::<T>::InboundDisabled);
 
@@ -2855,69 +2790,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn set_evm_inbound_anchor(
-            origin: OriginFor<T>,
-            domain_id: u32,
-            block_number: u64,
-            block_hash: H256,
-            state_root: H256,
-        ) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            let _ = (domain_id, block_number, block_hash, state_root);
-            Err(Error::<T>::InboundFinalityModeUnsupported.into())
-        }
-
-        pub fn clear_evm_inbound_anchor(origin: OriginFor<T>, domain_id: u32) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            let _ = domain_id;
-            Err(Error::<T>::InboundFinalityModeUnsupported.into())
-        }
-
-        pub fn set_evm_anchor_mode_enabled(
-            origin: OriginFor<T>,
-            domain_id: u32,
-            enabled: bool,
-        ) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            let _ = (domain_id, enabled);
-            Err(Error::<T>::InboundFinalityModeUnsupported.into())
-        }
-
-        pub fn set_inbound_attesters(
-            origin: OriginFor<T>,
-            domain_id: u32,
-            attesters: Vec<H160>,
-            threshold: u32,
-        ) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            let _ = (domain_id, attesters, threshold);
-            Err(Error::<T>::InboundFinalityModeUnsupported.into())
-        }
-
-        pub fn clear_inbound_attesters(origin: OriginFor<T>, domain_id: u32) -> DispatchResult {
-            T::ManagerOrigin::ensure_origin(origin)?;
-            let _ = domain_id;
-            Err(Error::<T>::InboundFinalityModeUnsupported.into())
-        }
-
-        pub fn evm_inbound_anchor(_domain_id: u32) -> Option<EvmInboundAnchor> {
-            None
-        }
-
-        pub fn evm_anchor_mode_enabled(_domain_id: u32) -> bool {
-            false
-        }
-
-        pub fn inbound_attesters(
-            _domain_id: u32,
-        ) -> Option<BoundedVec<H160, <T as Config>::MaxAttesters>> {
-            None
-        }
-
-        pub fn inbound_attester_threshold(_domain_id: u32) -> Option<u32> {
-            None
-        }
-
         /// Returns true if `asset_id` is currently managed by SCCP (any status).
         pub fn is_sccp_asset(asset_id: &AssetIdOf<T>) -> bool {
             Tokens::<T>::contains_key(asset_id)
@@ -2925,6 +2797,24 @@ pub mod pallet {
 
         fn burn_message_id(payload: &BurnPayloadV1) -> H256 {
             let mut preimage = SCCP_MSG_PREFIX_BURN_V1.to_vec();
+            preimage.extend(payload.encode());
+            H256::from_slice(&keccak_256(&preimage))
+        }
+
+        pub fn token_add_message_id(payload: &TokenAddPayloadV1) -> H256 {
+            let mut preimage = SCCP_MSG_PREFIX_TOKEN_ADD_V1.to_vec();
+            preimage.extend(payload.encode());
+            H256::from_slice(&keccak_256(&preimage))
+        }
+
+        pub fn token_pause_message_id(payload: &TokenControlPayloadV1) -> H256 {
+            let mut preimage = SCCP_MSG_PREFIX_TOKEN_PAUSE_V1.to_vec();
+            preimage.extend(payload.encode());
+            H256::from_slice(&keccak_256(&preimage))
+        }
+
+        pub fn token_resume_message_id(payload: &TokenControlPayloadV1) -> H256 {
+            let mut preimage = SCCP_MSG_PREFIX_TOKEN_RESUME_V1.to_vec();
             preimage.extend(payload.encode());
             H256::from_slice(&keccak_256(&preimage))
         }
@@ -3046,6 +2936,116 @@ pub mod pallet {
                 DomainEndpoint::<T>::get(domain_id).ok_or(Error::<T>::DomainEndpointMissing)?;
             Self::ensure_domain_endpoint_len(domain_id, endpoint.len())?;
             Ok(())
+        }
+
+        fn next_governance_nonce() -> Result<u64, DispatchError> {
+            GovernanceNonce::<T>::try_mutate(|nonce| -> Result<u64, DispatchError> {
+                ensure!(*nonce != u64::MAX, Error::<T>::NonceOverflow);
+                *nonce += 1;
+                Ok(*nonce)
+            })
+        }
+
+        fn emit_governance_commitments(commitments: Vec<(u32, H256)>) {
+            for (domain_id, message_id) in commitments {
+                T::AuxiliaryDigestHandler::add_item(AuxiliaryDigestItem::Commitment(
+                    digest_network_id_for_domain(domain_id),
+                    bridge_types::H256::from_slice(message_id.as_bytes()),
+                ));
+            }
+        }
+
+        fn governance_target_domains() -> Vec<u32> {
+            let mut domains = RequiredDomains::<T>::get().into_inner();
+            for domain_id in SCCP_CORE_REMOTE_DOMAINS {
+                if !domains.contains(&domain_id) {
+                    domains.push(domain_id);
+                }
+            }
+            domains.sort();
+            domains.dedup();
+            domains
+        }
+
+        fn governance_ascii_fixed_32(bytes: &[u8]) -> Result<[u8; 32], DispatchError> {
+            ensure!(
+                !bytes.is_empty()
+                    && bytes.len() <= 32
+                    && bytes.iter().all(|byte| (0x20..=0x7e).contains(byte)),
+                Error::<T>::AssetMetadataInvalid
+            );
+            let mut out = [0u8; 32];
+            out[..bytes.len()].copy_from_slice(bytes);
+            Ok(out)
+        }
+
+        fn token_add_payload(
+            asset_id: &AssetIdOf<T>,
+            target_domain: u32,
+            nonce: u64,
+        ) -> Result<TokenAddPayloadV1, DispatchError> {
+            Self::ensure_token_domain_activation_configured(asset_id, target_domain)?;
+            let (symbol, name, decimals, ..) =
+                <T as Config>::AssetInfoProvider::get_asset_info(asset_id);
+            let asset_h256: H256 = (*asset_id).into();
+            Ok(TokenAddPayloadV1 {
+                version: 1,
+                target_domain,
+                nonce,
+                sora_asset_id: asset_h256.0,
+                decimals,
+                name: Self::governance_ascii_fixed_32(name.0.as_slice())?,
+                symbol: Self::governance_ascii_fixed_32(symbol.0.as_slice())?,
+            })
+        }
+
+        fn token_control_payload(
+            asset_id: &AssetIdOf<T>,
+            target_domain: u32,
+            nonce: u64,
+        ) -> Result<TokenControlPayloadV1, DispatchError> {
+            Self::ensure_token_domain_activation_configured(asset_id, target_domain)?;
+            let asset_h256: H256 = (*asset_id).into();
+            Ok(TokenControlPayloadV1 {
+                version: 1,
+                target_domain,
+                nonce,
+                sora_asset_id: asset_h256.0,
+            })
+        }
+
+        fn token_add_commitments(
+            asset_id: &AssetIdOf<T>,
+            nonce: u64,
+        ) -> Result<Vec<(u32, H256)>, DispatchError> {
+            Self::governance_target_domains()
+                .into_iter()
+                .map(|domain_id| {
+                    let payload = Self::token_add_payload(asset_id, domain_id, nonce)?;
+                    Ok((domain_id, Self::token_add_message_id(&payload)))
+                })
+                .collect()
+        }
+
+        fn token_control_commitments(
+            asset_id: &AssetIdOf<T>,
+            nonce: u64,
+            prefix: &[u8],
+        ) -> Result<Vec<(u32, H256)>, DispatchError> {
+            Self::governance_target_domains()
+                .into_iter()
+                .map(|domain_id| {
+                    let payload = Self::token_control_payload(asset_id, domain_id, nonce)?;
+                    let message_id = if prefix == SCCP_MSG_PREFIX_TOKEN_PAUSE_V1 {
+                        Self::token_pause_message_id(&payload)
+                    } else if prefix == SCCP_MSG_PREFIX_TOKEN_RESUME_V1 {
+                        Self::token_resume_message_id(&payload)
+                    } else {
+                        return Err(Error::<T>::DomainUnsupported.into());
+                    };
+                    Ok((domain_id, message_id))
+                })
+                .collect()
         }
 
         fn be_u64_from_bytes(bytes: &[u8]) -> Option<u64> {
@@ -3292,11 +3292,6 @@ pub mod pallet {
             // Inbound-to-SORA verification is mode- and source-chain-specific.
             match Self::inbound_finality_mode_for_domain(source_domain) {
                 InboundFinalityMode::Disabled => Err(Error::<T>::InboundFinalityUnavailable.into()),
-                InboundFinalityMode::LegacyEvmAnchor
-                | InboundFinalityMode::LegacyBscLightClientOrAnchor
-                | InboundFinalityMode::LegacyAttesterQuorum => {
-                    Err(Error::<T>::InboundFinalityModeUnsupported.into())
-                }
                 InboundFinalityMode::EthBeaconLightClient => {
                     ensure!(
                         source_domain == SCCP_DOMAIN_ETH,
@@ -3306,14 +3301,6 @@ pub mod pallet {
                         message_id, payload, proof,
                     )
                     .ok_or(Error::<T>::InboundFinalityUnavailable.into())
-                }
-                InboundFinalityMode::EthZkProof => {
-                    ensure!(
-                        source_domain == SCCP_DOMAIN_ETH,
-                        Error::<T>::InboundFinalityModeUnsupported
-                    );
-                    T::EthZkFinalizedBurnProofVerifier::verify_finalized_burn(message_id, proof)
-                        .ok_or(Error::<T>::InboundFinalityUnavailable.into())
                 }
                 InboundFinalityMode::BscLightClient => {
                     Self::verify_evm_burn_proof(source_domain, message_id, proof)
@@ -3595,9 +3582,7 @@ pub mod pallet {
             let supported = match domain_id {
                 SCCP_DOMAIN_ETH => matches!(
                     mode,
-                    InboundFinalityMode::Disabled
-                        | InboundFinalityMode::EthBeaconLightClient
-                        | InboundFinalityMode::EthZkProof
+                    InboundFinalityMode::Disabled | InboundFinalityMode::EthBeaconLightClient
                 ),
                 SCCP_DOMAIN_BSC => matches!(
                     mode,
@@ -3632,11 +3617,6 @@ pub mod pallet {
         fn ensure_inbound_finality_available(source_domain: u32) -> DispatchResult {
             match Self::inbound_finality_mode_for_domain(source_domain) {
                 InboundFinalityMode::Disabled => Err(Error::<T>::InboundFinalityUnavailable.into()),
-                InboundFinalityMode::LegacyEvmAnchor
-                | InboundFinalityMode::LegacyBscLightClientOrAnchor
-                | InboundFinalityMode::LegacyAttesterQuorum => {
-                    Err(Error::<T>::InboundFinalityModeUnsupported.into())
-                }
                 InboundFinalityMode::BscLightClient => {
                     ensure!(
                         source_domain == SCCP_DOMAIN_BSC,
@@ -3666,17 +3646,6 @@ pub mod pallet {
                     );
                     ensure!(
                         T::EthFinalizedBurnProofVerifier::is_available(),
-                        Error::<T>::InboundFinalityUnavailable
-                    );
-                    Ok(())
-                }
-                InboundFinalityMode::EthZkProof => {
-                    ensure!(
-                        source_domain == SCCP_DOMAIN_ETH,
-                        Error::<T>::InboundFinalityModeUnsupported
-                    );
-                    ensure!(
-                        T::EthZkFinalizedBurnProofVerifier::is_available(),
                         Error::<T>::InboundFinalityUnavailable
                     );
                     Ok(())
