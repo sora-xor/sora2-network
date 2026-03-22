@@ -7,12 +7,14 @@ Current contents:
   computation (`keccak256(b"sccp:burn:v1" || payload)`).
 
 - A Solana program crate under `program/`:
-  - config PDA (outbound nonce, immutable verifier program id, legacy unused governor field kept for wire compatibility)
+  - config PDA (outbound nonce, immutable verifier program id, governor-gated bootstrap authority)
   - per-asset token registry PDA (`sora_asset_id -> SPL mint`)
   - `Burn` burns SPL tokens via CPI and stores an on-chain burn record PDA keyed by `messageId`
-  - `MintFromProof` is implemented but **fail-closed** until the verifier program is bound once during bootstrap
-  - local admin mutation paths are disabled; proof flow remains permissionless after bootstrap
+  - `MintFromProof` is implemented but **fail-closed** until the configured governor binds the verifier program during bootstrap
+  - token deployment/registration and verifier bootstrap are governor-gated; local admin mutation paths remain disabled after bootstrap
+  - proof-verified destination governance actions are not yet implemented; bootstrap authority is the configured governor key today
   - domain hardening: burn/mint paths reject unsupported domain IDs
+  - `scripts/deploy_mainnet.py` now treats governor bootstrap as part of deployment and can invoke the in-repo bootstrap helper when given the governor pubkey/keypair plus SORA-derived validator set inputs
 
 ## Build / Test
 

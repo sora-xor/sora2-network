@@ -4,7 +4,8 @@ SORA Cross-Chain Protocol (SCCP) components for TON (Jetton-based).
 
 This repo contains:
 - The canonical SCCP message format (`SPEC.md`)
-- A Jetton master + wallet implementation in **Tolk** with SCCP extensions (burn records + verifier-gated minting)
+- A Jetton master + wallet implementation in **Tolk** with SCCP extensions
+  (burn records + verifier-gated minting + proof-driven lifecycle state)
 - A trustless SORA->TON verifier contract (`contracts/sccp-sora-verifier.tolk`) that implements a BEEFY+MMR light client on TON
 
 Compiler/tooling:
@@ -20,10 +21,14 @@ verifier/light client on the destination chain.
 For SORA->TON, this repo uses the same approach as the EVM/Solana SCCP verifiers:
 - finalized SORA MMR roots are imported permissionlessly by verifying BEEFY commitments (validator signatures + merkle membership proofs)
 - SCCP burn proofs are verified via MMR inclusion + auxiliary digest commitment, then forwarded to the Jetton master for minting
+- SCCP governance proofs are verified the same way for `addTokenFromProof`, `pauseTokenFromProof`, and `resumeTokenFromProof`
 - verifier hardening: ECDSA signatures must have non-zero `r/s` and canonical low-`s` (`s <= secp256k1n/2`)
 - verifier hardening: duplicate validator signer addresses in a commitment proof are rejected (fail-closed)
 - router hardening: TON jetton wallet/master reject unsupported SCCP domain ids in burn/mint flows
-- local admin mutation paths are disabled; the verifier self-registers at the master during one-time verifier bootstrap instead of any post-deploy governor step
+- verifier bootstrap requires the configured governor, and the master accepts a one-time governor-pinned verifier binding before proof flow opens
+- the canonical jetton master is predeployed, starts paused, and is activated by a SORA governance proof after SORA whitelists its canonical identity
+- the master accepts lifecycle changes only from its configured verifier; there is no steady-state local governor/operator mutation path
+- all other local admin mutation paths are disabled
 
 ## Non-SORA -> TON (Via SORA Attestation)
 
@@ -110,6 +115,9 @@ The helper script is still available for re-encoding historical or externally ge
 - `node scripts/encode_sora_proof_cell.mjs --input ./mint-proof.json --format both`
 - `npm run encode-proof-cell -- --input ./mint-proof.json --format both`
 
+`scripts/deploy_mainnet.mjs` now emits the exact `SccpSetVerifier` body BOC in dry-run mode and, when you also provide the SORA-derived verifier bootstrap inputs, the exact `SccpVerifierInitialize` body BOC as well. In execute mode it can auto-send both governor-only bootstrap messages after deployment when the governor wallet mnemonic is available via `--governor-mnemonic-file`.
+The deployed master remains `Paused` until SORA emits and TON verifies the canonical `addTokenFromProof` governance message for that asset.
+
 ## Build
 
 ```bash
@@ -152,4 +160,4 @@ Helper:
 node scripts/derive_master_address.mjs --governor <legacy_seed_addr> --sora-asset-id <64hex>
 ```
 
-`--governor` is still part of the current address derivation because the legacy storage field remains in the init data, but it no longer grants any post-deploy control.
+`--governor` is still part of the address derivation because the one-time verifier bootstrap authority remains in init data, but it does not provide steady-state lifecycle control after deployment.

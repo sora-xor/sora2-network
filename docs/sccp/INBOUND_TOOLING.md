@@ -6,8 +6,10 @@ It focuses on the modes currently implemented in `pallet-sccp`:
 
 - EVM storage proofs (`eth_getProof`, EIP-1186) for Ethereum/BSC/TRON
 - BSC on-chain light client finality (Parlia header verifier + `k`-deep finality)
+- Solana finalized-burn proof verification via the runtime `SolanaFinalizedBurnProofVerifier` hook
 - TON checkpointed proof consumption (`TonBurnProofV1`)
 - TRON on-chain light client finality (witness header verifier + “solidified” finality)
+- Substrate finalized-burn proof verification via the runtime `SubstrateFinalizedBurnProofVerifier` hook
 
 SCCP is **fail-closed**: if the required finality/verifier state is not available on-chain, SORA will reject the proof.
 
@@ -18,17 +20,24 @@ For a given `source_domain`:
 1. Configure the remote SCCP router endpoint: `sccp.set_domain_endpoint(source_domain, endpoint_id)`.
 2. Ensure the asset is registered in SCCP and has a remote token id set for that `source_domain`:
    `sccp.add_token(asset_id)`, then `sccp.set_remote_token(asset_id, source_domain, remote_token_id)`, then
-   `sccp.activate_token(asset_id)` (requires all SCCP core remote domains ETH/BSC/SOL/TON/TRON are configured;
+   `sccp.activate_token(asset_id)` (requires all SCCP core remote domains `ETH/BSC/SOL/TON/TRON/SORA_KUSAMA/SORA_POLKADOT` are configured;
    `RequiredDomains` must include all core domains and can only add extra requirements).
 3. Choose finality mode (per domain): `sccp.set_inbound_finality_mode(source_domain, mode)`.
 
+For destination lifecycle consistency, SORA also treats `set_domain_endpoint` and `set_remote_token`
+as the canonical whitelist for deployed destination endpoints and token identities before activation.
+After bootstrap, destinations consume proof-driven `addTokenFromProof` / `pauseTokenFromProof` / `resumeTokenFromProof`
+messages rather than local operator actions.
+
 Supported modes today:
 
-- ETH (`1`): default `EthBeaconLightClient` (hooked, fail-closed in production runtime until wired). Additional proof-backed mode: `EthZkProof` (native runtime STARK/FRI verifier, no trusted setup).
+- ETH (`1`): default `EthBeaconLightClient` (hooked, fail-closed in production runtime until wired).
 - BSC (`2`): default `BscLightClient`.
 - SOL (`3`): default `SolanaLightClient` (hooked, fail-closed in production runtime until wired).
 - TON (`4`): default `TonLightClient`. Governance bootstraps a trusted checkpoint with `set_ton_trusted_checkpoint`.
 - TRON (`5`): default `TronLightClient`.
+- SORA_KUSAMA (`6`): default `SubstrateLightClient`.
+- SORA_POLKADOT (`7`): default `SubstrateLightClient`.
 
 ### BSC Light Client Mode
 
@@ -204,16 +213,12 @@ by verifying SORA finality (BEEFY+MMR light client).
 
 Inbound-to-SORA proof verification for:
 
-- ETH (`1`) now has a native `EthZkProof` verifier in the runtime for SCALE-encoded
-  `EthZkFinalizedBurnProofV1` envelopes. Beacon-mode `EthBeaconLightClient` remains fail-closed
-  until a finalized ETH state provider is wired.
+- ETH (`1`) remains fail-closed in `EthBeaconLightClient` mode until a finalized-burn verifier
+  is wired.
 - Solana (`3`) now has a fixed `SolanaFinalizedBurnProofV1` envelope and runtime verifier hook binding
   `messageId` plus the configured Solana router id, but remains **fail-closed** until a real on-chain
   Solana/STARK verifier backend is wired into that hook.
 - TON (`4`) remains fail-closed until governance configures `set_ton_trusted_checkpoint(...)`.
-
-Deprecated fallback modes (`EvmAnchor`, `BscLightClientOrAnchor`, `AttesterQuorum`) now fail closed in `pallet-sccp`
-and should not be used for new SCCP flows.
 
 `attestHash = keccak256("sccp:attest:v1" || messageId)`
 
@@ -232,3 +237,4 @@ So the final bytes are: `0x01 || SCALE(signatures_vec)`.
 The on-chain, trustless part already exists in the opposite direction:
 
 - destination chains verify SORA commitments using BEEFY+MMR light clients (`sccp-eth`, `sccp-bsc`, `sccp-tron`, `sccp-sol`, `sccp-ton`).
+- those same destination verifiers now also consume SORA governance commitments for canonical token lifecycle changes.

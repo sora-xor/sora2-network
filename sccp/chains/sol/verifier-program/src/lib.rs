@@ -20,8 +20,8 @@ use solana_program::keccak::hashv as keccak_hashv;
 use solana_program::secp256k1_recover::secp256k1_recover;
 
 use sccp_sol::{
-    burn_message_id, decode_burn_payload_v1, BurnPayloadV1, H256, SCCP_DOMAIN_BSC,
-    SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
+    burn_message_id, decode_burn_payload_v1, BurnPayloadV1, H256, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH,
+    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
 };
 
 const SEED_PREFIX: &[u8] = b"sccp";
@@ -50,6 +50,7 @@ const IX_INITIALIZE: u8 = 0;
 const IX_VERIFY_BURN_PROOF: u8 = 1;
 const IX_SUBMIT_SIGNATURE_COMMITMENT: u8 = 2;
 const IX_SET_GOVERNOR: u8 = 3;
+const IX_VERIFY_GOVERNANCE_PROOF: u8 = 4;
 
 #[repr(u32)]
 pub enum VerifierError {
@@ -98,8 +99,8 @@ pub struct Commitment {
 
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ValidatorProof {
-    pub signatures: Vec<Vec<u8>>, // 65 bytes each
-    pub positions: Vec<u64>, // not used for membership, but checked for bounds/uniqueness
+    pub signatures: Vec<Vec<u8>>,   // 65 bytes each
+    pub positions: Vec<u64>,        // not used for membership, but checked for bounds/uniqueness
     pub public_keys: Vec<[u8; 20]>, // Ethereum addresses
     pub public_key_merkle_proofs: Vec<Vec<[u8; 32]>>,
 }
@@ -217,7 +218,8 @@ pub fn process_instruction(
         }
         IX_VERIFY_BURN_PROOF => verify_burn_proof(program_id, accounts, instruction_data),
         IX_SUBMIT_SIGNATURE_COMMITMENT => {
-            let args = parse_instruction_args::<SubmitSignatureCommitmentArgs>(&instruction_data[1..])?;
+            let args =
+                parse_instruction_args::<SubmitSignatureCommitmentArgs>(&instruction_data[1..])?;
             submit_signature_commitment(
                 program_id,
                 accounts,
@@ -230,6 +232,9 @@ pub fn process_instruction(
         IX_SET_GOVERNOR => {
             let args = parse_instruction_args::<SetGovernorArgs>(&instruction_data[1..])?;
             set_governor(program_id, accounts, args.governor)
+        }
+        IX_VERIFY_GOVERNANCE_PROOF => {
+            verify_governance_proof(program_id, accounts, instruction_data)
         }
         _ => Err(VerifierError::InvalidInstructionData.into()),
     }
@@ -248,6 +253,7 @@ fn initialize(
     let payer = next_account_info(&mut it)?;
     let config_acc = next_account_info(&mut it)?;
     let system_program = next_account_info(&mut it)?;
+    let governor_authority = it.next();
 
     if !payer.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
@@ -255,6 +261,7 @@ fn initialize(
     if *system_program.key != solana_program::system_program::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
+    require_governor_authority(governor_authority.unwrap_or(payer), &governor)?;
 
     let (expected, bump) = config_pda(program_id);
     if *config_acc.key != expected {
@@ -327,7 +334,8 @@ fn submit_signature_commitment(
 
     // Verify the provided MMR leaf is included under the payload root.
     let leaf_hash = hash_leaf(&latest_mmr_leaf);
-    let root = mmr_proof_root(leaf_hash, &proof).map_err(|_| ProgramError::from(VerifierError::InvalidMmrProof))?;
+    let root = mmr_proof_root(leaf_hash, &proof)
+        .map_err(|_| ProgramError::from(VerifierError::InvalidMmrProof))?;
     if root != commitment.mmr_root {
         return Err(VerifierError::InvalidMmrProof.into());
     }
@@ -352,11 +360,7 @@ fn submit_signature_commitment(
 }
 
 #[inline(never)]
-fn verify_burn_proof(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    data: &[u8],
-) -> ProgramResult {
+fn verify_burn_proof(program_id: &Pubkey, accounts: &[AccountInfo], data: &[u8]) -> ProgramResult {
     // Layout (produced by SCCP router CPI):
     // 1 byte version (1)
     // u32 source_domain LE
@@ -394,7 +398,8 @@ fn verify_burn_proof(
     }
 
     // Ensure payload has the expected version.
-    let p = decode_burn_payload_v1(payload).map_err(|_| ProgramError::from(VerifierError::PayloadInvalidLength))?;
+    let p = decode_burn_payload_v1(payload)
+        .map_err(|_| ProgramError::from(VerifierError::PayloadInvalidLength))?;
     if p.version != 1 {
         return Err(VerifierError::PayloadInvalidLength.into());
     }
@@ -408,6 +413,34 @@ fn verify_burn_proof(
     }
 
     let proof_bytes = &data[37 + BurnPayloadV1::ENCODED_LEN..];
+    verify_message_id_in_sora_digest(&cfg, &message_id, proof_bytes)
+}
+
+fn verify_governance_proof(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    data: &[u8],
+) -> ProgramResult {
+    if data.len() < 1 + 32 {
+        return Err(VerifierError::InvalidInstructionData.into());
+    }
+
+    let mut it = accounts.iter();
+    let config_acc = next_account_info(&mut it)?;
+    let cfg = load_config(program_id, config_acc)?;
+
+    let message_id: H256 = data[1..33]
+        .try_into()
+        .map_err(|_| VerifierError::InvalidInstructionData)?;
+    let proof_bytes = &data[33..];
+    verify_message_id_in_sora_digest(&cfg, &message_id, proof_bytes)
+}
+
+fn verify_message_id_in_sora_digest(
+    cfg: &Config,
+    message_id: &H256,
+    proof_bytes: &[u8],
+) -> ProgramResult {
     if proof_bytes.len() > 16 * 1024 {
         return Err(VerifierError::ProofTooLarge.into());
     }
@@ -418,9 +451,9 @@ fn verify_burn_proof(
     }
 
     let leaf_hash = hash_leaf(&proof.leaf);
-    let root =
-        mmr_proof_root(leaf_hash, &proof.mmr_proof).map_err(|_| ProgramError::from(VerifierError::InvalidMmrProof))?;
-    if !is_known_root(&cfg, &root) {
+    let root = mmr_proof_root(leaf_hash, &proof.mmr_proof)
+        .map_err(|_| ProgramError::from(VerifierError::InvalidMmrProof))?;
+    if !is_known_root(cfg, &root) {
         return Err(VerifierError::UnknownMmrRoot.into());
     }
 
@@ -429,7 +462,7 @@ fn verify_burn_proof(
         return Err(VerifierError::InvalidDigestHash.into());
     }
 
-    if !digest_has_sccp_commitment(&proof.digest_scale, &message_id) {
+    if !digest_has_sccp_commitment(&proof.digest_scale, message_id) {
         return Err(VerifierError::CommitmentNotFoundInDigest.into());
     }
 
@@ -451,6 +484,16 @@ fn load_config(program_id: &Pubkey, acc: &AccountInfo) -> Result<Box<Config>, Pr
     }
     let cfg = Box::new(read_borsh::<Config>(acc)?);
     validate_config(cfg)
+}
+
+fn require_governor_authority(authority: &AccountInfo, governor: &Pubkey) -> ProgramResult {
+    if !authority.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    if authority.key != governor {
+        return Err(VerifierError::NotGovernor.into());
+    }
+    Ok(())
 }
 
 fn add_known_mmr_root(cfg: &mut Config, root: [u8; 32]) {
@@ -479,7 +522,10 @@ fn verify_commitment_signatures(
     let threshold = ((num * 2) + 2) / 3; // ceil(2n/3)
 
     let n = proof.signatures.len();
-    if proof.positions.len() != n || proof.public_keys.len() != n || proof.public_key_merkle_proofs.len() != n {
+    if proof.positions.len() != n
+        || proof.public_keys.len() != n
+        || proof.public_key_merkle_proofs.len() != n
+    {
         return Err(VerifierError::InvalidValidatorProof.into());
     }
     if n < threshold {
@@ -512,7 +558,13 @@ fn verify_commitment_signatures(
 
         // Membership proof against the validator set root.
         let pos = proof.positions[i];
-        if !verify_beefy_merkle_proof(vset.root, vset.len, pos, &addr, &proof.public_key_merkle_proofs[i]) {
+        if !verify_beefy_merkle_proof(
+            vset.root,
+            vset.len,
+            pos,
+            &addr,
+            &proof.public_key_merkle_proofs[i],
+        ) {
             return Err(VerifierError::InvalidMerkleProof.into());
         }
 
@@ -721,8 +773,13 @@ fn mmr_proof_root(leaf_hash: [u8; 32], proof: &MmrProof) -> Result<[u8; 32], Ver
             let peak_root = if leaf_pos == peak_pos {
                 leaf_hash
             } else {
-                let (r, next) =
-                    calculate_peak_root_single(leaf_pos, leaf_hash, peak_pos, &proof.items, proof_idx)?;
+                let (r, next) = calculate_peak_root_single(
+                    leaf_pos,
+                    leaf_hash,
+                    peak_pos,
+                    &proof.items,
+                    proof_idx,
+                )?;
                 proof_idx = next;
                 r
             };
@@ -878,7 +935,9 @@ fn calculate_peak_root_single(
             pos + parent_offset(height)
         };
 
-        let sibling = *proof_items.get(proof_idx).ok_or(VerifierError::InvalidMmrProof)?;
+        let sibling = *proof_items
+            .get(proof_idx)
+            .ok_or(VerifierError::InvalidMmrProof)?;
         proof_idx = proof_idx.saturating_add(1);
 
         let parent_item = if pos_is_right {
@@ -1008,7 +1067,8 @@ fn read_compact_u32(data: &[u8], off: usize) -> Option<(u32, usize)> {
 
 #[inline(never)]
 fn read_borsh<T: BorshDeserialize>(acc: &AccountInfo) -> Result<T, ProgramError> {
-    T::try_from_slice(&acc.data.borrow()).map_err(|_| ProgramError::from(VerifierError::InvalidAccountSize))
+    T::try_from_slice(&acc.data.borrow())
+        .map_err(|_| ProgramError::from(VerifierError::InvalidAccountSize))
 }
 
 fn write_borsh<T: BorshSerialize>(acc: &AccountInfo, v: &T) -> Result<(), ProgramError> {
@@ -1035,7 +1095,8 @@ fn create_pda_account<'a>(
     let lamports = rent.minimum_balance(space);
 
     if pda.lamports() == 0 {
-        let ix = system_instruction::create_account(payer.key, pda.key, lamports, space as u64, owner);
+        let ix =
+            system_instruction::create_account(payer.key, pda.key, lamports, space as u64, owner);
         invoke_signed(&ix, &[payer.clone(), pda.clone()], &[signer_seeds])?;
         return Ok(());
     }
@@ -1153,11 +1214,17 @@ mod tests {
     fn parse_eth_signature_rejects_wrong_length_inputs() {
         let short = [0u8; 64];
         let err = parse_eth_signature(&short).expect_err("64-byte signature should be rejected");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidSignature as u32));
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidSignature as u32)
+        );
 
         let overlong = [0u8; 66];
         let err = parse_eth_signature(&overlong).expect_err("66-byte signature should be rejected");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidSignature as u32));
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidSignature as u32)
+        );
     }
 
     #[test]
@@ -1168,7 +1235,10 @@ mod tests {
 
         sig[64] = 31;
         let bad_v = parse_eth_signature(&sig).expect_err("v=31 should be rejected");
-        assert_eq!(bad_v, ProgramError::Custom(VerifierError::InvalidSignature as u32));
+        assert_eq!(
+            bad_v,
+            ProgramError::Custom(VerifierError::InvalidSignature as u32)
+        );
 
         sig[64] = 27;
         sig[0] = 0;
@@ -1195,8 +1265,8 @@ mod tests {
 
         for bad_v in [2u8, 3u8, 29u8, 30u8, 31u8, 32u8, 255u8] {
             sig[64] = bad_v;
-            let err = parse_eth_signature(&sig)
-                .expect_err("non-EVM recovery id should be rejected");
+            let err =
+                parse_eth_signature(&sig).expect_err("non-EVM recovery id should be rejected");
             assert_eq!(
                 err,
                 ProgramError::Custom(VerifierError::InvalidSignature as u32)
@@ -1219,7 +1289,10 @@ mod tests {
         too_high[31] = too_high[31].saturating_add(1);
         sig[32..64].copy_from_slice(&too_high);
         let err = parse_eth_signature(&sig).expect_err("s above half-order should fail");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidSignature as u32));
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidSignature as u32)
+        );
     }
 
     #[test]
@@ -1324,7 +1397,10 @@ mod tests {
 
         let err = verify_commitment_signatures(&commitment, &proof, vset)
             .expect_err("2-of-3 should clear quorum and fail later on proof validation");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidMerkleProof as u32));
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidMerkleProof as u32)
+        );
     }
 
     #[test]
@@ -1348,7 +1424,10 @@ mod tests {
 
         let err = verify_commitment_signatures(&commitment, &proof, vset)
             .expect_err("4-of-6 should clear quorum and fail later on proof validation");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidMerkleProof as u32));
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidMerkleProof as u32)
+        );
     }
 
     #[test]
@@ -1371,7 +1450,10 @@ mod tests {
 
         let err = ensure_commitment_matches_leaf(&commitment, &leaf)
             .expect_err("leaf block number must match justified commitment block");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidMmrProof as u32));
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidMmrProof as u32)
+        );
     }
 
     #[test]
@@ -1395,8 +1477,12 @@ mod tests {
             mmr_roots: [[0u8; 32]; MMR_ROOT_HISTORY_SIZE],
         };
 
-        let err = validate_config(Box::new(cfg)).expect_err("unknown config version must fail closed");
-        assert_eq!(err, ProgramError::Custom(VerifierError::InvalidAccountSize as u32));
+        let err =
+            validate_config(Box::new(cfg)).expect_err("unknown config version must fail closed");
+        assert_eq!(
+            err,
+            ProgramError::Custom(VerifierError::InvalidAccountSize as u32)
+        );
     }
 
     #[test]
@@ -1454,8 +1540,14 @@ mod tests {
     #[test]
     fn read_compact_u32_decodes_supported_modes() {
         assert_eq!(read_compact_u32(&encode_compact_u32(63), 0), Some((63, 1)));
-        assert_eq!(read_compact_u32(&encode_compact_u32(16383), 0), Some((16383, 2)));
-        assert_eq!(read_compact_u32(&encode_compact_u32(0x3fff_ffff), 0), Some((0x3fff_ffff, 4)));
+        assert_eq!(
+            read_compact_u32(&encode_compact_u32(16383), 0),
+            Some((16383, 2))
+        );
+        assert_eq!(
+            read_compact_u32(&encode_compact_u32(0x3fff_ffff), 0),
+            Some((0x3fff_ffff, 4))
+        );
     }
 
     #[test]

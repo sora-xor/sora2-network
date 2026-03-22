@@ -100,7 +100,7 @@ struct (0x1fd0ab62) SccpBurnedNotification {
 }
 
 // Verifier -> Jetton master: mint jettons for a verified SCCP burn on another chain.
-// Fail-closed until `verifierAddress` is self-registered once by the verifier contract.
+// Fail-closed until `verifierAddress` is pinned once by the configured governor.
 struct (0x23e4c1a0) SccpMintFromVerifier {
     queryId: uint64
     sourceDomain: uint32
@@ -110,18 +110,41 @@ struct (0x23e4c1a0) SccpMintFromVerifier {
     sendExcessesTo: address?
 }
 
-// Deprecated local admin operations. Contracts keep decoding these opcodes for compatibility,
-// but runtime handlers fail closed with `ERROR_SCCP_ADMIN_PATH_DISABLED`.
+// Verifier -> Jetton master: activate the canonical predeployed token after a finalized SORA add-token governance proof.
+struct (0x23e4c1a1) SccpAddTokenFromVerifier {
+    queryId: uint64
+    messageId: uint256
+    soraAssetId: uint256
+}
+
+// Verifier -> Jetton master: pause the token after a finalized SORA governance proof.
+struct (0x23e4c1a2) SccpPauseTokenFromVerifier {
+    queryId: uint64
+    messageId: uint256
+    soraAssetId: uint256
+}
+
+// Verifier -> Jetton master: resume the token after a finalized SORA governance proof.
+struct (0x23e4c1a3) SccpResumeTokenFromVerifier {
+    queryId: uint64
+    messageId: uint256
+    soraAssetId: uint256
+}
+
+// Deprecated local admin operation kept only for opcode compatibility.
 struct (0x55a3f6d1) SccpSetGovernor {
     queryId: uint64
     newGovernor: address
 }
 
+// Governor -> Jetton master: one-time verifier binding during bootstrap.
 struct (0x0f95e281) SccpSetVerifier {
     queryId: uint64
     newVerifier: address?
 }
 
+// Deprecated local admin operations. Contracts keep decoding these opcodes for compatibility,
+// but runtime handlers fail closed with `ERROR_SCCP_ADMIN_PATH_DISABLED`.
 struct (0x3bf64dc2) SccpSetInboundPaused {
     queryId: uint64
     sourceDomain: uint32
@@ -157,7 +180,7 @@ struct (0x9a6d3b21) SccpVerifierSetGovernor {
     newGovernor: address
 }
 
-// Anyone -> Verifier: one-time light client bootstrap.
+// Governor -> Verifier: one-time light client bootstrap.
 //
 // The initial validator sets and `latestBeefyBlock` must be sourced from SORA chain state.
 struct (0x35f2bca1) SccpVerifierInitialize {
@@ -208,6 +231,36 @@ struct (0x1a9b2c7e) SccpVerifierMintFromSoraProofV2 {
     jettonAmount: coins
     recipient32: uint256
     sendExcessesTo: address?
+    proof: cell
+}
+
+// Anyone -> Verifier: verify a finalized SORA add-token governance proof and activate the canonical predeployed master.
+struct (0x1a9b2c80) SccpVerifierAddTokenFromSoraProof {
+    queryId: uint64
+    targetDomain: uint32
+    governanceNonce: uint64
+    soraAssetId: uint256
+    decimals: uint8
+    name: uint256
+    symbol: uint256
+    proof: cell
+}
+
+// Anyone -> Verifier: verify a finalized SORA pause-token governance proof and pause the master.
+struct (0x1a9b2c81) SccpVerifierPauseTokenFromSoraProof {
+    queryId: uint64
+    targetDomain: uint32
+    governanceNonce: uint64
+    soraAssetId: uint256
+    proof: cell
+}
+
+// Anyone -> Verifier: verify a finalized SORA resume-token governance proof and resume the master.
+struct (0x1a9b2c82) SccpVerifierResumeTokenFromSoraProof {
+    queryId: uint64
+    targetDomain: uint32
+    governanceNonce: uint64
+    soraAssetId: uint256
     proof: cell
 }
 

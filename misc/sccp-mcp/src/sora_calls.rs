@@ -105,6 +105,16 @@ const SPECS: &[SoraCallSpec] = &[
         args: &["domain_id: u32"],
     },
     SoraCallSpec {
+        name: "pause_token",
+        call_index: 14,
+        args: &["asset_id: 0x<32-byte>"],
+    },
+    SoraCallSpec {
+        name: "resume_token",
+        call_index: 15,
+        args: &["asset_id: 0x<32-byte>"],
+    },
+    SoraCallSpec {
         name: "init_bsc_light_client",
         call_index: 16,
         args: &[
@@ -197,7 +207,8 @@ pub fn encode_sora_call(
             push_vec_bytes(&mut out, &required_hex_bytes(args, "remote_token_id")?)?;
             out
         }
-        "activate_token" | "remove_token" | "finalize_remove" => {
+        "activate_token" | "remove_token" | "finalize_remove" | "pause_token"
+        | "resume_token" => {
             let mut out = Vec::new();
             out.extend_from_slice(&required_h256(args, "asset_id")?);
             out
@@ -498,11 +509,11 @@ fn required_finality_mode(value: &Value, field: &str) -> AppResult<u8> {
     if let Some(index) = raw.as_u64() {
         let parsed = u8::try_from(index)
             .map_err(|_| AppError::InvalidArgument("mode does not fit u8".to_owned()))?;
-        if matches!(parsed, 0 | 2 | 4 | 5 | 6 | 7 | 8 | 10) {
+        if matches!(parsed, 0 | 2 | 4 | 5 | 6 | 7 | 8) {
             return Ok(parsed);
         }
         return Err(AppError::InvalidArgument(
-            "supported mode indexes are 0, 2, 4, 5, 6, 7, 8, 10".to_owned(),
+            "supported mode indexes are 0, 2, 4, 5, 6, 7, 8".to_owned(),
         ));
     }
 
@@ -518,7 +529,6 @@ fn required_finality_mode(value: &Value, field: &str) -> AppResult<u8> {
         "ton_light_client" | "TonLightClient" => Ok(6),
         "tron_light_client" | "TronLightClient" => Ok(7),
         "substrate_light_client" | "SubstrateLightClient" => Ok(8),
-        "eth_zk_proof" | "EthZkProof" => Ok(10),
         _ => Err(AppError::InvalidArgument(format!(
             "unknown finality mode '{text}'"
         ))),
@@ -624,12 +634,12 @@ mod tests {
     fn finality_mode_parses_string() {
         let args = json!({
             "domain_id": 1,
-            "mode": "EthZkProof",
+            "mode": "EthBeaconLightClient",
         });
         let encoded = encode_sora_call("set_inbound_finality_mode", &args, 1, 4, 1024, 1024)
             .expect("must encode");
         assert_eq!(encoded.call_index, 22);
-        assert_eq!(encoded.arg_bytes[4], 10);
+        assert_eq!(encoded.arg_bytes[4], 4);
     }
 
     #[test]

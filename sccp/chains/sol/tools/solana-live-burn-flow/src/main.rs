@@ -49,6 +49,7 @@ struct Cli {
 enum Command {
     Plan(PlanArgs),
     Execute(ExecuteArgs),
+    Bootstrap(BootstrapArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -85,6 +86,36 @@ struct ExecuteArgs {
     airdrop_sol: u64,
 }
 
+#[derive(Parser, Debug)]
+struct BootstrapArgs {
+    #[arg(long, default_value = "http://127.0.0.1:8899")]
+    rpc_url: String,
+    #[arg(long, default_value = "~/.config/solana/id.json")]
+    payer_keypair: String,
+    #[arg(long)]
+    governor_pubkey: String,
+    #[arg(long)]
+    router_program_id: String,
+    #[arg(long)]
+    verifier_program_id: String,
+    #[arg(long)]
+    governor_keypair: Option<String>,
+    #[arg(long)]
+    latest_beefy_block: Option<u64>,
+    #[arg(long)]
+    current_validator_set_id: Option<u64>,
+    #[arg(long)]
+    current_validator_set_len: Option<u32>,
+    #[arg(long)]
+    current_validator_set_root_hex: Option<String>,
+    #[arg(long)]
+    next_validator_set_id: Option<u64>,
+    #[arg(long)]
+    next_validator_set_len: Option<u32>,
+    #[arg(long)]
+    next_validator_set_root_hex: Option<String>,
+}
+
 #[derive(Clone)]
 struct BurnPlan {
     payload: BurnPayloadV1,
@@ -93,11 +124,18 @@ struct BurnPlan {
     burn_record_pda: Pubkey,
 }
 
+struct VerifierBootstrapInput {
+    latest_beefy_block: u64,
+    current_validator_set: VerifierValidatorSet,
+    next_validator_set: VerifierValidatorSet,
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Plan(args) => cmd_plan(args),
         Command::Execute(args) => cmd_execute(args),
+        Command::Bootstrap(args) => cmd_bootstrap(args),
     }
 }
 
@@ -105,7 +143,12 @@ fn cmd_plan(args: PlanArgs) -> Result<()> {
     let router_program_id = parse_pubkey(&args.router_program_id, "router program id")?;
     let sora_asset_id = parse_hex32(&args.sora_asset_id_hex, "sora_asset_id_hex")?;
     let recipient = parse_hex32(&args.recipient32_hex, "recipient32_hex")?;
-    let plan = build_burn_plan(router_program_id, sora_asset_id, args.burn_amount, recipient);
+    let plan = build_burn_plan(
+        router_program_id,
+        sora_asset_id,
+        args.burn_amount,
+        recipient,
+    );
     print_plan(&plan, router_program_id, sora_asset_id);
     Ok(())
 }
@@ -113,13 +156,22 @@ fn cmd_plan(args: PlanArgs) -> Result<()> {
 fn cmd_execute(args: ExecuteArgs) -> Result<()> {
     let rpc = RpcClient::new_with_commitment(args.rpc_url.clone(), CommitmentConfig::confirmed());
     let payer_path = expand_home(&args.payer_keypair)?;
-    let payer = read_keypair_file(&payer_path)
-        .map_err(|err| anyhow!("failed to read payer keypair {}: {err}", payer_path.display()))?;
+    let payer = read_keypair_file(&payer_path).map_err(|err| {
+        anyhow!(
+            "failed to read payer keypair {}: {err}",
+            payer_path.display()
+        )
+    })?;
     let router_program_id = parse_pubkey(&args.router_program_id, "router program id")?;
     let verifier_program_id = parse_pubkey(&args.verifier_program_id, "verifier program id")?;
     let sora_asset_id = parse_hex32(&args.sora_asset_id_hex, "sora_asset_id_hex")?;
     let recipient = parse_hex32(&args.recipient32_hex, "recipient32_hex")?;
-    let burn_plan = build_burn_plan(router_program_id, sora_asset_id, args.burn_amount, recipient);
+    let burn_plan = build_burn_plan(
+        router_program_id,
+        sora_asset_id,
+        args.burn_amount,
+        recipient,
+    );
 
     ensure_airdrop(&rpc, &payer, args.airdrop_sol)?;
 
@@ -127,18 +179,49 @@ fn cmd_execute(args: ExecuteArgs) -> Result<()> {
     let (verifier_config, _) = verifier_config_pda(&verifier_program_id);
     let (token_cfg, _) = token_config_pda(&router_program_id, &sora_asset_id);
     let (mint, _) = mint_pda(&router_program_id, &sora_asset_id);
+    let validator_root = synthetic_validator_set_root()?;
+    let verifier_bootstrap = VerifierBootstrapInput {
+        latest_beefy_block: 0,
+        current_validator_set: VerifierValidatorSet {
+            id: 1,
+            len: 4,
+            root: validator_root,
+        },
+        next_validator_set: VerifierValidatorSet {
+            id: 2,
+            len: 4,
+            root: validator_root,
+        },
+    };
 
-    initialize_router(&rpc, &payer, router_program_id, router_config)?;
+    initialize_router(
+        &rpc,
+        &payer,
+        &payer,
+        payer.pubkey(),
+        router_program_id,
+        router_config,
+    )?;
     set_router_verifier(
         &rpc,
+        &payer,
         &payer,
         router_program_id,
         router_config,
         verifier_program_id,
     )?;
-    initialize_verifier(&rpc, &payer, verifier_program_id, verifier_config)?;
+    initialize_verifier(
+        &rpc,
+        &payer,
+        &payer,
+        payer.pubkey(),
+        verifier_program_id,
+        verifier_config,
+        &verifier_bootstrap,
+    )?;
     deploy_token(
         &rpc,
+        &payer,
         &payer,
         router_program_id,
         router_config,
@@ -239,6 +322,180 @@ fn cmd_execute(args: ExecuteArgs) -> Result<()> {
     Ok(())
 }
 
+fn cmd_bootstrap(args: BootstrapArgs) -> Result<()> {
+    let rpc = RpcClient::new_with_commitment(args.rpc_url.clone(), CommitmentConfig::confirmed());
+    let payer_path = expand_home(&args.payer_keypair)?;
+    let payer = read_keypair_file(&payer_path).map_err(|err| {
+        anyhow!(
+            "failed to read payer keypair {}: {err}",
+            payer_path.display()
+        )
+    })?;
+    let governor_pubkey = parse_pubkey(&args.governor_pubkey, "governor pubkey")?;
+    let router_program_id = parse_pubkey(&args.router_program_id, "router program id")?;
+    let verifier_program_id = parse_pubkey(&args.verifier_program_id, "verifier program id")?;
+    let bootstrap_input = parse_verifier_bootstrap_input(&args)?;
+
+    let governor_keypair = match &args.governor_keypair {
+        Some(path) => {
+            let path = expand_home(path)?;
+            let keypair = read_keypair_file(&path).map_err(|err| {
+                anyhow!("failed to read governor keypair {}: {err}", path.display())
+            })?;
+            if keypair.pubkey() != governor_pubkey {
+                bail!(
+                    "governor keypair pubkey {} did not match expected governor pubkey {}",
+                    keypair.pubkey(),
+                    governor_pubkey
+                );
+            }
+            Some(keypair)
+        }
+        None => None,
+    };
+    let governor_signer = match governor_keypair.as_ref() {
+        Some(keypair) => keypair,
+        None if payer.pubkey() == governor_pubkey => &payer,
+        None => bail!(
+            "governor-keypair is required when governor pubkey {} differs from payer {}",
+            governor_pubkey,
+            payer.pubkey()
+        ),
+    };
+
+    let (router_config, _) = config_pda(&router_program_id);
+    let (verifier_config, _) = verifier_config_pda(&verifier_program_id);
+
+    let mut router_initialize = json!({
+        "configPda": router_config.to_string(),
+    });
+    let mut set_verifier_summary = json!({
+        "configPda": router_config.to_string(),
+        "verifierProgramId": verifier_program_id.to_string(),
+    });
+    let mut verifier_initialize = json!({
+        "configPda": verifier_config.to_string(),
+    });
+
+    let mut router_cfg = if let Some(account) = maybe_get_account(&rpc, &router_config)? {
+        if account.owner != router_program_id {
+            bail!(
+                "router config {} exists with unexpected owner {}",
+                router_config,
+                account.owner
+            );
+        }
+        let cfg = RouterConfig::try_from_slice(&account.data)
+            .context("failed to decode existing router config account")?;
+        if cfg.governor != governor_pubkey {
+            bail!(
+                "router config governor {} did not match expected {}",
+                cfg.governor,
+                governor_pubkey
+            );
+        }
+        router_initialize["status"] = json!("already-initialized");
+        router_initialize["governor"] = json!(cfg.governor.to_string());
+        cfg
+    } else {
+        let sig = initialize_router(
+            &rpc,
+            &payer,
+            governor_signer,
+            governor_pubkey,
+            router_program_id,
+            router_config,
+        )?;
+        let account = maybe_get_account(&rpc, &router_config)?
+            .ok_or_else(|| anyhow!("router config account missing after initialize"))?;
+        let cfg = RouterConfig::try_from_slice(&account.data)
+            .context("failed to decode router config after initialize")?;
+        router_initialize["status"] = json!("sent");
+        router_initialize["signature"] = json!(sig.to_string());
+        router_initialize["governor"] = json!(cfg.governor.to_string());
+        cfg
+    };
+
+    if router_cfg.verifier_program == Pubkey::default() {
+        let sig = set_router_verifier(
+            &rpc,
+            &payer,
+            governor_signer,
+            router_program_id,
+            router_config,
+            verifier_program_id,
+        )?;
+        router_cfg.verifier_program = verifier_program_id;
+        set_verifier_summary["status"] = json!("sent");
+        set_verifier_summary["signature"] = json!(sig.to_string());
+    } else if router_cfg.verifier_program == verifier_program_id {
+        set_verifier_summary["status"] = json!("already-bound");
+    } else {
+        bail!(
+            "router config already bound to verifier {} instead of expected {}",
+            router_cfg.verifier_program,
+            verifier_program_id
+        );
+    }
+
+    if let Some(account) = maybe_get_account(&rpc, &verifier_config)? {
+        if account.owner != verifier_program_id {
+            bail!(
+                "verifier config {} exists with unexpected owner {}",
+                verifier_config,
+                account.owner
+            );
+        }
+        let cfg = VerifierConfig::try_from_slice(&account.data)
+            .context("failed to decode existing verifier config account")?;
+        if cfg.governor != governor_pubkey {
+            bail!(
+                "verifier config governor {} did not match expected {}",
+                cfg.governor,
+                governor_pubkey
+            );
+        }
+        verifier_initialize["status"] = json!("already-initialized");
+        verifier_initialize["latestBeefyBlock"] = json!(cfg.latest_beefy_block);
+    } else {
+        let bootstrap_input = bootstrap_input.ok_or_else(|| {
+            anyhow!(
+                "verifier bootstrap inputs are required when the verifier config is not initialized"
+            )
+        })?;
+        let sig = initialize_verifier(
+            &rpc,
+            &payer,
+            governor_signer,
+            governor_pubkey,
+            verifier_program_id,
+            verifier_config,
+            &bootstrap_input,
+        )?;
+        verifier_initialize["status"] = json!("sent");
+        verifier_initialize["signature"] = json!(sig.to_string());
+        verifier_initialize["latestBeefyBlock"] = json!(bootstrap_input.latest_beefy_block);
+    }
+
+    let summary = json!({
+        "rpcUrl": args.rpc_url,
+        "payer": payer.pubkey().to_string(),
+        "governor": governor_pubkey.to_string(),
+        "governorSigner": governor_signer.pubkey().to_string(),
+        "routerProgramId": router_program_id.to_string(),
+        "verifierProgramId": verifier_program_id.to_string(),
+        "router": {
+            "initialize": router_initialize,
+            "setVerifierProgram": set_verifier_summary,
+        },
+        "verifier": {
+            "initialize": verifier_initialize,
+        },
+    });
+    println!("{}", serde_json::to_string_pretty(&summary)?);
+    Ok(())
+}
+
 fn print_plan(plan: &BurnPlan, router_program_id: Pubkey, sora_asset_id: [u8; 32]) {
     let out = json!({
         "routerProgramId": router_program_id.to_string(),
@@ -281,28 +538,36 @@ fn build_burn_plan(
 fn initialize_router(
     rpc: &RpcClient,
     payer: &Keypair,
+    governor_signer: &Keypair,
+    governor_pubkey: Pubkey,
     router_program_id: Pubkey,
     router_config: Pubkey,
 ) -> Result<Signature> {
+    let mut accounts = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(router_config, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+    if governor_signer.pubkey() != payer.pubkey() {
+        accounts.push(AccountMeta::new_readonly(governor_signer.pubkey(), true));
+    }
     let ix = Instruction {
         program_id: router_program_id,
-        accounts: vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(router_config, false),
-            AccountMeta::new_readonly(system_program::id(), false),
-        ],
+        accounts,
         data: SccpInstruction::Initialize {
-            governor: payer.pubkey(),
+            governor: governor_pubkey,
         }
         .try_to_vec()
         .context("failed to encode router initialize")?,
     };
-    send_tx(rpc, payer, &[&payer], &[ix]).context("router initialize failed")
+    send_with_optional_governor(rpc, payer, governor_signer, &[ix])
+        .context("router initialize failed")
 }
 
 fn set_router_verifier(
     rpc: &RpcClient,
     payer: &Keypair,
+    governor_signer: &Keypair,
     router_program_id: Pubkey,
     router_config: Pubkey,
     verifier_program_id: Pubkey,
@@ -310,7 +575,7 @@ fn set_router_verifier(
     let ix = Instruction {
         program_id: router_program_id,
         accounts: vec![
-            AccountMeta::new(payer.pubkey(), true),
+            AccountMeta::new(governor_signer.pubkey(), true),
             AccountMeta::new(router_config, false),
         ],
         data: SccpInstruction::SetVerifierProgram {
@@ -319,65 +584,67 @@ fn set_router_verifier(
         .try_to_vec()
         .context("failed to encode set verifier")?,
     };
-    send_tx(rpc, payer, &[&payer], &[ix]).context("set verifier failed")
+    send_with_optional_governor(rpc, payer, governor_signer, &[ix]).context("set verifier failed")
 }
 
 fn initialize_verifier(
     rpc: &RpcClient,
     payer: &Keypair,
+    governor_signer: &Keypair,
+    governor_pubkey: Pubkey,
     verifier_program_id: Pubkey,
     verifier_config: Pubkey,
+    bootstrap_input: &VerifierBootstrapInput,
 ) -> Result<Signature> {
-    let validator_root = synthetic_validator_set_root()?;
-    let current_set = VerifierValidatorSet {
-        id: 1,
-        len: 4,
-        root: validator_root,
-    };
-    let next_set = VerifierValidatorSet {
-        id: 2,
-        len: 4,
-        root: validator_root,
-    };
+    let mut accounts = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(verifier_config, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+    if governor_signer.pubkey() != payer.pubkey() {
+        accounts.push(AccountMeta::new_readonly(governor_signer.pubkey(), true));
+    }
     let ix = Instruction {
         program_id: verifier_program_id,
-        accounts: vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(verifier_config, false),
-            AccountMeta::new_readonly(system_program::id(), false),
-        ],
+        accounts,
         data: VerifierInstruction::Initialize {
-            governor: payer.pubkey(),
-            latest_beefy_block: 0,
-            current_validator_set: current_set,
-            next_validator_set: next_set,
+            governor: governor_pubkey,
+            latest_beefy_block: bootstrap_input.latest_beefy_block,
+            current_validator_set: bootstrap_input.current_validator_set,
+            next_validator_set: bootstrap_input.next_validator_set,
         }
         .try_to_vec()
         .context("failed to encode verifier initialize")?,
     };
-    send_tx(rpc, payer, &[&payer], &[ix]).context("verifier initialize failed")
+    send_with_optional_governor(rpc, payer, governor_signer, &[ix])
+        .context("verifier initialize failed")
 }
 
 fn deploy_token(
     rpc: &RpcClient,
     payer: &Keypair,
+    governor_signer: &Keypair,
     router_program_id: Pubkey,
     router_config: Pubkey,
     token_cfg: Pubkey,
     mint: Pubkey,
     sora_asset_id: [u8; 32],
 ) -> Result<Signature> {
+    let mut accounts = vec![
+        AccountMeta::new(payer.pubkey(), true),
+        AccountMeta::new(router_config, false),
+        AccountMeta::new(token_cfg, false),
+        AccountMeta::new(mint, false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+    if governor_signer.pubkey() != payer.pubkey() {
+        accounts.push(AccountMeta::new_readonly(governor_signer.pubkey(), true));
+    }
     let ix = Instruction {
         program_id: router_program_id,
-        accounts: vec![
-            AccountMeta::new(payer.pubkey(), true),
-            AccountMeta::new(router_config, false),
-            AccountMeta::new(token_cfg, false),
-            AccountMeta::new(mint, false),
-            AccountMeta::new_readonly(system_program::id(), false),
-            AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-        ],
+        accounts,
         data: SccpInstruction::DeployToken {
             sora_asset_id,
             decimals: 18,
@@ -385,7 +652,7 @@ fn deploy_token(
         .try_to_vec()
         .context("failed to encode deploy token")?,
     };
-    send_tx(rpc, payer, &[&payer], &[ix]).context("deploy token failed")
+    send_with_optional_governor(rpc, payer, governor_signer, &[ix]).context("deploy token failed")
 }
 
 fn create_user_token_account(
@@ -442,7 +709,8 @@ fn mint_to_user_from_synthetic_sora_proof(
     };
     let inbound_payload_bytes = inbound_payload.encode_scale();
     let inbound_message_id = burn_message_id(&inbound_payload_bytes);
-    let (marker_pda, _) = inbound_marker_pda(&router_program_id, SCCP_DOMAIN_SORA, &inbound_message_id);
+    let (marker_pda, _) =
+        inbound_marker_pda(&router_program_id, SCCP_DOMAIN_SORA, &inbound_message_id);
 
     let import = build_synthetic_commitment_and_proof(inbound_message_id)?;
     let submit_ix = Instruction {
@@ -544,12 +812,8 @@ fn send_tx(
     let blockhash = rpc
         .get_latest_blockhash()
         .context("failed to fetch latest blockhash")?;
-    let tx = Transaction::new_signed_with_payer(
-        instructions,
-        Some(&payer.pubkey()),
-        signers,
-        blockhash,
-    );
+    let tx =
+        Transaction::new_signed_with_payer(instructions, Some(&payer.pubkey()), signers, blockhash);
     match rpc.send_and_confirm_transaction(&tx) {
         Ok(sig) => Ok(sig),
         Err(err) => {
@@ -563,9 +827,34 @@ fn send_tx(
             } else {
                 format!("\nprogram logs:\n{}", simulation.join("\n"))
             };
-            Err(anyhow!("failed to send and confirm transaction: {err}{logs}"))
+            Err(anyhow!(
+                "failed to send and confirm transaction: {err}{logs}"
+            ))
         }
     }
+}
+
+fn send_with_optional_governor(
+    rpc: &RpcClient,
+    payer: &Keypair,
+    governor_signer: &Keypair,
+    instructions: &[Instruction],
+) -> Result<Signature> {
+    if governor_signer.pubkey() == payer.pubkey() {
+        send_tx(rpc, payer, &[payer], instructions)
+    } else {
+        send_tx(rpc, payer, &[payer, governor_signer], instructions)
+    }
+}
+
+fn maybe_get_account(
+    rpc: &RpcClient,
+    account: &Pubkey,
+) -> Result<Option<solana_sdk::account::Account>> {
+    let response = rpc
+        .get_account_with_commitment(account, CommitmentConfig::confirmed())
+        .with_context(|| format!("failed to fetch account {account}"))?;
+    Ok(response.value)
 }
 
 fn ensure_airdrop(rpc: &RpcClient, payer: &Keypair, sol: u64) -> Result<()> {
@@ -606,7 +895,11 @@ fn collect_vote_authorities(rpc: &RpcClient) -> Result<Vec<serde_json::Value>> {
         .get_vote_accounts()
         .context("failed to query vote accounts")?;
     let mut authorities = Vec::new();
-    for vote in vote_accounts.current.iter().chain(vote_accounts.delinquent.iter()) {
+    for vote in vote_accounts
+        .current
+        .iter()
+        .chain(vote_accounts.delinquent.iter())
+    {
         authorities.push(json!({
             "authorityPubkey": vote.vote_pubkey,
             "stake": vote.activated_stake,
@@ -725,6 +1018,50 @@ fn synthetic_validator_set_root() -> Result<[u8; 32]> {
         .ok_or_else(|| anyhow!("empty synthetic validator merkle tree"))
 }
 
+fn parse_verifier_bootstrap_input(args: &BootstrapArgs) -> Result<Option<VerifierBootstrapInput>> {
+    let provided = [
+        args.latest_beefy_block.is_some(),
+        args.current_validator_set_id.is_some(),
+        args.current_validator_set_len.is_some(),
+        args.current_validator_set_root_hex.is_some(),
+        args.next_validator_set_id.is_some(),
+        args.next_validator_set_len.is_some(),
+        args.next_validator_set_root_hex.is_some(),
+    ];
+    if provided.iter().all(|flag| !flag) {
+        return Ok(None);
+    }
+    if provided.iter().any(|flag| !flag) {
+        bail!(
+            "verifier bootstrap inputs are partial; provide latest beefy block plus full current/next validator set values"
+        );
+    }
+
+    Ok(Some(VerifierBootstrapInput {
+        latest_beefy_block: args.latest_beefy_block.expect("checked is_some"),
+        current_validator_set: VerifierValidatorSet {
+            id: args.current_validator_set_id.expect("checked is_some"),
+            len: args.current_validator_set_len.expect("checked is_some"),
+            root: parse_hex32(
+                args.current_validator_set_root_hex
+                    .as_deref()
+                    .expect("checked is_some"),
+                "current validator set root",
+            )?,
+        },
+        next_validator_set: VerifierValidatorSet {
+            id: args.next_validator_set_id.expect("checked is_some"),
+            len: args.next_validator_set_len.expect("checked is_some"),
+            root: parse_hex32(
+                args.next_validator_set_root_hex
+                    .as_deref()
+                    .expect("checked is_some"),
+                "next validator set root",
+            )?,
+        },
+    }))
+}
+
 fn parse_pubkey(raw: &str, field: &str) -> Result<Pubkey> {
     raw.parse()
         .with_context(|| format!("failed to parse {field}: {raw}"))
@@ -732,8 +1069,8 @@ fn parse_pubkey(raw: &str, field: &str) -> Result<Pubkey> {
 
 fn parse_hex32(raw: &str, field: &str) -> Result<[u8; 32]> {
     let stripped = raw.strip_prefix("0x").unwrap_or(raw);
-    let bytes = hex::decode(stripped)
-        .with_context(|| format!("failed to decode {field} as hex: {raw}"))?;
+    let bytes =
+        hex::decode(stripped).with_context(|| format!("failed to decode {field} as hex: {raw}"))?;
     if bytes.len() != 32 {
         bail!("{field} must decode to 32 bytes, got {}", bytes.len());
     }
@@ -776,7 +1113,12 @@ fn inbound_marker_pda(
     message_id: &[u8; 32],
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[SEED_PREFIX, SEED_INBOUND, &source_domain.to_le_bytes(), message_id],
+        &[
+            SEED_PREFIX,
+            SEED_INBOUND,
+            &source_domain.to_le_bytes(),
+            message_id,
+        ],
         program_id,
     )
 }

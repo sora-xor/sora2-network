@@ -9,17 +9,29 @@ const ACK_TOKEN = 'I_UNDERSTAND_MAINNET_DEPLOY';
 const STATE_VERSION = 1;
 
 const TOP_UP_TONS = 0xd372158c;
+const SCCP_SET_VERIFIER = 0x0f95e281;
+const SCCP_VERIFIER_INITIALIZE = 0x35f2bca1;
 
 
 function parseArgs(argv) {
   const valueFlags = new Set([
     'endpoint',
     'mnemonic-file',
+    'governor-mnemonic-file',
     'governor',
     'sora-asset-id',
     'metadata-uri',
     'master-value',
     'verifier-value',
+    'bind-verifier-value',
+    'initialize-verifier-value',
+    'latest-beefy-block',
+    'current-validator-set-id',
+    'current-validator-set-len',
+    'current-validator-set-root',
+    'next-validator-set-id',
+    'next-validator-set-len',
+    'next-validator-set-root',
     'ack-mainnet',
     'out',
     'state-file',
@@ -66,6 +78,34 @@ function parseHexU256(s, name) {
     throw new Error(`${name} must be a 32-byte hex value (64 hex chars)`);
   }
   return BigInt(`0x${hex.toLowerCase()}`);
+}
+
+function parseUint64(raw, name) {
+  if (raw === undefined) {
+    return null;
+  }
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`${name} must be an unsigned integer`);
+  }
+  const value = BigInt(raw);
+  if (value > 0xffffffffffffffffn) {
+    throw new Error(`${name} must fit in uint64`);
+  }
+  return value;
+}
+
+function parseUint32(raw, name) {
+  if (raw === undefined) {
+    return null;
+  }
+  if (!/^\d+$/.test(raw)) {
+    throw new Error(`${name} must be an unsigned integer`);
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff) {
+    throw new Error(`${name} must fit in uint32`);
+  }
+  return value;
 }
 
 function loadArtifact(repoRoot, name) {
@@ -181,12 +221,14 @@ function buildMasterData({ governor, verifier, walletCode, metadataUri, soraAsse
 
   const sccpExtraB = beginCell();
   sccpExtraB.storeUint(soraAssetIdU256, 256);
-  sccpExtraB.storeUint(0, 64);
-  sccpExtraB.storeUint(0, 64);
-  sccpExtraB.storeUint(0, 64);
-  emptyBoolMap.store(sccpExtraB);
-  emptyBoolMap.store(sccpExtraB);
-  emptyBurnsMap.store(sccpExtraB);
+  sccpExtraB.storeUint(0, 8); // tokenState = Paused until SORA activates via proof
+  sccpExtraB.storeUint(0, 64); // nonce
+  sccpExtraB.storeUint(0, 64); // inboundPausedMask
+  sccpExtraB.storeUint(0, 64); // outboundPausedMask
+  emptyBoolMap.store(sccpExtraB); // invalidatedInbound
+  emptyBoolMap.store(sccpExtraB); // processedInbound
+  emptyBoolMap.store(sccpExtraB); // processedGovernance
+  emptyBurnsMap.store(sccpExtraB); // burns
   const sccpExtra = sccpExtraB.endCell();
 
   const metadataCell = buildSnakeDataCell(Buffer.from(metadataUri ?? '', 'utf8'));
@@ -229,6 +271,36 @@ function buildVerifierData({ governor, jettonMaster, soraAssetIdU256 }) {
 
 function buildTopUpBody() {
   return beginCell().storeUint(TOP_UP_TONS, 32).endCell();
+}
+
+function buildSetVerifierBody(newVerifier) {
+  return beginCell()
+    .storeUint(SCCP_SET_VERIFIER, 32)
+    .storeUint(0, 64)
+    .storeAddress(newVerifier ?? null)
+    .endCell();
+}
+
+function buildVerifierInitializeBody({
+  latestBeefyBlock,
+  currentValidatorSetId,
+  currentValidatorSetLen,
+  currentValidatorSetRootU256,
+  nextValidatorSetId,
+  nextValidatorSetLen,
+  nextValidatorSetRootU256,
+}) {
+  return beginCell()
+    .storeUint(SCCP_VERIFIER_INITIALIZE, 32)
+    .storeUint(0, 64)
+    .storeUint(latestBeefyBlock, 64)
+    .storeUint(currentValidatorSetId, 64)
+    .storeUint(currentValidatorSetLen, 32)
+    .storeUint(currentValidatorSetRootU256, 256)
+    .storeUint(nextValidatorSetId, 64)
+    .storeUint(nextValidatorSetLen, 32)
+    .storeUint(nextValidatorSetRootU256, 256)
+    .endCell();
 }
 
 function sleep(ms) {
@@ -275,11 +347,52 @@ async function main() {
 
   const masterDeployTon = args['master-value'] ?? '0.25';
   const verifierDeployTon = args['verifier-value'] ?? '0.45';
+  const bindVerifierTon = args['bind-verifier-value'] ?? '0.05';
+  const initializeVerifierTon = args['initialize-verifier-value'] ?? '0.05';
   const execute = Boolean(args.execute);
   const resume = Boolean(args.resume);
   if (execute && args['ack-mainnet'] !== ACK_TOKEN) {
     throw new Error(`Mainnet execution requires --ack-mainnet ${ACK_TOKEN}`);
   }
+
+  const verifierInitializeInputs = {
+    latestBeefyBlock: parseUint64(args['latest-beefy-block'], 'latest-beefy-block'),
+    currentValidatorSetId: parseUint64(args['current-validator-set-id'], 'current-validator-set-id'),
+    currentValidatorSetLen: parseUint32(args['current-validator-set-len'], 'current-validator-set-len'),
+    currentValidatorSetRootU256:
+      args['current-validator-set-root'] === undefined
+        ? null
+        : parseHexU256(args['current-validator-set-root'], 'current-validator-set-root'),
+    nextValidatorSetId: parseUint64(args['next-validator-set-id'], 'next-validator-set-id'),
+    nextValidatorSetLen: parseUint32(args['next-validator-set-len'], 'next-validator-set-len'),
+    nextValidatorSetRootU256:
+      args['next-validator-set-root'] === undefined
+        ? null
+        : parseHexU256(args['next-validator-set-root'], 'next-validator-set-root'),
+  };
+  const verifierInitializeFields = [
+    ['latestBeefyBlock', verifierInitializeInputs.latestBeefyBlock],
+    ['currentValidatorSetId', verifierInitializeInputs.currentValidatorSetId],
+    ['currentValidatorSetLen', verifierInitializeInputs.currentValidatorSetLen],
+    ['currentValidatorSetRoot', verifierInitializeInputs.currentValidatorSetRootU256],
+    ['nextValidatorSetId', verifierInitializeInputs.nextValidatorSetId],
+    ['nextValidatorSetLen', verifierInitializeInputs.nextValidatorSetLen],
+    ['nextValidatorSetRoot', verifierInitializeInputs.nextValidatorSetRootU256],
+  ];
+  const verifierInitializePresent = verifierInitializeFields.map(([, value]) => value !== null);
+  const verifierInitializeInputsComplete = verifierInitializePresent.every(Boolean);
+  const verifierInitializeInputsAny = verifierInitializePresent.some(Boolean);
+  const verifierInitializeInputsPartial =
+    verifierInitializeInputsAny && !verifierInitializeInputsComplete;
+  const verifierInitializeMissingInputs = verifierInitializeFields
+    .filter(([, value]) => value === null)
+    .map(([name]) => name);
+  const verifierInitializeBody = verifierInitializeInputsComplete
+    ? buildVerifierInitializeBody(verifierInitializeInputs)
+    : null;
+  const verifierInitializeBodyBoc = verifierInitializeBody
+    ? Buffer.from(verifierInitializeBody.toBoc())
+    : null;
 
   const repoRoot = resolve(import.meta.dirname, '..');
   const masterArtifact = loadArtifact(repoRoot, 'sccp-jetton-master.compiled.json');
@@ -332,11 +445,16 @@ async function main() {
     values: {
       masterDeployTon,
       verifierDeployTon,
+      bindVerifierTon,
+      initializeVerifierTon,
     },
     masterCodeHashHex: masterArtifact.codeHashHex,
     verifierCodeHashHex: verifierArtifact.codeHashHex,
     walletCodeHashHex: walletArtifact.codeHashHex,
   });
+
+  const setVerifierBody = buildSetVerifierBody(verifierAddress);
+  const setVerifierBodyBoc = Buffer.from(setVerifierBody.toBoc());
 
   const result = {
     chain: 'ton',
@@ -357,18 +475,42 @@ async function main() {
     valuesTon: {
       masterDeploy: masterDeployTon,
       verifierDeploy: verifierDeployTon,
+      bindVerifier: bindVerifierTon,
+      initializeVerifier: initializeVerifierTon,
+    },
+    bootstrap: {
+      bindVerifier: {
+        target: masterAddress.toString(),
+        verifierAddress: verifierAddress.toString(),
+        valueTon: bindVerifierTon,
+        bodyBocBase64: setVerifierBodyBoc.toString('base64'),
+        bodyBocHex: setVerifierBodyBoc.toString('hex'),
+      },
+      verifierInitialize: {
+        target: verifierAddress.toString(),
+        valueTon: initializeVerifierTon,
+        inputsComplete: verifierInitializeInputsComplete,
+        inputsPartial: verifierInitializeInputsPartial,
+        missingInputs: verifierInitializeInputsComplete ? [] : verifierInitializeMissingInputs,
+        bodyBocBase64: verifierInitializeBodyBoc ? verifierInitializeBodyBoc.toString('base64') : null,
+        bodyBocHex: verifierInitializeBodyBoc ? verifierInitializeBodyBoc.toString('hex') : null,
+        status: verifierInitializeInputsComplete ? 'ready-to-send' : 'pending-inputs',
+        note: verifierInitializeInputsComplete
+          ? 'Submit SccpVerifierInitialize from the configured governor wallet to bootstrap the verifier light client.'
+          : 'Provide SORA-derived validator set inputs to build the SccpVerifierInitialize body.',
+      },
     },
     stateFile,
     paramsHash,
     outPath,
     timestamp: new Date().toISOString(),
-    note: 'Master/verifier binding happens when the verifier is initialized on-chain; no post-deploy setVerifier step is used.',
+    note: 'Deploy only. The configured governor must still complete bootstrap actions on-chain. The script can auto-send SccpSetVerifier and SccpVerifierInitialize only when it has the governor wallet and full verifier bootstrap inputs.',
   };
 
   if (!execute) {
     result.mode = 'dry-run';
     result.note =
-      'No transactions sent. Re-run with --execute --ack-mainnet I_UNDERSTAND_MAINNET_DEPLOY. Master/verifier binding happens when the verifier is initialized on-chain; no post-deploy setVerifier step is used.';
+      'No transactions sent. Re-run with --execute --ack-mainnet I_UNDERSTAND_MAINNET_DEPLOY. If the governor wallet is also available, pass --governor-mnemonic-file (or use the same mnemonic as --governor) to auto-send SccpSetVerifier and, when validator inputs are provided, SccpVerifierInitialize after deployment.';
     console.log(JSON.stringify(result, null, 2));
     return;
   }
@@ -397,6 +539,27 @@ async function main() {
   const client = new TonClient4({ endpoint });
   const walletContract = client.open(wallet);
 
+  let governorKeyPair = keyPair;
+  let governorWallet = wallet;
+  let governorWalletContract = walletContract;
+  const governorMnemonicFile = args['governor-mnemonic-file'];
+  if (governorMnemonicFile) {
+    if (!existsSync(governorMnemonicFile)) {
+      throw new Error(`Governor mnemonic file not found: ${governorMnemonicFile}`);
+    }
+    const governorMnemonic = readFileSync(governorMnemonicFile, 'utf8').trim();
+    if (!governorMnemonic) {
+      throw new Error(`Governor mnemonic file is empty: ${governorMnemonicFile}`);
+    }
+    const governorWords = governorMnemonic.split(/\s+/).filter(Boolean);
+    if (governorWords.length < 12) {
+      throw new Error('governor mnemonic should have at least 12 words');
+    }
+    governorKeyPair = await mnemonicToPrivateKey(governorWords);
+    governorWallet = WalletContractV4.create({ workchain: 0, publicKey: governorKeyPair.publicKey });
+    governorWalletContract = client.open(governorWallet);
+  }
+
   // Connectivity + stronger identity guard.
   const lastBlock = await client.getLastBlock();
   if (!lastBlock?.last?.seqno || lastBlock.last.seqno <= 0) {
@@ -404,7 +567,37 @@ async function main() {
   }
 
   const deployerAddress = wallet.address.toString();
+  const governorSignerAddress = governorWallet.address.toString();
+  const canAutoBindVerifier = governorSignerAddress === governor.toString();
   result.deployer = deployerAddress;
+  result.bootstrap.bindVerifier.governorSigner = governorSignerAddress;
+  result.bootstrap.bindVerifier.autoSendAvailable = canAutoBindVerifier;
+  result.bootstrap.verifierInitialize.governorSigner = governorSignerAddress;
+  result.bootstrap.verifierInitialize.autoSendAvailable =
+    canAutoBindVerifier && verifierInitializeInputsComplete;
+  if (!canAutoBindVerifier) {
+    result.bootstrap.bindVerifier.status = 'pending-governor-wallet';
+    result.bootstrap.bindVerifier.note =
+      'Provide the governor wallet mnemonic with --governor-mnemonic-file, or send the encoded body from the configured governor address after deployment.';
+    result.bootstrap.verifierInitialize.status = verifierInitializeInputsComplete
+      ? 'pending-governor-wallet'
+      : 'pending-inputs';
+    if (verifierInitializeInputsComplete) {
+      result.bootstrap.verifierInitialize.note =
+        'Provide the governor wallet mnemonic with --governor-mnemonic-file, or send the encoded verifier initialize body from the configured governor address after deployment.';
+    }
+  } else {
+    result.bootstrap.bindVerifier.status = 'ready-to-send';
+    if (verifierInitializeInputsComplete) {
+      result.bootstrap.verifierInitialize.status = 'ready-to-send';
+    }
+  }
+
+  if (governorMnemonicFile && !canAutoBindVerifier) {
+    throw new Error(
+      `Governor wallet mismatch: derived ${governorSignerAddress}, expected configured governor ${governor.toString()}`,
+    );
+  }
 
   const nowIso = () => new Date().toISOString();
 
@@ -480,9 +673,87 @@ async function main() {
     persist();
   }
 
-  state.completed = true;
-  state.completedAt = nowIso();
-  persist();
+  if (canAutoBindVerifier && !state.steps.bindVerifierSent?.done) {
+    const seqnoBefore = await governorWalletContract.getSeqno();
+    await governorWalletContract.sendTransfer({
+      secretKey: governorKeyPair.secretKey,
+      seqno: seqnoBefore,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      messages: [
+        internal({
+          to: masterAddress,
+          value: toNano(bindVerifierTon),
+          bounce: true,
+          body: setVerifierBody,
+        }),
+      ],
+    });
+    state.steps.bindVerifierSent = {
+      done: true,
+      seqnoBefore,
+      at: nowIso(),
+      sender: governorSignerAddress,
+    };
+    persist();
+  }
+
+  if (canAutoBindVerifier && state.steps.bindVerifierSent?.done && !state.steps.bindVerifierSeqnoAdvanced?.done) {
+    const seqnoAfterBind = await waitSeqnoAdvance(
+      governorWalletContract,
+      state.steps.bindVerifierSent.seqnoBefore,
+    );
+    state.steps.bindVerifierSeqnoAdvanced = {
+      done: true,
+      seqnoAfterBind,
+      at: nowIso(),
+    };
+    persist();
+  }
+
+  if (
+    canAutoBindVerifier &&
+    verifierInitializeBody &&
+    !state.steps.verifierInitializeSent?.done
+  ) {
+    const seqnoBefore = await governorWalletContract.getSeqno();
+    await governorWalletContract.sendTransfer({
+      secretKey: governorKeyPair.secretKey,
+      seqno: seqnoBefore,
+      sendMode: SendMode.PAY_GAS_SEPARATELY,
+      messages: [
+        internal({
+          to: verifierAddress,
+          value: toNano(initializeVerifierTon),
+          bounce: true,
+          body: verifierInitializeBody,
+        }),
+      ],
+    });
+    state.steps.verifierInitializeSent = {
+      done: true,
+      seqnoBefore,
+      at: nowIso(),
+      sender: governorSignerAddress,
+    };
+    persist();
+  }
+
+  if (
+    canAutoBindVerifier &&
+    state.steps.verifierInitializeSent?.done &&
+    !state.steps.verifierInitializeSeqnoAdvanced?.done
+  ) {
+    const seqnoAfterInitialize = await waitSeqnoAdvance(
+      governorWalletContract,
+      state.steps.verifierInitializeSent.seqnoBefore,
+    );
+    state.steps.verifierInitializeSeqnoAdvanced = {
+      done: true,
+      seqnoAfterInitialize,
+      at: nowIso(),
+    };
+    persist();
+  }
 
   result.mode = 'execute';
   result.resumed = resume;
@@ -493,6 +764,46 @@ async function main() {
       deploySeqnoAdvanced: state.steps.deploySeqnoAdvanced,
     },
   };
+  if (canAutoBindVerifier) {
+    result.bootstrap.bindVerifier.status = 'sent';
+    result.bootstrap.bindVerifier.steps = {
+      bindVerifierSent: state.steps.bindVerifierSent,
+      bindVerifierSeqnoAdvanced: state.steps.bindVerifierSeqnoAdvanced,
+    };
+  }
+  if (state.steps.verifierInitializeSent?.done) {
+    result.bootstrap.verifierInitialize.status = 'sent';
+    result.bootstrap.verifierInitialize.steps = {
+      verifierInitializeSent: state.steps.verifierInitializeSent,
+      verifierInitializeSeqnoAdvanced: state.steps.verifierInitializeSeqnoAdvanced,
+    };
+  }
+
+  const pendingActions = [];
+  if (!state.steps.bindVerifierSeqnoAdvanced?.done) {
+    pendingActions.push(
+      'Send SccpSetVerifier from the configured governor wallet to the deployed jetton master using the emitted bodyBoc.',
+    );
+  }
+  if (!verifierInitializeInputsComplete) {
+    pendingActions.push(
+      'Provide the full SccpVerifierInitialize input set from SORA chain state: latest beefy block, current validator set id/len/root, and next validator set id/len/root.',
+    );
+  } else if (!state.steps.verifierInitializeSeqnoAdvanced?.done) {
+    pendingActions.push(
+      'Send SccpVerifierInitialize from the configured governor wallet to the deployed verifier using the emitted bodyBoc.',
+    );
+  }
+
+  if (pendingActions.length > 0) {
+    result.pendingActions = pendingActions;
+    state.completed = false;
+    delete state.completedAt;
+  } else {
+    state.completed = true;
+    state.completedAt = nowIso();
+  }
+  persist();
 
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, `${JSON.stringify(result, null, 2)}\n`, 'utf8');

@@ -177,14 +177,9 @@ SORA must maintain a TRON header verifier that:
 
 - `pallet-sccp` is designed to **fail closed** for inbound-to-SORA proof verification unless an on-chain verifier can validate the proof.
 - Current implementation includes:
-  - **ETH beacon-mode integration hook** in `pallet-sccp` via `EthFinalizedStateProvider`:
-  - when an on-chain provider exposes finalized ETH `(block_hash, state_root)`, SCCP uses it for ETH EVM MPT proof verification in `EthBeaconLightClient` mode
-  - if no provider value is available, ETH remains fail-closed (`InboundFinalityUnavailable`)
-  - **ETH zk-proof integration hook** in `pallet-sccp` via `EthZkFinalizedBurnProofVerifier`:
-  - users submit SCALE-encoded `EthZkFinalizedBurnProofV1` bytes in `EthZkProof` mode
-  - SCCP binds the proof to the configured ETH router and the canonical `burns[messageId].sender` storage key before delegating to the runtime verifier backend
-  - the production runtime now verifies a fixed no-trusted-setup STARK/FRI proof for this envelope on-chain
-  - invalid ETH zk proofs fail closed with `ProofVerificationFailed`
+  - **ETH beacon-mode integration hook** in `pallet-sccp` via `EthFinalizedBurnProofVerifier`:
+  - when an on-chain verifier can validate a finalized ETH burn proof, SCCP uses it in `EthBeaconLightClient` mode
+  - if the verifier is unavailable, ETH remains fail-closed (`InboundFinalityUnavailable`)
   - **SOL light-client integration hook** in `pallet-sccp` via `SolanaFinalizedBurnProofVerifier`:
   - when an on-chain verifier is available, SCCP uses it for SOL burn verification in `SolanaLightClient` mode
   - if the verifier is unavailable, SOL remains fail-closed (`InboundFinalityUnavailable`)
@@ -194,10 +189,6 @@ SORA must maintain a TRON header verifier that:
   - if no checkpoint is configured, TON remains fail-closed (`InboundFinalityUnavailable`)
   - **BSC on-chain header verifier** (k-deep) feeding a finalized EVM `state_root` for MPT proofs.
   - **TRON on-chain header verifier** (solidified-block rule) feeding a finalized execution root (`accountStateRoot`) for MPT proofs.
-  - governance-anchored EVM finality mode for ETH (and optional BSC/TRON fallback):
-  - governance sets a finalized EVM block anchor `(block_hash, state_root)`
-  - users submit an on-chain verifiable MPT storage proof that `burns[messageId]` exists in SCCP router storage at that `state_root`
-  - this remains a temporary mode, not a trustless consensus light client
 - Finality definition is now explicit on-chain per source domain via:
   - `sccp.set_inbound_finality_mode(domain_id, mode)`
   - mode checks are enforced by `mint_from_proof` and `attest_burn` before proof verification
@@ -212,10 +203,18 @@ SORA must maintain a TRON header verifier that:
   - invalidate specific inbound `messageId`
   - pause outbound burns to a specific `dest_domain`
 
-### Deprecated Fallbacks
+## Outbound Governance Commitments (SORA -> Destinations)
 
-Deprecated fallback modes (`EvmAnchor`, `BscLightClientOrAnchor`, `AttesterQuorum`) are retained
-only as reserved legacy enum slots for SCALE compatibility. They are unsupported and fail closed.
+Destination lifecycle synchronization uses the same finalized SORA digest model as outbound mint proofs:
+
+- `activate_token` commits `TokenAddPayloadV1` with prefix `sccp:token:add:v1`
+- `pause_token` commits `TokenControlPayloadV1` with prefix `sccp:token:pause:v1`
+- `resume_token` commits `TokenControlPayloadV1` with prefix `sccp:token:resume:v1`
+
+These commitments are per-destination-domain and consume a dedicated SCCP governance nonce on SORA.
+Destination verifiers prove inclusion of one canonical governance `messageId` in a finalized SORA digest, then
+apply the lifecycle transition locally. Initial verifier bootstrap remains a deployment/bootstrap concern, not a
+proof-driven destination governance flow.
 
 ## Proof Tooling
 

@@ -4,7 +4,8 @@
 //
 // Security posture:
 // - Inbound minting is fail-closed until `verifierAddress` is set.
-// - Local admin mutation paths are disabled; the verifier self-registers once during verifier bootstrap.
+// - `verifierAddress` can be pinned exactly once by the configured governor.
+// - All other local admin mutation paths are disabled.
 //
 // Based on `ton-blockchain/tolk-bench` Jetton minter (MIT), adapted for SCCP.
 
@@ -20,6 +21,9 @@ type AllowedMessageToMinter =
     | SccpBurnNotificationForMinter
     | RequestWalletAddress
     | SccpMintFromVerifier
+    | SccpAddTokenFromVerifier
+    | SccpPauseTokenFromVerifier
+    | SccpResumeTokenFromVerifier
     | SccpSetGovernor
     | SccpSetVerifier
     | SccpSetInboundPaused
@@ -51,6 +55,15 @@ fun onBouncedMessage(in: InMessageBounced) {
 
     storage.sccp = sccp.toCell();
     storage.save();
+}
+
+fun sccpAssertVerifier(storage: MinterStorage, sender: address) {
+    assert (storage.verifierAddress != null) throw ERROR_SCCP_VERIFIER_NOT_SET;
+    assert (sender == storage.verifierAddress!) throw ERROR_SCCP_NOT_VERIFIER;
+}
+
+fun sccpAssertGovernanceMessageFresh(mutate sccp: SccpStorageExtra, messageId: uint256) {
+    assert (!sccp.processedGovernance.get(messageId).isFound) throw ERROR_SCCP_MESSAGE_ALREADY_PROCESSED;
 }
 
 fun onInternalMessage(in: InMessage) {
@@ -92,6 +105,7 @@ fun onInternalMessage(in: InMessage) {
                 assert (sccpIsCanonicalEvmRecipient(details.recipient32)) throw ERROR_SCCP_RECIPIENT_NOT_CANONICAL;
             }
             assert (!sccpMaskHasDomain(sccp.outboundPausedMask, details.destDomain)) throw ERROR_SCCP_OUTBOUND_PAUSED;
+            assert (sccp.tokenState == SCCP_TOKEN_STATE_ACTIVE) throw ERROR_SCCP_TOKEN_NOT_ACTIVE;
 
             assert (sccp.nonce < MAX_U64) throw ERROR_SCCP_NONCE_OVERFLOW;
             sccp.nonce += 1;
@@ -174,8 +188,7 @@ fun onInternalMessage(in: InMessage) {
             var storage = lazy MinterStorage.load();
             var sccp = lazy storage.sccp.load();
 
-            assert (storage.verifierAddress != null) throw ERROR_SCCP_VERIFIER_NOT_SET;
-            assert (in.senderAddress == storage.verifierAddress!) throw ERROR_SCCP_NOT_VERIFIER;
+            sccpAssertVerifier(storage, in.senderAddress);
             sccpEnsureSupportedDomain(msg.sourceDomain);
             assert (msg.sourceDomain != SCCP_DOMAIN_TON) throw ERROR_SCCP_DOMAIN_UNSUPPORTED;
 
@@ -183,6 +196,7 @@ fun onInternalMessage(in: InMessage) {
             assert (!sccpMaskHasDomain(sccp.inboundPausedMask, msg.sourceDomain)) throw ERROR_SCCP_INBOUND_PAUSED;
 
             assert (!sccpIsRecipientZero(msg.recipient32)) throw ERROR_SCCP_RECIPIENT_IS_ZERO;
+            assert (sccp.tokenState == SCCP_TOKEN_STATE_ACTIVE) throw ERROR_SCCP_TOKEN_NOT_ACTIVE;
 
             // Compute canonical SCCP messageId to gate replay/invalidation.
             val messageId = sccpBurnMessageIdV1(
@@ -230,6 +244,51 @@ fun onInternalMessage(in: InMessage) {
             deployMsg.send(SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE | SEND_MODE_BOUNCE_ON_ACTION_FAIL);
         }
 
+        SccpAddTokenFromVerifier => {
+            var storage = lazy MinterStorage.load();
+            var sccp = lazy storage.sccp.load();
+
+            sccpAssertVerifier(storage, in.senderAddress);
+            assert (msg.soraAssetId == sccp.soraAssetId) throw ERROR_INVALID_MESSAGE;
+            sccpAssertGovernanceMessageFresh(mutate sccp, msg.messageId);
+            assert (sccp.tokenState == SCCP_TOKEN_STATE_PAUSED) throw ERROR_SCCP_TOKEN_NOT_PAUSED;
+
+            sccp.processedGovernance.set(msg.messageId, true);
+            sccp.tokenState = SCCP_TOKEN_STATE_ACTIVE;
+            storage.sccp = sccp.toCell();
+            storage.save();
+        }
+
+        SccpPauseTokenFromVerifier => {
+            var storage = lazy MinterStorage.load();
+            var sccp = lazy storage.sccp.load();
+
+            sccpAssertVerifier(storage, in.senderAddress);
+            assert (msg.soraAssetId == sccp.soraAssetId) throw ERROR_INVALID_MESSAGE;
+            sccpAssertGovernanceMessageFresh(mutate sccp, msg.messageId);
+            assert (sccp.tokenState == SCCP_TOKEN_STATE_ACTIVE) throw ERROR_SCCP_TOKEN_NOT_ACTIVE;
+
+            sccp.processedGovernance.set(msg.messageId, true);
+            sccp.tokenState = SCCP_TOKEN_STATE_PAUSED;
+            storage.sccp = sccp.toCell();
+            storage.save();
+        }
+
+        SccpResumeTokenFromVerifier => {
+            var storage = lazy MinterStorage.load();
+            var sccp = lazy storage.sccp.load();
+
+            sccpAssertVerifier(storage, in.senderAddress);
+            assert (msg.soraAssetId == sccp.soraAssetId) throw ERROR_INVALID_MESSAGE;
+            sccpAssertGovernanceMessageFresh(mutate sccp, msg.messageId);
+            assert (sccp.tokenState == SCCP_TOKEN_STATE_PAUSED) throw ERROR_SCCP_TOKEN_NOT_PAUSED;
+
+            sccp.processedGovernance.set(msg.messageId, true);
+            sccp.tokenState = SCCP_TOKEN_STATE_ACTIVE;
+            storage.sccp = sccp.toCell();
+            storage.save();
+        }
+
         SccpSetGovernor => {
             throw ERROR_SCCP_ADMIN_PATH_DISABLED;
         }
@@ -239,7 +298,7 @@ fun onInternalMessage(in: InMessage) {
             if (
                 storage.verifierAddress == null &&
                 msg.newVerifier != null &&
-                in.senderAddress == msg.newVerifier!
+                in.senderAddress == storage.governorAddress
             ) {
                 storage.verifierAddress = msg.newVerifier;
                 storage.save();
@@ -320,6 +379,12 @@ get fun get_sccp_config(): (address, address?, uint256, uint64, uint64, uint64) 
     val storage = lazy MinterStorage.load();
     val sccp = lazy storage.sccp.load();
     return (storage.governorAddress, storage.verifierAddress, sccp.soraAssetId, sccp.nonce, sccp.inboundPausedMask, sccp.outboundPausedMask);
+}
+
+get fun get_sccp_token_state(): int {
+    val storage = lazy MinterStorage.load();
+    val sccp = lazy storage.sccp.load();
+    return sccp.tokenState;
 }
 
 get fun get_sccp_burn_record(messageId: uint256): Cell<SccpBurnRecord>? {

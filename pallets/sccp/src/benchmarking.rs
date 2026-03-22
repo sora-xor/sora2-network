@@ -318,6 +318,8 @@ benchmarks! {
         let owner: T::AccountId = whitelisted_caller();
         frame_system::Pallet::<T>::inc_providers(&owner);
         let asset_id = setup_active_token::<T>(&owner, 4)?;
+        Pallet::<T>::pause_token(RawOrigin::Root.into(), asset_id)
+            .map_err(|_| "pause_token setup failed")?;
     }: _(RawOrigin::Root, asset_id)
 
     finalize_remove {
@@ -326,9 +328,25 @@ benchmarks! {
         let asset_id = setup_active_token::<T>(&owner, 5)?;
         Pallet::<T>::set_inbound_grace_period(RawOrigin::Root.into(), 0u32.into())
             .map_err(|_| "set_inbound_grace_period setup failed")?;
+        Pallet::<T>::pause_token(RawOrigin::Root.into(), asset_id)
+            .map_err(|_| "pause_token setup failed")?;
         Pallet::<T>::remove_token(RawOrigin::Root.into(), asset_id)
             .map_err(|_| "remove_token setup failed")?;
         frame_system::Pallet::<T>::set_block_number(1u32.into());
+    }: _(RawOrigin::Root, asset_id)
+
+    pause_token {
+        let owner: T::AccountId = whitelisted_caller();
+        frame_system::Pallet::<T>::inc_providers(&owner);
+        let asset_id = setup_active_token::<T>(&owner, 6)?;
+    }: _(RawOrigin::Root, asset_id)
+
+    resume_token {
+        let owner: T::AccountId = whitelisted_caller();
+        frame_system::Pallet::<T>::inc_providers(&owner);
+        let asset_id = setup_active_token::<T>(&owner, 7)?;
+        Pallet::<T>::pause_token(RawOrigin::Root.into(), asset_id)
+            .map_err(|_| "pause_token setup failed")?;
     }: _(RawOrigin::Root, asset_id)
 
     set_inbound_grace_period {
@@ -366,7 +384,7 @@ benchmarks! {
     burn {
         let caller: T::AccountId = whitelisted_caller();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let asset_id = setup_active_token_with_balance::<T>(&caller, 6, 1_000_000u32.into())?;
+        let asset_id = setup_active_token_with_balance::<T>(&caller, 8, 1_000_000u32.into())?;
         let amount: Balance = 1_000u32.into();
         let recipient = canonical_evm_recipient(7);
     }: _(RawOrigin::Signed(caller), asset_id, amount, SCCP_DOMAIN_ETH, recipient)
@@ -374,13 +392,7 @@ benchmarks! {
     mint_from_proof {
         let caller: T::AccountId = whitelisted_caller();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let asset_id = setup_active_token::<T>(&caller, 7)?;
-        Pallet::<T>::set_inbound_finality_mode(
-            RawOrigin::Root.into(),
-            SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EthZkProof,
-        )
-        .map_err(|_| "set_inbound_finality_mode setup failed")?;
+        let asset_id = setup_active_token::<T>(&caller, 9)?;
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {
@@ -405,13 +417,7 @@ benchmarks! {
     attest_burn {
         let caller: T::AccountId = whitelisted_caller();
         frame_system::Pallet::<T>::inc_providers(&caller);
-        let asset_id = setup_active_token::<T>(&caller, 8)?;
-        Pallet::<T>::set_inbound_finality_mode(
-            RawOrigin::Root.into(),
-            SCCP_DOMAIN_ETH,
-            InboundFinalityMode::EthZkProof,
-        )
-        .map_err(|_| "set_inbound_finality_mode setup failed")?;
+        let asset_id = setup_active_token::<T>(&caller, 10)?;
 
         let asset_h256: H256 = asset_id.into();
         let payload = BurnPayloadV1 {

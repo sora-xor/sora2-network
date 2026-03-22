@@ -41,6 +41,7 @@ contract SccpRouter {
     error RecipientNotCanonical();
     error InvalidGovernancePayload();
     error TokenMetadataInvalid();
+    error CanonicalTokenMismatch();
 
     enum TokenState {
         None,
@@ -226,9 +227,14 @@ contract SccpRouter {
         string memory name = _bytes32ToString(p.name);
         string memory symbol = _bytes32ToString(p.symbol);
         if (bytes(name).length == 0 || bytes(symbol).length == 0) revert TokenMetadataInvalid();
-
-        SccpToken t = new SccpToken(name, symbol, p.decimals, address(this));
-        token = address(t);
+        bytes32 salt = canonicalTokenSalt(p.soraAssetId);
+        token = canonicalTokenAddress(p.soraAssetId, name, symbol, p.decimals);
+        if (token.code.length == 0) {
+            SccpToken t = new SccpToken{salt: salt}(name, symbol, p.decimals, address(this));
+            token = address(t);
+        } else {
+            _validateCanonicalToken(token, name, symbol, p.decimals);
+        }
         tokenBySoraAssetId[p.soraAssetId] = token;
         tokenStateBySoraAssetId[p.soraAssetId] = TokenState.Active;
         processedGovernanceMessage[messageId] = true;
@@ -276,6 +282,32 @@ contract SccpRouter {
         emit TokenResumedByProof(messageId, p.soraAssetId);
     }
 
+    function canonicalTokenSalt(bytes32 soraAssetId) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked("sccp:evm:token:v1", soraAssetId));
+    }
+
+    function canonicalTokenAddress(
+        bytes32 soraAssetId,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) public view returns (address) {
+        bytes32 salt = canonicalTokenSalt(soraAssetId);
+        bytes memory initCode = abi.encodePacked(
+            type(SccpToken).creationCode,
+            abi.encode(name, symbol, decimals, address(this))
+        );
+        bytes32 hash = keccak256(initCode);
+        return
+            address(
+                uint160(
+                    uint256(
+                        keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, hash))
+                    )
+                )
+            );
+    }
+
     function _ensureSupportedDomain(uint32 domain) internal pure {
         if (
             domain != DOMAIN_SORA &&
@@ -320,6 +352,39 @@ contract SccpRouter {
         bytes memory outB = bytes(out);
         for (uint256 k = 0; k < len; k++) {
             outB[k] = b[k];
+        }
+    }
+
+    function _validateCanonicalToken(
+        address token,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    ) internal view {
+        try SccpToken(token).router() returns (address router_) {
+            if (router_ != address(this)) revert CanonicalTokenMismatch();
+        } catch {
+            revert CanonicalTokenMismatch();
+        }
+
+        try SccpToken(token).decimals() returns (uint8 decimals_) {
+            if (decimals_ != decimals) revert CanonicalTokenMismatch();
+        } catch {
+            revert CanonicalTokenMismatch();
+        }
+
+        try SccpToken(token).name() returns (string memory name_) {
+            if (keccak256(bytes(name_)) != keccak256(bytes(name))) revert CanonicalTokenMismatch();
+        } catch {
+            revert CanonicalTokenMismatch();
+        }
+
+        try SccpToken(token).symbol() returns (string memory symbol_) {
+            if (keccak256(bytes(symbol_)) != keccak256(bytes(symbol))) {
+                revert CanonicalTokenMismatch();
+            }
+        } catch {
+            revert CanonicalTokenMismatch();
         }
     }
 }

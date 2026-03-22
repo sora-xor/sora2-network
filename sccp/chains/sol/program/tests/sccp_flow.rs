@@ -17,19 +17,19 @@ use std::sync::OnceLock;
 use tokio::sync::Mutex;
 
 use sccp_sol::{
-    burn_message_id, BurnPayloadV1, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL,
-    SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
+    burn_message_id, token_add_message_id, token_pause_message_id, token_resume_message_id,
+    BurnPayloadV1, TokenAddPayloadV1, TokenControlPayloadV1, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH,
+    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
 };
 use sccp_sol_program::{
-    process_instruction, BurnRecord, Config, InboundMarker, InboundStatus, SccpError, SccpInstruction,
-    TokenConfig,
+    process_instruction, BurnRecord, Config, InboundMarker, InboundStatus, SccpError,
+    SccpInstruction, TokenConfig, TokenState,
 };
 use sccp_sol_verifier_program::{
     process_instruction as verifier_process_instruction, Commitment as VerifierCommitment,
     Config as VerifierConfig, MmrLeaf as VerifierMmrLeaf, MmrProof as VerifierMmrProof,
-    SoraBurnProofV1,
-    ValidatorProof as VerifierValidatorProof, ValidatorSet as VerifierValidatorSet, VerifierError,
-    VerifierInstruction,
+    SoraBurnProofV1, ValidatorProof as VerifierValidatorProof,
+    ValidatorSet as VerifierValidatorSet, VerifierError, VerifierInstruction,
 };
 
 use libsecp256k1::{sign, Message, PublicKey, SecretKey};
@@ -48,7 +48,10 @@ const SEED_INBOUND: &[u8] = b"inbound";
 static PROGRAM_TEST_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 async fn program_test_lock() -> tokio::sync::MutexGuard<'static, ()> {
-    PROGRAM_TEST_LOCK.get_or_init(|| Mutex::new(())).lock().await
+    PROGRAM_TEST_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .await
 }
 
 fn config_pda(program_id: &Pubkey) -> (Pubkey, u8) {
@@ -103,6 +106,22 @@ fn keccak256(data: &[u8]) -> [u8; 32] {
     let mut out = [0u8; 32];
     k.finalize(&mut out);
     out
+}
+
+fn ascii_fixed_32(input: &[u8]) -> [u8; 32] {
+    let mut out = [0u8; 32];
+    out[..input.len()].copy_from_slice(input);
+    out
+}
+
+fn sccp_digest_scale_for_message_ids(message_ids: &[[u8; 32]]) -> Vec<u8> {
+    let mut digest_scale: Vec<u8> = Vec::with_capacity(1 + message_ids.len() * (6 + 32));
+    digest_scale.push((message_ids.len() as u8) << 2);
+    for msg_id in message_ids {
+        digest_scale.extend_from_slice(&[0x00, 0x02, 0x50, 0x43, 0x43, 0x53]);
+        digest_scale.extend_from_slice(msg_id);
+    }
+    digest_scale
 }
 
 const SECP256K1N: [u8; 32] = [
@@ -722,6 +741,7 @@ async fn solana_program_burn_rejects_legacy_registration_without_bridge_mint_con
                 bump: token_cfg_bump,
                 sora_asset_id,
                 mint: mint.pubkey(),
+                state: TokenState::Active,
             }
             .try_to_vec()
             .unwrap(),
@@ -802,7 +822,13 @@ async fn solana_program_burn_rejects_legacy_registration_without_bridge_mint_con
         )
         .unwrap();
         let tx = Transaction::new_signed_with_payer(
-            &[create_mint_ix, init_mint_ix, create_token_ix, init_token_ix, mint_to_ix],
+            &[
+                create_mint_ix,
+                init_mint_ix,
+                create_token_ix,
+                init_token_ix,
+                mint_to_ix,
+            ],
             Some(&payer.pubkey()),
             &[&payer, &mint, &user_token, &other_authority],
             banks_client.get_latest_blockhash().await.unwrap(),
@@ -886,6 +912,7 @@ async fn solana_program_burn_rejects_wrong_token_config_version() {
                 bump: token_cfg_bump,
                 sora_asset_id,
                 mint: mint.pubkey(),
+                state: TokenState::Active,
             }
             .try_to_vec()
             .unwrap(),
@@ -1445,7 +1472,11 @@ async fn solana_verifier_initialize_rejects_zero_length_validator_sets() {
     }
 
     assert!(
-        banks_client.get_account(verifier_config).await.unwrap().is_none(),
+        banks_client
+            .get_account(verifier_config)
+            .await
+            .unwrap()
+            .is_none(),
         "failed initialize must not create verifier config account"
     );
 
@@ -2036,7 +2067,11 @@ async fn solana_verifier_rejects_malleable_high_s_signatures() {
             sig65.extend_from_slice(&sig_raw.serialize());
             sig65.push(recid.serialize());
             signatures.push(sig65);
-            positions.push(if i == 2 { current_vset.len as u64 } else { i as u64 });
+            positions.push(if i == 2 {
+                current_vset.len as u64
+            } else {
+                i as u64
+            });
             public_keys.push(validator_addrs[i]);
             public_key_merkle_proofs.push(merkle_proof(&validator_layers, i));
         }
@@ -2477,11 +2512,95 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         banks_client.process_transaction(tx).await.unwrap();
     }
 
-    // Deploy token (mint PDA + token config PDA).
+    // Add token from a SORA-finalized governance proof.
     let sora_asset_id = [0x11u8; 32];
     let (token_cfg, _token_cfg_bump) = token_config_pda(&program_id, &sora_asset_id);
     let (mint, _mint_bump) = mint_pda(&program_id, &sora_asset_id);
+    let add_payload = TokenAddPayloadV1 {
+        version: 1,
+        target_domain: SCCP_DOMAIN_SOL,
+        nonce: 1,
+        sora_asset_id,
+        decimals: 6,
+        name: ascii_fixed_32(b"SCCP Solana"),
+        symbol: ascii_fixed_32(b"sSOL"),
+    };
+    let add_payload_bytes = add_payload.encode_scale();
+    let add_message_id = token_add_message_id(&add_payload_bytes);
+    let (add_marker, _add_marker_bump) =
+        inbound_marker_pda(&program_id, SCCP_DOMAIN_SORA, &add_message_id);
+    let add_digest_scale = sccp_digest_scale_for_message_ids(&[add_message_id]);
+    let add_digest_hash = keccak256(&add_digest_scale);
+    let add_leaf = VerifierMmrLeaf {
+        version: 0,
+        parent_number: 1,
+        parent_hash: [0x54u8; 32],
+        next_authority_set_id: next_vset.id,
+        next_authority_set_len: next_vset.len,
+        next_authority_set_root: vset_root,
+        random_seed: [0x65u8; 32],
+        digest_hash: add_digest_hash,
+    };
+    let add_commitment = VerifierCommitment {
+        mmr_root: hash_leaf(&add_leaf),
+        block_number: 1,
+        validator_set_id: current_vset.id,
+    };
+    let add_commitment_hash = hash_commitment(&add_commitment);
+    let add_msg = Message::parse(&add_commitment_hash);
+    let mut add_sigs: Vec<Vec<u8>> = Vec::new();
+    let mut add_positions: Vec<u64> = Vec::new();
+    let mut add_pub_keys: Vec<[u8; 20]> = Vec::new();
+    let mut add_merkle_proofs: Vec<Vec<[u8; 32]>> = Vec::new();
+    for i in 0..3 {
+        let (sig, recid) = sign(&add_msg, &validator_sks[i]);
+        let mut sig65 = Vec::with_capacity(65);
+        sig65.extend_from_slice(&sig.serialize());
+        sig65.push(recid.serialize());
+        add_sigs.push(sig65);
+        add_positions.push(i as u64);
+        add_pub_keys.push(validator_addrs[i]);
+        add_merkle_proofs.push(merkle_proof(&validator_layers, i));
+    }
+    let add_validator_proof = VerifierValidatorProof {
+        signatures: add_sigs,
+        positions: add_positions,
+        public_keys: add_pub_keys,
+        public_key_merkle_proofs: add_merkle_proofs,
+    };
+    let add_mmr_proof = VerifierMmrProof {
+        leaf_index: 0,
+        leaf_count: 1,
+        items: vec![],
+    };
     {
+        let import_ix = Instruction {
+            program_id: verifier_program_id,
+            accounts: vec![AccountMeta::new(verifier_config, false)],
+            data: VerifierInstruction::SubmitSignatureCommitment {
+                commitment: add_commitment,
+                validator_proof: add_validator_proof,
+                latest_mmr_leaf: add_leaf,
+                proof: add_mmr_proof.clone(),
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let import_tx = Transaction::new_signed_with_payer(
+            &[import_ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            recent_blockhash,
+        );
+        banks_client.process_transaction(import_tx).await.unwrap();
+
+        let add_proof_bytes = SoraBurnProofV1 {
+            mmr_proof: add_mmr_proof,
+            leaf: add_leaf,
+            digest_scale: add_digest_scale,
+        }
+        .try_to_vec()
+        .unwrap();
         let ix = Instruction {
             program_id,
             accounts: vec![
@@ -2489,13 +2608,16 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
                 AccountMeta::new(config, false),
                 AccountMeta::new(token_cfg, false),
                 AccountMeta::new(mint, false),
+                AccountMeta::new(add_marker, false),
                 AccountMeta::new_readonly(system_program::id(), false),
                 AccountMeta::new_readonly(spl_token::id(), false),
                 AccountMeta::new_readonly(sysvar::rent::id(), false),
+                AccountMeta::new_readonly(verifier_program_id, false),
+                AccountMeta::new_readonly(verifier_config, false),
             ],
-            data: SccpInstruction::DeployToken {
-                sora_asset_id,
-                decimals: 6,
+            data: SccpInstruction::AddTokenFromProof {
+                payload: add_payload_bytes.to_vec(),
+                proof: add_proof_bytes,
             }
             .try_to_vec()
             .unwrap(),
@@ -2573,20 +2695,12 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         inbound_marker_pda(&program_id, SCCP_DOMAIN_ETH, &inbound_message_id_eth);
 
     // Import a synthetic "finalized" MMR root into verifier state, then construct the proof bytes.
-    let mut digest_scale: Vec<u8> = Vec::with_capacity(1 + 2 * (7 + 32));
-    // SCALE(Vec<AuxiliaryDigestItem>) with 2 items:
-    // compact(len=2)=0x08 | item1 | item2
-    digest_scale.push(0x08);
-    for msg_id in [&inbound_message_id_sora, &inbound_message_id_eth] {
-        // Commitment(0) | GenericNetworkId::EVMLegacy(2) | u32('SCCP') LE | message_id (H256)
-        digest_scale.extend_from_slice(&[0x00, 0x02, 0x50, 0x43, 0x43, 0x53]);
-        digest_scale.extend_from_slice(msg_id);
-    }
+    let digest_scale = sccp_digest_scale_for_message_ids(&[inbound_message_id_sora, inbound_message_id_eth]);
     let digest_hash = keccak256(&digest_scale);
 
     let leaf = VerifierMmrLeaf {
         version: 0,
-        parent_number: 1,
+        parent_number: 2,
         parent_hash: [0x55u8; 32],
         next_authority_set_id: next_vset.id,
         next_authority_set_len: next_vset.len,
@@ -2597,7 +2711,7 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
     let leaf_hash = hash_leaf(&leaf);
     let commitment = VerifierCommitment {
         mmr_root: leaf_hash,
-        block_number: 1,
+        block_number: 2,
         validator_set_id: current_vset.id,
     };
     let commitment_hash = hash_commitment(&commitment);
@@ -2734,6 +2848,420 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         assert_eq!(ta.mint, mint);
     }
 
+    // Pause via governance proof, which must block both burn and mint until resume.
+    let pause_payload = TokenControlPayloadV1 {
+        version: 1,
+        target_domain: SCCP_DOMAIN_SOL,
+        nonce: 2,
+        sora_asset_id,
+    };
+    let pause_payload_bytes = pause_payload.encode_scale();
+    let pause_message_id = token_pause_message_id(&pause_payload_bytes);
+    let (pause_marker, _pause_marker_bump) =
+        inbound_marker_pda(&program_id, SCCP_DOMAIN_SORA, &pause_message_id);
+    let pause_digest_scale = sccp_digest_scale_for_message_ids(&[pause_message_id]);
+    let pause_digest_hash = keccak256(&pause_digest_scale);
+    let pause_leaf = VerifierMmrLeaf {
+        version: 0,
+        parent_number: 5,
+        parent_hash: [0x58u8; 32],
+        next_authority_set_id: next_vset.id,
+        next_authority_set_len: next_vset.len,
+        next_authority_set_root: vset_root,
+        random_seed: [0x69u8; 32],
+        digest_hash: pause_digest_hash,
+    };
+    let pause_commitment = VerifierCommitment {
+        mmr_root: hash_leaf(&pause_leaf),
+        block_number: 5,
+        validator_set_id: current_vset.id,
+    };
+    let pause_commitment_hash = hash_commitment(&pause_commitment);
+    let pause_msg = Message::parse(&pause_commitment_hash);
+    let mut pause_sigs: Vec<Vec<u8>> = Vec::new();
+    let mut pause_positions: Vec<u64> = Vec::new();
+    let mut pause_pub_keys: Vec<[u8; 20]> = Vec::new();
+    let mut pause_merkle_proofs: Vec<Vec<[u8; 32]>> = Vec::new();
+    for i in 0..3 {
+        let (sig, recid) = sign(&pause_msg, &validator_sks[i]);
+        let mut sig65 = Vec::with_capacity(65);
+        sig65.extend_from_slice(&sig.serialize());
+        sig65.push(recid.serialize());
+        pause_sigs.push(sig65);
+        pause_positions.push(i as u64);
+        pause_pub_keys.push(validator_addrs[i]);
+        pause_merkle_proofs.push(merkle_proof(&validator_layers, i));
+    }
+    let pause_validator_proof = VerifierValidatorProof {
+        signatures: pause_sigs,
+        positions: pause_positions,
+        public_keys: pause_pub_keys,
+        public_key_merkle_proofs: pause_merkle_proofs,
+    };
+    let pause_mmr_proof = VerifierMmrProof {
+        leaf_index: 0,
+        leaf_count: 1,
+        items: vec![],
+    };
+    {
+        let import_ix = Instruction {
+            program_id: verifier_program_id,
+            accounts: vec![AccountMeta::new(verifier_config, false)],
+            data: VerifierInstruction::SubmitSignatureCommitment {
+                commitment: pause_commitment,
+                validator_proof: pause_validator_proof,
+                latest_mmr_leaf: pause_leaf,
+                proof: pause_mmr_proof.clone(),
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let import_tx = Transaction::new_signed_with_payer(
+            &[import_ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(import_tx).await.unwrap();
+
+        let pause_proof_bytes = SoraBurnProofV1 {
+            mmr_proof: pause_mmr_proof,
+            leaf: pause_leaf,
+            digest_scale: pause_digest_scale,
+        }
+        .try_to_vec()
+        .unwrap();
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(config, false),
+                AccountMeta::new(token_cfg, false),
+                AccountMeta::new(pause_marker, false),
+                AccountMeta::new_readonly(verifier_program_id, false),
+                AccountMeta::new_readonly(verifier_config, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+            data: SccpInstruction::PauseTokenFromProof {
+                payload: pause_payload_bytes.to_vec(),
+                proof: pause_proof_bytes,
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(tx).await.unwrap();
+    }
+
+    // Burn must fail while paused.
+    {
+        let mut evm_recipient = [0u8; 32];
+        evm_recipient[12..].copy_from_slice(&[0x44u8; 20]);
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(alice.pubkey(), true),
+                AccountMeta::new(config, false),
+                AccountMeta::new(token_cfg, false),
+                AccountMeta::new(alice_token.pubkey(), false),
+                AccountMeta::new(mint, false),
+                AccountMeta::new(Pubkey::new_unique(), false),
+                AccountMeta::new_readonly(system_program::id(), false),
+                AccountMeta::new_readonly(spl_token::id(), false),
+            ],
+            data: SccpInstruction::Burn {
+                sora_asset_id,
+                amount: 1,
+                dest_domain: SCCP_DOMAIN_ETH,
+                recipient: evm_recipient,
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer, &alice],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        let err = banks_client.process_transaction(tx).await.unwrap_err();
+        expect_custom(err.into(), SccpError::TokenNotActive as u32);
+    }
+
+    // A valid inbound proof must also fail closed while paused, without poisoning replay state.
+    let paused_inbound_payload = BurnPayloadV1 {
+        version: 1,
+        source_domain: SCCP_DOMAIN_SORA,
+        dest_domain: SCCP_DOMAIN_SOL,
+        nonce: 12,
+        sora_asset_id,
+        amount: 1,
+        recipient: alice.pubkey().to_bytes(),
+    };
+    let paused_inbound_payload_bytes = paused_inbound_payload.encode_scale();
+    let paused_inbound_message_id = burn_message_id(&paused_inbound_payload_bytes);
+    let (paused_inbound_marker, _paused_inbound_marker_bump) =
+        inbound_marker_pda(&program_id, SCCP_DOMAIN_SORA, &paused_inbound_message_id);
+    let paused_inbound_digest_scale = sccp_digest_scale_for_message_ids(&[paused_inbound_message_id]);
+    let paused_inbound_digest_hash = keccak256(&paused_inbound_digest_scale);
+    let paused_inbound_leaf = VerifierMmrLeaf {
+        version: 0,
+        parent_number: 6,
+        parent_hash: [0x59u8; 32],
+        next_authority_set_id: next_vset.id,
+        next_authority_set_len: next_vset.len,
+        next_authority_set_root: vset_root,
+        random_seed: [0x6au8; 32],
+        digest_hash: paused_inbound_digest_hash,
+    };
+    let paused_inbound_commitment = VerifierCommitment {
+        mmr_root: hash_leaf(&paused_inbound_leaf),
+        block_number: 6,
+        validator_set_id: current_vset.id,
+    };
+    let paused_inbound_commitment_hash = hash_commitment(&paused_inbound_commitment);
+    let paused_inbound_msg = Message::parse(&paused_inbound_commitment_hash);
+    let mut paused_inbound_sigs: Vec<Vec<u8>> = Vec::new();
+    let mut paused_inbound_positions: Vec<u64> = Vec::new();
+    let mut paused_inbound_pub_keys: Vec<[u8; 20]> = Vec::new();
+    let mut paused_inbound_merkle_proofs: Vec<Vec<[u8; 32]>> = Vec::new();
+    for i in 0..3 {
+        let (sig, recid) = sign(&paused_inbound_msg, &validator_sks[i]);
+        let mut sig65 = Vec::with_capacity(65);
+        sig65.extend_from_slice(&sig.serialize());
+        sig65.push(recid.serialize());
+        paused_inbound_sigs.push(sig65);
+        paused_inbound_positions.push(i as u64);
+        paused_inbound_pub_keys.push(validator_addrs[i]);
+        paused_inbound_merkle_proofs.push(merkle_proof(&validator_layers, i));
+    }
+    let paused_inbound_validator_proof = VerifierValidatorProof {
+        signatures: paused_inbound_sigs,
+        positions: paused_inbound_positions,
+        public_keys: paused_inbound_pub_keys,
+        public_key_merkle_proofs: paused_inbound_merkle_proofs,
+    };
+    let paused_inbound_mmr_proof = VerifierMmrProof {
+        leaf_index: 0,
+        leaf_count: 1,
+        items: vec![],
+    };
+    let paused_inbound_proof_bytes = {
+        let import_ix = Instruction {
+            program_id: verifier_program_id,
+            accounts: vec![AccountMeta::new(verifier_config, false)],
+            data: VerifierInstruction::SubmitSignatureCommitment {
+                commitment: paused_inbound_commitment,
+                validator_proof: paused_inbound_validator_proof,
+                latest_mmr_leaf: paused_inbound_leaf,
+                proof: paused_inbound_mmr_proof.clone(),
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let import_tx = Transaction::new_signed_with_payer(
+            &[import_ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(import_tx).await.unwrap();
+        SoraBurnProofV1 {
+            mmr_proof: paused_inbound_mmr_proof,
+            leaf: paused_inbound_leaf,
+            digest_scale: paused_inbound_digest_scale,
+        }
+        .try_to_vec()
+        .unwrap()
+    };
+    {
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(config, false),
+                AccountMeta::new(token_cfg, false),
+                AccountMeta::new(mint, false),
+                AccountMeta::new(alice_token.pubkey(), false),
+                AccountMeta::new(paused_inbound_marker, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+                AccountMeta::new_readonly(spl_token::id(), false),
+                AccountMeta::new_readonly(verifier_program_id, false),
+                AccountMeta::new_readonly(verifier_config, false),
+            ],
+            data: SccpInstruction::MintFromProof {
+                source_domain: SCCP_DOMAIN_SORA,
+                payload: paused_inbound_payload_bytes.to_vec(),
+                proof: paused_inbound_proof_bytes.clone(),
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        let err = banks_client.process_transaction(tx).await.unwrap_err();
+        expect_custom(err.into(), SccpError::TokenNotActive as u32);
+    }
+
+    // Resume via governance proof and reuse the exact same mint proof successfully.
+    let resume_payload = TokenControlPayloadV1 {
+        version: 1,
+        target_domain: SCCP_DOMAIN_SOL,
+        nonce: 3,
+        sora_asset_id,
+    };
+    let resume_payload_bytes = resume_payload.encode_scale();
+    let resume_message_id = token_resume_message_id(&resume_payload_bytes);
+    let (resume_marker, _resume_marker_bump) =
+        inbound_marker_pda(&program_id, SCCP_DOMAIN_SORA, &resume_message_id);
+    let resume_digest_scale = sccp_digest_scale_for_message_ids(&[resume_message_id]);
+    let resume_digest_hash = keccak256(&resume_digest_scale);
+    let resume_leaf = VerifierMmrLeaf {
+        version: 0,
+        parent_number: 7,
+        parent_hash: [0x5au8; 32],
+        next_authority_set_id: next_vset.id,
+        next_authority_set_len: next_vset.len,
+        next_authority_set_root: vset_root,
+        random_seed: [0x6bu8; 32],
+        digest_hash: resume_digest_hash,
+    };
+    let resume_commitment = VerifierCommitment {
+        mmr_root: hash_leaf(&resume_leaf),
+        block_number: 7,
+        validator_set_id: current_vset.id,
+    };
+    let resume_commitment_hash = hash_commitment(&resume_commitment);
+    let resume_msg = Message::parse(&resume_commitment_hash);
+    let mut resume_sigs: Vec<Vec<u8>> = Vec::new();
+    let mut resume_positions: Vec<u64> = Vec::new();
+    let mut resume_pub_keys: Vec<[u8; 20]> = Vec::new();
+    let mut resume_merkle_proofs: Vec<Vec<[u8; 32]>> = Vec::new();
+    for i in 0..3 {
+        let (sig, recid) = sign(&resume_msg, &validator_sks[i]);
+        let mut sig65 = Vec::with_capacity(65);
+        sig65.extend_from_slice(&sig.serialize());
+        sig65.push(recid.serialize());
+        resume_sigs.push(sig65);
+        resume_positions.push(i as u64);
+        resume_pub_keys.push(validator_addrs[i]);
+        resume_merkle_proofs.push(merkle_proof(&validator_layers, i));
+    }
+    let resume_validator_proof = VerifierValidatorProof {
+        signatures: resume_sigs,
+        positions: resume_positions,
+        public_keys: resume_pub_keys,
+        public_key_merkle_proofs: resume_merkle_proofs,
+    };
+    let resume_mmr_proof = VerifierMmrProof {
+        leaf_index: 0,
+        leaf_count: 1,
+        items: vec![],
+    };
+    {
+        let import_ix = Instruction {
+            program_id: verifier_program_id,
+            accounts: vec![AccountMeta::new(verifier_config, false)],
+            data: VerifierInstruction::SubmitSignatureCommitment {
+                commitment: resume_commitment,
+                validator_proof: resume_validator_proof,
+                latest_mmr_leaf: resume_leaf,
+                proof: resume_mmr_proof.clone(),
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let import_tx = Transaction::new_signed_with_payer(
+            &[import_ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(import_tx).await.unwrap();
+
+        let resume_proof_bytes = SoraBurnProofV1 {
+            mmr_proof: resume_mmr_proof,
+            leaf: resume_leaf,
+            digest_scale: resume_digest_scale,
+        }
+        .try_to_vec()
+        .unwrap();
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(config, false),
+                AccountMeta::new(token_cfg, false),
+                AccountMeta::new(resume_marker, false),
+                AccountMeta::new_readonly(verifier_program_id, false),
+                AccountMeta::new_readonly(verifier_config, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+            ],
+            data: SccpInstruction::ResumeTokenFromProof {
+                payload: resume_payload_bytes.to_vec(),
+                proof: resume_proof_bytes,
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(tx).await.unwrap();
+    }
+    {
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(config, false),
+                AccountMeta::new(token_cfg, false),
+                AccountMeta::new(mint, false),
+                AccountMeta::new(alice_token.pubkey(), false),
+                AccountMeta::new(paused_inbound_marker, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+                AccountMeta::new_readonly(spl_token::id(), false),
+                AccountMeta::new_readonly(verifier_program_id, false),
+                AccountMeta::new_readonly(verifier_config, false),
+            ],
+            data: SccpInstruction::MintFromProof {
+                source_domain: SCCP_DOMAIN_SORA,
+                payload: paused_inbound_payload_bytes.to_vec(),
+                proof: paused_inbound_proof_bytes,
+            }
+            .try_to_vec()
+            .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(tx).await.unwrap();
+    }
+    {
+        let acct = banks_client
+            .get_account(alice_token.pubkey())
+            .await
+            .unwrap()
+            .unwrap();
+        let ta = TokenAccount::unpack(&acct.data).unwrap();
+        assert_eq!(ta.amount, mint_amount + mint_amount_eth + 1);
+    }
+
     // Digest SCALE trailing bytes must fail closed even when message id is otherwise present.
     {
         let trailing_payload = BurnPayloadV1 {
@@ -2759,7 +3287,7 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
 
         let trailing_leaf = VerifierMmrLeaf {
             version: 0,
-            parent_number: 2,
+            parent_number: 8,
             parent_hash: [0x56u8; 32],
             next_authority_set_id: next_vset.id,
             next_authority_set_len: next_vset.len,
@@ -2770,7 +3298,7 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         let trailing_leaf_hash = hash_leaf(&trailing_leaf);
         let trailing_commitment = VerifierCommitment {
             mmr_root: trailing_leaf_hash,
-            block_number: 2,
+            block_number: 8,
             validator_set_id: current_vset.id,
         };
         let trailing_commitment_hash = hash_commitment(&trailing_commitment);
@@ -2819,7 +3347,10 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
             &[&payer],
             banks_client.get_latest_blockhash().await.unwrap(),
         );
-        banks_client.process_transaction(trailing_import_tx).await.unwrap();
+        banks_client
+            .process_transaction(trailing_import_tx)
+            .await
+            .unwrap();
 
         let trailing_burn_proof_bytes = SoraBurnProofV1 {
             mmr_proof: trailing_mmr_proof,
@@ -2913,7 +3444,7 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
 
         let mode3_leaf = VerifierMmrLeaf {
             version: 0,
-            parent_number: 3,
+            parent_number: 9,
             parent_hash: [0x57u8; 32],
             next_authority_set_id: next_vset.id,
             next_authority_set_len: next_vset.len,
@@ -2924,7 +3455,7 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         let mode3_leaf_hash = hash_leaf(&mode3_leaf);
         let mode3_commitment = VerifierCommitment {
             mmr_root: mode3_leaf_hash,
-            block_number: 3,
+            block_number: 9,
             validator_set_id: current_vset.id,
         };
         let mode3_commitment_hash = hash_commitment(&mode3_commitment);
@@ -2973,7 +3504,10 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
             &[&payer],
             banks_client.get_latest_blockhash().await.unwrap(),
         );
-        banks_client.process_transaction(mode3_import_tx).await.unwrap();
+        banks_client
+            .process_transaction(mode3_import_tx)
+            .await
+            .unwrap();
 
         let mode3_burn_proof_bytes = SoraBurnProofV1 {
             mmr_proof: mode3_mmr_proof,
@@ -3023,7 +3557,11 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         let err = banks_client.process_transaction(tx).await.unwrap_err();
         expect_custom(err.into(), SccpError::ProofVerificationFailed as u32);
         assert!(
-            banks_client.get_account(mode3_marker).await.unwrap().is_none(),
+            banks_client
+                .get_account(mode3_marker)
+                .await
+                .unwrap()
+                .is_none(),
             "failed mode=3 digest mint must not create inbound marker account"
         );
         let after_failed_mode3_mint_amount = {
@@ -3044,8 +3582,11 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
     // Unsupported source domain must fail-closed in mint path.
     {
         let unsupported_source_domain: u32 = 99;
-        let (unsupported_marker, _unsupported_marker_bump) =
-            inbound_marker_pda(&program_id, unsupported_source_domain, &inbound_message_id_sora);
+        let (unsupported_marker, _unsupported_marker_bump) = inbound_marker_pda(
+            &program_id,
+            unsupported_source_domain,
+            &inbound_message_id_sora,
+        );
         let before_failed_mint_amount = {
             let acct = banks_client
                 .get_account(alice_token.pubkey())
@@ -3614,7 +4155,11 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         expect_custom(err.into(), SccpError::AdminPathDisabled as u32);
     }
     {
-        let marker_acc = banks_client.get_account(marker_sora).await.unwrap().unwrap();
+        let marker_acc = banks_client
+            .get_account(marker_sora)
+            .await
+            .unwrap()
+            .unwrap();
         let marker_data = InboundMarker::try_from_slice(&marker_acc.data).unwrap();
         assert_eq!(marker_data.status, InboundStatus::Processed);
     }
@@ -3691,7 +4236,11 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
         expect_custom(err.into(), SccpError::AdminPathDisabled as u32);
     }
     assert!(
-        banks_client.get_account(inv_marker).await.unwrap().is_none(),
+        banks_client
+            .get_account(inv_marker)
+            .await
+            .unwrap()
+            .is_none(),
         "disabled invalidation must not create inbound marker account"
     );
 
@@ -3834,7 +4383,7 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
             .unwrap()
             .unwrap();
         let ta = TokenAccount::unpack(&acct.data).unwrap();
-        assert_eq!(ta.amount, mint_amount + mint_amount_eth - burn_amount);
+        assert_eq!(ta.amount, mint_amount + mint_amount_eth + 1 - burn_amount);
     }
 
     // Burn record exists and matches expected message id.
@@ -3859,13 +4408,18 @@ async fn solana_program_flow_burn_and_mint_with_admin_paths_disabled() {
 }
 
 #[tokio::test]
-async fn solana_program_disables_local_admin_calls_and_locks_verifier_binding() {
+async fn solana_program_governor_gates_bootstrap_and_disables_local_admin_calls() {
     let test_lock = program_test_lock().await;
     let program_id = Pubkey::new_unique();
-    let pt = ProgramTest::new(
+    let mut pt = ProgramTest::new(
         "sccp_sol_program",
         program_id,
         processor!(process_instruction),
+    );
+    pt.add_program(
+        "spl_token",
+        spl_token::id(),
+        processor!(spl_token::processor::Processor::process),
     );
     let (mut banks_client, payer, _recent_blockhash) = pt.start().await;
 
@@ -3910,7 +4464,7 @@ async fn solana_program_disables_local_admin_calls_and_locks_verifier_binding() 
 
     let verifier_program = Pubkey::new_unique();
 
-    // Any signer can bind the verifier program once during bootstrap.
+    // Non-governor signers cannot bind the verifier program.
     {
         let ix = Instruction {
             program_id,
@@ -3918,8 +4472,73 @@ async fn solana_program_disables_local_admin_calls_and_locks_verifier_binding() 
                 AccountMeta::new(attacker.pubkey(), true),
                 AccountMeta::new(config, false),
             ],
-            data: SccpInstruction::SetVerifierProgram {
-                verifier_program,
+            data: SccpInstruction::SetVerifierProgram { verifier_program }
+                .try_to_vec()
+                .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer, &attacker],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        let err = banks_client.process_transaction(tx).await.unwrap_err();
+        expect_custom(err.into(), SccpError::NotGovernor as u32);
+    }
+
+    {
+        let cfg_acc = banks_client.get_account(config).await.unwrap().unwrap();
+        let cfg = Config::try_from_slice(&cfg_acc.data).unwrap();
+        assert_eq!(cfg.verifier_program, Pubkey::default());
+    }
+
+    // Only the configured governor can register the verifier program.
+    {
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(), true),
+                AccountMeta::new(config, false),
+            ],
+            data: SccpInstruction::SetVerifierProgram { verifier_program }
+                .try_to_vec()
+                .unwrap(),
+        };
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(tx).await.unwrap();
+    }
+
+    {
+        let cfg_acc = banks_client.get_account(config).await.unwrap().unwrap();
+        let cfg = Config::try_from_slice(&cfg_acc.data).unwrap();
+        assert_eq!(cfg.verifier_program, verifier_program);
+    }
+
+    let sora_asset_id = [0x55u8; 32];
+    let (token_cfg, _token_bump) = token_config_pda(&program_id, &sora_asset_id);
+    let (mint, _mint_bump) = mint_pda(&program_id, &sora_asset_id);
+
+    // Token deployment is also governor-gated.
+    {
+        let ix = Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(attacker.pubkey(), true),
+                AccountMeta::new(config, false),
+                AccountMeta::new(token_cfg, false),
+                AccountMeta::new(mint, false),
+                AccountMeta::new_readonly(system_program::id(), false),
+                AccountMeta::new_readonly(spl_token::id(), false),
+                AccountMeta::new_readonly(sysvar::rent::id(), false),
+            ],
+            data: SccpInstruction::DeployToken {
+                sora_asset_id,
+                decimals: 9,
             }
             .try_to_vec()
             .unwrap(),
@@ -3930,13 +4549,8 @@ async fn solana_program_disables_local_admin_calls_and_locks_verifier_binding() 
             &[&payer, &attacker],
             banks_client.get_latest_blockhash().await.unwrap(),
         );
-        banks_client.process_transaction(tx).await.unwrap();
-    }
-
-    {
-        let cfg_acc = banks_client.get_account(config).await.unwrap().unwrap();
-        let cfg = Config::try_from_slice(&cfg_acc.data).unwrap();
-        assert_eq!(cfg.verifier_program, verifier_program);
+        let err = banks_client.process_transaction(tx).await.unwrap_err();
+        expect_custom(err.into(), SccpError::NotGovernor as u32);
     }
 
     // The verifier binding is immutable once configured.
@@ -4089,6 +4703,64 @@ async fn solana_program_disables_local_admin_calls_and_locks_verifier_binding() 
         let err = banks_client.process_transaction(tx).await.unwrap_err();
         expect_custom(err.into(), SccpError::AdminPathDisabled as u32);
     }
+
+    drop(test_lock);
+}
+
+#[tokio::test]
+async fn solana_verifier_initialize_requires_governor() {
+    let test_lock = program_test_lock().await;
+    let program_id = Pubkey::new_unique();
+    let pt = ProgramTest::new(
+        "sccp_sol_verifier_program",
+        program_id,
+        processor!(verifier_process_instruction),
+    );
+    let (mut banks_client, payer, _recent_blockhash) = pt.start().await;
+
+    let attacker = Keypair::new();
+    let (config, _config_bump) = verifier_config_pda(&program_id);
+
+    {
+        let ix = system_instruction::transfer(&payer.pubkey(), &attacker.pubkey(), 1_000_000);
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&payer.pubkey()),
+            &[&payer],
+            banks_client.get_latest_blockhash().await.unwrap(),
+        );
+        banks_client.process_transaction(tx).await.unwrap();
+    }
+
+    let validator_set = VerifierValidatorSet {
+        id: 1,
+        len: 1,
+        root: [0u8; 32],
+    };
+    let ix = Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(attacker.pubkey(), true),
+            AccountMeta::new(config, false),
+            AccountMeta::new_readonly(system_program::id(), false),
+        ],
+        data: VerifierInstruction::Initialize {
+            governor: payer.pubkey(),
+            latest_beefy_block: 0,
+            current_validator_set: validator_set,
+            next_validator_set: validator_set,
+        }
+        .try_to_vec()
+        .unwrap(),
+    };
+    let tx = Transaction::new_signed_with_payer(
+        &[ix],
+        Some(&payer.pubkey()),
+        &[&payer, &attacker],
+        banks_client.get_latest_blockhash().await.unwrap(),
+    );
+    let err = banks_client.process_transaction(tx).await.unwrap_err();
+    expect_custom(err.into(), VerifierError::NotGovernor as u32);
 
     drop(test_lock);
 }

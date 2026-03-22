@@ -79,11 +79,17 @@ describe('SCCP router (roleless, proof-driven token lifecycle)', function () {
       text32('wSORA', ethers),
     );
     const addMessageId = await codec.tokenAddMessageId(addPayload);
+    const expectedTokenAddr = await router.canonicalTokenAddress(
+      soraAssetId,
+      'SCCP Wrapped',
+      'wSORA',
+      18,
+    );
 
     await (await router.addTokenFromProof(addPayload, '0x')).wait();
 
     const tokenAddr = await router.tokenBySoraAssetId(soraAssetId);
-    expect(tokenAddr).to.not.equal(ethers.ZeroAddress);
+    expect(tokenAddr).to.equal(expectedTokenAddr);
     expect(await router.processedGovernanceMessage(addMessageId)).to.equal(true);
     expect(await router.tokenStateBySoraAssetId(soraAssetId)).to.equal(1n);
 

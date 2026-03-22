@@ -16,12 +16,18 @@ const SCCP_DOMAIN_TRON = 5
 const SCCP_DIGEST_NETWORK_ID = 0x53434350
 
 const SCCP_MSG_PREFIX_BURN_V1 = "sccp:burn:v1"
+const SCCP_MSG_PREFIX_TOKEN_ADD_V1 = "sccp:token:add:v1"
+const SCCP_MSG_PREFIX_TOKEN_PAUSE_V1 = "sccp:token:pause:v1"
+const SCCP_MSG_PREFIX_TOKEN_RESUME_V1 = "sccp:token:resume:v1"
 
 const MAX_U64 = 0xffffffffffffffff
 const MAX_U128 = 0xffffffffffffffffffffffffffffffff
 
 // 2^160 (used to validate canonical EVM address encoding inside a 32-byte field).
 const SCCP_EVM_ADDRESS_MOD_U160 = 0x10000000000000000000000000000000000000000
+
+const SCCP_TOKEN_STATE_PAUSED = 0
+const SCCP_TOKEN_STATE_ACTIVE = 1
 
 @pure
 fun keccak256(s: slice): uint256
@@ -83,6 +89,62 @@ fun sccpBurnMessageIdV1(
     b.storeUint(recipient32, 256);
 
     // hashext expects a slice, not a cell.
+    return keccak256(b.endCell().beginParse());
+}
+
+fun sccpTokenAddMessageIdV1(
+    targetDomain: uint32,
+    nonce: uint64,
+    soraAssetId: uint256,
+    decimals: uint8,
+    name: uint256,
+    symbol: uint256,
+): uint256 {
+    // TokenAddPayloadV1 SCALE bytes:
+    // version:u8 | target_domain:u32(le) | nonce:u64(le) | sora_asset_id:[32] | decimals:u8 | name:[32] | symbol:[32]
+    var b = beginCell();
+    b.storeSlice(SCCP_MSG_PREFIX_TOKEN_ADD_V1);
+
+    b.storeUint(1, 8);
+    storeU32LE(mutate b, targetDomain);
+    storeU64LE(mutate b, nonce);
+    b.storeUint(soraAssetId, 256);
+    b.storeUint(decimals, 8);
+    b.storeUint(name, 256);
+    b.storeUint(symbol, 256);
+
+    return keccak256(b.endCell().beginParse());
+}
+
+fun sccpTokenPauseMessageIdV1(
+    targetDomain: uint32,
+    nonce: uint64,
+    soraAssetId: uint256,
+): uint256 {
+    var b = beginCell();
+    b.storeSlice(SCCP_MSG_PREFIX_TOKEN_PAUSE_V1);
+
+    b.storeUint(1, 8);
+    storeU32LE(mutate b, targetDomain);
+    storeU64LE(mutate b, nonce);
+    b.storeUint(soraAssetId, 256);
+
+    return keccak256(b.endCell().beginParse());
+}
+
+fun sccpTokenResumeMessageIdV1(
+    targetDomain: uint32,
+    nonce: uint64,
+    soraAssetId: uint256,
+): uint256 {
+    var b = beginCell();
+    b.storeSlice(SCCP_MSG_PREFIX_TOKEN_RESUME_V1);
+
+    b.storeUint(1, 8);
+    storeU32LE(mutate b, targetDomain);
+    storeU64LE(mutate b, nonce);
+    b.storeUint(soraAssetId, 256);
+
     return keccak256(b.endCell().beginParse());
 }
 

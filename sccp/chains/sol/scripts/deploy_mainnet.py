@@ -5,6 +5,7 @@ Safe by default:
 - Dry-run unless --execute is provided.
 - Mainnet execution additionally requires --ack-mainnet.
 - Execute mode enforces mainnet genesis-hash identity and resumable checkpoints.
+- Deployment is not marked complete until the governor-gated bootstrap flow is also completed.
 """
 
 from __future__ import annotations
@@ -133,6 +134,18 @@ def ensure_state_policy(*, execute: bool, resume: bool, state_file: Path) -> Non
         )
 
 
+def optional_arg(args: argparse.Namespace, key: str) -> str | None:
+    value = getattr(args, key)
+    if value is None:
+        return None
+    raw = str(value).strip()
+    return raw or None
+
+
+def keypair_pubkey(path: Path, repo_root: Path) -> str:
+    return run_stdout(["solana-keygen", "pubkey", str(path)], cwd=repo_root)
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Build + deploy SCCP Solana programs to mainnet-beta")
     p.add_argument("--rpc-url", default=None, help="Solana RPC URL (avoid if URL includes secrets)")
@@ -152,6 +165,28 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Path to keypair for SCCP Solana verifier program ID",
     )
+    p.add_argument(
+        "--governor-pubkey",
+        default=None,
+        help="Governor pubkey authorized for router/verifier bootstrap",
+    )
+    p.add_argument(
+        "--governor-keypair",
+        default=None,
+        help="Optional governor signer keypair used for bootstrap when it differs from --payer-keypair",
+    )
+    p.add_argument(
+        "--latest-beefy-block",
+        type=int,
+        default=None,
+        help="Initial finalized SORA BEEFY block for verifier bootstrap",
+    )
+    p.add_argument("--current-validator-set-id", type=int, default=None)
+    p.add_argument("--current-validator-set-len", type=int, default=None)
+    p.add_argument("--current-validator-set-root", default=None, help="32-byte hex root")
+    p.add_argument("--next-validator-set-id", type=int, default=None)
+    p.add_argument("--next-validator-set-len", type=int, default=None)
+    p.add_argument("--next-validator-set-root", default=None, help="32-byte hex root")
 
     p.add_argument("--program-so", default=None, help="Path to sccp_sol_program.so")
     p.add_argument("--verifier-so", default=None, help="Path to sccp_sol_verifier_program.so")
@@ -242,6 +277,81 @@ def main() -> int:
         program_pubkey = run_stdout(["solana-keygen", "pubkey", str(program_kp)], cwd=repo_root)
         verifier_pubkey = run_stdout(["solana-keygen", "pubkey", str(verifier_kp)], cwd=repo_root)
 
+    governor_keypair = None
+    if args.governor_keypair:
+        governor_keypair = Path(args.governor_keypair).expanduser().resolve()
+        if not governor_keypair.exists():
+            print(f"governor-keypair not found: {governor_keypair}", file=sys.stderr)
+            return 2
+
+    governor_pubkey = optional_arg(args, "governor_pubkey")
+    governor_keypair_pubkey = None
+    if governor_keypair and has_solana_keygen:
+        governor_keypair_pubkey = keypair_pubkey(governor_keypair, repo_root)
+        if governor_pubkey and governor_pubkey != governor_keypair_pubkey:
+            print(
+                f"Refusing deploy: governor pubkey {governor_pubkey} != governor keypair pubkey {governor_keypair_pubkey}",
+                file=sys.stderr,
+            )
+            return 2
+        if not governor_pubkey:
+            governor_pubkey = governor_keypair_pubkey
+
+    validator_bootstrap_fields = [
+        ("latestBeefyBlock", args.latest_beefy_block),
+        ("currentValidatorSetId", args.current_validator_set_id),
+        ("currentValidatorSetLen", args.current_validator_set_len),
+        ("currentValidatorSetRoot", optional_arg(args, "current_validator_set_root")),
+        ("nextValidatorSetId", args.next_validator_set_id),
+        ("nextValidatorSetLen", args.next_validator_set_len),
+        ("nextValidatorSetRoot", optional_arg(args, "next_validator_set_root")),
+    ]
+    validator_bootstrap_present = [value is not None for _, value in validator_bootstrap_fields]
+    validator_bootstrap_missing = [name for (name, value) in validator_bootstrap_fields if value is None]
+    validator_bootstrap_all_present = all(validator_bootstrap_present)
+    validator_bootstrap_any_present = any(validator_bootstrap_present)
+    validator_bootstrap_partial = validator_bootstrap_any_present and not validator_bootstrap_all_present
+
+    bootstrap_tool_manifest = (repo_root / "tools" / "solana-live-burn-flow" / "Cargo.toml").resolve()
+    bootstrap_cmd = None
+    if governor_pubkey and program_pubkey and verifier_pubkey:
+        bootstrap_cmd = [
+            "cargo",
+            "run",
+            "--manifest-path",
+            str(bootstrap_tool_manifest),
+            "--",
+            "bootstrap",
+            "--rpc-url",
+            rpc_url,
+            "--payer-keypair",
+            str(payer),
+            "--governor-pubkey",
+            governor_pubkey,
+            "--router-program-id",
+            program_pubkey,
+            "--verifier-program-id",
+            verifier_pubkey,
+        ]
+        if governor_keypair:
+            bootstrap_cmd += ["--governor-keypair", str(governor_keypair)]
+        if args.latest_beefy_block is not None:
+            bootstrap_cmd += ["--latest-beefy-block", str(args.latest_beefy_block)]
+        if args.current_validator_set_id is not None:
+            bootstrap_cmd += ["--current-validator-set-id", str(args.current_validator_set_id)]
+        if args.current_validator_set_len is not None:
+            bootstrap_cmd += ["--current-validator-set-len", str(args.current_validator_set_len)]
+        current_validator_set_root = optional_arg(args, "current_validator_set_root")
+        if current_validator_set_root is not None:
+            bootstrap_cmd += ["--current-validator-set-root-hex", current_validator_set_root]
+        if args.next_validator_set_id is not None:
+            bootstrap_cmd += ["--next-validator-set-id", str(args.next_validator_set_id)]
+        if args.next_validator_set_len is not None:
+            bootstrap_cmd += ["--next-validator-set-len", str(args.next_validator_set_len)]
+        next_validator_set_root = optional_arg(args, "next_validator_set_root")
+        if next_validator_set_root is not None:
+            bootstrap_cmd += ["--next-validator-set-root-hex", next_validator_set_root]
+
     state_path = Path(args.state_file).expanduser().resolve() if args.state_file else default_state_path(repo_root, payer_pubkey, payer)
     ensure_state_policy(execute=args.execute, resume=args.resume, state_file=state_path)
 
@@ -272,6 +382,16 @@ def main() -> int:
             "keypair": str(verifier_kp),
             "pubkey": verifier_pubkey,
             "so": str(verifier_so),
+        },
+        "bootstrap": {
+            "toolManifest": str(bootstrap_tool_manifest),
+            "governorPubkey": governor_pubkey,
+            "governorKeypair": str(governor_keypair) if governor_keypair else None,
+            "governorKeypairPubkey": governor_keypair_pubkey,
+            "validatorBootstrapInputsComplete": validator_bootstrap_all_present,
+            "validatorBootstrapInputsPartial": validator_bootstrap_partial,
+            "missingValidatorBootstrapFields": validator_bootstrap_missing if validator_bootstrap_partial or not validator_bootstrap_all_present else [],
+            "commandPreview": redact_command(bootstrap_cmd) if bootstrap_cmd else None,
         },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -369,16 +489,71 @@ def main() -> int:
             }
             persist()
 
-        state["completed"] = True
-        state["completedAt"] = now_iso()
+        bootstrap_pending: list[str] = []
+        bootstrap_ready = False
+
+        if steps.get("bootstrapCompleted", {}).get("done"):
+            output["bootstrap"]["result"] = steps["bootstrapCompleted"]["bootstrapOutput"]
+            bootstrap_ready = True
+        else:
+            if not governor_pubkey:
+                bootstrap_pending.append(
+                    "Provide --governor-pubkey so the router/verifier bootstrap target is explicit."
+                )
+            if governor_pubkey and governor_pubkey != payer_pubkey and not governor_keypair:
+                bootstrap_pending.append(
+                    "Provide --governor-keypair because the configured governor differs from --payer-keypair."
+                )
+            if validator_bootstrap_partial:
+                bootstrap_pending.append(
+                    "Provide the full verifier bootstrap input set: --latest-beefy-block, current validator set id/len/root, and next validator set id/len/root."
+                )
+            elif not validator_bootstrap_all_present:
+                bootstrap_pending.append(
+                    "Provide verifier bootstrap inputs sourced from SORA chain state so the governor can initialize the verifier light client."
+                )
+            if governor_pubkey and governor_pubkey == payer_pubkey and not governor_keypair:
+                output["bootstrap"]["governorSigner"] = payer_pubkey
+            elif governor_keypair_pubkey:
+                output["bootstrap"]["governorSigner"] = governor_keypair_pubkey
+
+            if not bootstrap_pending and bootstrap_cmd is not None:
+                if not command_exists("cargo"):
+                    print("Missing `cargo`, required to run the Solana bootstrap helper", file=sys.stderr)
+                    return 2
+                bootstrap_raw = run_stdout(bootstrap_cmd, cwd=repo_root)
+                try:
+                    bootstrap_output = json.loads(bootstrap_raw)
+                except json.JSONDecodeError as err:
+                    print(f"failed to decode bootstrap helper output as JSON: {err}", file=sys.stderr)
+                    return 2
+                steps["bootstrapCompleted"] = {
+                    "done": True,
+                    "at": now_iso(),
+                    "bootstrapOutput": bootstrap_output,
+                }
+                persist()
+                output["bootstrap"]["result"] = bootstrap_output
+                bootstrap_ready = True
+
+        state["completed"] = bootstrap_ready
+        if bootstrap_ready:
+            state["completedAt"] = now_iso()
+        else:
+            state.pop("completedAt", None)
         persist()
 
         output["paramsHash"] = params_hash
         output["resumed"] = args.resume
         output["program"]["deployOutput"] = steps["programDeployed"]["deployOutput"]
         output["verifier"]["deployOutput"] = steps["verifierDeployed"]["deployOutput"]
+        if bootstrap_pending:
+            output["pendingActions"] = bootstrap_pending
     else:
-        output["note"] = "No transactions sent. Re-run with --execute --ack-mainnet I_UNDERSTAND_MAINNET_DEPLOY"
+        output["note"] = (
+            "No transactions sent. Re-run with --execute --ack-mainnet I_UNDERSTAND_MAINNET_DEPLOY. "
+            "Deployment is only complete after the governor bootstrap flow finishes."
+        )
         if not has_solana_keygen:
             output["pubkeyNote"] = "Install `solana-keygen` to auto-populate payer/program pubkeys in dry-run output."
         if has_solana:
@@ -388,6 +563,18 @@ def main() -> int:
                 output["genesisHashMatchesMainnet"] = observed == MAINNET_GENESIS_HASH
             except subprocess.CalledProcessError:
                 output["genesisHashMatchesMainnet"] = None
+        if not governor_pubkey:
+            output["pendingActions"] = [
+                "Provide --governor-pubkey and the SORA-derived verifier bootstrap inputs so the script can build a complete governor bootstrap command."
+            ]
+        elif governor_pubkey != payer_pubkey and not governor_keypair:
+            output["pendingActions"] = [
+                "Provide --governor-keypair because the configured governor differs from --payer-keypair."
+            ]
+        elif not validator_bootstrap_all_present:
+            output["pendingActions"] = [
+                "Provide verifier bootstrap inputs sourced from SORA chain state to complete the governor bootstrap flow."
+            ]
 
     if args.execute or args.out:
         out_path.parent.mkdir(parents=True, exist_ok=True)

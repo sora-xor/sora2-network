@@ -13,6 +13,9 @@ pub const SCCP_DOMAIN_TRON: u32 = 5;
 
 pub const SCCP_MSG_PREFIX_BURN_V1: &[u8] = b"sccp:burn:v1";
 pub const SCCP_MSG_PREFIX_ATTEST_V1: &[u8] = b"sccp:attest:v1";
+pub const SCCP_MSG_PREFIX_TOKEN_ADD_V1: &[u8] = b"sccp:token:add:v1";
+pub const SCCP_MSG_PREFIX_TOKEN_PAUSE_V1: &[u8] = b"sccp:token:pause:v1";
+pub const SCCP_MSG_PREFIX_TOKEN_RESUME_V1: &[u8] = b"sccp:token:resume:v1";
 
 pub type H256 = [u8; 32];
 
@@ -25,6 +28,25 @@ pub struct BurnPayloadV1 {
     pub sora_asset_id: [u8; 32],
     pub amount: u128,
     pub recipient: [u8; 32],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct TokenAddPayloadV1 {
+    pub version: u8,
+    pub target_domain: u32,
+    pub nonce: u64,
+    pub sora_asset_id: [u8; 32],
+    pub decimals: u8,
+    pub name: [u8; 32],
+    pub symbol: [u8; 32],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct TokenControlPayloadV1 {
+    pub version: u8,
+    pub target_domain: u32,
+    pub nonce: u64,
+    pub sora_asset_id: [u8; 32],
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -45,6 +67,35 @@ impl BurnPayloadV1 {
         out[17..49].copy_from_slice(&self.sora_asset_id);
         out[49..65].copy_from_slice(&self.amount.to_le_bytes());
         out[65..97].copy_from_slice(&self.recipient);
+        out
+    }
+}
+
+impl TokenAddPayloadV1 {
+    pub const ENCODED_LEN: usize = 110;
+
+    pub fn encode_scale(&self) -> [u8; Self::ENCODED_LEN] {
+        let mut out = [0u8; Self::ENCODED_LEN];
+        out[0] = self.version;
+        out[1..5].copy_from_slice(&self.target_domain.to_le_bytes());
+        out[5..13].copy_from_slice(&self.nonce.to_le_bytes());
+        out[13..45].copy_from_slice(&self.sora_asset_id);
+        out[45] = self.decimals;
+        out[46..78].copy_from_slice(&self.name);
+        out[78..110].copy_from_slice(&self.symbol);
+        out
+    }
+}
+
+impl TokenControlPayloadV1 {
+    pub const ENCODED_LEN: usize = 45;
+
+    pub fn encode_scale(&self) -> [u8; Self::ENCODED_LEN] {
+        let mut out = [0u8; Self::ENCODED_LEN];
+        out[0] = self.version;
+        out[1..5].copy_from_slice(&self.target_domain.to_le_bytes());
+        out[5..13].copy_from_slice(&self.nonce.to_le_bytes());
+        out[13..45].copy_from_slice(&self.sora_asset_id);
         out
     }
 }
@@ -86,9 +137,86 @@ pub fn decode_burn_payload_v1(payload_scale: &[u8]) -> Result<BurnPayloadV1, Cod
     })
 }
 
+pub fn decode_token_add_payload_v1(payload_scale: &[u8]) -> Result<TokenAddPayloadV1, CodecError> {
+    if payload_scale.len() != TokenAddPayloadV1::ENCODED_LEN {
+        return Err(CodecError::InvalidLength);
+    }
+
+    let mut b4 = [0u8; 4];
+    let mut b8 = [0u8; 8];
+    b4.copy_from_slice(&payload_scale[1..5]);
+    let target_domain = u32::from_le_bytes(b4);
+
+    b8.copy_from_slice(&payload_scale[5..13]);
+    let nonce = u64::from_le_bytes(b8);
+
+    let mut sora_asset_id = [0u8; 32];
+    sora_asset_id.copy_from_slice(&payload_scale[13..45]);
+
+    let decimals = payload_scale[45];
+
+    let mut name = [0u8; 32];
+    name.copy_from_slice(&payload_scale[46..78]);
+
+    let mut symbol = [0u8; 32];
+    symbol.copy_from_slice(&payload_scale[78..110]);
+
+    Ok(TokenAddPayloadV1 {
+        version: payload_scale[0],
+        target_domain,
+        nonce,
+        sora_asset_id,
+        decimals,
+        name,
+        symbol,
+    })
+}
+
+pub fn decode_token_control_payload_v1(
+    payload_scale: &[u8],
+) -> Result<TokenControlPayloadV1, CodecError> {
+    if payload_scale.len() != TokenControlPayloadV1::ENCODED_LEN {
+        return Err(CodecError::InvalidLength);
+    }
+
+    let mut b4 = [0u8; 4];
+    let mut b8 = [0u8; 8];
+    b4.copy_from_slice(&payload_scale[1..5]);
+    let target_domain = u32::from_le_bytes(b4);
+
+    b8.copy_from_slice(&payload_scale[5..13]);
+    let nonce = u64::from_le_bytes(b8);
+
+    let mut sora_asset_id = [0u8; 32];
+    sora_asset_id.copy_from_slice(&payload_scale[13..45]);
+
+    Ok(TokenControlPayloadV1 {
+        version: payload_scale[0],
+        target_domain,
+        nonce,
+        sora_asset_id,
+    })
+}
+
 pub fn burn_message_id(payload_scale: &[u8]) -> H256 {
+    prefixed_keccak(SCCP_MSG_PREFIX_BURN_V1, payload_scale)
+}
+
+pub fn token_add_message_id(payload_scale: &[u8]) -> H256 {
+    prefixed_keccak(SCCP_MSG_PREFIX_TOKEN_ADD_V1, payload_scale)
+}
+
+pub fn token_pause_message_id(payload_scale: &[u8]) -> H256 {
+    prefixed_keccak(SCCP_MSG_PREFIX_TOKEN_PAUSE_V1, payload_scale)
+}
+
+pub fn token_resume_message_id(payload_scale: &[u8]) -> H256 {
+    prefixed_keccak(SCCP_MSG_PREFIX_TOKEN_RESUME_V1, payload_scale)
+}
+
+fn prefixed_keccak(prefix: &[u8], payload_scale: &[u8]) -> H256 {
     let mut k = Keccak::v256();
-    k.update(SCCP_MSG_PREFIX_BURN_V1);
+    k.update(prefix);
     k.update(payload_scale);
     let mut out = [0u8; 32];
     k.finalize(&mut out);
@@ -230,6 +358,25 @@ mod tests {
         recipient: [u8; 32],
     }
 
+    #[derive(Encode)]
+    struct RefTokenAddPayload {
+        version: u8,
+        target_domain: u32,
+        nonce: u64,
+        sora_asset_id: [u8; 32],
+        decimals: u8,
+        name: [u8; 32],
+        symbol: [u8; 32],
+    }
+
+    #[derive(Encode)]
+    struct RefTokenControlPayload {
+        version: u8,
+        target_domain: u32,
+        nonce: u64,
+        sora_asset_id: [u8; 32],
+    }
+
     #[test]
     fn manual_scale_encoding_matches_parity_scale_codec() {
         let p = BurnPayloadV1 {
@@ -256,6 +403,54 @@ mod tests {
 
         assert_eq!(ref_bytes.len(), BurnPayloadV1::ENCODED_LEN);
         assert_eq!(manual.as_slice(), ref_bytes.as_slice());
+    }
+
+    #[test]
+    fn governance_payloads_match_parity_scale_codec() {
+        let add = TokenAddPayloadV1 {
+            version: 1,
+            target_domain: SCCP_DOMAIN_SOL,
+            nonce: 9,
+            sora_asset_id: [0x11u8; 32],
+            decimals: 18,
+            name: [0x22u8; 32],
+            symbol: [0x33u8; 32],
+        };
+        let add_manual = add.encode_scale();
+        let add_ref = RefTokenAddPayload {
+            version: add.version,
+            target_domain: add.target_domain,
+            nonce: add.nonce,
+            sora_asset_id: add.sora_asset_id,
+            decimals: add.decimals,
+            name: add.name,
+            symbol: add.symbol,
+        }
+        .encode();
+        assert_eq!(add_ref.len(), TokenAddPayloadV1::ENCODED_LEN);
+        assert_eq!(add_manual.as_slice(), add_ref.as_slice());
+        assert_eq!(decode_token_add_payload_v1(&add_manual).unwrap(), add);
+
+        let control = TokenControlPayloadV1 {
+            version: 1,
+            target_domain: SCCP_DOMAIN_SOL,
+            nonce: 10,
+            sora_asset_id: [0x44u8; 32],
+        };
+        let control_manual = control.encode_scale();
+        let control_ref = RefTokenControlPayload {
+            version: control.version,
+            target_domain: control.target_domain,
+            nonce: control.nonce,
+            sora_asset_id: control.sora_asset_id,
+        }
+        .encode();
+        assert_eq!(control_ref.len(), TokenControlPayloadV1::ENCODED_LEN);
+        assert_eq!(control_manual.as_slice(), control_ref.as_slice());
+        assert_eq!(
+            decode_token_control_payload_v1(&control_manual).unwrap(),
+            control
+        );
     }
 
     #[test]
