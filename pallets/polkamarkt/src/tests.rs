@@ -148,7 +148,7 @@ proptest! {
                 prop_assert_eq!(total_after, total);
             } else {
                 prop_assert_eq!(balance_after, remaining);
-                prop_assert_eq!(total_after, total.saturating_sub(amount));
+                prop_assert_eq!(total_after, total);
             }
         } else {
             prop_assert_eq!(balance_after, total);

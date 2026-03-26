@@ -1672,9 +1672,7 @@ pub mod pallet {
                 *bal = remaining;
                 Ok(())
             })?;
-            MaintenancePoolTotal::<T>::mutate(|total| {
-                *total = total.saturating_sub(amount);
-            });
+            // Keep the total baseline intact so the safety floor cannot be eroded via splits.
             Ok(())
         }
 
