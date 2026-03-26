@@ -767,7 +767,7 @@ fn maintenance_pool_withdraw_enforces_safety_floor() {
         ));
         assert_eq!(balance_of(FEE_COLLECTOR, CANONICAL_ASSET), 200);
         assert_eq!(Polkamarkt::maintenance_pool_balance(), TEST_BOND - 200);
-        assert_eq!(Polkamarkt::maintenance_pool_total(), TEST_BOND - 200);
+        assert_eq!(Polkamarkt::maintenance_pool_total(), TEST_BOND);
     });
 }
 

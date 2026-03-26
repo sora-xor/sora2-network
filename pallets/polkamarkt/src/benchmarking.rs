@@ -38,6 +38,15 @@ where
     mint_canonical_balance::<T>(who, amount);
 }
 
+fn ensure_benchmark_credential<T>(who: &T::AccountId)
+where
+    T: crate::Config + frame_system::Config,
+{
+    let now = <frame_system::Pallet<T>>::block_number();
+    let expiry = now.saturating_add(T::CredentialTtl::get());
+    Credentials::<T>::insert(who, (expiry, [0u8; 32], [1u8; 3], false));
+}
+
 #[benchmarks(where
     T::AccountId: From<<T as frame_system::Config>::AccountId>,
 )]
@@ -48,6 +57,7 @@ mod benchmarks {
     fn create_condition() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
+        ensure_benchmark_credential::<T>(&caller);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
 
         #[extrinsic_call]
@@ -59,6 +69,7 @@ mod benchmarks {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
         fund_canonical_fee::<T>(&caller);
+        ensure_benchmark_credential::<T>(&caller);
         let seed = T::Balance::one();
         mint_canonical_balance::<T>(&caller, seed);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
@@ -78,6 +89,7 @@ mod benchmarks {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
         fund_canonical_fee::<T>(&caller);
+        ensure_benchmark_credential::<T>(&caller);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
@@ -104,6 +116,7 @@ mod benchmarks {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
         fund_canonical_fee::<T>(&caller);
+        ensure_benchmark_credential::<T>(&caller);
         let metadata = default_condition_input::<BlockNumberFor<T>>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
