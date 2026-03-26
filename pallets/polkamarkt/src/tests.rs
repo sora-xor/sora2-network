@@ -1,5 +1,5 @@
 use crate::{
-    BlockedJurisdictions, BridgeEntitlements, CommitmentHash, ConditionInput,
+    BlockedJurisdictions, BridgeEntitlements, CommitmentHash, ConditionInput, Config,
     CreatorRewardActivated, CreatorRewards, Credentials, CredentialsEnforced, Error, Event,
     ForkTaxOwed, MaintenancePoolBalance, MaintenancePoolTotal, MarketCollateral, MarketId,
     OpengovProposalInput, Pallet, RelayNetwork,
@@ -429,6 +429,41 @@ fn commit_and_reveal_flow_enforces_delays() {
         assert_eq!(order_event.0, 0);
         assert_eq!(order_event.1, ALICE);
         assert_eq!(order_event.2, order_value);
+    });
+}
+
+#[test]
+fn reveal_rejects_oversized_payloads() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        bond_alice();
+        let meta = default_condition();
+        assert_ok!(Polkamarkt::create_condition(
+            RuntimeOrigin::signed(ALICE),
+            meta
+        ));
+        assert_ok!(Polkamarkt::create_market(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            50,
+            1_000,
+            None
+        ));
+        run_to_block(10);
+        let payload_limit = <Test as Config>::MaxOrderPayloadLength::get();
+        let salt_limit = <Test as Config>::MaxOrderSaltLength::get();
+        let big_payload = vec![42u8; (payload_limit + 1) as usize];
+        let salt = b"testing".to_vec();
+        assert_noop!(
+            Polkamarkt::reveal_order(RuntimeOrigin::signed(ALICE), 0, big_payload, salt, 10_000),
+            Error::<Test>::OrderPayloadTooLarge
+        );
+        let payload = b"ok".to_vec();
+        let big_salt = vec![0u8; (salt_limit + 1) as usize];
+        assert_noop!(
+            Polkamarkt::reveal_order(RuntimeOrigin::signed(ALICE), 0, payload, big_salt, 10_000),
+            Error::<Test>::OrderSaltTooLarge
+        );
     });
 }
 

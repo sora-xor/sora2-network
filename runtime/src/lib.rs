@@ -998,6 +998,8 @@ parameter_types! {
     pub const PolkamarktCommitmentExpiry: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
     pub const PolkamarktMaxPlazaTagLength: u32 = 64;
+    pub const PolkamarktMaxOrderPayloadLength: u32 = 1024;
+    pub const PolkamarktMaxOrderSaltLength: u32 = 128;
     pub PolkamarktOpenInterestThreshold: Balance = balance!(10000);
     pub const PolkamarktCreatorRewardBps: u32 = 10;
     pub const PolkamarktCollateralRouterWeight: Weight = Weight::from_parts(200_000_000, 0);
@@ -1269,6 +1271,8 @@ impl pallet_polkamarkt::Config for Runtime {
     type CommitmentExpiry = PolkamarktCommitmentExpiry;
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
     type MaxPlazaTagLength = PolkamarktMaxPlazaTagLength;
+    type MaxOrderPayloadLength = PolkamarktMaxOrderPayloadLength;
+    type MaxOrderSaltLength = PolkamarktMaxOrderSaltLength;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type OpenInterestThreshold = PolkamarktOpenInterestThreshold;
     type CreatorRewardBps = PolkamarktCreatorRewardBps;

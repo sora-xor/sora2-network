@@ -376,6 +376,14 @@ pub mod pallet {
         #[pallet::constant]
         type UsdtAssetId: Get<Self::AssetId>;
 
+        /// Maximum allowed order payload length in bytes.
+        #[pallet::constant]
+        type MaxOrderPayloadLength: Get<u32>;
+
+        /// Maximum allowed salt length in bytes.
+        #[pallet::constant]
+        type MaxOrderSaltLength: Get<u32>;
+
         /// Asset id for the HydraDX Hollar stablecoin (auto-swapped into canonical KUSD).
         #[pallet::constant]
         type HollarAssetId: Get<Self::AssetId>;
@@ -814,6 +822,8 @@ pub mod pallet {
         RevealTooSoon,
         CommitmentExpired,
         EmptyOrderPayload,
+        OrderPayloadTooLarge,
+        OrderSaltTooLarge,
         MetadataTooLong,
         BridgeAssetNotAllowed,
         BridgeDailyLimitReached,
@@ -1020,6 +1030,14 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             Self::ensure_account_is_clear(&who)?;
             ensure!(!order_payload.is_empty(), Error::<T>::EmptyOrderPayload);
+            ensure!(
+                order_payload.len() as u32 <= T::MaxOrderPayloadLength::get(),
+                Error::<T>::OrderPayloadTooLarge
+            );
+            ensure!(
+                salt.len() as u32 <= T::MaxOrderSaltLength::get(),
+                Error::<T>::OrderSaltTooLarge
+            );
             let market = Self::ensure_market_open(market_id)?;
 
             let hash =

@@ -65,6 +65,8 @@ parameter_types! {
     pub const LiquiditySafetyBpsConst: u32 = 8_500;
     pub const CredentialTtlConst: BlockNumber = 1_000;
     pub const MaxPlazaTagLenConst: u32 = 32;
+    pub const MaxOrderPayloadLengthConst: u32 = 1024;
+    pub const MaxOrderSaltLengthConst: u32 = 128;
 }
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -110,6 +112,37 @@ impl system::Config for Test {
 
 pub struct MockAssets;
 
+pub struct TestWeightInfo;
+impl crate::WeightInfo for TestWeightInfo {
+    fn create_condition() -> Weight {
+        Weight::zero()
+    }
+    fn create_market(_routed_transfers: u32) -> Weight {
+        Weight::zero()
+    }
+    fn commit_order() -> Weight {
+        Weight::zero()
+    }
+    fn reveal_order() -> Weight {
+        Weight::zero()
+    }
+    fn set_bridge_wallet() -> Weight {
+        Weight::zero()
+    }
+    fn bridge_deposit() -> Weight {
+        Weight::zero()
+    }
+    fn bridge_withdraw() -> Weight {
+        Weight::zero()
+    }
+    fn bond_governance() -> Weight {
+        Weight::zero()
+    }
+    fn unbond_governance() -> Weight {
+        Weight::zero()
+    }
+}
+
 pub struct NoRouterWeight;
 impl frame_support::traits::Get<Weight> for NoRouterWeight {
     fn get() -> Weight {
@@ -119,7 +152,7 @@ impl frame_support::traits::Get<Weight> for NoRouterWeight {
 
 impl pallet_polkamarkt::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
+    type WeightInfo = TestWeightInfo;
     type CanonicalStableAssetId = CanonicalStable;
     type Assets = MockAssets;
     type AssetId = AssetId;
@@ -154,6 +187,8 @@ impl pallet_polkamarkt::Config for Test {
     type CredentialTtl = CredentialTtlConst;
     type CredentialsRequired = ConstBool<true>;
     type MaxPlazaTagLength = MaxPlazaTagLenConst;
+    type MaxOrderPayloadLength = MaxOrderPayloadLengthConst;
+    type MaxOrderSaltLength = MaxOrderSaltLengthConst;
     type PlazaIntegration = MockPlazaIntegration;
 }
 
