@@ -152,6 +152,18 @@ mod benchmarks {
         bridge_deposit(RawOrigin::Signed(caller), asset, amount);
     }
 
+    #[benchmark]
+    fn bridge_withdraw() {
+        let caller: T::AccountId = whitelisted_caller();
+        let wallet = caller.clone();
+        let amount = T::Balance::one();
+        BridgeWallet::<T>::insert(&caller, wallet);
+        BridgeEntitlements::<T>::insert(&caller, amount.saturating_add(amount));
+
+        #[extrinsic_call]
+        bridge_withdraw(RawOrigin::Signed(caller), amount);
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
