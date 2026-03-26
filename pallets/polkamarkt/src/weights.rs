@@ -42,6 +42,7 @@ pub trait WeightInfo {
 	fn create_market() -> Weight;
 	fn commit_order() -> Weight;
 	fn reveal_order() -> Weight;
+	fn set_bridge_wallet() -> Weight;
 	fn bridge_deposit() -> Weight;
 	fn bridge_withdraw() -> Weight;
 	fn bond_governance() -> Weight;
@@ -148,13 +149,18 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Polkamarkt MarketOpenInterest (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt CreatorRewardActivated (r:1 w:0)
 	/// Proof Skipped: Polkamarkt CreatorRewardActivated (max_values: None, max_size: None, mode: Measured)
-	fn reveal_order() -> Weight {
+fn reveal_order() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `2067`
 		//  Estimated: `22710`
 		// Minimum execution time: 29_000_000 picoseconds.
 		Weight::from_parts(30_000_000, 22710)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
+	}
+	fn set_bridge_wallet() -> Weight {
+		Weight::from_parts(30_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
@@ -394,6 +400,11 @@ impl WeightInfo for () {
 		// Minimum execution time: 29_000_000 picoseconds.
 		Weight::from_parts(30_000_000, 22710)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	fn set_bridge_wallet() -> Weight {
+		Weight::from_parts(30_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
