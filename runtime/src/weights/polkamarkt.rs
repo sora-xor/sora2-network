@@ -39,9 +39,10 @@ use core::marker::PhantomData;
 /// Weight functions needed for pallet_polkamarkt.
 pub trait WeightInfo {
 	fn create_condition() -> Weight;
-	fn create_market() -> Weight;
+	fn create_market(routed_transfers: u32) -> Weight;
 	fn commit_order() -> Weight;
 	fn reveal_order() -> Weight;
+	fn set_bridge_wallet() -> Weight;
 	fn bridge_deposit() -> Weight;
 	fn bridge_withdraw() -> Weight;
 }
@@ -112,7 +113,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Polkamarkt MarketCollateral (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt Markets (r:0 w:1)
 	/// Proof Skipped: Polkamarkt Markets (max_values: None, max_size: None, mode: Measured)
-	fn create_market() -> Weight {
+	fn create_market(_routed_transfers: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `4435`
 		//  Estimated: `437519`
@@ -153,6 +154,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Minimum execution time: 30_000_000 picoseconds.
 		Weight::from_parts(31_000_000, 22710)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
+	}
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt BridgeWalletUpdated (r:1 w:0)
+	/// Proof Skipped: Polkamarkt BridgeWalletUpdated (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt BridgeWallet (r:0 w:1)
+	/// Proof Skipped: Polkamarkt BridgeWallet (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt BridgeWalletUpdated (r:0 w:1)
+	/// Proof Skipped: Polkamarkt BridgeWalletUpdated (max_values: None, max_size: None, mode: Measured)
+	fn set_bridge_wallet() -> Weight {
+		Weight::from_parts(30_000_000, 0)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
@@ -206,7 +220,32 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 }
 
 /// Runtime-specific weight shortcut so `Runtime` can reference `SoraWeight`.
-pub type SoraWeight<T> = SubstrateWeight<T>;
+pub struct SoraWeight<T>(PhantomData<T>);
+impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::WeightInfo for SoraWeight<T> {
+	fn create_condition() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::create_condition()
+	}
+	fn create_market(routed_transfers: u32) -> Weight {
+		let base = <SubstrateWeight<T> as WeightInfo>::create_market(routed_transfers);
+		let per_transfer = T::CollateralRouterWeight::get();
+		base.saturating_add(per_transfer.saturating_mul(routed_transfers.into()))
+	}
+	fn commit_order() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::commit_order()
+	}
+	fn reveal_order() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::reveal_order()
+	}
+	fn set_bridge_wallet() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::set_bridge_wallet()
+	}
+	fn bridge_deposit() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::bridge_deposit()
+	}
+	fn bridge_withdraw() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::bridge_withdraw()
+	}
+}
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
@@ -273,7 +312,7 @@ impl WeightInfo for () {
 	/// Proof Skipped: Polkamarkt MarketCollateral (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt Markets (r:0 w:1)
 	/// Proof Skipped: Polkamarkt Markets (max_values: None, max_size: None, mode: Measured)
-	fn create_market() -> Weight {
+	fn create_market(_routed_transfers: u32) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `4435`
 		//  Estimated: `437519`
@@ -314,6 +353,11 @@ impl WeightInfo for () {
 		// Minimum execution time: 30_000_000 picoseconds.
 		Weight::from_parts(31_000_000, 22710)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	fn set_bridge_wallet() -> Weight {
+		Weight::from_parts(30_000_000, 0)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
