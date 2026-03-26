@@ -141,6 +141,17 @@ mod benchmarks {
         );
     }
 
+    #[benchmark]
+    fn bridge_deposit() {
+        let caller: T::AccountId = whitelisted_caller();
+        let asset = T::UsdcAssetId::get();
+        let amount = T::Balance::one();
+        T::Assets::mint_for_bench(asset, &caller, amount).expect("bridge asset funding");
+
+        #[extrinsic_call]
+        bridge_deposit(RawOrigin::Signed(caller), asset, amount);
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;

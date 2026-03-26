@@ -174,9 +174,9 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	fn bridge_deposit() -> Weight {
-		Weight::from_parts(35_000_000, 0)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		Weight::from_parts(54_000_000, 366003)
+			.saturating_add(T::DbWeight::get().reads(10_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
 	fn bridge_withdraw() -> Weight {
 		Weight::from_parts(40_000_000, 0)
@@ -298,9 +298,9 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	fn bridge_deposit() -> Weight {
-		Weight::from_parts(35_000_000, 0)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		Weight::from_parts(54_000_000, 366003)
+			.saturating_add(T::DbWeight::get().reads(10_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
 	fn bridge_withdraw() -> Weight {
 		Weight::from_parts(40_000_000, 0)
