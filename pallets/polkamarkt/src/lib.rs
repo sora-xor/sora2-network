@@ -1020,7 +1020,8 @@ pub mod pallet {
             ensure!(!order_payload.is_empty(), Error::<T>::EmptyOrderPayload);
             let market = Self::ensure_market_open(market_id)?;
 
-            let hash = Self::compute_commitment_hash(&who, market_id, &order_payload, &salt);
+            let hash =
+                Self::compute_commitment_hash(&who, market_id, &order_payload, &salt, &order_value);
             let stored =
                 Commitments::<T>::get(market_id, hash).ok_or(Error::<T>::CommitmentUnknown)?;
             ensure!(who == stored.owner, Error::<T>::CommitmentUnknown);
@@ -1521,6 +1522,7 @@ pub mod pallet {
             market_id: MarketId,
             payload: &[u8],
             salt: &[u8],
+            order_value: &T::Balance,
         ) -> CommitmentHash {
             let mut data = who.encode();
             data.extend_from_slice(&market_id.encode());
@@ -1528,6 +1530,7 @@ pub mod pallet {
             data.extend_from_slice(payload);
             data.extend_from_slice(&(salt.len() as u32).encode());
             data.extend_from_slice(salt);
+            data.extend_from_slice(&order_value.encode());
             blake2_256(&data)
         }
 

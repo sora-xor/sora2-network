@@ -33,6 +33,7 @@ fn compute_commitment(
     market_id: MarketId,
     payload: &[u8],
     salt: &[u8],
+    order_value: Balance,
 ) -> CommitmentHash {
     let mut data = who.encode();
     data.extend_from_slice(&market_id.encode());
@@ -40,6 +41,7 @@ fn compute_commitment(
     data.extend_from_slice(payload);
     data.extend_from_slice(&(salt.len() as u32).encode());
     data.extend_from_slice(salt);
+    data.extend_from_slice(&order_value.encode());
     blake2_256(&data)
 }
 
@@ -50,14 +52,16 @@ proptest! {
         market_id in any::<MarketId>(),
         payload in proptest::collection::vec(any::<u8>(), 0..96),
         salt in proptest::collection::vec(any::<u8>(), 0..64),
+        order_value in any::<Balance>(),
     ) {
-        let hash = compute_commitment(account, market_id, &payload, &salt);
+        let hash = compute_commitment(account, market_id, &payload, &salt, order_value);
         let mut data = account.encode();
         data.extend_from_slice(&market_id.encode());
         data.extend_from_slice(&(payload.len() as u32).encode());
         data.extend_from_slice(&payload);
         data.extend_from_slice(&(salt.len() as u32).encode());
         data.extend_from_slice(&salt);
+        data.extend_from_slice(&order_value.encode());
         let manual = blake2_256(&data);
         prop_assert_eq!(hash, manual);
     }
@@ -371,7 +375,8 @@ fn commit_and_reveal_flow_enforces_delays() {
         run_to_block(2);
         let payload = b"BUY:100@55".to_vec();
         let salt = b"secret".to_vec();
-        let hash = compute_commitment(ALICE, 0, &payload, &salt);
+        let order_value = 50u128;
+        let hash = compute_commitment(ALICE, 0, &payload, &salt, order_value);
 
         assert_ok!(Polkamarkt::commit_order(
             RuntimeOrigin::signed(ALICE),
@@ -384,7 +389,13 @@ fn commit_and_reveal_flow_enforces_delays() {
         let payload_fail = payload.clone();
         let salt_fail = salt.clone();
         assert_noop!(
-            Polkamarkt::reveal_order(RuntimeOrigin::signed(ALICE), 0, payload_fail, salt_fail, 50),
+            Polkamarkt::reveal_order(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                payload_fail,
+                salt_fail,
+                order_value
+            ),
             Error::<Test>::RevealTooSoon
         );
 
@@ -397,7 +408,7 @@ fn commit_and_reveal_flow_enforces_delays() {
             0,
             payload_success,
             salt_success,
-            50
+            order_value
         ));
 
         // Commitment removed
@@ -417,7 +428,7 @@ fn commit_and_reveal_flow_enforces_delays() {
             .expect("order placement event");
         assert_eq!(order_event.0, 0);
         assert_eq!(order_event.1, ALICE);
-        assert_eq!(order_event.2, 50);
+        assert_eq!(order_event.2, order_value);
     });
 }
 
@@ -442,7 +453,8 @@ fn commit_expires_if_not_revealed() {
         run_to_block(2);
         let payload = b"SELL:50@70".to_vec();
         let salt = b"salt".to_vec();
-        let hash = compute_commitment(ALICE, 0, &payload, &salt);
+        let order_value = 50u128;
+        let hash = compute_commitment(ALICE, 0, &payload, &salt, order_value);
         assert_ok!(Polkamarkt::commit_order(
             RuntimeOrigin::signed(ALICE),
             0,
@@ -459,7 +471,7 @@ fn commit_expires_if_not_revealed() {
                 0,
                 payload_expired,
                 salt_expired,
-                50
+                order_value
             ),
             Error::<Test>::CommitmentExpired
         );
@@ -487,7 +499,8 @@ fn creator_reward_activates_when_threshold_reached() {
         run_to_block(2);
         let payload = b"BUY:10000@1".to_vec();
         let salt = b"reward".to_vec();
-        let hash = compute_commitment(ALICE, 0, &payload, &salt);
+        let order_value = 20_000u128;
+        let hash = compute_commitment(ALICE, 0, &payload, &salt, order_value);
         assert_ok!(Polkamarkt::commit_order(
             RuntimeOrigin::signed(ALICE),
             0,
@@ -501,7 +514,7 @@ fn creator_reward_activates_when_threshold_reached() {
             0,
             payload_reveal,
             salt_reveal,
-            20_000
+            order_value
         ));
 
         assert!(CreatorRewardActivated::<Test>::get(0));

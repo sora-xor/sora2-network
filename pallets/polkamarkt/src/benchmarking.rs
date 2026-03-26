@@ -121,7 +121,9 @@ mod benchmarks {
 
         let payload = b"BUY:10@50".to_vec();
         let salt = b"benchmark".to_vec();
-        let commitment = Pallet::<T>::compute_commitment_hash(&caller, 0, &payload, &salt);
+        let order_value = T::Balance::one();
+        let commitment =
+            Pallet::<T>::compute_commitment_hash(&caller, 0, &payload, &salt, &order_value);
 
         Pallet::<T>::commit_order(RawOrigin::Signed(caller.clone()).into(), 0, commitment)
             .expect("commit order");
@@ -132,13 +134,7 @@ mod benchmarks {
         <frame_system::Pallet<T>>::set_block_number(now);
 
         #[extrinsic_call]
-        reveal_order(
-            RawOrigin::Signed(caller),
-            0,
-            payload,
-            salt,
-            T::Balance::one(),
-        );
+        reveal_order(RawOrigin::Signed(caller), 0, payload, salt, order_value);
     }
 
     #[benchmark]
