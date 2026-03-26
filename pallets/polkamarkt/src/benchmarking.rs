@@ -47,6 +47,18 @@ where
     Credentials::<T>::insert(who, (expiry, [0u8; 32], [1u8; 3], false));
 }
 
+fn benchmark_bond_amount<T>() -> T::Balance
+where
+    T: crate::Config,
+{
+    let min = T::GovernanceBondMinimum::get();
+    if min.is_zero() {
+        T::Balance::one()
+    } else {
+        min
+    }
+}
+
 #[benchmarks(where
     T::AccountId: From<<T as frame_system::Config>::AccountId>,
 )]
@@ -168,9 +180,42 @@ mod benchmarks {
         let amount = T::Balance::from(10_000u32);
         BridgeWallet::<T>::insert(&caller, wallet);
         BridgeEntitlements::<T>::insert(&caller, amount.saturating_add(amount));
+        let payer = Pallet::<T>::account_id();
+        T::Assets::mint_for_bench(T::UsdcAssetId::get(), &payer, amount).expect("tax funding");
 
         #[extrinsic_call]
         bridge_withdraw(RawOrigin::Signed(caller), amount);
+    }
+
+    #[benchmark]
+    fn bond_governance() {
+        let caller: T::AccountId = whitelisted_caller();
+        ensure_benchmark_credential::<T>(&caller);
+        let amount = benchmark_bond_amount::<T>();
+        T::Assets::mint_for_bench(T::CanonicalStableAssetId::get(), &caller, amount)
+            .expect("bond funding");
+
+        #[extrinsic_call]
+        bond_governance(RawOrigin::Signed(caller), amount);
+    }
+
+    #[benchmark]
+    fn unbond_governance() {
+        let caller: T::AccountId = whitelisted_caller();
+        ensure_benchmark_credential::<T>(&caller);
+        let amount = benchmark_bond_amount::<T>();
+        T::Assets::mint_for_bench(T::CanonicalStableAssetId::get(), &caller, amount)
+            .expect("bond funding");
+        Pallet::<T>::bond_governance(RawOrigin::Signed(caller.clone()).into(), amount)
+            .expect("bond setup");
+        let floor = Pallet::<T>::pool_floor_from_total(amount);
+        let mut unbond_amount = amount.saturating_sub(floor);
+        if unbond_amount.is_zero() {
+            unbond_amount = amount;
+        }
+
+        #[extrinsic_call]
+        unbond_governance(RawOrigin::Signed(caller), unbond_amount);
     }
 
     #[cfg(test)]

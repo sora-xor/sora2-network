@@ -39,17 +39,19 @@ use core::marker::PhantomData;
 /// Weight functions needed for pallet_polkamarkt.
 pub trait WeightInfo {
 	fn create_condition() -> Weight;
-	fn create_market(routed_transfers: u32) -> Weight;
+	fn create_market() -> Weight;
 	fn commit_order() -> Weight;
 	fn reveal_order() -> Weight;
 	fn set_bridge_wallet() -> Weight;
 	fn bridge_deposit() -> Weight;
 	fn bridge_withdraw() -> Weight;
+	fn bond_governance() -> Weight;
+	fn unbond_governance() -> Weight;
 }
 
 /// Weights for pallet_polkamarkt using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for SubstrateWeight<T> {
+impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
 	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt CredentialsEnforced (r:1 w:0)
@@ -66,10 +68,10 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for Substra
 	/// Proof Skipped: Polkamarkt Conditions (max_values: None, max_size: None, mode: Measured)
 	fn create_condition() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1785`
-		//  Estimated: `19425`
-		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 19425)
+		//  Measured:  `1795`
+		//  Estimated: `19495`
+		// Minimum execution time: 25_000_000 picoseconds.
+		Weight::from_parts(26_000_000, 19495)
 			.saturating_add(T::DbWeight::get().reads(6_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
@@ -113,16 +115,14 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for Substra
 	/// Proof Skipped: Polkamarkt MarketCollateral (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt Markets (r:0 w:1)
 	/// Proof Skipped: Polkamarkt Markets (max_values: None, max_size: None, mode: Measured)
-	fn create_market(routed_transfers: u32) -> Weight {
+	fn create_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `4435`
-		//  Estimated: `437519`
-		// Minimum execution time: 101_000_000 picoseconds.
-		let base = Weight::from_parts(106_000_000, 437519)
+		//  Measured:  `4472`
+		//  Estimated: `438148`
+		// Minimum execution time: 98_000_000 picoseconds.
+		Weight::from_parts(100_000_000, 438148)
 			.saturating_add(T::DbWeight::get().reads(23_u64))
-			.saturating_add(T::DbWeight::get().writes(13_u64));
-		let per_transfer = T::CollateralRouterWeight::get();
-		base.saturating_add(per_transfer.saturating_mul(routed_transfers.into()))
+			.saturating_add(T::DbWeight::get().writes(13_u64))
 	}
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
 	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
@@ -134,7 +134,7 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for Substra
 		// Proof Size summary in bytes:
 		//  Measured:  `1874`
 		//  Estimated: `13047`
-		// Minimum execution time: 22_000_000 picoseconds.
+		// Minimum execution time: 21_000_000 picoseconds.
 		Weight::from_parts(22_000_000, 13047)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
@@ -153,17 +153,34 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for Substra
 		// Proof Size summary in bytes:
 		//  Measured:  `2067`
 		//  Estimated: `22710`
-		// Minimum execution time: 30_000_000 picoseconds.
-		Weight::from_parts(31_000_000, 22710)
+		// Minimum execution time: 32_000_000 picoseconds.
+		Weight::from_parts(35_000_000, 22710)
 			.saturating_add(T::DbWeight::get().reads(5_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt BlocksPerDayOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt BlocksPerDayOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt DailyBridgeAmount (r:1 w:1)
+	/// Proof Skipped: Polkamarkt DailyBridgeAmount (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt BridgeDailyCapOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt BridgeDailyCapOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Polkamarkt BridgeEntitlements (r:1 w:1)
+	/// Proof Skipped: Polkamarkt BridgeEntitlements (max_values: None, max_size: None, mode: Measured)
 	fn set_bridge_wallet() -> Weight {
 		Weight::from_parts(30_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
-	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
 	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt BlocksPerDayOverride (r:1 w:0)
 	/// Proof Skipped: Polkamarkt BlocksPerDayOverride (max_values: Some(1), max_size: None, mode: Measured)
@@ -185,8 +202,8 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for Substra
 		// Proof Size summary in bytes:
 		//  Measured:  `3787`
 		//  Estimated: `366003`
-		// Minimum execution time: 55_000_000 picoseconds.
-		Weight::from_parts(57_000_000, 366003)
+		// Minimum execution time: 54_000_000 picoseconds.
+		Weight::from_parts(61_000_000, 366003)
 			.saturating_add(T::DbWeight::get().reads(10_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
@@ -202,19 +219,98 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> WeightInfo for Substra
 	/// Proof Skipped: Polkamarkt BridgeEntitlements (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt PayoutTaxBpsOverride (r:1 w:0)
 	/// Proof Skipped: Polkamarkt PayoutTaxBpsOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt ForkTaxAccountOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt ForkTaxAccountOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:2 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Polkamarkt ForkTaxOwed (r:1 w:1)
+	/// Proof Skipped: Polkamarkt ForkTaxOwed (max_values: Some(1), max_size: None, mode: Measured)
 	fn bridge_withdraw() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1844`
-		//  Estimated: `19974`
-		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 19974)
-			.saturating_add(T::DbWeight::get().reads(6_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		//  Measured:  `3743`
+		//  Estimated: `381056`
+		// Minimum execution time: 61_000_000 picoseconds.
+		Weight::from_parts(67_000_000, 381056)
+			.saturating_add(T::DbWeight::get().reads(14_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
+	}
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsEnforced (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsEnforced (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsRequiredOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsRequiredOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt GovernanceBondMinimumOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt GovernanceBondMinimumOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Polkamarkt GovernanceBonds (r:1 w:1)
+	/// Proof Skipped: Polkamarkt GovernanceBonds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolBalance (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolBalance (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolTotal (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolTotal (max_values: Some(1), max_size: None, mode: Measured)
+	fn bond_governance() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `3861`
+		//  Estimated: `377535`
+		// Minimum execution time: 59_000_000 picoseconds.
+		Weight::from_parts(67_000_000, 377535)
+			.saturating_add(T::DbWeight::get().reads(13_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
+	}
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsEnforced (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsEnforced (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsRequiredOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsRequiredOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt GovernanceBonds (r:1 w:1)
+	/// Proof Skipped: Polkamarkt GovernanceBonds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolTotal (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolTotal (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt LiquiditySafetyBpsOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt LiquiditySafetyBpsOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolBalance (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolBalance (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:0)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	fn unbond_governance() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `4148`
+		//  Estimated: `380118`
+		// Minimum execution time: 61_000_000 picoseconds.
+		Weight::from_parts(66_000_000, 380118)
+			.saturating_add(T::DbWeight::get().reads(13_u64))
+			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
 }
 
-/// Runtime-specific weight shortcut so `Runtime` can reference `SoraWeight`.
-pub struct SoraWeight<T>(PhantomData<T>);
+/// Runtime-specific alias.
+pub type SoraWeight<T> = SubstrateWeight<T>;
+
 impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::WeightInfo
 	for SoraWeight<T>
 {
@@ -222,7 +318,9 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 		<SubstrateWeight<T> as WeightInfo>::create_condition()
 	}
 	fn create_market(routed_transfers: u32) -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::create_market(routed_transfers)
+		let base = <SubstrateWeight<T> as WeightInfo>::create_market();
+		let per_transfer = T::CollateralRouterWeight::get();
+		base.saturating_add(per_transfer.saturating_mul(routed_transfers.into()))
 	}
 	fn commit_order() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::commit_order()
@@ -238,6 +336,12 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 	}
 	fn bridge_withdraw() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::bridge_withdraw()
+	}
+	fn bond_governance() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::bond_governance()
+	}
+	fn unbond_governance() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::unbond_governance()
 	}
 }
 
@@ -259,19 +363,59 @@ impl WeightInfo for () {
 	/// Proof Skipped: Polkamarkt Conditions (max_values: None, max_size: None, mode: Measured)
 	fn create_condition() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1785`
-		//  Estimated: `19425`
-		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 19425)
+		//  Measured:  `1795`
+		//  Estimated: `19495`
+		// Minimum execution time: 25_000_000 picoseconds.
+		Weight::from_parts(26_000_000, 19495)
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
-	fn create_market(_routed_transfers: u32) -> Weight {
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsEnforced (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsEnforced (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsRequiredOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsRequiredOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt GovernanceBondMinimumOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt GovernanceBondMinimumOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt GovernanceBonds (r:1 w:0)
+	/// Proof Skipped: Polkamarkt GovernanceBonds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt Conditions (r:1 w:0)
+	/// Proof Skipped: Polkamarkt Conditions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt FeeCollectorOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FeeCollectorOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:4 w:4)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:3 w:3)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Polkamarkt MaintenanceFeeBpsOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenanceFeeBpsOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolBalance (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolBalance (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolTotal (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolTotal (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt NextMarketId (r:1 w:1)
+	/// Proof Skipped: Polkamarkt NextMarketId (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MarketOpenInterest (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MarketOpenInterest (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CreatorRewardActivated (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CreatorRewardActivated (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MarketCollateral (r:0 w:1)
+	/// Proof Skipped: Polkamarkt MarketCollateral (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt Markets (r:0 w:1)
+	/// Proof Skipped: Polkamarkt Markets (max_values: None, max_size: None, mode: Measured)
+	fn create_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `4435`
-		//  Estimated: `437519`
-		// Minimum execution time: 101_000_000 picoseconds.
-		Weight::from_parts(106_000_000, 437519)
+		//  Measured:  `4472`
+		//  Estimated: `438148`
+		// Minimum execution time: 98_000_000 picoseconds.
+		Weight::from_parts(100_000_000, 438148)
 			.saturating_add(RocksDbWeight::get().reads(23_u64))
 			.saturating_add(RocksDbWeight::get().writes(13_u64))
 	}
@@ -285,7 +429,7 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `1874`
 		//  Estimated: `13047`
-		// Minimum execution time: 22_000_000 picoseconds.
+		// Minimum execution time: 21_000_000 picoseconds.
 		Weight::from_parts(22_000_000, 13047)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
@@ -304,8 +448,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `2067`
 		//  Estimated: `22710`
-		// Minimum execution time: 30_000_000 picoseconds.
-		Weight::from_parts(31_000_000, 22710)
+		// Minimum execution time: 32_000_000 picoseconds.
+		Weight::from_parts(35_000_000, 22710)
 			.saturating_add(RocksDbWeight::get().reads(5_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
@@ -336,8 +480,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `3787`
 		//  Estimated: `366003`
-		// Minimum execution time: 55_000_000 picoseconds.
-		Weight::from_parts(57_000_000, 366003)
+		// Minimum execution time: 54_000_000 picoseconds.
+		Weight::from_parts(61_000_000, 366003)
 			.saturating_add(RocksDbWeight::get().reads(10_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
@@ -353,13 +497,91 @@ impl WeightInfo for () {
 	/// Proof Skipped: Polkamarkt BridgeEntitlements (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Polkamarkt PayoutTaxBpsOverride (r:1 w:0)
 	/// Proof Skipped: Polkamarkt PayoutTaxBpsOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt ForkTaxAccountOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt ForkTaxAccountOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:2 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Polkamarkt ForkTaxOwed (r:1 w:1)
+	/// Proof Skipped: Polkamarkt ForkTaxOwed (max_values: Some(1), max_size: None, mode: Measured)
 	fn bridge_withdraw() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1844`
-		//  Estimated: `19974`
-		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 19974)
-			.saturating_add(RocksDbWeight::get().reads(6_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
+		//  Measured:  `3743`
+		//  Estimated: `381056`
+		// Minimum execution time: 61_000_000 picoseconds.
+		Weight::from_parts(67_000_000, 381056)
+			.saturating_add(RocksDbWeight::get().reads(14_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64))
+	}
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsEnforced (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsEnforced (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsRequiredOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsRequiredOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt GovernanceBondMinimumOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt GovernanceBondMinimumOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:1)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Polkamarkt GovernanceBonds (r:1 w:1)
+	/// Proof Skipped: Polkamarkt GovernanceBonds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolBalance (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolBalance (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolTotal (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolTotal (max_values: Some(1), max_size: None, mode: Measured)
+	fn bond_governance() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `3861`
+		//  Estimated: `377535`
+		// Minimum execution time: 59_000_000 picoseconds.
+		Weight::from_parts(67_000_000, 377535)
+			.saturating_add(RocksDbWeight::get().reads(13_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
+	}
+	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
+	/// Proof Skipped: Polkamarkt FlaggedAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsEnforced (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsEnforced (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt CredentialsRequiredOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt CredentialsRequiredOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt GovernanceBonds (r:1 w:1)
+	/// Proof Skipped: Polkamarkt GovernanceBonds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolTotal (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolTotal (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt LiquiditySafetyBpsOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt LiquiditySafetyBpsOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolBalance (r:1 w:1)
+	/// Proof Skipped: Polkamarkt MaintenancePoolBalance (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: Polkamarkt MaintenancePoolOverride (r:1 w:0)
+	/// Proof Skipped: Polkamarkt MaintenancePoolOverride (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ExtendedAssets SoulboundAsset (r:1 w:0)
+	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
+	/// Storage: Assets AssetInfosV2 (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Tokens Accounts (r:2 w:2)
+	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
+	/// Storage: System Account (r:1 w:0)
+	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	fn unbond_governance() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `4148`
+		//  Estimated: `380118`
+		// Minimum execution time: 61_000_000 picoseconds.
+		Weight::from_parts(66_000_000, 380118)
+			.saturating_add(RocksDbWeight::get().reads(13_u64))
+			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
 }

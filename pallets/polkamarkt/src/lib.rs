@@ -35,6 +35,8 @@ pub trait WeightInfo {
     fn set_bridge_wallet() -> Weight;
     fn bridge_deposit() -> Weight;
     fn bridge_withdraw() -> Weight;
+    fn bond_governance() -> Weight;
+    fn unbond_governance() -> Weight;
 }
 
 /// Abstract interface for the orderbook pallet integration.
@@ -1138,7 +1140,7 @@ pub mod pallet {
 
         /// Bond canonical stable to join the governance whitelist and maintenance pool.
         #[pallet::call_index(7)]
-        #[pallet::weight(Weight::from_parts(50_000, 0))]
+        #[pallet::weight(T::WeightInfo::bond_governance())]
         pub fn bond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_account_is_clear(&who)?;
@@ -1166,7 +1168,7 @@ pub mod pallet {
 
         /// Withdraw bonded governance stake (subject to safety threshold).
         #[pallet::call_index(8)]
-        #[pallet::weight(Weight::from_parts(50_000, 0))]
+        #[pallet::weight(T::WeightInfo::unbond_governance())]
         #[transactional]
         pub fn unbond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
