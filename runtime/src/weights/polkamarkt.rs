@@ -205,6 +205,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 }
 
+/// Runtime-specific weight shortcut so `Runtime` can reference `SoraWeight`.
+pub type SoraWeight<T> = SubstrateWeight<T>;
+
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	/// Storage: Polkamarkt FlaggedAccounts (r:1 w:0)
