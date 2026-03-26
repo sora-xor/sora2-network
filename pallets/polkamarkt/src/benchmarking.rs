@@ -154,7 +154,7 @@ mod benchmarks {
     fn bridge_deposit() {
         let caller: T::AccountId = whitelisted_caller();
         let asset = T::UsdcAssetId::get();
-        let amount = T::Balance::one();
+        let amount = T::Balance::from(10_000u32);
         T::Assets::mint_for_bench(asset, &caller, amount).expect("bridge asset funding");
 
         #[extrinsic_call]
@@ -165,7 +165,7 @@ mod benchmarks {
     fn bridge_withdraw() {
         let caller: T::AccountId = whitelisted_caller();
         let wallet = caller.clone();
-        let amount = T::Balance::one();
+        let amount = T::Balance::from(10_000u32);
         BridgeWallet::<T>::insert(&caller, wallet);
         BridgeEntitlements::<T>::insert(&caller, amount.saturating_add(amount));
 
