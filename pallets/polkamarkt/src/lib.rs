@@ -527,6 +527,25 @@ pub mod pallet {
         OptionQuery,
     >;
 
+    #[pallet::storage]
+    #[pallet::getter(fn account_commitments)]
+    pub type AccountCommitments<T: Config> = StorageNMap<
+        _,
+        (
+            NMapKey<Blake2_128Concat, MarketId>,
+            NMapKey<Blake2_128Concat, T::AccountId>,
+            NMapKey<Blake2_128Concat, CommitmentHash>,
+        ),
+        StoredCommitmentOf<T>,
+        OptionQuery,
+    >;
+
+    #[derive(Clone, Copy)]
+    enum CommitmentLocation {
+        AccountScoped,
+        Legacy,
+    }
+
     #[pallet::type_value]
     pub fn CredentialsEnforcedDefault<T: Config>() -> bool {
         Pallet::<T>::credentials_required_default()
@@ -995,9 +1014,15 @@ pub mod pallet {
             Self::ensure_account_is_clear(&who)?;
             let market = Self::ensure_market_open(market_id)?;
             ensure!(
-                !Commitments::<T>::contains_key(market_id, commitment),
+                !AccountCommitments::<T>::contains_key((market_id, &who, &commitment)),
                 Error::<T>::CommitmentExists
             );
+            if let Some(existing) = Commitments::<T>::get(market_id, commitment) {
+                if existing.owner == who {
+                    return Err(Error::<T>::CommitmentExists.into());
+                }
+                Commitments::<T>::remove(market_id, commitment);
+            }
             let now = <frame_system::Pallet<T>>::block_number();
             let earliest_reveal = now
                 .checked_add(&T::CommitmentRevealDelay::get())
@@ -1016,7 +1041,7 @@ pub mod pallet {
                     expires_at,
                 },
             };
-            Commitments::<T>::insert(market_id, commitment, record);
+            AccountCommitments::<T>::insert((market_id, &who, &commitment), record);
             Self::deposit_event(Event::OrderCommitted {
                 market_id,
                 trader: who,
@@ -1050,9 +1075,8 @@ pub mod pallet {
 
             let hash =
                 Self::compute_commitment_hash(&who, market_id, &order_payload, &salt, &order_value);
-            let stored =
-                Commitments::<T>::get(market_id, hash).ok_or(Error::<T>::CommitmentUnknown)?;
-            ensure!(who == stored.owner, Error::<T>::CommitmentUnknown);
+            let (stored, location) = Self::load_commitment(market_id, &who, &hash)
+                .ok_or(Error::<T>::CommitmentUnknown)?;
 
             let now = <frame_system::Pallet<T>>::block_number();
             let min_reveal = stored
@@ -1062,11 +1086,11 @@ pub mod pallet {
                 .ok_or(Error::<T>::Overflow)?;
             ensure!(now >= min_reveal, Error::<T>::RevealTooSoon);
             if now > stored.info.expires_at {
-                Commitments::<T>::remove(market_id, hash);
+                Self::remove_commitment(market_id, &who, &hash, location);
                 return Err(Error::<T>::CommitmentExpired.into());
             }
 
-            Commitments::<T>::remove(market_id, hash);
+            Self::remove_commitment(market_id, &who, &hash, location);
 
             T::OrderbookIntegration::on_order_revealed(
                 market_id,
@@ -1543,6 +1567,38 @@ pub mod pallet {
                 Error::<T>::MarketNotOpen
             );
             Ok(market)
+        }
+
+        fn load_commitment(
+            market_id: MarketId,
+            owner: &T::AccountId,
+            hash: &CommitmentHash,
+        ) -> Option<(StoredCommitmentOf<T>, CommitmentLocation)> {
+            if let Some(record) = AccountCommitments::<T>::get((market_id, owner, hash)) {
+                return Some((record, CommitmentLocation::AccountScoped));
+            }
+            if let Some(record) = Commitments::<T>::get(market_id, *hash) {
+                if record.owner == *owner {
+                    return Some((record, CommitmentLocation::Legacy));
+                }
+            }
+            None
+        }
+
+        fn remove_commitment(
+            market_id: MarketId,
+            owner: &T::AccountId,
+            hash: &CommitmentHash,
+            location: CommitmentLocation,
+        ) {
+            match location {
+                CommitmentLocation::AccountScoped => {
+                    AccountCommitments::<T>::remove((market_id, owner, hash));
+                }
+                CommitmentLocation::Legacy => {
+                    Commitments::<T>::remove(market_id, *hash);
+                }
+            }
         }
 
         pub(crate) fn compute_commitment_hash(
