@@ -45,6 +45,7 @@ where
     let now = <frame_system::Pallet<T>>::block_number();
     let expiry = now.saturating_add(T::CredentialTtl::get());
     Credentials::<T>::insert(who, (expiry, [0u8; 32], [1u8; 3], false));
+    CredentialsEnforced::<T>::put(true);
 }
 
 fn benchmark_bond_amount<T>() -> T::Balance
