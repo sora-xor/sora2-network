@@ -78,6 +78,24 @@ mod benchmarks {
     }
 
     #[benchmark]
+    fn create_opengov_condition() {
+        let caller: T::AccountId = whitelisted_caller();
+        GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
+        ensure_benchmark_credential::<T>(&caller);
+        let metadata = default_condition_input::<BlockNumberFor<T>>();
+        let proposal = OpengovProposalInput {
+            network: RelayNetwork::Polkadot,
+            parachain_id: 1,
+            track_id: 1,
+            referendum_index: 1,
+            plaza_tag: b"benchmark".to_vec(),
+        };
+
+        #[extrinsic_call]
+        create_opengov_condition(RawOrigin::Signed(caller), metadata, proposal);
+    }
+
+    #[benchmark]
     fn create_market() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
@@ -182,6 +200,18 @@ mod benchmarks {
 
         #[extrinsic_call]
         set_bridge_wallet(RawOrigin::Signed(caller), wallet);
+    }
+
+    #[benchmark]
+    fn submit_credential() {
+        let caller: T::AccountId = whitelisted_caller();
+        let now = <frame_system::Pallet<T>>::block_number();
+        let expiry = now.saturating_add(T::CredentialTtl::get());
+        let jurisdiction = [1, 0, 0];
+        let hash = [1u8; 32];
+
+        #[extrinsic_call]
+        submit_credential(RawOrigin::Signed(caller), hash, expiry, jurisdiction, true);
     }
 
     #[benchmark]
