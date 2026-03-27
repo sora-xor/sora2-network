@@ -57,10 +57,14 @@ use framenode_runtime::{
     EthBridgeConfig, ExtendedAssetsConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId,
     GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
     ImOnlineId, IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PswapDistributionConfig,
-    RewardsConfig, Runtime, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
-    TradingPair, TradingPairConfig, XSTPoolConfig, WASM_BINARY,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktBlocksPerDay,
+    PolkamarktBridgeDailyCap, PolkamarktConfig, PolkamarktCredentialTtl, PolkamarktFeeCollector,
+    PolkamarktForkTaxAccount, PolkamarktGovernanceBondMinimum, PolkamarktLiquiditySafetyBps,
+    PolkamarktMaintenanceFeeBps, PolkamarktMaintenancePoolAccount, PolkamarktPayoutTaxBps,
+    PolkamarktWalletCooldown, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix,
+    SessionConfig, Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId,
+    TechnicalCommitteeConfig, TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig,
+    XSTPoolConfig, WASM_BINARY,
 };
 
 use hex_literal::hex;
@@ -178,6 +182,23 @@ struct EthBridgeParams {
 
 fn calculate_reserves(accounts: impl Iterator<Item = Balance>) -> Balance {
     accounts.fold(0, |sum, balance| sum + balance)
+}
+
+fn polkamarkt_genesis_config() -> PolkamarktConfig {
+    PolkamarktConfig {
+        fee_collector: Some(PolkamarktFeeCollector::get()),
+        maintenance_pool_account: Some(PolkamarktMaintenancePoolAccount::get()),
+        fork_tax_account: Some(PolkamarktForkTaxAccount::get()),
+        governance_bond_minimum: Some(PolkamarktGovernanceBondMinimum::get()),
+        maintenance_fee_bps: Some(PolkamarktMaintenanceFeeBps::get()),
+        liquidity_safety_bps: Some(PolkamarktLiquiditySafetyBps::get()),
+        bridge_daily_cap: Some(PolkamarktBridgeDailyCap::get()),
+        blocks_per_day: Some(PolkamarktBlocksPerDay::get()),
+        wallet_cooldown: Some(PolkamarktWalletCooldown::get()),
+        payout_tax_bps: Some(PolkamarktPayoutTaxBps::get()),
+        credential_ttl: Some(PolkamarktCredentialTtl::get()),
+        credentials_required: Some(false),
+    }
 }
 
 pub fn staging_net() -> Result<ChainSpec, String> {
@@ -1244,6 +1265,7 @@ fn testnet_genesis(
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
+        polkamarkt: polkamarkt_genesis_config(),
         substrate_bridge_outbound_channel: Default::default(),
 
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -2455,6 +2477,7 @@ fn mainnet_genesis(
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
+        polkamarkt: polkamarkt_genesis_config(),
         substrate_bridge_outbound_channel: Default::default(),
 
         #[cfg(feature = "wip")] // Trustless substrate bridge
