@@ -1445,7 +1445,7 @@ pub mod pallet {
                 Some(asset) if *asset != canonical => {
                     let mut transfers = 2; // quote + convert during creation fee withdrawal
                     if !amount.is_zero() {
-                        transfers += 3; // additional router calls when seeding liquidity
+                        transfers += 2; // quote + convert while seeding liquidity
                     }
                     transfers
                 }

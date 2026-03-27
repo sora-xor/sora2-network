@@ -4,7 +4,7 @@ use super::*;
 use frame_benchmarking::v2::*;
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
-use sp_runtime::traits::{One, Saturating, Zero};
+use sp_runtime::traits::{One, SaturatedConversion, Saturating, Zero};
 
 fn default_condition_input<BlockNumber>() -> ConditionInput<BlockNumber>
 where
@@ -146,7 +146,12 @@ mod benchmarks {
 
         let payload = b"BUY:10@50".to_vec();
         let salt = b"benchmark".to_vec();
-        let order_value = T::Balance::one();
+        let threshold = T::OpenInterestThreshold::get();
+        let min_taxable = 1_000u32.saturated_into::<T::Balance>();
+        let mut order_value = threshold.max(min_taxable);
+        if order_value.is_zero() {
+            order_value = T::Balance::one();
+        }
         let commitment =
             Pallet::<T>::compute_commitment_hash(&caller, 0, &payload, &salt, &order_value);
 
