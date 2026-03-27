@@ -817,6 +817,7 @@ pub mod pallet {
         Overflow,
         MarketDurationTooShort,
         MarketNotOpen,
+        RevealWindowTooShort,
         CommitmentExists,
         CommitmentUnknown,
         RevealTooSoon,
@@ -992,12 +993,19 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_account_is_clear(&who)?;
-            let _market = Self::ensure_market_open(market_id)?;
+            let market = Self::ensure_market_open(market_id)?;
             ensure!(
                 !Commitments::<T>::contains_key(market_id, commitment),
                 Error::<T>::CommitmentExists
             );
             let now = <frame_system::Pallet<T>>::block_number();
+            let earliest_reveal = now
+                .checked_add(&T::CommitmentRevealDelay::get())
+                .ok_or(Error::<T>::Overflow)?;
+            ensure!(
+                earliest_reveal < market.close_block,
+                Error::<T>::RevealWindowTooShort
+            );
             let expires_at = now
                 .checked_add(&T::CommitmentExpiry::get())
                 .ok_or(Error::<T>::Overflow)?;
