@@ -168,6 +168,22 @@ mod benchmarks {
     }
 
     #[benchmark]
+    fn set_bridge_wallet() {
+        let caller: T::AccountId = whitelisted_caller();
+        let cooldown = WalletCooldownOverride::<T>::get().unwrap_or_else(T::WalletCooldown::get);
+        let target_block = cooldown.saturating_add(BlockNumberFor::<T>::one());
+        <frame_system::Pallet<T>>::set_block_number(target_block);
+        if target_block > BlockNumberFor::<T>::zero() {
+            let last = target_block.saturating_sub(cooldown);
+            BridgeWalletUpdated::<T>::insert(&caller, last);
+        }
+        let wallet = caller.clone();
+
+        #[extrinsic_call]
+        set_bridge_wallet(RawOrigin::Signed(caller), wallet);
+    }
+
+    #[benchmark]
     fn bridge_deposit() {
         let caller: T::AccountId = whitelisted_caller();
         let asset = T::UsdcAssetId::get();
