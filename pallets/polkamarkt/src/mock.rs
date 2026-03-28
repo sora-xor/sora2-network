@@ -117,6 +117,9 @@ impl crate::WeightInfo for TestWeightInfo {
     fn create_condition() -> Weight {
         Weight::zero()
     }
+    fn create_opengov_condition() -> Weight {
+        Weight::zero()
+    }
     fn create_market(_routed_transfers: u32) -> Weight {
         Weight::zero()
     }
@@ -139,6 +142,9 @@ impl crate::WeightInfo for TestWeightInfo {
         Weight::zero()
     }
     fn unbond_governance() -> Weight {
+        Weight::zero()
+    }
+    fn submit_credential() -> Weight {
         Weight::zero()
     }
 }

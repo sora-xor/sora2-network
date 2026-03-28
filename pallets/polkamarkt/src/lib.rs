@@ -29,6 +29,7 @@ pub type JurisdictionCode = [u8; 3];
 
 pub trait WeightInfo {
     fn create_condition() -> Weight;
+    fn create_opengov_condition() -> Weight;
     fn create_market(routed_transfers: u32) -> Weight;
     fn commit_order() -> Weight;
     fn reveal_order() -> Weight;
@@ -37,6 +38,7 @@ pub trait WeightInfo {
     fn bridge_withdraw() -> Weight;
     fn bond_governance() -> Weight;
     fn unbond_governance() -> Weight;
+    fn submit_credential() -> Weight;
 }
 
 /// Abstract interface for the orderbook pallet integration.
@@ -879,7 +881,7 @@ pub mod pallet {
 
         /// Register an OpenGov-linked condition compatible with Polkadot Plaza feeds.
         #[pallet::call_index(16)]
-        #[pallet::weight(T::WeightInfo::create_condition())]
+        #[pallet::weight(T::WeightInfo::create_opengov_condition())]
         #[transactional]
         pub fn create_opengov_condition(
             origin: OriginFor<T>,
@@ -1341,7 +1343,7 @@ pub mod pallet {
 
         /// Submit or refresh a zk-credential hash.
         #[pallet::call_index(14)]
-        #[pallet::weight(Weight::from_parts(30_000, 0))]
+        #[pallet::weight(T::WeightInfo::submit_credential())]
         pub fn submit_credential(
             origin: OriginFor<T>,
             credential_hash: [u8; 32],
