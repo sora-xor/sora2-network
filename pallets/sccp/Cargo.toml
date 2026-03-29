@@ -29,7 +29,7 @@ orml-traits = { workspace = true }
 pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
 tokens = { workspace = true }
 rlp = "0.5.2"
-proptest = "1.10.0"
+proptest = "=1.10.0"
 
 [features]
 default = ["std"]

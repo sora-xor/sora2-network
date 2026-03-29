@@ -20,7 +20,7 @@ case $arg in
 esac
 
 if [ "$build_main" = 1 ]; then
-  "$llvm_wrapper" cargo run --bin framenode --release --features "main-net-coded runtime-wasm" -- build-spec --chain main-coded --raw > node/chain_spec/src/bytes/chain_spec_main.json || exit 1
+  "$llvm_wrapper" cargo run --bin framenode --release --features "include-real-files main-net-coded runtime-wasm" -- build-spec --chain main-coded --raw > node/chain_spec/src/bytes/chain_spec_main.json || exit 1
 fi
 
 if [ "$build_test" = 1 ]; then
