@@ -90,6 +90,7 @@ oracle-proxy-runtime-api = { path = "../pallets/oracle-proxy/runtime-api", defau
 order-book = { path = "../pallets/order-book", default-features = false }
 order-book-benchmarking = { path = "../pallets/order-book/benchmarking", default-features = false, optional = true }
 permissions = { path = "../pallets/permissions", default-features = false }
+pallet-polkamarkt = { package = "pallet-polkamarkt", path = "../pallets/polkamarkt", default-features = false }
 pool-xyk = { path = "../pallets/pool-xyk", default-features = false }
 pool-xyk-benchmarking = { path = "../pallets/pool-xyk/benchmarking", default-features = false, optional = true }
 presto = { path = "../pallets/presto", default-features = false, optional = true }
@@ -233,6 +234,7 @@ std = [
     "bridge-data-signer/std",
     "multisig-verifier/std",
     "bridge-types/std",
+    "pallet-polkamarkt/std",
     "farming/std",
     "farming-runtime-api/std",
     "faucet/std",
@@ -363,6 +365,7 @@ runtime-benchmarks = [
     "substrate-bridge-app/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
     "bridge-channel/runtime-benchmarks",
+    "pallet-polkamarkt/runtime-benchmarks",
     "farming/runtime-benchmarks",
     "faucet/runtime-benchmarks",
     "frame-benchmarking",
