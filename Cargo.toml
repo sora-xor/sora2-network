@@ -185,17 +185,6 @@ members = [
     "utils/parse",
     "utils/generate-bags",
     "utils/remote-ext",
-    "utils/iroha-proof-runtime-interface",
-    "utils/solana-proof-runtime-interface",
-    "utils/ton-proof-runtime-interface",
-]
-exclude = [
-    "sccp/chains/sol",
-    "sccp/chains/sol/program",
-    "sccp/chains/sol/verifier-program",
-    "sccp/chains/sol/fuzz",
-    "sccp/chains/sol/tools/solana-live-burn-flow",
-    "sccp/chains/sol/tools/solana-finalized-burn-witness",
 ]
 
 resolver = "2"

@@ -3,10 +3,7 @@ use crate::{
     MarketCreatorFees, MarketPools, MarketPositionTotals, MarketPositions, MarketResolution,
     MarketStatus, OpengovConditions, PendingXorBuybackCollateral, RelayNetwork,
 };
-use frame_support::{
-    assert_noop, assert_ok,
-    traits::{Hooks, StorageVersion},
-};
+use frame_support::{assert_noop, assert_ok, traits::StorageVersion};
 use frame_system::Pallet as System;
 use sp_runtime::Perbill;
 
@@ -428,23 +425,9 @@ fn sync_market_status_is_permissionless_and_idempotent() {
 }
 
 #[test]
-fn runtime_upgrade_advances_storage_version() {
+fn genesis_sets_current_storage_version() {
     new_test_ext().execute_with(|| {
-        StorageVersion::new(4).put::<Polkamarkt>();
-
-        <Polkamarkt as Hooks<BlockNumber>>::on_runtime_upgrade();
-
-        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
-    });
-}
-
-#[test]
-fn runtime_upgrade_is_noop_once_current() {
-    new_test_ext().execute_with(|| {
-        StorageVersion::new(5).put::<Polkamarkt>();
-
-        let _ = <Polkamarkt as Hooks<BlockNumber>>::on_runtime_upgrade();
-        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(1));
     });
 }
 

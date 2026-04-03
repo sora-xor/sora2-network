@@ -13,11 +13,16 @@ use sp_runtime::traits::{One, Saturating, Zero};
 type BenchBalanceOf<T> = <T as crate::Config>::Balance;
 type BenchAssetIdOf<T> = <T as crate::Config>::AssetId;
 
-fn default_condition_input() -> ConditionInput {
+fn repeated_bytes(byte: u8, len: u32) -> Vec<u8> {
+    sp_std::vec![byte; len as usize]
+}
+
+fn default_condition_input<T: crate::Config>() -> ConditionInput {
+    let metadata_len = T::MaxMetadataLength::get();
     ConditionInput {
-        question: b"Will Hydra succeed across all markets?".to_vec(),
-        oracle: b"Chainlink".to_vec(),
-        resolution_source: b"https://oracle.example.com".to_vec(),
+        question: repeated_bytes(b'Q', metadata_len),
+        oracle: repeated_bytes(b'O', metadata_len),
+        resolution_source: repeated_bytes(b'S', metadata_len),
     }
 }
 
@@ -68,7 +73,7 @@ where
     GovernanceBonds::<T>::insert(caller, T::GovernanceBondMinimum::get());
     fund_canonical_fee::<T>(caller);
     mint_canonical_balance::<T>(caller, seed);
-    let metadata = default_condition_input();
+    let metadata = default_condition_input::<T>();
     Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
         .expect("condition setup");
     let close = <frame_system::Pallet<T>>::block_number()
@@ -171,7 +176,7 @@ mod benchmarks {
     fn create_condition() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
-        let metadata = default_condition_input();
+        let metadata = default_condition_input::<T>();
 
         #[extrinsic_call]
         create_condition(RawOrigin::Signed(caller), metadata);
@@ -181,13 +186,13 @@ mod benchmarks {
     fn create_opengov_condition() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
-        let metadata = default_condition_input();
+        let metadata = default_condition_input::<T>();
         let proposal = OpengovProposalInput {
             network: RelayNetwork::Polkadot,
             parachain_id: 1,
             track_id: 1,
             referendum_index: 1,
-            plaza_tag: b"benchmark".to_vec(),
+            plaza_tag: repeated_bytes(b'P', T::MaxPlazaTagLength::get()),
         };
 
         #[extrinsic_call]
@@ -201,7 +206,7 @@ mod benchmarks {
         fund_canonical_fee::<T>(&caller);
         let seed = bench_balance::<T>(10_000);
         mint_canonical_balance::<T>(&caller, seed);
-        let metadata = default_condition_input();
+        let metadata = default_condition_input::<T>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
         let close = <frame_system::Pallet<T>>::block_number()

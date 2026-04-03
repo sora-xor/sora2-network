@@ -28,7 +28,7 @@ pub type ConditionId = u32;
 pub type MarketId = u32;
 
 const STORAGE_VERSION: frame_support::traits::StorageVersion =
-    frame_support::traits::StorageVersion::new(5);
+    frame_support::traits::StorageVersion::new(1);
 const CREATION_FEE_BUYBACK_BPS: u32 = 2_000;
 
 fn with_storage_transaction<T>(
@@ -154,24 +154,6 @@ pub struct ConditionInput {
     pub question: Vec<u8>,
     pub oracle: Vec<u8>,
     pub resolution_source: Vec<u8>,
-}
-
-#[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
-)]
-struct LegacyConditionMetadata<BoundedString, BlockNumber> {
-    question: BoundedString,
-    oracle: BoundedString,
-    resolution_source: BoundedString,
-    submission_deadline: BlockNumber,
 }
 
 #[derive(
@@ -549,75 +531,6 @@ pub mod pallet {
             if let Some(value) = self.governance_bond_minimum {
                 GovernanceBondMinimumOverride::<T>::put(value);
             }
-        }
-    }
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyMaintenancePoolBalance<T: Config> =
-        StorageValue<Pallet<T>, <T as Config>::Balance, ValueQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyMaintenancePoolTotal<T: Config> =
-        StorageValue<Pallet<T>, <T as Config>::Balance, ValueQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyCredentialsEnforced<T: Config> =
-        StorageValue<Pallet<T>, bool, ValueQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyCredentials<T: Config> = StorageMap<
-        Pallet<T>,
-        Blake2_128Concat,
-        <T as frame_system::Config>::AccountId,
-        Vec<u8>,
-        OptionQuery,
-    >;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyCredentialIssuers<T: Config> =
-        StorageMap<Pallet<T>, Blake2_128Concat, Vec<u8>, (), OptionQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyBlockedJurisdictions<T: Config> =
-        StorageMap<Pallet<T>, Blake2_128Concat, [u8; 3], (), OptionQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyMaintenancePoolOverride<T: Config> =
-        StorageValue<Pallet<T>, <T as frame_system::Config>::AccountId, OptionQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyMaintenanceFeeBpsOverride<T: Config> =
-        StorageValue<Pallet<T>, u32, OptionQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyLiquiditySafetyBpsOverride<T: Config> =
-        StorageValue<Pallet<T>, u32, OptionQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyCredentialTtlOverride<T: Config> =
-        StorageValue<Pallet<T>, BlockNumberFor<T>, OptionQuery>;
-
-    #[frame_support::storage_alias]
-    pub(crate) type LegacyCredentialsRequiredOverride<T: Config> =
-        StorageValue<Pallet<T>, bool, OptionQuery>;
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_runtime_upgrade() -> Weight {
-            let db_weight = T::DbWeight::get();
-            let version = frame_support::traits::StorageVersion::get::<Pallet<T>>();
-            if version >= STORAGE_VERSION {
-                return db_weight.reads(1);
-            }
-
-            frame_support::__private::log::warn!(
-                target: "runtime::polkamarkt",
-                "unsupported legacy Polkamarkt storage version {:?}; updating to {:?} without migration",
-                version,
-                STORAGE_VERSION
-            );
-            STORAGE_VERSION.put::<Pallet<T>>();
-            db_weight.reads_writes(1, 1)
         }
     }
 

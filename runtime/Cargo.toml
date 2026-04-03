@@ -179,7 +179,6 @@ currencies = { workspace = true }
 tokens = { workspace = true }
 traits = { workspace = true }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
-solana-proof-runtime-interface = { path = "../utils/solana-proof-runtime-interface", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.10.0"
@@ -319,7 +318,6 @@ std = [
     "staging-xcm-executor/std",
     "substrate-bridge-app/std",
     "soratopia/std",
-    "solana-proof-runtime-interface/std",
     "technical/std",
     "tokens/std",
     "trading-pair-runtime-api/std",

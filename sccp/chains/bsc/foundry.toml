@@ -1,7 +1,0 @@
-[profile.default]
-src = "contracts"
-test = "test/fuzz"
-solc_version = "0.8.23"
-optimizer = true
-optimizer_runs = 200
-fuzz = { runs = 512 }

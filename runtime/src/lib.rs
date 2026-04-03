@@ -131,8 +131,6 @@ use crate::impls::{DispatchableSubstrateBridgeCall, SubstrateBridgeCallFilter};
 use bridge_types::types::LeafExtraData;
 #[cfg(feature = "wip")] // EVM bridge
 use bridge_types::U256;
-#[cfg(feature = "wip")] // Trustless substrate bridge
-use codec::Decode;
 use common::prelude::constants::{BIG_FEE, MINIMAL_FEE, SMALL_FEE};
 use common::prelude::QuoteAmount;
 #[cfg(not(feature = "private-net"))]
@@ -3172,8 +3170,6 @@ construct_runtime! {
         MultiBlockMigrations: pallet_migrations = 117,
         EthereumBeaconClient: snowbridge_pallet_ethereum_client::{Pallet, Call, Storage, Event<T>} = 118,
 
-        // SCCP (SORA Cross-Chain Protocol) is intentionally excluded from this release runtime.
-
         // Trustless bridges
         // Beefy pallets should be placed after channels
         #[cfg(feature = "wip")] // Trustless bridges
@@ -3291,6 +3287,51 @@ pub mod genesis_config_presets {
         let validator_account = benchmark_validator_account();
         let session_keys = benchmark_session_keys();
         let initial_stake = 100_000 * UNITS;
+        let benchmark_assets = vec![
+            (
+                XOR.into(),
+                validator_account.clone(),
+                AssetSymbol(b"XOR".to_vec()),
+                AssetName(b"SORA".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+            (
+                PolkamarktCanonicalStableAssetId::get(),
+                validator_account.clone(),
+                AssetSymbol(b"KUSD".to_vec()),
+                AssetName(b"Benchmark KUSD".to_vec()),
+                18,
+                0,
+                true,
+                None,
+                None,
+            ),
+        ];
+        let benchmark_dex_list = vec![(
+            GetBuyBackDexId::get(),
+            common::DEXInfo {
+                base_asset_id: GetBaseAssetId::get(),
+                synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+                is_public: true,
+            },
+        )];
+        let benchmark_trading_pairs = vec![(
+            GetBuyBackDexId::get(),
+            common::TradingPair {
+                base_asset_id: GetBaseAssetId::get(),
+                target_asset_id: PolkamarktCanonicalStableAssetId::get(),
+            },
+        )];
+        let benchmark_source_types = vec![
+            LiquiditySourceType::XYKPool,
+            LiquiditySourceType::MulticollateralBondingCurvePool,
+            LiquiditySourceType::XSTPool,
+            LiquiditySourceType::OrderBook,
+        ];
 
         #[cfg(feature = "private-net")]
         {
@@ -3299,17 +3340,17 @@ pub mod genesis_config_presets {
                     balances: benchmark_endowments(),
                 },
                 assets: AssetsConfig {
-                    endowed_assets: vec![(
-                        XOR.into(),
-                        validator_account.clone(),
-                        AssetSymbol(b"XOR".to_vec()),
-                        AssetName(b"SORA".to_vec()),
-                        18,
-                        0,
-                        true,
-                        None,
-                        None,
-                    )],
+                    endowed_assets: benchmark_assets.clone(),
+                },
+                dex_manager: DEXManagerConfig {
+                    dex_list: benchmark_dex_list.clone(),
+                },
+                trading_pair: TradingPairConfig {
+                    trading_pairs: benchmark_trading_pairs.clone(),
+                },
+                dexapi: DEXAPIConfig {
+                    source_types: benchmark_source_types.clone(),
+                    _phantom: Default::default(),
                 },
                 sudo: SudoConfig { key: None },
                 babe: BabeConfig {
@@ -3362,17 +3403,17 @@ pub mod genesis_config_presets {
                     balances: benchmark_endowments(),
                 },
                 assets: AssetsConfig {
-                    endowed_assets: vec![(
-                        XOR.into(),
-                        validator_account.clone(),
-                        AssetSymbol(b"XOR".to_vec()),
-                        AssetName(b"SORA".to_vec()),
-                        18,
-                        0,
-                        true,
-                        None,
-                        None,
-                    )],
+                    endowed_assets: benchmark_assets,
+                },
+                dex_manager: DEXManagerConfig {
+                    dex_list: benchmark_dex_list,
+                },
+                trading_pair: TradingPairConfig {
+                    trading_pairs: benchmark_trading_pairs,
+                },
+                dexapi: DEXAPIConfig {
+                    source_types: benchmark_source_types,
+                    _phantom: Default::default(),
                 },
                 babe: BabeConfig {
                     authorities: vec![],

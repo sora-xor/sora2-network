@@ -34,19 +34,20 @@
 //! DATE: 2026-04-03, STEPS: `50`, REPEAT: `20`, LOW RANGE: `[]`, HIGH RANGE: `[]`
 //! WORST CASE MAP SIZE: `1000000`
 //! HOSTNAME: `takemiyacStudio.lan`, CPU: `<UNKNOWN>`
-//! EXECUTION: , WASM-EXECUTION: Compiled, CHAIN: Some("local"), DB CACHE: 1024
+//! EXECUTION: , WASM-EXECUTION: Compiled, CHAIN: None, DB CACHE: 1024
 
 // Executed Command:
 // target/release/framenode
 // benchmark
 // pallet
-// --chain=local
-// --execution=wasm
-// --wasm-execution=compiled
+// --runtime=target/release/wbuild/framenode-runtime/framenode_runtime.wasm
+// --genesis-builder=runtime
+// --genesis-builder-preset=benchmark
 // --pallet=pallet_polkamarkt
 // --extrinsic=*
 // --steps=50
 // --repeat=20
+// --wasm-execution=compiled
 // --header=misc/file_header.txt
 // --template=misc/polkamarkt-runtime-weight-template.hbs
 // --output=runtime/src/weights/polkamarkt.rs
@@ -90,10 +91,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::Conditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_condition() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `252`
-		//  Estimated: `3717`
-		// Minimum execution time: 17_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3717)
+		//  Measured:  `204`
+		//  Estimated: `3669`
+		// Minimum execution time: 18_000_000 picoseconds.
+		Weight::from_parts(18_000_000, 3669)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
@@ -109,10 +110,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::Conditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_opengov_condition() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `252`
-		//  Estimated: `3717`
+		//  Measured:  `204`
+		//  Estimated: `3669`
 		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 3717)
+		Weight::from_parts(28_000_000, 3669)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -146,10 +147,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2191`
+		//  Measured:  `1168`
 		//  Estimated: `325556`
-		// Minimum execution time: 150_000_000 picoseconds.
-		Weight::from_parts(153_000_000, 325556)
+		// Minimum execution time: 138_000_000 picoseconds.
+		Weight::from_parts(141_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(14_u64))
 			.saturating_add(T::DbWeight::get().writes(11_u64))
 	}
@@ -177,10 +178,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn buy() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2478`
+		//  Measured:  `1598`
 		//  Estimated: `325556`
-		// Minimum execution time: 88_000_000 picoseconds.
-		Weight::from_parts(90_000_000, 325556)
+		// Minimum execution time: 80_000_000 picoseconds.
+		Weight::from_parts(84_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(12_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
@@ -208,10 +209,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn sell() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2761`
+		//  Measured:  `1987`
 		//  Estimated: `325556`
-		// Minimum execution time: 97_000_000 picoseconds.
-		Weight::from_parts(101_000_000, 325556)
+		// Minimum execution time: 91_000_000 picoseconds.
+		Weight::from_parts(92_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(12_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
@@ -219,10 +220,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn sync_market_status() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `452`
-		//  Estimated: `3917`
+		//  Measured:  `419`
+		//  Estimated: `3884`
 		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(15_000_000, 3917)
+		Weight::from_parts(15_000_000, 3884)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -240,10 +241,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::GovernanceBonds` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn bond_governance() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1639`
+		//  Measured:  `877`
 		//  Estimated: `325556`
-		// Minimum execution time: 63_000_000 picoseconds.
-		Weight::from_parts(64_000_000, 325556)
+		// Minimum execution time: 57_000_000 picoseconds.
+		Weight::from_parts(59_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -261,10 +262,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn unbond_governance() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2026`
+		//  Measured:  `1219`
 		//  Estimated: `325556`
-		// Minimum execution time: 63_000_000 picoseconds.
-		Weight::from_parts(66_000_000, 325556)
+		// Minimum execution time: 58_000_000 picoseconds.
+		Weight::from_parts(59_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -280,10 +281,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn resolve_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `586`
-		//  Estimated: `4051`
-		// Minimum execution time: 37_000_000 picoseconds.
-		Weight::from_parts(38_000_000, 4051)
+		//  Measured:  `520`
+		//  Estimated: `3985`
+		// Minimum execution time: 36_000_000 picoseconds.
+		Weight::from_parts(38_000_000, 3985)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -299,10 +300,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn cancel_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `586`
-		//  Estimated: `4051`
-		// Minimum execution time: 37_000_000 picoseconds.
-		Weight::from_parts(38_000_000, 4051)
+		//  Measured:  `520`
+		//  Estimated: `3985`
+		// Minimum execution time: 36_000_000 picoseconds.
+		Weight::from_parts(37_000_000, 3985)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -326,10 +327,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn claim_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2695`
+		//  Measured:  `1920`
 		//  Estimated: `325556`
-		// Minimum execution time: 85_000_000 picoseconds.
-		Weight::from_parts(87_000_000, 325556)
+		// Minimum execution time: 79_000_000 picoseconds.
+		Weight::from_parts(81_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(10_u64))
 			.saturating_add(T::DbWeight::get().writes(6_u64))
 	}
@@ -347,10 +348,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn claim_creator_fees() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2379`
+		//  Measured:  `1675`
 		//  Estimated: `325556`
-		// Minimum execution time: 66_000_000 picoseconds.
-		Weight::from_parts(68_000_000, 325556)
+		// Minimum execution time: 62_000_000 picoseconds.
+		Weight::from_parts(63_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -372,10 +373,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn claim_creator_liquidity() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2345`
+		//  Measured:  `1608`
 		//  Estimated: `325556`
-		// Minimum execution time: 76_000_000 picoseconds.
-		Weight::from_parts(80_000_000, 325556)
+		// Minimum execution time: 71_000_000 picoseconds.
+		Weight::from_parts(73_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(9_u64))
 			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
@@ -383,7 +384,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `DEXManager::DEXInfos` (r:1 w:0)
 	/// Proof: `DEXManager::DEXInfos` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `XSTPool::EnabledSynthetics` (r:2 w:0)
+	/// Storage: `XSTPool::EnabledSynthetics` (r:1 w:0)
 	/// Proof: `XSTPool::EnabledSynthetics` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `DEXAPI::EnabledSourceTypes` (r:1 w:0)
 	/// Proof: `DEXAPI::EnabledSourceTypes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
@@ -411,11 +412,11 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `PoolXYK::Reserves` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn sweep_xor_buyback_and_burn() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `7094`
+		//  Measured:  `5108`
 		//  Estimated: `650122`
-		// Minimum execution time: 380_000_000 picoseconds.
-		Weight::from_parts(407_000_000, 650122)
-			.saturating_add(T::DbWeight::get().reads(20_u64))
+		// Minimum execution time: 345_000_000 picoseconds.
+		Weight::from_parts(356_000_000, 650122)
+			.saturating_add(T::DbWeight::get().reads(19_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
 }
@@ -482,10 +483,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::Conditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_condition() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `252`
-		//  Estimated: `3717`
-		// Minimum execution time: 17_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3717)
+		//  Measured:  `204`
+		//  Estimated: `3669`
+		// Minimum execution time: 18_000_000 picoseconds.
+		Weight::from_parts(18_000_000, 3669)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
@@ -501,10 +502,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::Conditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_opengov_condition() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `252`
-		//  Estimated: `3717`
+		//  Measured:  `204`
+		//  Estimated: `3669`
 		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 3717)
+		Weight::from_parts(28_000_000, 3669)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -538,10 +539,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2191`
+		//  Measured:  `1168`
 		//  Estimated: `325556`
-		// Minimum execution time: 150_000_000 picoseconds.
-		Weight::from_parts(153_000_000, 325556)
+		// Minimum execution time: 138_000_000 picoseconds.
+		Weight::from_parts(141_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(14_u64))
 			.saturating_add(RocksDbWeight::get().writes(11_u64))
 	}
@@ -569,10 +570,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn buy() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2478`
+		//  Measured:  `1598`
 		//  Estimated: `325556`
-		// Minimum execution time: 88_000_000 picoseconds.
-		Weight::from_parts(90_000_000, 325556)
+		// Minimum execution time: 80_000_000 picoseconds.
+		Weight::from_parts(84_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(12_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
 	}
@@ -600,10 +601,10 @@ impl WeightInfo for () {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn sell() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2761`
+		//  Measured:  `1987`
 		//  Estimated: `325556`
-		// Minimum execution time: 97_000_000 picoseconds.
-		Weight::from_parts(101_000_000, 325556)
+		// Minimum execution time: 91_000_000 picoseconds.
+		Weight::from_parts(92_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(12_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
 	}
@@ -611,10 +612,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn sync_market_status() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `452`
-		//  Estimated: `3917`
+		//  Measured:  `419`
+		//  Estimated: `3884`
 		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(15_000_000, 3917)
+		Weight::from_parts(15_000_000, 3884)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -632,10 +633,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::GovernanceBonds` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn bond_governance() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `1639`
+		//  Measured:  `877`
 		//  Estimated: `325556`
-		// Minimum execution time: 63_000_000 picoseconds.
-		Weight::from_parts(64_000_000, 325556)
+		// Minimum execution time: 57_000_000 picoseconds.
+		Weight::from_parts(59_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -653,10 +654,10 @@ impl WeightInfo for () {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn unbond_governance() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2026`
+		//  Measured:  `1219`
 		//  Estimated: `325556`
-		// Minimum execution time: 63_000_000 picoseconds.
-		Weight::from_parts(66_000_000, 325556)
+		// Minimum execution time: 58_000_000 picoseconds.
+		Weight::from_parts(59_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -672,10 +673,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn resolve_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `586`
-		//  Estimated: `4051`
-		// Minimum execution time: 37_000_000 picoseconds.
-		Weight::from_parts(38_000_000, 4051)
+		//  Measured:  `520`
+		//  Estimated: `3985`
+		// Minimum execution time: 36_000_000 picoseconds.
+		Weight::from_parts(38_000_000, 3985)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -691,10 +692,10 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn cancel_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `586`
-		//  Estimated: `4051`
-		// Minimum execution time: 37_000_000 picoseconds.
-		Weight::from_parts(38_000_000, 4051)
+		//  Measured:  `520`
+		//  Estimated: `3985`
+		// Minimum execution time: 36_000_000 picoseconds.
+		Weight::from_parts(37_000_000, 3985)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -718,10 +719,10 @@ impl WeightInfo for () {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn claim_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2695`
+		//  Measured:  `1920`
 		//  Estimated: `325556`
-		// Minimum execution time: 85_000_000 picoseconds.
-		Weight::from_parts(87_000_000, 325556)
+		// Minimum execution time: 79_000_000 picoseconds.
+		Weight::from_parts(81_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(10_u64))
 			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
@@ -739,10 +740,10 @@ impl WeightInfo for () {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn claim_creator_fees() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2379`
+		//  Measured:  `1675`
 		//  Estimated: `325556`
-		// Minimum execution time: 66_000_000 picoseconds.
-		Weight::from_parts(68_000_000, 325556)
+		// Minimum execution time: 62_000_000 picoseconds.
+		Weight::from_parts(63_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
@@ -764,10 +765,10 @@ impl WeightInfo for () {
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
 	fn claim_creator_liquidity() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2345`
+		//  Measured:  `1608`
 		//  Estimated: `325556`
-		// Minimum execution time: 76_000_000 picoseconds.
-		Weight::from_parts(80_000_000, 325556)
+		// Minimum execution time: 71_000_000 picoseconds.
+		Weight::from_parts(73_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(9_u64))
 			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
@@ -775,7 +776,7 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `DEXManager::DEXInfos` (r:1 w:0)
 	/// Proof: `DEXManager::DEXInfos` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `XSTPool::EnabledSynthetics` (r:2 w:0)
+	/// Storage: `XSTPool::EnabledSynthetics` (r:1 w:0)
 	/// Proof: `XSTPool::EnabledSynthetics` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `DEXAPI::EnabledSourceTypes` (r:1 w:0)
 	/// Proof: `DEXAPI::EnabledSourceTypes` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
@@ -803,11 +804,11 @@ impl WeightInfo for () {
 	/// Proof: `PoolXYK::Reserves` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn sweep_xor_buyback_and_burn() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `7094`
+		//  Measured:  `5108`
 		//  Estimated: `650122`
-		// Minimum execution time: 380_000_000 picoseconds.
-		Weight::from_parts(407_000_000, 650122)
-			.saturating_add(RocksDbWeight::get().reads(20_u64))
+		// Minimum execution time: 345_000_000 picoseconds.
+		Weight::from_parts(356_000_000, 650122)
+			.saturating_add(RocksDbWeight::get().reads(19_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
 	}
 }
