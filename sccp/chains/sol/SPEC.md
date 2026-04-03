@@ -1,5 +1,9 @@
 # SCCP Message Format (v1)
 
+Migration note: payload encoding remains relevant, but verifier/finality sections in this package
+still reflect the pre-Nexus SORA BEEFY/MMR hub model. The active repo tooling consumes finalized
+Nexus bundles through `tools/nexus-bundle-instruction-builder`.
+
 This repo follows the SCCP message format pinned by the SORA runtime pallet `sccp`.
 
 ## Domains

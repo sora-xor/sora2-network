@@ -476,9 +476,9 @@ impl<T: Config> Pallet<T> {
             Ok(v) => v,
             Err(e) => {
                 info!(
-                "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
-                e
-            );
+                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
+                    e
+                );
                 return Err(e);
             }
         };

@@ -33,7 +33,9 @@ const linkedFiles = [
   'test/fuzz/SccpCodecFuzz.t.sol',
   'foundry.toml',
   'scripts/compile_artifacts.mjs',
+  'scripts/build_router_call_from_nexus_bundle.mjs',
   'scripts/load_ethers.mjs',
+  'test/nexus-bundle-router-call.test.js',
 ];
 
 function parseArgs(argv) {

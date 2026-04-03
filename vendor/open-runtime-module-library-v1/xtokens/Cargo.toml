@@ -1,0 +1,91 @@
+[package]
+name = "orml-xtokens"
+description = "Cross-chain token transfer."
+repository = "https://github.com/open-web3-stack/open-runtime-module-library/tree/master/xtokens"
+license = "Apache-2.0"
+version = "1.5.0"
+authors = ["Acala Developers"]
+edition = "2021"
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+log = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true, optional = true }
+
+# substrate
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+# polkadot
+parachains-common = { workspace = true, optional = true }
+pallet-xcm = { workspace = true }
+xcm = { workspace = true }
+xcm-executor = { workspace = true }
+
+# orml
+orml-traits = { path = "../traits", version = "1.5.0", default-features = false}
+orml-xcm-support = { path = "../xcm-support", version = "1.5.0", default-features = false }
+
+[dev-dependencies]
+# substrate
+pallet-balances = { workspace = true, features = ["std"] }
+sp-core = { workspace = true, features = ["std"] }
+pallet-message-queue = { workspace = true, features = ["std"] }
+
+# cumulus
+cumulus-pallet-xcm = { workspace = true, features = ["std"] }
+cumulus-primitives-core = { workspace = true, features = ["std"] }
+
+# polkadot
+polkadot-parachain-primitives = { workspace = true, features = ["std"] }
+polkadot-runtime-parachains = { workspace = true, features = ["std"] }
+polkadot-runtime-common = { workspace = true, features = ["std"] }
+xcm-builder = { workspace = true, features = ["std"] }
+xcm-simulator = { workspace = true }
+
+# orml
+orml-tokens = { path = "../tokens" }
+orml-xcm = { path = "../xcm" }
+orml-xcm-mock-message-queue = { path = "../xcm-mock-message-queue" }
+
+[features]
+default = [ "std" ]
+std = [
+	"cumulus-primitives-core/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"orml-traits/std",
+	"orml-xcm-support/std",
+	"pallet-xcm/std",
+	"parachains-common/std",
+	"parity-scale-codec/std",
+	"scale-info/std",
+	"serde",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"xcm-executor/std",
+	"xcm/std",
+]
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
+	"parachains-common/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"xcm-executor/runtime-benchmarks",
+	"xcm/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-xcm/try-runtime",
+	"parachains-common/try-runtime",
+	"sp-runtime/try-runtime",
+]

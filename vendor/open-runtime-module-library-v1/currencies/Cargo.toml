@@ -1,0 +1,54 @@
+[package]
+name = "orml-currencies"
+description = "Provide `MultiCurrency` implementation using `pallet-balances` and `orml-tokens` module."
+repository = "https://github.com/open-web3-stack/open-runtime-module-library/tree/master/currencies"
+license = "Apache-2.0"
+version = "1.5.0"
+authors = ["Laminar Developers <hello@laminar.one>"]
+edition = "2021"
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true, optional = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+orml-traits = { path = "../traits", version = "1.5.0", default-features = false }
+orml-utilities = { path = "../utilities", version = "1.5.0", default-features = false }
+
+[dev-dependencies]
+pallet-balances = { workspace = true, features = ["std"] }
+sp-core = { workspace = true, features = ["std"] }
+
+orml-tokens = { path = "../tokens", features = ["std"] }
+
+[features]
+default = [ "std" ]
+std = [
+	"frame-support/std",
+	"frame-system/std",
+	"orml-traits/std",
+	"orml-utilities/std",
+	"parity-scale-codec/std",
+	"scale-info/std",
+	"serde",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
+]

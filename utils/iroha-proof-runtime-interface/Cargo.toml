@@ -1,0 +1,31 @@
+[package]
+name = "iroha-proof-runtime-interface"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+
+iroha_crypto = { path = "../../../iroha/crates/iroha_crypto", default-features = false, features = ["bls"], optional = true }
+iroha_data_model = { path = "../../../iroha/crates/iroha_data_model", default-features = false, features = ["json", "governance", "bridge", "bls"], optional = true }
+iroha_sccp = { path = "../../../iroha/crates/iroha_sccp", default-features = false, features = ["serde"], optional = true }
+norito = { path = "../../../iroha/crates/norito", default-features = false, optional = true }
+serde = { version = "1", optional = true }
+serde_json = { version = "1", optional = true }
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "sp-runtime-interface/std",
+    "sp-std/std",
+    "dep:iroha_crypto",
+    "dep:iroha_data_model",
+    "dep:iroha_sccp",
+    "iroha_sccp/std",
+    "dep:norito",
+    "dep:serde",
+    "dep:serde_json",
+]

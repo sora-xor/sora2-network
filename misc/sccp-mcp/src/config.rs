@@ -26,11 +26,9 @@ pub const DEFAULT_READ_ONLY_ALLOW_TOOLS: &[&str] = &[
     "sccp_validate_payload",
     "sccp_list_supported_calls",
     "sccp_get_token_state",
-    "sccp_get_remote_token",
-    "sccp_get_domain_endpoint",
-    "sccp_preflight_activation",
-    "sccp_get_light_client_state",
     "sccp_get_message_status",
+    "nexus_sccp_get_bundle",
+    "nexus_sccp_build_sora_call",
     "sora_sccp_build_call",
     "sora_sccp_estimate_fee",
     "evm_sccp_read_contract",
@@ -79,6 +77,7 @@ fn default_block_number_bytes() -> u8 {
 #[serde(rename_all = "snake_case")]
 pub enum NetworkKind {
     Sora,
+    Nexus,
     Evm,
     Solana,
     Ton,
@@ -88,6 +87,7 @@ impl std::fmt::Display for NetworkKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let text = match self {
             NetworkKind::Sora => "sora",
+            NetworkKind::Nexus => "nexus",
             NetworkKind::Evm => "evm",
             NetworkKind::Solana => "solana",
             NetworkKind::Ton => "ton",

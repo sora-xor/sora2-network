@@ -35,6 +35,8 @@
 
 #[macro_use]
 mod service;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod cli;
 mod command;
 mod data_feed_metrics;

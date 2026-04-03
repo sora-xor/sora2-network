@@ -39,3 +39,6 @@ misc/sccp/logs/
 pallets/sccp/fuzz/corpus/
 pallets/sccp/fuzz/artifacts/
 pallets/sccp/fuzz/Cargo.lock
+
+# Generated security docs
+docs/security*

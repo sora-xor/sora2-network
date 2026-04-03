@@ -1,5 +1,17 @@
 # sccp-bsc
 
+Migration note: this package still describes and implements the pre-Nexus SORA BEEFY/MMR verifier
+model. The active SCCP hub is now Nexus in `../iroha`; treat this directory as pending downstream
+verifier migration.
+
+Current Nexus-native surfaces in this repo:
+- `npm run build-router-call-from-nexus-bundle`
+- `npm run test:nexus-bundle-router-call`
+- `scripts/sccp_e2e_adapter.sh mint_verify` consumes `SCCP_HUB_BUNDLE_*` artifacts when present
+
+The legacy `SoraBeefyLightClientVerifier` contract remains in-tree for historical/reference work,
+but it is not the active E2E or operator-tooling path anymore.
+
 SORA Cross-Chain Protocol (SCCP) contracts for EVM chains (BSC).
 
 See `contracts/` for:

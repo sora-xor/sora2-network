@@ -53,7 +53,6 @@ use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use frame_support::weights::WeightToFee;
 use frame_system::RawOrigin;
-use sccp::SccpAssetChecker;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
@@ -295,7 +294,6 @@ impl<T: Config> IncomingTransfer<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
-        self.ensure_not_sccp_asset()?;
         if self.should_take_fee {
             let transfer_fee = Self::fee_amount();
             ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);
@@ -305,7 +303,6 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
     pub fn prepare(&self) -> Result<(), DispatchError> {
-        self.ensure_not_sccp_asset()?;
         let generic_network_id =
             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
         let asset_kind = if self.asset_kind.is_owned() {
@@ -327,15 +324,6 @@ impl<T: Config> IncomingTransfer<T> {
             }
             Ok(())
         })
-    }
-
-    fn ensure_not_sccp_asset(&self) -> Result<(), DispatchError> {
-        let common_asset_id: common::AssetIdOf<T> = self.asset_id.into();
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-            Error::<T>::SccpAssetNotAllowed
-        );
-        Ok(())
     }
 
     /// Unreserves previously reserved amount of funds if the asset kind is owned.

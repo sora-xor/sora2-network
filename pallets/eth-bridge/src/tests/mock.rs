@@ -70,8 +70,8 @@ use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use hex_literal::hex;
 use parking_lot::RwLock;
+use permissions::{Scope, BURN, MINT};
 use rustc_hex::ToHex;
-use sccp;
 use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
 use sp_io::TestExternalities;
@@ -240,14 +240,6 @@ impl pallet_sudo::Config for Runtime {
     type WeightInfo = ();
 }
 
-pub struct MockSccpAssetChecker;
-
-impl sccp::SccpAssetChecker<AssetId> for MockSccpAssetChecker {
-    fn is_sccp_asset(asset_id: &AssetId) -> bool {
-        SCCP_ASSETS.with(|assets| assets.borrow().contains(asset_id))
-    }
-}
-
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PeerId = crate::offchain::crypto::TestAuthId;
@@ -260,7 +252,6 @@ impl Config for Runtime {
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    type SccpAssetChecker = MockSccpAssetChecker;
     type Denominator = ();
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
 }
@@ -294,20 +285,6 @@ thread_local! {
     pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
     pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
     pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
-    pub static SCCP_ASSETS: RefCell<Vec<AssetId>> = RefCell::new(Vec::new());
-}
-
-pub fn set_sccp_asset(asset_id: AssetId, enabled: bool) {
-    SCCP_ASSETS.with(|assets| {
-        let mut assets = assets.borrow_mut();
-        if enabled {
-            if !assets.contains(&asset_id) {
-                assets.push(asset_id);
-            }
-        } else {
-            assets.retain(|id| id != &asset_id);
-        }
-    });
 }
 
 fn push_response(data: Vec<u8>) {
@@ -555,6 +532,10 @@ pub struct ExtBuilder {
     pub networks: HashMap<u32, ExtendedNetworkConfig>,
     last_network_id: u32,
     root_account_id: AccountId32,
+    authority_account: Option<AccountId32>,
+    omit_authority_account: bool,
+    seed_bridge_permissions: bool,
+    endow_reserve_assets: bool,
 }
 
 impl Default for ExtBuilder {
@@ -563,6 +544,10 @@ impl Default for ExtBuilder {
             networks: Default::default(),
             last_network_id: Default::default(),
             root_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+            authority_account: None,
+            omit_authority_account: false,
+            seed_bridge_permissions: false,
+            endow_reserve_assets: true,
         };
         builder.add_network(
             vec![
@@ -603,7 +588,32 @@ impl ExtBuilder {
             networks: Default::default(),
             last_network_id: Default::default(),
             root_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+            authority_account: None,
+            omit_authority_account: false,
+            seed_bridge_permissions: false,
+            endow_reserve_assets: true,
         }
+    }
+
+    pub fn with_authority_account(mut self, authority_account: AccountId32) -> Self {
+        self.authority_account = Some(authority_account);
+        self.omit_authority_account = false;
+        self
+    }
+
+    pub fn without_authority_account(mut self) -> Self {
+        self.omit_authority_account = true;
+        self
+    }
+
+    pub fn with_preseeded_bridge_permissions(mut self) -> Self {
+        self.seed_bridge_permissions = true;
+        self
+    }
+
+    pub fn with_endowed_reserve_assets(mut self, endow_reserve_assets: bool) -> Self {
+        self.endow_reserve_assets = endow_reserve_assets;
+        self
     }
 
     pub fn add_currency(&mut self, network_id: u32, currency: AssetConfig<AssetId>) {
@@ -649,8 +659,12 @@ impl ExtBuilder {
     pub fn build(self) -> (TestExternalities, State) {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
-        let authority_account_id =
+        let default_authority_account_id =
             bridge_multisig::Pallet::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
+        let authority_account_id = self
+            .authority_account
+            .clone()
+            .unwrap_or_else(|| default_authority_account_id.clone());
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
@@ -681,9 +695,13 @@ impl ExtBuilder {
                     )
                 },
             ));
-            endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
-                |(asset_id, _balance)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
-            ));
+            if self.endow_reserve_assets {
+                endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
+                    |(asset_id, _balance)| {
+                        (ext_network.config.bridge_account_id.clone(), asset_id, 0)
+                    },
+                ));
+            }
             bridge_accounts.push((
                 ext_network.config.bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(
@@ -778,6 +796,28 @@ impl ExtBuilder {
             .unwrap();
         }
 
+        let mut initial_permission_owners = vec![];
+        let mut initial_permissions = Vec::new();
+        if self.seed_bridge_permissions {
+            for (bridge_account_id, _) in &bridge_accounts {
+                initial_permission_owners.push((
+                    MINT,
+                    Scope::Unlimited,
+                    vec![bridge_account_id.clone()],
+                ));
+                initial_permission_owners.push((
+                    BURN,
+                    Scope::Unlimited,
+                    vec![bridge_account_id.clone()],
+                ));
+                initial_permissions.push((
+                    bridge_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![MINT, BURN],
+                ));
+            }
+        }
+
         MultisigConfig {
             accounts: bridge_accounts,
         }
@@ -785,8 +825,8 @@ impl ExtBuilder {
         .unwrap();
 
         PermissionsConfig {
-            initial_permission_owners: vec![],
-            initial_permissions: Vec::new(),
+            initial_permission_owners,
+            initial_permissions,
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -807,7 +847,11 @@ impl ExtBuilder {
 
         EthBridgeConfig {
             networks: bridge_network_configs,
-            authority_account: Some(authority_account_id.clone()),
+            authority_account: if self.omit_authority_account {
+                None
+            } else {
+                Some(authority_account_id.clone())
+            },
             val_master_contract_address: sp_core::H160::from_str(
                 "47e229aa491763038f6a505b4f85d8eb463f0962",
             )
@@ -826,7 +870,6 @@ impl ExtBuilder {
         t.register_extension(KeystoreExt::new(key_store));
         t.execute_with(|| {
             System::set_block_number(1);
-            SCCP_ASSETS.with(|assets| assets.borrow_mut().clear());
         });
 
         let state = State {

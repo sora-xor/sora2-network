@@ -107,11 +107,11 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
-      - name: Checkout bridge-relayer
+      - name: Checkout iroha
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          repository: ${{ github.repository_owner }}/bridge-relayer
-          path: siblings/bridge-relayer
+          repository: ${{ github.repository_owner }}/iroha
+          path: siblings/iroha
           token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
 
       - name: Checkout sccp-eth
@@ -153,7 +153,7 @@ jobs:
           cache-provider: "buildjet"
           workspaces: |
             . -> target
-            siblings/bridge-relayer -> target
+            siblings/iroha -> target
 
       - name: Install sccp-eth dependencies
         run: |

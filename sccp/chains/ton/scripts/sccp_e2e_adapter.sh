@@ -46,28 +46,47 @@ case "${action}" in
     cmd=(node --test tests/sccp_codec.test.mjs)
     ;;
   mint_verify)
-    cmd=(
-      node
-      --test
-      tests/sccp_jetton_flow.test.mjs
-      --test-name-pattern
-      "Jetton flow: mint|submit-signature-commitment|rejects duplicate validator signer addresses"
-    )
+    cmd=(node --test tests/nexus_bundle_master_call.test.mjs)
     ;;
   negative_verify)
-    cmd=(
-      node
-      --test
-      tests/sccp_jetton_flow.test.mjs
-      --test-name-pattern
-      "fail-closed|rejects|replay|invalid"
-    )
+    cmd=(node --test tests/nexus_bundle_master_call.test.mjs --test-name-pattern "rejects")
     ;;
   *)
     usage
     exit 2
     ;;
 esac
+
+if [[ "${action}" == "mint_verify" ]] && [[ -n "${SCCP_HUB_BUNDLE_JSON_PATH:-}" || -n "${SCCP_HUB_BUNDLE_SCALE_PATH:-}" || -n "${SCCP_HUB_BUNDLE_SCALE_HEX:-}" ]]; then
+  set +e
+  bundle_output="$(
+    cd "${repo_root}"
+    node ./scripts/build_master_call_from_nexus_bundle.mjs 2>&1
+  )"
+  status=$?
+  set -e
+
+  printf '%s\n' "${bundle_output}"
+
+  if [[ ${status} -eq 0 ]]; then
+    node -e '
+const [scenarioId, action, raw] = process.argv.slice(1);
+const details = JSON.parse(raw);
+process.stdout.write(`${JSON.stringify({
+  ok: true,
+  domain: "ton",
+  scenario_id: scenarioId,
+  action,
+  assertions: ["adapter-command-succeeded", "nexus-bundle-master-call-built"],
+  ...details,
+})}\n`);
+' "${scenario_id}" "${action}" "${bundle_output}"
+    exit 0
+  fi
+
+  emit_result_json false "${status}"
+  exit "${status}"
+fi
 
 set +e
 (

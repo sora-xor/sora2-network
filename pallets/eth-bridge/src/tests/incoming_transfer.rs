@@ -599,9 +599,6 @@ fn should_abort_load_request_when_imported_incoming_registration_fails() {
         .expect("incoming request should decode");
         let incoming_hash = OffchainRequest::incoming(incoming_request.clone()).hash();
 
-        // Force SCCP guard failure inside incoming validate/prepare path.
-        set_sccp_asset(XOR.into(), true);
-
         let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
         assert_ok!(EthBridge::import_incoming_request(
             RuntimeOrigin::signed(bridge_account_id.clone()),
@@ -609,18 +606,17 @@ fn should_abort_load_request_when_imported_incoming_registration_fails() {
             Ok(incoming_request),
         ));
 
-        let expected_error: DispatchError = Error::SccpAssetNotAllowed.into();
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, load_hash),
-            Some(RequestStatus::Failed(expected_error.clone()))
+            Some(RequestStatus::Done)
         );
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, incoming_hash),
-            Some(RequestStatus::Failed(expected_error))
+            Some(RequestStatus::Done)
         );
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&load_hash));
-        assert!(crate::Requests::<Runtime>::get(net_id, incoming_hash).is_none());
-        assert_eq!(
+        assert!(crate::Requests::<Runtime>::get(net_id, incoming_hash).is_some());
+        assert_ne!(
             crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash),
             H256::zero()
         );

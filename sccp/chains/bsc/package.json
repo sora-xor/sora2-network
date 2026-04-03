@@ -8,6 +8,8 @@
   "scripts": {
     "compile": "bash ./scripts/compile.sh",
     "test": "bash ./scripts/run_hardhat.sh test",
+    "test:nexus-bundle-router-call": "bash ./scripts/run_hardhat.sh test test/nexus-bundle-router-call.test.js",
+    "build-router-call-from-nexus-bundle": "node ./scripts/build_router_call_from_nexus_bundle.mjs",
     "build-bsc-header-rlp": "node ./scripts/build_bsc_header_rlp.mjs",
     "build-burn-proof-to-sora": "node ./scripts/build_burn_proof_to_sora.mjs",
     "encode-governance-payload": "node ./scripts/encode_governance_payload.mjs",

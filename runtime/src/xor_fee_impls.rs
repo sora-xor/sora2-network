@@ -219,6 +219,11 @@ impl CustomFees {
             | RuntimeCall::EthBridge(..)
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_condition { .. })
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_opengov_condition {
+                ..
+            })
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market { .. })
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)
             | RuntimeCall::TradingPair(..)
@@ -1022,6 +1027,24 @@ mod tests {
         });
         assert_eq!(
             CustomFees::compute_fee(&transfer_call),
+            Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+        );
+        assert_eq!(
+            CustomFees::compute_fee(&xorless_call),
+            Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+        );
+
+        let polkamarkt_call = RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market {
+            condition_id: 1,
+            close_block: 42,
+            seed_liquidity: balance!(100),
+        });
+        let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: Box::new(polkamarkt_call.clone()),
+            asset_id: None,
+        });
+        assert_eq!(
+            CustomFees::compute_fee(&polkamarkt_call),
             Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
         );
         assert_eq!(

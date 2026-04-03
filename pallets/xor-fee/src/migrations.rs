@@ -126,6 +126,7 @@ pub mod v2 {
     use frame_support::weights::Weight;
     use frame_support::{__private::log::info, traits::StorageVersion};
     use frame_system::pallet_prelude::BlockNumberFor;
+    use sp_std::vec::Vec;
 
     use crate::*;
 

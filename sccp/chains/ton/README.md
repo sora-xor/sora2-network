@@ -1,5 +1,17 @@
 # sccp-ton
 
+Migration note: this package still describes and implements the pre-Nexus SORA BEEFY/MMR verifier
+model. The active SCCP hub is now Nexus in `../iroha`; treat this directory as pending downstream
+verifier migration.
+
+Current Nexus-native surfaces in this repo:
+- `npm run build-master-call-from-nexus-bundle`
+- `npm run test:nexus-bundle-master-call`
+- `scripts/sccp_e2e_adapter.sh mint_verify` consumes `SCCP_HUB_BUNDLE_*` artifacts when present
+
+The legacy TON verifier/light-client contracts remain in-tree for historical/reference work, but
+they are not the active E2E or operator-tooling path anymore.
+
 SORA Cross-Chain Protocol (SCCP) components for TON (Jetton-based).
 
 This repo contains:

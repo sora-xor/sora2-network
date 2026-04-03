@@ -36,13 +36,19 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    AssetManager, AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    AssetId32, AssetManager, AssetName, AssetSymbol, Balance, DEXId, DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::pallet_prelude::Zero;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_std::prelude::*;
+
+const BENCHMARK_TARGET_ASSET_SYMBOL: &[u8] = b"DOT";
+const BENCHMARK_TARGET_ASSET_NAME: &[u8] = b"Polkadot Token";
+const BENCHMARK_TARGET_ASSET: AssetId32<common::PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
+));
 
 pub const DEX: DEXId = DEXId::Polkaswap;
 
@@ -66,9 +72,9 @@ benchmarks! {
         frame_system::Pallet::<T>::inc_providers(&caller);
         let _ = T::AssetManager::register_asset_id(
             caller.clone(),
-            DOT.into(),
-            AssetSymbol(b"DOT".to_vec()),
-            AssetName(b"Polkadot Token".to_vec()),
+            BENCHMARK_TARGET_ASSET.into(),
+            AssetSymbol(BENCHMARK_TARGET_ASSET_SYMBOL.to_vec()),
+            AssetName(BENCHMARK_TARGET_ASSET_NAME.to_vec()),
             DEFAULT_BALANCE_PRECISION,
             Balance::zero(),
             true,
@@ -78,13 +84,13 @@ benchmarks! {
         );
         let trading_pair = TradingPair::<T> {
             base_asset_id: XOR.into(),
-            target_asset_id: DOT.into(),
+            target_asset_id: BENCHMARK_TARGET_ASSET.into(),
         };
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
         XOR.into(),
-        DOT.into()
+        BENCHMARK_TARGET_ASSET.into()
     )
     verify {
         assert_last_event::<T>(

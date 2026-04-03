@@ -6,7 +6,6 @@
 use crate as sccp;
 use bridge_types::traits::AuxiliaryDigestHandler;
 use bridge_types::types::AuxiliaryDigestItem;
-use codec::Encode;
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_common_config, mock_currencies_config, mock_frame_system_config,
@@ -16,10 +15,8 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use frame_system;
 use orml_traits::parameter_type_with_key;
 use sp_core::crypto::AccountId32;
-use sp_core::H256;
 use sp_runtime::traits::Convert;
 use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
@@ -46,10 +43,6 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId = common::AssetId32 { code: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], phantom: PhantomData };
-    pub const SccpMaxRemoteTokenIdLen: u32 = 64;
-    pub const SccpMaxDomains: u32 = 16;
-    pub const SccpMaxBscValidators: u32 = 64;
-    pub const SccpMaxAttesters: u32 = 64;
 }
 
 parameter_type_with_key! {
@@ -94,27 +87,20 @@ impl Convert<[u8; 32], AccountId> for AccountId32Converter {
 
 impl sccp::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
     type AccountIdConverter = AccountId32Converter;
     type AssetInfoProvider = Assets;
     type LegacyBridgeAssetChecker = MockLegacyBridgeChecker;
     type AuxiliaryDigestHandler = MockAuxiliaryDigestHandler;
-    type EthFinalizedBurnProofVerifier = MockEthFinalizedBurnProofVerifier;
-    type SolanaFinalizedBurnProofVerifier = MockSolanaFinalizedBurnProofVerifier;
-    type SubstrateFinalizedBurnProofVerifier = MockSubstrateFinalizedBurnProofVerifier;
-    type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
-    type MaxDomains = SccpMaxDomains;
-    type MaxBscValidators = SccpMaxBscValidators;
-    type MaxAttesters = SccpMaxAttesters;
+    type NexusSccpBurnProofVerifier = MockNexusBurnProofVerifier;
+    type NexusSccpGovernanceProofVerifier = MockNexusGovernanceProofVerifier;
     type WeightInfo = ();
 }
 
 thread_local! {
     static LEGACY_BRIDGE_ASSETS: RefCell<BTreeSet<AssetId>> = RefCell::new(BTreeSet::new());
     static AUX_DIGEST_ITEMS: RefCell<Vec<AuxiliaryDigestItem>> = RefCell::new(Vec::new());
-    static ETH_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
-    static SOLANA_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
-    static SUBSTRATE_FINALIZED_VERIFY_RESULT: RefCell<Option<bool>> = RefCell::new(None);
+    static NEXUS_BURN_VERIFY_RESULT: RefCell<Option<sccp::VerifiedBurnProof>> = RefCell::new(None);
+    static NEXUS_GOVERNANCE_VERIFY_RESULT: RefCell<Option<sccp::VerifiedGovernanceProof>> = RefCell::new(None);
 }
 
 pub struct MockAuxiliaryDigestHandler;
@@ -129,77 +115,36 @@ pub fn take_aux_digest_items() -> Vec<AuxiliaryDigestItem> {
     AUX_DIGEST_ITEMS.with(|v| core::mem::take(&mut *v.borrow_mut()))
 }
 
-pub struct MockEthFinalizedBurnProofVerifier;
+pub struct MockNexusBurnProofVerifier;
 
-impl sccp::EthFinalizedBurnProofVerifier for MockEthFinalizedBurnProofVerifier {
+impl sccp::NexusSccpBurnProofVerifier for MockNexusBurnProofVerifier {
     fn is_available() -> bool {
-        ETH_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
+        NEXUS_BURN_VERIFY_RESULT.with(|v| v.borrow().is_some())
     }
 
-    fn verify_finalized_burn(
-        message_id: H256,
-        payload: &sccp::BurnPayloadV1,
-        proof: &[u8],
-    ) -> Option<bool> {
-        let Some(decoded) = sccp::decode_eth_finalized_burn_proof_v1(proof) else {
-            return Some(false);
-        };
-        if decoded.version != sccp::ETH_FINALIZED_RECEIPT_BURN_PROOF_VERSION_V1 {
-            return Some(false);
-        }
-        let mut preimage = sccp::SCCP_MSG_PREFIX_BURN_V1.to_vec();
-        preimage.extend(payload.encode());
-        if message_id != H256::from_slice(&sp_io::hashing::keccak_256(&preimage)) {
-            return Some(false);
-        }
-        ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
+    fn verify_burn_proof(_proof: &[u8]) -> Option<sccp::VerifiedBurnProof> {
+        NEXUS_BURN_VERIFY_RESULT.with(|v| v.borrow().clone())
     }
 }
 
-pub fn set_eth_finalized_verify_result(result: Option<bool>) {
-    ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
+pub fn set_nexus_burn_verify_result(result: Option<sccp::VerifiedBurnProof>) {
+    NEXUS_BURN_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
 }
 
-pub struct MockSolanaFinalizedBurnProofVerifier;
+pub struct MockNexusGovernanceProofVerifier;
 
-impl sccp::SolanaFinalizedBurnProofVerifier for MockSolanaFinalizedBurnProofVerifier {
+impl sccp::NexusSccpGovernanceProofVerifier for MockNexusGovernanceProofVerifier {
     fn is_available() -> bool {
-        SOLANA_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
+        NEXUS_GOVERNANCE_VERIFY_RESULT.with(|v| v.borrow().is_some())
     }
 
-    fn verify_finalized_burn(message_id: H256, proof: &[u8]) -> Option<bool> {
-        let Some(decoded) = sccp::decode_solana_finalized_burn_proof_v1(proof) else {
-            return Some(false);
-        };
-        if decoded.public_inputs.message_id != message_id {
-            return Some(false);
-        }
-        SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
+    fn verify_governance_proof(_proof: &[u8]) -> Option<sccp::VerifiedGovernanceProof> {
+        NEXUS_GOVERNANCE_VERIFY_RESULT.with(|v| v.borrow().clone())
     }
 }
 
-pub fn set_solana_finalized_verify_result(result: Option<bool>) {
-    SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
-}
-
-pub struct MockSubstrateFinalizedBurnProofVerifier;
-
-impl sccp::SubstrateFinalizedBurnProofVerifier for MockSubstrateFinalizedBurnProofVerifier {
-    fn is_available(_source_domain: u32) -> bool {
-        SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| v.borrow().is_some())
-    }
-
-    fn verify_finalized_burn(
-        _source_domain: u32,
-        _message_id: H256,
-        _proof: &[u8],
-    ) -> Option<bool> {
-        SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow())
-    }
-}
-
-pub fn set_substrate_finalized_verify_result(result: Option<bool>) {
-    SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
+pub fn set_nexus_governance_verify_result(result: Option<sccp::VerifiedGovernanceProof>) {
+    NEXUS_GOVERNANCE_VERIFY_RESULT.with(|v| *v.borrow_mut() = result);
 }
 
 pub struct MockLegacyBridgeChecker;
@@ -210,51 +155,32 @@ impl sccp::LegacyBridgeAssetChecker<AssetId> for MockLegacyBridgeChecker {
     }
 }
 
-pub fn set_legacy_bridge_asset(asset_id: AssetId, present: bool) {
-    LEGACY_BRIDGE_ASSETS.with(|s| {
-        if present {
-            s.borrow_mut().insert(asset_id);
-        } else {
-            s.borrow_mut().remove(&asset_id);
-        }
-    })
-}
-
 pub fn alice() -> AccountId {
     AccountId32::from([1; 32])
 }
 
 pub struct ExtBuilder {
     endowed_accounts: Vec<(AccountId, AssetId, Balance)>,
-    required_domains: Option<sp_runtime::BoundedVec<u32, SccpMaxDomains>>,
 }
 
 impl Default for ExtBuilder {
     fn default() -> Self {
         Self {
             endowed_accounts: vec![(alice(), GetBaseAssetId::get(), 1u32.into())],
-            required_domains: None,
         }
     }
 }
 
 impl ExtBuilder {
-    pub fn with_required_domains(mut self, domains: Vec<u32>) -> Self {
-        self.required_domains = Some(domains.try_into().expect("required domains fit bound"));
-        self
-    }
-
     pub fn build(self) -> sp_io::TestExternalities {
         let mut t = frame_system::GenesisConfig::<Runtime>::default()
             .build_storage()
             .unwrap();
 
-        // Reset thread-local "legacy bridge" state between tests.
         LEGACY_BRIDGE_ASSETS.with(|s| s.borrow_mut().clear());
         AUX_DIGEST_ITEMS.with(|v| v.borrow_mut().clear());
-        ETH_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
-        SOLANA_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
-        SUBSTRATE_FINALIZED_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
+        NEXUS_BURN_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
+        NEXUS_GOVERNANCE_VERIFY_RESULT.with(|v| *v.borrow_mut() = None);
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self
@@ -279,13 +205,6 @@ impl ExtBuilder {
         }
         .assimilate_storage(&mut t)
         .unwrap();
-
-        // Ensure SCCP defaults (grace period + required domains) are initialized.
-        let mut sccp_genesis = sccp::GenesisConfig::<Runtime>::default();
-        if let Some(required_domains) = self.required_domains {
-            sccp_genesis.required_domains = required_domains;
-        }
-        sccp_genesis.assimilate_storage(&mut t).unwrap();
 
         t.into()
     }

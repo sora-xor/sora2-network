@@ -35,7 +35,7 @@ assert_contains() {
 assert_contains '"protocolVersion":"2024-11-05"'
 assert_contains '"name":"sccp_list_networks"'
 assert_contains '"name":"sora_sccp_build_call"'
-assert_contains '"name":"sccp_encode_attester_quorum_proof"'
+assert_contains '"name":"sccp_get_message_status"'
 assert_contains '"message_id":"0x96f68e7cb4c8d01b237295459b956d4982e521232173d3dd1dc7e25cec46d208"'
 
 echo "[smoke] MCP stdio smoke test passed"

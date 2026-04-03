@@ -119,10 +119,6 @@ pub use weights::WeightInfo;
 
 type EthAddress = H160;
 
-// SCCP assets must not be processed by the legacy Ethereum bridge.
-use sccp as sccp_pallet;
-use sccp_pallet::SccpAssetChecker;
-
 pub mod weights;
 
 mod benchmarking;
@@ -434,9 +430,6 @@ pub mod pallet {
             Description,
         >;
 
-        /// SCCP asset checker. SCCP-managed assets must not be processed by this pallet.
-        type SccpAssetChecker: sccp_pallet::SccpAssetChecker<common::AssetIdOf<Self>>;
-
         type Denominator: common::Denominator<Self::AssetId, Balance>;
         /// Maximum number of requests that can be queued per network.
         type MaxRequestsPerQueue: Get<u32>;
@@ -575,11 +568,6 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-                Error::<T>::SccpAssetNotAllowed
-            );
             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
@@ -663,11 +651,6 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             debug!("called transfer_to_sidechain");
             let from = ensure_signed(origin)?;
-            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-                Error::<T>::SccpAssetNotAllowed
-            );
             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             Self::add_request(&OffchainRequest::outgoing(OutgoingRequest::Transfer(
@@ -1104,11 +1087,6 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
-            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-                Error::<T>::SccpAssetNotAllowed
-            );
             ensure!(
                 !Self::has_active_outgoing_transfer_request(network_id, &asset_id),
                 Error::<T>::ActiveOutgoingTransferRequest
@@ -1140,11 +1118,6 @@ pub mod pallet {
                 asset_id
             );
             ensure_root(origin)?;
-            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-                Error::<T>::SccpAssetNotAllowed
-            );
             T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             ensure!(
                 !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
@@ -1222,8 +1195,6 @@ pub mod pallet {
         AccountNotFound,
         /// Forbidden.
         Forbidden,
-        /// SCCP-managed assets are not allowed to be bridged via this pallet.
-        SccpAssetNotAllowed,
         /// Request is already registered.
         RequestIsAlreadyRegistered,
         /// Failed to load sidechain transaction.
@@ -1669,8 +1640,18 @@ pub mod pallet {
 
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
+            #[cfg(test)]
+            let authority_account = Some(
+                <T as frame_system::Config>::AccountId::decode(
+                    &mut sp_runtime::traits::TrailingZeroInput::zeroes(),
+                )
+                .expect("trailing zero input should decode a test authority account"),
+            );
+            #[cfg(not(test))]
+            let authority_account = Default::default();
+
             Self {
-                authority_account: Default::default(),
+                authority_account,
                 xor_master_contract_address: Default::default(),
                 val_master_contract_address: Default::default(),
                 networks: Default::default(),
@@ -1681,23 +1662,22 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
-            if let Some(authority_account) = self.authority_account.as_ref() {
-                AuthorityAccount::<T>::put(authority_account);
-            } else {
-                log::warn!("EthBridge genesis authority account is not configured");
-            }
+            AuthorityAccount::<T>::put(
+                self.authority_account
+                    .as_ref()
+                    .expect("EthBridge genesis authority account is not configured"),
+            );
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
             for network in &self.networks {
                 let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
-                if frame_system::Pallet::<T>::inc_consumers(&peers_account_id).is_err() {
-                    log::error!(
-                        "EthBridge genesis failed to increase consumers for bridge account: {:?}",
+                frame_system::Pallet::<T>::inc_consumers(&peers_account_id).unwrap_or_else(|_| {
+                    panic!(
+                        "EthBridge genesis failed to increase consumers for bridge account {:?}",
                         peers_account_id
-                    );
-                    continue;
-                }
+                    )
+                });
                 BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
                 BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
@@ -1722,34 +1702,32 @@ pub mod pallet {
                 let scope = Scope::Unlimited;
                 let permission_ids = [MINT, BURN];
                 for permission_id in &permission_ids {
-                    if let Err(e) = permissions::Pallet::<T>::assign_permission(
+                    permissions::Pallet::<T>::assign_permission(
                         peers_account_id.clone(),
                         &peers_account_id,
                         *permission_id,
                         scope,
-                    ) {
-                        log::error!(
+                    )
+                    .unwrap_or_else(|error| {
+                        panic!(
                             "EthBridge genesis failed to assign permission {:?} to {:?}: {:?}",
-                            permission_id,
-                            peers_account_id,
-                            e
-                        );
-                    }
+                            permission_id, peers_account_id, error
+                        )
+                    });
                 }
                 for (asset_id, balance) in &network.reserves {
-                    if let Err(e) = assets::Pallet::<T>::mint_to(
+                    assets::Pallet::<T>::mint_to(
                         asset_id,
                         &peers_account_id,
                         &peers_account_id,
                         *balance,
-                    ) {
-                        log::error!(
+                    )
+                    .unwrap_or_else(|error| {
+                        panic!(
                             "EthBridge genesis failed to mint reserve {:?} for asset {:?}: {:?}",
-                            balance,
-                            asset_id,
-                            e
-                        );
-                    }
+                            balance, asset_id, error
+                        )
+                    });
                 }
                 NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             }
@@ -1946,12 +1924,6 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnsupportedAssetPrecision
         );
         let bridge_account = Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
-        let next_asset_id = assets::Pallet::<T>::gen_asset_id(&bridge_account);
-        let common_asset_id: common::AssetIdOf<T> = next_asset_id.into();
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-            Error::<T>::SccpAssetNotAllowed
-        );
         let asset_id = assets::Pallet::<T>::register_from(
             &bridge_account,
             symbol,
@@ -2099,7 +2071,7 @@ impl<T: Config> Pallet<T> {
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         RequestApprovers::<T>::insert(net_id, &hash, &approvers);
-        if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
+        if current_status == RequestStatus::Pending && approvers.len() == need_sigs {
             if let Err(err) = request.finalize(hash) {
                 error!("Outgoing request finalization failed: {:?}", err);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
@@ -2202,10 +2174,6 @@ impl<T: Config>
         let Ok(network_id) = Self::ensure_generic_network(network_id) else {
             return false;
         };
-        let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-        if T::SccpAssetChecker::is_sccp_asset(&common_asset_id) {
-            return false;
-        }
         RegisteredAsset::<T>::contains_key(network_id, &asset_id)
     }
 
@@ -2218,11 +2186,6 @@ impl<T: Config>
     ) -> Result<H256, DispatchError> {
         debug!("called BridgeApp::transfer");
         let network_id = Self::ensure_generic_network(network_id)?;
-        let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-            Error::<T>::SccpAssetNotAllowed
-        );
         let nonce = frame_system::Pallet::<T>::account_nonce(&sender);
         let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
         let request = OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer {
@@ -2259,10 +2222,6 @@ impl<T: Config>
             return vec![];
         };
         RegisteredAsset::<T>::iter_prefix(network_id)
-            .filter(|(asset_id, _kind)| {
-                let common_asset_id: common::AssetIdOf<T> = (*asset_id).into();
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id)
-            })
             .map(|(asset_id, _kind)| {
                 let evm_address =
                     RegisteredSidechainToken::<T>::get(network_id, &asset_id).map(|x| H160(x.0));

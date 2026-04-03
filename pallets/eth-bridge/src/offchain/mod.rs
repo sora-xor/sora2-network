@@ -64,7 +64,6 @@ use hex_literal::hex;
 #[allow(unused_imports)]
 pub use http::*;
 use rustc_hex::ToHex;
-use sccp::SccpAssetChecker;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::ByteArray;
@@ -323,11 +322,6 @@ impl<T: Config> Pallet<T> {
                     return Ok(None);
                 }
             };
-            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-                Error::<T>::SccpAssetNotAllowed
-            );
             Ok(Some((
                 asset_id,
                 Self::registered_asset(network_id, &asset_id).unwrap_or(AssetKind::Sidechain),
@@ -338,11 +332,6 @@ impl<T: Config> Pallet<T> {
             if matches!(asset_kind, None | Some(AssetKind::Sidechain)) {
                 fail!(Error::<T>::UnknownAssetId);
             }
-            let common_asset_id: common::AssetIdOf<T> = asset_id.into();
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-                Error::<T>::SccpAssetNotAllowed
-            );
             Ok(Some((asset_id, AssetKind::Thischain)))
         }
     }

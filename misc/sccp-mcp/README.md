@@ -9,6 +9,9 @@ Stateless MCP (`stdio`) server for SCCP operations across:
 - `sccp/chains/sol`
 - `sccp/chains/ton`
 
+In the current architecture, SORA2 is a spoke. Hub proof publication and governance authority live
+in Nexus (`../iroha`).
+
 ## Design
 
 - External signer only: server never stores private keys.
@@ -58,8 +61,8 @@ Optional env overrides:
 - `SORA_WS_URL` (default: `ws://127.0.0.1:9944`)
 - `MCP_NETWORK` (default: `sora_testnet`)
 - `SIGNER_URI` (default: `//Alice`)
-- `SCCP_CALL_NAME` (default: `set_outbound_domain_paused`)
-- `SCCP_CALL_ARGS` (JSON; default: `{"domain_id":1,"paused":false}`)
+- `SCCP_CALL_NAME` (default: `burn`)
+- `SCCP_CALL_ARGS` (JSON; default: `{"asset_id":"0x1111111111111111111111111111111111111111111111111111111111111111","amount":"1","dest_domain":1,"recipient":"0x0000000000000000000000002222222222222222222222222222222222222222"}`)
 - `WATCH_TIMEOUT_MS` (default: `120000`)
 - `CONNECT_TIMEOUT_MS` (default: `15000`)
 - `SCCP_MCP_AUTH_TOKEN` (required unless `[auth].required_token` is set directly)
@@ -94,16 +97,16 @@ Global:
 - `sccp_health`
 - `sccp_get_message_id`
 - `sccp_validate_payload`
-- `sccp_encode_attester_quorum_proof`
 - `sccp_list_supported_calls`
+
+Nexus SCCP:
+
+- `nexus_sccp_get_bundle`
+- `nexus_sccp_build_sora_call`
 
 SORA SCCP:
 
 - `sccp_get_token_state`
-- `sccp_get_remote_token`
-- `sccp_get_domain_endpoint`
-- `sccp_preflight_activation` (checks per-domain remote token/endpoint readiness before activation)
-- `sccp_get_light_client_state`
 - `sccp_get_message_status`
 - `sora_sccp_build_call` (returns SCALE `call_data_hex`)
 - `sora_sccp_estimate_fee`
@@ -112,7 +115,7 @@ SORA SCCP:
 EVM SCCP (`sccp/chains/eth`, `sccp/chains/bsc`, `sccp/chains/tron`):
 
 - `evm_sccp_read_contract`
-- `evm_sccp_build_burn_proof` (calls `eth_getProof` and returns SCALE `EvmBurnProofV1` bytes for `pallet-sccp`)
+- `evm_sccp_build_burn_proof` (calls `eth_getProof` and returns SCALE `EvmBurnProofV1` bytes for Nexus SCCP hub ingestion)
 - `evm_sccp_build_tx`
 - `evm_sccp_submit_signed_tx`
 
@@ -130,10 +133,13 @@ TON SCCP (`sccp/chains/ton`):
 
 ## Notes
 
-- `sora_sccp_build_call` returns unsigned call envelopes for external signing workflow.
-- `evm_sccp_build_burn_proof` accepts either `payload` or `message_id`, computes the canonical `burns_slot_base = keccak256(messageId || u256(mapping_slot))`, fetches proof data from the configured EVM RPC using that raw slot preimage, reports the derived `storage_trie_key = keccak256(burns_slot_base)`, and returns `proof_scale_hex` ready for `sccp.mint_from_proof` or `sccp.attest_burn`.
+- `sora_sccp_build_call` now exposes only the live SORA2 spoke extrinsics: `burn`, `mint_from_proof`, `add_token_from_proof`, `pause_token_from_proof`, and `resume_token_from_proof`.
+- `nexus_sccp_get_bundle` fetches finalized burn/governance bundles from Nexus Torii in JSON and/or Norito form.
+- `nexus_sccp_build_sora_call` fetches a Nexus bundle and returns the matching proof-only SORA spoke extrinsic payload for external signing.
+- `sccp_get_message_status` reflects the current spoke storage layout: `Burns`, `ProcessedInbound`, and `AppliedGovernance`.
+- `evm_sccp_build_burn_proof` accepts either `payload` or `message_id`, computes the canonical `burns_slot_base = keccak256(messageId || u256(mapping_slot))`, fetches proof data from the configured EVM RPC using that raw slot preimage, reports the derived `storage_trie_key = keccak256(burns_slot_base)`, and returns `proof_scale_hex` for submission to the Nexus hub in `../iroha`.
 - SORA call building requires correct `sccp_pallet_index` in profile (or `pallet_index` argument override).
-- `block_number_bytes` controls SCALE encoding width for SORA `BlockNumber` arguments (`4` or `8`).
+- Nexus Torii profiles should use `kind = "nexus"` and point `rpc_url` at the Torii HTTP base URL.
 - `sol_sccp_build_transaction` and `ton_sccp_build_message` return signer-oriented templates (not signed payloads).
 - The server can restrict tool access via `[policy]` in `config.toml`.
 - Clients must include `"auth_token"` in `params` for `tools/list` and `tools/call`.

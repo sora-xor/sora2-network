@@ -126,6 +126,14 @@ impl<T: frame_system::Config> bridge_data_signer::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+	/// Storage: BridgeDataSigner Peers (r:0 w:1)
+	/// Proof: BridgeDataSigner Peers (max_values: None, max_size: Some(1684), added: 4159, mode: MaxEncodedLen)
+	/// Storage: BridgeDataSigner PendingPeerUpdate (r:0 w:1)
+	/// Proof: BridgeDataSigner PendingPeerUpdate (max_values: None, max_size: Some(34), added: 2509, mode: MaxEncodedLen)
+	fn force_set_peers() -> Weight {
+		Weight::from_parts(26_132_000, 6668)
+			.saturating_add(T::DbWeight::get().writes(2))
+	}
 	/// Storage: BridgeDataSigner Peers (r:1 w:0)
 	/// Proof: BridgeDataSigner Peers (max_values: None, max_size: Some(1684), added: 4159, mode: MaxEncodedLen)
 	/// Storage: BridgeDataSigner Approvals (r:1 w:1)
@@ -138,5 +146,25 @@ impl<T: frame_system::Config> bridge_data_signer::WeightInfo for WeightInfo<T> {
 		Weight::from_parts(62_293_000, 11600)
 			.saturating_add(T::DbWeight::get().reads(2))
 			.saturating_add(T::DbWeight::get().writes(1))
+	}
+	/// Storage: BridgeDataSigner Peers (r:1 w:0)
+	/// Proof: BridgeDataSigner Peers (max_values: None, max_size: Some(1684), added: 4159, mode: MaxEncodedLen)
+	/// Storage: BridgeDataSigner PendingApprovals (r:1 w:1)
+	/// Proof: BridgeDataSigner PendingApprovals (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
+	/// Storage: BridgeDataSigner Approvals (r:0 w:1)
+	/// Proof: BridgeDataSigner Approvals (max_values: None, max_size: Some(4966), added: 7441, mode: MaxEncodedLen)
+	fn register_pending_approval() -> Weight {
+		Weight::from_parts(24_000_000, 14108)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(2))
+	}
+	/// Storage: BridgeDataSigner PendingApprovals (r:1 w:1)
+	/// Proof: BridgeDataSigner PendingApprovals (max_values: None, max_size: Some(33), added: 2508, mode: MaxEncodedLen)
+	/// Storage: BridgeDataSigner Approvals (r:0 w:1)
+	/// Proof: BridgeDataSigner Approvals (max_values: None, max_size: Some(4966), added: 7441, mode: MaxEncodedLen)
+	fn clear_pending_approval() -> Weight {
+		Weight::from_parts(21_000_000, 9949)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(2))
 	}
 }
