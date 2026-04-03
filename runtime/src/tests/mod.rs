@@ -137,6 +137,11 @@ pub(crate) fn benchmark_genesis_preset_has_expected_shape() {
     let balances = preset["balances"]["balances"]
         .as_array()
         .expect("balances preset is an array");
+
+    #[cfg(feature = "private-net")]
+    assert_eq!(balances.len(), 6);
+
+    #[cfg(not(feature = "private-net"))]
     assert_eq!(balances.len(), 5);
 
     let assets = preset["assets"]
@@ -178,10 +183,17 @@ pub(crate) fn benchmark_genesis_preset_has_expected_shape() {
     );
 
     #[cfg(feature = "private-net")]
-    assert!(
-        preset["sudo"]["key"].is_string(),
-        "private-net benchmark preset should include sudo"
-    );
+    {
+        let sudo_key = preset["sudo"]["key"]
+            .as_str()
+            .expect("private-net benchmark preset should include sudo");
+        assert!(
+            balances
+                .iter()
+                .any(|entry| entry[0].as_str() == Some(sudo_key)),
+            "private-net benchmark preset should fund the sudo account"
+        );
+    }
 }
 
 pub(crate) fn benchmark_genesis_preset_builds_state() {
