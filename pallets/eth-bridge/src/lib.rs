@@ -1640,14 +1640,14 @@ pub mod pallet {
 
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
-            #[cfg(test)]
+            #[cfg(feature = "std")]
             let authority_account = Some(
                 <T as frame_system::Config>::AccountId::decode(
                     &mut sp_runtime::traits::TrailingZeroInput::zeroes(),
                 )
                 .expect("trailing zero input should decode a test authority account"),
             );
-            #[cfg(not(test))]
+            #[cfg(not(feature = "std"))]
             let authority_account = Default::default();
 
             Self {
