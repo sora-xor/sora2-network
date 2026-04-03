@@ -66,6 +66,19 @@ fn merge_json_patch(base: &mut Value, patch: Value) {
     }
 }
 
+fn ensure_phantom_field(config: &mut Value, key: &str) {
+    let root = config
+        .as_object_mut()
+        .expect("runtime genesis config should be a json object");
+    let section = root
+        .entry(key.to_owned())
+        .or_insert_with(|| Value::Object(Default::default()));
+    let section = section
+        .as_object_mut()
+        .expect("genesis section should be a json object");
+    section.entry("phantom".to_owned()).or_insert(Value::Null);
+}
+
 fn merged_benchmark_genesis_json() -> Vec<u8> {
     let mut default_config: Value = serde_json::from_slice(
         &genesis_builder_helper::get_preset::<crate::RuntimeGenesisConfig>(&None, |_| None)
@@ -73,6 +86,7 @@ fn merged_benchmark_genesis_json() -> Vec<u8> {
     )
     .expect("default runtime genesis config is valid json");
     merge_json_patch(&mut default_config, benchmark_preset_json());
+    ensure_phantom_field(&mut default_config, "dexapi");
     serde_json::to_vec(&default_config).expect("merged benchmark genesis should serialize")
 }
 
