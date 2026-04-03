@@ -66,15 +66,9 @@ use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 type HostFunctions = (
     sp_io::SubstrateHostFunctions,
     frame_benchmarking::benchmarking::HostFunctions,
-    solana_proof_runtime_interface::solana_proof_api::HostFunctions,
-    ton_proof_runtime_interface::ton_proof_api::HostFunctions,
 );
 #[cfg(not(feature = "runtime-benchmarks"))]
-type HostFunctions = (
-    sp_io::SubstrateHostFunctions,
-    solana_proof_runtime_interface::solana_proof_api::HostFunctions,
-    ton_proof_runtime_interface::ton_proof_api::HostFunctions,
-);
+type HostFunctions = (sp_io::SubstrateHostFunctions,);
 pub(crate) type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 type FullBackend = sc_service::TFullBackend<Block>;

@@ -94,6 +94,7 @@ if llvm_libdir=$(detect_llvm_libdir); then
 
   case "$(uname -s)" in
     Darwin)
+      export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
       export DYLD_FALLBACK_LIBRARY_PATH="$(prepend_path "${llvm_libdir}" "${DYLD_FALLBACK_LIBRARY_PATH:-}")"
       ;;
     *)

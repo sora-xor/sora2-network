@@ -50,7 +50,7 @@ def parse_args():
     council.add_argument(
         "--threshold",
         type=int,
-        help="Council voting threshold. Defaults to ceil(current_council_members / 2).",
+        help="Council voting threshold. Defaults to a strict majority of current council members.",
     )
 
     tech = subparsers.add_parser(
@@ -266,7 +266,7 @@ def handle_council_propose_majority(substrate: SubstrateInterface, args):
             "council-propose-majority requires --proposal-hash and --proposal-len, or --preimage-json"
         )
 
-    threshold = get_threshold(args, substrate, "Council", strict_majority=False)
+    threshold = get_threshold(args, substrate, "Council", strict_majority=True)
     print(
         f"Submitting Council.propose for Democracy.external_propose_majority with threshold={threshold}, "
         f"proposal_hash={proposal_hash}, proposal_len={proposal_len}"
