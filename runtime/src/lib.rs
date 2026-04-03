@@ -3245,6 +3245,9 @@ pub mod genesis_config_presets {
         hex!("9fcd1a31681bff3ca3ac195c11ba8fb0fb6bce3eb61c7cfecf4e4273ea5970af");
     const BENCHMARK_BEEFY: [u8; 33] =
         hex!("02b702b6684a4d93a2c1044e7f8c1e5b42fd4ae24fc2ea571347b45665898de590");
+    // Standard Substrate dev account (//Alice) for private-net sudo rehearsals.
+    const BENCHMARK_PRIVATE_NET_SUDO_ACCOUNT: [u8; 32] =
+        hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
 
     fn benchmark_validator_stash() -> AccountId {
         AccountId32::from(BENCHMARK_VALIDATOR_STASH).into()
@@ -3256,6 +3259,11 @@ pub mod genesis_config_presets {
 
     fn benchmark_account(seed: u8) -> AccountId {
         AccountId32::from([seed; 32]).into()
+    }
+
+    #[cfg(feature = "private-net")]
+    fn benchmark_private_net_sudo_account() -> AccountId {
+        AccountId32::from(BENCHMARK_PRIVATE_NET_SUDO_ACCOUNT).into()
     }
 
     fn benchmark_session_keys() -> opaque::SessionKeys {
@@ -3273,13 +3281,18 @@ pub mod genesis_config_presets {
 
     fn benchmark_endowments() -> Vec<(AccountId, Balance)> {
         let endowment = 1_000_000 * UNITS;
-        vec![
+        let mut balances = vec![
             (benchmark_validator_stash(), endowment),
             (benchmark_validator_account(), endowment),
             (benchmark_account(1), endowment),
             (benchmark_account(2), endowment),
             (benchmark_account(3), endowment),
-        ]
+        ];
+
+        #[cfg(feature = "private-net")]
+        balances.push((benchmark_private_net_sudo_account(), endowment));
+
+        balances
     }
 
     fn benchmark_genesis_patch() -> Value {
@@ -3335,6 +3348,8 @@ pub mod genesis_config_presets {
 
         #[cfg(feature = "private-net")]
         {
+            let sudo_account = benchmark_private_net_sudo_account();
+
             build_struct_json_patch!(RuntimeGenesisConfig {
                 balances: BalancesConfig {
                     balances: benchmark_endowments(),
@@ -3352,7 +3367,9 @@ pub mod genesis_config_presets {
                     source_types: benchmark_source_types.clone(),
                     _phantom: Default::default(),
                 },
-                sudo: SudoConfig { key: None },
+                sudo: SudoConfig {
+                    key: Some(sudo_account),
+                },
                 babe: BabeConfig {
                     authorities: vec![],
                     epoch_config: constants::BABE_GENESIS_EPOCH_CONFIG,
