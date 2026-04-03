@@ -213,10 +213,17 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
     set_balance(ALICE, USDC_ASSET, 1_000_000_000_000);
     set_balance(BOB, USDC_ASSET, 1_000_000_000_000);
 
-    let t = SystemConfig::default()
+    let mut t = SystemConfig::default()
         .build_storage()
         .expect("frame system storage build");
-    t.into()
+    crate::GenesisConfig::<Test>::default()
+        .assimilate_storage(&mut t)
+        .expect("polkamarkt genesis build");
+    let mut ext = sp_io::TestExternalities::new(t);
+    ext.execute_with(|| {
+        frame_support::traits::StorageVersion::new(1).put::<crate::Pallet<Test>>();
+    });
+    ext
 }
 
 pub fn run_to_block(n: BlockNumber) {

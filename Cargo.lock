@@ -5411,7 +5411,6 @@ dependencies = [
  "sc-transaction-pool",
  "sc-transaction-pool-api",
  "serde_json",
- "solana-proof-runtime-interface",
  "sp-api",
  "sp-block-builder",
  "sp-blockchain",
@@ -5432,7 +5431,6 @@ dependencies = [
  "substrate-frame-rpc-system",
  "substrate-prometheus-endpoint",
  "tokio",
- "ton-proof-runtime-interface",
  "trading-pair-rpc",
  "vested-rewards-rpc",
  "xor-fee",
@@ -5589,7 +5587,6 @@ dependencies = [
  "snowbridge-beacon-primitives",
  "snowbridge-ethereum",
  "snowbridge-pallet-ethereum-client",
- "solana-proof-runtime-interface",
  "soratopia",
  "sp-api",
  "sp-block-builder",
@@ -6991,21 +6988,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iroha-proof-runtime-interface"
-version = "0.1.0"
-dependencies = [
- "iroha_crypto",
- "iroha_data_model",
- "iroha_sccp",
- "norito",
- "parity-scale-codec",
- "serde",
- "serde_json",
- "sp-runtime-interface",
- "sp-std",
-]
-
-[[package]]
 name = "iroha_audio"
 version = "2.0.0-rc.2.0"
 dependencies = [
@@ -7169,16 +7151,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "iroha_sccp"
-version = "2.0.0-rc.2.0"
-dependencies = [
- "blake2 0.10.6",
- "norito",
- "serde",
- "tiny-keccak",
 ]
 
 [[package]]
@@ -15026,22 +14998,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-proof-runtime-interface"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "blake3",
- "curve25519-dalek 4.1.3",
- "ed25519-dalek",
- "parity-scale-codec",
- "serde",
- "sha2 0.10.9",
- "sha3 0.10.8",
- "sp-runtime-interface",
- "sp-std",
-]
-
-[[package]]
 name = "sorafs_chunker"
 version = "0.1.0"
 dependencies = [
@@ -17045,19 +17001,6 @@ name = "toml_writer"
 version = "1.1.0+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d282ade6016312faf3e41e57ebbba0c073e4056dab1232ab1cb624199648f8ed"
-
-[[package]]
-name = "ton-proof-runtime-interface"
-version = "0.1.0"
-dependencies = [
- "ed25519-dalek",
- "everscale-crypto",
- "everscale-types",
- "parity-scale-codec",
- "sp-runtime-interface",
- "sp-std",
- "tl-proto",
-]
 
 [[package]]
 name = "tower"
