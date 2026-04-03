@@ -34,7 +34,42 @@ use std::{env, fs, io::ErrorKind};
 #[cfg(feature = "build-wasm-binary")]
 use substrate_wasm_builder::WasmBuilder;
 
+#[cfg(feature = "build-wasm-binary")]
+fn sanitize_wasm_builder_feature_env() {
+    // `substrate-wasm-builder` infers wasm features from `CARGO_FEATURE_*`.
+    // For optional deps that are only pulled into the native build through `std`
+    // or umbrella features, those env vars leak into the wasm build and
+    // incorrectly force extra optional dependencies into the runtime blob.
+    for feature in [
+        "CARGO_FEATURE_PALLET_MMR",
+        "CARGO_FEATURE_BEEFY_LIGHT_CLIENT",
+        "CARGO_FEATURE_BEEFY_LIGHT_CLIENT_RUNTIME_API",
+        "CARGO_FEATURE_EVM_FUNGIBLE_APP",
+        "CARGO_FEATURE_CERES_LIQUIDITY_LOCKER_BENCHMARKING",
+        "CARGO_FEATURE_DEMETER_FARMING_PLATFORM_BENCHMARKING",
+        "CARGO_FEATURE_FAUCET",
+        "CARGO_FEATURE_KENSETSU_BENCHMARKING",
+        "CARGO_FEATURE_LIQUIDITY_PROXY_BENCHMARKING",
+        "CARGO_FEATURE_ORDER_BOOK_BENCHMARKING",
+        "CARGO_FEATURE_POOL_XYK_BENCHMARKING",
+        "CARGO_FEATURE_PRESTO",
+        "CARGO_FEATURE_PSWAP_DISTRIBUTION_BENCHMARKING",
+        "CARGO_FEATURE_QA_TOOLS",
+        "CARGO_FEATURE_XST_BENCHMARKING",
+        "CARGO_FEATURE_FRAME_BENCHMARKING",
+        "CARGO_FEATURE_FRAME_TRY_RUNTIME",
+        "CARGO_FEATURE_PALLET_BEEFY",
+        "CARGO_FEATURE_PALLET_BEEFY_MMR",
+        "CARGO_FEATURE_BRIDGE_TYPES",
+    ] {
+        env::remove_var(feature);
+    }
+}
+
 fn main() {
+    #[cfg(feature = "build-wasm-binary")]
+    sanitize_wasm_builder_feature_env();
+
     #[cfg(feature = "build-wasm-binary")]
     WasmBuilder::new()
         .with_current_project()

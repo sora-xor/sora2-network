@@ -2,18 +2,21 @@ use crate::*;
 use frame_remote_externalities::{
     Builder, Mode, OfflineConfig, OnlineConfig, SnapshotConfig, Transport,
 };
-use frame_try_runtime::runtime_decl_for_try_runtime::TryRuntimeV1;
+use frame_support::migrations::MultiStepMigrator;
+use frame_support::traits::GetStorageVersion;
 use std::env::var;
 
-#[tokio::test]
-async fn run_migrations() {
+const DEFAULT_REMOTE_RPC_URL: &str = "https://ws.mof.sora.org";
+
+pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     sp_tracing::try_init_simple();
     let require_remote = var("REQUIRE_REMOTE")
         .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
         .unwrap_or(false);
 
-    let transport: Transport = var("WS")
-        .unwrap_or("https://ws.framenode-0.a1.sora2.soramitsu.co.jp:443".to_string())
+    let transport: Transport = var("REMOTE_RPC_URL")
+        .or_else(|_| var("WS"))
+        .unwrap_or(DEFAULT_REMOTE_RPC_URL.to_string())
         .into();
     let maybe_state_snapshot: Option<SnapshotConfig> = var("SNAP").map(|s| s.into()).ok();
     let builder = Builder::<Block>::default()
@@ -48,5 +51,54 @@ async fn run_migrations() {
             return;
         }
     };
-    ext.execute_with(|| Runtime::on_runtime_upgrade(frame_try_runtime::UpgradeCheckSelect::All));
+    ext.execute_with(|| {
+        Executive::execute_on_runtime_upgrade();
+
+        let mut steps = 0u32;
+        while <Runtime as frame_system::Config>::MultiBlockMigrator::ongoing() {
+            <Runtime as frame_system::Config>::MultiBlockMigrator::step();
+            steps = steps.saturating_add(1);
+            assert!(
+                steps <= 4096,
+                "multi-block migrations did not finish after {steps} steps"
+            );
+        }
+        macro_rules! assert_storage_version {
+            ($label:literal, $pallet:ty) => {{
+                let on_chain = <$pallet>::on_chain_storage_version();
+                let in_code = <$pallet>::in_code_storage_version();
+                assert_eq!(
+                    on_chain, in_code,
+                    "{}: on-chain {:?} != in-code {:?}",
+                    $label, on_chain, in_code
+                );
+            }};
+        }
+
+        assert_storage_version!("XorFee", xor_fee::Pallet<Runtime>);
+        assert_storage_version!("Staking", pallet_staking::Pallet<Runtime>);
+        assert_storage_version!("Offences", pallet_offences::Pallet<Runtime>);
+        assert_storage_version!("Session", pallet_session::Pallet<Runtime>);
+        assert_storage_version!("Grandpa", pallet_grandpa::Pallet<Runtime>);
+        assert_storage_version!("ImOnline", pallet_im_online::Pallet<Runtime>);
+        assert_storage_version!("PoolXYK", pool_xyk::Pallet<Runtime>);
+        assert_storage_version!("PswapDistribution", pswap_distribution::Pallet<Runtime>);
+        assert_storage_version!("VestedRewards", vested_rewards::Pallet<Runtime>);
+        assert_storage_version!("Identity", pallet_identity::Pallet<Runtime>);
+        assert_storage_version!("Farming", farming::Pallet<Runtime>);
+        assert_storage_version!("Band", band::Pallet<Runtime>);
+        assert_storage_version!("OracleProxy", oracle_proxy::Pallet<Runtime>);
+        assert_storage_version!(
+            "BridgeInboundChannel",
+            bridge_channel::inbound::Pallet<Runtime>
+        );
+        assert_storage_version!(
+            "SubstrateBridgeInboundChannel",
+            substrate_bridge_channel::inbound::Pallet<Runtime>
+        );
+        assert_storage_version!(
+            "SubstrateBridgeOutboundChannel",
+            substrate_bridge_channel::outbound::Pallet<Runtime>
+        );
+    });
 }

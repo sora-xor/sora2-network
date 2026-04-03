@@ -1,4 +1,4 @@
-name: SCCP Hub Matrix
+name: SCCP Nexus Hub Matrix
 
 on:
   workflow_dispatch:
@@ -55,11 +55,11 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
-      - name: Checkout bridge-relayer
+      - name: Checkout iroha
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          repository: ${{ github.repository_owner }}/bridge-relayer
-          path: siblings/bridge-relayer
+          repository: ${{ github.repository_owner }}/iroha
+          path: siblings/iroha
           token: ${{ secrets.SCCP_HUB_CHECKOUT_TOKEN || github.token }}
 
       - name: Checkout sccp-eth
@@ -140,7 +140,7 @@ jobs:
           cache-provider: "buildjet"
           workspaces: |
             . -> target
-            siblings/bridge-relayer -> target
+            siblings/iroha -> target
             siblings/sccp-sol/program -> target
             siblings/sora2-parachain -> target
 
@@ -155,10 +155,7 @@ jobs:
             fi
           done
 
-      - name: Install sibling adapters
-        run: misc/sccp-e2e/install_sibling_adapters.sh --siblings-root "$GITHUB_WORKSPACE/siblings"
-
-      - name: Run SCCP hub matrix
+      - name: Run SCCP nexus-hub matrix
         run: |
           set -euo pipefail
 
@@ -206,7 +203,7 @@ jobs:
           if [[ -f "${report_path}" ]]; then
             misc/sccp-e2e/scripts/print_report_summary.sh "${report_path}" | tee -a "$GITHUB_STEP_SUMMARY"
           else
-            echo "# SCCP Hub Matrix Summary" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "# SCCP Nexus Hub Matrix Summary" | tee -a "$GITHUB_STEP_SUMMARY"
             echo | tee -a "$GITHUB_STEP_SUMMARY"
             echo "report not found: ${report_path}" | tee -a "$GITHUB_STEP_SUMMARY"
           fi

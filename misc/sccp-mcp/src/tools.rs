@@ -1,17 +1,9 @@
 use crate::config::{Config, NetworkKind, NetworkProfile, Policy, MUTATING_TOOL_NAMES};
 use crate::error::{AppError, AppResult};
-use crate::payload::{
-    message_id, parse_hex_fixed, parse_payload, validate_payload, SCCP_DOMAIN_BSC, SCCP_DOMAIN_ETH,
-    SCCP_DOMAIN_SOL, SCCP_DOMAIN_SORA, SCCP_DOMAIN_SORA_KUSAMA, SCCP_DOMAIN_SORA_POLKADOT,
-    SCCP_DOMAIN_TON, SCCP_DOMAIN_TRON,
-};
-use crate::rpc_client::{rpc_call, with_rpc_fairness_scope};
+use crate::payload::{message_id, parse_hex_fixed, parse_payload, validate_payload};
+use crate::rpc_client::{http_get, rpc_call, with_rpc_fairness_scope};
 use crate::sora_calls::{encode_sora_call, supported_sora_calls};
-use crate::substrate_storage::{
-    decode_optional_bsc_header, decode_optional_bsc_params, decode_optional_bytes,
-    decode_optional_tron_header, decode_optional_tron_params, decode_storage_bool,
-    decode_token_state, double_map_key, map_key, storage_prefix,
-};
+use crate::substrate_storage::{decode_storage_bool, decode_token_state, map_key};
 use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine as _;
 use ethabi::{ethereum_types::U256, param_type::Reader, ParamType, Token};
@@ -57,7 +49,7 @@ fn all_tool_definitions() -> Vec<Value> {
         ),
         tool(
             "sccp_get_message_id",
-            "Compute canonical SCCP messageId = keccak256('sccp:burn:v1' || SCALE(BurnPayloadV1)).",
+            "Compute canonical SCCP messageId = keccak256('sccp:burn:v1' || canonical BurnPayloadV1 bytes).",
             json!({
                 "type":"object",
                 "required": ["payload"],
@@ -93,7 +85,7 @@ fn all_tool_definitions() -> Vec<Value> {
         ),
         tool(
             "sccp_get_token_state",
-            "Read SORA SCCP token state for an asset_id (32-byte hex).",
+            "Read SORA SCCP spoke token state for an asset_id (32-byte hex).",
             json!({
                 "type":"object",
                 "required": ["network", "asset_id"],
@@ -105,76 +97,54 @@ fn all_tool_definitions() -> Vec<Value> {
             }),
         ),
         tool(
-            "sccp_get_remote_token",
-            "Read SORA SCCP remote token id by (asset_id, domain_id).",
-            json!({
-                "type":"object",
-                "required": ["network", "asset_id", "domain_id"],
-                "properties": {
-                    "network": {"type":"string"},
-                    "asset_id": {"type":"string"},
-                    "domain_id": {"type":"integer"}
-                },
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "sccp_get_domain_endpoint",
-            "Read SORA SCCP domain endpoint id by domain_id.",
-            json!({
-                "type":"object",
-                "required": ["network", "domain_id"],
-                "properties": {
-                    "network": {"type":"string"},
-                    "domain_id": {"type":"integer"}
-                },
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "sccp_preflight_activation",
-            "Preflight-check SCCP activation readiness for an asset across required domains.",
-            json!({
-                "type":"object",
-                "required": ["network", "asset_id"],
-                "properties": {
-                    "network": {"type":"string"},
-                    "asset_id": {"type":"string"},
-                    "domain_ids": {"type":"array", "items": {"type":"integer"}}
-                },
-                "additionalProperties": false
-            }),
-        ),
-        tool(
-            "sccp_get_light_client_state",
-            "Read BSC/TRON light-client state from SORA SCCP storage.",
-            json!({
-                "type":"object",
-                "required": ["network", "domain_id"],
-                "properties": {
-                    "network": {"type":"string"},
-                    "domain_id": {"type":"integer"}
-                },
-                "additionalProperties": false
-            }),
-        ),
-        tool(
             "sccp_get_message_status",
-            "Check ProcessedInbound, AttestedOutbound and InvalidatedInbound flags for a message_id.",
+            "Check SORA SCCP spoke message status across Burns, ProcessedInbound, and AppliedGovernance.",
             json!({
                 "type":"object",
-                "required": ["network", "source_domain", "message_id"],
+                "required": ["network", "message_id"],
                 "properties": {
                     "network": {"type":"string"},
-                    "source_domain": {"type":"integer"},
                     "message_id": {"type":"string"}
                 },
                 "additionalProperties": false
             }),
         ),
         tool(
+            "nexus_sccp_get_bundle",
+            "Fetch a Nexus SCCP burn or governance bundle from Torii by canonical message_id.",
+            json!({
+                "type":"object",
+                "required": ["network", "kind", "message_id"],
+                "properties": {
+                    "network": {"type":"string"},
+                    "kind": {"type":"string", "enum": ["burn", "governance"]},
+                    "message_id": {"type":"string"},
+                    "encoding": {"type":"string", "enum": ["json", "norito", "both"]}
+                },
+                "additionalProperties": false
+            }),
+        ),
+        tool(
+            "nexus_sccp_build_sora_call",
+            "Fetch a Nexus SCCP bundle and build the matching SORA spoke proof extrinsic for external signing.",
+            json!({
+                "type":"object",
+                "required": ["network", "sora_network", "kind", "message_id"],
+                "properties": {
+                    "network": {"type":"string"},
+                    "sora_network": {"type":"string"},
+                    "kind": {"type":"string", "enum": ["burn", "governance"]},
+                    "message_id": {"type":"string"},
+                    "pallet_index": {"type":"integer"},
+                    "signer": {"type":"string"},
+                    "nonce_mode": {"type":"string"}
+                },
+                "additionalProperties": false
+            }),
+        ),
+        tool(
             "sora_sccp_build_call",
-            "Build unsigned SORA SCCP call envelope for external signing.",
+            "Build unsigned SORA SCCP spoke call envelope for external signing.",
             json!({
                 "type":"object",
                 "required": ["network", "call_name", "args"],
@@ -234,7 +204,7 @@ fn all_tool_definitions() -> Vec<Value> {
         ),
         tool(
             "evm_sccp_build_burn_proof",
-            "Build SCALE-encoded EvmBurnProofV1 bytes from eth_getProof for SORA pallet-sccp.",
+            "Build SCALE-encoded EvmBurnProofV1 source proof bytes from eth_getProof for Nexus SCCP hub ingestion.",
             json!({
                 "type":"object",
                 "required": ["network"],
@@ -386,11 +356,9 @@ pub fn dispatch(ctx: &ToolContext, name: &str, arguments: &Value) -> AppResult<V
         "sccp_validate_payload" => sccp_validate_payload(arguments),
         "sccp_list_supported_calls" => sccp_list_supported_calls(ctx, arguments),
         "sccp_get_token_state" => sccp_get_token_state(ctx, arguments),
-        "sccp_get_remote_token" => sccp_get_remote_token(ctx, arguments),
-        "sccp_get_domain_endpoint" => sccp_get_domain_endpoint(ctx, arguments),
-        "sccp_preflight_activation" => sccp_preflight_activation(ctx, arguments),
-        "sccp_get_light_client_state" => sccp_get_light_client_state(ctx, arguments),
         "sccp_get_message_status" => sccp_get_message_status(ctx, arguments),
+        "nexus_sccp_get_bundle" => nexus_sccp_get_bundle(ctx, arguments),
+        "nexus_sccp_build_sora_call" => nexus_sccp_build_sora_call(ctx, arguments),
         "sora_sccp_build_call" => sora_sccp_build_call(ctx, arguments),
         "sora_sccp_estimate_fee" => sora_sccp_estimate_fee(ctx, arguments),
         "sora_sccp_submit_signed_extrinsic" => sora_sccp_submit_signed_extrinsic(ctx, arguments),
@@ -475,6 +443,7 @@ fn sccp_health(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
         let profile = ctx.config.network(&name)?;
         let status = match profile.kind {
             NetworkKind::Sora => sora_health(profile),
+            NetworkKind::Nexus => nexus_health(profile),
             NetworkKind::Evm => evm_health(profile),
             NetworkKind::Solana => solana_health(profile),
             NetworkKind::Ton => ton_health(profile),
@@ -519,6 +488,21 @@ fn sora_health(profile: &NetworkProfile) -> AppResult<Value> {
             "expected": expected_genesis,
             "matches_expected": genesis_match,
         }
+    }))
+}
+
+fn nexus_health(profile: &NetworkProfile) -> AppResult<Value> {
+    let url = format!("{}/v1/health", profile.rpc_url.trim_end_matches('/'));
+    let response = http_get(&url, Some("application/json"))?;
+    let body: Value = serde_json::from_slice(&response.body).map_err(|err| {
+        AppError::Rpc(format!(
+            "Nexus health response from {url} was not valid JSON: {err}"
+        ))
+    })?;
+    Ok(json!({
+        "health_url": url,
+        "content_type": response.content_type,
+        "body": body,
     }))
 }
 
@@ -605,6 +589,10 @@ fn sccp_list_supported_calls(ctx: &ToolContext, args: &Value) -> AppResult<Value
                 })
             })
             .collect::<Vec<Value>>(),
+        NetworkKind::Nexus => vec![
+            json!("GET /v1/sccp/proofs/burn/{message_id}"),
+            json!("GET /v1/sccp/proofs/governance/{message_id}"),
+        ],
         NetworkKind::Evm => vec![
             json!("burnToDomain(bytes32,uint256,uint32,bytes32)"),
             json!("mintFromProof(uint32,bytes,bytes)"),
@@ -653,273 +641,143 @@ fn sccp_get_token_state(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
     }))
 }
 
-fn sccp_get_remote_token(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
-    let (network_name, profile) = require_sora_network(ctx, args)?;
-    let asset_id = required_string(args, "asset_id")?;
-    let asset_bytes = parse_hex_fixed(asset_id, 32, "asset_id")?;
-    let domain_id = required_u32(args, "domain_id")?;
-    let domain_bytes = domain_id.to_le_bytes();
-    let key = double_map_key("Sccp", "RemoteToken", &asset_bytes, &domain_bytes);
-    let raw = state_get_storage(&profile.rpc_url, &key)?;
-    let decoded = decode_optional_bytes(raw.as_deref())?;
-
-    Ok(json!({
-        "network": network_name,
-        "asset_id": asset_id,
-        "domain_id": domain_id,
-        "storage_key": key,
-        "raw": raw,
-        "remote_token_id": decoded,
-    }))
-}
-
-fn sccp_get_domain_endpoint(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
-    let (network_name, profile) = require_sora_network(ctx, args)?;
-    let domain_id = required_u32(args, "domain_id")?;
-    let key = map_key("Sccp", "DomainEndpoint", &domain_id.to_le_bytes());
-    let raw = state_get_storage(&profile.rpc_url, &key)?;
-    let decoded = decode_optional_bytes(raw.as_deref())?;
-
-    Ok(json!({
-        "network": network_name,
-        "domain_id": domain_id,
-        "storage_key": key,
-        "raw": raw,
-        "domain_endpoint": decoded,
-    }))
-}
-
-const SCCP_CORE_REMOTE_DOMAINS: [u32; 7] = [
-    SCCP_DOMAIN_ETH,
-    SCCP_DOMAIN_BSC,
-    SCCP_DOMAIN_SOL,
-    SCCP_DOMAIN_TON,
-    SCCP_DOMAIN_TRON,
-    SCCP_DOMAIN_SORA_KUSAMA,
-    SCCP_DOMAIN_SORA_POLKADOT,
-];
-
-fn expected_remote_id_len(domain_id: u32) -> Option<usize> {
-    match domain_id {
-        SCCP_DOMAIN_ETH | SCCP_DOMAIN_BSC | SCCP_DOMAIN_TRON => Some(20),
-        SCCP_DOMAIN_SOL | SCCP_DOMAIN_TON | SCCP_DOMAIN_SORA_KUSAMA | SCCP_DOMAIN_SORA_POLKADOT => {
-            Some(32)
-        }
-        _ => None,
-    }
-}
-
-fn domain_ids_for_preflight(args: &Value) -> AppResult<Vec<u32>> {
-    let Some(value) = args.get("domain_ids") else {
-        return Ok(SCCP_CORE_REMOTE_DOMAINS.to_vec());
-    };
-    let Value::Array(items) = value else {
-        return Err(AppError::InvalidArgument(
-            "field 'domain_ids' must be an array when provided".to_owned(),
-        ));
-    };
-    if items.is_empty() {
-        return Err(AppError::InvalidArgument(
-            "field 'domain_ids' must not be empty when provided".to_owned(),
-        ));
-    }
-
-    let mut domains = Vec::with_capacity(items.len());
-    for (idx, value) in items.iter().enumerate() {
-        let raw = value.as_u64().ok_or_else(|| {
-            AppError::InvalidArgument(format!("domain_ids[{idx}] must be an integer"))
-        })?;
-        let domain_id = u32::try_from(raw).map_err(|_| {
-            AppError::InvalidArgument(format!("domain_ids[{idx}] does not fit u32"))
-        })?;
-        if expected_remote_id_len(domain_id).is_none() {
-            return Err(AppError::InvalidArgument(format!(
-                "domain_ids[{idx}] unsupported for SCCP activation preflight: {domain_id}"
-            )));
-        }
-        if !domains.contains(&domain_id) {
-            domains.push(domain_id);
-        }
-    }
-
-    Ok(domains)
-}
-
-fn decoded_hex_len_bytes(value: Option<&str>) -> AppResult<Option<usize>> {
-    let Some(raw) = value else {
-        return Ok(None);
-    };
-    let normalized = raw.strip_prefix("0x").unwrap_or(raw);
-    let bytes = hex::decode(normalized).map_err(|err| {
-        AppError::Rpc(format!(
-            "failed to decode hex value '{raw}' while preflighting: {err}"
-        ))
-    })?;
-    Ok(Some(bytes.len()))
-}
-
-fn sccp_preflight_activation(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
-    let (network_name, profile) = require_sora_network(ctx, args)?;
-    let asset_id = required_string(args, "asset_id")?;
-    let asset_bytes = parse_hex_fixed(asset_id, 32, "asset_id")?;
-    let token_state_key = map_key("Sccp", "Tokens", &asset_bytes);
-    let token_state_raw = state_get_storage(&profile.rpc_url, &token_state_key)?;
-    let token_state = decode_token_state(token_state_raw.as_deref())?;
-    let token_state_status = token_state
-        .as_ref()
-        .and_then(|value| value.get("status"))
-        .and_then(Value::as_str)
-        .map(str::to_owned);
-
-    let domain_ids = domain_ids_for_preflight(args)?;
-    let mut checks = Vec::with_capacity(domain_ids.len());
-    let mut domains_ready = true;
-
-    for domain_id in domain_ids.iter().copied() {
-        let expected_len = expected_remote_id_len(domain_id).ok_or_else(|| {
-            AppError::InvalidArgument(format!("unsupported domain for preflight: {domain_id}"))
-        })?;
-
-        let remote_key = double_map_key(
-            "Sccp",
-            "RemoteToken",
-            &asset_bytes,
-            &domain_id.to_le_bytes(),
-        );
-        let remote_raw = state_get_storage(&profile.rpc_url, &remote_key)?;
-        let remote_token_id = decode_optional_bytes(remote_raw.as_deref())?;
-        let remote_len = decoded_hex_len_bytes(remote_token_id.as_deref())?;
-        let remote_present = remote_token_id.is_some();
-        let remote_len_ok = remote_len.map(|len| len == expected_len).unwrap_or(false);
-
-        let endpoint_key = map_key("Sccp", "DomainEndpoint", &domain_id.to_le_bytes());
-        let endpoint_raw = state_get_storage(&profile.rpc_url, &endpoint_key)?;
-        let domain_endpoint = decode_optional_bytes(endpoint_raw.as_deref())?;
-        let endpoint_len = decoded_hex_len_bytes(domain_endpoint.as_deref())?;
-        let endpoint_present = domain_endpoint.is_some();
-        let endpoint_len_ok = endpoint_len.map(|len| len == expected_len).unwrap_or(false);
-
-        let ready = remote_len_ok && endpoint_len_ok;
-        domains_ready = domains_ready && ready;
-
-        checks.push(json!({
-            "domain_id": domain_id,
-            "expected_len_bytes": expected_len,
-            "ready": ready,
-            "remote_token": {
-                "present": remote_present,
-                "len_bytes": remote_len,
-                "len_ok": remote_len_ok,
-                "value": remote_token_id,
-                "storage_key": remote_key,
-                "raw": remote_raw,
-            },
-            "domain_endpoint": {
-                "present": endpoint_present,
-                "len_bytes": endpoint_len,
-                "len_ok": endpoint_len_ok,
-                "value": domain_endpoint,
-                "storage_key": endpoint_key,
-                "raw": endpoint_raw,
-            }
-        }));
-    }
-
-    let token_state_ready = matches!(token_state_status.as_deref(), Some("pending"));
-
-    Ok(json!({
-        "network": network_name,
-        "asset_id": asset_id,
-        "domain_ids": domain_ids,
-        "token_state": {
-            "storage_key": token_state_key,
-            "raw": token_state_raw,
-            "decoded": token_state,
-            "ready_for_activation": token_state_ready,
-        },
-        "domains_ready_for_activation": domains_ready,
-        "ready_for_activation": token_state_ready && domains_ready,
-        "checks": checks,
-    }))
-}
-
-fn sccp_get_light_client_state(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
-    let (network_name, profile) = require_sora_network(ctx, args)?;
-    let domain_id = required_u32(args, "domain_id")?;
-
-    match domain_id {
-        SCCP_DOMAIN_BSC => {
-            let params = value_storage("BscParams", &profile.rpc_url)?;
-            let head = value_storage("BscHead", &profile.rpc_url)?;
-            let finalized = value_storage("BscFinalized", &profile.rpc_url)?;
-            let validators = value_storage("BscValidators", &profile.rpc_url)?;
-
-            Ok(json!({
-                "network": network_name,
-                "domain_id": domain_id,
-                "params": decode_optional_bsc_params(params.as_deref())?,
-                "head": decode_optional_bsc_header(head.as_deref())?,
-                "finalized": decode_optional_bsc_header(finalized.as_deref())?,
-                "validators": decode_optional_bytes(validators.as_deref())?,
-            }))
-        }
-        SCCP_DOMAIN_TRON => {
-            let params = value_storage("TronParams", &profile.rpc_url)?;
-            let head = value_storage("TronHead", &profile.rpc_url)?;
-            let finalized = value_storage("TronFinalized", &profile.rpc_url)?;
-            let witnesses = value_storage("TronWitnesses", &profile.rpc_url)?;
-
-            Ok(json!({
-                "network": network_name,
-                "domain_id": domain_id,
-                "params": decode_optional_tron_params(params.as_deref())?,
-                "head": decode_optional_tron_header(head.as_deref())?,
-                "finalized": decode_optional_tron_header(finalized.as_deref())?,
-                "witnesses": decode_optional_bytes(witnesses.as_deref())?,
-            }))
-        }
-        _ => Err(AppError::InvalidArgument(
-            "light-client state is currently available for domain_id 2 (BSC) and 5 (TRON)"
-                .to_owned(),
-        )),
-    }
-}
-
 fn sccp_get_message_status(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
     let (network_name, profile) = require_sora_network(ctx, args)?;
-    let source_domain = required_u32(args, "source_domain")?;
     let message_id = required_string(args, "message_id")?;
     let message_bytes = parse_hex_fixed(message_id, 32, "message_id")?;
 
+    let burns_key = map_key("Sccp", "Burns", &message_bytes);
     let processed_key = map_key("Sccp", "ProcessedInbound", &message_bytes);
-    let attested_key = map_key("Sccp", "AttestedOutbound", &message_bytes);
-    let invalidated_key = double_map_key(
-        "Sccp",
-        "InvalidatedInbound",
-        &source_domain.to_le_bytes(),
-        &message_bytes,
-    );
+    let applied_governance_key = map_key("Sccp", "AppliedGovernance", &message_bytes);
 
+    let burns_raw = state_get_storage(&profile.rpc_url, &burns_key)?;
     let processed_raw = state_get_storage(&profile.rpc_url, &processed_key)?;
-    let attested_raw = state_get_storage(&profile.rpc_url, &attested_key)?;
-    let invalidated_raw = state_get_storage(&profile.rpc_url, &invalidated_key)?;
+    let applied_governance_raw = state_get_storage(&profile.rpc_url, &applied_governance_key)?;
 
+    let burn_record_present = burns_raw.is_some();
     let processed = decode_storage_bool(processed_raw.as_deref())?;
-    let attested = decode_storage_bool(attested_raw.as_deref())?;
-    let invalidated = decode_storage_bool(invalidated_raw.as_deref())?;
+    let applied_governance = decode_storage_bool(applied_governance_raw.as_deref())?;
 
     Ok(json!({
         "network": network_name,
-        "source_domain": source_domain,
         "message_id": message_id,
+        "burn_record_present": burn_record_present,
         "processed_inbound": processed,
-        "attested_outbound": attested,
-        "invalidated_inbound": invalidated,
+        "applied_governance": applied_governance,
         "keys": {
+            "burns": burns_key,
             "processed_inbound": processed_key,
-            "attested_outbound": attested_key,
-            "invalidated_inbound": invalidated_key,
+            "applied_governance": applied_governance_key,
+        },
+        "raw": {
+            "burns": burns_raw,
+            "processed_inbound": processed_raw,
+            "applied_governance": applied_governance_raw,
         }
+    }))
+}
+
+fn nexus_sccp_get_bundle(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
+    let (network_name, profile) = require_nexus_network(ctx, args)?;
+    let kind = required_string(args, "kind")?;
+    let message_id = required_string(args, "message_id")?;
+    parse_hex_fixed(message_id, 32, "message_id")?;
+    let encoding = optional_string(args, "encoding")?.unwrap_or_else(|| "both".to_owned());
+
+    let (bundle_json, bundle_norito_hex) =
+        fetch_nexus_bundle(profile, kind, message_id, &encoding)?;
+
+    Ok(json!({
+        "network": network_name,
+        "kind": kind,
+        "message_id": message_id,
+        "encoding": encoding,
+        "json_bundle": bundle_json,
+        "norito_bundle_hex": bundle_norito_hex,
+    }))
+}
+
+fn nexus_sccp_build_sora_call(ctx: &ToolContext, args: &Value) -> AppResult<Value> {
+    let (nexus_network_name, nexus_profile) = require_nexus_network(ctx, args)?;
+    let kind = required_string(args, "kind")?;
+    let message_id = required_string(args, "message_id")?;
+    parse_hex_fixed(message_id, 32, "message_id")?;
+    let (sora_network_name, sora_profile) =
+        require_named_sora_network(&ctx.config, required_string(args, "sora_network")?)?;
+    let (bundle_json, bundle_norito_hex) =
+        fetch_nexus_bundle(nexus_profile, kind, message_id, "both")?;
+
+    let call_name = match kind {
+        "burn" => "mint_from_proof",
+        "governance" => governance_bundle_call_name(&bundle_json)?,
+        other => {
+            return Err(AppError::InvalidArgument(format!(
+                "unsupported bundle kind '{other}', expected 'burn' or 'governance'"
+            )))
+        }
+    };
+
+    let block_number_bytes = sora_profile.block_number_bytes;
+    let pallet_index = if let Some(explicit) = args.get("pallet_index").and_then(Value::as_u64) {
+        u8::try_from(explicit).map_err(|_| {
+            AppError::InvalidArgument("field 'pallet_index' does not fit u8".to_owned())
+        })?
+    } else if let Some(configured) = sora_profile.sccp_pallet_index {
+        configured
+    } else {
+        return Err(AppError::InvalidArgument(
+            "SORA profile is missing sccp_pallet_index and no 'pallet_index' argument was provided"
+                .to_owned(),
+        ));
+    };
+
+    let call_args = json!({
+        "proof": bundle_norito_hex,
+    });
+    let encoded = encode_sora_call(
+        call_name,
+        &call_args,
+        pallet_index,
+        block_number_bytes,
+        ctx.config.limits.max_call_bytes,
+        ctx.config.limits.max_proof_bytes,
+    )?;
+
+    let signer = optional_string(args, "signer")?;
+    let nonce_mode = optional_string(args, "nonce_mode")?.unwrap_or_else(|| "pending".to_owned());
+    let nonce_info = if let Some(signer_account) = signer.as_deref() {
+        let nonce = rpc_call(
+            &sora_profile.rpc_url,
+            "system_accountNextIndex",
+            json!([signer_account]),
+        )?;
+        Some(json!({ "signer": signer_account, "nonce": nonce, "mode": nonce_mode }))
+    } else {
+        None
+    };
+
+    Ok(json!({
+        "nexus_network": nexus_network_name,
+        "sora_network": sora_network_name,
+        "kind": kind,
+        "message_id": message_id,
+        "bundle": bundle_json,
+        "pallet": "Sccp",
+        "call": encoded.name,
+        "pallet_index": encoded.pallet_index,
+        "call_index": encoded.call_index,
+        "block_number_bytes": block_number_bytes,
+        "args": call_args,
+        "args_hex": format!("0x{}", hex::encode(&encoded.arg_bytes)),
+        "call_data_hex": format!("0x{}", hex::encode(&encoded.call_data)),
+        "call_data_len": encoded.call_data.len(),
+        "nonce_hint": nonce_info,
+        "external_signing_required": true,
+        "notes": [
+            "This MCP server does not hold keys.",
+            "The proof argument is the Norito-encoded Nexus SCCP bundle fetched from Torii.",
+            "Use call_data_hex with your external signer stack to build/sign extrinsic, then submit via sora_sccp_submit_signed_extrinsic."
+        ]
     }))
 }
 
@@ -1133,24 +991,11 @@ fn evm_sccp_build_burn_proof(ctx: &ToolContext, args: &Value) -> AppResult<Value
     }
 
     let payload = payload_json.unwrap_or(Value::Null);
-    let suggested_call = payload
-        .as_object()
-        .and_then(|_| payload.get("dest_domain").and_then(Value::as_u64))
-        .map(|dest_domain| {
-            if dest_domain == u64::from(SCCP_DOMAIN_SORA) {
-                "mint_from_proof"
-            } else {
-                "attest_burn"
-            }
-        });
-    let call_args = suggested_call.map(|call_name| {
+    let nexus_submission = payload.as_object().map(|_| {
         json!({
-            "call_name": call_name,
-            "args": {
-                "source_domain": payload.get("source_domain").and_then(Value::as_u64),
-                "payload": payload,
-                "proof": format!("0x{}", hex::encode(&proof_bytes)),
-            }
+            "target": "../iroha Nexus SCCP hub",
+            "proof_hex": format!("0x{}", hex::encode(&proof_bytes)),
+            "note": "Submit this source proof to Nexus for hub verification and bundle publication; SORA2 no longer consumes raw spoke burn proofs directly.",
         })
     });
 
@@ -1177,7 +1022,7 @@ fn evm_sccp_build_burn_proof(ctx: &ToolContext, args: &Value) -> AppResult<Value
             "storage": artifact.storage_proof.len(),
         },
         "proof_node_bytes_total": artifact.total_proof_bytes,
-        "suggested_sora_call": call_args,
+        "suggested_nexus_submission": nexus_submission,
     }))
 }
 
@@ -1694,6 +1539,76 @@ fn ton_sccp_submit_signed_message(ctx: &ToolContext, args: &Value) -> AppResult<
     }))
 }
 
+fn fetch_nexus_bundle(
+    profile: &NetworkProfile,
+    kind: &str,
+    message_id: &str,
+    encoding: &str,
+) -> AppResult<(Value, String)> {
+    let endpoint_kind = match kind {
+        "burn" | "governance" => kind,
+        other => {
+            return Err(AppError::InvalidArgument(format!(
+                "unsupported bundle kind '{other}', expected 'burn' or 'governance'"
+            )))
+        }
+    };
+    if !matches!(encoding, "json" | "norito" | "both") {
+        return Err(AppError::InvalidArgument(format!(
+            "unsupported encoding '{encoding}', expected 'json', 'norito', or 'both'"
+        )));
+    }
+
+    let base_url = profile.rpc_url.trim_end_matches('/');
+    let url = format!("{base_url}/v1/sccp/proofs/{endpoint_kind}/{message_id}");
+
+    let bundle_json = if encoding == "norito" {
+        Value::Null
+    } else {
+        let response = http_get(&url, Some("application/json"))?;
+        serde_json::from_slice(&response.body).map_err(|err| {
+            AppError::Rpc(format!(
+                "Nexus SCCP bundle JSON from {url} was not valid JSON: {err}"
+            ))
+        })?
+    };
+
+    let bundle_norito_hex = if encoding == "json" {
+        String::new()
+    } else {
+        let response = http_get(&url, Some("application/x-norito"))?;
+        format!("0x{}", hex::encode(response.body))
+    };
+
+    Ok((bundle_json, bundle_norito_hex))
+}
+
+fn governance_bundle_call_name(bundle_json: &Value) -> AppResult<&'static str> {
+    let payload = bundle_json
+        .get("payload")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            AppError::InvalidArgument(
+                "governance bundle JSON is missing an externally-tagged 'payload' object"
+                    .to_owned(),
+            )
+        })?;
+
+    if payload.contains_key("Add") {
+        return Ok("add_token_from_proof");
+    }
+    if payload.contains_key("Pause") {
+        return Ok("pause_token_from_proof");
+    }
+    if payload.contains_key("Resume") {
+        return Ok("resume_token_from_proof");
+    }
+
+    Err(AppError::InvalidArgument(
+        "governance bundle JSON payload did not contain Add, Pause, or Resume".to_owned(),
+    ))
+}
+
 fn require_sora_network<'a>(
     ctx: &'a ToolContext,
     args: &Value,
@@ -1701,6 +1616,29 @@ fn require_sora_network<'a>(
     let network_name = required_string(args, "network")?.to_owned();
     let profile = ctx.config.network(&network_name)?;
     if profile.kind != NetworkKind::Sora {
+        return Err(AppError::UnsupportedNetworkKind(profile.kind.to_string()));
+    }
+    Ok((network_name, profile))
+}
+
+fn require_named_sora_network<'a>(
+    config: &'a Config,
+    network_name: &str,
+) -> AppResult<(String, &'a NetworkProfile)> {
+    let profile = config.network(network_name)?;
+    if profile.kind != NetworkKind::Sora {
+        return Err(AppError::UnsupportedNetworkKind(profile.kind.to_string()));
+    }
+    Ok((network_name.to_owned(), profile))
+}
+
+fn require_nexus_network<'a>(
+    ctx: &'a ToolContext,
+    args: &Value,
+) -> AppResult<(String, &'a NetworkProfile)> {
+    let network_name = required_string(args, "network")?.to_owned();
+    let profile = ctx.config.network(&network_name)?;
+    if profile.kind != NetworkKind::Nexus {
         return Err(AppError::UnsupportedNetworkKind(profile.kind.to_string()));
     }
     Ok((network_name, profile))
@@ -1813,11 +1751,6 @@ fn state_get_storage(rpc_url: &str, key: &str) -> AppResult<Option<String>> {
             "state_getStorage returned non-string value: {other}"
         ))),
     }
-}
-
-fn value_storage(storage_item: &str, rpc_url: &str) -> AppResult<Option<String>> {
-    let key = format!("0x{}", hex::encode(storage_prefix("Sccp", storage_item)));
-    state_get_storage(rpc_url, &key)
 }
 
 fn encode_abi_call(signature: &str, args: &Value) -> AppResult<String> {
@@ -2208,13 +2141,42 @@ mod tests {
         }
     }
 
+    fn context_with_network(name: &str, kind: NetworkKind) -> ToolContext {
+        let mut networks = BTreeMap::new();
+        networks.insert(
+            name.to_owned(),
+            NetworkProfile {
+                kind,
+                rpc_url: "http://127.0.0.1:8080".to_owned(),
+                ws_url: None,
+                chain_id: None,
+                genesis_hash: None,
+                ss58_prefix: None,
+                sccp_pallet_index: None,
+                block_number_bytes: 4,
+                router_address: None,
+                notes: None,
+            },
+        );
+
+        ToolContext {
+            config: Config {
+                limits: Limits::default(),
+                policy: Policy::default(),
+                auth: Auth::default(),
+                deployment: DeploymentPolicy::default(),
+                networks,
+            },
+        }
+    }
+
     #[test]
     fn high_risk_tool_classifier_matches_submit_surface() {
         assert!(is_high_risk_tool("sora_sccp_submit_signed_extrinsic"));
         assert!(is_high_risk_tool("evm_sccp_submit_signed_tx"));
         assert!(is_high_risk_tool("sol_sccp_submit_signed_transaction"));
         assert!(is_high_risk_tool("ton_sccp_submit_signed_message"));
-        assert!(!is_high_risk_tool("sccp_preflight_activation"));
+        assert!(!is_high_risk_tool("sccp_get_message_status"));
         assert!(!is_high_risk_tool("evm_sccp_build_burn_proof"));
         assert!(!is_high_risk_tool("sccp_list_networks"));
     }
@@ -2333,6 +2295,40 @@ mod tests {
     }
 
     #[test]
+    fn governance_bundle_call_name_maps_expected_variants() {
+        assert_eq!(
+            governance_bundle_call_name(&json!({ "payload": { "Add": { "target_domain": 1 } } }))
+                .expect("Add variant should map"),
+            "add_token_from_proof"
+        );
+        assert_eq!(
+            governance_bundle_call_name(&json!({ "payload": { "Pause": { "target_domain": 1 } } }))
+                .expect("Pause variant should map"),
+            "pause_token_from_proof"
+        );
+        assert_eq!(
+            governance_bundle_call_name(
+                &json!({ "payload": { "Resume": { "target_domain": 1 } } })
+            )
+            .expect("Resume variant should map"),
+            "resume_token_from_proof"
+        );
+    }
+
+    #[test]
+    fn sccp_list_supported_calls_reports_nexus_bundle_surface() {
+        let ctx = context_with_network("nexus_local", NetworkKind::Nexus);
+        let result = sccp_list_supported_calls(&ctx, &json!({ "network": "nexus_local" }))
+            .expect("nexus call surface should resolve");
+        let calls = result["supported_calls"]
+            .as_array()
+            .expect("supported_calls should be an array");
+        assert_eq!(calls.len(), 2);
+        assert_eq!(calls[0], "GET /v1/sccp/proofs/burn/{message_id}");
+        assert_eq!(calls[1], "GET /v1/sccp/proofs/governance/{message_id}");
+    }
+
+    #[test]
     fn audit_network_hint_extracts_string_or_defaults_to_unknown() {
         assert_eq!(
             audit_network_hint(&json!({"network":"sora_local"})),
@@ -2419,69 +2415,6 @@ mod tests {
                 .to_string()
                 .contains("missing integer field 'domain_id'"),
             "unexpected error: {float_value}"
-        );
-    }
-
-    #[test]
-    fn domain_ids_for_preflight_defaults_to_core_domains() {
-        let domains = domain_ids_for_preflight(&json!({}))
-            .expect("missing domain_ids should use default core domains");
-        assert_eq!(domains, SCCP_CORE_REMOTE_DOMAINS.to_vec());
-    }
-
-    #[test]
-    fn domain_ids_for_preflight_validates_and_deduplicates() {
-        let domains = domain_ids_for_preflight(&json!({
-            "domain_ids": [SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_ETH, SCCP_DOMAIN_TRON]
-        }))
-        .expect("domain_ids should parse and dedupe");
-        assert_eq!(
-            domains,
-            vec![SCCP_DOMAIN_ETH, SCCP_DOMAIN_SOL, SCCP_DOMAIN_TRON]
-        );
-    }
-
-    #[test]
-    fn domain_ids_for_preflight_rejects_invalid_payloads() {
-        let not_array = domain_ids_for_preflight(&json!({"domain_ids": "1"}))
-            .expect_err("non-array domain_ids should fail");
-        assert!(
-            not_array
-                .to_string()
-                .contains("field 'domain_ids' must be an array"),
-            "unexpected error: {not_array}"
-        );
-
-        let empty = domain_ids_for_preflight(&json!({"domain_ids": []}))
-            .expect_err("empty domain_ids should fail");
-        assert!(
-            empty.to_string().contains("must not be empty"),
-            "unexpected error: {empty}"
-        );
-
-        let unsupported = domain_ids_for_preflight(&json!({"domain_ids": [0]}))
-            .expect_err("SORA domain should be rejected for activation preflight");
-        assert!(
-            unsupported.to_string().contains("unsupported"),
-            "unexpected error: {unsupported}"
-        );
-    }
-
-    #[test]
-    fn decoded_hex_len_bytes_decodes_lengths_and_rejects_invalid_hex() {
-        assert_eq!(
-            decoded_hex_len_bytes(Some("0x0011")).expect("valid hex should decode"),
-            Some(2)
-        );
-        assert_eq!(
-            decoded_hex_len_bytes(None).expect("missing value should map to None"),
-            None
-        );
-
-        let err = decoded_hex_len_bytes(Some("0xzz")).expect_err("invalid hex should fail");
-        assert!(
-            err.to_string().contains("failed to decode hex value"),
-            "unexpected error: {err}"
         );
     }
 
@@ -3521,9 +3454,12 @@ mod tests {
             "sora_sccp_build_call",
             &json!({
                 "network": "sora_local",
-                "call_name": "add_token",
+                "call_name": "burn",
                 "args": {
-                    "asset_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    "asset_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "amount": "1",
+                    "dest_domain": 1,
+                    "recipient": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
                 }
             }),
         )
@@ -3543,23 +3479,23 @@ mod tests {
             "sora_sccp_build_call",
             &json!({
                 "network": "sora_local",
-                "call_name": "add_token",
+                "call_name": "add_token_from_proof",
                 "pallet_index": 77,
                 "args": {
-                    "asset_id": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    "proof": "0x0102"
                 }
             }),
         )
         .expect("explicit pallet index should encode call");
 
         assert_eq!(result["pallet_index"], json!(77));
-        assert_eq!(result["call_index"], json!(0));
-        assert_eq!(result["call_data_len"], json!(34));
+        assert_eq!(result["call_index"], json!(2));
+        assert_eq!(result["call_data_len"], json!(5));
         let call_data = result["call_data_hex"]
             .as_str()
             .expect("call_data_hex must be present");
         assert!(
-            call_data.starts_with("0x4d00"),
+            call_data.starts_with("0x4d02080102"),
             "unexpected calldata: {call_data}"
         );
     }

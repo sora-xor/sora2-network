@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-2", default-features = false }
+sp-runtime-interface = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
 
 everscale-crypto = { version = "0.2", features = ["tl-proto"], optional = true }
 everscale-types = { version = "0.1.2", default-features = false, features = ["models", "sync"], optional = true }

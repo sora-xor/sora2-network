@@ -55,7 +55,6 @@ use sp_runtime::BuildStorage;
 use sp_runtime::{DispatchResult, MultiSignature};
 
 use crate as proxy;
-use sccp;
 
 pub type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 pub type Block = frame_system::mocking::MockBlock<Test>;
@@ -79,7 +78,6 @@ frame_support::construct_runtime!(
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         BridgeOutboundChannel: bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
         FungibleApp: evm_fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Sccp: sccp::{Pallet, Call, Storage, Event<T>},
         BridgeProxy: proxy::{Pallet, Call, Storage, Event},
     }
 );
@@ -110,31 +108,6 @@ parameter_types! {
 
 pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-
-parameter_types! {
-    pub const SccpMaxRemoteTokenIdLen: u32 = 64;
-    pub const SccpMaxDomains: u32 = 16;
-    pub const SccpMaxBscValidators: u32 = 64;
-    pub const SccpMaxAttesters: u32 = 64;
-}
-
-impl sccp::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
-    type AccountIdConverter = sp_runtime::traits::ConvertInto;
-    type AssetInfoProvider = Assets;
-    type LegacyBridgeAssetChecker = ();
-    type AuxiliaryDigestHandler = ();
-    type EthFinalizedStateProvider = ();
-    type EthZkFinalizedBurnProofVerifier = ();
-    type SolanaFinalizedBurnProofVerifier = ();
-    type SubstrateFinalizedBurnProofVerifier = ();
-    type MaxRemoteTokenIdLen = SccpMaxRemoteTokenIdLen;
-    type MaxDomains = SccpMaxDomains;
-    type MaxBscValidators = SccpMaxBscValidators;
-    type MaxAttesters = SccpMaxAttesters;
-    type WeightInfo = ();
-}
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 2048;
@@ -242,7 +215,6 @@ impl proxy::Config for Test {
     type LiberlandApp = ();
     type ParachainApp = ();
     type ReferencePriceProvider = ReferencePriceProvider;
-    type SccpAssetChecker = Sccp;
     type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }

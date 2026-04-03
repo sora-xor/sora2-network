@@ -154,13 +154,13 @@ function resolveWithVars(input, vars) {
 
 function resolveConfig(rawConfig, harnessRoot) {
   const repoRoot = path.resolve(harnessRoot, '..', '..');
-  const defaultDestinationProofToolchain = path.resolve(repoRoot, 'sccp', 'tools');
+  const defaultIrohaHub = path.resolve(repoRoot, '..', 'iroha');
   const vars = {
     harnessRoot,
     repoRoot,
     sora2Network: repoRoot,
-    bridgeRelayer: defaultDestinationProofToolchain,
-    destinationProofToolchain: defaultDestinationProofToolchain,
+    iroha: defaultIrohaHub,
+    hub: defaultIrohaHub,
     sccpEth: path.resolve(repoRoot, 'sccp', 'chains', 'eth'),
     sccpBsc: path.resolve(repoRoot, 'sccp', 'chains', 'bsc'),
     sccpSol: path.resolve(repoRoot, 'sccp', 'chains', 'sol'),
@@ -208,12 +208,14 @@ function resolveConfig(rawConfig, harnessRoot) {
   return merged;
 }
 
-function resolveDestinationProofToolchainPath(config) {
-  return config.paths.destinationProofToolchain || config.paths.bridgeRelayer;
+function resolveHubPath(config) {
+  return config.paths.hub || config.paths.iroha || config.paths.destinationProofToolchain || config.paths.bridgeRelayer;
 }
 
-function resolveDestinationProofToolchainCommand(config) {
+function resolveHubCommand(config) {
   return (
+    config.commands?.hub?.publish_bundle ||
+    config.commands?.iroha?.publish_bundle ||
     config.commands?.destinationProofToolchain?.proof_toolchain ||
     config.commands?.bridgeRelayer?.proof_toolchain
   );
@@ -509,20 +511,20 @@ function classifyFailure(step) {
   if (step.kind === 'domain' && step.action === 'burn') {
     return 'SOURCE_BURN_FAILED';
   }
-  if (step.kind === 'destinationProofToolchain' || step.kind === 'bridgeRelayer') {
-    return 'DEST_PROOF_BUILD_FAILED';
+  if (step.kind === 'hub' || step.kind === 'destinationProofToolchain' || step.kind === 'bridgeRelayer') {
+    return 'HUB_BUNDLE_PUBLICATION_FAILED';
   }
-  if (step.kind === 'domain' && step.action === 'mint_verify') {
+  if ((step.kind === 'domain' || step.kind === 'sora') && step.action === 'mint_verify') {
     return 'DEST_MINT_FAILED';
   }
   if (
     (step.kind === 'domain' && step.action === 'negative_verify') ||
-    (step.kind === 'sora' && step.action === 'negative')
+    (step.kind === 'sora' && step.action === 'negative_verify')
   ) {
     return 'INVARIANT_FAILED';
   }
   if (step.kind === 'sora') {
-    return 'SORA_ATTEST_OR_MINT_FAILED';
+    return 'SORA_SPOKE_STEP_FAILED';
   }
   return 'SCENARIO_FAILED';
 }
@@ -534,6 +536,7 @@ function buildScenarioPayload(scenario) {
     dest_domain: DOMAIN_TO_ID[scenario.dst],
     source_label: domainLabel(scenario.src),
     dest_label: domainLabel(scenario.dst),
+    hub_bundle_kind: 'burn',
   };
 }
 
@@ -560,6 +563,54 @@ function parseAdapterJson(stdout) {
     }
   }
   return null;
+}
+
+function writeScenarioContext(filePath, context) {
+  fs.writeFileSync(filePath, `${JSON.stringify(context, null, 2)}\n`, 'utf8');
+}
+
+function applyStepOutputToScenarioContext(context, step, stepOutput) {
+  if (!stepOutput || typeof stepOutput !== 'object') {
+    return;
+  }
+
+  context.step_outputs[step.name] = stepOutput;
+  if (typeof stepOutput.message_id === 'string' && stepOutput.message_id.length > 0) {
+    context.message_id = stepOutput.message_id;
+  }
+  if (typeof stepOutput.payload_hex === 'string' && stepOutput.payload_hex.length > 0) {
+    context.payload_hex = stepOutput.payload_hex;
+  }
+
+  if (step.kind === 'hub') {
+    if (typeof stepOutput.norito_bundle_hex === 'string' && stepOutput.norito_bundle_hex.length > 0) {
+      context.hub_bundle_norito_hex = stepOutput.norito_bundle_hex;
+    } else if (typeof stepOutput.bundle_norito_hex === 'string' && stepOutput.bundle_norito_hex.length > 0) {
+      context.hub_bundle_norito_hex = stepOutput.bundle_norito_hex;
+    } else if (typeof stepOutput.scale_bundle_hex === 'string' && stepOutput.scale_bundle_hex.length > 0) {
+      context.hub_bundle_norito_hex = stepOutput.scale_bundle_hex;
+    } else if (typeof stepOutput.bundle_scale_hex === 'string' && stepOutput.bundle_scale_hex.length > 0) {
+      context.hub_bundle_norito_hex = stepOutput.bundle_scale_hex;
+    }
+
+    if (stepOutput.json_bundle && typeof stepOutput.json_bundle === 'object') {
+      context.hub_bundle_json = stepOutput.json_bundle;
+    } else if (stepOutput.bundle_json && typeof stepOutput.bundle_json === 'object') {
+      context.hub_bundle_json = stepOutput.bundle_json;
+    }
+
+    if (typeof stepOutput.bundle_json_path === 'string' && stepOutput.bundle_json_path.length > 0) {
+      context.hub_bundle_json_path = stepOutput.bundle_json_path;
+    }
+    if (typeof stepOutput.bundle_norito_path === 'string' && stepOutput.bundle_norito_path.length > 0) {
+      context.hub_bundle_norito_path = stepOutput.bundle_norito_path;
+    } else if (typeof stepOutput.bundle_scale_path === 'string' && stepOutput.bundle_scale_path.length > 0) {
+      context.hub_bundle_norito_path = stepOutput.bundle_scale_path;
+    }
+    if (typeof stepOutput.kind === 'string' && stepOutput.kind.length > 0) {
+      context.hub_bundle_kind = stepOutput.kind;
+    }
+  }
 }
 
 async function runPreflight({ config, args, artifactsDir, timeoutMs, runBudget, commandEnv }) {
@@ -605,10 +656,8 @@ async function runPreflight({ config, args, artifactsDir, timeoutMs, runBudget, 
 function checkRequiredPaths(config, scenarios) {
   const required = new Map();
   required.set('sora2Network', config.paths.sora2Network);
-
-  const needDestinationProofToolchain = scenarios.some((scenario) => scenario.dst !== 'sora');
-  if (needDestinationProofToolchain) {
-    required.set('destinationProofToolchain', resolveDestinationProofToolchainPath(config));
+  if (scenarios.length > 0) {
+    required.set('hub', resolveHubPath(config));
   }
 
   const neededDomains = new Set();
@@ -645,9 +694,14 @@ async function runScenario({
 }) {
   const scenarioDir = path.join(artifactsDir, scenario.id);
   ensureDir(scenarioDir);
+  const scenarioContextPath = path.join(scenarioDir, 'scenario-context.json');
 
   const steps = [];
-  const payload = buildScenarioPayload(scenario);
+  const scenarioContext = {
+    ...buildScenarioPayload(scenario),
+    step_outputs: {},
+  };
+  writeScenarioContext(scenarioContextPath, scenarioContext);
 
   const addStep = (name, kind, domain, action, runner) => {
     steps.push({ name, kind, domain, action, runner });
@@ -670,28 +724,28 @@ async function runScenario({
     };
   };
 
-  const runDestinationProofToolchainCommand = () => {
-    const cmd = resolveDestinationProofToolchainCommand(config);
-    const cwd = resolveDestinationProofToolchainPath(config);
+  const runHubCommand = () => {
+    const cmd = resolveHubCommand(config);
+    const cwd = resolveHubPath(config);
     if (!cmd) {
       return {
         ok: false,
         skipped: true,
-        reason: 'Missing destinationProofToolchain.proof_toolchain command mapping',
+        reason: 'Missing hub.publish_bundle command mapping',
       };
     }
     if (!cwd) {
       return {
         ok: false,
         skipped: true,
-        reason: 'Missing destinationProofToolchain path',
+        reason: 'Missing hub path',
       };
     }
     return {
       type: 'command',
       cmd,
       cwd,
-      cacheKey: `destinationProofToolchain:${cwd}:${cmd}`,
+      cacheKey: `hub:${cwd}:${cmd}`,
     };
   };
 
@@ -707,12 +761,9 @@ async function runScenario({
     return {
       type: 'domain',
       mode: spec.mode,
-      cmd: spec.cmdBuilder(payload),
+      cmdBuilder: spec.cmdBuilder,
       cwd: spec.cwd,
-      cacheKey:
-        spec.mode === 'fallback'
-          ? `fallback:${domain}:${spec.cwd}:${spec.cmdBuilder(payload)}`
-          : `adapter:${domain}:${action}:${spec.cwd}`,
+      cacheMode: spec.mode,
     };
   };
 
@@ -722,40 +773,12 @@ async function runScenario({
     addStep('source_burn', 'domain', scenario.src, 'burn', runDomainAction(scenario.src, 'burn'));
   }
 
+  addStep('hub_publish_bundle', 'hub', 'hub', 'publish_bundle', runHubCommand());
+
   if (scenario.dst === 'sora') {
-    if (scenario.src === 'sora') {
-      addStep('sora_self_guard', 'sora', 'sora', 'noop', {
-        ok: false,
-        skipped: true,
-        reason: 'source and destination are both sora (filtered upstream)',
-      });
-    } else {
-      addStep(
-        'sora_mint_from_source',
-        'sora',
-        'sora',
-        'mint_from_source',
-        runSoraCommand('mint_from_source')
-      );
-    }
+    addStep('dest_mint_verify', 'sora', 'sora', 'mint_verify', runSoraCommand('mint_verify'));
   } else {
-    if (scenario.src !== 'sora') {
-      addStep('sora_attest', 'sora', 'sora', 'attest', runSoraCommand('attest'));
-    }
-    addStep(
-      'destination_proof_toolchain',
-      'destinationProofToolchain',
-      'destinationProofToolchain',
-      'proof_toolchain',
-      runDestinationProofToolchainCommand()
-    );
-    addStep(
-      'dest_mint_verify',
-      'domain',
-      scenario.dst,
-      'mint_verify',
-      runDomainAction(scenario.dst, 'mint_verify')
-    );
+    addStep('dest_mint_verify', 'domain', scenario.dst, 'mint_verify', runDomainAction(scenario.dst, 'mint_verify'));
   }
 
   const includeNegative =
@@ -765,7 +788,7 @@ async function runScenario({
 
   if (includeNegative) {
     if (scenario.dst === 'sora') {
-      addStep('negative_sora', 'sora', 'sora', 'negative', runSoraCommand('negative'));
+      addStep('negative_sora', 'sora', 'sora', 'negative_verify', runSoraCommand('negative_verify'));
     } else {
       addStep(
         'negative_dest',
@@ -801,8 +824,37 @@ async function runScenario({
     }
 
     const runner = step.runner;
-    const fromCache = commandCacheEnabled ? commandCache.get(runner.cacheKey) : null;
+    const runnerPayload = JSON.parse(JSON.stringify(scenarioContext));
+    const runnerCmd =
+      typeof runner.cmdBuilder === 'function' ? runner.cmdBuilder(runnerPayload) : runner.cmd;
+    const cacheKey = runner.cmdBuilder
+      ? (
+          runner.cacheMode === 'fallback'
+            ? `fallback:${step.domain}:${runner.cwd}:${runnerCmd}`
+            : `adapter:${step.domain}:${step.action}:${runner.cwd}:${runnerCmd}`
+        )
+      : runner.cacheKey;
+    const stepEnv = {
+      ...commandEnv,
+      SCCP_SCENARIO_CONTEXT_FILE: scenarioContextPath,
+      SCCP_SCENARIO_DIR: scenarioDir,
+      SCCP_SCENARIO_ID: scenario.id,
+      SCCP_SOURCE_DOMAIN: String(DOMAIN_TO_ID[scenario.src]),
+      SCCP_DEST_DOMAIN: String(DOMAIN_TO_ID[scenario.dst]),
+      SCCP_SOURCE_LABEL: domainLabel(scenario.src),
+      SCCP_DEST_LABEL: domainLabel(scenario.dst),
+      SCCP_MESSAGE_ID: scenarioContext.message_id || '',
+      SCCP_PAYLOAD_HEX: scenarioContext.payload_hex || '',
+      SCCP_HUB_BUNDLE_KIND: scenarioContext.hub_bundle_kind || 'burn',
+      SCCP_HUB_BUNDLE_NORITO_HEX: scenarioContext.hub_bundle_norito_hex || '',
+      SCCP_HUB_BUNDLE_JSON_PATH: scenarioContext.hub_bundle_json_path || '',
+      SCCP_HUB_BUNDLE_NORITO_PATH: scenarioContext.hub_bundle_norito_path || '',
+      SCCP_HUB_BUNDLE_SCALE_HEX: scenarioContext.hub_bundle_norito_hex || '',
+      SCCP_HUB_BUNDLE_SCALE_PATH: scenarioContext.hub_bundle_norito_path || '',
+    };
+    const fromCache = commandCacheEnabled ? commandCache.get(cacheKey) : null;
     if (fromCache) {
+      const cachedStepOutput = parseAdapterJson(fromCache.result?.stdout || '');
       const cached = {
         name: step.name,
         kind: step.kind,
@@ -812,11 +864,16 @@ async function runScenario({
         ok: fromCache.ok,
         cached: true,
         mode: runner.mode || 'command',
-        cmd: runner.cmd,
+        cmd: runnerCmd,
         cwd: runner.cwd,
         log_file: fromCache.log_file,
         result: fromCache.result,
       };
+      if (cachedStepOutput) {
+        cached.step_output = cachedStepOutput;
+        applyStepOutputToScenarioContext(scenarioContext, step, cachedStepOutput);
+        writeScenarioContext(scenarioContextPath, scenarioContext);
+      }
       stepResults.push(cached);
       if (!cached.ok) {
         scenarioOk = false;
@@ -826,10 +883,10 @@ async function runScenario({
     }
 
     const result = await execCommand({
-      cmd: runner.cmd,
+      cmd: runnerCmd,
       cwd: runner.cwd,
       timeoutMs,
-      env: commandEnv,
+      env: stepEnv,
       logFile,
       dryRun: args.dryRun,
       runBudget,
@@ -844,18 +901,25 @@ async function runScenario({
       ok: result.ok,
       cached: false,
       mode: runner.mode || 'command',
-      cmd: runner.cmd,
+      cmd: runnerCmd,
       cwd: runner.cwd,
       log_file: logFile,
       result,
     };
 
+    const parsedOutput = parseAdapterJson(result.stdout);
+    if (parsedOutput) {
+      normalized.step_output = parsedOutput;
+      applyStepOutputToScenarioContext(scenarioContext, step, parsedOutput);
+      writeScenarioContext(scenarioContextPath, scenarioContext);
+    }
+
     if (normalized.mode === 'adapter') {
       if (args.dryRun) {
         normalized.adapter_output = { ok: true, dry_run: true };
       } else {
-        const parsed = parseAdapterJson(result.stdout);
-        normalized.adapter_output = parsed;
+        normalized.adapter_output = normalized.step_output || null;
+        const parsed = normalized.adapter_output;
         if (!parsed || parsed.ok !== true) {
           normalized.ok = false;
         }
@@ -865,7 +929,7 @@ async function runScenario({
     stepResults.push(normalized);
 
     if (commandCacheEnabled) {
-      commandCache.set(runner.cacheKey, {
+      commandCache.set(cacheKey, {
         ok: normalized.ok,
         log_file: normalized.log_file,
         result: normalized.result,

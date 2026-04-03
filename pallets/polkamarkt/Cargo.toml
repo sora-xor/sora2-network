@@ -11,13 +11,18 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
+common = { path = "../../common", default-features = false }
+dex-manager = { path = "../dex-manager", default-features = false }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 frame-benchmarking = { workspace = true, default-features = false, optional = true }
+pool-xyk = { path = "../pool-xyk", default-features = false }
+price-tools = { path = "../price-tools", default-features = false }
 sp-runtime = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
+trading-pair = { path = "../trading-pair", default-features = false }
 
 [dev-dependencies]
 sp-io = { workspace = true, default-features = false }
@@ -27,14 +32,19 @@ proptest = "=1.10.0"
 default = ["std"]
 std = [
     "codec/std",
+    "common/std",
+    "dex-manager/std",
     "frame-support/std",
     "frame-system/std",
     "frame-benchmarking/std",
+    "pool-xyk/std",
+    "price-tools/std",
     "scale-info/std",
     "sp-core/std",
     "sp-io/std",
     "sp-runtime/std",
     "sp-std/std",
+    "trading-pair/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking/runtime-benchmarks",

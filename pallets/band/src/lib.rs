@@ -174,7 +174,7 @@ pub mod pallet {
     use sp_std::collections::btree_set::BTreeSet;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     /// `Band` pallet is used to relay data from *BandChain* oracles to Polkaswap.
     /// This data contains information about some symbols rates, like price of some cryptocurrencies,

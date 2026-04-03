@@ -1,0 +1,54 @@
+[package]
+authors = ["Virto Network <we@virto.team>"]
+edition = '2021'
+name = "orml-payments"
+version = "1.5.0"
+license = "Apache-2.0"
+homepage = "https://github.com/virto-network/virto-node"
+repository = "https://github.com/virto-network/virto-node"
+description = "Allows users to post escrow payment on-chain"
+readme = "README.md"
+
+[dependencies]
+parity-scale-codec = { workspace = true }
+log = { workspace = true }
+scale-info = { workspace = true }
+serde = { workspace = true, optional = true }
+
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+orml-traits = {path = "../traits", version = "1.5.0", default-features = false }
+
+[dev-dependencies]
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+
+orml-tokens = { path = "../tokens", features = ["std"] }
+
+[features]
+default = [ 'std' ]
+std = [
+	'frame-support/std',
+	'frame-system/std',
+	'log/std',
+	'orml-traits/std',
+	'parity-scale-codec/std',
+	'scale-info/std',
+	'serde',
+	'sp-runtime/std',
+	'sp-std/std',
+]
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"orml-tokens/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
+]

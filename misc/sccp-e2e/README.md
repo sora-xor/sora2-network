@@ -1,70 +1,70 @@
-# SCCP Hub E2E Harness
+# SCCP Nexus-Hub E2E Harness
 
-This directory provides an SCCP matrix harness for local integration testing across:
+This harness keeps the existing `run_hub_matrix.sh` entrypoint, but its model is now:
 
-- `sora2-network`
-- `sccp/chains/eth`
-- `sccp/chains/bsc`
-- `sccp/chains/tron`
-- `sccp/chains/sol`
-- `sccp/chains/ton`
-- `sccp/tools`
+- source spoke burn
+- Nexus hub bundle publication in `../iroha`
+- destination spoke mint verification
+- optional negative verification
+
+SORA2 is treated as a spoke, not as the SCCP hub.
 
 ## What It Runs
 
-The harness builds an ordered source/destination matrix over SCCP domains.
+The harness still builds an ordered source/destination matrix over SCCP domains:
 
-- Full matrix (`--matrix full`): 56 scenarios (`8 * 7`)
-- SORA pairs (`--matrix sora-pairs`): 14 scenarios (`sora<->all domains`)
-- SORA core pairs (`--matrix sora-core-pairs`): 10 scenarios (`sora<->ETH/BSC/SOL/TON/TRON`)
+- `full`
+- `sora-pairs`
+- `sora-core-pairs`
 
-For each scenario, the harness executes these steps:
+For each scenario it executes:
 
-1. Source burn check (`sora` command or domain adapter/fallback)
-2. SORA attest/mint step (when applicable)
-3. Destination proof-toolchain check (non-SORA destination; backed by `sccp/tools/sccp-proof.sh` by default)
-4. Destination mint verification
-5. Negative verification step
+1. Source burn check on the source chain
+2. Nexus hub bundle publication/fetch check from the `hub` config block
+3. Destination mint verification on the destination chain
+4. Optional negative verification
 
-## Adapter Contract
+If a chain directory exposes `scripts/sccp_e2e_adapter.sh`, that adapter is preferred. When no
+adapter is available, the harness falls back to the commands in the active config JSON.
 
-If an SCCP chain directory exposes `scripts/sccp_e2e_adapter.sh`, it is preferred.
+## Configuration
 
-Interface:
+The active config files are:
 
-- `scripts/sccp_e2e_adapter.sh burn --json '<payload>'`
-- `scripts/sccp_e2e_adapter.sh mint_verify --json '<payload>'`
-- `scripts/sccp_e2e_adapter.sh negative_verify --json '<payload>'`
+- `misc/sccp-e2e/config.local.json`
+- `misc/sccp-e2e/config.ci.json`
+- `misc/sccp-e2e/config.release-shadow.json`
 
-Payload example:
+Important keys:
 
-```json
-{
-  "scenario_id": "01-eth-to-sol",
-  "source_domain": 1,
-  "dest_domain": 3,
-  "source_label": "eth(1)",
-  "dest_label": "sol(3)"
-}
-```
+- `paths.sora2Network`: local SORA2 repo root
+- `paths.iroha` or `paths.hub`: Nexus hub repo root
+- `commands.sora`: SORA spoke checks (`burn`, `mint_verify`, `negative_verify`)
+- `commands.hub.publish_bundle`: Nexus hub proof/bundle publication check
+- `commands.domains.*`: per-domain burn / mint / negative checks
 
-If adapter scripts are missing, the harness falls back to commands in `config.local.json`.
-Use `--strict-adapters` to fail when adapters are missing.
+When `SCCP_MESSAGE_ID` is already present in the scenario context, the default config can fetch a real
+bundle from Nexus Torii through `misc/sccp-e2e/src/fetch_nexus_bundle.js`. When that context is not
+available, the hub step falls back to the in-repo `iroha_torii` bundle endpoint tests.
 
-Notes:
-- Core SCCP adapters (`sccp-eth`, `sccp-bsc`, `sccp-tron`, `sccp-sol`, `sccp-ton`) are required.
-- `sora2-parachain` adapter install is optional; it is used for `sora_kusama` / `sora_polkadot`
-  scenarios in full-matrix runs.
+The fetched hub artifacts are stored as JSON plus Norito bytes. The harness exports
+`SCCP_HUB_BUNDLE_NORITO_PATH` / `SCCP_HUB_BUNDLE_NORITO_HEX` as the canonical proof-byte inputs and
+also mirrors them into the older `SCCP_HUB_BUNDLE_SCALE_*` names as a temporary compatibility bridge
+for downstream scripts that have not been migrated yet.
+
+The canonical hub command key is `commands.hub.publish_bundle`. Older proof-toolchain key names are
+still accepted by the script as a compatibility fallback, but the configs in this repo now point at
+`../iroha`.
 
 ## Usage
 
-Run full matrix:
+Run the default matrix:
 
 ```bash
 misc/sccp-e2e/run_hub_matrix.sh
 ```
 
-Dry run (no command execution):
+Dry run:
 
 ```bash
 misc/sccp-e2e/run_hub_matrix.sh --dry-run --skip-preflight
@@ -73,88 +73,37 @@ misc/sccp-e2e/run_hub_matrix.sh --dry-run --skip-preflight
 Single scenario:
 
 ```bash
-misc/sccp-e2e/run_hub_matrix.sh --scenario eth:sol --skip-preflight
+misc/sccp-e2e/run_hub_matrix.sh --scenario sora:eth --skip-preflight
 ```
 
-Strict adapter mode:
+Release-shadow config:
 
 ```bash
-misc/sccp-e2e/run_hub_matrix.sh --strict-adapters
-```
-
-Disable cross-scenario command cache (release-grade independence):
-
-```bash
-misc/sccp-e2e/run_hub_matrix.sh --disable-command-cache
-```
-
-Run with a config mode preset:
-
-```bash
-misc/sccp-e2e/run_hub_matrix.sh --config misc/sccp-e2e/config.ci.json --mode release
+misc/sccp-e2e/run_hub_matrix.sh --config misc/sccp-e2e/config.release-shadow.json --mode release
 ```
 
 ## Artifacts
 
-Each run writes to:
+Each run writes:
 
 - `misc/sccp-e2e/artifacts/hub-matrix-<timestamp>/report.json`
 - `misc/sccp-e2e/artifacts/hub-matrix-<timestamp>/junit.xml`
-- step logs under the same run directory
+- step logs under the same directory
+- per-scenario `scenario-context.json` files with propagated `message_id`, payload, and hub bundle artifacts
 
-`report.json` includes per-scenario step status, executed command, cwd, and log path.
-Failed scenarios are classified with:
+Useful environment variables:
+
+- `SCCP_NEXUS_TORII_URL`: override the Torii URL used by `fetch_nexus_bundle.js`
+
+Failure codes include:
 
 - `SOURCE_BURN_FAILED`
-- `SORA_ATTEST_OR_MINT_FAILED`
-- `DEST_PROOF_BUILD_FAILED`
+- `HUB_BUNDLE_PUBLICATION_FAILED`
 - `DEST_MINT_FAILED`
 - `INVARIANT_FAILED`
 - `BUDGET_EXCEEDED`
 
-## Configuration
+## CI
 
-Edit `misc/sccp-e2e/config.local.json` to tune:
-
-- timeouts and max run time
-- preflight command (`misc/sccp/run_all_tests.sh` by default)
-- SORA step commands
-- destination proof-toolchain command
-- per-domain fallback commands
-- matrix presets (`matrixPresets`)
-- mode presets (`modes`) for:
-  - mode-specific `defaults.maxMinutes`
-  - mode-specific `defaults.commandCache`
-  - mode-specific `commands.preflight.enabled`
-  - default matrix selection (`mode.matrix`)
-
-The canonical config key is `destinationProofToolchain`. The default backend now points at
-the in-repo `sccp/tools` directory.
-
-CI layout config:
-
-- `misc/sccp-e2e/config.ci.json` expects the in-repo SCCP layout under
-  `sora2-network/sccp/chains/*` and keeps preflight disabled by default.
-- `misc/sccp-e2e/config.release-shadow.json` is the release-validation default
-  used by `misc/sccp/verify_release.sh`; it is preflight-disabled and intended
-  for prod-shadow confidence runs across the in-repo SCCP chains.
-
-Local config modes:
-
-- `local`: full matrix, preflight enabled
-- `release`: full matrix, preflight disabled, command cache disabled
-- `nightly`: full matrix, preflight disabled, command cache disabled
-
-## CI Automation
-
-- Workflow: `.github/workflows/sccp_hub_matrix.yml`
-- Triggers:
-  - manual `workflow_dispatch` with mode/matrix/negative/strict/scenario options
-- Report summary script:
-  - `misc/sccp-e2e/scripts/print_report_summary.sh <report.json>`
-
-Tiered SCCP confidence gates:
-
-- PR fast gate: `.github/workflows/sccp_confidence_pr.yml`
-- Nightly exhaustive gate: `.github/workflows/sccp_confidence_nightly.yml`
-- Release gate: `.github/workflows/sccp_confidence_release.yml`
+The CI and release wrappers still invoke `misc/sccp-e2e/run_hub_matrix.sh`, but the hub repo they
+exercise is Nexus in `../iroha`, not SORA2.

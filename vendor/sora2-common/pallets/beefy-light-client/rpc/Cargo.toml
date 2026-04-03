@@ -1,0 +1,19 @@
+[package]
+name = "beefy-light-client-rpc"
+version = "0.1.0"
+edition = "2021"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
+
+[dependencies]
+serde = { version = "1.0.101", features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3" }
+jsonrpsee = { version = "0.24.10", features = ["server", "macros"] }
+sp-runtime = { workspace = true, default-features = false }
+sp-api = { workspace = true, default-features = false }
+sp-blockchain = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+beefy-light-client-runtime-api = { path = "../runtime-api" }

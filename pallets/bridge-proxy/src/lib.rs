@@ -36,10 +36,6 @@ use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
 
-// SCCP assets must not be processed by the legacy SORA bridge.
-use sccp as sccp_pallet;
-use sccp_pallet::SccpAssetChecker;
-
 pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b"bridge-fee";
 
@@ -86,8 +82,6 @@ pub mod pallet {
     {
         #[allow(deprecated)]
         type RuntimeEvent: From<Event> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
-        type SccpAssetChecker: sccp_pallet::SccpAssetChecker<AssetIdOf<Self>>;
 
         type FAApp: BridgeApp<Self::AccountId, H160, AssetIdOf<Self>, Balance>
             + EVMBridgeWithdrawFee<Self::AccountId, AssetIdOf<Self>>;
@@ -236,10 +230,6 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
             let sender = ensure_signed(origin)?;
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&asset_id),
-                Error::<T>::PathIsNotAvailable
-            );
             match recipient {
                 GenericAccount::EVM(recipient) => {
                     if T::HashiBridge::is_asset_supported(network_id, asset_id) {
@@ -334,22 +324,7 @@ pub mod pallet {
             res.extend(T::HashiBridge::list_supported_assets(network_id));
             res.extend(T::ParachainApp::list_supported_assets(network_id));
             res.extend(T::LiberlandApp::list_supported_assets(network_id));
-            res.into_iter()
-                .filter(|asset_info| {
-                    let asset_id = match asset_info {
-                        BridgeAssetInfo::EVMLegacy(info) => {
-                            Some(AssetIdOf::<T>::from(info.asset_id))
-                        }
-                        BridgeAssetInfo::EVM(info) => Some(AssetIdOf::<T>::from(info.asset_id)),
-                        BridgeAssetInfo::Sub(info) => Some(AssetIdOf::<T>::from(info.asset_id)),
-                        BridgeAssetInfo::Ton(info) => Some(AssetIdOf::<T>::from(info.asset_id)),
-                        BridgeAssetInfo::Liberland => None,
-                    };
-                    asset_id
-                        .map(|asset_id| !T::SccpAssetChecker::is_sccp_asset(&asset_id))
-                        .unwrap_or(true)
-                })
-                .collect()
+            res
         }
 
         pub fn refund(
@@ -359,10 +334,6 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResult {
-            ensure!(
-                !T::SccpAssetChecker::is_sccp_asset(&asset_id),
-                Error::<T>::PathIsNotAvailable
-            );
             let GenericAccount::Sora(beneficiary) = beneficiary else {
                 return Err(Error::<T>::WrongAccountKind.into());
             };
@@ -547,10 +518,6 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(asset_id),
-            Error::<T>::PathIsNotAvailable
-        );
         Self::before_asset_lock(network_id, asset_kind, asset_id, amount)?;
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
@@ -573,10 +540,6 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(asset_id),
-            Error::<T>::PathIsNotAvailable
-        );
         Self::before_asset_unlock(network_id, asset_kind, asset_id, amount)?;
         match asset_kind {
             bridge_types::types::AssetKind::Thischain => {
@@ -598,10 +561,6 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(asset_id),
-            Error::<T>::PathIsNotAvailable
-        );
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
         Ok(())
@@ -613,10 +572,6 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(asset_id),
-            Error::<T>::PathIsNotAvailable
-        );
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
         Ok(())
@@ -742,10 +697,6 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, AssetIdO
     }
 
     fn manage_asset(network_id: GenericNetworkId, asset_id: AssetIdOf<T>) -> DispatchResult {
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(&asset_id),
-            Error::<T>::PathIsNotAvailable
-        );
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&Self::bridge_tech_account(
             network_id,
         ))?;
@@ -794,9 +745,6 @@ impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>> for Pallet<T> {
         chain_id: bridge_types::EVMChainId,
         asset_id: AssetIdOf<T>,
     ) -> DispatchResult {
-        if T::SccpAssetChecker::is_sccp_asset(&asset_id) {
-            return Err(Error::<T>::PathIsNotAvailable.into());
-        }
         if T::FAApp::is_asset_supported(chain_id.into(), asset_id) {
             T::FAApp::withdraw_transfer_fee(who, chain_id.into(), asset_id)
         } else {

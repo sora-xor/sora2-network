@@ -1,0 +1,15 @@
+[workspace]
+members = [
+    "common",
+    "ring",
+]
+
+[workspace.dependencies]
+ark-std = { version = "0.4", default-features = false }
+ark-ff = { version = "0.4", default-features = false }
+ark-ec = { version = "0.4", default-features = false }
+ark-poly = { version = "0.4", default-features = false }
+ark-serialize = { version = "0.4", default-features = false, features = ["derive"] }
+fflonk = { git = "https://github.com/w3f/fflonk", default-features = false }
+merlin = { version = "3.0", default-features = false }
+rayon = { version = "1", default-features = false }

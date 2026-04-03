@@ -57,16 +57,26 @@ use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::{Block as BlockT, IdentifyAccount};
 use std::collections::BTreeSet;
 use std::fs::File;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 
+#[cfg(feature = "runtime-benchmarks")]
+type HostFunctions = (
+    sp_io::SubstrateHostFunctions,
+    frame_benchmarking::benchmarking::HostFunctions,
+    solana_proof_runtime_interface::solana_proof_api::HostFunctions,
+    ton_proof_runtime_interface::ton_proof_api::HostFunctions,
+);
+#[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = (
     sp_io::SubstrateHostFunctions,
     solana_proof_runtime_interface::solana_proof_api::HostFunctions,
     ton_proof_runtime_interface::ton_proof_api::HostFunctions,
 );
-type FullClient = sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
+pub(crate) type FullClient =
+    sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type TransactionPool = sc_transaction_pool::TransactionPoolHandle<Block, FullClient>;
@@ -79,6 +89,7 @@ type FullBeefyBlockImport = beefy_gadget::import::BeefyBlockImport<
     FullGrandpaBlockImport,
     BeefyId,
 >;
+type BridgePeerConfig = PeerConfig<<Runtime as eth_bridge::Config>::NetworkId>;
 const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
 
 // If we're using prometheus, use a registry with a prefix of `polkadot`.
@@ -90,25 +101,111 @@ fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceErro
     Ok(())
 }
 
-/// The native executor instance for benchmarking commands.
-#[cfg(feature = "runtime-benchmarks")]
-pub struct ExecutorDispatch;
+fn bridge_config_path(config: &Configuration) -> Result<PathBuf, ServiceError> {
+    let path = config
+        .network
+        .net_config_path
+        .clone()
+        .or(config.database.path().map(|path| path.to_owned()))
+        .ok_or_else(|| ServiceError::Other("Expected network or database path.".into()))?;
 
-#[cfg(feature = "runtime-benchmarks")]
-impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
-    type ExtendHostFunctions = (
-        frame_benchmarking::benchmarking::HostFunctions,
-        solana_proof_runtime_interface::solana_proof_api::HostFunctions,
-        ton_proof_runtime_interface::ton_proof_api::HostFunctions,
-    );
+    path.ancestors()
+        .nth(1)
+        .map(|ancestor| {
+            let mut bridge_path = ancestor.to_owned();
+            bridge_path.push("bridge/eth.json");
+            bridge_path
+        })
+        .ok_or_else(|| {
+            ServiceError::Other(format!(
+                "Failed to resolve ethereum bridge config path from {:?}",
+                path
+            ))
+        })
+}
 
-    fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-        framenode_runtime::api::dispatch(method, data)
+fn load_bridge_peer_config(path: &Path) -> Result<BridgePeerConfig, ServiceError> {
+    let file = File::open(path).map_err(|error| {
+        ServiceError::Other(format!(
+            "Ethereum bridge node config not found at {:?}: {}",
+            path, error
+        ))
+    })?;
+
+    serde_json::from_reader(&file).map_err(|error| {
+        ServiceError::Other(format!(
+            "Invalid ethereum bridge node config at {:?}: {}",
+            path, error
+        ))
+    })
+}
+
+fn resolve_local_bridge_peer_marker<F>(
+    public_keys: Vec<Vec<u8>>,
+    mut has_local_keypair: F,
+) -> Result<Option<Vec<u8>>, ServiceError>
+where
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
+{
+    let mut saw_any_public_key = false;
+
+    for public_key_bytes in public_keys {
+        saw_any_public_key = true;
+
+        let bridge_public = eth_bridge::offchain::crypto::Public::from_slice(&public_key_bytes[..])
+            .map_err(|_| {
+                ServiceError::Other(
+                    "Ethereum bridge public key in keystore had an invalid size.".into(),
+                )
+            })?;
+        let substrate_public = sp_core::ecdsa::Public::from(bridge_public.clone());
+        let compressed_public = secp256k1::PublicKey::parse_compressed(&substrate_public.0)
+            .map_err(|error| {
+                ServiceError::Other(format!(
+                    "Ethereum bridge public key was invalid: {:?}",
+                    error
+                ))
+            })?;
+        let address = common::eth::public_key_to_eth_address(&compressed_public);
+        let account = sp_runtime::MultiSigner::Ecdsa(substrate_public.clone()).into_account();
+        log::warn!(
+            "Peer info: address: {:?}, account: {:?}, {}, public: {:?}",
+            address,
+            account,
+            account,
+            substrate_public
+        );
+
+        if has_local_keypair(&bridge_public)? {
+            return Ok(Some(public_key_bytes));
+        }
     }
 
-    fn native_version() -> sc_executor::NativeVersion {
-        framenode_runtime::native_version()
+    if saw_any_public_key {
+        log::debug!(
+            "Ethereum bridge public key found, but no local signing keypair is available; skipping bridge OCW bootstrap."
+        );
+    } else {
+        log::debug!("Ethereum bridge peer key not found.");
     }
+
+    Ok(None)
+}
+
+fn resolve_local_bridge_bootstrap<F, G>(
+    public_keys: Vec<Vec<u8>>,
+    has_local_keypair: F,
+    load_peer_config: G,
+) -> Result<Option<(Vec<u8>, BridgePeerConfig)>, ServiceError>
+where
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
+    G: FnOnce() -> Result<BridgePeerConfig, ServiceError>,
+{
+    let Some(marker) = resolve_local_bridge_peer_marker(public_keys, has_local_keypair)? else {
+        return Ok(None);
+    };
+
+    Ok(Some((marker, load_peer_config()?)))
 }
 
 pub fn new_partial(
@@ -171,62 +268,40 @@ pub fn new_partial(
             executor,
         )?;
     let client = Arc::new(client);
-    let mut bridge_peer_storage_marker = None;
+    let bridge_bootstrap = resolve_local_bridge_bootstrap(
+        keystore_container
+            .keystore()
+            .keys(eth_bridge::KEY_TYPE)
+            .unwrap_or_default(),
+        |public_key| {
+            let local_keystore = keystore_container.local_keystore();
+            local_keystore
+                .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
+                .map(|key_pair| key_pair.is_some())
+                .map_err(|error| {
+                    ServiceError::Other(format!(
+                        "Failed to inspect local ethereum bridge keypair: {}",
+                        error
+                    ))
+                })
+        },
+        || {
+            let path = bridge_config_path(config)?;
+            load_bridge_peer_config(&path)
+        },
+    )?;
 
-    if let Some(first_pk_raw) = keystore_container
-        .keystore()
-        .keys(eth_bridge::KEY_TYPE)
-        .unwrap_or_default()
-        .first()
-        .cloned()
-    {
-        let pk = eth_bridge::offchain::crypto::Public::from_slice(&first_pk_raw[..])
-            .expect("should have correct size");
-        let sub_public = sp_core::ecdsa::Public::from(pk.clone());
-        let public = secp256k1::PublicKey::parse_compressed(&sub_public.0).unwrap();
-        let address = common::eth::public_key_to_eth_address(&public);
-        let account = sp_runtime::MultiSigner::Ecdsa(sub_public.clone()).into_account();
-        log::warn!(
-            "Peer info: address: {:?}, account: {:?}, {}, public: {:?}",
-            address,
-            account,
-            account,
-            sub_public
-        );
-        bridge_peer_storage_marker = Some(first_pk_raw);
-    } else {
-        log::debug!("Ethereum bridge peer key not found.")
-    }
-
-    if let Some(marker) = bridge_peer_storage_marker {
-        let mut storage = backend.offchain_storage().unwrap();
+    if let Some((marker, peer_config)) = bridge_bootstrap {
+        let mut storage = backend.offchain_storage().ok_or_else(|| {
+            ServiceError::Other(
+                "Ethereum bridge offchain storage is unavailable for local bridge bootstrap."
+                    .into(),
+            )
+        })?;
         // Keep a non-secret OCW activation marker in offchain DB for bridge workers.
         storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
         // Legacy compatibility key for nodes/runtimes still reading the old storage path.
         storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &marker.encode());
-
-        let path = config
-            .network
-            .net_config_path
-            .clone()
-            .or(config.database.path().map(|x| x.to_owned()))
-            .expect("Expected network or database path.");
-        let bridge_path = path
-            .ancestors()
-            .skip(1)
-            .next()
-            .map(|x| {
-                let mut x = x.to_owned();
-                x.push("bridge/eth.json");
-                x
-            })
-            .unwrap();
-        let file = File::open(&bridge_path).expect(&format!(
-            "Ethereum bridge node config not found. Expected path: {:?}",
-            bridge_path
-        ));
-        let peer_config: PeerConfig<<Runtime as eth_bridge::Config>::NetworkId> =
-            serde_json::from_reader(&file).expect("Invalid ethereum bridge node config.");
         let mut network_ids = BTreeSet::new();
         for (net_id, params) in peer_config.networks {
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
@@ -722,4 +797,74 @@ pub fn new_full(
     }
 
     Ok(task_manager)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{load_bridge_peer_config, resolve_local_bridge_bootstrap};
+    use sp_core::Pair;
+    use std::cell::Cell;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn sample_bridge_public_key() -> Vec<u8> {
+        sp_core::ecdsa::Pair::from_seed_slice(&[7u8; 32])
+            .expect("seed should be valid")
+            .public()
+            .0
+            .to_vec()
+    }
+
+    fn unique_temp_path(name: &str) -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time should be after unix epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!("sora2-network-{}-{}", name, nonce))
+    }
+
+    #[test]
+    fn local_bridge_bootstrap_requires_config_for_local_keypair() {
+        let missing_path = unique_temp_path("missing-eth-json");
+        let result = resolve_local_bridge_bootstrap(
+            vec![sample_bridge_public_key()],
+            |_| Ok(true),
+            || load_bridge_peer_config(&missing_path),
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn local_bridge_bootstrap_rejects_invalid_config() {
+        let invalid_path = unique_temp_path("invalid-eth-json");
+        fs::write(&invalid_path, "{not-json").expect("invalid config fixture should be written");
+
+        let result = resolve_local_bridge_bootstrap(
+            vec![sample_bridge_public_key()],
+            |_| Ok(true),
+            || load_bridge_peer_config(&invalid_path),
+        );
+
+        let _ = fs::remove_file(&invalid_path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn local_bridge_bootstrap_skips_public_only_keys() {
+        let loader_called = Cell::new(false);
+        let result = resolve_local_bridge_bootstrap(
+            vec![sample_bridge_public_key()],
+            |_| Ok(false),
+            || {
+                loader_called.set(true);
+                unreachable!("bridge config should not be loaded without a local keypair")
+            },
+        )
+        .expect("public-only bridge keys should be ignored");
+
+        assert!(result.is_none());
+        assert!(!loader_called.get());
+    }
 }

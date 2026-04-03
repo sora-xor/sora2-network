@@ -1,0 +1,44 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - master
+      - polkadot-**
+    paths-ignore:
+      - '**/README.md'
+  push:
+    branches:
+      - master
+      - polkadot-**
+    paths-ignore:
+      - '**/README.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: [self-hosted]
+    env:
+      SCCACHE_CACHE_SIZE: "60G"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install toolchain
+      uses: dtolnay/rust-toolchain@nightly
+    - name: Install Wasm toolchain
+      run: rustup target add wasm32-unknown-unknown
+    - name: Check format
+      run: make dev-format-check
+    - name: Install clippy
+      run: rustup component add clippy
+    - name: Update
+      run: |
+        cargo update
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+    - name: Check for Wasm
+      run: make dev-check
+    - name: Run tests
+      run: make dev-test

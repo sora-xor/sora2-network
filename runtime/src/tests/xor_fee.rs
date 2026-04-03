@@ -911,6 +911,115 @@ fn custom_fees_work() {
 }
 
 #[test]
+fn polkamarkt_growth_calls_charge_small_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let calls: Vec<<Runtime as frame_system::Config>::RuntimeCall> = vec![
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_condition {
+                metadata: pallet_polkamarkt::ConditionInput {
+                    question: b"Will SORA win this benchmark market?".to_vec(),
+                    oracle: b"Chainlink".to_vec(),
+                    resolution_source: b"https://example.com/oracle".to_vec(),
+                },
+            }),
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_opengov_condition {
+                metadata: pallet_polkamarkt::ConditionInput {
+                    question: b"Will OpenGov pass this benchmark referendum?".to_vec(),
+                    oracle: b"OpenGov".to_vec(),
+                    resolution_source: b"https://example.com/opengov".to_vec(),
+                },
+                proposal: pallet_polkamarkt::OpengovProposalInput {
+                    network: pallet_polkamarkt::RelayNetwork::Polkadot,
+                    parachain_id: 1,
+                    track_id: 7,
+                    referendum_index: 11,
+                    plaza_tag: b"pm-7-11".to_vec(),
+                },
+            }),
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market {
+                condition_id: 0,
+                close_block: 42,
+                seed_liquidity: balance!(100),
+            }),
+        ];
+
+        let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
+        for call in calls {
+            let pre = ChargeTransactionPayment::<Runtime>::new()
+                .pre_dispatch(&alice(), &call, &dispatch_info, len)
+                .unwrap();
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - SMALL_FEE;
+            let result = balance_after_fee_withdrawal.clone().into_balance();
+            assert_eq!(Balances::free_balance(alice()), result);
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            assert_eq!(Balances::free_balance(alice()), result);
+        }
+    });
+}
+
+#[test]
+fn polkamarkt_buy_uses_standard_weight_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let len: usize = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let base_fee = WeightToFee::weight_to_fee(
+            &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
+        );
+        let len_fee = LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
+        let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
+        let call = RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
+            market_id: 0,
+            outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+            collateral_in: balance!(10),
+            min_shares_out: 0,
+        });
+
+        assert_eq!(CustomFees::compute_fee(&call), None);
+        assert_eq!(
+            XorFee::compute_fee(len as u32, &call, &dispatch_info, 0).0,
+            base_fee + len_fee + weight_fee
+        );
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), &call, &dispatch_info, len)
+            .unwrap();
+        let balance_after_fee_withdrawal =
+            FixedWrapper::from(INITIAL_BALANCE) - base_fee - len_fee - weight_fee;
+        let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
+        assert_eq!(
+            Balances::free_balance(alice()),
+            balance_after_fee_withdrawal
+        );
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+        assert_eq!(
+            Balances::free_balance(alice()),
+            balance_after_fee_withdrawal
+        );
+    });
+}
+
+#[test]
 fn custom_fees_multiplied() {
     ext().execute_with(|| {
         let multiplier = 3;

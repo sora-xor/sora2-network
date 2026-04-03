@@ -1,0 +1,79 @@
+[package]
+name = "substrate-bridge-app"
+version = "0.1.1"
+edition = "2021"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.130", optional = true }
+codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
+rlp = { version = "0.5", default-features = false }
+hex-literal = { version = "0.4.1", default-features = false }
+
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+
+traits = { workspace = true, default-features = false, optional = true }
+currencies = { workspace = true, default-features = false, optional = true }
+ethabi = { workspace = true, default-features = false }
+bridge-types = { path = "../types", default-features = false }
+
+[dev-dependencies]
+substrate-bridge-channel = { path = "../substrate-channel" }
+pallet-timestamp = { workspace = true }
+dispatch = { path = "../dispatch" }
+sp-keyring = { workspace = true }
+pallet-balances = { workspace = true }
+tokens = { workspace = true }
+traits = { workspace = true }
+currencies = { workspace = true }
+bridge-types = { path = "../types", features = ["test"] }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "hex/std",
+    "codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "bridge-types/std",
+
+    "frame-benchmarking/std",
+    "dispatch/std",
+    "substrate-bridge-channel/std",
+
+    "ethabi/std",
+    "rlp/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "dispatch/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "substrate-bridge-channel/runtime-benchmarks",
+    "traits",
+    "currencies",
+]
+
+try-runtime = ["frame-support/try-runtime"]

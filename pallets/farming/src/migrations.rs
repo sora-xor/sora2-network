@@ -68,7 +68,7 @@ pub mod v2 {
                     }
                 });
             }
-            StorageVersion::new(2).put::<Pallet<T>>();
+            StorageVersion::new(3).put::<Pallet<T>>();
             <T as frame_system::Config>::BlockWeights::get().max_block
         }
 

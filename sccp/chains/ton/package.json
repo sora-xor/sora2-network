@@ -8,6 +8,8 @@
   "scripts": {
     "build": "node ./scripts/compile.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
+    "build-master-call-from-nexus-bundle": "node ./scripts/build_master_call_from_nexus_bundle.mjs",
+    "test:nexus-bundle-master-call": "node --test tests/nexus_bundle_master_call.test.mjs",
     "encode-proof-cell": "node ./scripts/encode_sora_proof_cell.mjs",
     "encode-attester-proof": "node ./scripts/encode_attester_quorum_proof.mjs",
     "encode-ton-burn-proof-to-sora": "node ./scripts/encode_ton_burn_proof_to_sora.mjs",

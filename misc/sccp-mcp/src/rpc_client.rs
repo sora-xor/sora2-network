@@ -978,6 +978,134 @@ fn retry_delay(backoff: Duration, attempt: u32) -> Duration {
     Duration::from_millis(base_ms.saturating_mul(multiplier))
 }
 
+#[derive(Debug, Clone)]
+pub struct HttpGetResponse {
+    pub body: Vec<u8>,
+    pub content_type: Option<String>,
+}
+
+pub fn http_get(url: &str, accept: Option<&str>) -> AppResult<HttpGetResponse> {
+    let retry_policy = rpc_retry_policy();
+    let circuit_policy = rpc_circuit_breaker_policy();
+    let agent = rpc_agent();
+    let key = circuit_key(url);
+    let method = format!("GET {url}");
+    let global_inflight_limit = rpc_max_inflight_limit();
+    let endpoint_inflight_limit = rpc_max_inflight_per_endpoint_limit(global_inflight_limit);
+    let principal_inflight_limit = rpc_max_inflight_per_principal_limit(global_inflight_limit);
+    let scope_inflight_limit = rpc_max_inflight_per_scope_limit(global_inflight_limit);
+    let method_inflight_limit =
+        rpc_max_inflight_per_method_limit(global_inflight_limit, endpoint_inflight_limit);
+    let fairness_principal =
+        current_rpc_fairness_principal().unwrap_or_else(|| "anonymous".to_owned());
+    let fairness_scope = current_rpc_fairness_scope().unwrap_or_else(|| "unspecified".to_owned());
+    let queue_policy = rpc_queue_policy();
+    let _queue_permit = try_acquire_rpc_queue_permit(
+        &fairness_principal,
+        url,
+        &method,
+        global_inflight_limit,
+        &queue_policy,
+    )?;
+    let _inflight_guard =
+        try_acquire_rpc_inflight_slot(global_inflight_limit).ok_or_else(|| {
+            AppError::Rpc(format!(
+                "rpc in-flight limit reached ({global_inflight_limit}) for GET {url}; reject to preserve availability"
+            ))
+        })?;
+    let _endpoint_inflight_guard =
+        try_acquire_rpc_endpoint_inflight_slot(&key, endpoint_inflight_limit).ok_or_else(|| {
+            AppError::Rpc(format!(
+                "rpc endpoint in-flight limit reached ({endpoint_inflight_limit}) for GET {url}; reject to preserve availability"
+            ))
+        })?;
+    let _principal_inflight_guard =
+        try_acquire_rpc_principal_inflight_slot(&fairness_principal, principal_inflight_limit)
+            .ok_or_else(|| {
+                AppError::Rpc(format!(
+                    "rpc principal in-flight limit reached ({principal_inflight_limit}) for principal {fairness_principal} url {url}; reject to preserve availability"
+                ))
+            })?;
+    let _scope_inflight_guard =
+        try_acquire_rpc_scope_inflight_slot(&fairness_scope, scope_inflight_limit).ok_or_else(
+            || {
+                AppError::Rpc(format!(
+                    "rpc tool in-flight limit reached ({scope_inflight_limit}) for tool {fairness_scope} url {url}; reject to preserve availability"
+                ))
+            },
+        )?;
+    let method_key = format!("{key}::{method}");
+    let _method_inflight_guard =
+        try_acquire_rpc_method_inflight_slot(&method_key, method_inflight_limit).ok_or_else(
+            || {
+                AppError::Rpc(format!(
+                    "rpc method in-flight limit reached ({method_inflight_limit}) for GET {url}; reject to preserve availability"
+                ))
+            },
+        )?;
+
+    if let Some(remaining) = circuit_open_remaining(&key, circuit_policy) {
+        return Err(AppError::Rpc(format!(
+            "rpc circuit breaker open for {url} (GET); retry after {} ms",
+            remaining.as_millis()
+        )));
+    }
+
+    for attempt in 0..=retry_policy.max_retries {
+        let mut request = agent.get(url);
+        if let Some(accept_header) = accept {
+            request = request.header("accept", accept_header);
+        }
+        let response = request.call();
+        match response {
+            Ok(mut response) => {
+                let status = response.status();
+                let code = status.as_u16();
+                if code >= 400 {
+                    let retryable_status = is_retryable_http_status(code);
+                    if attempt < retry_policy.max_retries && retryable_status {
+                        thread::sleep(retry_delay(retry_policy.backoff, attempt));
+                        continue;
+                    }
+                    if retryable_status {
+                        record_circuit_failure(&key, circuit_policy);
+                    }
+                    let body_text = response
+                        .body_mut()
+                        .read_to_string()
+                        .unwrap_or_else(|_| String::from("<unavailable>"));
+                    return Err(AppError::Rpc(format!(
+                        "http GET {url} failed with HTTP {code}: {body_text}"
+                    )));
+                }
+
+                let content_type = response
+                    .headers()
+                    .get("content-type")
+                    .and_then(|value| value.to_str().ok())
+                    .map(ToOwned::to_owned);
+                let body = response.body_mut().read_to_vec().map_err(|err| {
+                    AppError::Rpc(format!("http GET {url} failed to read response body: {err}"))
+                })?;
+                record_circuit_success(&key);
+                return Ok(HttpGetResponse { body, content_type });
+            }
+            Err(err) => {
+                if attempt < retry_policy.max_retries {
+                    thread::sleep(retry_delay(retry_policy.backoff, attempt));
+                    continue;
+                }
+                record_circuit_failure(&key, circuit_policy);
+                return Err(AppError::Rpc(format!("http GET {url} failed: {err}")));
+            }
+        }
+    }
+
+    Err(AppError::Rpc(format!(
+        "http GET {url} failed unexpectedly"
+    )))
+}
+
 pub fn rpc_call(url: &str, method: &str, params: Value) -> AppResult<Value> {
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let payload = json!({

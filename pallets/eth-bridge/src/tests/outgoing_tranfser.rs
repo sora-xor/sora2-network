@@ -30,6 +30,7 @@
 
 use super::mock::*;
 use super::Error;
+use crate::offchain::SignatureParams;
 use crate::requests::{OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus};
 use crate::tests::{
     approve_last_request, last_event, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
@@ -37,6 +38,7 @@ use crate::tests::{
 use crate::util::majority;
 use crate::{AssetConfig, EthAddress};
 use common::{eth, AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, PSWAP, USDT, VAL, XOR};
+use ethereum_types::U256;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -44,6 +46,22 @@ use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H160, H256};
 use sp_std::prelude::*;
 use std::str::FromStr;
+
+fn malleate_signature(signature: &SignatureParams) -> SignatureParams {
+    let curve_order = U256::from_big_endian(&hex!(
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+    ));
+    let mut malleated = signature.clone();
+    let mut s_bytes = [0u8; 32];
+    (curve_order - U256::from_big_endian(&signature.s)).to_big_endian(&mut s_bytes);
+    malleated.s = s_bytes;
+    malleated.v = match signature.v {
+        27 => 28,
+        28 => 27,
+        v => v ^ 1,
+    };
+    malleated
+}
 
 #[test]
 fn outgoing_transfer_prepare_should_fail_for_unknown_network() {
@@ -92,76 +110,6 @@ fn should_approve_outgoing_transfer() {
             99900u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
-    });
-}
-
-#[test]
-fn should_fail_outgoing_transfer_finalization_if_asset_becomes_sccp_managed() {
-    let (mut ext, state) = ExtBuilder::default().build();
-
-    ext.execute_with(|| {
-        let net_id = ETH_NETWORK_ID;
-        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        let amount = 100u32.into();
-        Assets::mint_to(&XOR.into(), &alice, &alice, 1_000u32.into()).unwrap();
-
-        assert_ok!(EthBridge::transfer_to_sidechain(
-            RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
-            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-            amount,
-            net_id,
-        ));
-        let bridge_acc = state.networks[&net_id].config.bridge_account_id.clone();
-        let (request, hash) = last_outgoing_request(net_id).expect("outgoing request should exist");
-        let encoded = request.to_eth_abi(hash).unwrap();
-        let keypairs = &state.networks[&net_id].ocw_keypairs;
-        let additional = if EthBridge::is_additional_signature_needed(net_id, &request) {
-            1
-        } else {
-            0
-        };
-        let sigs_needed = majority(keypairs.len()) + additional;
-
-        set_sccp_asset(XOR.into(), true);
-        System::reset_events();
-        for (_signer, account_id, seed) in keypairs.iter().take(sigs_needed) {
-            let secret = SecretKey::parse_slice(seed).unwrap();
-            let public = PublicKey::from_secret_key(&secret);
-            let msg = eth::prepare_message(encoded.as_raw());
-            let sig_pair = secp256k1::sign(&msg, &secret);
-            let signature_params = super::get_signature_params(&sig_pair);
-            assert_ok!(EthBridge::approve_request(
-                RuntimeOrigin::signed(account_id.clone()),
-                ecdsa::Public::from_raw(public.serialize_compressed()),
-                hash,
-                signature_params,
-                net_id,
-            ));
-        }
-
-        let has_finalization_failed = frame_system::Pallet::<Runtime>::events().iter().any(
-            |record| {
-                matches!(
-                    record.event,
-                    RuntimeEvent::EthBridge(crate::Event::RequestFinalizationFailed(failed_hash))
-                        if failed_hash == hash
-                )
-            },
-        );
-        assert!(has_finalization_failed);
-        assert!(matches!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
-            Some(RequestStatus::Failed(_))
-        ));
-        assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
-            1_000u32.into()
-        );
-        assert_eq!(
-            Assets::free_balance(&XOR.into(), &bridge_acc).unwrap(),
-            Assets::total_balance(&XOR.into(), &bridge_acc).unwrap()
-        );
     });
 }
 
@@ -422,6 +370,172 @@ fn ocw_should_not_handle_outgoing_request_twice() {
             crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             1
         );
+    });
+}
+
+#[test]
+fn same_peer_malleated_signature_does_not_advance_quorum() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+
+        let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
+        let encoded = request.to_eth_abi(hash).unwrap();
+        let (_signer, account_id, seed) = &state.networks[&net_id].ocw_keypairs[0];
+        let secret = SecretKey::parse_slice(seed).unwrap();
+        let public = PublicKey::from_secret_key(&secret);
+        let sig_pair = secp256k1::sign(&eth::prepare_message(encoded.as_raw()), &secret);
+        let signature_params = super::get_signature_params(&sig_pair);
+        let malleated_signature = malleate_signature(&signature_params);
+        let ocw_public = ecdsa::Public::from_raw(public.serialize_compressed());
+
+        assert!(EthBridge::verify_message(
+            encoded.as_raw(),
+            &signature_params,
+            &ocw_public,
+            account_id,
+        ));
+        assert!(EthBridge::verify_message(
+            encoded.as_raw(),
+            &malleated_signature,
+            &ocw_public,
+            account_id,
+        ));
+
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(account_id.clone()),
+            ocw_public.clone(),
+            hash,
+            signature_params,
+            net_id,
+        ));
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            1
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            1
+        );
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            Some(RequestStatus::Pending)
+        ));
+
+        System::reset_events();
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(account_id.clone()),
+            ocw_public,
+            hash,
+            malleated_signature,
+            net_id,
+        ));
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            1
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            1
+        );
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            Some(RequestStatus::Pending)
+        ));
+        assert!(last_event().is_none());
+    });
+}
+
+#[test]
+fn quorum_counts_distinct_approvers_even_if_signature_storage_drifts() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+
+        let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
+        let encoded = request.to_eth_abi(hash).unwrap();
+        let first_peer = &state.networks[&net_id].ocw_keypairs[0];
+        let first_secret = SecretKey::parse_slice(&first_peer.2).unwrap();
+        let first_public = ecdsa::Public::from_raw(
+            PublicKey::from_secret_key(&first_secret).serialize_compressed(),
+        );
+        let first_signature = super::get_signature_params(&secp256k1::sign(
+            &eth::prepare_message(encoded.as_raw()),
+            &first_secret,
+        ));
+
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(first_peer.1.clone()),
+            first_public,
+            hash,
+            first_signature.clone(),
+            net_id,
+        ));
+
+        let mut approvals = crate::RequestApprovals::<Runtime>::get(net_id, &hash);
+        approvals.insert(malleate_signature(&first_signature));
+        crate::RequestApprovals::<Runtime>::insert(net_id, &hash, approvals);
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            2
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            1
+        );
+
+        let second_peer = &state.networks[&net_id].ocw_keypairs[1];
+        let second_secret = SecretKey::parse_slice(&second_peer.2).unwrap();
+        let second_public = ecdsa::Public::from_raw(
+            PublicKey::from_secret_key(&second_secret).serialize_compressed(),
+        );
+        let second_signature = super::get_signature_params(&secp256k1::sign(
+            &eth::prepare_message(encoded.as_raw()),
+            &second_secret,
+        ));
+
+        System::reset_events();
+        assert_ok!(EthBridge::approve_request(
+            RuntimeOrigin::signed(second_peer.1.clone()),
+            second_public,
+            hash,
+            second_signature,
+            net_id,
+        ));
+
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            3
+        );
+        assert_eq!(
+            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            2
+        );
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            Some(RequestStatus::Pending)
+        ));
+        assert!(last_event().is_none());
     });
 }
 

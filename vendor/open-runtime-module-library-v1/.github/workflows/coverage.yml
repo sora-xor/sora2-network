@@ -1,0 +1,46 @@
+name: Tests Coverage
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - '**/README.md'
+
+env:
+  TARPAULIN_VERSION: 0.33.0
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Coverage Report
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Generate code coverage
+        run: |
+          wget https://github.com/xd009642/tarpaulin/releases/download/${{ env.TARPAULIN_VERSION }}/cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz
+          tar -zxvf cargo-tarpaulin-x86_64-unknown-linux-musl.tar.gz -C $HOME/.cargo/bin
+          make Cargo.toml
+          cargo update
+          cargo tarpaulin --engine llvm --no-fail-fast --workspace --timeout 300 --out Xml
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

@@ -59,14 +59,11 @@ use framenode_runtime::{
     EthBridgeConfig, ExtendedAssetsConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
     GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
     IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktBlocksPerDay,
-    PolkamarktBridgeDailyCap, PolkamarktConfig, PolkamarktCredentialTtl, PolkamarktFeeCollector,
-    PolkamarktForkTaxAccount, PolkamarktGovernanceBondMinimum, PolkamarktLiquiditySafetyBps,
-    PolkamarktMaintenanceFeeBps, PolkamarktMaintenancePoolAccount, PolkamarktPayoutTaxBps,
-    PolkamarktWalletCooldown, PswapDistributionConfig, RewardsConfig, Runtime,
-    RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig,
-    SystemConfig, TechAccountId, TechnicalCommitteeConfig, TechnicalConfig, TokensConfig,
-    TradingPair, TradingPairConfig, XSTPoolConfig,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktConfig,
+    PolkamarktFeeCollector, PolkamarktGovernanceBondMinimum, PswapDistributionConfig,
+    RewardsConfig, Runtime, RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig,
 };
 #[cfg(not(feature = "runtime-wasm"))]
 const WASM_BINARY: Option<&[u8]> = None;
@@ -240,17 +237,7 @@ fn chain_spec_from_genesis(
 fn polkamarkt_genesis_config() -> PolkamarktConfig {
     PolkamarktConfig {
         fee_collector: Some(PolkamarktFeeCollector::get()),
-        maintenance_pool_account: Some(PolkamarktMaintenancePoolAccount::get()),
-        fork_tax_account: Some(PolkamarktForkTaxAccount::get()),
         governance_bond_minimum: Some(PolkamarktGovernanceBondMinimum::get()),
-        maintenance_fee_bps: Some(PolkamarktMaintenanceFeeBps::get()),
-        liquidity_safety_bps: Some(PolkamarktLiquiditySafetyBps::get()),
-        bridge_daily_cap: Some(PolkamarktBridgeDailyCap::get()),
-        blocks_per_day: Some(PolkamarktBlocksPerDay::get()),
-        wallet_cooldown: Some(PolkamarktWalletCooldown::get()),
-        payout_tax_bps: Some(PolkamarktPayoutTaxBps::get()),
-        credential_ttl: Some(PolkamarktCredentialTtl::get()),
-        credentials_required: Some(false),
     }
 }
 
@@ -939,7 +926,7 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
 // Some variables are only changed if faucet is enabled
 #[cfg(feature = "private-net")]
 fn testnet_genesis(
-    root_key: AccountId,
+    _root_key: AccountId,
     initial_authorities: Vec<(
         AccountId,
         AccountId,
@@ -1314,7 +1301,6 @@ fn testnet_genesis(
         TBCD.into(),
     ];
     RuntimeGenesisConfig {
-        sccp: Default::default(),
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -1332,7 +1318,7 @@ fn testnet_genesis(
 
         system: SystemConfig::default(),
         sudo: SudoConfig {
-            key: Some(root_key.clone()),
+            key: None,
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
@@ -2527,7 +2513,6 @@ fn mainnet_genesis(
         )
     }));
     RuntimeGenesisConfig {
-        sccp: Default::default(),
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),

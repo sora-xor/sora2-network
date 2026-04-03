@@ -1,69 +1,58 @@
-# SCCP Hub Transfers (Non-SORA -> Non-SORA)
+# SCCP Hub Transfers
 
-SCCP supports direct transfers between two non-SORA chains by using **SORA as a trustless verification hub**:
+SCCP no longer uses SORA2 as the hub. The hub now lives in `../iroha` as **Sora Nexus mainnet**,
+and this runtime acts as a spoke that consumes finalized Nexus proof bundles.
 
-1. User burns on `source_domain` targeting `dest_domain != SORA`.
-2. User submits the source-chain proof to SORA via `sccp.attest_burn(...)`.
-3. SORA verifies the burn (fail-closed) and commits the burn `messageId` into its **auxiliary digest**.
-4. User mints on `dest_domain` by proving that SORA has committed `messageId` into a **BEEFY+MMR finalized** digest.
+## Current Flow
 
-This is the SCCP analogue of "burn -> attest -> mint" where the attestation is **on-chain and decentralized**
-(BEEFY signatures + MMR inclusion), and the only privileged operations are SCCP configuration and incident controls.
+1. A user burns on a source spoke.
+2. Nexus verifies the spoke burn proof and publishes a canonical SCCP hub commitment.
+3. The destination spoke calls `mint_from_proof(proof_bundle)` with a finalized Nexus burn bundle.
 
-## SORA Extrinsic: `attest_burn`
+For governance-controlled token lifecycle actions, Nexus verifies a **Sora Parliament**
+enactment certificate first, then publishes a finalized SCCP governance bundle.
+Spokes consume those bundles via:
 
-`attest_burn(origin, source_domain, payload, proof)`:
+- `add_token_from_proof`
+- `pause_token_from_proof`
+- `resume_token_from_proof`
 
-- verifies `payload` is a valid `BurnPayloadV1` (canonical encoding)
-- applies incident controls:
-  - inbound paused for `source_domain` blocks attestations
-  - outbound paused for `payload.dest_domain` blocks attestations
-  - invalidated `messageId` blocks attestations
-- requires token configuration exists on SORA for both source and destination:
-  - `RemoteToken[asset_id, source_domain]` exists
-  - `RemoteToken[asset_id, dest_domain]` exists
-- verifies the burn proof using the chain-specific verifier for `source_domain`
-  - finality requirements are enforced via `inbound_finality_mode(source_domain)` in `pallet-sccp`
-  - verification is **fail-closed** (no verifier => no attestation)
-- records `AttestedOutbound[messageId] = true` to prevent duplicate commitments
-- commits `messageId` to the auxiliary digest as:
-  - `AuxiliaryDigestItem::Commitment(GenericNetworkId::EVMLegacy('SCCP'), messageId)`
+There is no local `attest_burn` step on SORA2 anymore, and there is no local SCCP governance path
+for token lifecycle changes.
 
-Destination chains can then mint by verifying that commitment in SORA finalized state.
+## Proof Source
 
-## Proof Tooling
+Spokes trust finalized Nexus SCCP bundles, not local SORA2 governance or SORA BEEFY/MMR commitments.
+The proof bundles are served by Torii in `../iroha`:
 
-Operational proof-generation commands are documented in:
+- `GET /v1/sccp/proofs/burn/{message_id}`
+- `GET /v1/sccp/proofs/governance/{message_id}`
 
-- `docs/sccp/PROOF_TOOLING.md`
+Each bundle carries:
 
-Source-chain proof generation is chain-specific. For BSC -> SORA trustless burns, use the
-canonical tooling in `sccp/chains/bsc`:
+- the canonical SCCP payload,
+- the Nexus SCCP hub commitment,
+- the SCCP Merkle inclusion proof,
+- a Nexus finality proof,
+- and for governance, the parliament certificate bytes and hash.
 
-- `npm run extract-burn-proof-inputs`
-- `npm run build-burn-proof-to-sora`
-- `npm run build-bsc-header-rlp`
+## Spoke Responsibilities
 
-Destination-side proof encoders live alongside the in-repo chain code under `sccp/chains/*`,
-with local helper dispatch available via `sccp/tools/sccp-proof.sh`.
+This pallet now does only spoke-side work:
 
-## Destination-Chain Minting
+- permissionless outbound `burn`
+- permissionless inbound `mint_from_proof`
+- permissionless inbound governance application from Nexus proofs
+- replay protection for inbound proof consumption
 
-On the destination chain, the SCCP router/program/jetton master verifies:
+This pallet does not provide:
 
-- `payload` decodes to a valid `BurnPayloadV1`
-- `payload.dest_domain == local_domain`
-- the burn `messageId` is included in a finalized SORA digest commitment, proven via an on-chain **SORA BEEFY+MMR light client**
+- `attest_burn`
+- local SCCP token add/pause/resume administration
+- local SCCP incident-control governance
+- SORA2 hub commitments for downstream chains
 
-Important: destination-chain verifiers only attest that **SORA committed** the `messageId`. They do not need to
-re-verify the original source chain, because SORA already did that in `attest_burn`.
+## Governance Source
 
-## Incident Response
-
-SORA governance can contain incidents without upgrading contracts:
-
-- pause inbound from a source domain: `sccp.set_inbound_domain_paused(source_domain, true)`
-- pause outbound to a destination domain: `sccp.set_outbound_domain_paused(dest_domain, true)`
-- block a specific inbound burn forever: `sccp.invalidate_inbound_message(source_domain, message_id)`
-
-All checks are enforced on-chain; when a flag is set, operations fail-closed.
+Governance proofs must originate from **Sora Parliament on Nexus**. A spoke should only accept
+governance state transitions that arrive as finalized Nexus SCCP governance bundles.

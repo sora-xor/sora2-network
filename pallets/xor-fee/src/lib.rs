@@ -1196,7 +1196,10 @@ pub mod pallet {
     }
 
     /// The current storage version.
+    #[cfg(feature = "wip")]
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+    #[cfg(not(feature = "wip"))]
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]

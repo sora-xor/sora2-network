@@ -99,12 +99,7 @@ pub struct Receipt {
 
 impl Receipt {
     pub fn is_approved(&self) -> bool {
-        if let Some(status) = self.status {
-            status != 0.into()
-        } else {
-            // Pre-EIP-658 receipts may not include `status`, but include `root`.
-            self.root.is_some()
-        }
+        self.status.unwrap_or_else(|| 0.into()) != 0.into()
     }
 }
 
@@ -266,13 +261,13 @@ mod tests {
     }
 
     #[test]
-    fn receipt_is_approved_falls_back_to_root_when_status_absent() {
+    fn receipt_is_approved_rejects_missing_status() {
         let receipt = Receipt {
             status: None,
             root: Some(H256::repeat_byte(0x22)),
             ..Default::default()
         };
-        assert!(receipt.is_approved());
+        assert!(!receipt.is_approved());
 
         let receipt = Receipt {
             status: None,

@@ -244,10 +244,17 @@ async function main() {
   const mcpAuthToken =
     process.env.SCCP_MCP_AUTH_TOKEN ||
     '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-  const callName = process.env.SCCP_CALL_NAME || 'set_outbound_domain_paused';
+  const callName = process.env.SCCP_CALL_NAME || 'burn';
   const callArgs = process.env.SCCP_CALL_ARGS
     ? JSON.parse(process.env.SCCP_CALL_ARGS)
-    : { domain_id: 1, paused: false };
+    : {
+        asset_id:
+          '0x1111111111111111111111111111111111111111111111111111111111111111',
+        amount: '1',
+        dest_domain: 1,
+        recipient:
+          '0x0000000000000000000000002222222222222222222222222222222222222222',
+      };
 
   const defaultConfig = fs.existsSync(path.join(mcpDir, 'config.toml'))
     ? path.join(mcpDir, 'config.toml')

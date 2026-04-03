@@ -1,5 +1,17 @@
 # sccp-sol
 
+Migration note: this package still documents the earlier SORA-centered verifier/bootstrap model.
+The active SCCP hub is now Nexus in `../iroha`; treat this directory as pending downstream verifier
+migration.
+
+Current Nexus-native surfaces in this repo:
+- `cargo run --manifest-path tools/nexus-bundle-instruction-builder/Cargo.toml -- ...`
+- `cargo test --manifest-path tools/nexus-bundle-instruction-builder/Cargo.toml`
+- `scripts/sccp_e2e_adapter.sh mint_verify` consumes `SCCP_HUB_BUNDLE_*` artifacts when present
+
+The older Solana verifier/bootstrap program path remains in-tree for historical/reference work, but
+it is not the active E2E or operator-tooling path anymore.
+
 SORA Cross-Chain Protocol (SCCP) code for Solana.
 
 Current contents:

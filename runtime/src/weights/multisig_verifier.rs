@@ -99,6 +99,12 @@ impl<T: frame_system::Config> multisig_verifier::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+	/// Storage: MultisigVerifier PeerKeys (r:0 w:1)
+	/// Proof: MultisigVerifier PeerKeys (max_values: None, max_size: Some(1692), added: 4167, mode: MaxEncodedLen)
+	fn force_set_peers() -> Weight {
+		Weight::from_parts(21_101_000, 4167)
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 	/// Storage: MultisigVerifier ThisNetworkId (r:1 w:0)
 	/// Proof: MultisigVerifier ThisNetworkId (max_values: Some(1), max_size: Some(33), added: 528, mode: MaxEncodedLen)
 	/// Storage: MultisigVerifier PeerKeys (r:1 w:0)

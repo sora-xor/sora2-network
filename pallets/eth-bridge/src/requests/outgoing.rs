@@ -51,7 +51,6 @@ use ethabi::{FixedBytes, Token};
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
-use sccp::SccpAssetChecker;
 use sp_runtime::DispatchError;
 
 use super::encode_packed::{encode_packed, TokenWrapper};
@@ -195,11 +194,6 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
-        let common_asset_id: common::AssetIdOf<T> = self.asset_id.into();
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-            Error::<T>::SccpAssetNotAllowed
-        );
         if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id) {
             if !kind.is_owned() {
                 let dust = self.sidechain_amount().map(|x| x.1)?;
@@ -428,11 +422,6 @@ impl<T: Config> OutgoingAddAsset<T> {
 
     /// Checks that the asset isn't registered yet.
     pub fn validate(&self) -> Result<(), DispatchError> {
-        let common_asset_id: common::AssetIdOf<T> = self.asset_id.into();
-        ensure!(
-            !T::SccpAssetChecker::is_sccp_asset(&common_asset_id),
-            Error::<T>::SccpAssetNotAllowed
-        );
         Assets::<T>::ensure_asset_exists(&self.asset_id)?;
         ensure!(
             crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
