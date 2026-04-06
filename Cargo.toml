@@ -163,6 +163,7 @@ members = [
     "pallets/pool-xyk",
     "pallets/presto",
     "pallets/rewards",
+    "pallets/sccp-bridge",
     "pallets/xor-fee",
     "pallets/referrals",
     "pallets/eth-bridge",

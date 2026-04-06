@@ -102,6 +102,7 @@ qa-tools = { path = "../pallets/qa-tools", default-features = false }
 referrals = { path = "../pallets/referrals", default-features = false }
 extended-assets = { path = "../pallets/extended-assets", default-features = false }
 rewards = { path = "../pallets/rewards", default-features = false }
+sccp-bridge = { path = "../pallets/sccp-bridge", default-features = false }
 rewards-runtime-api = { path = "../pallets/rewards/runtime-api", default-features = false }
 soratopia = { path = "../pallets/soratopia", default-features = false }
 technical = { path = "../pallets/technical", default-features = false }
@@ -299,6 +300,7 @@ std = [
     "extended-assets/std",
     "rewards-runtime-api/std",
     "rewards/std",
+    "sccp-bridge/std",
     "sp-api/std",
     "sp-block-builder/std",
     "sp-consensus-babe/std",

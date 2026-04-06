@@ -118,7 +118,7 @@ fn staking_storage_version_bridge_try_runtime_hooks() {
 fn bridge_peer_isolation_audit_try_runtime_hooks() {
     tests::bridge_peer_isolation_audit_try_runtime_hooks();
 }
-#[cfg(test)]
+#[cfg(all(test, feature = "try-runtime"))]
 #[tokio::test]
 async fn remote_try_runtime_upgrade_rehearsal() {
     tests::remote_try_runtime_upgrade_rehearsal().await;
@@ -2765,6 +2765,16 @@ impl snowbridge_pallet_ethereum_client::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const MaxSccpBridgePayloadLen: u32 = 256;
+}
+
+impl sccp_bridge::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type MaxPayloadLen = MaxSccpBridgePayloadLen;
+    type MessageProofVerifier = ();
+}
+
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 
@@ -3139,6 +3149,7 @@ construct_runtime! {
         Presto: presto::{Pallet, Call, Storage, Event<T>} = 59,
         Denomination: denomination::{Pallet, Call, Storage, Event<T>} = 60,
         Polkamarkt: pallet_polkamarkt::{Pallet, Call, Storage, Event<T>, Config<T>} = 61,
+        SccpBridge: sccp_bridge::{Pallet, Call, Storage, Event<T>} = 62,
 
         // Leaf provider should be placed before any pallet which is uses it
         LeafProvider: leaf_provider::{Pallet, Storage, Event<T>} = 99,
