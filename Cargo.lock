@@ -5355,6 +5355,7 @@ dependencies = [
  "rewards-runtime-api",
  "rlp 0.5.2",
  "scale-info",
+ "sccp-bridge",
  "serde",
  "serde_json",
  "snowbridge-beacon-primitives",
@@ -13288,6 +13289,20 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
  "yap",
+]
+
+[[package]]
+name = "sccp-bridge"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

@@ -30,6 +30,7 @@
 
 mod liquidity_proxy;
 mod referrals;
+#[cfg(feature = "try-runtime")]
 mod remote;
 mod xor_fee;
 
@@ -548,6 +549,7 @@ pub(crate) fn bridge_peer_isolation_audit_try_runtime_hooks() {
     });
 }
 
+#[cfg(feature = "try-runtime")]
 pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     remote::remote_try_runtime_upgrade_rehearsal().await;
 }
