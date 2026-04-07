@@ -1,4 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(
+    clippy::clone_on_copy,
+    clippy::duplicated_attributes,
+    clippy::manual_div_ceil,
+    clippy::needless_borrows_for_generic_args
+)]
 
 pub use pallet::*;
 

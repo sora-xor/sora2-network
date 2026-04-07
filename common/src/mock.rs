@@ -556,6 +556,7 @@ macro_rules! mock_dispatch_config {
             type Origin = RuntimeOrigin;
             type OriginOutput = OriginOutput;
             type WeightInfo = ();
+            type BenchmarkHelper = ();
         }
     };
 }
@@ -831,6 +832,7 @@ macro_rules! mock_orml_tokens_config {
         impl orml_tokens::Config for $runtime {
             type Amount = Amount;
             type Balance = Balance;
+            type BenchmarkHelper = ();
             type CurrencyHooks = ();
             type CurrencyId = <$runtime as assets::Config>::AssetId;
             type DustRemovalWhitelist = frame_support::traits::Everything;
@@ -1240,6 +1242,7 @@ macro_rules! mock_tokens_config {
         impl tokens::Config for $runtime {
             type Amount = Amount;
             type Balance = Balance;
+            type BenchmarkHelper = ();
             type CurrencyHooks = ();
             type CurrencyId = <$runtime as assets::Config>::AssetId;
             type DustRemovalWhitelist = frame_support::traits::Everything;

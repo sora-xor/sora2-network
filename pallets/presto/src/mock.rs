@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg(feature = "stage")] // presto
+#![allow(dead_code, deprecated, unused_imports)]
 
 use crate as presto;
 

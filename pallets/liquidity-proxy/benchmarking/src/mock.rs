@@ -31,6 +31,7 @@
 #![cfg(test)]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![allow(dead_code, deprecated)]
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;

@@ -45,6 +45,21 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
+// This vendored snapshot predates the Clippy version used in CI.
+#![allow(
+    clippy::clone_on_copy,
+    clippy::collapsible_if,
+    clippy::duplicated_attributes,
+    clippy::extra_unused_type_parameters,
+    clippy::let_and_return,
+    clippy::manual_div_ceil,
+    clippy::needless_borrows_for_generic_args,
+    clippy::needless_return,
+    clippy::type_complexity,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_cast,
+    clippy::useless_conversion
+)]
 
 extern crate alloc;
 mod benchmarking;

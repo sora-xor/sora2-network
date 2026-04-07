@@ -64,6 +64,17 @@ pub trait BenchmarkHelper<T: pallet::Config<I>, I: 'static = ()> {
     );
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+impl<T: pallet::Config<I>, I: 'static> BenchmarkHelper<T, I> for () {
+    fn successful_dispatch_context() -> (
+        <<T as pallet::Config<I>>::OriginOutput as traits::BridgeOriginOutput>::NetworkId,
+        <<T as pallet::Config<I>>::OriginOutput as traits::BridgeOriginOutput>::Additional,
+        Vec<u8>,
+    ) {
+        unimplemented!("benchmark helper is not configured for this mock runtime")
+    }
+}
+
 #[derive(
     Copy,
     Clone,
