@@ -118,7 +118,7 @@ fn staking_storage_version_bridge_try_runtime_hooks() {
 fn bridge_peer_isolation_audit_try_runtime_hooks() {
     tests::bridge_peer_isolation_audit_try_runtime_hooks();
 }
-#[cfg(test)]
+#[cfg(all(test, feature = "try-runtime"))]
 #[tokio::test]
 async fn remote_try_runtime_upgrade_rehearsal() {
     tests::remote_try_runtime_upgrade_rehearsal().await;
