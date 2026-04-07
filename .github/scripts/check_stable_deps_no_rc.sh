@@ -18,12 +18,23 @@ LOCKFILE_RC_PATTERN='source = "git\+https://github\.com/(paritytech|sora-xor)/po
 
 # Parse Cargo manifests instead of relying on a single-line regex so multiline TOML
 # dependency tables are checked as well.
-if ! python3 - "${MANIFESTS[@]}" <<'PY'
+if python3 - "${MANIFESTS[@]}" <<'PY'
 from __future__ import annotations
 
 import re
 import sys
-import tomllib
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    try:
+        import tomli as tomllib
+    except ModuleNotFoundError as exc:
+        print(
+            "[check_stable_deps_no_rc] Python 3.11+ or the tomli package is required to inspect Cargo.toml files",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from exc
 
 POLKADOT_SDK_GIT_RE = re.compile(
     r"^https://github\.com/(paritytech|sora-xor)/polkadot-sdk\.git$"
@@ -78,8 +89,15 @@ if matches:
     raise SystemExit(1)
 PY
 then
-  echo "[check_stable_deps_no_rc] RC polkadot-sdk reference detected in Cargo.toml" >&2
-  exit 1
+  :
+else
+  manifest_check_status=$?
+  if [[ ${manifest_check_status} -eq 1 ]]; then
+    echo "[check_stable_deps_no_rc] RC polkadot-sdk reference detected in Cargo.toml" >&2
+  else
+    echo "[check_stable_deps_no_rc] failed to inspect Cargo.toml files" >&2
+  fi
+  exit "${manifest_check_status}"
 fi
 
 if [[ -f Cargo.lock ]] && rg -n --pcre2 "${LOCKFILE_RC_PATTERN}" Cargo.lock; then
