@@ -243,6 +243,7 @@ frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag 
 
 [patch."https://github.com/paritytech/polkadot-sdk.git"]
 frame-storage-access-test-runtime = { path = "vendor/frame-storage-access-test-runtime" }
+pallet-identity = { path = "vendor/polkadot-sdk/frame/identity" }
 
 [patch."https://github.com/sora-xor/polkadot-sdk.git"]
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }

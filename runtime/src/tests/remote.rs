@@ -8,17 +8,37 @@ use std::env::var;
 
 const DEFAULT_REMOTE_RPC_URL: &str = "https://ws.mof.sora.org";
 
+fn env_flag(name: &str, default: bool) -> bool {
+    var(name)
+        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+        .unwrap_or(default)
+}
+
+fn env_csv(name: &str) -> Vec<String> {
+    var(name)
+        .ok()
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
 pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     sp_tracing::try_init_simple();
-    let require_remote = var("REQUIRE_REMOTE")
-        .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
-        .unwrap_or(false);
+    let require_remote = env_flag("REQUIRE_REMOTE", false);
 
     let transport: Transport = var("REMOTE_RPC_URL")
         .or_else(|_| var("WS"))
         .unwrap_or(DEFAULT_REMOTE_RPC_URL.to_string())
         .into();
     let maybe_state_snapshot: Option<SnapshotConfig> = var("SNAP").map(|s| s.into()).ok();
+    let pallets = env_csv("REMOTE_PALLETS");
+    let child_trie = env_flag("REMOTE_CHILD_TRIE", true);
     let builder = Builder::<Block>::default()
         .mode(if let Some(state_snapshot) = maybe_state_snapshot {
             Mode::OfflineOrElseOnline(
@@ -28,12 +48,16 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
                 OnlineConfig {
                     transport,
                     state_snapshot: Some(state_snapshot),
+                    pallets,
+                    child_trie,
                     ..Default::default()
                 },
             )
         } else {
             Mode::Online(OnlineConfig {
                 transport,
+                pallets,
+                child_trie,
                 ..Default::default()
             })
         })

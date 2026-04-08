@@ -42,6 +42,13 @@ Environment variables:
 - `SNAP`
   Optional snapshot path for `frame-remote-externalities`.
   When set, the rehearsal uses the snapshot offline and falls back to `REMOTE_RPC_URL` if needed.
+- `REMOTE_PALLETS`
+  Optional comma-separated pallet list for `frame-remote-externalities`.
+  When set, only those pallet storage prefixes are scraped instead of the full chain state.
+- `REMOTE_CHILD_TRIE`
+  Optional boolean flag for child trie scraping.
+  Defaults to `true`; set `REMOTE_CHILD_TRIE=0` to skip child trie storage when the selected
+  pallets do not rely on it.
 - `REQUIRE_REMOTE=1`
   Fail closed instead of skipping when the remote externalities builder cannot connect or load state.
   `run_remote_try_runtime.sh` sets this by default for release use; set `REQUIRE_REMOTE=0` only for
