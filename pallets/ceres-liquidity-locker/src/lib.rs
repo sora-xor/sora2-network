@@ -61,6 +61,7 @@ pub mod pallet {
         const BLOCKS_PER_ONE_DAY: BlockNumberFor<Self>;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Reference to pool_xyk pallet
@@ -80,7 +81,6 @@ pub mod pallet {
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -189,7 +189,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
             ensure!(
-                percentage_of_pool_tokens <= balance!(1),
+                percentage_of_pool_tokens > balance!(0) && percentage_of_pool_tokens <= balance!(1),
                 Error::<T>::InvalidPercentage
             );
 
@@ -286,13 +286,15 @@ pub mod pallet {
 
             // Put updated address info into storage
             // Get lock info of extrinsic caller
+            let locked_pool_tokens = lock_info.pool_tokens;
+            let lock_unlocking_timestamp = lock_info.unlocking_timestamp;
             <LockerData<T>>::append(&user, lock_info);
 
             // Emit an event
             Self::deposit_event(Event::Locked(
                 user,
-                percentage_of_pool_tokens,
-                current_timestamp,
+                locked_pool_tokens,
+                lock_unlocking_timestamp,
             ));
 
             // Return a successful DispatchResult
@@ -319,7 +321,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let mut counter: u64 = 0;
 
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
@@ -439,7 +441,7 @@ pub mod pallet {
     pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
-            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+            frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
             let xor = AssetIdOf::<T>::from(XOR);
             let tbcd = AssetIdOf::<T>::from(TBCD);
 

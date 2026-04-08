@@ -31,24 +31,26 @@
 use crate::contract::{ContractEvent, DepositEvent};
 use crate::offchain::SignatureParams;
 use crate::{
-    BridgeNetworkId, BridgeTimepoint, Config, Error, EthAddress, Pallet, PeerAccountId,
-    RequestStatuses, SidechainAssetPrecision, Timepoint,
+    BridgeNetworkId, BridgeSignatureVersion, BridgeSignatureVersions, BridgeTimepoint, Config,
+    Error, EthAddress, Pallet, PeerAccountId, RequestStatuses, SidechainAssetPrecision, Timepoint,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::AssetInfoProvider;
 use common::Denominator;
 use ethabi::Token;
 use ethereum_types::U256;
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::log::warn;
+use frame_support::__private::log::warn;
+use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
 use frame_support::sp_runtime::app_crypto::sp_core;
-use frame_support::{ensure, sp_io, RuntimeDebug};
 pub use incoming::*;
 pub use outgoing::*;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
+use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub mod encode_packed;
@@ -87,7 +89,7 @@ pub enum OutgoingRequest<T: Config> {
 }
 
 impl<T: Config> OutgoingRequest<T> {
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             OutgoingRequest::Transfer(transfer) => &transfer.from,
             OutgoingRequest::AddAsset(request) => &request.author,
@@ -227,14 +229,38 @@ impl<T: Config> OutgoingRequest<T> {
 
     pub fn should_be_skipped(&self) -> bool {
         match self {
+            OutgoingRequest::AddPeerCompat(req) => req.should_be_skipped(),
             OutgoingRequest::RemovePeer(req) => req.should_be_skipped(),
             _ => false,
         }
     }
+
+    /// Returns `true` when signatures for this request use legacy-insecure domain separation.
+    ///
+    /// Weak domains are rejected unconditionally in runtime logic.
+    pub fn uses_weak_signature_domain(&self) -> bool {
+        if matches!(
+            self,
+            OutgoingRequest::AddPeerCompat(_) | OutgoingRequest::RemovePeerCompat(_)
+        ) {
+            return true;
+        }
+        BridgeSignatureVersions::<T>::get(self.network_id()) == BridgeSignatureVersion::V1
+    }
 }
 
 /// Types of transaction-requests that can be made from a sidechain.
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingTransactionRequestKind {
     Transfer,
@@ -250,7 +276,17 @@ pub enum IncomingTransactionRequestKind {
 }
 
 /// Types of meta-requests that can be made.
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingMetaRequestKind {
     CancelOutgoingRequest,
@@ -258,7 +294,17 @@ pub enum IncomingMetaRequestKind {
 }
 
 /// Types of requests that can be made from a sidechain.
-#[derive(Clone, Copy, Encode, Decode, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum IncomingRequestKind {
     Transaction(IncomingTransactionRequestKind),
@@ -302,9 +348,11 @@ pub enum IncomingRequest<T: Config> {
     ChangePeersCompat(IncomingChangePeersCompat<T>),
 }
 
+impl<T: Config> codec::DecodeWithMemTracking for IncomingRequest<T> {}
+
 impl<T: Config> IncomingRequest<T> {
     pub fn try_from_contract_event(
-        event: ContractEvent<EthAddress, T::AccountId, U256>,
+        event: ContractEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
         incoming_request: LoadIncomingTransactionRequest<T>,
         at_height: u64,
     ) -> Result<Self, Error<T>> {
@@ -505,7 +553,7 @@ impl<T: Config> IncomingRequest<T> {
         }
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             IncomingRequest::Transfer(request) => request.author(),
             IncomingRequest::AddToken(request) => request.author(),
@@ -524,8 +572,19 @@ impl<T: Config> IncomingRequest<T> {
         match self {
             IncomingRequest::CancelOutgoingRequest(request) => {
                 let hash = request.tx_hash;
-                let tx = Pallet::<T>::load_tx_receipt(hash, network_id)?;
-                Ok(tx.is_approved() == false) // TODO: check for gas limit
+                let tx_receipt = Pallet::<T>::load_tx_receipt(hash, network_id)?;
+                if tx_receipt.is_approved() {
+                    return Ok(false);
+                }
+                let tx = Pallet::<T>::load_tx(hash, network_id)?;
+                ensure!(
+                    tx_receipt
+                        .gas_used
+                        .map(|used| used != tx.gas)
+                        .unwrap_or(false),
+                    Error::<T>::TransactionMightHaveFailedDueToGasLimit
+                );
+                Ok(true)
             }
             IncomingRequest::MarkAsDone(request) => {
                 Pallet::<T>::load_is_used(request.outgoing_request_hash, request.network_id)
@@ -546,6 +605,8 @@ pub enum LoadIncomingRequest<T: Config> {
     Transaction(LoadIncomingTransactionRequest<T>),
     Meta(LoadIncomingMetaRequest<T>, H256),
 }
+
+impl<T: Config> codec::DecodeWithMemTracking for LoadIncomingRequest<T> {}
 
 impl<T: Config> LoadIncomingRequest<T> {
     pub fn hash(&self) -> H256 {
@@ -578,7 +639,7 @@ impl<T: Config> LoadIncomingRequest<T> {
         }
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             Self::Transaction(request) => &request.author,
             Self::Meta(request, _) => &request.author,
@@ -626,7 +687,7 @@ impl<T: Config> LoadIncomingRequest<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct LoadIncomingTransactionRequest<T: Config> {
-    pub(crate) author: T::AccountId,
+    pub(crate) author: <T as frame_system::pallet::Config>::AccountId,
     pub(crate) hash: H256,
     pub(crate) timepoint: BridgeTimepoint<T>,
     pub(crate) kind: IncomingTransactionRequestKind,
@@ -635,7 +696,7 @@ pub struct LoadIncomingTransactionRequest<T: Config> {
 
 impl<T: Config> LoadIncomingTransactionRequest<T> {
     pub fn new(
-        author: T::AccountId,
+        author: <T as frame_system::pallet::Config>::AccountId,
         hash: H256,
         timepoint: Timepoint<T>,
         kind: IncomingTransactionRequestKind,
@@ -657,7 +718,7 @@ impl<T: Config> LoadIncomingTransactionRequest<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct LoadIncomingMetaRequest<T: Config> {
-    pub(crate) author: T::AccountId,
+    pub(crate) author: <T as frame_system::pallet::Config>::AccountId,
     pub(crate) hash: H256,
     pub(crate) timepoint: BridgeTimepoint<T>,
     pub(crate) kind: IncomingMetaRequestKind,
@@ -666,7 +727,7 @@ pub struct LoadIncomingMetaRequest<T: Config> {
 
 impl<T: Config> LoadIncomingMetaRequest<T> {
     pub fn new(
-        author: T::AccountId,
+        author: <T as frame_system::pallet::Config>::AccountId,
         hash: H256,
         timepoint: Timepoint<T>,
         kind: IncomingMetaRequestKind,
@@ -754,7 +815,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     /// An initiator of the request.
-    pub(crate) fn author(&self) -> &T::AccountId {
+    pub(crate) fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         match self {
             OffchainRequest::Outgoing(request, _) => request.author(),
             OffchainRequest::LoadIncoming(request) => request.author(),
@@ -920,7 +981,7 @@ impl OutgoingRequestEncoded {
 /// - ApprovalsReady: request was approved and can be used in the sidechain.
 /// - Failed: an error occurred in one of the previous stages.
 /// - Done: request was finalized.
-#[derive(PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum RequestStatus {
     Pending,

@@ -31,24 +31,23 @@
 
 use codec::Codec;
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr};
 
 use std::sync::Arc;
+
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
 
 // Runtime API imports.
 pub use vested_rewards_runtime_api::{
     BalanceInfo, CrowdloanLease, VestedRewardsApi as VestedRewardsRuntimeApi,
 };
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait VestedRewardsApi<BlockHash, AccountId, AssetId, OptionBalanceInfo, CrowdloanTag> {
     #[method(name = "vestedRewards_crowdloanClaimable")]
     fn crowdloan_claimable(
@@ -104,12 +103,12 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<BalanceInfo<Balance>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.crowdloan_claimable(&at, tag, account_id, asset_id)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.crowdloan_claimable(at, tag, account_id, asset_id)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn crowdloan_lease(
@@ -118,14 +117,18 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<CrowdloanLease> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
+        );
         let lease = api
-            .crowdloan_lease(&at, tag)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
-            .ok_or(RpcError::Custom("Crowdloan not found".into()))?;
+            .crowdloan_lease(at, tag)
+            .map_err(|e| runtime_error_into_rpc_error(e))?
+            .ok_or(ErrorObjectOwned::owned(
+                1,
+                "Crowdloan not found",
+                None::<()>,
+            ))?;
         Ok(lease)
     }
 }

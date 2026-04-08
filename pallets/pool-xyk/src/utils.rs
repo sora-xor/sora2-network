@@ -29,10 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::FixedWrapper256;
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::weights::Weight;
 use sp_core::Get;
+use sp_runtime::DispatchError;
 
 use crate::aliases::{TechAccountIdOf, TechAssetIdOf};
 use crate::bounds::*;
@@ -320,7 +321,7 @@ impl<T: Config> Pallet<T> {
         }
         *weight = weight.saturating_add(T::DbWeight::get().writes(1));
         TotalIssuances::<T>::insert(&pool_acc, new_issuance);
-        frame_support::log::debug!(
+        frame_support::__private::log::debug!(
             "Pool adjusted {:?} for {} providers: issuance {} -> {}",
             pool_acc,
             providers,
@@ -345,7 +346,7 @@ impl<T: Config> Pallet<T> {
         let (reserve_a, reserve_b, _) =
             Self::get_actual_reserves(pool_account, asset_a, asset_a, asset_b)?;
         Self::update_reserves(asset_a, asset_a, asset_b, (&reserve_a, &reserve_b));
-        frame_support::log::debug!(
+        frame_support::__private::log::debug!(
             "Updated pool xyk reserves for {:?}({}) => {:?}({})",
             asset_a,
             reserve_a,

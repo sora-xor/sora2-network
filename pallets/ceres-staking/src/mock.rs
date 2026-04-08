@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 use crate::{self as ceres_staking, Config};
 use common::mock::ExistentialDeposits;
 use common::prelude::Balance;
@@ -17,7 +19,7 @@ use frame_system;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Zero;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -29,7 +31,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -133,7 +135,7 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self
@@ -141,6 +143,7 @@ impl ExtBuilder {
                 .iter()
                 .map(|(acc, _, balance)| (acc.clone(), *balance))
                 .collect(),
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

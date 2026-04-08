@@ -645,7 +645,7 @@ fn should_check_permissions_for_delete_order_book() {
             order_book_id,
             OrderBookStatus::Stop
         ));
-        if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
+        if pallet_collective::Members::<Runtime, framenode_runtime::TechnicalCollective>::get()
             .len()
             > 1
         {
@@ -840,7 +840,7 @@ fn should_check_permissions_for_update_order_book() {
 
         // Only more than half approvals from technical commitee are accepted
 
-        if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
+        if pallet_collective::Members::<Runtime, framenode_runtime::TechnicalCollective>::get()
             .len()
             > 1
         {
@@ -1758,7 +1758,7 @@ fn should_check_permissions_for_change_order_book_status() {
 
         // Only more than half approvals from technical commitee are accepted
 
-        if pallet_collective::Pallet::<Runtime, framenode_runtime::TechnicalCollective>::members()
+        if pallet_collective::Members::<Runtime, framenode_runtime::TechnicalCollective>::get()
             .len()
             > 1
         {

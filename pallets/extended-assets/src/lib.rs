@@ -59,6 +59,7 @@ use common::{
 };
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
+use frame_support::traits::Time;
 use frame_support::BoundedBTreeSet;
 use sp_core::Get;
 use weights::WeightInfo;
@@ -85,14 +86,17 @@ pub mod pallet {
     use super::*;
     use common::{Balance, DEFAULT_BALANCE_PRECISION};
     use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
-    use frame_support::traits::StorageVersion;
+    use frame_support::traits::{StorageVersion, Time};
     use frame_system::pallet_prelude::*;
     use sp_core::TryCollect;
+    use sp_std::vec;
+    use sp_std::vec::Vec;
 
     #[pallet::config]
     pub trait Config:
         frame_system::Config + common::Config + technical::Config + pallet_timestamp::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// To retrieve asset info
@@ -118,7 +122,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -431,7 +434,6 @@ pub mod pallet {
         pub assets_metadata: Vec<(AssetIdOf<T>, Option<ContentSource>, AssetIdOf<T>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -441,7 +443,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.assets_metadata.iter().cloned().for_each(
                 |(sbt_asset_id, external_url, regulated_asset)| {
@@ -474,10 +476,10 @@ impl<T: Config> Pallet<T> {
 
         let sbt_id = Self::regulated_asset_to_sbt(regulated_asset_id);
         let is_holding = <T as Config>::AssetInfoProvider::total_balance(&sbt_id, account_id)
-            .map_or(false, |balance| balance > 0);
+            .is_ok_and(|balance| balance > 0);
 
         let expires_at = Self::sbt_asset_expiration(account_id, sbt_id);
-        let is_expired = expires_at.map_or(false, |expiration_date| expiration_date < *now);
+        let is_expired = expires_at.is_some_and(|expiration_date| expiration_date < *now);
 
         is_holding && !is_expired
     }

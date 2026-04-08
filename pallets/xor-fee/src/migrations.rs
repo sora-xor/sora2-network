@@ -30,9 +30,9 @@
 
 pub mod remove_vxor_remint {
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::weights::Weight;
 
     use crate::*;
 
@@ -57,12 +57,12 @@ pub mod remove_vxor_remint {
 pub mod add_white_listed_assets_for_xorless_fee {
     use crate::{Config, Pallet};
     use common::{
-        AssetId32, AssetIdOf, APOLLO_ASSET_ID, DAI, ETH, KSM, KUSD, KXOR, PSWAP, TBCD, VAL, XSTUSD,
+        AssetId32, AssetIdOf, APOLLO_ASSET_ID, DAI, ETH, KUSD, KXOR, PSWAP, TBCD, VAL, XSTUSD,
     };
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
     use frame_support::pallet_prelude::ValueQuery;
     use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::weights::Weight;
     use hex_literal::hex;
     use sp_core::bounded::BoundedVec;
     use sp_core::Get;
@@ -98,7 +98,10 @@ pub mod add_white_listed_assets_for_xorless_fee {
                     "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
                 ))
                 .into(), //DOT
-                KSM.into(),
+                AssetId32::from_bytes(hex!(
+                    "00117b0fa73c4672e03a7d9d774e3b3f91beb893e93d9a8d0430295f44225db8"
+                ))
+                .into(), //KSM
                 AssetId32::from_bytes(hex!(
                     "00ab83f36ff0cbbdd12fd88a094818820eaf155c08c4159969f1fb21534c1eb0"
                 ))
@@ -117,13 +120,13 @@ pub mod add_white_listed_assets_for_xorless_fee {
 
 #[cfg(feature = "wip")] // Dynamic fee
 pub mod v2 {
+    use crate::*;
     use common::balance;
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
-    use frame_support::{log::info, traits::StorageVersion};
-
-    use crate::*;
+    use frame_support::weights::Weight;
+    use frame_support::{__private::log::info, traits::StorageVersion};
+    use frame_system::pallet_prelude::BlockNumberFor;
 
     pub struct Migrate<T>(PhantomData<T>);
 
@@ -132,18 +135,14 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            let period =
-                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+            let period = BlockNumberFor::<T>::from(3600_u32);
             let small_reference_amount = balance!(0.2);
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
                 <UpdatePeriod<T>>::put(period); // 1 write
-                info!("Update period initialized as {:?}", period);
+                info!("Update period initialized as {period:?}");
                 <SmallReferenceAmount<T>>::put(small_reference_amount); // 1 write
-                info!(
-                    "Small reference amount initialized as {:?}",
-                    small_reference_amount
-                );
+                info!("Small reference amount initialized as {small_reference_amount:?}");
                 StorageVersion::new(2).put::<Pallet<T>>();
                 return T::DbWeight::get().reads_writes(1, 2);
             }
@@ -151,7 +150,7 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version before upgrade"
@@ -160,9 +159,8 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
-            let period =
-                <T as frame_system::Config>::BlockNumber::try_from(3600_u32).unwrap_or_default();
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+            let period = BlockNumberFor::<T>::from(3600_u32);
             let small_reference_amount = balance!(0.2);
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),

@@ -30,19 +30,22 @@
 
 use super::mock::*;
 use super::Error;
+use crate::requests::RequestStatus;
 use crate::requests::{
     ChangePeersContract, IncomingChangePeersCompat, IncomingRequest,
     IncomingTransactionRequestKind, LoadIncomingTransactionRequest,
 };
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
-    approve_next_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
+    approve_next_request, approve_request, assert_incoming_request_done, request_incoming,
+    ETH_NETWORK_ID,
 };
 use crate::types::{Bytes, Transaction};
 use crate::{types, EthAddress};
 use common::eth;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, ecdsa, sr25519, Pair};
 use frame_support::sp_runtime::traits::IdentifyAccount;
+use frame_support::sp_runtime::DispatchError;
 use frame_support::traits::Currency;
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -406,7 +409,6 @@ fn should_remove_peer_in_eth_network() {
 }
 
 #[test]
-#[ignore]
 fn should_not_allow_add_and_remove_peer_only_to_authority() {
     let mut builder = ExtBuilder::new();
     builder.add_network(vec![], None, Some(5), Default::default());
@@ -423,7 +425,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
                 None,
                 net_id
             ),
-            Error::Forbidden
+            frame_support::sp_runtime::DispatchError::BadOrigin
         );
         assert_err!(
             EthBridge::add_peer(
@@ -432,7 +434,7 @@ fn should_not_allow_add_and_remove_peer_only_to_authority() {
                 EthAddress::from(&hex!("2222222222222222222222222222222222222222")),
                 net_id,
             ),
-            Error::Forbidden
+            frame_support::sp_runtime::DispatchError::BadOrigin
         );
     });
 }
@@ -463,11 +465,376 @@ fn should_not_allow_changing_peers_simultaneously() {
                 Some(H160::repeat_byte(12)),
                 net_id
             ),
-            Error::UnknownPeerId
+            Error::CantRemoveMorePeers
         );
         assert_err!(
             EthBridge::add_peer(RuntimeOrigin::root(), peer_id.clone(), address, net_id,),
             Error::TooManyPendingPeers
+        );
+    });
+}
+
+#[test]
+fn should_not_add_peer_when_peers_at_limit() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let peers: std::collections::BTreeSet<AccountId> = (0..crate::MAX_PEERS)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect();
+        crate::Peers::<Runtime>::insert(net_id, peers);
+
+        let kp = ecdsa::Pair::from_string("//MAXPEER", None).unwrap();
+        let signer = AccountPublic::from(kp.public());
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
+        let new_peer_id = signer.into_account();
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
+        let new_peer_address = eth::public_key_to_eth_address(&public);
+
+        assert_err!(
+            EthBridge::add_peer(RuntimeOrigin::root(), new_peer_id, new_peer_address, net_id,),
+            Error::CantAddMorePeers
+        );
+    });
+}
+
+#[test]
+fn add_peer_compat_validate_fails_when_peers_at_limit() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let peers: std::collections::BTreeSet<AccountId> = (0..crate::MAX_PEERS)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect();
+        crate::Peers::<Runtime>::insert(net_id, peers);
+
+        let author = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let request = crate::requests::OutgoingAddPeerCompat::<Runtime> {
+            author,
+            peer_address: EthAddress::from(&hex!("7777777777777777777777777777777777777777")),
+            peer_account_id: AccountId::new([250u8; 32]),
+            nonce: Default::default(),
+            network_id: net_id,
+            timepoint: Default::default(),
+        };
+        assert_err!(request.validate(), Error::CantAddMorePeers);
+    });
+}
+
+#[test]
+fn should_not_remove_peer_when_peers_at_minimum() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let peers: std::collections::BTreeSet<AccountId> = (0..crate::MIN_PEERS)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect();
+        crate::Peers::<Runtime>::insert(net_id, peers);
+
+        assert_err!(
+            EthBridge::remove_peer(
+                RuntimeOrigin::root(),
+                AccountId::new([0u8; 32]),
+                Some(EthAddress::from(&hex!(
+                    "8888888888888888888888888888888888888888"
+                ))),
+                net_id,
+            ),
+            Error::CantRemoveMorePeers
+        );
+    });
+}
+
+#[test]
+fn remove_peer_compat_validate_fails_when_peers_at_minimum() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let peers: std::collections::BTreeSet<AccountId> = (0..crate::MIN_PEERS)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect();
+        crate::Peers::<Runtime>::insert(net_id, peers);
+
+        let author = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let request = crate::requests::OutgoingRemovePeerCompat::<Runtime> {
+            author,
+            peer_account_id: AccountId::new([0u8; 32]),
+            peer_address: EthAddress::from(&hex!("8888888888888888888888888888888888888888")),
+            nonce: Default::default(),
+            network_id: net_id,
+            timepoint: Default::default(),
+        };
+        assert_err!(request.validate(), Error::CantRemoveMorePeers);
+    });
+}
+
+#[test]
+fn should_not_approve_add_peer_compat_before_add_peer_is_processed() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let kp = ecdsa::Pair::from_string("//OCW5", None).unwrap();
+        let signer = AccountPublic::from(kp.public());
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
+        let new_peer_id = signer.into_account();
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
+        let new_peer_address = eth::public_key_to_eth_address(&public);
+        assert_ok!(EthBridge::add_peer(
+            RuntimeOrigin::root(),
+            new_peer_id,
+            new_peer_address,
+            net_id,
+        ));
+
+        let (compat_request, compat_hash) = crate::RequestsQueue::<Runtime>::get(net_id)
+            .iter()
+            .find_map(|hash| {
+                crate::Requests::<Runtime>::get(net_id, *hash)
+                    .and_then(|r| r.into_outgoing())
+                    .and_then(|(req, req_hash)| match req {
+                        crate::requests::OutgoingRequest::AddPeerCompat(_) => Some((req, req_hash)),
+                        _ => None,
+                    })
+            })
+            .expect("add peer compat request should be queued");
+
+        assert!(approve_request(&state, compat_request, compat_hash).is_err());
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, compat_hash),
+            Some(RequestStatus::Pending)
+        );
+
+        approve_next_request(&state, net_id).expect("add peer request wasn't approved");
+        approve_next_request(&state, net_id).expect("add peer compat request wasn't approved");
+    });
+}
+
+#[test]
+fn should_fail_add_peer_compat_without_corresponding_add_peer_request() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let kp = ecdsa::Pair::from_string("//OCW5", None).unwrap();
+        let signer = AccountPublic::from(kp.public());
+        let public = PublicKey::from_secret_key(&SecretKey::parse_slice(&kp.seed()).unwrap());
+        let new_peer_id = signer.into_account();
+        let _ = pallet_balances::Pallet::<Runtime>::deposit_creating(&new_peer_id, 1u32.into());
+        let new_peer_address = eth::public_key_to_eth_address(&public);
+        assert_ok!(EthBridge::add_peer(
+            RuntimeOrigin::root(),
+            new_peer_id,
+            new_peer_address,
+            net_id,
+        ));
+
+        let (compat_request, compat_hash, add_hash) = crate::RequestsQueue::<Runtime>::get(net_id)
+            .into_iter()
+            .fold((None, None, None), |(compat_req, compat_h, add_h), hash| {
+                let Some((req, req_hash)) =
+                    crate::Requests::<Runtime>::get(net_id, hash).and_then(|r| r.into_outgoing())
+                else {
+                    return (compat_req, compat_h, add_h);
+                };
+                match req {
+                    crate::requests::OutgoingRequest::AddPeerCompat(_) => {
+                        (Some(req), Some(req_hash), add_h)
+                    }
+                    crate::requests::OutgoingRequest::AddPeer(_) => {
+                        (compat_req, compat_h, Some(req_hash))
+                    }
+                    _ => (compat_req, compat_h, add_h),
+                }
+            });
+        let compat_request = compat_request.expect("add peer compat request should be queued");
+        let compat_hash = compat_hash.expect("add peer compat hash should exist");
+        let add_hash = add_hash.expect("add peer hash should exist");
+
+        // Orphan the compat request by deleting its corresponding AddPeer request.
+        crate::Requests::<Runtime>::remove(net_id, add_hash);
+        crate::RequestStatuses::<Runtime>::remove(net_id, add_hash);
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| {
+            queue.retain(|hash| *hash != add_hash);
+        });
+
+        assert!(approve_request(&state, compat_request, compat_hash).is_err());
+        let expected_error: DispatchError = Error::UnknownRequest.into();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, compat_hash),
+            Some(RequestStatus::Failed(expected_error))
+        );
+    });
+}
+
+#[test]
+fn should_not_approve_remove_peer_before_compat_request_is_processed() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
+        assert_ok!(EthBridge::remove_peer(
+            RuntimeOrigin::root(),
+            peer_id.clone(),
+            Some(H160::repeat_byte(12)),
+            net_id,
+        ));
+
+        let queue = crate::RequestsQueue::<Runtime>::get(net_id);
+        let (remove_request, remove_hash) = queue
+            .iter()
+            .find_map(|hash| {
+                crate::Requests::<Runtime>::get(net_id, *hash)
+                    .and_then(|r| r.into_outgoing())
+                    .and_then(|(req, req_hash)| match req {
+                        crate::requests::OutgoingRequest::RemovePeer(_) => Some((req, req_hash)),
+                        _ => None,
+                    })
+            })
+            .expect("remove peer request should be queued");
+
+        assert!(approve_request(&state, remove_request, remove_hash).is_err());
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, remove_hash),
+            Some(RequestStatus::Pending)
+        );
+
+        approve_next_request(&state, net_id).expect("compat request wasn't approved");
+        approve_next_request(&state, net_id).expect("remove request wasn't approved");
+    });
+}
+
+#[test]
+fn should_fail_remove_peer_compat_without_corresponding_remove_peer_request() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
+        assert_ok!(EthBridge::remove_peer(
+            RuntimeOrigin::root(),
+            peer_id.clone(),
+            Some(H160::repeat_byte(12)),
+            net_id,
+        ));
+
+        let (compat_request, compat_hash, remove_hash) =
+            crate::RequestsQueue::<Runtime>::get(net_id)
+                .into_iter()
+                .fold(
+                    (None, None, None),
+                    |(compat_req, compat_h, remove_h), hash| {
+                        let Some((req, req_hash)) = crate::Requests::<Runtime>::get(net_id, hash)
+                            .and_then(|r| r.into_outgoing())
+                        else {
+                            return (compat_req, compat_h, remove_h);
+                        };
+                        match req {
+                            crate::requests::OutgoingRequest::RemovePeerCompat(_) => {
+                                (Some(req), Some(req_hash), remove_h)
+                            }
+                            crate::requests::OutgoingRequest::RemovePeer(_) => {
+                                (compat_req, compat_h, Some(req_hash))
+                            }
+                            _ => (compat_req, compat_h, remove_h),
+                        }
+                    },
+                );
+        let compat_request = compat_request.expect("remove peer compat request should be queued");
+        let compat_hash = compat_hash.expect("remove peer compat hash should exist");
+        let remove_hash = remove_hash.expect("remove peer hash should exist");
+
+        // Orphan the compat request by deleting its corresponding RemovePeer request.
+        crate::Requests::<Runtime>::remove(net_id, remove_hash);
+        crate::RequestStatuses::<Runtime>::remove(net_id, remove_hash);
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| {
+            queue.retain(|hash| *hash != remove_hash);
+        });
+
+        assert!(approve_request(&state, compat_request, compat_hash).is_err());
+        let expected_error: DispatchError = Error::UnknownRequest.into();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, compat_hash),
+            Some(RequestStatus::Failed(expected_error))
+        );
+    });
+}
+
+#[test]
+fn should_fail_remove_peer_without_corresponding_compat_request() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let (_, peer_id, _) = &state.networks[&net_id].ocw_keypairs[4];
+        assert_ok!(EthBridge::remove_peer(
+            RuntimeOrigin::root(),
+            peer_id.clone(),
+            Some(H160::repeat_byte(12)),
+            net_id,
+        ));
+
+        let (compat_hash, remove_request, remove_hash) =
+            crate::RequestsQueue::<Runtime>::get(net_id)
+                .into_iter()
+                .fold(
+                    (None, None, None),
+                    |(compat_h, remove_req, remove_h), hash| {
+                        let Some((req, req_hash)) = crate::Requests::<Runtime>::get(net_id, hash)
+                            .and_then(|r| r.into_outgoing())
+                        else {
+                            return (compat_h, remove_req, remove_h);
+                        };
+                        match req {
+                            crate::requests::OutgoingRequest::RemovePeerCompat(_) => {
+                                (Some(req_hash), remove_req, remove_h)
+                            }
+                            crate::requests::OutgoingRequest::RemovePeer(_) => {
+                                (compat_h, Some(req), Some(req_hash))
+                            }
+                            _ => (compat_h, remove_req, remove_h),
+                        }
+                    },
+                );
+        let compat_hash = compat_hash.expect("remove peer compat hash should exist");
+        let remove_request = remove_request.expect("remove peer request should exist");
+        let remove_hash = remove_hash.expect("remove peer hash should exist");
+
+        // Orphan the RemovePeer request by deleting its corresponding compat request.
+        crate::Requests::<Runtime>::remove(net_id, compat_hash);
+        crate::RequestStatuses::<Runtime>::remove(net_id, compat_hash);
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| {
+            queue.retain(|hash| *hash != compat_hash);
+        });
+
+        assert!(approve_request(&state, remove_request, remove_hash).is_err());
+        let expected_error: DispatchError = Error::UnknownRequest.into();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, remove_hash),
+            Some(RequestStatus::Failed(expected_error))
         );
     });
 }
@@ -576,6 +943,19 @@ fn should_parse_remove_peer_on_old_contract() {
                 timepoint: Default::default(),
                 network_id: net_id
             })
+        );
+    });
+}
+
+#[test]
+fn force_add_peer_should_reject_unknown_network() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
+        let peer_address = H160::repeat_byte(0x11);
+        assert_err!(
+            EthBridge::force_add_peer(RuntimeOrigin::root(), bob, peer_address, ETH_NETWORK_ID + 1),
+            Error::UnknownNetwork
         );
     });
 }

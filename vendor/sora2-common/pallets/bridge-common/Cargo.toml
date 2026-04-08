@@ -1,0 +1,60 @@
+[package]
+name = "bridge-common"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+description = "Additional bridge types"
+version = "0.1.0"
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = [
+	"derive",
+	"bit-vec",
+], default-features = false }
+scale-info = { version = "2.0.0", default-features = false, features = [
+	"derive",
+	"bit-vec",
+] }
+bitvec = { version = "1", default-features = false, features = [
+	"alloc",
+	"serde",
+] }
+serde = { version = "1.0", features = [
+	"alloc",
+	"derive",
+], default-features = false }
+
+# Substrate
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-consensus-beefy = { workspace = true, default-features = false }
+bridge-types = { path = "../types", default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+log = { version = "0.4.20", default-features = false }
+
+[dev-dependencies]
+# Substrate
+sp-core = { workspace = true, default-features = false }
+hex-literal = "0.4.1"
+serde_json = "1.0.73"
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"serde/std",
+	"scale-info/std",
+	"frame-support/std",
+	"frame-system/std",
+	"bridge-types/std",
+	"log/std",
+	"sp-consensus-beefy/std",
+]
+try-runtime = ["frame-support/try-runtime"]

@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -45,6 +47,7 @@ use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use permissions::{Scope, MINT};
 use sp_core::crypto::AccountId32;
+use sp_runtime::BuildStorage;
 use sp_runtime::{self, Perbill};
 
 type DEXId = common::DEXId;
@@ -76,7 +79,7 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: pallet_multisig::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -109,20 +112,22 @@ impl Config for Runtime {
     type WeightInfo = ();
 }
 
-pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
+pub fn test_ext_with_account_id(
+    add_iroha_accounts: bool,
+    account_id: Option<AccountId>,
+) -> sp_io::TestExternalities {
     let tech_account_id =
         TechAccountId::Generic(TECH_ACCOUNT_PREFIX.to_vec(), TECH_ACCOUNT_MAIN.to_vec());
 
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Runtime>()
-        .unwrap();
+    let mut t = SystemConfig::default().build_storage().unwrap();
 
     pallet_balances::GenesisConfig::<Runtime> {
         balances: vec![
-            (ALICE, 0u128.into()),
-            (BOB, 0u128.into()),
-            (MINTING_ACCOUNT, 0u128.into()),
+            (ALICE, 1u128.into()),
+            (BOB, 1u128.into()),
+            (MINTING_ACCOUNT, 1u128.into()),
         ],
+        dev_accounts: None,
     }
     .assimilate_storage(&mut t)
     .unwrap();
@@ -233,12 +238,16 @@ pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
 
     IrohaMigrationConfig {
         iroha_accounts,
-        account_id: Some(MINTING_ACCOUNT),
+        account_id,
     }
     .assimilate_storage(&mut t)
     .unwrap();
 
     t.into()
+}
+
+pub fn test_ext(add_iroha_accounts: bool) -> sp_io::TestExternalities {
+    test_ext_with_account_id(add_iroha_accounts, Some(MINTING_ACCOUNT))
 }
 
 // Build genesis storage according to the mock runtime.

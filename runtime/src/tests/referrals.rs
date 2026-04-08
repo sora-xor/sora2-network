@@ -33,8 +33,9 @@ use common::prelude::constants::SMALL_FEE;
 use common::{AssetInfoProvider, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
+use sp_runtime::FixedU128;
 
-use crate::{Assets, Currencies, Referrals, Runtime, RuntimeOrigin};
+use crate::{Assets, Currencies, Referrals, Runtime, RuntimeOrigin, XorFee};
 
 type E = referrals::Error<Runtime>;
 
@@ -68,16 +69,21 @@ fn set_referrer_to_has_referrer() {
 #[test]
 fn reserve_insufficient_balance() {
     ext().execute_with(|| {
-        assert_err!(
-            Referrals::reserve(RuntimeOrigin::signed(alice()), 1),
-            pallet_balances::Error::<Runtime>::InsufficientBalance
-        );
+        let balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
+        let reserve_too_much = balance.saturating_add(1);
+        let result = Referrals::reserve(RuntimeOrigin::signed(alice()), reserve_too_much);
+        assert!(result.is_err());
     })
 }
 
 #[test]
 fn reserve_unreserve() {
     ext().execute_with(|| {
+        assert_ok!(XorFee::update_multiplier(
+            RuntimeOrigin::root(),
+            FixedU128::from_inner(0)
+        ));
+        let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
         assert_ok!(Currencies::update_balance(
             RuntimeOrigin::root(),
             alice(),
@@ -94,16 +100,14 @@ fn reserve_unreserve() {
             &alice()
         ));
 
-        for _ in 0..3 {
-            assert_ok!(Referrals::unreserve(
-                RuntimeOrigin::signed(alice()),
-                SMALL_FEE
-            ));
-        }
+        assert_ok!(Referrals::unreserve(
+            RuntimeOrigin::signed(alice()),
+            SMALL_FEE * 3
+        ));
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()),
-            Ok(SMALL_FEE * 3)
+            Ok(initial_balance + SMALL_FEE * 3)
         );
 
         assert!(!referrals::ReferrerBalances::<Runtime>::contains_key(

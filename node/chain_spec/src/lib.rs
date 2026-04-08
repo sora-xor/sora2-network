@@ -50,27 +50,28 @@ use framenode_runtime::multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use framenode_runtime::opaque::SessionKeys;
+#[cfg(feature = "runtime-wasm")]
+use framenode_runtime::WASM_BINARY;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
     BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig,
     BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
-    EthBridgeConfig, ExtendedAssetsConfig, GenesisConfig, GetBaseAssetId, GetParliamentAccountId,
-    GetPswapAssetId, GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig,
-    ImOnlineId, IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktBlocksPerDay,
-    PolkamarktBridgeDailyCap, PolkamarktConfig, PolkamarktCredentialTtl, PolkamarktFeeCollector,
-    PolkamarktForkTaxAccount, PolkamarktGovernanceBondMinimum, PolkamarktLiquiditySafetyBps,
-    PolkamarktMaintenanceFeeBps, PolkamarktMaintenancePoolAccount, PolkamarktPayoutTaxBps,
-    PolkamarktWalletCooldown, PswapDistributionConfig, RewardsConfig, Runtime, SS58Prefix,
-    SessionConfig, Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId,
-    TechnicalCommitteeConfig, TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig,
-    XSTPoolConfig, WASM_BINARY,
+    EthBridgeConfig, ExtendedAssetsConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
+    GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
+    IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
+    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktConfig,
+    PolkamarktFeeCollector, PolkamarktGovernanceBondMinimum, PswapDistributionConfig,
+    RewardsConfig, Runtime, RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature,
+    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
+    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig,
 };
+#[cfg(not(feature = "runtime-wasm"))]
+const WASM_BINARY: Option<&[u8]> = None;
 
 use hex_literal::hex;
 use permissions::Scope;
 use sc_finality_grandpa::AuthorityId as GrandpaId;
-use sc_network_common::config::MultiaddrWithPeerId;
+use sc_service::config::{MultiaddrWithPeerId, TelemetryEndpoints};
 use sc_service::{ChainType, Properties};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -90,7 +91,7 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig>;
+pub type ChainSpec = sc_service::GenericChainSpec<sc_service::NoExtension>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -184,20 +185,59 @@ fn calculate_reserves(accounts: impl Iterator<Item = Balance>) -> Balance {
     accounts.fold(0, |sum, balance| sum + balance)
 }
 
+fn chain_spec_from_genesis(
+    name: &str,
+    id: &str,
+    chain_type: ChainType,
+    genesis_builder: impl FnOnce() -> RuntimeGenesisConfig,
+    boot_nodes: Vec<MultiaddrWithPeerId>,
+    telemetry_endpoints: Option<TelemetryEndpoints>,
+    protocol_id: Option<&str>,
+    fork_id: Option<&str>,
+    properties: Option<Properties>,
+    _extensions: Option<sc_service::NoExtension>,
+) -> ChainSpec {
+    let wasm_binary = WASM_BINARY.expect("WASM binary was not built. Build with runtime-wasm");
+    let genesis_config = genesis_builder();
+    let genesis_config_json =
+        serde_json::to_value(&genesis_config).expect("RuntimeGenesisConfig must serialize");
+
+    let mut builder = ChainSpec::builder(wasm_binary, Default::default())
+        .with_name(name)
+        .with_id(id)
+        .with_chain_type(chain_type)
+        .with_boot_nodes(boot_nodes)
+        .with_genesis_config(genesis_config_json);
+
+    if let Some(telemetry_endpoints) = telemetry_endpoints {
+        builder = builder.with_telemetry_endpoints(telemetry_endpoints);
+    }
+    if let Some(protocol_id) = protocol_id {
+        builder = builder.with_protocol_id(protocol_id);
+    }
+    if let Some(fork_id) = fork_id {
+        builder = builder.with_fork_id(fork_id);
+    }
+    if let Some(properties) = properties {
+        builder = builder.with_properties(properties);
+    }
+
+    let mut spec = builder.build();
+    let mut coded_storage = genesis_config
+        .build_storage()
+        .expect("build coded chain storage");
+    coded_storage.top.insert(
+        sp_core::storage::well_known_keys::CODE.to_vec(),
+        wasm_binary.to_vec(),
+    );
+    sc_service::ChainSpec::set_storage(&mut spec, coded_storage);
+    spec
+}
+
 fn polkamarkt_genesis_config() -> PolkamarktConfig {
     PolkamarktConfig {
         fee_collector: Some(PolkamarktFeeCollector::get()),
-        maintenance_pool_account: Some(PolkamarktMaintenancePoolAccount::get()),
-        fork_tax_account: Some(PolkamarktForkTaxAccount::get()),
         governance_bond_minimum: Some(PolkamarktGovernanceBondMinimum::get()),
-        maintenance_fee_bps: Some(PolkamarktMaintenanceFeeBps::get()),
-        liquidity_safety_bps: Some(PolkamarktLiquiditySafetyBps::get()),
-        bridge_daily_cap: Some(PolkamarktBridgeDailyCap::get()),
-        blocks_per_day: Some(PolkamarktBlocksPerDay::get()),
-        wallet_cooldown: Some(PolkamarktWalletCooldown::get()),
-        payout_tax_bps: Some(PolkamarktPayoutTaxBps::get()),
-        credential_ttl: Some(PolkamarktCredentialTtl::get()),
-        credentials_required: Some(false),
     }
 }
 
@@ -223,7 +263,7 @@ pub fn predev_net_coded() -> ChainSpec {
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
-    ChainSpec::from_genesis(
+    chain_spec_from_genesis(
         "SORA-predev Testnet",
         "sora-substrate-predev",
         ChainType::Development,
@@ -312,7 +352,7 @@ pub fn dev_net_coded() -> ChainSpec {
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
-    ChainSpec::from_genesis(
+    chain_spec_from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
         ChainType::Development,
@@ -422,7 +462,7 @@ pub fn bridge_dev_net_coded() -> ChainSpec {
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
-    ChainSpec::from_genesis(
+    chain_spec_from_genesis(
         "SORA-dev Testnet",
         "sora-substrate-dev",
         ChainType::Live,
@@ -515,7 +555,7 @@ pub fn bridge_staging_net_coded() -> ChainSpec {
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     let protocol = "sora-substrate-bridge-staging";
-    ChainSpec::from_genesis(
+    chain_spec_from_genesis(
         "SORA-bridge Testnet",
         "sora-substrate-bridge",
         ChainType::Live,
@@ -638,7 +678,7 @@ pub fn staging_net_coded(test: bool) -> ChainSpec {
     } else {
         "sora-substrate-staging"
     };
-    ChainSpec::from_genesis(
+    chain_spec_from_genesis(
         name,
         id,
         ChainType::Live,
@@ -800,7 +840,7 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
-    ChainSpec::from_genesis(
+    chain_spec_from_genesis(
         "SORA-local Testnet",
         "sora-substrate-local",
         ChainType::Development,
@@ -886,7 +926,7 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
 // Some variables are only changed if faucet is enabled
 #[cfg(feature = "private-net")]
 fn testnet_genesis(
-    root_key: AccountId,
+    _root_key: AccountId,
     initial_authorities: Vec<(
         AccountId,
         AccountId,
@@ -902,7 +942,7 @@ fn testnet_genesis(
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
     validator_count: u32,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
     // Initial balances
 
     let initial_staking = balance!(1000000000);
@@ -1260,7 +1300,7 @@ fn testnet_genesis(
         XST.into(),
         TBCD.into(),
     ];
-    GenesisConfig {
+    RuntimeGenesisConfig {
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -1276,21 +1316,21 @@ fn testnet_genesis(
             ..Default::default()
         },
 
-        system: SystemConfig {
-            code: WASM_BINARY.unwrap_or_default().to_vec(),
-        },
+        system: SystemConfig::default(),
         sudo: SudoConfig {
-            key: Some(root_key.clone()),
+            key: None,
         },
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
         },
         babe: BabeConfig {
             authorities: vec![],
-            epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+            epoch_config: framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG,
+            _config: Default::default(),
         },
         grandpa: GrandpaConfig {
             authorities: vec![],
+            _config: Default::default(),
         },
         session: SessionConfig {
             keys: initial_authorities
@@ -1310,6 +1350,7 @@ fn testnet_genesis(
                     },
                 )
                 .collect::<Vec<_>>(),
+            non_authority_keys: vec![],
         },
         staking: StakingConfig {
             validator_count,
@@ -1693,7 +1734,10 @@ fn testnet_genesis(
                 ),
             ],
         },
-        balances: BalancesConfig { balances },
+        balances: BalancesConfig {
+            balances,
+            dev_accounts: None,
+        },
         dex_manager: DEXManagerConfig {
             dex_list: vec![
                 (
@@ -1764,6 +1808,7 @@ fn testnet_genesis(
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
+            _phantom: Default::default(),
         },
         eth_bridge: EthBridgeConfig {
             authority_account: Some(eth_bridge_authority_account_id.clone()),
@@ -1858,6 +1903,7 @@ fn testnet_genesis(
         },
         beefy: BeefyConfig {
             authorities: vec![],
+            ..Default::default()
         },
     }
 }
@@ -1873,88 +1919,82 @@ fn testnet_genesis(
     not(feature = "private-net")
 ))]
 pub fn main_net_coded() -> ChainSpec {
-    let mut properties = Properties::new();
-    properties.insert("ss58Format".into(), SS58Prefix::get().into());
-    properties.insert("tokenSymbol".into(), "XOR".into());
-    properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
-    let name = "SORA";
-    let id = "sora-substrate-main-net";
-    // SORA main-net node address. We should have 2 nodes.
-    let boot_nodes = vec![
-              MultiaddrWithPeerId::from_str("/dns/v1.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWLHZRLHeVPdrXuNNdzpKuPqo6Sm6f9rjVtp5XsEvhXvyG").unwrap(), //Prod value
-              MultiaddrWithPeerId::from_str("/dns/v2.sora2.soramitsu.co.jp/tcp/30333/p2p/12D3KooWGiemoYceJ1y5nQR1YNxysjbCH8MbW5ps1uApLfN36VQa").unwrap()  //Prod value
-            ];
-    ChainSpec::from_genesis(
-        name,
-        id,
-        ChainType::Live,
-        move || {
-            let eth_bridge_params = EthBridgeParams {
-                xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316") //Prod value
-                    .into(),
-                xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(), //Prod value
-                val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1") //Prod value
-                    .into(),
-                val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
-                bridge_contract_address: hex!("1485e9852ac841b52ed44d573036429504f4f602").into(),
-            };
-
-            // SORA main-net node address. We should have 2 nodes.
-            // Currently filled with staging example values
-            mainnet_genesis(
-                vec![
-                    authority_keys_from_public_keys(
-                        hex!("207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"), //Prod value
-                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
-                        hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
-                        hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), //Prod value
-                        hex!("024f206cdff359d50597b3fd41fd17a1b585c7914037eedbd8e4a0d3f213a8ab33"), // Prod value
-                    ),
-                    authority_keys_from_public_keys(
-                        hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), //Prod value
-                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
-                        hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
-                        hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), //Prod value
-                        hex!("02aadf7d2aa0d424cd60d6b384647f48e8d00610a631079fa33c1da0d712a71b1d"), // Prod value
-                    ),
-                ],
-                vec![
-                    hex!("4cd5a4a244bc53f6f1458757ed0af8680e8faa860deca32976bbd9a951bf6c1c").into(),
-                    hex!("54d7aa0bba9a5dbb1bb77973f344625df346f6a65840b8534ee22e93fbad767a").into(),
-                    hex!("e811eac3cf718caa98d77bb479227e8cc512e51e79d6ba1494dd089093f5707f").into(),
-                    hex!("a648c659a86eeb7cf84ddcedac64f33de6966b8853dd636ba693fce100bd8858").into(),
-                    hex!("60a17ce8550db4e1358db54bc3791026a285ab88e9c988ad54c3dc282475fe14").into(),
-                    hex!("de06bf70964d8aff4816e3cfd576d8d8f774663906a6e40d316860a3d4c55b6c").into(),
-                    hex!("4a4371f63db17fb4f33bec3ce7c8f588e3258c3b268b450647f4870d964dca6f").into(),
-                    hex!("d8815601fc99d9afa27a09fc5e46ebcc2472edc466fbb5c6fbae7a8566e50318").into(),
-                ],
-                vec![
-                    hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
-                    hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
-                ],
-                eth_bridge_params,
-                vec![
-                    hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
-                    hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
-                    hex!("30e87994d26e4123d585d5d8c46116bbc196a6f5a4ed87a3ee24a2dbada9a66d").into(),
-                    hex!("30fbd05409cf5f6a8ae6afaa05e9861405d8fa710d0b4c8d088f155cb0b87749").into(),
-                    hex!("20c706cba79f03fc2ed233da544a3e75a81dcae43b0a4edf72719307fd21cb1b").into(),
-                    hex!("8297172611ad3b085258d518f849a5533271d760f729669c9f8863971d70c372").into(),
-                ],
-                vec![
-                    hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
-                    hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
-                    hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
-                ],
-            )
-        },
-        boot_nodes,
-        None,
-        Some("sora-substrate-1"),
-        None,
-        Some(properties),
-        None,
+    let mut spec = ChainSpec::from_json_bytes(
+        include_str!("./bytes/chain_spec_main.json")
+            .as_bytes()
+            .to_vec(),
     )
+    .expect("parse embedded mainnet spec json");
+    let coded_genesis = {
+        let eth_bridge_params = EthBridgeParams {
+            xor_master_contract_address: hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316").into(), //Prod value
+            xor_contract_address: hex!("40fd72257597aa14c7231a7b1aaa29fce868f677").into(), //Prod value
+            val_master_contract_address: hex!("d1eeb2f30016fffd746233ee12c486e7ca8efef1").into(), //Prod value
+            val_contract_address: hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4").into(), //Prod value
+            bridge_contract_address: hex!("1485e9852ac841b52ed44d573036429504f4f602").into(),
+        };
+
+        // SORA main-net node address. We should have 2 nodes.
+        // Currently filled with staging example values
+        mainnet_genesis(
+            vec![
+                authority_keys_from_public_keys(
+                    hex!("207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"), //Prod value
+                    hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
+                    hex!("14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a"), //Prod value
+                    hex!("71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573"), //Prod value
+                    hex!("024f206cdff359d50597b3fd41fd17a1b585c7914037eedbd8e4a0d3f213a8ab33"), // Prod value
+                ),
+                authority_keys_from_public_keys(
+                    hex!("94ee828c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"), //Prod value
+                    hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
+                    hex!("38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004"), //Prod value
+                    hex!("d603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d"), //Prod value
+                    hex!("02aadf7d2aa0d424cd60d6b384647f48e8d00610a631079fa33c1da0d712a71b1d"), // Prod value
+                ),
+            ],
+            vec![
+                hex!("4cd5a4a244bc53f6f1458757ed0af8680e8faa860deca32976bbd9a951bf6c1c").into(),
+                hex!("54d7aa0bba9a5dbb1bb77973f344625df346f6a65840b8534ee22e93fbad767a").into(),
+                hex!("e811eac3cf718caa98d77bb479227e8cc512e51e79d6ba1494dd089093f5707f").into(),
+                hex!("a648c659a86eeb7cf84ddcedac64f33de6966b8853dd636ba693fce100bd8858").into(),
+                hex!("60a17ce8550db4e1358db54bc3791026a285ab88e9c988ad54c3dc282475fe14").into(),
+                hex!("de06bf70964d8aff4816e3cfd576d8d8f774663906a6e40d316860a3d4c55b6c").into(),
+                hex!("4a4371f63db17fb4f33bec3ce7c8f588e3258c3b268b450647f4870d964dca6f").into(),
+                hex!("d8815601fc99d9afa27a09fc5e46ebcc2472edc466fbb5c6fbae7a8566e50318").into(),
+            ],
+            vec![
+                hex!("a3bcbf3044069ac13c30d662a204d8368c266e2f0e8cf603c7bfb2b7b5daae55").into(), //Prod value
+                hex!("297c03e65c2930daa7c6067a2bb853819b61ed49b70de2f3219a2eb6ec0364aa").into(), //Prod value
+            ],
+            eth_bridge_params,
+            vec![
+                hex!("7edf2a2d157cc835131581bc068b7172a00af1a10008049f05a2308737912633").into(),
+                hex!("aa7c410fe2d9a0b96ba392c4cef95d3bf8761047297747e9118ee6d1df9f6558").into(),
+                hex!("30e87994d26e4123d585d5d8c46116bbc196a6f5a4ed87a3ee24a2dbada9a66d").into(),
+                hex!("30fbd05409cf5f6a8ae6afaa05e9861405d8fa710d0b4c8d088f155cb0b87749").into(),
+                hex!("20c706cba79f03fc2ed233da544a3e75a81dcae43b0a4edf72719307fd21cb1b").into(),
+                hex!("8297172611ad3b085258d518f849a5533271d760f729669c9f8863971d70c372").into(),
+            ],
+            vec![
+                hex!("4a2fe11a37dfb548c64def2cbd8d5332bbd56571627b91b81c82970ceb7eec2b").into(),
+                hex!("903a885138c4a187f13383fdb08b8e6b308c7021fdab12dc20e3aef9870e1146").into(),
+                hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
+            ],
+        )
+    };
+
+    // Keep the mainnet client spec metadata (including codeSubstitutes) and replace only genesis
+    // storage with the deterministic coded-genesis content.
+    let mut coded_storage = coded_genesis
+        .build_storage()
+        .expect("build coded mainnet storage");
+    coded_storage.top.insert(
+        sp_core::storage::well_known_keys::CODE.to_vec(),
+        WASM_BINARY.unwrap_or_default().to_vec(),
+    );
+    sc_service::ChainSpec::set_storage(&mut spec, coded_storage);
+    spec
 }
 
 #[cfg(all(
@@ -1982,7 +2022,7 @@ fn mainnet_genesis(
     eth_bridge_params: EthBridgeParams,
     council_accounts: Vec<AccountId>,
     technical_committee_accounts: Vec<AccountId>,
-) -> GenesisConfig {
+) -> RuntimeGenesisConfig {
     // Minimum stake for an active validator
     let initial_staking = balance!(0.2);
     // XOR amount which already exists on Ethereum
@@ -2472,7 +2512,7 @@ fn mainnet_genesis(
             None,
         )
     }));
-    GenesisConfig {
+    RuntimeGenesisConfig {
         jetton_app: Default::default(),
         #[cfg(feature = "wip")] // EVM bridge
         evm_fungible_app: Default::default(),
@@ -2487,18 +2527,18 @@ fn mainnet_genesis(
             interval: 10,
         },
 
-        system: SystemConfig {
-            code: WASM_BINARY.unwrap_or_default().to_vec(),
-        },
+        system: SystemConfig::default(),
         technical: TechnicalConfig {
             register_tech_accounts: tech_accounts,
         },
         babe: BabeConfig {
             authorities: vec![],
-            epoch_config: Some(framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG),
+            epoch_config: framenode_runtime::constants::BABE_GENESIS_EPOCH_CONFIG,
+            _config: Default::default(),
         },
         grandpa: GrandpaConfig {
             authorities: vec![],
+            _config: Default::default(),
         },
         session: SessionConfig {
             keys: initial_authorities
@@ -2518,6 +2558,7 @@ fn mainnet_genesis(
                     },
                 )
                 .collect::<Vec<_>>(),
+            non_authority_keys: vec![],
         },
         staking: StakingConfig {
             validator_count: 69,
@@ -2694,6 +2735,7 @@ fn mainnet_genesis(
                     .map(|account_id| (account_id, initial_staking)),
             )
             .collect(),
+            dev_accounts: None,
         },
         dex_manager: DEXManagerConfig {
             dex_list: vec![
@@ -2804,6 +2846,7 @@ fn mainnet_genesis(
                 LiquiditySourceType::OrderBook,
             ]
             .into(),
+            _phantom: Default::default(),
         },
         eth_bridge: EthBridgeConfig {
             authority_account: Some(eth_bridge_authority_account_id.clone()),
@@ -2876,6 +2919,7 @@ fn mainnet_genesis(
         },
         beefy: BeefyConfig {
             authorities: vec![],
+            ..Default::default()
         },
     }
 }
@@ -2897,7 +2941,19 @@ fn create_trading_pair(
 #[cfg(all(feature = "test", not(feature = "private-net")))]
 pub fn ext() -> sp_io::TestExternalities {
     let storage = main_net_coded().build_storage().unwrap();
-    sp_io::TestExternalities::new(storage)
+    let mut ext = sp_io::TestExternalities::new(storage);
+    ext.execute_with(|| {
+        // Runtime unit tests create assets using common mock identities.
+        // Ensure they have provider refs even in minimal genesis snapshots.
+        for account in [
+            common::mock::alice(),
+            common::mock::bob(),
+            common::mock::charlie(),
+        ] {
+            frame_system::Pallet::<Runtime>::inc_providers(&account);
+        }
+    });
+    ext
 }
 
 /// Creates TestExternalities for `private-net`
@@ -2941,10 +2997,7 @@ mod tests {
     }
 
     #[cfg(not(feature = "private-net"))]
-    #[test]
-    fn mainnet_code_substitute_matches_expected_wasm() {
-        // The live chain is upgraded via codeSubstitutes, so we verify the embedded JSON still
-        // carries the correct Wasm blob for the emergency fork height.
+    fn mainnet_code_substitute_bytes(block_number: &str) -> Vec<u8> {
         let raw_spec = include_str!("./bytes/chain_spec_main.json");
         let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
         let code_substitutes = json
@@ -2952,33 +3005,52 @@ mod tests {
             .and_then(Value::as_object)
             .expect("codeSubstitutes object missing");
         let wasm_hex = code_substitutes
-            .get("23234813")
+            .get(block_number)
             .and_then(Value::as_str)
-            .expect("missing codeSubstitute for block 23234813");
-        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
-            .expect("codeSubstitutes entry must be valid hex");
+            .unwrap_or_else(|| panic!("missing codeSubstitute for block {block_number}"));
+        hex::decode(wasm_hex.trim_start_matches("0x"))
+            .expect("codeSubstitutes entry must be valid hex")
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_codesub_11271782_matches_expected_wasm() {
+        let wasm_bytes = mainnet_code_substitute_bytes("11271782");
+        assert_eq!(
+            blake2_256(&wasm_bytes),
+            hex!("e18bc6bc95e7318ca5e22b3bdc71b0d1095c0d215f467c16eb7e41972c4cf3c1"),
+            "unexpected Wasm hash for 11271782 code substitute"
+        );
+        assert_eq!(wasm_bytes.len(), 2_380_296);
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_codesub_23234813_matches_expected_wasm() {
+        // The live chain is upgraded via codeSubstitutes, so we verify the embedded JSON still
+        // carries the correct Wasm blob for the emergency fork height.
+        let wasm_bytes = mainnet_code_substitute_bytes("23234813");
         assert_eq!(
             blake2_256(&wasm_bytes),
             hex!("311d77b61faf6950680f520333e2c8af5ad3155f0d3e60ec9439fcf2bbceef3e"),
             "unexpected Wasm hash for 23234813 code substitute"
         );
+        assert_eq!(wasm_bytes.len(), 2_815_465);
     }
 
     #[cfg(not(feature = "private-net"))]
+    #[cfg(any(
+        feature = "main-net-coded",
+        feature = "test",
+        feature = "runtime-benchmarks",
+        feature = "wip",
+        feature = "stage"
+    ))]
     #[test]
-    fn mainnet_code_substitute_has_expected_wasm_size() {
-        let raw_spec = include_str!("./bytes/chain_spec_main.json");
-        let json: Value = serde_json::from_str(raw_spec).expect("parse mainnet spec json");
-        let code_substitutes = json
-            .get("codeSubstitutes")
-            .and_then(Value::as_object)
-            .expect("codeSubstitutes object missing");
-        let wasm_hex = code_substitutes
-            .get("23234813")
-            .and_then(Value::as_str)
-            .expect("missing codeSubstitute for block 23234813");
-        let wasm_bytes = hex::decode(wasm_hex.trim_start_matches("0x"))
-            .expect("codeSubstitutes entry must be valid hex");
-        assert_eq!(wasm_bytes.len(), 2_815_465);
+    fn mainnet_coded_spec_includes_mainnet_codesubs() {
+        let spec = super::main_net_coded();
+        let code_substitutes = sc_service::ChainSpec::code_substitutes(&spec);
+        assert!(code_substitutes.contains_key("11271782"));
+        assert!(code_substitutes.contains_key("23234813"));
     }
 }

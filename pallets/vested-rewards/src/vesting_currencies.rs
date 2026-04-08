@@ -29,13 +29,14 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{Config, Error};
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::prelude::Balance;
-use frame_support::dispatch::TypeInfo;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::ensure;
+use scale_info::TypeInfo;
 use sp_core::Get;
 use sp_runtime::traits::{AtLeast32Bit, Zero};
 use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 
 pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
     /// Returns the end of all periods, `None` if calculation overflows.
@@ -57,7 +58,17 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
 }
 
 #[allow(unused)]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+    Clone,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+    TypeInfo,
+)]
 pub enum VestingScheduleVariant<BlockNumber, AssetId: Copy, AccountId> {
     LinearVestingSchedule(LinearVestingSchedule<BlockNumber, AssetId>),
     LinearPendingVestingSchedule(LinearPendingVestingSchedule<BlockNumber, AssetId, AccountId>),
@@ -134,7 +145,17 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
 ///
 /// Benefits would be granted gradually, `per_period` amount every `period`
 /// of blocks after `start`.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+    Clone,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+    TypeInfo,
+)]
 pub struct LinearVestingSchedule<BlockNumber, AssetId: Copy> {
     /// Vesting asset id
     pub asset_id: AssetId,
@@ -257,7 +278,17 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
 ///
 /// Benefits would be granted gradually, `per_period` amount every `period`
 /// of blocks after `start`.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(
+    Clone,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+    TypeInfo,
+)]
 pub struct LinearPendingVestingSchedule<BlockNumber, AssetId: Copy, AccountId> {
     /// Vesting asset id
     pub asset_id: AssetId,

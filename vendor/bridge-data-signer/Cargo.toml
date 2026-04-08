@@ -1,0 +1,59 @@
+[package]
+name = "bridge-data-signer"
+description = "Bridge data signer"
+version = "0.1.1"
+edition = "2021"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.101", optional = true }
+codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
+  "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+bridge-common = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+
+frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+
+bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
+
+[dev-dependencies]
+sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
+sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
+hex-literal = { version = "0.4.1" }
+
+[features]
+default = ["std"]
+std = [
+  "bridge-common/std",
+  "serde",
+  "codec/std",
+  "scale-info/std",
+  "frame-support/std",
+  "frame-system/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "bridge-types/std",
+]
+runtime-benchmarks = [
+  "bridge-types/runtime-benchmarks",
+  "frame-benchmarking",
+  "sp-runtime/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+]
+
+try-runtime = ["frame-support/try-runtime"]

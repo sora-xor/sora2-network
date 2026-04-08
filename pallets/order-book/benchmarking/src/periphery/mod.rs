@@ -112,6 +112,7 @@ pub(crate) mod place_limit_order {
     use order_book_imported::OrderPrice;
     use sp_runtime::traits::One;
 
+    #[allow(dead_code)]
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
@@ -191,6 +192,7 @@ pub(crate) mod cancel_limit_order {
     use super::*;
     use common::Balance;
 
+    #[allow(dead_code)]
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
@@ -258,6 +260,7 @@ pub(crate) mod execute_market_order {
     use common::prelude::BalanceUnit;
     use common::Balance;
 
+    #[allow(dead_code)]
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
@@ -370,6 +373,7 @@ pub(crate) mod quote {
     use common::prelude::QuoteAmount;
     use common::Balance;
 
+    #[allow(dead_code)]
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub dex_id: T::DEXId,
@@ -401,6 +405,7 @@ pub(crate) mod exchange {
     use common::prelude::SwapAmount;
     use common::Balance;
 
+    #[allow(dead_code)]
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub caller: T::AccountId,
@@ -534,6 +539,7 @@ pub(crate) mod align_single_order {
     use super::*;
     use common::balance;
 
+    #[allow(dead_code)]
     pub struct Context<T: Config> {
         pub settings: FillSettings<T>,
         pub order_book: OrderBook<T>,

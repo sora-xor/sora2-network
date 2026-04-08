@@ -35,7 +35,7 @@ use common::{
     assert_approx_eq, balance, AccountIdOf, AssetInfoProvider, Balance, DEXId, LiquiditySource,
     PriceToolsProvider, PriceVariant, CERES_ASSET_ID, ETH, TBCD, VAL, XOR,
 };
-use frame_support::dispatch::{DispatchError, RawOrigin};
+use frame_support::dispatch::RawOrigin;
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use framenode_runtime::qa_tools;
@@ -44,6 +44,7 @@ use qa_tools::pallet_tools::liquidity_proxy::liquidity_sources::initialize_mcbc;
 use qa_tools::pallet_tools::mcbc as mcbc_tools;
 use qa_tools::pallet_tools::price_tools::AssetPrices;
 use sp_arithmetic::traits::One;
+use sp_runtime::DispatchError;
 
 #[test]
 fn should_init_mcbc_base_supply() {
@@ -492,10 +493,13 @@ fn get_all_mcbc_init_events() -> Vec<Vec<(AssetIdOf<Runtime>, AssetPrices)>> {
     let mut result = vec![];
     for e in events {
         let RuntimeEvent::QaTools(qa_tools_event) = e else {
-            continue
+            continue;
         };
-        let qa_tools::Event::<Runtime>::McbcInitialized{ collateral_ref_prices } = qa_tools_event else {
-            continue
+        let qa_tools::Event::<Runtime>::McbcInitialized {
+            collateral_ref_prices,
+        } = qa_tools_event
+        else {
+            continue;
         };
         result.push(collateral_ref_prices)
     }
@@ -563,7 +567,7 @@ fn should_extrinsic_produce_correct_events() {
                 {
                     (collateral_prices, tbcd_prices)
                 }
-                _ => panic!("unexpected asset ids in events: {:?}", init_collaterals),
+                _ => panic!("unexpected asset ids in events: {init_collaterals:?}"),
             };
         assert_approx_eq!(
             collateral_reference_prices.buy,

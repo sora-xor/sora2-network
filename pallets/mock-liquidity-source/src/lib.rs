@@ -36,15 +36,16 @@ use common::alt::{DiscreteQuotation, SwapChunk};
 use common::fixnum::ops::One;
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, fixed, Balance, DexInfoProvider, Fixed, GetPoolReserves, LiquiditySource, RewardReason,
+    balance, fixed, Balance, DexInfoProvider, Fixed, FixedInner, GetPoolReserves, LiquiditySource,
+    RewardReason,
 };
 use core::convert::TryInto;
-use frame_support::dispatch::DispatchError;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use permissions::{Scope, BURN, MINT};
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 #[cfg(test)]
@@ -55,7 +56,6 @@ mod tests;
 
 #[allow(non_snake_case)]
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
-    #[cfg(feature = "std")]
     fn initialize_reserves(reserves: &[(T::DEXId, T::AssetId, (Fixed, Fixed))]) {
         reserves
             .iter()
@@ -621,7 +621,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
@@ -655,11 +654,18 @@ pub mod pallet {
             origin: OriginFor<T>,
             dex_id: T::DEXId,
             target_id: T::AssetId,
-            base_reserve: Fixed,
-            target_reserve: Fixed,
+            base_reserve: FixedInner,
+            target_reserve: FixedInner,
         ) -> DispatchResultWithPostInfo {
             let _who = ensure_signed(origin)?;
-            <Reserves<T, I>>::insert(dex_id, target_id, (base_reserve, target_reserve));
+            <Reserves<T, I>>::insert(
+                dex_id,
+                target_id,
+                (
+                    Fixed::from_bits(base_reserve),
+                    Fixed::from_bits(target_reserve),
+                ),
+            );
             Ok(().into())
         }
     }
@@ -703,7 +709,6 @@ pub mod pallet {
         pub reserves: Vec<(T::DEXId, T::AssetId, (Fixed, Fixed))>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
         fn default() -> Self {
             Self {
@@ -714,7 +719,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+    impl<T: Config<I>, I: 'static> BuildGenesisConfig for GenesisConfig<T, I> {
         fn build(&self) {
             Pallet::<T, I>::initialize_reserves(&self.reserves)
         }

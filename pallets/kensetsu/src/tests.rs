@@ -565,7 +565,7 @@ fn test_deposit_collateral_not_enough_balance() {
 
         assert_noop!(
             KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
-            pallet_balances::Error::<TestRuntime>::InsufficientBalance
+            ArithmeticError::Underflow
         );
     });
 }
@@ -1145,6 +1145,74 @@ fn borrow_xor_kxor_with_incentivization() {
             initial_total_tbcd_supply - tbcd_buyback_amount,
             get_total_supply(&TBCD)
         );
+    });
+}
+
+/// @given: XOR is set as collateral and KXOR borrow taxes are changed to non-default values.
+/// @when: user borrows an exact KXOR amount against XOR.
+/// @then: User still receives the requested amount and debt reflects the full configured tax.
+#[test]
+fn borrow_xor_kxor_with_nondefault_taxes() {
+    new_test_ext().execute_with(|| {
+        let new_borrow_taxes = BorrowTaxes {
+            ken_borrow_tax: Percent::from_percent(1),
+            karma_borrow_tax: Percent::from_percent(2),
+            tbcd_borrow_tax: Percent::from_percent(3),
+        };
+        assert_ok!(KensetsuPallet::update_borrow_tax(
+            RuntimeOrigin::root(),
+            new_borrow_taxes
+        ));
+        configure_kxor_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.0),
+            balance!(0),
+        );
+        let collateral = balance!(1000);
+        add_balance(alice_account_id(), collateral, XOR);
+        assert_ok!(KensetsuPallet::create_cdp(
+            alice(),
+            XOR,
+            collateral,
+            KXOR,
+            balance!(0),
+            balance!(0),
+            CdpType::Type2
+        ));
+        let cdp_id = NextCDPId::<TestRuntime>::get();
+        let to_borrow = balance!(100);
+        let borrow_tax = balance!(6);
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(KEN, balance!(1));
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(KARMA, balance!(2));
+        MockLiquidityProxy::set_amounts_for_the_next_exchange(TBCD, balance!(3));
+
+        assert_ok!(KensetsuPallet::borrow(
+            alice(),
+            cdp_id,
+            to_borrow,
+            to_borrow
+        ));
+
+        System::assert_has_event(
+            Event::DebtIncreased {
+                cdp_id,
+                owner: alice_account_id(),
+                debt_asset_id: KXOR,
+                amount: to_borrow + borrow_tax,
+            }
+            .into(),
+        );
+
+        let collateral_info = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KXOR,
+        })
+        .expect("Must exists");
+        assert_eq!(collateral_info.stablecoin_supply, to_borrow + borrow_tax);
+        let cdp = KensetsuPallet::cdp(cdp_id).expect("Must exist");
+        assert_eq!(cdp.debt, to_borrow + borrow_tax);
+        assert_balance(&alice_account_id(), &KXOR, to_borrow);
     });
 }
 

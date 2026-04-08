@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Benchmarking setup for order-book
+#![allow(clippy::doc_lazy_continuation)]
 //!
 //! Includes both regular benchmarks for extrinsics, as well as extra ones designed for figuring
 //! out appropriate parameters for the order book pallet.
@@ -127,9 +128,6 @@ pub fn assert_orders_numbers<T: order_book_benchmarking_imported::Config>(
         );
     }
 }
-
-#[cfg(not(test))]
-pub use benchmarks_inner::*;
 
 // Separate module in order to disable tests (they do not work with current approach: using
 // runtime)
@@ -435,7 +433,7 @@ mod benchmarks_inner {
         }
 
         service_expiration_base {
-            let mut weight = WeightMeter::max_limit();
+            let mut weight = WeightMeter::new();
             let block_number = 0u32.unique_saturated_into();
         }: {
             OrderBookPallet::<T>::service_expiration(block_number, &mut weight);
@@ -443,7 +441,7 @@ mod benchmarks_inner {
         verify {}
 
         service_expiration_block_base {
-            let mut weight = WeightMeter::max_limit();
+            let mut weight = WeightMeter::new();
             let block_number = 0u32.unique_saturated_into();
             // should be the slower layer because cache is not
             // warmed up

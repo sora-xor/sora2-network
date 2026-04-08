@@ -51,6 +51,7 @@ use hex_literal::hex;
 use oracle_proxy::Pallet as OracleProxy;
 use price_tools::Pallet as PriceTools;
 use sp_std::prelude::*;
+use sp_std::vec;
 use technical::Pallet as Technical;
 use xst::{Call, Event, Pallet as XSTPool};
 

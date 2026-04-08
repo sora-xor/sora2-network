@@ -17,16 +17,17 @@ codec = { package = "parity-scale-codec", version = "3", default-features = fals
 ] }
 common = { path = "../../common", default-features = false }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-serde = { version = "1.0.101", optional = true, features = ["derive"] }
-sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+serde = { version = "1.0.101", default-features = false, features = ["alloc", "derive"] }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
 
 [dev-dependencies]
-sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-pallet-balances = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.38" }
+common = { path = "../../common", features = ["test"] }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false }
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
 
 [features]
 default = ["std"]
@@ -36,7 +37,6 @@ std = [
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
-    "serde",
     "sp-core/std",
     "sp-std/std",
 ]

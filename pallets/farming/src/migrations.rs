@@ -31,6 +31,7 @@
 use crate::*;
 use core::marker::PhantomData;
 use frame_support::traits::OnRuntimeUpgrade;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 pub mod v2 {
     use frame_support::traits::StorageVersion;
@@ -43,11 +44,11 @@ pub mod v2 {
     impl<T, G> OnRuntimeUpgrade for Migrate<T, G>
     where
         T: Config,
-        G: Get<Vec<(T::AccountId, T::BlockNumber)>>,
+        G: Get<Vec<(T::AccountId, BlockNumberFor<T>)>>,
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(1) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version 1, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
@@ -56,23 +57,23 @@ pub mod v2 {
             for (pool_account, block) in pools {
                 Pools::<T>::mutate(block % T::REFRESH_FREQUENCY, |pools| {
                     if !pools.contains(&pool_account) {
-                        frame_support::log::info!(
+                        frame_support::__private::log::info!(
                             "Add pool {pool_account:?} at block {block:?} to farming"
                         );
                         pools.push(pool_account);
                     } else {
-                        frame_support::log::info!(
+                        frame_support::__private::log::info!(
                             "Skip {pool_account:?} at block {block:?}, already exist"
                         );
                     }
                 });
             }
-            StorageVersion::new(2).put::<Pallet<T>>();
+            StorageVersion::new(3).put::<Pallet<T>>();
             <T as frame_system::Config>::BlockWeights::get().max_block
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1),
                 "Wrong storage version before upgrade"
@@ -81,7 +82,7 @@ pub mod v2 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
                 "Wrong storage version after upgrade"
@@ -92,7 +93,7 @@ pub mod v2 {
 }
 
 pub mod v3 {
-    use frame_support::log::info;
+    use frame_support::__private::log::info;
     use frame_support::traits::StorageVersion;
 
     use super::*;
@@ -103,11 +104,11 @@ pub mod v3 {
     where
         T: Config,
         P: Get<Vec<(T::AccountId, T::AccountId)>>,
-        B: Get<Vec<T::BlockNumber>>,
+        B: Get<Vec<BlockNumberFor<T>>>,
     {
         fn on_runtime_upgrade() -> frame_support::weights::Weight {
             if StorageVersion::get::<Pallet<T>>() != StorageVersion::new(2) {
-                frame_support::log::error!(
+                frame_support::__private::log::error!(
                     "Expected storage version 2, found {:?}, skipping migration",
                     StorageVersion::get::<Pallet<T>>()
                 );
@@ -150,7 +151,7 @@ pub mod v3 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+        fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
                 "Wrong storage version before upgrade"
@@ -159,7 +160,7 @@ pub mod v3 {
         }
 
         #[cfg(feature = "try-runtime")]
-        fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(3),
                 "Wrong storage version after upgrade"

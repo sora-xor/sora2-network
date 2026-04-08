@@ -1,19 +1,27 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(
+    clippy::clone_on_copy,
+    clippy::duplicated_attributes,
+    clippy::manual_div_ceil,
+    clippy::needless_borrows_for_generic_args
+)]
 
 pub use pallet::*;
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
+use common::BuyBackHandler;
 use frame_support::{
-    dispatch::DispatchResult, transactional, weights::Weight, BoundedVec, PalletId,
+    dispatch::DispatchResult, storage::with_transaction, transactional, weights::Weight,
+    BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
-use sp_io::hashing::blake2_256;
+use sp_core::U256;
 use sp_runtime::traits::{
     AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, MaybeSerializeDeserialize, One,
     SaturatedConversion, Saturating, Zero,
 };
-use sp_runtime::{DispatchError, Perbill, RuntimeDebug};
+use sp_runtime::{DispatchError, Perbill, RuntimeDebug, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 mod weights;
@@ -24,96 +32,39 @@ pub mod benchmarking;
 
 pub type ConditionId = u32;
 pub type MarketId = u32;
-pub type CommitmentHash = [u8; 32];
-pub type JurisdictionCode = [u8; 3];
+
+const STORAGE_VERSION: frame_support::traits::StorageVersion =
+    frame_support::traits::StorageVersion::new(1);
+const CREATION_FEE_BUYBACK_BPS: u32 = 2_000;
+
+fn with_storage_transaction<T>(
+    f: impl FnOnce() -> Result<T, DispatchError>,
+) -> Result<T, DispatchError> {
+    with_transaction(|| {
+        let result = f();
+        if result.is_ok() {
+            TransactionOutcome::Commit(result)
+        } else {
+            TransactionOutcome::Rollback(result)
+        }
+    })
+}
 
 pub trait WeightInfo {
     fn create_condition() -> Weight;
     fn create_opengov_condition() -> Weight;
-    fn create_market(routed_transfers: u32) -> Weight;
-    fn commit_order() -> Weight;
-    fn reveal_order() -> Weight;
-    fn set_bridge_wallet() -> Weight;
-    fn bridge_deposit() -> Weight;
-    fn bridge_withdraw() -> Weight;
+    fn create_market() -> Weight;
+    fn buy() -> Weight;
+    fn sell() -> Weight;
+    fn sync_market_status() -> Weight;
     fn bond_governance() -> Weight;
     fn unbond_governance() -> Weight;
-    fn submit_credential() -> Weight;
-}
-
-/// Abstract interface for the orderbook pallet integration.
-pub trait OrderbookBridge<AccountId, AssetId, Balance> {
-    fn on_market_created(
-        market_id: MarketId,
-        creator: &AccountId,
-        collateral_asset: AssetId,
-        seed_liquidity: Balance,
-    ) -> DispatchResult;
-
-    fn on_order_revealed(
-        market_id: MarketId,
-        trader: &AccountId,
-        collateral_asset: AssetId,
-        order_payload: Vec<u8>,
-        order_value: Balance,
-    ) -> DispatchResult;
-}
-
-impl<AccountId, AssetId, Balance> OrderbookBridge<AccountId, AssetId, Balance> for () {
-    fn on_market_created(
-        _market_id: MarketId,
-        _creator: &AccountId,
-        _collateral_asset: AssetId,
-        _seed_liquidity: Balance,
-    ) -> DispatchResult {
-        Ok(())
-    }
-
-    fn on_order_revealed(
-        _market_id: MarketId,
-        _trader: &AccountId,
-        _collateral_asset: AssetId,
-        _order_payload: Vec<u8>,
-        _order_value: Balance,
-    ) -> DispatchResult {
-        Ok(())
-    }
-}
-
-/// Converts arbitrary collateral assets into the canonical stable used by the pallet.
-pub trait CollateralRouter<AccountId, AssetId, Balance> {
-    fn quote_to_canonical(
-        asset: AssetId,
-        canonical_amount: Balance,
-    ) -> Result<Balance, DispatchError>;
-    fn to_canonical(
-        who: &AccountId,
-        asset: AssetId,
-        amount: Balance,
-        dest: &AccountId,
-    ) -> Result<Balance, DispatchError>;
-}
-
-impl<AccountId, AssetId, Balance> CollateralRouter<AccountId, AssetId, Balance> for () {
-    fn quote_to_canonical(
-        _asset: AssetId,
-        _canonical_amount: Balance,
-    ) -> Result<Balance, DispatchError> {
-        Err(sp_runtime::DispatchError::Other(
-            "collateral-router-disabled",
-        ))
-    }
-
-    fn to_canonical(
-        _who: &AccountId,
-        _asset: AssetId,
-        _amount: Balance,
-        _dest: &AccountId,
-    ) -> Result<Balance, DispatchError> {
-        Err(sp_runtime::DispatchError::Other(
-            "collateral-router-disabled",
-        ))
-    }
+    fn resolve_market() -> Weight;
+    fn cancel_market() -> Weight;
+    fn claim_market() -> Weight;
+    fn claim_creator_fees() -> Weight;
+    fn claim_creator_liquidity() -> Weight;
+    fn sweep_xor_buyback_and_burn() -> Weight;
 }
 
 /// Hook notifying off-chain integrations (e.g., Polkadot Plaza) when a condition
@@ -137,7 +88,17 @@ impl<T: Config> PlazaIntegrationHook<OpengovProposalOf<T>> for PolkadotPlazaBrid
 }
 
 #[derive(
-    Encode, Decode, TypeInfo, Clone, Copy, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, Default,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+    Default,
 )]
 pub enum RelayNetwork {
     #[default]
@@ -145,7 +106,17 @@ pub enum RelayNetwork {
     Kusama,
 }
 
-#[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen)]
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
 pub struct OpengovProposalMetadata<Tag> {
     pub network: RelayNetwork,
     pub parachain_id: u32,
@@ -154,7 +125,9 @@ pub struct OpengovProposalMetadata<Tag> {
     pub plaza_tag: Tag,
 }
 
-#[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default)]
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default,
+)]
 pub struct OpengovProposalInput {
     pub network: RelayNetwork,
     pub parachain_id: u32,
@@ -163,55 +136,43 @@ pub struct OpengovProposalInput {
     pub plaza_tag: Vec<u8>,
 }
 
-#[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen)]
-pub struct ConditionMetadata<BoundedString, BlockNumber> {
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub struct ConditionMetadata<BoundedString> {
     pub question: BoundedString,
     pub oracle: BoundedString,
     pub resolution_source: BoundedString,
-    pub submission_deadline: BlockNumber,
 }
 
-#[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default)]
-pub struct ConditionInput<BlockNumber> {
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default,
+)]
+pub struct ConditionInput {
     pub question: Vec<u8>,
     pub oracle: Vec<u8>,
     pub resolution_source: Vec<u8>,
-    pub submission_deadline: BlockNumber,
 }
 
-pub struct OrderbookEventEmitter<T>(PhantomData<T>);
-
-impl<T: Config> OrderbookBridge<T::AccountId, T::AssetId, T::Balance> for OrderbookEventEmitter<T> {
-    fn on_market_created(
-        market_id: MarketId,
-        _creator: &T::AccountId,
-        collateral_asset: T::AssetId,
-        _seed_liquidity: T::Balance,
-    ) -> DispatchResult {
-        Pallet::<T>::deposit_event(Event::OrderbookMarketRegistered {
-            market_id,
-            collateral_asset,
-        });
-        Ok(())
-    }
-
-    fn on_order_revealed(
-        market_id: MarketId,
-        trader: &T::AccountId,
-        _collateral_asset: T::AssetId,
-        _order_payload: Vec<u8>,
-        order_value: T::Balance,
-    ) -> DispatchResult {
-        Pallet::<T>::deposit_event(Event::OrderbookOrderPlaced {
-            market_id,
-            trader: trader.clone(),
-            order_value,
-        });
-        Ok(())
-    }
-}
-
-#[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen)]
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
 pub enum MarketStatus {
     Open,
     Locked,
@@ -219,7 +180,51 @@ pub enum MarketStatus {
     Cancelled,
 }
 
-#[derive(Encode, Decode, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen)]
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub enum BinaryOutcome {
+    Yes,
+    No,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub enum TradeSide {
+    Buy,
+    Sell,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
 pub struct Market<ClassId, AccountId, BlockNumber, Balance> {
     pub creator: AccountId,
     pub condition_id: ConditionId,
@@ -230,15 +235,67 @@ pub struct Market<ClassId, AccountId, BlockNumber, Balance> {
 }
 
 #[derive(
-    Encode, Decode, TypeInfo, Clone, PartialEq, Eq, sp_runtime::RuntimeDebug, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    sp_runtime::RuntimeDebug,
+    MaxEncodedLen,
 )]
-pub struct OrderCommitment<BlockNumber> {
-    pub committed_at: BlockNumber,
-    pub expires_at: BlockNumber,
+pub struct MarketPool<Balance> {
+    pub collateral: Balance,
+    pub yes: Balance,
+    pub no: Balance,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    sp_runtime::RuntimeDebug,
+    MaxEncodedLen,
+    Default,
+)]
+pub struct MarketPosition<Balance> {
+    pub yes_shares: Balance,
+    pub no_shares: Balance,
+    pub net_collateral_paid: Balance,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    sp_runtime::RuntimeDebug,
+    MaxEncodedLen,
+    Default,
+)]
+pub struct MarketTotals<Balance> {
+    pub total_yes_shares: Balance,
+    pub total_no_shares: Balance,
+    pub total_net_collateral_paid: Balance,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+struct TradeFeeSplit<Balance> {
+    pool: Balance,
+    creator: Balance,
+    buyback: Balance,
 }
 
 pub type MetadataString<T> = BoundedVec<u8, <T as pallet::Config>::MaxMetadataLength>;
-pub type ConditionMetadataOf<T> = ConditionMetadata<MetadataString<T>, BlockNumberFor<T>>;
+pub type ConditionMetadataOf<T> = ConditionMetadata<MetadataString<T>>;
 
 pub type PlazaTagOf<T> = BoundedVec<u8, <T as pallet::Config>::MaxPlazaTagLength>;
 pub type OpengovProposalOf<T> = OpengovProposalMetadata<PlazaTagOf<T>>;
@@ -250,8 +307,9 @@ pub type MarketOf<T> = Market<
     <T as Config>::Balance,
 >;
 
-pub type StoredCommitmentOf<T> =
-    StoredCommitment<<T as frame_system::Config>::AccountId, BlockNumberFor<T>>;
+pub type MarketPoolOf<T> = MarketPool<<T as Config>::Balance>;
+pub type MarketPositionOf<T> = MarketPosition<<T as Config>::Balance>;
+pub type MarketTotalsOf<T> = MarketTotals<<T as Config>::Balance>;
 
 pub trait AssetTransfer<AccountId, AssetId, Balance> {
     fn transfer(
@@ -284,14 +342,12 @@ pub mod pallet {
     use frame_support::{
         ensure,
         pallet_prelude::*,
-        traits::{EnsureOrigin, Get},
+        traits::{BuildGenesisConfig, EnsureOrigin, Get},
     };
     use frame_system::pallet_prelude::*;
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
-        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
+    pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
         /// Canonical censorship-resistant stablecoin used as collateral (KUSD by default).
         type CanonicalStableAssetId: Get<Self::AssetId>;
 
@@ -328,26 +384,16 @@ pub mod pallet {
         #[pallet::constant]
         type PalletId: Get<PalletId>;
 
-        /// Orderbook integration layer (Polkaswap on-chain orderbook).
-        type OrderbookIntegration: OrderbookBridge<Self::AccountId, Self::AssetId, Self::Balance>;
+        /// Handler used to swap canonical collateral into the buyback asset and burn it.
+        type BuyBackHandler: BuyBackHandler<Self::AccountId, Self::AssetId>;
 
-        /// Router used to swap arbitrary assets into the canonical stable.
-        type CollateralRouter: CollateralRouter<Self::AccountId, Self::AssetId, Self::Balance>;
-
-        /// Worst-case weight cost for a single collateral routing call.
-        type CollateralRouterWeight: Get<Weight>;
+        /// Asset purchased and burned when sweeping accrued buyback collateral.
+        #[pallet::constant]
+        type GetBuyBackAssetId: Get<Self::AssetId>;
 
         /// Minimum number of blocks between market creation and close block.
         #[pallet::constant]
         type MinMarketDuration: Get<BlockNumberFor<Self>>;
-
-        /// Blocks that must elapse between commitment and reveal to mitigate front-running.
-        #[pallet::constant]
-        type CommitmentRevealDelay: Get<BlockNumberFor<Self>>;
-
-        /// Maximum blocks before a commitment expires unused.
-        #[pallet::constant]
-        type CommitmentExpiry: Get<BlockNumberFor<Self>>;
 
         /// Maximum metadata length (question/oracle/source).
         #[pallet::constant]
@@ -358,80 +404,20 @@ pub mod pallet {
         /// Weight information for extrinsics.
         type WeightInfo: crate::WeightInfo;
 
-        /// Open-interest threshold activating creator rewards.
+        /// Trade fee expressed in basis points (e.g., 50 == 0.50%).
         #[pallet::constant]
-        type OpenInterestThreshold: Get<Self::Balance>;
-
-        /// Creator reward basis points applied once threshold is reached.
-        #[pallet::constant]
-        type CreatorRewardBps: Get<u32>;
-
-        /// Fork tax account receiving 0.1% usage royalties.
-        #[pallet::constant]
-        type ForkTaxAccount: Get<Self::AccountId>;
-
-        /// Asset id for bridged USDC.
-        #[pallet::constant]
-        type UsdcAssetId: Get<Self::AssetId>;
-
-        /// Asset id for bridged USDT.
-        #[pallet::constant]
-        type UsdtAssetId: Get<Self::AssetId>;
-
-        /// Maximum allowed order payload length in bytes.
-        #[pallet::constant]
-        type MaxOrderPayloadLength: Get<u32>;
-
-        /// Maximum allowed salt length in bytes.
-        #[pallet::constant]
-        type MaxOrderSaltLength: Get<u32>;
-
-        /// Asset id for the HydraDX Hollar stablecoin (auto-swapped into canonical KUSD).
-        #[pallet::constant]
-        type HollarAssetId: Get<Self::AssetId>;
-
-        /// Account holding the maintenance liquidity pool reserves.
-        #[pallet::constant]
-        type MaintenancePoolAccount: Get<Self::AccountId>;
-
-        /// Portion of each creation fee routed into the maintenance pool (basis points).
-        #[pallet::constant]
-        type MaintenanceFeeBps: Get<u32>;
+        type TradeFeeBps: Get<u32>;
 
         /// Minimum bond required to join the governance whitelist (canonical stable units).
         #[pallet::constant]
         type GovernanceBondMinimum: Get<Self::Balance>;
 
-        /// Governance bonding safety floor expressed in basis points (e.g., 8500 == 85%).
+        /// Canonical stable escrow account backing creator bonds.
         #[pallet::constant]
-        type LiquiditySafetyBps: Get<u32>;
+        type CreatorBondEscrowAccount: Get<Self::AccountId>;
 
-        /// Origin allowed to administer the governance whitelist and emergency tooling.
+        /// Origin allowed to finalize market outcomes.
         type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-
-        /// Daily bridge cap per user expressed in canonical units.
-        #[pallet::constant]
-        type BridgeDailyCap: Get<Self::Balance>;
-
-        /// Number of blocks comprising a day for bridge accounting.
-        #[pallet::constant]
-        type BlocksPerDay: Get<BlockNumberFor<Self>>;
-
-        /// Cooldown between wallet updates.
-        #[pallet::constant]
-        type WalletCooldown: Get<BlockNumberFor<Self>>;
-
-        /// Payout tax basis points for bridge withdrawals.
-        #[pallet::constant]
-        type PayoutTaxBps: Get<u32>;
-
-        /// Maximum lifetime for submitted credentials.
-        #[pallet::constant]
-        type CredentialTtl: Get<BlockNumberFor<Self>>;
-
-        /// Whether credentials are enforced by default (governance can override).
-        #[pallet::constant]
-        type CredentialsRequired: Get<bool>;
 
         /// Hook for notifying third-party integrations (e.g., Polkadot Plaza).
         type PlazaIntegration: PlazaIntegrationHook<OpengovProposalOf<Self>>;
@@ -439,6 +425,7 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
+    #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(_);
 
     #[pallet::storage]
@@ -460,103 +447,45 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, MarketId, MarketOf<T>, OptionQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn market_collateral)]
-    pub type MarketCollateral<T: Config> =
+    #[pallet::getter(fn market_pool)]
+    pub type MarketPools<T: Config> =
+        StorageMap<_, Blake2_128Concat, MarketId, MarketPoolOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn market_volume)]
+    pub type MarketVolume<T: Config> =
         StorageMap<_, Blake2_128Concat, MarketId, T::Balance, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn market_open_interest)]
-    pub type MarketOpenInterest<T: Config> =
+    #[pallet::getter(fn market_totals)]
+    pub type MarketPositionTotals<T: Config> =
+        StorageMap<_, Blake2_128Concat, MarketId, MarketTotalsOf<T>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn market_creator_fees)]
+    pub type MarketCreatorFees<T: Config> =
         StorageMap<_, Blake2_128Concat, MarketId, T::Balance, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn creator_reward_active)]
-    pub type CreatorRewardActivated<T: Config> =
-        StorageMap<_, Blake2_128Concat, MarketId, bool, ValueQuery>;
+    #[pallet::getter(fn market_resolution)]
+    pub type MarketResolution<T: Config> =
+        StorageMap<_, Blake2_128Concat, MarketId, BinaryOutcome, OptionQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn creator_rewards)]
-    pub type CreatorRewards<T: Config> =
-        StorageMap<_, Blake2_128Concat, MarketId, T::Balance, ValueQuery>;
+    #[pallet::getter(fn pending_xor_buyback_collateral)]
+    pub type PendingXorBuybackCollateral<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn fork_tax_owed)]
-    pub type ForkTaxOwed<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn bridge_wallet)]
-    pub type BridgeWallet<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, T::AccountId>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn bridge_wallet_updated)]
-    pub type BridgeWalletUpdated<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, BlockNumberFor<T>, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn daily_bridge_amount)]
-    pub type DailyBridgeAmount<T: Config> = StorageDoubleMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        Blake2_128Concat,
-        u64,
-        T::Balance,
-        ValueQuery,
-    >;
-
-    #[pallet::storage]
-    #[pallet::getter(fn bridge_entitlements)]
-    pub type BridgeEntitlements<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
-
-    #[derive(
-        Encode, Decode, TypeInfo, Clone, PartialEq, Eq, sp_runtime::RuntimeDebug, MaxEncodedLen,
-    )]
-    pub struct StoredCommitment<AccountId, BlockNumber> {
-        pub owner: AccountId,
-        pub info: OrderCommitment<BlockNumber>,
-    }
-
-    #[pallet::storage]
-    #[pallet::getter(fn commitments)]
-    pub type Commitments<T: Config> = StorageDoubleMap<
+    #[pallet::getter(fn market_positions)]
+    pub type MarketPositions<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
         MarketId,
         Blake2_128Concat,
-        CommitmentHash,
-        StoredCommitmentOf<T>,
+        T::AccountId,
+        MarketPositionOf<T>,
         OptionQuery,
     >;
-
-    #[pallet::storage]
-    #[pallet::getter(fn account_commitments)]
-    pub type AccountCommitments<T: Config> = StorageNMap<
-        _,
-        (
-            NMapKey<Blake2_128Concat, MarketId>,
-            NMapKey<Blake2_128Concat, T::AccountId>,
-            NMapKey<Blake2_128Concat, CommitmentHash>,
-        ),
-        StoredCommitmentOf<T>,
-        OptionQuery,
-    >;
-
-    #[derive(Clone, Copy)]
-    enum CommitmentLocation {
-        AccountScoped,
-        Legacy,
-    }
-
-    #[pallet::type_value]
-    pub fn CredentialsEnforcedDefault<T: Config>() -> bool {
-        Pallet::<T>::credentials_required_default()
-    }
-
-    #[pallet::storage]
-    #[pallet::getter(fn credentials_enforced)]
-    pub type CredentialsEnforced<T: Config> =
-        StorageValue<_, bool, ValueQuery, CredentialsEnforcedDefault<T>>;
 
     #[pallet::storage]
     #[pallet::getter(fn governance_bonds)]
@@ -564,32 +493,14 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn maintenance_pool_balance)]
-    pub type MaintenancePoolBalance<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
+    #[pallet::getter(fn creator_locked_bond)]
+    pub type CreatorLockedBond<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn maintenance_pool_total)]
-    pub type MaintenancePoolTotal<T: Config> = StorageValue<_, T::Balance, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn is_flagged)]
-    pub type FlaggedAccounts<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, (), OptionQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn credentials)]
-    pub type Credentials<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        (BlockNumberFor<T>, [u8; 32], JurisdictionCode, bool),
-        OptionQuery,
-    >;
-
-    #[pallet::storage]
-    #[pallet::getter(fn is_jurisdiction_blocked)]
-    pub type BlockedJurisdictions<T> =
-        StorageMap<_, Blake2_128Concat, JurisdictionCode, (), OptionQuery>;
+    #[pallet::getter(fn market_bond_lock)]
+    pub type MarketBondLock<T: Config> =
+        StorageMap<_, Blake2_128Concat, MarketId, T::Balance, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn opengov_proposals)]
@@ -600,112 +511,31 @@ pub mod pallet {
     pub type FeeCollectorOverride<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
-    pub type MaintenancePoolOverride<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
-
-    #[pallet::storage]
-    pub type ForkTaxAccountOverride<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
-
-    #[pallet::storage]
     pub type GovernanceBondMinimumOverride<T: Config> = StorageValue<_, T::Balance, OptionQuery>;
-
-    #[pallet::storage]
-    pub type MaintenanceFeeBpsOverride<T> = StorageValue<_, u32, OptionQuery>;
-
-    #[pallet::storage]
-    pub type LiquiditySafetyBpsOverride<T> = StorageValue<_, u32, OptionQuery>;
-
-    #[pallet::storage]
-    pub type BridgeDailyCapOverride<T: Config> = StorageValue<_, T::Balance, OptionQuery>;
-
-    #[pallet::storage]
-    pub type BlocksPerDayOverride<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
-
-    #[pallet::storage]
-    pub type WalletCooldownOverride<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
-
-    #[pallet::storage]
-    pub type PayoutTaxBpsOverride<T> = StorageValue<_, u32, OptionQuery>;
-
-    #[pallet::storage]
-    pub type CredentialTtlOverride<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
-
-    #[pallet::storage]
-    pub type CredentialsRequiredOverride<T> = StorageValue<_, bool, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub fee_collector: Option<T::AccountId>,
-        pub maintenance_pool_account: Option<T::AccountId>,
-        pub fork_tax_account: Option<T::AccountId>,
         pub governance_bond_minimum: Option<T::Balance>,
-        pub maintenance_fee_bps: Option<u32>,
-        pub liquidity_safety_bps: Option<u32>,
-        pub bridge_daily_cap: Option<T::Balance>,
-        pub blocks_per_day: Option<BlockNumberFor<T>>,
-        pub wallet_cooldown: Option<BlockNumberFor<T>>,
-        pub payout_tax_bps: Option<u32>,
-        pub credential_ttl: Option<BlockNumberFor<T>>,
-        pub credentials_required: Option<bool>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 fee_collector: None,
-                maintenance_pool_account: None,
-                fork_tax_account: None,
                 governance_bond_minimum: None,
-                maintenance_fee_bps: None,
-                liquidity_safety_bps: None,
-                bridge_daily_cap: None,
-                blocks_per_day: None,
-                wallet_cooldown: None,
-                payout_tax_bps: None,
-                credential_ttl: None,
-                credentials_required: None,
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             if let Some(ref account) = self.fee_collector {
                 FeeCollectorOverride::<T>::put(account.clone());
             }
-            if let Some(ref account) = self.maintenance_pool_account {
-                MaintenancePoolOverride::<T>::put(account.clone());
-            }
-            if let Some(ref account) = self.fork_tax_account {
-                ForkTaxAccountOverride::<T>::put(account.clone());
-            }
             if let Some(value) = self.governance_bond_minimum {
                 GovernanceBondMinimumOverride::<T>::put(value);
-            }
-            if let Some(bps) = self.maintenance_fee_bps {
-                MaintenanceFeeBpsOverride::<T>::put(bps);
-            }
-            if let Some(bps) = self.liquidity_safety_bps {
-                LiquiditySafetyBpsOverride::<T>::put(bps);
-            }
-            if let Some(value) = self.bridge_daily_cap {
-                BridgeDailyCapOverride::<T>::put(value);
-            }
-            if let Some(value) = self.blocks_per_day {
-                BlocksPerDayOverride::<T>::put(value);
-            }
-            if let Some(value) = self.wallet_cooldown {
-                WalletCooldownOverride::<T>::put(value);
-            }
-            if let Some(bps) = self.payout_tax_bps {
-                PayoutTaxBpsOverride::<T>::put(bps);
-            }
-            if let Some(value) = self.credential_ttl {
-                CredentialTtlOverride::<T>::put(value);
-            }
-            if let Some(required) = self.credentials_required {
-                CredentialsRequiredOverride::<T>::put(required);
             }
         }
     }
@@ -724,49 +554,43 @@ pub mod pallet {
             market_id: MarketId,
             amount: T::Balance,
         },
-        OrderCommitted {
+        TradeExecuted {
             market_id: MarketId,
             trader: T::AccountId,
-            commitment: CommitmentHash,
+            side: TradeSide,
+            outcome: BinaryOutcome,
+            collateral_amount: T::Balance,
+            share_amount: T::Balance,
+            fee_amount: T::Balance,
         },
-        OrderRevealed {
+        MarketLocked {
+            market_id: MarketId,
+        },
+        MarketResolved {
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+        },
+        MarketCancelled {
+            market_id: MarketId,
+        },
+        MarketClaimed {
             market_id: MarketId,
             trader: T::AccountId,
+            payout: T::Balance,
         },
-        CreatorRewardActivated {
+        CreatorFeesClaimed {
             market_id: MarketId,
-        },
-        CreatorRewardAccrued {
-            market_id: MarketId,
+            creator: T::AccountId,
             amount: T::Balance,
         },
-        OrderbookMarketRegistered {
+        CreatorLiquidityClaimed {
             market_id: MarketId,
-            collateral_asset: T::AssetId,
-        },
-        OrderbookOrderPlaced {
-            market_id: MarketId,
-            trader: T::AccountId,
-            order_value: T::Balance,
-        },
-        ForkTaxAccrued {
+            creator: T::AccountId,
             amount: T::Balance,
         },
-        BridgeWalletUpdated {
-            user: T::AccountId,
-            wallet: T::AccountId,
-        },
-        BridgeDeposited {
-            user: T::AccountId,
-            asset: T::AssetId,
-            amount: T::Balance,
-            day: u64,
-        },
-        BridgeWithdrawalRequested {
-            user: T::AccountId,
-            wallet: T::AccountId,
-            amount: T::Balance,
-            tax: T::Balance,
+        XorBuybackSwept {
+            collateral_amount: T::Balance,
+            xor_burned: T::Balance,
         },
         GovernanceBonded {
             who: T::AccountId,
@@ -776,40 +600,9 @@ pub mod pallet {
             who: T::AccountId,
             amount: T::Balance,
         },
-        GovernanceSlashed {
-            who: T::AccountId,
-            amount: T::Balance,
-        },
-        AccountFlagged {
-            who: T::AccountId,
-        },
-        AccountCleared {
-            who: T::AccountId,
-        },
-        FlaggedAccountDrained {
-            who: T::AccountId,
-            amount: T::Balance,
-        },
-        MaintenancePoolFunded {
-            amount: T::Balance,
-        },
-        MaintenancePoolWithdrawn {
-            amount: T::Balance,
-            destination: T::AccountId,
-        },
         HollarRouted {
             user: T::AccountId,
             amount: T::Balance,
-        },
-        CredentialSubmitted {
-            who: T::AccountId,
-            expires_at: BlockNumberFor<T>,
-            jurisdiction: JurisdictionCode,
-            ai_agent: bool,
-        },
-        JurisdictionStatusUpdated {
-            code: JurisdictionCode,
-            blocked: bool,
         },
         OpengovConditionCreated {
             condition_id: ConditionId,
@@ -825,8 +618,10 @@ pub mod pallet {
         OpengovConditionCleared {
             condition_id: ConditionId,
         },
-        CredentialsRequirementUpdated {
-            enabled: bool,
+        MarketBondLockReleased {
+            market_id: MarketId,
+            creator: T::AccountId,
+            amount: T::Balance,
         },
     }
 
@@ -835,57 +630,48 @@ pub mod pallet {
         QuestionTooShort,
         ConditionNotFound,
         InvalidCollateralAsset,
+        InvalidTradeAmount,
         Overflow,
         MarketDurationTooShort,
         MarketNotOpen,
-        RevealWindowTooShort,
-        CommitmentExists,
-        CommitmentUnknown,
-        RevealTooSoon,
-        CommitmentExpired,
-        EmptyOrderPayload,
-        OrderPayloadTooLarge,
-        OrderSaltTooLarge,
+        MarketNotFinalized,
+        MarketAlreadyFinalized,
+        MarketNotClosed,
+        MarketNotResolved,
         MetadataTooLong,
-        BridgeAssetNotAllowed,
-        BridgeDailyLimitReached,
-        BridgeWalletLocked,
-        BridgeWalletMissing,
-        BridgeInsufficientEntitlement,
-        ForkTaxRemitFailed,
-        UnsupportedCollateralAsset,
-        InsufficientCreationFee,
+        SlippageToleranceExceeded,
         GovernanceBondTooLow,
         AccountNotBonded,
-        AccountFlagged,
-        PoolBelowSafetyThreshold,
-        CredentialMissing,
-        JurisdictionBlocked,
+        GovernanceBondLocked,
         InvalidOpengovProposal,
+        MarketUnknown,
+        TradeAmountTooSmall,
+        ZeroSeedLiquidity,
+        InsufficientShares,
+        NotMarketCreator,
+        NothingToClaim,
+        NothingToSweep,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /// Register a new prediction condition/oracle.
+        /// Register a new prediction condition with oracle metadata.
         #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::create_condition())]
-        pub fn create_condition(
-            origin: OriginFor<T>,
-            metadata: ConditionInput<BlockNumberFor<T>>,
-        ) -> DispatchResult {
+        pub fn create_condition(origin: OriginFor<T>, metadata: ConditionInput) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized_creator(&who)?;
             Self::create_condition_entry(&who, metadata)?;
             Ok(())
         }
 
-        /// Register an OpenGov-linked condition compatible with Polkadot Plaza feeds.
+        /// Register an OpenGov-linked condition with oracle metadata.
         #[pallet::call_index(16)]
         #[pallet::weight(T::WeightInfo::create_opengov_condition())]
         #[transactional]
         pub fn create_opengov_condition(
             origin: OriginFor<T>,
-            metadata: ConditionInput<BlockNumberFor<T>>,
+            metadata: ConditionInput,
             proposal: OpengovProposalInput,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
@@ -920,42 +706,35 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Remove stored OpenGov metadata (e.g., after market closure).
-        #[pallet::call_index(17)]
-        #[pallet::weight(Weight::from_parts(30_000, 0))]
-        pub fn clear_opengov_condition(
-            origin: OriginFor<T>,
-            condition_id: ConditionId,
-        ) -> DispatchResult {
-            T::GovernanceOrigin::ensure_origin(origin)?;
-            OpengovConditions::<T>::remove(condition_id);
-            Self::deposit_event(Event::OpengovConditionCleared { condition_id });
-            Ok(())
-        }
-
-        /// Toggle credential enforcement (SORA governance control).
-        #[pallet::call_index(18)]
-        #[pallet::weight(Weight::from_parts(30_000, 0))]
-        pub fn set_credentials_required(origin: OriginFor<T>, enabled: bool) -> DispatchResult {
-            T::GovernanceOrigin::ensure_origin(origin)?;
-            CredentialsEnforced::<T>::put(enabled);
-            Self::deposit_event(Event::CredentialsRequirementUpdated { enabled });
+        /// Synchronize a market into the locked state once its close block has passed.
+        #[pallet::call_index(26)]
+        #[pallet::weight(T::WeightInfo::sync_market_status())]
+        pub fn sync_market_status(origin: OriginFor<T>, market_id: MarketId) -> DispatchResult {
+            let _ = ensure_signed(origin)?;
+            let (market, changed) = Self::sync_market_status_if_needed(market_id)?;
+            if matches!(market.status, MarketStatus::Open) {
+                return Err(Error::<T>::MarketNotClosed.into());
+            }
+            ensure!(
+                changed
+                    || matches!(
+                        market.status,
+                        MarketStatus::Locked | MarketStatus::Resolved | MarketStatus::Cancelled
+                    ),
+                Error::<T>::MarketNotClosed
+            );
             Ok(())
         }
 
         /// Create a market for a registered condition and seed it with canonical stable collateral.
         #[pallet::call_index(1)]
-        #[pallet::weight(T::WeightInfo::create_market(Pallet::<T>::routed_transfers(
-            seed_liquidity,
-            fee_asset
-        )))]
+        #[pallet::weight(T::WeightInfo::create_market())]
         #[transactional]
         pub fn create_market(
             origin: OriginFor<T>,
             condition_id: ConditionId,
             close_block: BlockNumberFor<T>,
             seed_liquidity: T::Balance,
-            fee_asset: Option<T::AssetId>,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized_creator(&who)?;
@@ -963,13 +742,14 @@ pub mod pallet {
                 Conditions::<T>::contains_key(condition_id),
                 Error::<T>::ConditionNotFound
             );
+            ensure!(!seed_liquidity.is_zero(), Error::<T>::ZeroSeedLiquidity);
             let now = <frame_system::Pallet<T>>::block_number();
             let min_close = now
                 .checked_add(&T::MinMarketDuration::get())
                 .ok_or(Error::<T>::Overflow)?;
             ensure!(close_block >= min_close, Error::<T>::MarketDurationTooShort);
 
-            Self::withdraw_creation_fee(&who, seed_liquidity, fee_asset)?;
+            Self::withdraw_creation_fee(&who, seed_liquidity)?;
 
             let market_id =
                 NextMarketId::<T>::try_mutate(|next_id| -> Result<MarketId, DispatchError> {
@@ -980,8 +760,7 @@ pub mod pallet {
                     Ok(id)
                 })?;
 
-            let deposited =
-                Self::escrow_seed_liquidity(&who, market_id, seed_liquidity, fee_asset)?;
+            let deposited = Self::escrow_seed_liquidity(&who, seed_liquidity)?;
             let data = Market {
                 creator: who.clone(),
                 condition_id,
@@ -991,226 +770,167 @@ pub mod pallet {
                 status: MarketStatus::Open,
             };
             Markets::<T>::insert(market_id, data);
-            T::OrderbookIntegration::on_market_created(
+            MarketPools::<T>::insert(
                 market_id,
-                &who,
-                T::CanonicalStableAssetId::get(),
-                deposited,
-            )?;
+                MarketPool {
+                    collateral: deposited,
+                    yes: deposited,
+                    no: deposited,
+                },
+            );
+            Self::lock_creator_bond_for_market(&who, market_id)?;
             Self::deposit_event(Event::MarketCreated {
                 market_id,
                 seed_liquidity: deposited,
             });
+            Self::deposit_event(Event::CollateralSeeded {
+                market_id,
+                amount: deposited,
+            });
             Ok(())
         }
 
-        /// Commit to an order off-chain to mitigate front-running. Order details remain hidden.
+        /// Buy YES or NO shares from the on-chain binary market maker.
         #[pallet::call_index(2)]
-        #[pallet::weight(T::WeightInfo::commit_order())]
-        pub fn commit_order(
+        #[pallet::weight(T::WeightInfo::buy())]
+        pub fn buy(
             origin: OriginFor<T>,
             market_id: MarketId,
-            commitment: CommitmentHash,
+            outcome: BinaryOutcome,
+            collateral_in: T::Balance,
+            min_shares_out: T::Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            let market = Self::ensure_market_open(market_id)?;
-            ensure!(
-                !AccountCommitments::<T>::contains_key((market_id, &who, &commitment)),
-                Error::<T>::CommitmentExists
-            );
-            if let Some(existing) = Commitments::<T>::get(market_id, commitment) {
-                if existing.owner == who {
-                    return Err(Error::<T>::CommitmentExists.into());
-                }
-                Commitments::<T>::remove(market_id, commitment);
-            }
-            let now = <frame_system::Pallet<T>>::block_number();
-            let earliest_reveal = now
-                .checked_add(&T::CommitmentRevealDelay::get())
-                .ok_or(Error::<T>::Overflow)?;
-            ensure!(
-                earliest_reveal < market.close_block,
-                Error::<T>::RevealWindowTooShort
-            );
-            let expires_at = now
-                .checked_add(&T::CommitmentExpiry::get())
-                .ok_or(Error::<T>::Overflow)?;
-            let record = StoredCommitment {
-                owner: who.clone(),
-                info: OrderCommitment {
-                    committed_at: now,
-                    expires_at,
-                },
-            };
-            AccountCommitments::<T>::insert((market_id, &who, &commitment), record);
-            Self::deposit_event(Event::OrderCommitted {
-                market_id,
-                trader: who,
-                commitment,
-            });
-            Ok(())
-        }
+            ensure!(!collateral_in.is_zero(), Error::<T>::InvalidTradeAmount);
+            let _market = Self::ensure_market_tradable(market_id)?;
+            with_storage_transaction(|| -> DispatchResult {
+                let total_fee = Self::trade_fee(collateral_in);
+                let pricing_input = collateral_in
+                    .checked_sub(&total_fee)
+                    .ok_or(Error::<T>::TradeAmountTooSmall)?;
+                ensure!(!pricing_input.is_zero(), Error::<T>::TradeAmountTooSmall);
 
-        /// Reveal the committed order after the required delay; forwards payload to the orderbook.
-        #[pallet::call_index(3)]
-        #[pallet::weight(T::WeightInfo::reveal_order())]
-        pub fn reveal_order(
-            origin: OriginFor<T>,
-            market_id: MarketId,
-            order_payload: Vec<u8>,
-            salt: Vec<u8>,
-            order_value: T::Balance,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            ensure!(!order_payload.is_empty(), Error::<T>::EmptyOrderPayload);
-            ensure!(
-                order_payload.len() as u32 <= T::MaxOrderPayloadLength::get(),
-                Error::<T>::OrderPayloadTooLarge
-            );
-            ensure!(
-                salt.len() as u32 <= T::MaxOrderSaltLength::get(),
-                Error::<T>::OrderSaltTooLarge
-            );
-            let market = Self::ensure_market_open(market_id)?;
-
-            let hash =
-                Self::compute_commitment_hash(&who, market_id, &order_payload, &salt, &order_value);
-            let (stored, location) = Self::load_commitment(market_id, &who, &hash)
-                .ok_or(Error::<T>::CommitmentUnknown)?;
-
-            let now = <frame_system::Pallet<T>>::block_number();
-            let min_reveal = stored
-                .info
-                .committed_at
-                .checked_add(&T::CommitmentRevealDelay::get())
-                .ok_or(Error::<T>::Overflow)?;
-            ensure!(now >= min_reveal, Error::<T>::RevealTooSoon);
-            if now > stored.info.expires_at {
-                Self::remove_commitment(market_id, &who, &hash, location);
-                return Err(Error::<T>::CommitmentExpired.into());
-            }
-
-            Self::remove_commitment(market_id, &who, &hash, location);
-
-            T::OrderbookIntegration::on_order_revealed(
-                market_id,
-                &who,
-                market.collateral_asset,
-                order_payload.clone(),
-                order_value,
-            )?;
-
-            Self::record_open_interest(market_id, order_value);
-
-            Self::deposit_event(Event::OrderRevealed {
-                market_id,
-                trader: who,
-            });
-            Ok(())
-        }
-
-        /// Set or update the destination bridge wallet with cooldown.
-        #[pallet::call_index(4)]
-        #[pallet::weight(T::WeightInfo::set_bridge_wallet())]
-        pub fn set_bridge_wallet(origin: OriginFor<T>, wallet: T::AccountId) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            let now = <frame_system::Pallet<T>>::block_number();
-            let last = BridgeWalletUpdated::<T>::get(&who);
-            if last != BlockNumberFor::<T>::zero() {
-                let cooldown = Self::wallet_cooldown();
+                let pool = MarketPools::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+                let share_amount = Self::quote_buy(&pool, outcome, pricing_input)?;
+                ensure!(!share_amount.is_zero(), Error::<T>::TradeAmountTooSmall);
                 ensure!(
-                    now >= last.saturating_add(cooldown),
-                    Error::<T>::BridgeWalletLocked
+                    share_amount >= min_shares_out,
+                    Error::<T>::SlippageToleranceExceeded
                 );
-            }
-            BridgeWallet::<T>::insert(&who, &wallet);
-            BridgeWalletUpdated::<T>::insert(&who, now);
-            Self::deposit_event(Event::BridgeWalletUpdated { user: who, wallet });
-            Ok(())
+
+                T::Assets::transfer(
+                    T::CanonicalStableAssetId::get(),
+                    &who,
+                    &Self::account_id(),
+                    collateral_in,
+                )?;
+                let fee_split = Self::apply_trade_fees(market_id, total_fee)?;
+                let updated_pool =
+                    Self::pool_after_buy(pool, outcome, pricing_input, fee_split.pool)?;
+                MarketPools::<T>::insert(market_id, updated_pool);
+                Self::record_market_volume(market_id, pricing_input);
+                Self::credit_position_on_buy(
+                    market_id,
+                    &who,
+                    outcome,
+                    share_amount,
+                    pricing_input,
+                )?;
+
+                Self::deposit_event(Event::TradeExecuted {
+                    market_id,
+                    trader: who.clone(),
+                    side: TradeSide::Buy,
+                    outcome,
+                    collateral_amount: collateral_in,
+                    share_amount,
+                    fee_amount: total_fee,
+                });
+                Ok(())
+            })
         }
 
-        /// Register a bridged stablecoin deposit subject to daily cap.
-        #[pallet::call_index(5)]
-        #[pallet::weight(T::WeightInfo::bridge_deposit())]
-        pub fn bridge_deposit(
+        /// Sell YES or NO shares back into the on-chain binary market maker.
+        #[pallet::call_index(3)]
+        #[pallet::weight(T::WeightInfo::sell())]
+        pub fn sell(
             origin: OriginFor<T>,
-            asset: T::AssetId,
-            amount: T::Balance,
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            shares_in: T::Balance,
+            min_collateral_out: T::Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            ensure!(
-                Self::is_bridge_asset(&asset),
-                Error::<T>::BridgeAssetNotAllowed
-            );
-            let (day, new_total) = Self::ensure_daily_bridge_cap(&who, amount)?;
-            let bridge_reserve = Self::account_id();
-            T::Assets::transfer(asset, &who, &bridge_reserve, amount)?;
-            DailyBridgeAmount::<T>::insert(&who, day, new_total);
-            BridgeEntitlements::<T>::mutate(&who, |balance| {
-                *balance = balance.saturating_add(amount);
-            });
-            Self::deposit_event(Event::BridgeDeposited {
-                user: who,
-                asset,
-                amount,
-                day,
-            });
-            Ok(())
+            ensure!(!shares_in.is_zero(), Error::<T>::InvalidTradeAmount);
+            let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_position_has_shares(market_id, &who, outcome, shares_in)?;
+            with_storage_transaction(|| -> DispatchResult {
+                let pool = MarketPools::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+                let gross_collateral_out = Self::quote_sell(&pool, outcome, shares_in)?;
+                ensure!(
+                    !gross_collateral_out.is_zero(),
+                    Error::<T>::TradeAmountTooSmall
+                );
+                let total_fee = Self::trade_fee(gross_collateral_out);
+                let collateral_out = gross_collateral_out
+                    .checked_sub(&total_fee)
+                    .ok_or(Error::<T>::TradeAmountTooSmall)?;
+                ensure!(!collateral_out.is_zero(), Error::<T>::TradeAmountTooSmall);
+                ensure!(
+                    collateral_out >= min_collateral_out,
+                    Error::<T>::SlippageToleranceExceeded
+                );
+
+                let fee_split = Self::apply_trade_fees(market_id, total_fee)?;
+                let updated_pool = Self::pool_after_sell(
+                    pool,
+                    outcome,
+                    shares_in,
+                    gross_collateral_out,
+                    fee_split.pool,
+                )?;
+                MarketPools::<T>::insert(market_id, updated_pool);
+                Self::record_market_volume(market_id, gross_collateral_out);
+                Self::debit_position_on_sell(
+                    market_id,
+                    &who,
+                    outcome,
+                    shares_in,
+                    gross_collateral_out,
+                )?;
+                T::Assets::transfer(
+                    market.collateral_asset,
+                    &Self::account_id(),
+                    &who,
+                    collateral_out,
+                )?;
+
+                Self::deposit_event(Event::TradeExecuted {
+                    market_id,
+                    trader: who.clone(),
+                    side: TradeSide::Sell,
+                    outcome,
+                    collateral_amount: collateral_out,
+                    share_amount: shares_in,
+                    fee_amount: total_fee,
+                });
+                Ok(())
+            })
         }
 
-        /// Bridge tokens out to the registered wallet, applying payout tax.
-        #[pallet::call_index(6)]
-        #[pallet::weight(T::WeightInfo::bridge_withdraw())]
-        pub fn bridge_withdraw(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            Self::ensure_has_credential(&who)?;
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            let wallet = BridgeWallet::<T>::get(&who).ok_or(Error::<T>::BridgeWalletMissing)?;
-            let entitlement = BridgeEntitlements::<T>::get(&who);
-            ensure!(
-                entitlement >= amount,
-                Error::<T>::BridgeInsufficientEntitlement
-            );
-            let remaining = entitlement.saturating_sub(amount);
-            let tax = Perbill::from_rational(Self::payout_tax_bps(), 10_000u32) * amount;
-            Self::remit_bridge_fork_tax(tax)?;
-            BridgeEntitlements::<T>::insert(&who, remaining);
-            Self::deposit_event(Event::BridgeWithdrawalRequested {
-                user: who,
-                wallet,
-                amount,
-                tax,
-            });
-            Ok(())
-        }
-
-        /// Bond canonical stable to join the governance whitelist and maintenance pool.
+        /// Bond canonical stable as creator collateral.
         #[pallet::call_index(7)]
         #[pallet::weight(T::WeightInfo::bond_governance())]
         pub fn bond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            Self::ensure_has_credential(&who)?;
             ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
             let min_bond = Self::governance_bond_minimum();
             ensure!(amount >= min_bond, Error::<T>::GovernanceBondTooLow);
-            let maintenance_account = Self::maintenance_pool_account();
-            let received = Self::deposit_canonical(
-                &who,
-                T::CanonicalStableAssetId::get(),
-                &maintenance_account,
-                amount,
-            )?;
+            let received =
+                Self::deposit_canonical(&who, &Self::creator_bond_escrow_account(), amount)?;
             GovernanceBonds::<T>::mutate(&who, |bond| {
                 *bond = bond.saturating_add(received);
             });
-            Self::credit_pool(received);
             Self::deposit_event(Event::GovernanceBonded {
                 who,
                 amount: received,
@@ -1218,25 +938,26 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Withdraw bonded governance stake (subject to safety threshold).
+        /// Withdraw bonded creator collateral that is not locked by active markets.
         #[pallet::call_index(8)]
         #[pallet::weight(T::WeightInfo::unbond_governance())]
         #[transactional]
         pub fn unbond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            Self::ensure_has_credential(&who)?;
             ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
             GovernanceBonds::<T>::try_mutate(&who, |bond| -> DispatchResult {
                 ensure!(*bond >= amount, Error::<T>::AccountNotBonded);
-                *bond = bond.saturating_sub(amount);
+                let remaining = bond.saturating_sub(amount);
+                ensure!(
+                    remaining >= CreatorLockedBond::<T>::get(&who),
+                    Error::<T>::GovernanceBondLocked
+                );
+                *bond = remaining;
                 Ok(())
             })?;
-            Self::debit_pool(amount)?;
-            let maintenance_account = Self::maintenance_pool_account();
             T::Assets::transfer(
                 T::CanonicalStableAssetId::get(),
-                &maintenance_account,
+                &Self::creator_bond_escrow_account(),
                 &who,
                 amount,
             )?;
@@ -1244,149 +965,164 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Slash a bonded governance participant for misbehaviour.
-        #[pallet::call_index(9)]
-        #[pallet::weight(Weight::from_parts(40_000, 0))]
-        pub fn slash_governance(
+        /// Resolve an expired market to YES or NO.
+        #[pallet::call_index(20)]
+        #[pallet::weight(T::WeightInfo::resolve_market())]
+        pub fn resolve_market(
             origin: OriginFor<T>,
-            target: T::AccountId,
-            amount: T::Balance,
+            market_id: MarketId,
+            outcome: BinaryOutcome,
         ) -> DispatchResult {
             T::GovernanceOrigin::ensure_origin(origin)?;
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            GovernanceBonds::<T>::try_mutate(&target, |bond| -> DispatchResult {
-                ensure!(*bond >= amount, Error::<T>::AccountNotBonded);
-                *bond = bond.saturating_sub(amount);
+            let (market, _) = Self::ensure_market_can_finalize(market_id)?;
+            let creator = market.creator;
+            let condition_id = market.condition_id;
+            with_storage_transaction(|| -> DispatchResult {
+                Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
+                    let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
+                    market.status = MarketStatus::Resolved;
+                    Ok(())
+                })?;
+                MarketResolution::<T>::insert(market_id, outcome);
+                Self::clear_linked_opengov_condition(condition_id);
+                Self::unlock_market_bond(market_id, &creator)?;
+                Self::deposit_event(Event::MarketResolved { market_id, outcome });
                 Ok(())
-            })?;
-            Self::deposit_event(Event::GovernanceSlashed {
-                who: target,
-                amount,
-            });
-            Ok(())
+            })
         }
 
-        /// Flag an account for fraudulent activity, preventing participation.
-        #[pallet::call_index(10)]
-        #[pallet::weight(Weight::from_parts(30_000, 0))]
-        pub fn flag_account(origin: OriginFor<T>, target: T::AccountId) -> DispatchResult {
+        /// Cancel an expired market and unlock cancellation refunds.
+        #[pallet::call_index(21)]
+        #[pallet::weight(T::WeightInfo::cancel_market())]
+        pub fn cancel_market(origin: OriginFor<T>, market_id: MarketId) -> DispatchResult {
             T::GovernanceOrigin::ensure_origin(origin)?;
-            FlaggedAccounts::<T>::insert(&target, ());
-            Self::deposit_event(Event::AccountFlagged { who: target });
-            Ok(())
+            let (market, _) = Self::ensure_market_can_finalize(market_id)?;
+            let creator = market.creator;
+            let condition_id = market.condition_id;
+            with_storage_transaction(|| -> DispatchResult {
+                Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
+                    let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
+                    market.status = MarketStatus::Cancelled;
+                    Ok(())
+                })?;
+                MarketResolution::<T>::remove(market_id);
+                Self::clear_linked_opengov_condition(condition_id);
+                Self::unlock_market_bond(market_id, &creator)?;
+                Self::deposit_event(Event::MarketCancelled { market_id });
+                Ok(())
+            })
         }
 
-        /// Remove a flag once an investigation is resolved.
-        #[pallet::call_index(11)]
-        #[pallet::weight(Weight::from_parts(30_000, 0))]
-        pub fn clear_flag(origin: OriginFor<T>, target: T::AccountId) -> DispatchResult {
-            T::GovernanceOrigin::ensure_origin(origin)?;
-            FlaggedAccounts::<T>::remove(&target);
-            Self::deposit_event(Event::AccountCleared { who: target });
-            Ok(())
-        }
-
-        /// Drain assets from a flagged account into the maintenance pool.
-        #[pallet::call_index(12)]
-        #[pallet::weight(Weight::from_parts(60_000, 0))]
-        pub fn drain_flagged_account(
-            origin: OriginFor<T>,
-            target: T::AccountId,
-            amount: T::Balance,
-        ) -> DispatchResult {
-            T::GovernanceOrigin::ensure_origin(origin)?;
+        /// Claim a resolved payout or cancellation refund.
+        #[pallet::call_index(22)]
+        #[pallet::weight(T::WeightInfo::claim_market())]
+        pub fn claim_market(origin: OriginFor<T>, market_id: MarketId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let (market, _) = Self::sync_market_status_if_needed(market_id)?;
+            let position =
+                MarketPositions::<T>::get(market_id, &who).ok_or(Error::<T>::NothingToClaim)?;
             ensure!(
-                FlaggedAccounts::<T>::contains_key(&target),
-                Error::<T>::AccountFlagged
+                !position.yes_shares.is_zero()
+                    || !position.no_shares.is_zero()
+                    || !position.net_collateral_paid.is_zero(),
+                Error::<T>::NothingToClaim
             );
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            let maintenance_account = Self::maintenance_pool_account();
-            T::Assets::transfer(
-                T::CanonicalStableAssetId::get(),
-                &target,
-                &maintenance_account,
-                amount,
-            )?;
-            Self::credit_pool(amount);
-            Self::deposit_event(Event::FlaggedAccountDrained {
-                who: target,
-                amount,
-            });
-            Ok(())
+
+            let payout = match market.status {
+                MarketStatus::Resolved => {
+                    let outcome = MarketResolution::<T>::get(market_id)
+                        .ok_or(Error::<T>::MarketNotResolved)?;
+                    Self::winning_shares(&position, outcome)
+                }
+                MarketStatus::Cancelled => position.net_collateral_paid,
+                _ => return Err(Error::<T>::MarketNotFinalized.into()),
+            };
+
+            with_storage_transaction(|| -> DispatchResult {
+                MarketPositions::<T>::remove(market_id, &who);
+                Self::debit_market_totals(market_id, &position);
+                Self::debit_market_collateral(market_id, payout)?;
+                if !payout.is_zero() {
+                    T::Assets::transfer(
+                        market.collateral_asset,
+                        &Self::account_id(),
+                        &who,
+                        payout,
+                    )?;
+                }
+                Self::deposit_event(Event::MarketClaimed {
+                    market_id,
+                    trader: who.clone(),
+                    payout,
+                });
+                Ok(())
+            })
         }
 
-        /// Withdraw funds from the maintenance pool while respecting the safety floor.
-        #[pallet::call_index(13)]
-        #[pallet::weight(Weight::from_parts(50_000, 0))]
+        /// Claim accumulated creator trading fees.
+        #[pallet::call_index(23)]
+        #[pallet::weight(T::WeightInfo::claim_creator_fees())]
         #[transactional]
-        pub fn withdraw_maintenance_pool(
-            origin: OriginFor<T>,
-            destination: T::AccountId,
-            amount: T::Balance,
-        ) -> DispatchResult {
-            T::GovernanceOrigin::ensure_origin(origin)?;
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            Self::debit_pool(amount)?;
-            let maintenance_account = Self::maintenance_pool_account();
-            T::Assets::transfer(
-                T::CanonicalStableAssetId::get(),
-                &maintenance_account,
-                &destination,
+        pub fn claim_creator_fees(origin: OriginFor<T>, market_id: MarketId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            ensure!(market.creator == who, Error::<T>::NotMarketCreator);
+            let amount = MarketCreatorFees::<T>::take(market_id);
+            ensure!(!amount.is_zero(), Error::<T>::NothingToClaim);
+            T::Assets::transfer(market.collateral_asset, &Self::account_id(), &who, amount)?;
+            Self::deposit_event(Event::CreatorFeesClaimed {
+                market_id,
+                creator: who,
                 amount,
-            )?;
-            Self::deposit_event(Event::MaintenancePoolWithdrawn {
-                amount,
-                destination,
             });
             Ok(())
         }
 
-        /// Submit or refresh a zk-credential hash.
-        #[pallet::call_index(14)]
-        #[pallet::weight(T::WeightInfo::submit_credential())]
-        pub fn submit_credential(
+        /// Claim residual creator liquidity after a market is resolved or cancelled.
+        #[pallet::call_index(24)]
+        #[pallet::weight(T::WeightInfo::claim_creator_liquidity())]
+        pub fn claim_creator_liquidity(
             origin: OriginFor<T>,
-            credential_hash: [u8; 32],
-            expires_at: BlockNumberFor<T>,
-            jurisdiction: JurisdictionCode,
-            ai_agent: bool,
+            market_id: MarketId,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_account_is_clear(&who)?;
-            let now = <frame_system::Pallet<T>>::block_number();
-            ensure!(expires_at >= now, Error::<T>::CredentialMissing);
-            Self::ensure_jurisdiction_allowed(&jurisdiction)?;
-            let max_expiry = now
-                .checked_add(&Self::credential_ttl())
-                .ok_or(Error::<T>::Overflow)?;
-            let bounded = core::cmp::min(expires_at, max_expiry);
-            Credentials::<T>::insert(&who, (bounded, credential_hash, jurisdiction, ai_agent));
-            Self::deposit_event(Event::CredentialSubmitted {
-                who,
-                expires_at: bounded,
-                jurisdiction,
-                ai_agent,
-            });
-            Ok(())
+            let (market, _) = Self::sync_market_status_if_needed(market_id)?;
+            ensure!(market.creator == who, Error::<T>::NotMarketCreator);
+            let amount = Self::creator_liquidity_claimable(market_id, &market)?;
+            ensure!(!amount.is_zero(), Error::<T>::NothingToClaim);
+            with_storage_transaction(|| -> DispatchResult {
+                Self::debit_market_collateral(market_id, amount)?;
+                T::Assets::transfer(market.collateral_asset, &Self::account_id(), &who, amount)?;
+                Self::deposit_event(Event::CreatorLiquidityClaimed {
+                    market_id,
+                    creator: who.clone(),
+                    amount,
+                });
+                Ok(())
+            })
         }
 
-        /// Update the blocked status for a jurisdiction code (ISO alpha-3).
-        #[pallet::call_index(15)]
-        #[pallet::weight(Weight::from_parts(30_000, 0))]
-        pub fn set_jurisdiction_block(
-            origin: OriginFor<T>,
-            jurisdiction: JurisdictionCode,
-            blocked: bool,
-        ) -> DispatchResult {
-            T::GovernanceOrigin::ensure_origin(origin)?;
-            if blocked {
-                BlockedJurisdictions::<T>::insert(jurisdiction, ());
-            } else {
-                BlockedJurisdictions::<T>::remove(jurisdiction);
-            }
-            Self::deposit_event(Event::JurisdictionStatusUpdated {
-                code: jurisdiction,
-                blocked,
+        /// Permissionlessly swap accrued buyback collateral into XOR and burn it.
+        #[pallet::call_index(25)]
+        #[pallet::weight(T::WeightInfo::sweep_xor_buyback_and_burn())]
+        #[transactional]
+        pub fn sweep_xor_buyback_and_burn(origin: OriginFor<T>) -> DispatchResult {
+            let _ = ensure_signed(origin)?;
+            let amount = PendingXorBuybackCollateral::<T>::get();
+            ensure!(!amount.is_zero(), Error::<T>::NothingToSweep);
+            let source = Self::account_id();
+            let collateral_asset = T::CanonicalStableAssetId::get();
+            let buyback_asset = T::GetBuyBackAssetId::get();
+            let burned = T::BuyBackHandler::buy_back_and_burn(
+                &source,
+                &collateral_asset,
+                &buyback_asset,
+                amount.saturated_into::<common::Balance>(),
+            )?;
+            PendingXorBuybackCollateral::<T>::put(T::Balance::zero());
+            Self::deposit_event(Event::XorBuybackSwept {
+                collateral_amount: amount,
+                xor_burned: burned.saturated_into(),
             });
             Ok(())
         }
@@ -1397,69 +1133,15 @@ pub mod pallet {
             FeeCollectorOverride::<T>::get().unwrap_or_else(T::FeeCollector::get)
         }
 
-        fn maintenance_pool_account() -> T::AccountId {
-            MaintenancePoolOverride::<T>::get().unwrap_or_else(T::MaintenancePoolAccount::get)
-        }
-
-        fn fork_tax_account() -> T::AccountId {
-            ForkTaxAccountOverride::<T>::get().unwrap_or_else(T::ForkTaxAccount::get)
+        fn creator_bond_escrow_account() -> T::AccountId {
+            T::CreatorBondEscrowAccount::get()
         }
 
         fn governance_bond_minimum() -> T::Balance {
             GovernanceBondMinimumOverride::<T>::get().unwrap_or_else(T::GovernanceBondMinimum::get)
         }
 
-        fn maintenance_fee_bps() -> u32 {
-            MaintenanceFeeBpsOverride::<T>::get().unwrap_or_else(T::MaintenanceFeeBps::get)
-        }
-
-        fn liquidity_safety_bps() -> u32 {
-            LiquiditySafetyBpsOverride::<T>::get().unwrap_or_else(T::LiquiditySafetyBps::get)
-        }
-
-        fn bridge_daily_cap() -> T::Balance {
-            BridgeDailyCapOverride::<T>::get().unwrap_or_else(T::BridgeDailyCap::get)
-        }
-
-        fn blocks_per_day() -> BlockNumberFor<T> {
-            BlocksPerDayOverride::<T>::get().unwrap_or_else(T::BlocksPerDay::get)
-        }
-
-        fn wallet_cooldown() -> BlockNumberFor<T> {
-            WalletCooldownOverride::<T>::get().unwrap_or_else(T::WalletCooldown::get)
-        }
-
-        fn payout_tax_bps() -> u32 {
-            PayoutTaxBpsOverride::<T>::get().unwrap_or_else(T::PayoutTaxBps::get)
-        }
-
-        fn credential_ttl() -> BlockNumberFor<T> {
-            CredentialTtlOverride::<T>::get().unwrap_or_else(T::CredentialTtl::get)
-        }
-
-        fn credentials_required_default() -> bool {
-            CredentialsRequiredOverride::<T>::get().unwrap_or_else(T::CredentialsRequired::get)
-        }
-
-        fn routed_transfers(amount: &T::Balance, fee_asset: &Option<T::AssetId>) -> u32 {
-            let canonical = T::CanonicalStableAssetId::get();
-            match fee_asset {
-                Some(asset) if *asset != canonical => {
-                    let mut transfers = 2; // quote + convert during creation fee withdrawal
-                    if !amount.is_zero() {
-                        transfers += 2; // quote + convert while seeding liquidity
-                    }
-                    transfers
-                }
-                _ => 0,
-            }
-        }
-
-        fn withdraw_creation_fee(
-            who: &T::AccountId,
-            seed: T::Balance,
-            fee_asset: Option<T::AssetId>,
-        ) -> DispatchResult {
+        fn withdraw_creation_fee(who: &T::AccountId, seed: T::Balance) -> DispatchResult {
             let bps = T::CreationFeeBps::get();
             let ratio = Perbill::from_rational(bps, 10_000u32);
             let fee_from_bps = ratio * seed;
@@ -1470,62 +1152,30 @@ pub mod pallet {
                 fee_from_bps
             };
 
-            let canonical_fee = fee;
-            let asset = fee_asset.unwrap_or(T::CanonicalStableAssetId::get());
             let fee_collector = Self::fee_collector_account();
-            let maintenance_account = Self::maintenance_pool_account();
-            let fee_input = if asset == T::CanonicalStableAssetId::get() {
-                canonical_fee
-            } else {
-                T::CollateralRouter::quote_to_canonical(asset, canonical_fee)?
-            };
-            let deposited = Self::deposit_canonical(who, asset, &fee_collector, fee_input)?;
-            ensure!(
-                deposited >= canonical_fee,
-                Error::<T>::InsufficientCreationFee
-            );
+            let deposited = Self::deposit_canonical(who, &fee_collector, fee)?;
 
-            let maintenance_ratio = Perbill::from_rational(Self::maintenance_fee_bps(), 10_000u32);
-            let maintenance_amount = maintenance_ratio * deposited;
-            if !maintenance_amount.is_zero() {
+            let buyback_amount =
+                Perbill::from_rational(CREATION_FEE_BUYBACK_BPS, 10_000u32) * deposited;
+            if !buyback_amount.is_zero() {
                 T::Assets::transfer(
                     T::CanonicalStableAssetId::get(),
                     &fee_collector,
-                    &maintenance_account,
-                    maintenance_amount,
+                    &Self::account_id(),
+                    buyback_amount,
                 )?;
-                Self::credit_pool(maintenance_amount);
+                PendingXorBuybackCollateral::<T>::mutate(|total| {
+                    *total = total.saturating_add(buyback_amount);
+                });
             }
             Ok(())
         }
 
         fn escrow_seed_liquidity(
             who: &T::AccountId,
-            market_id: MarketId,
             amount: T::Balance,
-            collateral_asset: Option<T::AssetId>,
         ) -> Result<T::Balance, DispatchError> {
-            if amount.is_zero() {
-                MarketCollateral::<T>::insert(market_id, amount);
-                return Ok(amount);
-            }
-            let canonical = T::CanonicalStableAssetId::get();
-            let asset = collateral_asset.unwrap_or(canonical);
-            let input_amount = if asset == canonical {
-                amount
-            } else {
-                T::CollateralRouter::quote_to_canonical(asset, amount)?
-            };
-            let deposited = Self::deposit_canonical(who, asset, &Self::account_id(), input_amount)?;
-
-            MarketCollateral::<T>::insert(market_id, deposited);
-            Self::record_open_interest(market_id, deposited);
-
-            Self::deposit_event(Event::CollateralSeeded {
-                market_id,
-                amount: deposited,
-            });
-            Ok(deposited)
+            Self::deposit_canonical(who, &Self::account_id(), amount)
         }
 
         pub(crate) fn account_id() -> T::AccountId {
@@ -1534,246 +1184,445 @@ pub mod pallet {
 
         fn deposit_canonical(
             who: &T::AccountId,
-            asset: T::AssetId,
             dest: &T::AccountId,
             amount: T::Balance,
         ) -> Result<T::Balance, DispatchError> {
             if amount.is_zero() {
                 return Ok(amount);
             }
-            let canonical = T::CanonicalStableAssetId::get();
-            if asset == canonical {
-                T::Assets::transfer(canonical, who, dest, amount)?;
-                Ok(amount)
-            } else if asset == T::HollarAssetId::get() {
-                T::CollateralRouter::to_canonical(who, asset, amount, dest)
-                    .map_err(|_| Error::<T>::UnsupportedCollateralAsset.into())
-                    .map(|received| {
-                        Self::deposit_event(Event::HollarRouted {
-                            user: who.clone(),
-                            amount: received,
-                        });
-                        received
-                    })
-            } else {
-                T::CollateralRouter::to_canonical(who, asset, amount, dest)
-                    .map_err(|_| Error::<T>::UnsupportedCollateralAsset.into())
-            }
+            T::Assets::transfer(T::CanonicalStableAssetId::get(), who, dest, amount)?;
+            Ok(amount)
         }
 
-        fn ensure_market_open(market_id: MarketId) -> Result<MarketOf<T>, DispatchError> {
-            let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketNotOpen)?;
-            let now = <frame_system::Pallet<T>>::block_number();
+        fn ensure_market_tradable(market_id: MarketId) -> Result<MarketOf<T>, DispatchError> {
+            let (market, _) = Self::sync_market_status_if_needed(market_id)?;
             ensure!(
-                matches!(market.status, MarketStatus::Open) && now < market.close_block,
+                matches!(market.status, MarketStatus::Open),
                 Error::<T>::MarketNotOpen
             );
             Ok(market)
         }
 
-        fn load_commitment(
+        fn ensure_market_can_finalize(
             market_id: MarketId,
-            owner: &T::AccountId,
-            hash: &CommitmentHash,
-        ) -> Option<(StoredCommitmentOf<T>, CommitmentLocation)> {
-            if let Some(record) = AccountCommitments::<T>::get((market_id, owner, hash)) {
-                return Some((record, CommitmentLocation::AccountScoped));
-            }
-            if let Some(record) = Commitments::<T>::get(market_id, *hash) {
-                if record.owner == *owner {
-                    return Some((record, CommitmentLocation::Legacy));
-                }
-            }
-            None
-        }
-
-        fn remove_commitment(
-            market_id: MarketId,
-            owner: &T::AccountId,
-            hash: &CommitmentHash,
-            location: CommitmentLocation,
-        ) {
-            match location {
-                CommitmentLocation::AccountScoped => {
-                    AccountCommitments::<T>::remove((market_id, owner, hash));
-                }
-                CommitmentLocation::Legacy => {
-                    Commitments::<T>::remove(market_id, *hash);
+        ) -> Result<(MarketOf<T>, bool), DispatchError> {
+            let (market, changed) = Self::sync_market_status_if_needed(market_id)?;
+            match market.status {
+                MarketStatus::Open => Err(Error::<T>::MarketNotClosed.into()),
+                MarketStatus::Locked => Ok((market, changed)),
+                MarketStatus::Resolved | MarketStatus::Cancelled => {
+                    Err(Error::<T>::MarketAlreadyFinalized.into())
                 }
             }
         }
 
-        pub(crate) fn compute_commitment_hash(
-            who: &T::AccountId,
+        fn sync_market_status_if_needed(
             market_id: MarketId,
-            payload: &[u8],
-            salt: &[u8],
-            order_value: &T::Balance,
-        ) -> CommitmentHash {
-            let mut data = who.encode();
-            data.extend_from_slice(&market_id.encode());
-            data.extend_from_slice(&(payload.len() as u32).encode());
-            data.extend_from_slice(payload);
-            data.extend_from_slice(&(salt.len() as u32).encode());
-            data.extend_from_slice(salt);
-            data.extend_from_slice(&order_value.encode());
-            blake2_256(&data)
+        ) -> Result<(MarketOf<T>, bool), DispatchError> {
+            let now = <frame_system::Pallet<T>>::block_number();
+            let mut changed = false;
+            let market = Markets::<T>::try_mutate(
+                market_id,
+                |maybe_market| -> Result<MarketOf<T>, DispatchError> {
+                    let market = maybe_market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
+                    if matches!(market.status, MarketStatus::Open) && now >= market.close_block {
+                        market.status = MarketStatus::Locked;
+                        changed = true;
+                    }
+                    Ok(market.clone())
+                },
+            )?;
+            if changed {
+                Self::deposit_event(Event::MarketLocked { market_id });
+            }
+            Ok((market, changed))
         }
 
-        fn record_open_interest(market_id: MarketId, amount: T::Balance) {
+        fn record_market_volume(market_id: MarketId, amount: T::Balance) {
             if amount.is_zero() {
                 return;
             }
-            MarketOpenInterest::<T>::mutate(market_id, |oi| {
-                *oi = oi.saturating_add(amount);
+            MarketVolume::<T>::mutate(market_id, |volume| {
+                *volume = volume.saturating_add(amount);
             });
-            let tax = Perbill::from_rational(10u32, 10_000u32) * amount;
-            if !tax.is_zero() {
-                ForkTaxOwed::<T>::mutate(|total| {
-                    *total = total.saturating_add(tax);
+        }
+
+        fn trade_fee(amount: T::Balance) -> T::Balance {
+            let fee_bps = T::TradeFeeBps::get().min(10_000);
+            Perbill::from_rational(fee_bps, 10_000u32) * amount
+        }
+
+        fn split_trade_fee(amount: T::Balance) -> TradeFeeSplit<T::Balance> {
+            let fee = amount.saturated_into::<u128>();
+            let creator = fee.saturating_mul(10) / 100;
+            let buyback = fee.saturating_mul(20) / 100;
+            let pool = fee.saturating_sub(creator).saturating_sub(buyback);
+            TradeFeeSplit {
+                pool: pool.saturated_into::<T::Balance>(),
+                creator: creator.saturated_into::<T::Balance>(),
+                buyback: buyback.saturated_into::<T::Balance>(),
+            }
+        }
+
+        fn apply_trade_fees(
+            market_id: MarketId,
+            total_fee: T::Balance,
+        ) -> Result<TradeFeeSplit<T::Balance>, DispatchError> {
+            let split = Self::split_trade_fee(total_fee);
+            if !split.creator.is_zero() {
+                MarketCreatorFees::<T>::mutate(market_id, |total| {
+                    *total = total.saturating_add(split.creator);
                 });
-                Self::deposit_event(Event::ForkTaxAccrued { amount: tax });
             }
-
-            let activated = CreatorRewardActivated::<T>::get(market_id);
-            let threshold = T::OpenInterestThreshold::get();
-            let mut now_activated = activated;
-            if !activated && MarketOpenInterest::<T>::get(market_id) >= threshold {
-                CreatorRewardActivated::<T>::insert(market_id, true);
-                Self::deposit_event(Event::CreatorRewardActivated { market_id });
-                now_activated = true;
+            if !split.buyback.is_zero() {
+                PendingXorBuybackCollateral::<T>::mutate(|total| {
+                    *total = total.saturating_add(split.buyback);
+                });
             }
+            Ok(split)
+        }
 
-            if now_activated {
-                let reward = Perbill::from_rational(T::CreatorRewardBps::get(), 10_000u32) * amount;
-                if !reward.is_zero() {
-                    CreatorRewards::<T>::mutate(market_id, |total| {
-                        *total = total.saturating_add(reward);
-                    });
-                    Self::deposit_event(Event::CreatorRewardAccrued {
-                        market_id,
-                        amount: reward,
-                    });
+        fn quote_buy(
+            pool: &MarketPoolOf<T>,
+            outcome: BinaryOutcome,
+            collateral_in: T::Balance,
+        ) -> Result<T::Balance, DispatchError> {
+            let (selected, opposite) = Self::pool_reserves(pool, outcome);
+            let selected_u = U256::from(selected.saturated_into::<u128>());
+            let opposite_u = U256::from(opposite.saturated_into::<u128>());
+            let input_u = U256::from(collateral_in.saturated_into::<u128>());
+            let denominator = opposite_u + input_u;
+            let numerator = selected_u * opposite_u;
+            let selected_after = Self::div_ceil_u256(numerator, denominator);
+            let shares_out = selected_u
+                .checked_add(input_u)
+                .ok_or(Error::<T>::Overflow)?
+                .checked_sub(selected_after)
+                .ok_or(Error::<T>::Overflow)?;
+            Self::u256_to_balance(shares_out)
+        }
+
+        fn pool_after_buy(
+            mut pool: MarketPoolOf<T>,
+            outcome: BinaryOutcome,
+            collateral_in: T::Balance,
+            pool_fee: T::Balance,
+        ) -> Result<MarketPoolOf<T>, DispatchError> {
+            let shares_out = Self::quote_buy(&pool, outcome, collateral_in)?;
+            let total_added = collateral_in
+                .checked_add(&pool_fee)
+                .ok_or(Error::<T>::Overflow)?;
+            pool.collateral = pool
+                .collateral
+                .checked_add(&total_added)
+                .ok_or(Error::<T>::Overflow)?;
+
+            match outcome {
+                BinaryOutcome::Yes => {
+                    let yes_after = pool
+                        .yes
+                        .checked_add(&collateral_in)
+                        .ok_or(Error::<T>::Overflow)?
+                        .checked_sub(&shares_out)
+                        .ok_or(Error::<T>::Overflow)?;
+                    let no_after = pool
+                        .no
+                        .checked_add(&collateral_in)
+                        .ok_or(Error::<T>::Overflow)?;
+                    pool.yes = yes_after;
+                    pool.no = no_after;
+                }
+                BinaryOutcome::No => {
+                    let no_after = pool
+                        .no
+                        .checked_add(&collateral_in)
+                        .ok_or(Error::<T>::Overflow)?
+                        .checked_sub(&shares_out)
+                        .ok_or(Error::<T>::Overflow)?;
+                    let yes_after = pool
+                        .yes
+                        .checked_add(&collateral_in)
+                        .ok_or(Error::<T>::Overflow)?;
+                    pool.no = no_after;
+                    pool.yes = yes_after;
                 }
             }
+            Ok(pool)
         }
 
-        fn is_bridge_asset(asset: &T::AssetId) -> bool {
-            *asset == T::UsdcAssetId::get() || *asset == T::UsdtAssetId::get()
-        }
+        fn quote_sell(
+            pool: &MarketPoolOf<T>,
+            outcome: BinaryOutcome,
+            shares_in: T::Balance,
+        ) -> Result<T::Balance, DispatchError> {
+            let (selected, opposite) = Self::pool_reserves(pool, outcome);
+            let selected_u = selected.saturated_into::<u128>();
+            let opposite_u = opposite.saturated_into::<u128>();
+            let shares_u = shares_in.saturated_into::<u128>();
+            let invariant = U256::from(selected_u) * U256::from(opposite_u);
 
-        fn current_day() -> u64 {
-            let now = <frame_system::Pallet<T>>::block_number();
-            let per_day = Self::blocks_per_day().max(BlockNumberFor::<T>::one());
-            let now_u = now.saturated_into::<u128>();
-            let per_day_u = per_day.saturated_into::<u128>().max(1);
-            (now_u / per_day_u).min(u64::MAX as u128) as u64
-        }
-
-        fn ensure_daily_bridge_cap(
-            user: &T::AccountId,
-            amount: T::Balance,
-        ) -> Result<(u64, T::Balance), DispatchError> {
-            let day = Self::current_day();
-            let usage = DailyBridgeAmount::<T>::get(user, day);
-            let new_total = usage.saturating_add(amount);
-            ensure!(
-                new_total <= Self::bridge_daily_cap(),
-                Error::<T>::BridgeDailyLimitReached
-            );
-            Ok((day, new_total))
-        }
-
-        fn remit_bridge_fork_tax(amount: T::Balance) -> DispatchResult {
-            if amount.is_zero() {
-                return Ok(());
+            let mut low = 0u128;
+            let mut high = opposite_u;
+            while low < high {
+                let mid = low + (high - low + 1) / 2;
+                let lhs = U256::from(selected_u.saturating_add(shares_u).saturating_sub(mid))
+                    * U256::from(opposite_u.saturating_sub(mid));
+                if lhs >= invariant {
+                    low = mid;
+                } else {
+                    high = mid.saturating_sub(1);
+                }
             }
-            let payer = Self::account_id();
-            let fork_tax_account = Self::fork_tax_account();
-            T::Assets::transfer(T::UsdcAssetId::get(), &payer, &fork_tax_account, amount)
-                .or_else(|_| {
-                    T::Assets::transfer(T::UsdtAssetId::get(), &payer, &fork_tax_account, amount)
-                })
-                .map_err(|_| -> DispatchError { Error::<T>::ForkTaxRemitFailed.into() })?;
-            ForkTaxOwed::<T>::mutate(|total| {
-                *total = total.saturating_add(amount);
+            Ok(low.saturated_into::<T::Balance>())
+        }
+
+        fn pool_after_sell(
+            mut pool: MarketPoolOf<T>,
+            outcome: BinaryOutcome,
+            shares_in: T::Balance,
+            gross_collateral_out: T::Balance,
+            pool_fee: T::Balance,
+        ) -> Result<MarketPoolOf<T>, DispatchError> {
+            let collateral_delta = gross_collateral_out
+                .checked_sub(&pool_fee)
+                .ok_or(Error::<T>::Overflow)?;
+            pool.collateral = pool
+                .collateral
+                .checked_sub(&collateral_delta)
+                .ok_or(Error::<T>::Overflow)?;
+
+            match outcome {
+                BinaryOutcome::Yes => {
+                    pool.yes = pool
+                        .yes
+                        .checked_add(&shares_in)
+                        .ok_or(Error::<T>::Overflow)?
+                        .checked_sub(&gross_collateral_out)
+                        .ok_or(Error::<T>::Overflow)?;
+                    pool.no = pool
+                        .no
+                        .checked_sub(&gross_collateral_out)
+                        .ok_or(Error::<T>::Overflow)?;
+                }
+                BinaryOutcome::No => {
+                    pool.no = pool
+                        .no
+                        .checked_add(&shares_in)
+                        .ok_or(Error::<T>::Overflow)?
+                        .checked_sub(&gross_collateral_out)
+                        .ok_or(Error::<T>::Overflow)?;
+                    pool.yes = pool
+                        .yes
+                        .checked_sub(&gross_collateral_out)
+                        .ok_or(Error::<T>::Overflow)?;
+                }
+            }
+            Ok(pool)
+        }
+
+        fn pool_reserves(
+            pool: &MarketPoolOf<T>,
+            outcome: BinaryOutcome,
+        ) -> (T::Balance, T::Balance) {
+            match outcome {
+                BinaryOutcome::Yes => (pool.yes, pool.no),
+                BinaryOutcome::No => (pool.no, pool.yes),
+            }
+        }
+
+        fn credit_position_on_buy(
+            market_id: MarketId,
+            who: &T::AccountId,
+            outcome: BinaryOutcome,
+            shares: T::Balance,
+            collateral_paid: T::Balance,
+        ) -> DispatchResult {
+            MarketPositions::<T>::mutate(market_id, who, |position| {
+                let entry = position.get_or_insert_with(Default::default);
+                match outcome {
+                    BinaryOutcome::Yes => {
+                        entry.yes_shares = entry.yes_shares.saturating_add(shares);
+                    }
+                    BinaryOutcome::No => {
+                        entry.no_shares = entry.no_shares.saturating_add(shares);
+                    }
+                }
+                entry.net_collateral_paid =
+                    entry.net_collateral_paid.saturating_add(collateral_paid);
             });
-            Self::deposit_event(Event::ForkTaxAccrued { amount });
+            MarketPositionTotals::<T>::mutate(market_id, |totals| {
+                match outcome {
+                    BinaryOutcome::Yes => {
+                        totals.total_yes_shares = totals.total_yes_shares.saturating_add(shares);
+                    }
+                    BinaryOutcome::No => {
+                        totals.total_no_shares = totals.total_no_shares.saturating_add(shares);
+                    }
+                }
+                totals.total_net_collateral_paid = totals
+                    .total_net_collateral_paid
+                    .saturating_add(collateral_paid);
+            });
             Ok(())
         }
 
-        fn ensure_account_is_clear(who: &T::AccountId) -> DispatchResult {
-            ensure!(
-                !FlaggedAccounts::<T>::contains_key(who),
-                Error::<T>::AccountFlagged
-            );
-            Ok(())
-        }
-
-        fn ensure_jurisdiction_allowed(code: &JurisdictionCode) -> DispatchResult {
-            ensure!(*code != [0; 3], Error::<T>::JurisdictionBlocked);
-            ensure!(
-                !BlockedJurisdictions::<T>::contains_key(code),
-                Error::<T>::JurisdictionBlocked
-            );
-            Ok(())
-        }
-
-        pub(crate) fn ensure_has_credential(who: &T::AccountId) -> DispatchResult {
-            if !CredentialsEnforced::<T>::get() {
-                return Ok(());
-            }
-            let now = <frame_system::Pallet<T>>::block_number();
-            let Some((expires_at, _hash, jurisdiction, _ai)) = Credentials::<T>::get(who) else {
-                return Err(Error::<T>::CredentialMissing.into());
+        fn ensure_position_has_shares(
+            market_id: MarketId,
+            who: &T::AccountId,
+            outcome: BinaryOutcome,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            let Some(position) = MarketPositions::<T>::get(market_id, who) else {
+                return Err(Error::<T>::InsufficientShares.into());
             };
-            ensure!(now <= expires_at, Error::<T>::CredentialMissing);
-            Self::ensure_jurisdiction_allowed(&jurisdiction)?;
+            let balance = match outcome {
+                BinaryOutcome::Yes => position.yes_shares,
+                BinaryOutcome::No => position.no_shares,
+            };
+            ensure!(balance >= shares, Error::<T>::InsufficientShares);
             Ok(())
         }
 
-        fn credit_pool(amount: T::Balance) {
-            if amount.is_zero() {
-                return;
-            }
-            MaintenancePoolBalance::<T>::mutate(|bal| {
-                *bal = bal.saturating_add(amount);
+        fn debit_position_on_sell(
+            market_id: MarketId,
+            who: &T::AccountId,
+            outcome: BinaryOutcome,
+            shares_in: T::Balance,
+            gross_collateral_out: T::Balance,
+        ) -> DispatchResult {
+            let mut net_paid_reduction = T::Balance::zero();
+            MarketPositions::<T>::try_mutate_exists(
+                market_id,
+                who,
+                |position| -> DispatchResult {
+                    let entry = position.as_mut().ok_or(Error::<T>::InsufficientShares)?;
+                    match outcome {
+                        BinaryOutcome::Yes => {
+                            ensure!(
+                                entry.yes_shares >= shares_in,
+                                Error::<T>::InsufficientShares
+                            );
+                            entry.yes_shares = entry.yes_shares.saturating_sub(shares_in);
+                        }
+                        BinaryOutcome::No => {
+                            ensure!(entry.no_shares >= shares_in, Error::<T>::InsufficientShares);
+                            entry.no_shares = entry.no_shares.saturating_sub(shares_in);
+                        }
+                    }
+                    net_paid_reduction =
+                        core::cmp::min(entry.net_collateral_paid, gross_collateral_out);
+                    entry.net_collateral_paid =
+                        entry.net_collateral_paid.saturating_sub(net_paid_reduction);
+                    if entry.yes_shares.is_zero()
+                        && entry.no_shares.is_zero()
+                        && entry.net_collateral_paid.is_zero()
+                    {
+                        *position = None;
+                    }
+                    Ok(())
+                },
+            )?;
+            MarketPositionTotals::<T>::mutate(market_id, |totals| {
+                match outcome {
+                    BinaryOutcome::Yes => {
+                        totals.total_yes_shares = totals.total_yes_shares.saturating_sub(shares_in);
+                    }
+                    BinaryOutcome::No => {
+                        totals.total_no_shares = totals.total_no_shares.saturating_sub(shares_in);
+                    }
+                }
+                totals.total_net_collateral_paid = totals
+                    .total_net_collateral_paid
+                    .saturating_sub(net_paid_reduction);
             });
-            MaintenancePoolTotal::<T>::mutate(|total| {
-                *total = total.saturating_add(amount);
-            });
-            Self::deposit_event(Event::MaintenancePoolFunded { amount });
+            Ok(())
         }
 
-        pub(crate) fn debit_pool(amount: T::Balance) -> DispatchResult {
+        fn debit_market_totals(market_id: MarketId, position: &MarketPositionOf<T>) {
+            MarketPositionTotals::<T>::mutate(market_id, |totals| {
+                totals.total_yes_shares =
+                    totals.total_yes_shares.saturating_sub(position.yes_shares);
+                totals.total_no_shares = totals.total_no_shares.saturating_sub(position.no_shares);
+                totals.total_net_collateral_paid = totals
+                    .total_net_collateral_paid
+                    .saturating_sub(position.net_collateral_paid);
+            });
+        }
+
+        fn debit_market_collateral(market_id: MarketId, amount: T::Balance) -> DispatchResult {
             if amount.is_zero() {
                 return Ok(());
             }
-            let total_before = MaintenancePoolTotal::<T>::get();
-            let floor = Self::pool_floor_from_total(total_before);
-            MaintenancePoolBalance::<T>::try_mutate(|bal| -> DispatchResult {
-                ensure!(*bal >= amount, Error::<T>::PoolBelowSafetyThreshold);
-                let remaining = bal.saturating_sub(amount);
-                ensure!(remaining >= floor, Error::<T>::PoolBelowSafetyThreshold);
-                *bal = remaining;
+            MarketPools::<T>::try_mutate(market_id, |pool| -> DispatchResult {
+                let pool = pool.as_mut().ok_or(Error::<T>::MarketUnknown)?;
+                ensure!(pool.collateral >= amount, Error::<T>::Overflow);
+                pool.collateral = pool.collateral.saturating_sub(amount);
                 Ok(())
-            })?;
-            // Keep the total baseline intact so the safety floor cannot be eroded via splits.
+            })
+        }
+
+        fn winning_shares(position: &MarketPositionOf<T>, outcome: BinaryOutcome) -> T::Balance {
+            match outcome {
+                BinaryOutcome::Yes => position.yes_shares,
+                BinaryOutcome::No => position.no_shares,
+            }
+        }
+
+        fn creator_liquidity_claimable(
+            market_id: MarketId,
+            market: &MarketOf<T>,
+        ) -> Result<T::Balance, DispatchError> {
+            let pool = MarketPools::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            let totals = MarketPositionTotals::<T>::get(market_id);
+            let locked = match market.status {
+                MarketStatus::Resolved => {
+                    let outcome = MarketResolution::<T>::get(market_id)
+                        .ok_or(Error::<T>::MarketNotResolved)?;
+                    match outcome {
+                        BinaryOutcome::Yes => totals.total_yes_shares,
+                        BinaryOutcome::No => totals.total_no_shares,
+                    }
+                }
+                MarketStatus::Cancelled => totals.total_net_collateral_paid,
+                _ => return Err(Error::<T>::MarketNotFinalized.into()),
+            };
+            Ok(pool.collateral.saturating_sub(locked))
+        }
+
+        fn unlock_market_bond(market_id: MarketId, creator: &T::AccountId) -> DispatchResult {
+            let Some(amount) = MarketBondLock::<T>::take(market_id) else {
+                return Ok(());
+            };
+            CreatorLockedBond::<T>::mutate(creator, |locked| {
+                *locked = locked.saturating_sub(amount);
+            });
+            Self::deposit_event(Event::MarketBondLockReleased {
+                market_id,
+                creator: creator.clone(),
+                amount,
+            });
             Ok(())
         }
 
-        pub(crate) fn pool_floor_from_total(total: T::Balance) -> T::Balance {
-            if total.is_zero() {
-                return total;
+        fn div_ceil_u256(numerator: U256, denominator: U256) -> U256 {
+            if numerator.is_zero() {
+                return U256::zero();
             }
-            let floor_bps = Self::liquidity_safety_bps().min(10_000u32);
-            let ratio = Perbill::from_rational(floor_bps, 10_000u32);
-            ratio * total
+            ((numerator - U256::one()) / denominator) + U256::one()
+        }
+
+        fn u256_to_balance(value: U256) -> Result<T::Balance, DispatchError> {
+            let raw = u128::try_from(value).map_err(|_| Error::<T>::Overflow)?;
+            Ok(raw.saturated_into::<T::Balance>())
+        }
+
+        fn clear_linked_opengov_condition(condition_id: ConditionId) {
+            if OpengovConditions::<T>::take(condition_id).is_some() {
+                Self::deposit_event(Event::OpengovConditionCleared { condition_id });
+            }
         }
 
         fn ensure_authorized_creator(who: &T::AccountId) -> DispatchResult {
-            Self::ensure_account_is_clear(who)?;
-            Self::ensure_has_credential(who)?;
             let min_bond = Self::governance_bond_minimum();
             ensure!(
                 GovernanceBonds::<T>::get(who) >= min_bond,
@@ -1784,7 +1633,7 @@ pub mod pallet {
 
         fn create_condition_entry(
             _who: &T::AccountId,
-            metadata: ConditionInput<BlockNumberFor<T>>,
+            metadata: ConditionInput,
         ) -> Result<ConditionId, DispatchError> {
             ensure!(
                 metadata.question.len() as u32 >= T::MinQuestionLength::get(),
@@ -1797,7 +1646,6 @@ pub mod pallet {
                     .map_err(|_| Error::<T>::MetadataTooLong)?,
                 resolution_source: MetadataString::<T>::try_from(metadata.resolution_source)
                     .map_err(|_| Error::<T>::MetadataTooLong)?,
-                submission_deadline: metadata.submission_deadline,
             };
 
             let condition_id = NextConditionId::<T>::try_mutate(
@@ -1813,6 +1661,27 @@ pub mod pallet {
             Conditions::<T>::insert(condition_id, bounded);
             Self::deposit_event(Event::ConditionCreated { condition_id });
             Ok(condition_id)
+        }
+
+        fn lock_creator_bond_for_market(
+            creator: &T::AccountId,
+            market_id: MarketId,
+        ) -> DispatchResult {
+            let lock_amount = Self::governance_bond_minimum();
+            if lock_amount.is_zero() {
+                return Ok(());
+            }
+            let total_locked = CreatorLockedBond::<T>::get(creator);
+            let required_locked = total_locked
+                .checked_add(&lock_amount)
+                .ok_or(Error::<T>::Overflow)?;
+            ensure!(
+                GovernanceBonds::<T>::get(creator) >= required_locked,
+                Error::<T>::GovernanceBondTooLow
+            );
+            CreatorLockedBond::<T>::insert(creator, required_locked);
+            MarketBondLock::<T>::insert(market_id, lock_amount);
+            Ok(())
         }
     }
 }

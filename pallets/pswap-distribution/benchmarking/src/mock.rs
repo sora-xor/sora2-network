@@ -1,3 +1,5 @@
+#![allow(dead_code, deprecated, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -47,6 +49,7 @@ use frame_system;
 use hex_literal::hex;
 use permissions::Scope;
 use sp_runtime::traits::Zero;
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, Perbill};
 use sp_std::vec;
 
@@ -123,7 +126,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -258,7 +261,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = SystemConfig::default().build_storage::<Runtime>().unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let mut vec = self
             .endowed_accounts
@@ -275,9 +278,12 @@ impl ExtBuilder {
 
         vec.sort_by_key(|x| x.0.clone());
         vec.dedup_by(|x, y| x.0 == y.0);
-        BalancesConfig { balances: vec }
-            .assimilate_storage(&mut t)
-            .unwrap();
+        BalancesConfig {
+            balances: vec,
+            dev_accounts: None,
+        }
+        .assimilate_storage(&mut t)
+        .unwrap();
 
         PermissionsConfig {
             initial_permissions: self.initial_permissions,

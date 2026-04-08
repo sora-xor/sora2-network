@@ -54,16 +54,19 @@ mod tests;
 
 pub mod weights;
 
+use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
-use frame_support::codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, Pays};
-use frame_support::log::error;
+use frame_support::__private::log::error;
+use frame_support::dispatch::Pays;
+use frame_support::ensure;
 use frame_support::sp_runtime::traits::Zero;
+use frame_support::sp_runtime::DispatchError;
+use frame_support::sp_runtime::RuntimeDebug;
 use frame_support::weights::Weight;
-use frame_support::{ensure, RuntimeDebug};
 use frame_system::ensure_signed;
+use frame_system::pallet_prelude::BlockNumberFor;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sha3::Sha3_256;
@@ -76,7 +79,7 @@ pub use weights::WeightInfo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 
-fn blocks_till_migration<T>() -> T::BlockNumber
+fn blocks_till_migration<T>() -> BlockNumberFor<T>
 where
     T: frame_system::Config,
 {
@@ -92,7 +95,7 @@ where
     T: frame_system::Config,
 {
     approving_accounts: Vec<T::AccountId>,
-    migrate_at: Option<T::BlockNumber>,
+    migrate_at: Option<BlockNumberFor<T>>,
 }
 
 impl<T> Default for PendingMultisigAccount<T>
@@ -191,10 +194,7 @@ impl<T: Config> Pallet<T> {
             let mut prehashed_message = Sha3_256::default();
             prehashed_message.update(&message[..]);
             let hashed_message = prehashed_message.finalize();
-            error!(
-                "faucet: hashed_message: {}",
-                hex::encode(hashed_message.as_slice())
-            );
+            error!("faucet: hashed_message: {}", hex::encode(hashed_message));
         }
         public_key
             .verify_prehashed(prehashed_message, None, &signature)
@@ -331,6 +331,7 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config + pallet_multisig::Config + referrals::Config + technical::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type WeightInfo: WeightInfo;
     }
@@ -339,14 +340,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             // Migrate accounts whose quorum has been reached and enough time has passed since then
             PendingMultiSigAccounts::<T>::translate(|key, mut value: PendingMultisigAccount<T>| {
                 if let Some(migrate_at) = value.migrate_at {
@@ -384,8 +384,14 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
-                frame_support::log::error!("faucet: iroha_public_key: {}", iroha_public_key);
-                frame_support::log::error!("faucet: iroha_signature: {}", iroha_signature);
+                frame_support::__private::log::error!(
+                    "faucet: iroha_public_key: {}",
+                    iroha_public_key
+                );
+                frame_support::__private::log::error!(
+                    "faucet: iroha_signature: {}",
+                    iroha_signature
+                );
                 Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
                 ensure!(
                     !MigratedAccounts::<T>::contains_key(&iroha_address),
@@ -481,7 +487,6 @@ pub mod pallet {
         pub iroha_accounts: Vec<(String, Balance, Option<String>, u8, Vec<String>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -492,10 +497,22 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.account_id.as_ref().unwrap()).unwrap();
-            Account::<T>::put(&self.account_id.as_ref().unwrap());
+            if let Some(account_id) = self.account_id.as_ref() {
+                if frame_system::Pallet::<T>::inc_consumers(account_id).is_ok() {
+                    Account::<T>::put(account_id);
+                } else {
+                    frame_support::__private::log::error!(
+                        "IrohaMigration genesis failed to increase consumers for account: {:?}",
+                        account_id
+                    );
+                }
+            } else {
+                frame_support::__private::log::error!(
+                    "IrohaMigration genesis account_id is not configured"
+                );
+            }
 
             for (account_id, balance, referrer, threshold, public_keys) in &self.iroha_accounts {
                 Balances::<T>::insert(account_id, *balance);

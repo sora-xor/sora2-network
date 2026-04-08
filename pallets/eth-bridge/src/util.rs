@@ -128,8 +128,10 @@ impl<T: Config> Decoder<T> {
             .ok_or(Error::<T>::InvalidUint)?)
     }
 
-    pub fn next_account_id(&mut self) -> Result<T::AccountId, Error<T>> {
-        Ok(T::AccountId::decode(
+    pub fn next_account_id(
+        &mut self,
+    ) -> Result<<T as frame_system::pallet::Config>::AccountId, Error<T>> {
+        Ok(<T as frame_system::pallet::Config>::AccountId::decode(
             &mut &self
                 .tokens
                 .pop()
@@ -191,17 +193,13 @@ impl<T: Config> Decoder<T> {
     }
 }
 
-pub fn get_bridge_account<T: Config>(network_id: T::NetworkId) -> T::AccountId {
-    crate::BridgeAccount::<T>::get(network_id).expect("networks can't be removed; qed")
-}
-
 pub fn serialize<T: serde::Serialize>(t: &T) -> crate::jsonrpc::Value {
-    serde_json::to_value(t).expect("Types never fail to serialize.")
+    serde_json::to_value(t).unwrap_or(crate::jsonrpc::Value::Null)
 }
 
 #[allow(unused)]
 pub fn to_string<T: serde::Serialize>(request: &T) -> String {
-    serde_json::to_string(&request).expect("String serialization never fails.")
+    serde_json::to_string(&request).unwrap_or_else(|_| "null".to_owned())
 }
 
 pub fn iter_storage<S, K1, K2, V, F, O>(k1: Option<K1>, f: F) -> Vec<O>
@@ -224,12 +222,18 @@ where
 
 impl<T: Config> Pallet<T> {
     /// Checks if the account is a bridge peer.
-    pub fn is_peer(who: &T::AccountId, network_id: T::NetworkId) -> bool {
+    pub fn is_peer(
+        who: &<T as frame_system::pallet::Config>::AccountId,
+        network_id: T::NetworkId,
+    ) -> bool {
         Self::peers(network_id).into_iter().any(|i| i == *who)
     }
 
     /// Ensures that the account is a bridge peer.
-    pub(crate) fn ensure_peer(who: &T::AccountId, network_id: T::NetworkId) -> DispatchResult {
+    pub(crate) fn ensure_peer(
+        who: &<T as frame_system::pallet::Config>::AccountId,
+        network_id: T::NetworkId,
+    ) -> DispatchResult {
         ensure!(Self::is_peer(who, network_id), Error::<T>::Forbidden);
         Ok(())
     }
@@ -238,7 +242,10 @@ impl<T: Config> Pallet<T> {
     pub(crate) fn ensure_bridge_account(
         origin: OriginFor<T>,
         network_id: T::NetworkId,
-    ) -> Result<T::AccountId, DispatchErrorWithPostInfo<PostDispatchInfo>> {
+    ) -> Result<
+        <T as frame_system::pallet::Config>::AccountId,
+        DispatchErrorWithPostInfo<PostDispatchInfo>,
+    > {
         let who = ensure_signed(origin)?;
         let bridge_account_id =
             Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;

@@ -29,7 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::mock::*;
-use crate::{Error, MigratedAccounts, Pallet, PendingMultiSigAccounts, PendingReferrals};
+use crate::{
+    Account, Balances as IrohaBalances, Error, MigratedAccounts, Pallet, PendingMultiSigAccounts,
+    PendingReferrals,
+};
 use common::prelude::Balance;
 use common::{AssetInfoProvider, VAL};
 use frame_support::assert_noop;
@@ -239,6 +242,24 @@ fn test_migrate_multi_sig_public_key_already_used() {
             "f7d89d39d48a67e4741a612de10650234f9148e84fE9e8b2a9fad322b0d8e5bc".to_string(),
             "d5f6dcc6967aa05df71894dd2c253085b236026efC1c66d4b33ee88dda20fc751b516aef631d1f96919f8cba2e15334022e04ef6602298d6b9820daeefe13e03".to_string()),
             Error::<Runtime>::PublicKeyAlreadyUsed
+        );
+    });
+}
+
+#[test]
+fn genesis_should_set_account_when_configured() {
+    test_ext_with_account_id(true, Some(MINTING_ACCOUNT)).execute_with(|| {
+        assert_eq!(Account::<Runtime>::get(), Some(MINTING_ACCOUNT));
+    });
+}
+
+#[test]
+fn genesis_should_not_set_account_when_account_id_missing() {
+    test_ext_with_account_id(true, None).execute_with(|| {
+        assert_eq!(Account::<Runtime>::get(), None);
+        assert_eq!(
+            IrohaBalances::<Runtime>::get("did_sora_balance@sora"),
+            Some(Balance::from(300u128))
         );
     });
 }

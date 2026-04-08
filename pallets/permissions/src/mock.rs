@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -31,12 +33,11 @@
 use crate::{self as permissions, Scope, BURN, INIT_DEX, MINT, SLASH};
 use common::prelude::Balance;
 use common::{mock_frame_system_config, mock_pallet_balances_config, mock_permissions_config};
-use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system;
 use sp_core::crypto::AccountId32;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -47,7 +48,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
     }
@@ -93,13 +94,35 @@ impl Default for ExtBuilder {
 }
 
 impl ExtBuilder {
+    pub fn with_initial_permission_owners(
+        mut self,
+        initial_permission_owners: Vec<(u32, Scope, Vec<AccountId>)>,
+    ) -> Self {
+        self.initial_permission_owners = initial_permission_owners;
+        self
+    }
+
+    pub fn with_initial_permissions(
+        mut self,
+        initial_permissions: Vec<(AccountId, Scope, Vec<u32>)>,
+    ) -> Self {
+        self.initial_permissions = initial_permissions;
+        self
+    }
+
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
+        let existential_deposit = <Runtime as pallet_balances::Config>::ExistentialDeposit::get();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(ALICE, 0), (BOB, 0), (JOHN, 0)],
+            balances: vec![
+                (ALICE, existential_deposit),
+                (BOB, existential_deposit),
+                (JOHN, existential_deposit),
+            ],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

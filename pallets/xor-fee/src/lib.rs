@@ -40,11 +40,11 @@ use common::{
 };
 #[cfg(feature = "wip")] // Xorless fee
 use common::{PriceToolsProvider, PriceVariant};
+use frame_support::__private::log::{error, warn};
 #[cfg(feature = "wip")] // Xorless fee
 use frame_support::dispatch::extract_actual_weight;
 use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::ensure;
-use frame_support::log::{error, warn};
 use frame_support::pallet_prelude::{DispatchResultWithPostInfo, InvalidTransaction};
 use frame_support::traits::Randomness;
 use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, WithdrawReasons};
@@ -55,13 +55,13 @@ use frame_support::weights::{
 };
 use pallet_transaction_payment as ptp;
 use pallet_transaction_payment::{
-    FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo,
+    FeeDetails, InclusionFee, OnChargeTransaction, RuntimeDispatchInfo, TxCreditHold,
 };
 use smallvec::smallvec;
 use sp_arithmetic::traits::CheckedDiv;
 use sp_arithmetic::FixedPointOperand;
 use sp_runtime::traits::{
-    DispatchInfoOf, Dispatchable, Extrinsic as ExtrinsicT, PostDispatchInfoOf, SaturatedConversion,
+    DispatchInfoOf, Dispatchable, ExtrinsicLike, PostDispatchInfoOf, SaturatedConversion,
     Saturating, UniqueSaturatedInto, Zero,
 };
 use sp_runtime::{DispatchError, DispatchResult, FixedPointNumber, FixedU128, Perbill, Percent};
@@ -140,7 +140,7 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
                 )
             }
             LiquidityInfo::Postponed(account_id) => {
-                write!(f, "Postponed({:?})", account_id)
+                write!(f, "Postponed({account_id:?})")
             }
             LiquidityInfo::NotPaid => {
                 write!(f, "NotPaid")
@@ -188,6 +188,10 @@ impl<T: Config>
     }
 }
 
+impl<T: Config> TxCreditHold<T> for Pallet<T> {
+    type Credit = ();
+}
+
 impl<T: Config> OnChargeTransaction<T> for Pallet<T>
 where
     BalanceOf<T>: Into<u128>,
@@ -231,6 +235,35 @@ where
         }
 
         Err(InvalidTransaction::Payment.into())
+    }
+
+    fn can_withdraw_fee(
+        who: &T::AccountId,
+        call: &CallOf<T>,
+        _dispatch_info: &DispatchInfoOf<CallOf<T>>,
+        fee: BalanceOf<T>,
+        _tip: BalanceOf<T>,
+    ) -> Result<(), TransactionValidityError> {
+        if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
+            return Ok(());
+        }
+
+        let fee_source = T::CustomFees::get_fee_source(who, call, fee.into());
+
+        if T::CustomFees::should_be_postponed(who, &fee_source, call, fee.into()) {
+            return Ok(());
+        }
+
+        match T::WithdrawFee::can_withdraw_fee(who, &fee_source, call, fee.into()) {
+            Ok(()) => Ok(()),
+            Err(err) if err == Error::<T>::AssetNotFound.into() => {
+                Err(InvalidTransaction::Custom(2u8).into())
+            }
+            Err(err) if err == Error::<T>::FeeCalculationFailed.into() => Err(
+                TransactionValidityError::Invalid(InvalidTransaction::Payment),
+            ),
+            _ => Err(InvalidTransaction::Payment.into()),
+        }
     }
 
     fn correct_and_deposit_fee(
@@ -472,12 +505,22 @@ where
         }
         Ok(())
     }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn endow_account(who: &T::AccountId, amount: Self::Balance) {
+        let _ = T::XorCurrency::deposit_creating(who, amount);
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn minimum_balance() -> Self::Balance {
+        T::XorCurrency::minimum_balance()
+    }
 }
 
 pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<common::BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(factor: &common::BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         <XorToBuyBack<T>>::mutate(|amount| {
             if let Some(new_amount) = amount.checked_div(*factor) {
                 *amount = new_amount;
@@ -616,6 +659,15 @@ impl<Call: Dispatchable, AccountId: Clone> ApplyCustomFees<Call, AccountId> for 
 }
 
 pub trait WithdrawFee<T: Config> {
+    fn can_withdraw_fee(
+        _who: &T::AccountId,
+        _fee_source: &T::AccountId,
+        _call: &CallOf<T>,
+        _fee: Balance,
+    ) -> Result<(), DispatchError> {
+        Ok(())
+    }
+
     fn withdraw_fee(
         who: &T::AccountId,
         fee_source: &T::AccountId,
@@ -760,36 +812,41 @@ where
     }
 
     // Returns value if custom fee is applicable to an extrinsic and `None` otherwise
-    pub fn query_info<Extrinsic: Clone + ExtrinsicT + GetDispatchInfo>(
+    pub fn query_info<Extrinsic: Clone + ExtrinsicLike + GetDispatchInfo>(
         unchecked_extrinsic: &Extrinsic,
         call: &CallOf<T>,
         len: u32,
     ) -> RuntimeDispatchInfo<BalanceOf<T>> {
         let dispatch_info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
 
-        let partial_fee = if unchecked_extrinsic.is_signed().unwrap_or(false) {
-            Self::compute_fee(len, call, &dispatch_info, 0u32.into()).0
-        } else {
+        let partial_fee = if unchecked_extrinsic.is_bare() {
             0u32.into()
+        } else {
+            Self::compute_fee(len, call, &dispatch_info, 0u32.into()).0
         };
 
-        let DispatchInfo { weight, class, .. } = dispatch_info;
-
         RuntimeDispatchInfo {
-            weight,
-            class,
+            weight: dispatch_info.total_weight(),
+            class: dispatch_info.class,
             partial_fee,
         }
     }
 
     // Returns value if custom fee is applicable to an extrinsic and `None` otherwise
-    pub fn query_fee_details<Extrinsic: ExtrinsicT + GetDispatchInfo>(
+    pub fn query_fee_details<Extrinsic: ExtrinsicLike + GetDispatchInfo>(
         unchecked_extrinsic: &Extrinsic,
         call: &CallOf<T>,
         len: u32,
     ) -> FeeDetails<BalanceOf<T>> {
         let info = <Extrinsic as GetDispatchInfo>::get_dispatch_info(unchecked_extrinsic);
-        Self::compute_fee_details(len, call, &info, 0u32.into()).0
+        if unchecked_extrinsic.is_bare() {
+            FeeDetails {
+                inclusion_fee: None,
+                tip: 0u32.into(),
+            }
+        } else {
+            Self::compute_fee_details(len, call, &info, 0u32.into()).0
+        }
     }
 }
 
@@ -812,7 +869,7 @@ impl<T: Config> Pallet<T> {
                     xor_to_val = xor_to_val.saturating_add(XorToVal::<T>::take());
                     if xor_to_val != 0 {
                         if let Err(e) = Self::remint_val(&mut weight, xor_to_val) {
-                            error!("xor fee remint failed: {:?}", e);
+                            error!("xor fee remint failed: {e:?}");
                         }
                     }
 
@@ -820,13 +877,13 @@ impl<T: Config> Pallet<T> {
 
                     if xor_to_buy_back != 0 {
                         if let Err(e) = Self::remint_buy_back(&mut weight, xor_to_buy_back) {
-                            error!("XOR remint buy back failed: {:?}", e);
+                            error!("XOR remint buy back failed: {e:?}");
                         }
                     }
                 }
             }
             Err(error) => {
-                warn!("Failed to get randomness for xor-fee: {}", error);
+                warn!("Failed to get randomness for xor-fee: {error}");
             }
         }
         weight
@@ -837,12 +894,25 @@ impl<T: Config> Pallet<T> {
         let xor = T::XorId::get();
         let val = T::ValId::get();
         let kusd = T::KusdId::get();
-        let tbcd = T::TbcdId::get();
+        let xor_to_burn_for_tbcd = T::RemintTbcdBuyBackPercent::get() * xor_to_val;
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
         weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
         T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
+        if !xor_to_burn_for_tbcd.is_zero() {
+            weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
+            T::AssetManager::burn_from(
+                &xor,
+                &tech_account_id,
+                &tech_account_id,
+                xor_to_burn_for_tbcd,
+            )?;
+        }
+        let xor_to_val = xor_to_val.saturating_sub(xor_to_burn_for_tbcd);
+        if xor_to_val.is_zero() {
+            return Ok(());
+        }
         // Attempting to swap XOR with VAL on secondary market
         // If successful, VAL will be burned, otherwise burn newly minted XOR from the tech account
         weight.saturating_accrue(T::PoolXyk::exchange_weight());
@@ -863,26 +933,7 @@ impl<T: Config> Pallet<T> {
         ) {
             Ok(swap_outcome) => {
                 let mut val_to_burn = swap_outcome.amount;
-                let tbcd_buy_back = T::RemintTbcdBuyBackPercent::get() * val_to_burn;
                 let kusd_buy_back = T::RemintKusdBuyBackPercent::get() * val_to_burn;
-
-                if let Err(e) = common::with_transaction(|| {
-                    weight.saturating_accrue(
-                        T::DbWeight::get()
-                            .reads_writes(2, 1)
-                            .saturating_add(T::PoolXyk::exchange_weight()),
-                    );
-                    T::BuyBackHandler::buy_back_and_burn(
-                        &tech_account_id,
-                        &val,
-                        &tbcd,
-                        tbcd_buy_back,
-                    )
-                }) {
-                    frame_support::log::error!("Failed to buy back TBCD: {e:?}");
-                } else {
-                    val_to_burn = val_to_burn.saturating_sub(tbcd_buy_back);
-                }
 
                 if let Err(e) = common::with_transaction(|| {
                     weight.saturating_accrue(
@@ -897,7 +948,7 @@ impl<T: Config> Pallet<T> {
                         kusd_buy_back,
                     )
                 }) {
-                    frame_support::log::error!("Failed to buy back KUSD: {e:?}");
+                    frame_support::__private::log::error!("Failed to buy back KUSD: {e:?}");
                 } else {
                     val_to_burn = val_to_burn.saturating_sub(kusd_buy_back);
                 }
@@ -908,10 +959,7 @@ impl<T: Config> Pallet<T> {
                 T::AssetManager::burn_from(&val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
-                error!(
-                    "failed to exchange xor to val, burning {} XOR, e: {:?}",
-                    xor_to_val, e
-                );
+                error!("failed to exchange xor to val, burning {xor_to_val} XOR, e: {e:?}");
                 weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
@@ -966,7 +1014,7 @@ impl<T: Config> Pallet<T> {
                         Ok(())
                     }
                     Err(e) => {
-                        error!("white listed asset fee remint failed: {:?}", e);
+                        error!("white listed asset fee remint failed: {e:?}");
                         Err(())
                     }
                 }
@@ -1027,10 +1075,7 @@ impl<T: Config> Pallet<T> {
                 Ok(xor_to_burn.0.amount)
             }
             Err(e) => {
-                error!(
-                    "failed to exchange asset {:?} to xor, burning {} asset, e: {:?}",
-                    asset_id, amount, e
-                );
+                error!("failed to exchange asset {asset_id:?} to xor, burning {amount} asset, e: {e:?}");
                 weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&asset_id, &tech_account_id, &tech_account_id, amount)?;
                 Err(e)
@@ -1094,13 +1139,14 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config + pallet_transaction_payment::Config + common::Config
+        frame_system::Config<RuntimeEvent: From<Event<Self>>>
+        + pallet_transaction_payment::Config
+        + common::Config
     {
         type PermittedSetPeriod: EnsureOrigin<Self::RuntimeOrigin>;
         type DynamicMultiplier: CalculateMultiplier<AssetIdOf<Self>, DispatchError>;
         type ForcedMultiplierAt: Get<BlockNumberFor<Self>>;
         type ForcedMultiplier: Get<FixedU128>;
-        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// XOR - The native currency of this blockchain.
         type XorCurrency: Currency<Self::AccountId> + Send + Sync;
         type XorId: Get<AssetIdOf<Self>>;
@@ -1140,14 +1186,16 @@ pub mod pallet {
         type PriceTools: PriceToolsProvider<AssetIdOf<Self>>;
         /// Main goal of the constant is to prevent zero fees
         type MinimalFeeInAsset: Get<Balance>;
-        type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+        type Randomness: Randomness<Self::Hash, frame_system::pallet_prelude::BlockNumberFor<Self>>;
     }
 
     /// The current storage version.
+    #[cfg(feature = "wip")]
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+    #[cfg(not(feature = "wip"))]
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -1168,9 +1216,7 @@ pub mod pallet {
                     #[cfg(feature = "std")]
                     warn!(
                         target: "xor-fee",
-                        "Force-applied multiplier override at block {:?}: {:?}",
-                        current_block,
-                        forced_multiplier
+                        "Force-applied multiplier override at block {current_block:?}: {forced_multiplier:?}"
                     );
                 }
             }
@@ -1193,7 +1239,9 @@ pub mod pallet {
                             weight += T::DbWeight::get().writes(1);
                         }
                         Err(e) => {
-                            frame_support::log::error!("Could not update Multiplier due to: {e:?}");
+                            frame_support::__private::log::error!(
+                                "Could not update Multiplier due to: {e:?}"
+                            );
                         }
                     }
                 }
@@ -1227,7 +1275,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::set_fee_update_period())]
         pub fn set_fee_update_period(
             origin: OriginFor<T>,
-            _new_period: <T as frame_system::Config>::BlockNumber,
+            _new_period: BlockNumberFor<T>,
         ) -> DispatchResultWithPostInfo {
             T::PermittedSetPeriod::ensure_origin(origin)?;
             #[cfg(feature = "wip")] // Dynamic fee
@@ -1271,7 +1319,7 @@ pub mod pallet {
             let dispatch_info = call.get_dispatch_info();
             (
 				<T as Config>::WeightInfo::xorless_call()
-					.saturating_add(dispatch_info.weight),
+					.saturating_add(dispatch_info.total_weight()),
 				dispatch_info.class,
 			)
         })]
@@ -1285,7 +1333,7 @@ pub mod pallet {
             {
                 let call_info = call.get_dispatch_info();
                 let call_result = call.dispatch(origin);
-                let whole_weight = T::WeightInfo::xorless_call()
+                let whole_weight = <T as Config>::WeightInfo::xorless_call()
                     .saturating_add(extract_actual_weight(&call_result, &call_info));
 
                 call_result
@@ -1386,7 +1434,7 @@ pub mod pallet {
         WeightToFeeMultiplierUpdated(FixedU128),
         #[cfg(feature = "wip")] // Dynamic fee
         /// New block number to update multiplier is set. [New value]
-        PeriodUpdated(<T as frame_system::Config>::BlockNumber),
+        PeriodUpdated(BlockNumberFor<T>),
         #[cfg(feature = "wip")] // Dynamic fee
         /// New small reference amount set. [New value]
         SmallReferenceAmountUpdated(Balance),
@@ -1441,8 +1489,7 @@ pub mod pallet {
     /// set 0 value
     #[pallet::storage]
     #[pallet::getter(fn update_period)]
-    pub type UpdatePeriod<T> =
-        StorageValue<_, <T as frame_system::Config>::BlockNumber, ValueQuery>;
+    pub type UpdatePeriod<T> = StorageValue<_, BlockNumberFor<T>, ValueQuery>;
 
     /// The amount of XOR to be reminted and exchanged for VAL at the end of the session
     #[pallet::storage]

@@ -38,8 +38,8 @@
 use codec::Decode;
 use common::prelude::{Balance, SwapAmount};
 use common::{
-    balance, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId,
-    LiquiditySource, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetId32, AssetIdOf, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId,
+    LiquiditySource, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
@@ -56,6 +56,11 @@ pub struct Pallet<T: Config>(pool_xyk::Pallet<T>);
 pub trait Config: pool_xyk::Config {}
 
 pub const DEX: DEXId = DEXId::Polkaswap;
+const BENCHMARK_TARGET_ASSET: AssetId32<common::PredefinedAssetId> = AssetId32::from_bytes(hex!(
+    "0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"
+));
+const BENCHMARK_TARGET_SYMBOL: &[u8] = b"DOT";
+const BENCHMARK_TARGET_NAME: &[u8] = b"Polkadot";
 
 // Support Functions
 fn alice<T: Config>() -> T::AccountId {
@@ -95,9 +100,9 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     );
     let _ = T::AssetManager::register_asset_id(
         owner.clone(),
-        DOT.into(),
-        AssetSymbol(b"DOT".to_vec()),
-        AssetName(b"Polkadot".to_vec()),
+        BENCHMARK_TARGET_ASSET.into(),
+        AssetSymbol(BENCHMARK_TARGET_SYMBOL.to_vec()),
+        AssetName(BENCHMARK_TARGET_NAME.to_vec()),
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
@@ -107,10 +112,20 @@ fn setup_benchmark_assets_only<T: Config>() -> Result<(), &'static str> {
     )
     .unwrap();
 
-    T::TradingPairSourceManager::register_pair(DEX.into(), XOR.into(), DOT.into()).unwrap();
+    T::TradingPairSourceManager::register_pair(
+        DEX.into(),
+        XOR.into(),
+        BENCHMARK_TARGET_ASSET.into(),
+    )
+    .unwrap();
 
     T::AssetManager::mint_to(&XOR.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
-    T::AssetManager::mint_to(&DOT.into(), &owner.clone(), &owner.clone(), balance!(50000))?;
+    T::AssetManager::mint_to(
+        &BENCHMARK_TARGET_ASSET.into(),
+        &owner.clone(),
+        &owner.clone(),
+        balance!(50000),
+    )?;
 
     Ok(())
 }
@@ -123,13 +138,18 @@ fn setup_benchmark<T: Config>() -> Result<(), &'static str> {
 
     setup_benchmark_assets_only::<T>()?;
 
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XYKPool::<T>::initialize_pool(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        BENCHMARK_TARGET_ASSET.into(),
+    )?;
 
     XYKPool::<T>::deposit_liquidity(
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
-        DOT.into(),
+        BENCHMARK_TARGET_ASSET.into(),
         balance!(2000),
         balance!(3000),
         balance!(2000),
@@ -147,13 +167,13 @@ benchmarks! {
             min_amount_out: balance!(0),
         };
         let initial_base_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap();
-        let initial_target_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap();
+        let initial_target_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&BENCHMARK_TARGET_ASSET.into(), &caller).unwrap();
     }: {
         pool_xyk::Pallet::<T>::exchange(&caller,
         &caller,
         &DEX.into(),
         &XOR.into(),
-        &DOT.into(),
+        &BENCHMARK_TARGET_ASSET.into(),
         amount.clone()
     ).unwrap();
 }
@@ -163,7 +183,7 @@ benchmarks! {
             Into::<u128>::into(initial_base_balance) - balance!(1000)
         );
         assert_eq!(
-            Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap()),
+            Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&BENCHMARK_TARGET_ASSET.into(), &caller).unwrap()),
             Into::<u128>::into(initial_target_balance) + balance!(995.991983967935871743)
         );
     }
@@ -174,7 +194,7 @@ benchmarks! {
         assert!(XYKPool::<T>::can_exchange(
             &DEX.into(),
             &XOR.into(),
-            &DOT.into(),
+            &BENCHMARK_TARGET_ASSET.into(),
         ))
     }
     verify {
@@ -191,7 +211,7 @@ benchmarks! {
         XYKPool::<T>::quote(
             &DEX.into(),
             &XOR.into(),
-            &DOT.into(),
+            &BENCHMARK_TARGET_ASSET.into(),
             amount.into(),
             true,
         ).unwrap()
@@ -211,7 +231,7 @@ benchmarks! {
         XYKPool::<T>::step_quote(
             &DEX.into(),
             &XOR.into(),
-            &DOT.into(),
+            &BENCHMARK_TARGET_ASSET.into(),
             amount.into(),
             a as usize,
             true,
@@ -225,12 +245,12 @@ benchmarks! {
         setup_benchmark::<T>()?;
         let caller = alice::<T>();
         let initial_xor_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap();
-        let initial_dot_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap();
+        let initial_dot_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&BENCHMARK_TARGET_ASSET.into(), &caller).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
         XOR.into(),
-        DOT.into(),
+        BENCHMARK_TARGET_ASSET.into(),
         balance!(2000),
         balance!(3000),
         balance!(2000),
@@ -243,7 +263,7 @@ benchmarks! {
             Into::<u128>::into(initial_xor_balance) - balance!(2000)
         );
         assert_eq!(
-            Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller.clone()).unwrap()),
+            Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&BENCHMARK_TARGET_ASSET.into(), &caller.clone()).unwrap()),
             Into::<u128>::into(initial_dot_balance) - balance!(3000)
         );
     }
@@ -252,12 +272,12 @@ benchmarks! {
         setup_benchmark::<T>().unwrap();
         let caller = alice::<T>();
         let initial_xor_balance = <T as  pool_xyk::Config>::AssetInfoProvider::free_balance(&XOR.into(), &caller).unwrap();
-        let initial_dot_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller).unwrap();
+        let initial_dot_balance = <T as pool_xyk::Config>::AssetInfoProvider::free_balance(&BENCHMARK_TARGET_ASSET.into(), &caller).unwrap();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),
         XOR.into(),
-        DOT.into(),
+        BENCHMARK_TARGET_ASSET.into(),
         balance!(1000),
         balance!(1),
         balance!(1)
@@ -268,7 +288,7 @@ benchmarks! {
             Into::<u128>::into(initial_xor_balance) + balance!(816.496580927726032746)
         );
         assert_eq!(
-            Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&DOT.into(), &caller.clone()).unwrap()),
+            Into::<u128>::into(<T as pool_xyk::Config>::AssetInfoProvider::free_balance(&BENCHMARK_TARGET_ASSET.into(), &caller.clone()).unwrap()),
             Into::<u128>::into(initial_dot_balance) + balance!(1224.744871391589049119)
         );
     }
@@ -277,7 +297,7 @@ benchmarks! {
         setup_benchmark_assets_only::<T>()?;
         let caller = alice::<T>();
         let asset_xor: AssetIdOf<T> = XOR.into();
-        let asset_dot: AssetIdOf<T> = DOT.into();
+        let asset_dot: AssetIdOf<T> = BENCHMARK_TARGET_ASSET.into();
     }: _(
         RawOrigin::Signed(caller.clone()),
         DEX.into(),

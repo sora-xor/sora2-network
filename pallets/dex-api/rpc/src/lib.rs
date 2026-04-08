@@ -33,22 +33,21 @@
 
 use codec::Codec;
 use common::BalanceWrapper;
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
+use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::{ApiExt, ProvideRuntimeApi};
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{Block as BlockT, MaybeDisplay, MaybeFromStr, Zero};
 use std::sync::Arc;
+
+fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
+    ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
+}
 
 // Runtime API imports.
 use dex_runtime_api::SwapOutcomeInfo;
 pub use dex_runtime_api::DEXAPI as DEXRuntimeAPI;
 
-#[rpc(server, client)]
+#[rpc(server)]
 pub trait DEXAPI<BlockHash, AssetId, DEXId, Balance, LiquiditySourceType, SwapVariant, SwapResponse>
 {
     #[method(name = "dexApi_quote")]
@@ -128,20 +127,20 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<SwapOutcomeInfo<Balance, AssetId>>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
+        );
 
         let version = api
-            .api_version::<dyn DEXRuntimeAPI<Block, AssetId, DEXId, Balance,LiquiditySourceType, SwapVariant>>(&at)
-            .map_err(|e| RpcError::Custom(format!("Runtime API error: {}", e)))?;
+            .api_version::<dyn DEXRuntimeAPI<Block, AssetId, DEXId, Balance,LiquiditySourceType, SwapVariant>>(at)
+            .map_err(|e| runtime_error_into_rpc_error(e))?;
 
         let outcome = if version == Some(1) {
             #[allow(deprecated)]
             {
                 api.quote_before_version_2(
-                    &at,
+                    at,
                     dex_id,
                     liquidity_source_type,
                     input_asset_id,
@@ -149,12 +148,12 @@ where
                     amount,
                     swap_variant,
                 )
-                .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+                .map_err(|e| runtime_error_into_rpc_error(e))?
                 .map(Into::into)
             }
         } else if version == Some(2) {
             api.quote(
-                &at,
+                at,
                 dex_id,
                 liquidity_source_type,
                 input_asset_id,
@@ -162,10 +161,12 @@ where
                 amount,
                 swap_variant,
             )
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))?
+            .map_err(|e| runtime_error_into_rpc_error(e))?
         } else {
-            return Err(RpcError::Custom(
-                "Unsupported or invalid DEXRuntimeAPI version".to_string(),
+            return Err(ErrorObjectOwned::owned(
+                1,
+                "Unsupported or invalid DEXRuntimeAPI version",
+                None::<()>,
             ));
         };
         Ok(outcome)
@@ -180,18 +181,18 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<bool> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
+        );
         api.can_exchange(
-            &at,
+            at,
             dex_id,
             liquidity_source_type,
             input_asset_id,
             output_asset_id,
         )
-        .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        .map_err(|e| runtime_error_into_rpc_error(e))
     }
 
     fn list_supported_sources(
@@ -199,11 +200,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Vec<LiquiditySourceType>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.list_supported_sources(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+        );
+        api.list_supported_sources(at)
+            .map_err(|e| runtime_error_into_rpc_error(e))
     }
 }

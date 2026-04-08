@@ -37,8 +37,8 @@
 //!    ```
 //!
 //! 2. Write a little program to generate the definitions. This program exists only to hook together
-//! the runtime definitions with the various calculations here. Take a look at
-//! _utils/frame/generate_bags/node-runtime_ for an example.
+//!    the runtime definitions with the various calculations here. Take a look at
+//!    _utils/frame/generate_bags/node-runtime_ for an example.
 //!
 //! 3. Run that program:
 //!
@@ -56,6 +56,7 @@
 
 use frame_election_provider_support::VoteWeight;
 use frame_support::traits::Get;
+use sp_staking::currency_to_vote::CurrencyToVote;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -69,8 +70,6 @@ fn existential_weight<T: pallet_staking::Config>(
     total_issuance: u128,
     minimum_balance: u128,
 ) -> VoteWeight {
-    use frame_support::traits::CurrencyToVote;
-
     T::CurrencyToVote::to_vote(
         minimum_balance
             .try_into()

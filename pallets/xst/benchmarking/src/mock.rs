@@ -1,3 +1,5 @@
+#![allow(dead_code, deprecated)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -43,13 +45,13 @@ use common::{
     XOR, XST, XSTUSD,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, INIT_DEX, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
 use sp_runtime::traits::Zero;
+use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
 
 pub type AccountId = AccountId32;
@@ -116,7 +118,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Storage},
         TradingPair: trading_pair::{Pallet, Call, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
@@ -130,7 +132,7 @@ construct_runtime! {
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
         XSTPool: xst::{Pallet, Call, Storage, Event<T>},
         PswapDistribution: pswap_distribution::{Pallet, Call, Storage, Event<T>},
-        DEXApi: dex_api::{Pallet, Call, Storage, Config, Event<T>},
+        DEXApi: dex_api::{Pallet, Call, Storage, Config<T>, Event<T>},
         Band: band::{Pallet, Call, Storage, Event<T>},
         OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>},
         CeresLiquidityLocker: ceres_liquidity_locker::{Pallet, Call, Storage, Event<T>},
@@ -269,9 +271,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: self
@@ -287,6 +287,7 @@ impl ExtBuilder {
                 })
                 .chain(vec![(bob(), 0), (assets_owner(), 0)])
                 .collect(),
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

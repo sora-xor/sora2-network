@@ -30,7 +30,11 @@
 
 use crate::mock::*;
 use common::prelude::*;
-use common::{balance, fixed};
+use common::{balance, fixed, Fixed, FixedInner};
+
+fn fixed_bits(value: Fixed) -> FixedInner {
+    value.into_bits()
+}
 
 #[test]
 fn test_provides_exchange_should_pass() {
@@ -40,8 +44,8 @@ fn test_provides_exchange_should_pass() {
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(5000),
-            fixed!(7000),
+            fixed_bits(fixed!(5000)),
+            fixed_bits(fixed!(7000)),
         )
         .expect("Failed to set reserve.");
         assert!(MockLiquiditySource::can_exchange(
@@ -93,16 +97,16 @@ fn test_support_multiple_dexes_should_pass() {
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(1000),
-            fixed!(1000),
+            fixed_bits(fixed!(1000)),
+            fixed_bits(fixed!(1000)),
         )
         .expect("Failed to set reserve.");
         MockLiquiditySource::set_reserve(
             RuntimeOrigin::signed(alice()),
             DEX_B_ID,
             KSM,
-            fixed!(1000),
-            fixed!(1000),
+            fixed_bits(fixed!(1000)),
+            fixed_bits(fixed!(1000)),
         )
         .expect("Failed to set reserve.");
         assert!(MockLiquiditySource::can_exchange(
@@ -136,8 +140,8 @@ fn test_quote_base_to_target_should_pass() {
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(5000),
-            fixed!(7000),
+            fixed_bits(fixed!(5000)),
+            fixed_bits(fixed!(7000)),
         )
         .expect("Failed to set reserve.");
         let (outcome, _) = MockLiquiditySource::quote(
@@ -169,8 +173,8 @@ fn test_quote_target_to_base_should_pass() {
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(5000),
-            fixed!(7000),
+            fixed_bits(fixed!(5000)),
+            fixed_bits(fixed!(7000)),
         )
         .expect("Failed to set reserve.");
         let (outcome, _) = MockLiquiditySource::quote(
@@ -202,16 +206,16 @@ fn test_quote_target_to_target_should_pass() {
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(5000),
-            fixed!(7000),
+            fixed_bits(fixed!(5000)),
+            fixed_bits(fixed!(7000)),
         )
         .expect("Failed to set reserve.");
         MockLiquiditySource::set_reserve(
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             KSM,
-            fixed!(5500),
-            fixed!(3000),
+            fixed_bits(fixed!(5500)),
+            fixed_bits(fixed!(3000)),
         )
         .expect("Failed to set reserve.");
         let (outcome, _) = MockLiquiditySource::quote(
@@ -243,16 +247,16 @@ fn test_quote_different_modules_should_pass() {
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(5000),
-            fixed!(7000),
+            fixed_bits(fixed!(5000)),
+            fixed_bits(fixed!(7000)),
         )
         .expect("Failed to set reserve.");
         MockLiquiditySource2::set_reserve(
             RuntimeOrigin::signed(alice()),
             DEX_A_ID,
             DOT,
-            fixed!(5500),
-            fixed!(3000),
+            fixed_bits(fixed!(5500)),
+            fixed_bits(fixed!(3000)),
         )
         .expect("Failed to set reserve.");
         let (outcome, _) = MockLiquiditySource::quote(

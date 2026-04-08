@@ -44,6 +44,8 @@ cargo test
 cargo test -p assets
 ```
 
+On macOS outside `nix`, some native crates such as RocksDB need Homebrew LLVM on the build-script library path. If you hit a `libclang.dylib` load error, run cargo through `./scripts/with_llvm_env.sh`, for example `./scripts/with_llvm_env.sh cargo test -p assets`.
+
 ### Run local network
 
 ```sh
@@ -88,7 +90,7 @@ To enable detailed logging node can be run with
 
 ### Exporting chainspec json
 
-Refer to `generate_chain_specs.sh` script.
+Refer to `generate_chain_specs.sh` script. It now resolves `libclang` automatically before invoking cargo so chain-spec generation works on macOS with Homebrew LLVM installed.
 
 ### Selecting a chain
 

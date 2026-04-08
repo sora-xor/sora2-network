@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -36,24 +38,21 @@ use crate::types::{
 };
 use crate::{
     AssetConfig, Config, NetworkConfig, NodeParams, CONFIRMATION_INTERVAL, STORAGE_ETH_NODE_PARAMS,
-    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_SECRET_KEY,
-    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
+    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
+    STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_NODE_URL_KEY,
     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
 };
-use codec::{Codec, Decode, Encode};
+use codec::{Decode, Encode};
 use common::mock::{ExistentialDeposits, WeightToFixedFee};
 use common::prelude::Balance;
 use common::{
     mock_assets_config, mock_bridge_multisig_config, mock_common_config, mock_currencies_config,
-    mock_frame_system_config, mock_pallet_balances_config, mock_pallet_scheduler_config,
-    mock_pallet_sudo_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
+    mock_frame_system_config, mock_permissions_config, mock_tokens_config, Amount, AssetId32,
     AssetName, AssetSymbol, DEXId, PredefinedAssetId, DEFAULT_BALANCE_PRECISION, PSWAP, VAL, XOR,
     XST,
 };
 use core::cell::RefCell;
 use currencies::BasicCurrencyAdapter;
-use frame_support::dispatch::{DispatchInfo, GetDispatchInfo, Pays, UnfilteredDispatchable};
-use frame_support::sp_io::TestExternalities;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::app_crypto::sp_core::crypto::AccountId32;
 use frame_support::sp_runtime::app_crypto::sp_core::offchain::{OffchainDbExt, TransactionPoolExt};
@@ -62,28 +61,23 @@ use frame_support::sp_runtime::offchain::http;
 use frame_support::sp_runtime::offchain::testing::{
     OffchainState, PoolState, TestOffchainExt, TestTransactionPoolExt,
 };
-use frame_support::sp_runtime::serde::{Serialize, Serializer};
-use frame_support::sp_runtime::traits::{
-    self, Applyable, Checkable, DispatchInfoOf, Dispatchable, IdentifyAccount, PostDispatchInfoOf,
-    SignedExtension, ValidateUnsigned, Verify,
-};
-use frame_support::sp_runtime::transaction_validity::{
-    TransactionSource, TransactionValidity, TransactionValidityError,
-};
-use frame_support::sp_runtime::{
-    self, ApplyExtrinsicResultWithInfo, MultiSignature, MultiSigner, Perbill,
-};
-use frame_support::traits::{GenesisBuild, Get, PrivilegeCmp};
+use frame_support::sp_runtime::serde::Serialize;
+use frame_support::sp_runtime::traits::{IdentifyAccount, Verify};
+use frame_support::sp_runtime::{MultiSignature, MultiSigner, Perbill};
+use frame_support::traits::{Get, PrivilegeCmp, UnfilteredDispatchable};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::offchain::{Account, SigningTypes};
 use hex_literal::hex;
 use parking_lot::RwLock;
+use permissions::{Scope, BURN, MINT};
 use rustc_hex::ToHex;
 use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
 use sp_core::{H160, H256};
-use sp_keystore::testing::KeyStore;
-use sp_keystore::{KeystoreExt, SyncCryptoStore};
+use sp_io::TestExternalities;
+use sp_keystore::testing::MemoryKeystore;
+use sp_keystore::{Keystore, KeystoreExt};
+use sp_runtime::BuildStorage;
 use sp_std::cmp::Ordering;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
@@ -112,151 +106,36 @@ parameter_types! {
     pub const EthNetworkId: <Runtime as Config>::NetworkId = 0;
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, scale_info::TypeInfo)]
-pub struct MyTestXt<RuntimeCall, Extra> {
-    /// Signature of the extrinsic.
-    pub signature: Option<(AccountId, Extra)>,
-    /// RuntimeCall of the extrinsic.
-    pub call: RuntimeCall,
-}
-
-parity_util_mem::malloc_size_of_is_0!(any: MyTestXt<RuntimeCall, Extra>);
-
-impl<RuntimeCall: Codec + Sync + Send, Context, Extra> Checkable<Context>
-    for MyTestXt<RuntimeCall, Extra>
-{
-    type Checked = Self;
-    fn check(self, _c: &Context) -> Result<Self::Checked, TransactionValidityError> {
-        Ok(self)
-    }
-
-    #[cfg(feature = "try-runtime")]
-    fn unchecked_into_checked_i_know_what_i_am_doing(
-        self,
-        _c: &Context,
-    ) -> Result<Self::Checked, TransactionValidityError> {
-        unreachable!();
-    }
-}
-
-impl<RuntimeCall: Codec + Sync + Send, Extra> traits::Extrinsic for MyTestXt<RuntimeCall, Extra> {
-    type Call = RuntimeCall;
-    type SignaturePayload = (AccountId, Extra);
-
-    fn is_signed(&self) -> Option<bool> {
-        Some(self.signature.is_some())
-    }
-
-    fn new(c: RuntimeCall, sig: Option<Self::SignaturePayload>) -> Option<Self> {
-        Some(MyTestXt {
-            signature: sig,
-            call: c,
-        })
-    }
-}
-
-impl SignedExtension for MyExtra {
-    const IDENTIFIER: &'static str = "testextension";
-    type AccountId = AccountId;
-    type Call = RuntimeCall;
-    type AdditionalSigned = ();
-    type Pre = ();
-
-    fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
-        Ok(())
-    }
-
-    fn pre_dispatch(
-        self,
-        _who: &Self::AccountId,
-        _call: &Self::Call,
-        _info: &DispatchInfoOf<Self::Call>,
-        _len: usize,
-    ) -> Result<Self::Pre, TransactionValidityError> {
-        Ok(())
-    }
-}
-
-impl<Origin, RuntimeCall, Extra> Applyable for MyTestXt<RuntimeCall, Extra>
-where
-    RuntimeCall: 'static
-        + Sized
-        + Send
-        + Sync
-        + Clone
-        + Eq
-        + Codec
-        + Debug
-        + Dispatchable<RuntimeOrigin = Origin>,
-    Extra: SignedExtension<AccountId = AccountId, Call = RuntimeCall>,
-    Origin: From<Option<AccountId32>>,
-{
-    type Call = RuntimeCall;
-
-    /// Checks to see if this is a valid *transaction*. It returns information on it if so.
-    fn validate<U: ValidateUnsigned<Call = Self::Call>>(
-        &self,
-        _source: TransactionSource,
-        _info: &DispatchInfoOf<Self::Call>,
-        _len: usize,
-    ) -> TransactionValidity {
-        Ok(Default::default())
-    }
-
-    /// Executes all necessary logic needed prior to dispatch and deconstructs into function call,
-    /// index and sender.
-    fn apply<U: ValidateUnsigned<Call = Self::Call>>(
-        self,
-        info: &DispatchInfoOf<Self::Call>,
-        len: usize,
-    ) -> ApplyExtrinsicResultWithInfo<PostDispatchInfoOf<Self::Call>> {
-        let maybe_who = if let Some((who, extra)) = self.signature {
-            Extra::pre_dispatch(extra, &who, &self.call, info, len)?;
-            Some(who)
-        } else {
-            Extra::pre_dispatch_unsigned(&self.call, info, len)?;
-            None
-        };
-
-        Ok(self.call.dispatch(maybe_who.into()))
-    }
-}
-
-impl<RuntimeCall, Extra> Serialize for MyTestXt<RuntimeCall, Extra>
-where
-    MyTestXt<RuntimeCall, Extra>: Encode,
-{
-    fn serialize<S>(&self, seq: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.using_encoded(|bytes| seq.serialize_bytes(bytes))
-    }
-}
-
-impl<RuntimeCall: Encode, Extra: Encode> GetDispatchInfo for MyTestXt<RuntimeCall, Extra> {
-    fn get_dispatch_info(&self) -> DispatchInfo {
-        // for testing: weight == size.
-        DispatchInfo {
-            weight: Weight::from_parts(self.encode().len() as u64, 0),
-            pays_fee: Pays::No,
-            ..Default::default()
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo)]
-pub struct MyExtra;
-pub type TestExtrinsic = MyTestXt<RuntimeCall, MyExtra>;
+pub type TestExtrinsic = UncheckedExtrinsic;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const MaximumBlockWeight: Weight = Weight::from_parts(1024, 0);
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+    pub const ExistentialDeposit: u128 = 0;
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const MaxRequestsPerQueueConst: u32 = 64;
+    pub const ReservedBridgeQueueSlotsConst: u32 = 4;
+    pub const MaxPendingLoadIncomingRequestsPerAccountConst: u32 = 16;
+}
+
+impl pallet_balances::Config for Runtime {
+    type AccountStore = System;
+    type Balance = Balance;
+    type DustRemoval = ();
+    type DoneSlashHandler = ();
+    type ExistentialDeposit = ExistentialDeposit;
+    type FreezeIdentifier = ();
+    type MaxFreezes = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type RuntimeFreezeReason = ();
+    type RuntimeHoldReason = ();
+    type ReserveIdentifier = ();
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
 }
 
 pub struct RemoveTemporaryPeerAccountId;
@@ -276,9 +155,6 @@ mock_bridge_multisig_config!(Runtime);
 mock_common_config!(Runtime);
 mock_currencies_config!(Runtime);
 mock_frame_system_config!(Runtime);
-mock_pallet_balances_config!(Runtime);
-mock_pallet_scheduler_config!(Runtime);
-mock_pallet_sudo_config!(Runtime);
 mock_permissions_config!(Runtime);
 mock_tokens_config!(Runtime);
 
@@ -302,16 +178,15 @@ impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for R
 where
     RuntimeCall: From<LocalCall>,
 {
-    fn create_transaction<C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>>(
+    fn create_signed_transaction<
+        C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+    >(
         call: RuntimeCall,
         _public: <Signature as Verify>::Signer,
         account: <Runtime as frame_system::Config>::AccountId,
-        _index: <Runtime as frame_system::Config>::Index,
-    ) -> Option<(
-        RuntimeCall,
-        <TestExtrinsic as sp_runtime::traits::Extrinsic>::SignaturePayload,
-    )> {
-        Some((call, (account, MyExtra {})))
+        _index: <Runtime as frame_system::Config>::Nonce,
+    ) -> Option<Self::Extrinsic> {
+        Some(TestExtrinsic::new_signed(call, account, (), ()))
     }
 }
 
@@ -320,12 +195,21 @@ impl frame_system::offchain::SigningTypes for Runtime {
     type Signature = Signature;
 }
 
-impl<C> frame_system::offchain::SendTransactionTypes<C> for Runtime
+impl<C> frame_system::offchain::CreateTransactionBase<C> for Runtime
 where
     RuntimeCall: From<C>,
 {
     type Extrinsic = TestExtrinsic;
-    type OverarchingCall = RuntimeCall;
+    type RuntimeCall = RuntimeCall;
+}
+
+impl<LocalCall> frame_system::offchain::CreateBare<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_bare(call: RuntimeCall) -> Self::Extrinsic {
+        TestExtrinsic::new_bare(call)
+    }
 }
 
 parameter_types! {
@@ -349,6 +233,13 @@ impl PrivilegeCmp<OriginCaller> for OriginPrivilegeCmp {
         }
     }
 }
+
+impl pallet_sudo::Config for Runtime {
+    type RuntimeCall = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
+}
+
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type PeerId = crate::offchain::crypto::TestAuthId;
@@ -365,18 +256,13 @@ impl Config for Runtime {
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
 }
 
-impl sp_runtime::traits::ExtrinsicMetadata for TestExtrinsic {
-    const VERSION: u8 = 1;
-    type SignedExtensions = ();
-}
-
 construct_runtime!(
     pub enum Runtime where
         Block = Block,
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: bridge_multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
         Tokens: tokens::{Pallet, Call, Storage, Config<T>, Event<T>},
@@ -385,7 +271,6 @@ construct_runtime!(
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>},
         Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
         EthBridge: eth_bridge::{Pallet, Call, Storage, Config<T>, Event<T>},
-        Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -420,6 +305,10 @@ fn json_rpc_response<T: Serialize>(value: T) -> jsonrpc_core::Response {
 fn push_json_rpc_response<T: Serialize>(value: T) {
     let json_rpc_response = json_rpc_response(value);
     push_response(serde_json::to_vec(&json_rpc_response).unwrap());
+}
+
+pub(crate) fn push_global_json_rpc_response<T: Serialize>(value: T) {
+    push_json_rpc_response(value);
 }
 
 pub struct State {
@@ -468,11 +357,12 @@ impl State {
         self.push_response_raw(data);
     }
 
-    pub fn run_next_offchain_with_params(
+    fn run_next_offchain_inner(
         &mut self,
         sidechain_height: u64,
         finalized_thischain_height: BlockNumber,
         dispatch_txs: bool,
+        via_hook: bool,
     ) {
         let finalized_block_hash = H256([0; 32]);
         // Thischain finalized head.
@@ -520,14 +410,57 @@ impl State {
         for resp in responses {
             push_response(resp);
         }
-        EthBridge::offchain();
+        let current_block_number = frame_system::Pallet::<Runtime>::block_number();
+        if via_hook {
+            <EthBridge as frame_support::traits::Hooks<BlockNumber>>::offchain_worker(
+                current_block_number,
+            );
+        } else {
+            EthBridge::offchain();
+        }
         if dispatch_txs {
             self.dispatch_offchain_transactions();
         }
     }
 
+    pub fn run_next_offchain_with_params(
+        &mut self,
+        sidechain_height: u64,
+        finalized_thischain_height: BlockNumber,
+        dispatch_txs: bool,
+    ) {
+        self.run_next_offchain_inner(
+            sidechain_height,
+            finalized_thischain_height,
+            dispatch_txs,
+            false,
+        );
+    }
+
     pub fn run_next_offchain_and_dispatch_txs(&mut self) {
         self.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
+    }
+
+    pub fn run_next_offchain_worker_with_params(
+        &mut self,
+        sidechain_height: u64,
+        finalized_thischain_height: BlockNumber,
+        dispatch_txs: bool,
+    ) {
+        self.run_next_offchain_inner(
+            sidechain_height,
+            finalized_thischain_height,
+            dispatch_txs,
+            true,
+        );
+    }
+
+    pub fn run_next_offchain_worker_and_dispatch_txs(&mut self) {
+        self.run_next_offchain_worker_with_params(
             CONFIRMATION_INTERVAL,
             frame_system::Pallet::<Runtime>::block_number() + 1,
             true,
@@ -540,13 +473,13 @@ impl State {
         std::mem::swap(&mut guard.transactions, &mut txs);
         for tx in txs {
             let e = TestExtrinsic::decode(&mut &*tx).unwrap();
-            let (who, _) = e.signature.unwrap();
-            let call = e.call;
+            let Some((who, _, _)) = e.preamble.to_signed() else {
+                continue;
+            };
+            let call = e.function;
             // In reality you would do `e.apply`, but this is a test. we assume we don't care
             // about validation etc.
             let origin = Some(who).into();
-            // set_caller_from
-            println!("{:?} {:?}", origin, call);
             if let Err(e) = call.dispatch_bypass_filter(origin) {
                 eprintln!("call dispatch error {:?}", e);
             }
@@ -599,6 +532,10 @@ pub struct ExtBuilder {
     pub networks: HashMap<u32, ExtendedNetworkConfig>,
     last_network_id: u32,
     root_account_id: AccountId32,
+    authority_account: Option<AccountId32>,
+    omit_authority_account: bool,
+    seed_bridge_permissions: bool,
+    endow_reserve_assets: bool,
 }
 
 impl Default for ExtBuilder {
@@ -607,6 +544,10 @@ impl Default for ExtBuilder {
             networks: Default::default(),
             last_network_id: Default::default(),
             root_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+            authority_account: None,
+            omit_authority_account: false,
+            seed_bridge_permissions: false,
+            endow_reserve_assets: true,
         };
         builder.add_network(
             vec![
@@ -647,7 +588,32 @@ impl ExtBuilder {
             networks: Default::default(),
             last_network_id: Default::default(),
             root_account_id: get_account_id_from_seed::<sr25519::Public>("Alice"),
+            authority_account: None,
+            omit_authority_account: false,
+            seed_bridge_permissions: false,
+            endow_reserve_assets: true,
         }
+    }
+
+    pub fn with_authority_account(mut self, authority_account: AccountId32) -> Self {
+        self.authority_account = Some(authority_account);
+        self.omit_authority_account = false;
+        self
+    }
+
+    pub fn without_authority_account(mut self) -> Self {
+        self.omit_authority_account = true;
+        self
+    }
+
+    pub fn with_preseeded_bridge_permissions(mut self) -> Self {
+        self.seed_bridge_permissions = true;
+        self
+    }
+
+    pub fn with_endowed_reserve_assets(mut self, endow_reserve_assets: bool) -> Self {
+        self.endow_reserve_assets = endow_reserve_assets;
+        self
     }
 
     pub fn add_currency(&mut self, network_id: u32, currency: AssetConfig<AssetId>) {
@@ -693,8 +659,12 @@ impl ExtBuilder {
     pub fn build(self) -> (TestExternalities, State) {
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
-        let authority_account_id =
+        let default_authority_account_id =
             bridge_multisig::Pallet::<Runtime>::multi_account_id(&self.root_account_id, 1, 0);
+        let authority_account_id = self
+            .authority_account
+            .clone()
+            .unwrap_or_else(|| default_authority_account_id.clone());
 
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
@@ -725,9 +695,13 @@ impl ExtBuilder {
                     )
                 },
             ));
-            endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
-                |(asset_id, _balance)| (ext_network.config.bridge_account_id.clone(), asset_id, 0),
-            ));
+            if self.endow_reserve_assets {
+                endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
+                    |(asset_id, _balance)| {
+                        (ext_network.config.bridge_account_id.clone(), asset_id, 0)
+                    },
+                ));
+            }
             bridge_accounts.push((
                 ext_network.config.bridge_account_id.clone(),
                 bridge_multisig::MultisigAccount::new(
@@ -746,15 +720,17 @@ impl ExtBuilder {
             &String::from("http://sub.node").encode(),
         );
         let ocw_keys = &self.networks[&0].ocw_keypairs[0];
-        offchain_storage.set(
-            b"",
-            STORAGE_PEER_SECRET_KEY,
-            &Vec::from(ocw_keys.2).encode(),
-        );
+        let ocw_marker = match &ocw_keys.0 {
+            MultiSigner::Ecdsa(pubkey) => pubkey.0.to_vec(),
+            _ => unreachable!("only ecdsa bridge peers are expected in tests"),
+        };
+        offchain_storage.set(b"", STORAGE_PEER_MARKER_KEY, &ocw_marker.encode());
+        // Keep legacy key populated for backward-compatibility paths.
+        offchain_storage.set(b"", STORAGE_PEER_SECRET_KEY, &ocw_marker.encode());
         drop(offchain_guard);
-        let key_store = KeyStore::new();
+        let key_store = MemoryKeystore::new();
         key_store
-            .insert_unknown(
+            .insert(
                 crate::KEY_TYPE,
                 &format!("0x{}", ocw_keys.2.to_hex::<String>()),
                 ocw_keys.0.as_ref(),
@@ -789,8 +765,8 @@ impl ExtBuilder {
             })
             .collect();
 
-        let mut storage = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut storage = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
 
         let mut balances: Vec<_> = endowed_accounts
@@ -805,9 +781,12 @@ impl ExtBuilder {
         }
         balances.sort_by_key(|x| x.0.clone());
         balances.dedup_by_key(|x| x.0.clone());
-        BalancesConfig { balances }
-            .assimilate_storage(&mut storage)
-            .unwrap();
+        BalancesConfig {
+            balances,
+            dev_accounts: Default::default(),
+        }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
         if !endowed_accounts.is_empty() {
             SudoConfig {
@@ -817,6 +796,28 @@ impl ExtBuilder {
             .unwrap();
         }
 
+        let mut initial_permission_owners = vec![];
+        let mut initial_permissions = Vec::new();
+        if self.seed_bridge_permissions {
+            for (bridge_account_id, _) in &bridge_accounts {
+                initial_permission_owners.push((
+                    MINT,
+                    Scope::Unlimited,
+                    vec![bridge_account_id.clone()],
+                ));
+                initial_permission_owners.push((
+                    BURN,
+                    Scope::Unlimited,
+                    vec![bridge_account_id.clone()],
+                ));
+                initial_permissions.push((
+                    bridge_account_id.clone(),
+                    Scope::Unlimited,
+                    vec![MINT, BURN],
+                ));
+            }
+        }
+
         MultisigConfig {
             accounts: bridge_accounts,
         }
@@ -824,8 +825,8 @@ impl ExtBuilder {
         .unwrap();
 
         PermissionsConfig {
-            initial_permission_owners: vec![],
-            initial_permissions: Vec::new(),
+            initial_permission_owners,
+            initial_permissions,
         }
         .assimilate_storage(&mut storage)
         .unwrap();
@@ -846,7 +847,11 @@ impl ExtBuilder {
 
         EthBridgeConfig {
             networks: bridge_network_configs,
-            authority_account: Some(authority_account_id.clone()),
+            authority_account: if self.omit_authority_account {
+                None
+            } else {
+                Some(authority_account_id.clone())
+            },
             val_master_contract_address: sp_core::H160::from_str(
                 "47e229aa491763038f6a505b4f85d8eb463f0962",
             )
@@ -862,8 +867,10 @@ impl ExtBuilder {
         t.register_extension(OffchainDbExt::new(offchain.clone()));
         t.register_extension(OffchainWorkerExt::new(offchain));
         t.register_extension(TransactionPoolExt::new(pool));
-        t.register_extension(KeystoreExt(Arc::new(key_store)));
-        t.execute_with(|| System::set_block_number(1));
+        t.register_extension(KeystoreExt::new(key_store));
+        t.execute_with(|| {
+            System::set_block_number(1);
+        });
 
         let state = State {
             networks: self.networks,

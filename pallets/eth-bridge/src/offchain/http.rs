@@ -42,11 +42,11 @@ use crate::{
 };
 use alloc::string::String;
 use alloc::vec::Vec;
-use frame_support::log::{error, trace, warn};
+use frame_support::__private::log::{error, trace, warn};
+use frame_support::fail;
 use frame_support::sp_runtime::offchain as rt_offchain;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::traits::Get;
-use frame_support::{fail, sp_io};
 use frame_system::offchain::CreateSignedTransaction;
 use hex_literal::hex;
 use serde::{Deserialize, Serialize};
@@ -135,10 +135,11 @@ impl<T: Config> Pallet<T> {
             .map_err(|e| {
                 error!("json_rpc_request: from_json failed, {}", e);
             })
-            .map_err(|_| Error::<T>::FailedToLoadTransaction)?;
+            .map_err(|_| Error::<T>::JsonDeserializationError)?;
         let result = match response {
             jsonrpc::Response::Batch(_xs) => {
-                unreachable!("we've just sent a `Single` request; qed")
+                error!("json_rpc_request: unexpected batch response");
+                fail!(Error::<T>::JsonDeserializationError);
             }
             jsonrpc::Response::Single(x) => x,
         };
@@ -257,7 +258,6 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Loads a Sidechain transaction receipt by the hash and ensures that it came from a known contract.
-    // TODO: check if transaction failed due to gas limit
     pub fn load_tx_receipt(
         hash: H256,
         network_id: T::NetworkId,
@@ -293,14 +293,13 @@ impl<T: Config> Pallet<T> {
 
     /// Queries a block at the given height of the local node with `chain_getBlockHash` and
     /// `chain_getBlock` RPC calls.
-    pub fn load_substrate_block(number: T::BlockNumber) -> Result<SubstrateBlockLimited, Error<T>>
+    pub fn load_substrate_block(
+        number: frame_system::pallet_prelude::BlockNumberFor<T>,
+    ) -> Result<SubstrateBlockLimited, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
-        let int: u32 = number
-            .try_into()
-            .map_err(|_| ())
-            .expect("block number is always at least u32; qed");
+        let int: u64 = number.try_into().map_err(|_| Error::<T>::InvalidUint)?;
         let hash =
             Self::substrate_json_rpc_request::<_, types::H256>("chain_getBlockHash", &[int])?;
         let block = Self::substrate_json_rpc_request::<_, types::SubstrateSignedBlockLimited>(

@@ -253,6 +253,77 @@ fn should_add_asset() {
 }
 
 #[test]
+fn add_asset_pending_helper_tracks_request_lifecycle() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let asset_id = Assets::register_from(
+            &alice,
+            AssetSymbol(b"PEND".to_vec()),
+            AssetName(b"Pending Asset".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(0u32),
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert!(!EthBridge::is_add_asset_request_pending(net_id, asset_id));
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id,
+        ));
+        assert!(EthBridge::is_add_asset_request_pending(net_id, asset_id));
+
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert!(!EthBridge::is_add_asset_request_pending(net_id, asset_id));
+    });
+}
+
+#[test]
+fn should_reject_duplicate_pending_add_asset_request() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let asset_id = Assets::register_from(
+            &alice,
+            AssetSymbol(b"DUPA".to_vec()),
+            AssetName(b"Duplicate Pending Add".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(0u32),
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id,
+        ));
+        let queue_len = crate::RequestsQueue::<Runtime>::get(net_id).len();
+
+        assert_noop!(
+            EthBridge::add_asset(RuntimeOrigin::root(), asset_id, net_id),
+            Error::TokenIsAlreadyAdded
+        );
+        assert_eq!(
+            crate::RequestsQueue::<Runtime>::get(net_id).len(),
+            queue_len
+        );
+    });
+}
+
+#[test]
 fn should_add_token() {
     let (mut ext, state) = ExtBuilder::default().build();
 
@@ -281,7 +352,75 @@ fn should_add_token() {
     });
 }
 
-#[ignore]
+#[test]
+fn add_sidechain_token_pending_helper_tracks_request_lifecycle() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let token_address = EthAddress::from(hex!("e88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+
+        assert!(!EthBridge::is_add_token_request_pending(
+            net_id,
+            token_address
+        ));
+        assert_ok!(EthBridge::add_sidechain_token(
+            RuntimeOrigin::root(),
+            token_address,
+            "PENDTOK".into(),
+            "Pending Token".into(),
+            DEFAULT_BALANCE_PRECISION,
+            net_id,
+        ));
+        assert!(EthBridge::is_add_token_request_pending(
+            net_id,
+            token_address
+        ));
+
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert!(!EthBridge::is_add_token_request_pending(
+            net_id,
+            token_address
+        ));
+    });
+}
+
+#[test]
+fn should_reject_duplicate_pending_add_sidechain_token_request() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let token_address = EthAddress::from(hex!("f88f8313e61a97cec1871ee37fbbe2a8bf3ed1e4"));
+
+        assert_ok!(EthBridge::add_sidechain_token(
+            RuntimeOrigin::root(),
+            token_address,
+            "DUPTOK".into(),
+            "Duplicate Pending Token".into(),
+            DEFAULT_BALANCE_PRECISION,
+            net_id,
+        ));
+        let queue_len = crate::RequestsQueue::<Runtime>::get(net_id).len();
+
+        assert_noop!(
+            EthBridge::add_sidechain_token(
+                RuntimeOrigin::root(),
+                token_address,
+                "DUPTOK".into(),
+                "Duplicate Pending Token".into(),
+                DEFAULT_BALANCE_PRECISION,
+                net_id,
+            ),
+            Error::SidechainAssetIsAlreadyRegistered
+        );
+        assert_eq!(
+            crate::RequestsQueue::<Runtime>::get(net_id).len(),
+            queue_len
+        );
+    });
+}
+
 #[test]
 fn should_not_add_token_if_not_bridge_account() {
     let (mut ext, _state) = ExtBuilder::default().build();
@@ -302,7 +441,7 @@ fn should_not_add_token_if_not_bridge_account() {
                 decimals,
                 net_id,
             ),
-            Error::Forbidden
+            frame_support::sp_runtime::DispatchError::BadOrigin
         );
     });
 }
@@ -833,6 +972,130 @@ fn should_remove_asset() {
             net_id,
         ));
         assert!(EthBridge::registered_asset(net_id, XOR).is_none());
+    });
+}
+
+#[test]
+fn should_not_remove_asset_with_active_outgoing_transfer_request() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        assert_ok!(Assets::mint_to(
+            &XOR,
+            &state.networks[&net_id].config.bridge_account_id,
+            &alice,
+            100u32.into(),
+        ));
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice),
+            XOR,
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        assert_noop!(
+            EthBridge::remove_sidechain_asset(RuntimeOrigin::root(), XOR, net_id),
+            Error::ActiveOutgoingTransferRequest
+        );
+    });
+}
+
+#[test]
+fn should_remove_asset_after_outgoing_transfer_request_is_aborted() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        assert_ok!(Assets::mint_to(
+            &XOR,
+            &state.networks[&net_id].config.bridge_account_id,
+            &alice,
+            100u32.into(),
+        ));
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice),
+            XOR,
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+        let request_hash = *EthBridge::requests_queue(net_id)
+            .last()
+            .expect("outgoing transfer request should be queued");
+        assert_ok!(EthBridge::abort_request(
+            RuntimeOrigin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
+            request_hash,
+            Error::Cancelled.into(),
+            net_id,
+        ));
+        assert_ok!(EthBridge::remove_sidechain_asset(
+            RuntimeOrigin::root(),
+            XOR,
+            net_id,
+        ));
+        assert!(EthBridge::registered_asset(net_id, XOR).is_none());
+    });
+}
+
+#[test]
+fn should_not_remove_thischain_asset_with_active_outgoing_transfer_request() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let asset_id = Assets::register_from(
+            &alice,
+            AssetSymbol(b"TRM1".to_vec()),
+            AssetName(b"Thischain Remove Guard".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            Balance::from(0u32),
+            true,
+            common::AssetType::Regular,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            asset_id,
+            net_id,
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(
+            EthBridge::registered_asset(net_id, asset_id),
+            Some(AssetKind::Thischain)
+        );
+
+        assert_ok!(Assets::mint_to(&asset_id, &alice, &alice, 100u32.into()));
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            asset_id,
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            10u32.into(),
+            net_id,
+        ));
+
+        assert_err!(
+            EthBridge::remove_thischain_asset(net_id, asset_id),
+            Error::ActiveOutgoingTransferRequest
+        );
+
+        let request_hash = *EthBridge::requests_queue(net_id)
+            .last()
+            .expect("outgoing transfer request should be queued");
+        assert_ok!(EthBridge::abort_request(
+            RuntimeOrigin::signed(state.networks[&net_id].config.bridge_account_id.clone()),
+            request_hash,
+            Error::Cancelled.into(),
+            net_id,
+        ));
+        assert_ok!(EthBridge::remove_thischain_asset(net_id, asset_id));
+        assert!(EthBridge::registered_asset(net_id, asset_id).is_none());
     });
 }
 

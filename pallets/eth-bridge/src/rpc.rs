@@ -36,9 +36,9 @@ use crate::{
     RegisteredSidechainToken, RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
 };
 use common::{AssetInfoProvider, BalancePrecision};
-use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use sp_core::{H160, H256};
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 impl<T: Config> Pallet<T> {
@@ -142,9 +142,7 @@ impl<T: Config> Pallet<T> {
                         let request: OffchainRequest<T> = Requests::get(net_id, hash)?;
                         match request {
                             OffchainRequest::Outgoing(request, hash) => {
-                                let encoded = request
-                                    .to_eth_abi(hash)
-                                    .expect("this conversion was already tested; qed");
+                                let encoded = request.to_eth_abi(hash).ok()?;
                                 Self::get_approvals(&[hash], Some(net_id))
                                     .ok()?
                                     .pop()
@@ -163,9 +161,7 @@ impl<T: Config> Pallet<T> {
                                 let request: OffchainRequest<T> = Requests::get(net_id, hash)?;
                                 match request {
                                     OffchainRequest::Outgoing(request, hash) => {
-                                        let encoded = request
-                                            .to_eth_abi(hash)
-                                            .expect("this conversion was already tested; qed");
+                                        let encoded = request.to_eth_abi(hash).ok()?;
                                         Self::get_approvals(&[hash], Some(net_id))
                                             .ok()?
                                             .pop()
@@ -208,12 +204,12 @@ impl<T: Config> Pallet<T> {
 
     /// Get account requests list.
     pub fn get_account_requests(
-        account: &T::AccountId,
+        account: &<T as frame_system::pallet::Config>::AccountId,
         status_filter: Option<RequestStatus>,
     ) -> Result<Vec<(T::NetworkId, H256)>, DispatchError> {
         let mut requests: Vec<(T::NetworkId, H256)> = Self::account_requests(account);
         if let Some(filter) = status_filter {
-            requests.retain(|(net_id, h)| Self::request_status(net_id, h).unwrap() == filter)
+            requests.retain(|(net_id, h)| Self::request_status(net_id, h).as_ref() == Some(&filter))
         }
         Ok(requests)
     }

@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -42,7 +44,7 @@ use frame_support::sp_runtime::AccountId32;
 use frame_support::traits::GenesisBuild;
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 
 pub type AccountId = AccountId32;
 pub type BlockNumber = u64;
@@ -77,7 +79,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         MockLiquiditySource: mock_liquidity_source::<Instance1>::{Pallet, Call, Config<T>, Storage},
         MockLiquiditySource2: mock_liquidity_source::<Instance2>::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -120,9 +122,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: vec![
                 (

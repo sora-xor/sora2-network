@@ -31,32 +31,33 @@
 use crate::requests::{IncomingRequest, LoadIncomingRequest, RequestStatus};
 #[cfg(test)]
 use crate::tests::mock::Mock;
-use crate::util::get_bridge_account;
 use crate::{
     Config, Error, Pallet, Timepoint, OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
     STORAGE_PENDING_TRANSACTIONS_KEY,
 };
 use alloc::boxed::Box;
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, GetCallMetadata};
-use frame_support::log::{debug, error};
-use frame_support::sp_io::hashing::blake2_256;
+use frame_support::__private::log::{debug, error};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::{BlockNumberProvider, IdentifyAccount, Saturating};
 use frame_support::sp_runtime::RuntimeAppPublic;
+use frame_support::traits::GetCallMetadata;
 use frame_support::traits::GetCallName;
 use frame_support::{ensure, fail};
 #[cfg(test)]
 use frame_system::offchain::SignMessage;
 use frame_system::offchain::{
-    Account, AppCrypto, CreateSignedTransaction, SendSignedTransaction, SendTransactionTypes,
+    Account, AppCrypto, CreateSignedTransaction, CreateTransactionBase, SendSignedTransaction,
     Signer,
 };
 use sp_core::H256;
+use sp_io::hashing::blake2_256;
+use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 type Call<T> = <T as Config>::RuntimeCall;
+type BlockNumber<T> = frame_system::pallet_prelude::BlockNumberFor<T>;
 
 /// Information about an extrinsic sent by an off-chain worker. Used to identify extrinsics in
 /// finalized blocks.
@@ -67,14 +68,14 @@ where
     T: Config,
 {
     pub extrinsic_hash: H256,
-    pub submitted_at: Option<T::BlockNumber>,
+    pub submitted_at: Option<BlockNumber<T>>,
     pub call: Call<T>,
 }
 
 impl<T: Config> SignedTransactionData<T> {
     pub fn new(
         extrinsic_hash: H256,
-        submitted_at: Option<T::BlockNumber>,
+        submitted_at: Option<BlockNumber<T>>,
         call: impl Into<Call<T>>,
     ) -> Self {
         SignedTransactionData {
@@ -91,12 +92,11 @@ impl<T: Config> SignedTransactionData<T> {
     pub fn from_local_call<LocalCall: Clone + Encode + Into<Call<T>>>(
         call: LocalCall,
         account: &Account<T>,
-        submitted_at: Option<T::BlockNumber>,
+        submitted_at: Option<BlockNumber<T>>,
     ) -> Option<Self>
     where
         T: CreateSignedTransaction<LocalCall>,
     {
-        use frame_support::inherent::Extrinsic;
         let overarching_call: Call<T> = call.clone().into();
         let account_data = frame_system::Account::<T>::get(&account.id);
         let nonce = if submitted_at.is_some() {
@@ -104,14 +104,12 @@ impl<T: Config> SignedTransactionData<T> {
         } else {
             account_data.nonce
         };
-        let (call, signature) =
-            <T as CreateSignedTransaction<LocalCall>>::create_transaction::<T::PeerId>(
-                <T as SendTransactionTypes<LocalCall>>::OverarchingCall::from(call),
-                account.public.clone(),
-                account.id.clone(),
-                nonce,
-            )?;
-        let xt = <T as SendTransactionTypes<LocalCall>>::Extrinsic::new(call, Some(signature))?;
+        let xt = <T as CreateSignedTransaction<LocalCall>>::create_signed_transaction::<T::PeerId>(
+            <T as CreateTransactionBase<LocalCall>>::RuntimeCall::from(call.clone()),
+            account.public.clone(),
+            account.id.clone(),
+            nonce,
+        )?;
         let vec = xt.encode();
         // TODO (optimize): consider skipping the hash calculation if the extrinsic weren't submitted.
         let ext_hash = H256(blake2_256(&vec));
@@ -135,11 +133,18 @@ impl<T: Config> SignedTransactionData<T> {
             } else {
                 Some(frame_system::Pallet::<T>::current_block_number())
             };
-            let signed_transaction_data =
+            if let Some(signed_transaction_data) =
                 SignedTransactionData::from_local_call(self.call.clone(), &account, submitted_at)
-                    .expect("we've just successfully signed the same data; qed");
-            *self = signed_transaction_data;
-            res.is_ok()
+            {
+                *self = signed_transaction_data;
+                res.is_ok()
+            } else {
+                error!(
+                    "[{:?}] Failed to reconstruct signed transaction after re-send",
+                    account.id
+                );
+                false
+            }
         } else {
             false
         }
@@ -156,7 +161,7 @@ impl<T: Config> Pallet<T> {
         Ok(signer)
     }
 
-    pub(crate) fn get_keystore_accounts() -> Vec<T::AccountId> {
+    pub(crate) fn get_keystore_accounts() -> Vec<<T as frame_system::pallet::Config>::AccountId> {
         <<T as Config>::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
             .into_iter()
             .map(|key| {
@@ -207,9 +212,9 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        let bridge_account = get_bridge_account::<T>(network_id);
+        let bridge_account = Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
         let threshold = bridge_multisig::Accounts::<T>::get(&bridge_account)
-            .unwrap()
+            .ok_or(Error::<T>::UnknownNetwork)?
             .threshold_num();
         let call = if threshold == 1 {
             bridge_multisig::Call::as_multi_threshold_1 {
@@ -298,9 +303,15 @@ impl<T: Config> Pallet<T> {
         } else {
             Some(frame_system::Pallet::<T>::current_block_number())
         };
-        let signed_transaction_data =
+        let Some(signed_transaction_data) =
             SignedTransactionData::from_local_call(call, account, submitted_at)
-                .expect("we've just successfully signed the same data; qed");
+        else {
+            error!(
+                "[{:?}] Failed to cache signed transaction for retry",
+                account.id
+            );
+            return;
+        };
         transactions.insert(
             signed_transaction_data.extrinsic_hash,
             signed_transaction_data,
@@ -329,8 +340,9 @@ impl<T: Config> Pallet<T> {
         #[cfg(test)]
         let result = {
             if T::Mock::should_fail_send_signed_transaction() {
-                let account_id = signer.sign_message(&[]).unwrap().0;
-                Some((account_id, Err(())))
+                signer
+                    .sign_message(&[])
+                    .map(|(account_id, _)| (account_id, Err(())))
             } else {
                 signer.send_signed_transaction(|_acc| call.clone())
             }

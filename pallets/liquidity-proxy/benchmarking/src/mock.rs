@@ -31,6 +31,7 @@
 #![cfg(test)]
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
+#![allow(dead_code, deprecated)]
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;
@@ -52,13 +53,14 @@ use common::{
 use currencies::BasicCurrencyAdapter;
 use hex_literal::hex;
 
-use frame_support::traits::{ConstU32, GenesisBuild};
+use frame_support::traits::ConstU32;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
 use multicollateral_bonding_curve_pool::{
     DistributionAccount, DistributionAccountData, DistributionAccounts,
 };
 use permissions::{Scope, BURN, MANAGE_DEX, MINT};
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, DispatchError, DispatchResult};
 
 pub type AssetId = AssetId32<common::PredefinedAssetId>;
@@ -98,7 +100,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         LiquidityProxy: liquidity_proxy::{Pallet, Call, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
@@ -108,7 +110,7 @@ construct_runtime! {
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         Technical: technical::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        DexApi: dex_api::{Pallet, Call, Config, Storage, Event<T>},
+        DexApi: dex_api::{Pallet, Call, Config<T>, Storage, Event<T>},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
         PriceTools: price_tools::{Pallet, Storage, Event<T>},
         PoolXYK: pool_xyk::{Pallet, Call, Storage, Event<T>},
@@ -437,9 +439,7 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         let accounts = bonding_curve_distribution_accounts();
         let mut tech_accounts = self.tech_accounts.clone();
@@ -472,6 +472,7 @@ impl ExtBuilder {
                 (GetMbcRewardsAccountId::get(), 0),
                 (GetLiquidityProxyAccountId::get(), 0),
             ],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();
@@ -503,12 +504,11 @@ impl ExtBuilder {
         .assimilate_storage(&mut t)
         .unwrap();
 
-        <dex_api::GenesisConfig as GenesisBuild<Runtime>>::assimilate_storage(
-            &dex_api::GenesisConfig {
-                source_types: self.source_types,
-            },
-            &mut t,
-        )
+        dex_api::GenesisConfig::<Runtime> {
+            source_types: self.source_types,
+            _phantom: Default::default(),
+        }
+        .assimilate_storage(&mut t)
         .unwrap();
 
         trading_pair::GenesisConfig::<Runtime> {

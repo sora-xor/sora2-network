@@ -32,7 +32,7 @@ pub mod init {
     use crate::*;
     use common::{KEN, KUSD};
     use core::marker::PhantomData;
-    use frame_support::log::error;
+    use frame_support::__private::log::error;
     use frame_support::pallet_prelude::Weight;
     use frame_support::traits::OnRuntimeUpgrade;
     use permissions::{Scope, BURN, MINT};
@@ -99,9 +99,9 @@ pub mod v1_to_v2 {
     };
     use common::{balance, AssetIdOf, SymbolName, DAI, KARMA, KGOLD, KUSD, KXOR, TBCD, XOR};
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
-    use frame_support::log::error;
+    use frame_support::__private::log::error;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
     use permissions::{Scope, BURN, MINT};
     use sp_core::Get;
 
@@ -109,10 +109,10 @@ pub mod v1_to_v2 {
         use crate::{CdpId, CollateralRiskParameters, Config, Pallet};
         use codec::{Decode, Encode, MaxEncodedLen};
         use common::{AccountIdOf, AssetIdOf, Balance};
-        use frame_support::dispatch::TypeInfo;
-        use frame_support::log::error;
+        use frame_support::__private::log::error;
         use frame_support::pallet_prelude::ValueQuery;
         use frame_support::Identity;
+        use scale_info::TypeInfo;
         use sp_arithmetic::traits::{AtLeast32Bit, Saturating};
         use sp_arithmetic::FixedU128;
 
@@ -256,7 +256,7 @@ pub mod v1_to_v2 {
         fn migrate_storage() -> Weight {
             let mut weight = <T as frame_system::Config>::DbWeight::get().reads(1);
             let version = Pallet::<T>::on_chain_storage_version();
-            if version <= 1 {
+            if version <= StorageVersion::new(1) {
                 let kusd_bad_debt = v1::BadDebt::<T>::take();
                 weight += <T as frame_system::Config>::DbWeight::get().writes(1);
 
@@ -460,9 +460,9 @@ pub mod v1_to_v2 {
 pub mod v2_to_v3 {
     use crate::{CDPDepository, Config, Pallet};
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
-    use frame_support::log::error;
+    use frame_support::__private::log::error;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
     use sp_core::Get;
 
     pub struct UpgradeToV3<T>(PhantomData<T>);
@@ -474,7 +474,7 @@ pub mod v2_to_v3 {
             let mut weight = Weight::zero();
 
             let version = Pallet::<T>::on_chain_storage_version();
-            if version == 2 {
+            if version == StorageVersion::new(2) {
                 let depository_acc = T::DepositoryTechAccount::get();
                 weight += match technical::Pallet::<T>::register_tech_account_id_if_not_exist(
                     &depository_acc,
@@ -517,8 +517,8 @@ pub mod v3_to_v4 {
     use common::permissions::{BURN, MINT};
     use common::{balance, AssetIdOf, DAI, SB};
     use core::marker::PhantomData;
-    use frame_support::dispatch::GetStorageVersion;
-    use frame_support::log::error;
+    use frame_support::__private::log::error;
+    use frame_support::traits::GetStorageVersion;
     use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
     use frame_support::weights::Weight;
     use permissions::Scope;
@@ -532,7 +532,7 @@ pub mod v3_to_v4 {
         fn on_runtime_upgrade() -> Weight {
             let mut weight = Weight::zero();
             let version = Pallet::<T>::on_chain_storage_version();
-            if version == 3 {
+            if version == StorageVersion::new(3) {
                 if let Ok(technical_account_id) =
                     technical::Pallet::<T>::tech_account_id_to_account_id(
                         &T::TreasuryTechAccount::get(),
@@ -613,8 +613,8 @@ pub mod v3_to_v4 {
 pub mod v4_to_v5 {
     use crate::{CollateralInfos, Config, Pallet};
     use core::marker::PhantomData;
-    use frame_support::dispatch::Weight;
     use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+    use frame_support::weights::Weight;
     use sp_core::Get;
     use sp_runtime::traits::Saturating;
     use sp_runtime::FixedU128;
@@ -641,10 +641,12 @@ pub mod v4_to_v5 {
                 StorageVersion::new(5).put::<Pallet<T>>();
                 count += 1;
 
-                frame_support::log::info!("Migration to V5 applied");
+                frame_support::__private::log::info!("Migration to V5 applied");
                 T::DbWeight::get().reads_writes(count, count)
             } else {
-                frame_support::log::info!("Migration to V5 already applied, skipping...");
+                frame_support::__private::log::info!(
+                    "Migration to V5 already applied, skipping..."
+                );
                 T::DbWeight::get().reads(1)
             }
         }

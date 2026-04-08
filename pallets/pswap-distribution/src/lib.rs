@@ -40,11 +40,14 @@ use common::{
     LiquiditySourceType, OnPoolCreated, OnPswapBurned, PswapRemintInfo, XykPool,
 };
 use core::convert::TryInto;
-use frame_support::dispatch::{DispatchError, DispatchResult, DispatchResultWithPostInfo, Weight};
+use frame_support::dispatch::{DispatchResult, DispatchResultWithPostInfo};
+use frame_support::sp_runtime::DispatchError;
 use frame_support::sp_runtime::Permill;
 use frame_support::traits::Get;
+use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use frame_system::ensure_signed;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_arithmetic::traits::{Saturating, Zero};
 use sp_std::prelude::*;
 
@@ -93,7 +96,7 @@ impl<T: Config> Pallet<T> {
         fees_account_id: T::AccountId,
         dex_id: T::DEXId,
         pool_account: AccountIdOf<T>,
-        frequency: Option<T::BlockNumber>,
+        frequency: Option<BlockNumberFor<T>>,
     ) -> DispatchResult {
         ensure!(
             !Self::is_subscribed(&fees_account_id),
@@ -291,7 +294,7 @@ impl<T: Config> Pallet<T> {
                     .try_into_balance()
                     .map_err(|_| Error::<T>::CalculationError)?,
             );
-            if undistributed_lp_amount > 0 {
+            if !undistributed_lp_amount.is_zero() {
                 // utilize precision error from distribution calculation, so it won't accumulate on tech account
                 distribution.liquidity_providers = distribution
                     .liquidity_providers
@@ -315,7 +318,7 @@ impl<T: Config> Pallet<T> {
                     T::BuyBackHandler::mint_buy_back_and_burn(
                         &incentive_asset_id,
                         &asset_id,
-                        fraction * distribution.buy_back_amount,
+                        fraction.mul_floor(distribution.buy_back_amount),
                     )?;
                 }
             }
@@ -400,7 +403,9 @@ impl<T: Config> Pallet<T> {
     /// Distributes incentives to all subscribed pools
     ///
     /// - `block_num`: The block number of the current chain head
-    pub fn incentive_distribution_routine(block_num: T::BlockNumber) -> DistributionWeightParams {
+    pub fn incentive_distribution_routine(
+        block_num: BlockNumberFor<T>,
+    ) -> DistributionWeightParams {
         let tech_account_id = T::GetTechnicalAccountId::get();
 
         let mut weight_params = DistributionWeightParams::default();
@@ -424,7 +429,9 @@ impl<T: Config> Pallet<T> {
                         weight_params.shareholders += shareholders;
                     }
                     Err(err) => {
-                        frame_support::log::error!("Incentive distribution failed: {err:?}");
+                        frame_support::__private::log::error!(
+                            "Incentive distribution failed: {err:?}"
+                        );
                         Self::deposit_event(Event::<T>::IncentiveDistributionFailed(
                             dex_id,
                             fees_account,
@@ -450,7 +457,7 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub fn burn_rate_update_routine(block_num: T::BlockNumber) {
+    pub fn burn_rate_update_routine(block_num: BlockNumberFor<T>) {
         if (block_num % T::GetBurnUpdateFrequency::get()).is_zero() {
             Self::update_burn_rate();
         }
@@ -491,6 +498,7 @@ pub mod pallet {
         frame_system::Config + common::Config + technical::Config + tokens::Config
     {
         const PSWAP_BURN_PERCENT: Percent;
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type GetIncentiveAssetId: Get<AssetIdOf<Self>>;
         type GetBuyBackFractions: Get<Vec<(AssetIdOf<Self>, Permill)>>;
@@ -501,8 +509,10 @@ pub mod pallet {
             + Clone
             + Zero;
         type GetTechnicalAccountId: Get<Self::AccountId>;
-        type GetDefaultSubscriptionFrequency: Get<Self::BlockNumber>;
-        type GetBurnUpdateFrequency: Get<Self::BlockNumber>;
+        type GetDefaultSubscriptionFrequency: Get<
+            frame_system::pallet_prelude::BlockNumberFor<Self>,
+        >;
+        type GetBurnUpdateFrequency: Get<frame_system::pallet_prelude::BlockNumberFor<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
         type OnPswapBurnedAggregator: OnPswapBurned;
         type WeightInfo: WeightInfo;
@@ -531,10 +541,9 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -543,7 +552,7 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Perform exchange and distribution routines for all substribed accounts
         /// with respect to thir configured frequencies.
-        fn on_initialize(block_num: T::BlockNumber) -> Weight {
+        fn on_initialize(block_num: BlockNumberFor<T>) -> Weight {
             let weight_params = Self::incentive_distribution_routine(block_num);
             Self::burn_rate_update_routine(block_num);
             <T as Config>::WeightInfo::on_initialize(
@@ -634,7 +643,12 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::AccountId,
-        (T::DEXId, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),
+        (
+            T::DEXId,
+            AccountIdOf<T>,
+            BlockNumberFor<T>,
+            BlockNumberFor<T>,
+        ),
     >;
 
     /// Amount of incentive tokens to be burned on each distribution.
@@ -663,13 +677,17 @@ pub mod pallet {
         /// (Fees Account, (DEX Id, Pool Account Id, Distribution Frequency, Block Offset))
         pub subscribed_accounts: Vec<(
             T::AccountId,
-            (DexIdOf<T>, AccountIdOf<T>, T::BlockNumber, T::BlockNumber),
+            (
+                DexIdOf<T>,
+                AccountIdOf<T>,
+                BlockNumberFor<T>,
+                BlockNumberFor<T>,
+            ),
         )>,
         /// (Initial Burn Rate, Burn Rate Increase Delta, Burn Rate Max)
         pub burn_info: (Fixed, Fixed, Fixed),
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -680,7 +698,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.subscribed_accounts.iter().for_each(
                 |(fees_account, (dex_id, pool_account, freq, block_offset))| {

@@ -30,7 +30,7 @@
 
 use crate::offchain::SignatureParams;
 use crate::requests::{Assets, RequestStatus};
-use crate::util::{get_bridge_account, Decoder};
+use crate::util::Decoder;
 use crate::{
     types, AssetIdOf, AssetKind, BridgeNetworkId, BridgeSignatureVersion, BridgeSignatureVersions,
     BridgeStatus, BridgeTimepoint, Config, Error, EthAddress, OffchainRequest, OutgoingRequest,
@@ -46,41 +46,52 @@ use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::Denominator;
-use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL, XOR};
+use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL};
 use ethabi::{FixedBytes, Token};
-#[allow(unused_imports)]
-use frame_support::debug;
-use frame_support::dispatch::DispatchError;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
+use sp_runtime::DispatchError;
 
 use super::encode_packed::{encode_packed, TokenWrapper};
 use bridge_types::traits::MessageStatusNotifier;
-use frame_support::{ensure, RuntimeDebug};
+use frame_support::ensure;
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H256, U256};
+use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
+
+fn encode_network_id<T: Config>(network_id: BridgeNetworkId<T>) -> Result<H256, Error<T>> {
+    let mut encoded_network_id: H256 = H256::default();
+    let network_as_u128 = <T::NetworkId as TryInto<u128>>::try_into(network_id)
+        .map_err(|_| Error::<T>::InvalidUint)?;
+    encoded_network_id.0 = U256::from(network_as_u128).to_big_endian();
+    Ok(encoded_network_id)
+}
 
 /// Outgoing request for transferring the given asset from Thischain to Sidechain.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingTransfer<T: Config> {
-    pub from: T::AccountId,
+    pub from: <T as frame_system::pallet::Config>::AccountId,
     pub to: EthAddress,
     pub asset_id: AssetIdOf<T>,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingTransfer<T> {
+    pub(crate) fn uses_legacy_master_contract_path(&self) -> bool {
+        self.network_id == T::GetEthNetworkId::get() && self.asset_id == VAL.into()
+    }
+
     pub fn sidechain_amount(&self) -> Result<(u128, Balance), Error<T>> {
         let sidechain_precision =
             crate::SidechainAssetPrecision::<T>::get(self.network_id, &self.asset_id);
@@ -110,15 +121,8 @@ impl<T: Config> OutgoingTransfer<T> {
             .checked_mul(denomination_factor.into())
             .ok_or(Error::<T>::FailedToApplyDenomination)?;
         let tx_hash = H256(tx_hash.0);
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
-        let is_old_contract = self.network_id == T::GetEthNetworkId::get()
-            && (self.asset_id == XOR.into() || self.asset_id == VAL.into());
+        let network_id = encode_network_id::<T>(self.network_id)?;
+        let is_old_contract = self.uses_legacy_master_contract_path();
         let raw = if is_old_contract {
             encode_packed(&[
                 currency_id.to_token().into(),
@@ -203,7 +207,8 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
     pub fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
-        let bridge_account = get_bridge_account::<T>(self.network_id);
+        let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+            .ok_or(Error::<T>::UnknownNetwork)?;
         common::with_transaction(|| {
             let generic_network_id =
                 GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
@@ -237,18 +242,38 @@ impl<T: Config> OutgoingTransfer<T> {
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        let bridge_account = get_bridge_account::<T>(self.network_id);
+        let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+            .ok_or(Error::<T>::UnknownNetwork)?;
+        let generic_network_id =
+            GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
         common::with_transaction(|| {
             let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_account, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
-            Assets::<T>::transfer_from(&self.asset_id, &bridge_account, &self.from, self.amount)
+            if let Some(asset_kind) =
+                crate::Pallet::<T>::registered_asset(self.network_id, self.asset_id)
+            {
+                let asset_kind = if asset_kind.is_owned() {
+                    bridge_types::types::AssetKind::Thischain
+                } else {
+                    bridge_types::types::AssetKind::Sidechain
+                };
+                T::BridgeAssetLockChecker::before_asset_unlock(
+                    generic_network_id,
+                    asset_kind,
+                    &self.asset_id,
+                    &self.amount,
+                )?;
+            }
+            Assets::<T>::transfer_from(&self.asset_id, &bridge_account, &self.from, self.amount)?;
+            Ok(())
         })
     }
 
     /// Validates the request again, then, if the asset is originated in Sidechain, it gets burned.
     pub fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
         self.validate()?;
-        let bridge_acc = get_bridge_account::<T>(self.network_id);
+        let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
+            .ok_or(Error::<T>::UnknownNetwork)?;
         common::with_transaction(|| {
             let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
@@ -324,14 +349,13 @@ impl OutgoingTransferEncoded {
 }
 
 /// Outgoing request for adding a Thischain asset.
-// TODO: lock the adding token to prevent double-adding.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddAsset<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub asset_id: AssetIdOf<T>,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -344,13 +368,7 @@ impl<T: Config> OutgoingAddAsset<T> {
         let name: String = String::from_utf8_lossy(&name.0).into();
         let asset_id_code = <AssetIdOf<T> as Into<H256>>::into(self.asset_id);
         let sidechain_asset_id = asset_id_code.0.to_vec();
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
@@ -463,12 +481,12 @@ impl OutgoingAddAssetEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddToken<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub token_address: EthAddress,
     pub symbol: String,
     pub name: String,
     pub decimals: u8,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -520,13 +538,7 @@ impl<T: Config> OutgoingAddToken<T> {
         let symbol = self.symbol.clone();
         let name = self.name.clone();
         let decimals = self.decimals;
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
@@ -656,10 +668,10 @@ impl OutgoingAddTokenEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeer<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub peer_account_id: T::AccountId,
-    pub nonce: T::Index,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -668,13 +680,7 @@ impl<T: Config> OutgoingAddPeer<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddPeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
@@ -714,11 +720,13 @@ impl<T: Config> OutgoingAddPeer<T> {
         })
     }
 
-    /// Checks that the current number of peers is not greater than `MAX_PEERS` and the given peer
+    /// Checks that the current number of peers is less than `MAX_PEERS` and the given peer
     /// is not presented in the current peer set,
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
-        ensure!(peers.len() <= MAX_PEERS, Error::<T>::CantAddMorePeers);
+        ensure!(peers.len() < MAX_PEERS, Error::<T>::CantAddMorePeers);
         ensure!(
             !peers.contains(&self.peer_account_id),
             Error::<T>::PeerIsAlreadyAdded
@@ -758,31 +766,38 @@ impl<T: Config> OutgoingAddPeer<T> {
     }
 }
 
-// TODO: add reference for a corresponding `OutgoingAddPeer` and check its existence.
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeerCompat<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub peer_account_id: T::AccountId,
-    pub nonce: T::Index,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingAddPeerCompat<T> {
+    fn corresponding_add_peer_status(&self) -> Option<RequestStatus> {
+        crate::Requests::<T>::iter_prefix(self.network_id).find_map(|(hash, request)| match request
+        {
+            OffchainRequest::Outgoing(OutgoingRequest::AddPeer(req), _)
+                if req.peer_account_id == self.peer_account_id
+                    && req.peer_address == self.peer_address
+                    && req.timepoint == self.timepoint =>
+            {
+                RequestStatuses::<T>::get(self.network_id, hash)
+            }
+            _ => None,
+        })
+    }
+
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingAddPeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let raw = ethabi::encode(&[
             Token::Address(types::H160(peer_address.0)),
             Token::FixedBytes(tx_hash.0.to_vec()),
@@ -795,9 +810,11 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
         })
     }
 
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
-        ensure!(peers.len() <= MAX_PEERS, Error::<T>::CantAddMorePeers);
+        ensure!(peers.len() < MAX_PEERS, Error::<T>::CantAddMorePeers);
         ensure!(
             !peers.contains(&self.peer_account_id),
             Error::<T>::PeerIsAlreadyAdded
@@ -816,11 +833,28 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
     }
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
+        let add_peer_status = self
+            .corresponding_add_peer_status()
+            .ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(
+            matches!(
+                add_peer_status,
+                RequestStatus::ApprovalsReady | RequestStatus::Done
+            ),
+            Error::<T>::RequestIsNotReady
+        );
         Ok(())
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
         Ok(())
+    }
+
+    pub fn should_be_skipped(&self) -> bool {
+        matches!(
+            self.corresponding_add_peer_status(),
+            Some(RequestStatus::Pending)
+        )
     }
 }
 
@@ -829,10 +863,10 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeer<T: Config> {
-    pub author: T::AccountId,
-    pub peer_account_id: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
     pub compat_hash: Option<H256>,
@@ -842,13 +876,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRemovePeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
             BridgeSignatureVersion::V1 => encode_packed(&[
@@ -888,11 +916,13 @@ impl<T: Config> OutgoingRemovePeer<T> {
         })
     }
 
-    /// Checks that the current number of peers is not less than `MIN_PEERS` and the given peer
+    /// Checks that the current number of peers is greater than `MIN_PEERS` and the given peer
     /// is presented in the current peer set,
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
-        ensure!(peers.len() >= MIN_PEERS, Error::<T>::CantRemoveMorePeers);
+        ensure!(peers.len() > MIN_PEERS, Error::<T>::CantRemoveMorePeers);
         ensure!(
             peers.contains(&self.peer_account_id),
             Error::<T>::UnknownPeerId
@@ -913,15 +943,27 @@ impl<T: Config> OutgoingRemovePeer<T> {
     /// Calls `validate` again and removes the peer from the peer set and from the multisig bridge
     /// account.
     pub fn finalize(&self) -> Result<(), DispatchError> {
+        if let Some(compat_hash) = self.compat_hash {
+            let compat_status = RequestStatuses::<T>::get(self.network_id, compat_hash)
+                .ok_or(Error::<T>::UnknownRequest)?;
+            ensure!(
+                matches!(
+                    compat_status,
+                    RequestStatus::ApprovalsReady | RequestStatus::Done
+                ),
+                Error::<T>::RequestIsNotReady
+            );
+        }
         let mut peers = self.validate()?;
+        let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+            .ok_or(Error::<T>::UnknownNetwork)?;
         bridge_multisig::Pallet::<T>::remove_signatory(
-            RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+            RawOrigin::Signed(bridge_account).into(),
             self.peer_account_id.clone(),
         )
         .map_err(|e| e.error)?;
         peers.remove(&self.peer_account_id);
         crate::Peers::<T>::insert(self.network_id, peers);
-        // TODO: check it's not conflicting with compat request
         crate::PeerAccountId::<T>::take(self.network_id, self.peer_address);
         crate::PeerAddress::<T>::take(self.network_id, &self.peer_account_id);
         Ok(())
@@ -948,31 +990,42 @@ impl<T: Config> OutgoingRemovePeer<T> {
     }
 }
 
-// TODO: add reference for a corresponding `OutgoingRemovePeer` and check its existence.
-/// Old contracts-compatible `add peer` request. Will be removed in the future.
+/// Old contracts-compatible `remove peer` request. Will be removed in the future.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeerCompat<T: Config> {
-    pub author: T::AccountId,
-    pub peer_account_id: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
 
 impl<T: Config> OutgoingRemovePeerCompat<T> {
+    fn hash(&self) -> H256 {
+        OffchainRequest::outgoing(OutgoingRequest::RemovePeerCompat(self.clone())).hash()
+    }
+
+    fn has_corresponding_remove_peer_request(&self) -> bool {
+        let compat_hash = self.hash();
+        crate::Requests::<T>::iter_prefix(self.network_id).any(|(_, request)| {
+            matches!(
+                request,
+                OffchainRequest::Outgoing(OutgoingRequest::RemovePeer(req), _)
+                    if req.compat_hash == Some(compat_hash)
+                        && req.peer_account_id == self.peer_account_id
+                        && req.peer_address == self.peer_address
+                        && req.timepoint == self.timepoint
+            )
+        })
+    }
+
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingRemovePeerEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
         let peer_address = self.peer_address;
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let raw = encode_packed(&[
             Token::Address(types::H160(peer_address.0)).into(),
             Token::FixedBytes(tx_hash.0.to_vec()).into(),
@@ -985,9 +1038,11 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
         })
     }
 
-    pub fn validate(&self) -> Result<BTreeSet<T::AccountId>, DispatchError> {
+    pub fn validate(
+        &self,
+    ) -> Result<BTreeSet<<T as frame_system::pallet::Config>::AccountId>, DispatchError> {
         let peers = crate::Peers::<T>::get(self.network_id);
-        ensure!(peers.len() >= MIN_PEERS, Error::<T>::CantRemoveMorePeers);
+        ensure!(peers.len() > MIN_PEERS, Error::<T>::CantRemoveMorePeers);
         ensure!(
             peers.contains(&self.peer_account_id),
             Error::<T>::UnknownPeerId
@@ -1000,6 +1055,10 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
     }
 
     pub fn finalize(&self) -> Result<(), DispatchError> {
+        ensure!(
+            self.has_corresponding_remove_peer_request(),
+            Error::<T>::UnknownRequest
+        );
         Ok(())
     }
 
@@ -1071,8 +1130,8 @@ impl OutgoingRemovePeerEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingPrepareForMigration<T: Config> {
-    pub author: T::AccountId,
-    pub nonce: T::Index,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
 }
@@ -1083,13 +1142,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
         tx_hash: H256,
     ) -> Result<OutgoingPrepareForMigrationEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {
@@ -1167,10 +1220,10 @@ impl OutgoingPrepareForMigrationEncoded {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingMigrate<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub new_contract_address: EthAddress,
     pub erc20_native_tokens: Vec<EthAddress>,
-    pub nonce: T::Index,
+    pub nonce: <T as frame_system::pallet::Config>::Nonce,
     pub network_id: BridgeNetworkId<T>,
     pub timepoint: BridgeTimepoint<T>,
     pub new_signature_version: BridgeSignatureVersion,
@@ -1179,13 +1232,7 @@ pub struct OutgoingMigrate<T: Config> {
 impl<T: Config> OutgoingMigrate<T> {
     pub fn to_eth_abi(&self, tx_hash: H256) -> Result<OutgoingMigrateEncoded, Error<T>> {
         let tx_hash = H256(tx_hash.0);
-        let mut network_id: H256 = H256::default();
-        U256::from(
-            <T::NetworkId as TryInto<u128>>::try_into(self.network_id)
-                .ok()
-                .expect("NetworkId can be always converted to u128; qed"),
-        )
-        .to_big_endian(&mut network_id.0);
+        let network_id = encode_network_id::<T>(self.network_id)?;
         let contract_address: EthAddress = crate::BridgeContractAddress::<T>::get(&self.network_id);
         let signature_version = BridgeSignatureVersions::<T>::get(self.network_id);
         let raw = match signature_version {

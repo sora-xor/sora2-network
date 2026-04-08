@@ -1,12 +1,14 @@
 use crate::requests::RequestStatus;
 use codec::Decode;
 use codec::Encode;
-use frame_support::dispatch::GetStorageVersion;
 use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::sp_runtime::ModuleError;
+use frame_support::traits::Get;
+use frame_support::traits::GetStorageVersion;
 use frame_support::traits::StorageVersion;
-use frame_support::RuntimeDebug;
+use frame_support::weights::Weight;
+use sp_runtime::RuntimeDebug;
 
 use crate::Config;
 use crate::Pallet;
@@ -23,9 +25,15 @@ pub enum OldRequestStatus {
     Broken(OldDispatchError, OldDispatchError),
 }
 
-pub fn migrate<T: Config>() {
+pub fn migrate<T: Config>() -> Weight {
+    let mut reads = 0u64;
+    let mut writes = 0u64;
+
     if Pallet::<T>::on_chain_storage_version() < StorageVersion::new(2) {
+        reads = reads.saturating_add(1);
+        let mut translated = 0u64;
         RequestStatuses::<T>::translate::<OldRequestStatus, _>(|_, _, status| {
+            translated = translated.saturating_add(1);
             let status = match status {
                 OldRequestStatus::Pending => RequestStatus::Pending,
                 OldRequestStatus::Frozen => RequestStatus::Frozen,
@@ -38,8 +46,13 @@ pub fn migrate<T: Config>() {
             };
             Some(status)
         });
-        StorageVersion::new(2).put::<Pallet<T>>()
+        reads = reads.saturating_add(translated);
+        writes = writes.saturating_add(translated);
+        StorageVersion::new(2).put::<Pallet<T>>();
+        writes = writes.saturating_add(1);
     }
+
+    T::DbWeight::get().reads_writes(reads, writes)
 }
 
 pub fn migrate_error(err: OldDispatchError) -> DispatchError {
@@ -68,7 +81,7 @@ mod tests {
     use crate::tests::mock::Runtime;
     use crate::Pallet;
     use crate::RequestStatuses;
-    use ethereum_types::H256;
+    use bridge_types::H256;
     use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
     use frame_support::sp_runtime::legacy::byte_sized_error::ModuleError as OldModuleError;
     use frame_support::sp_runtime::DispatchError;

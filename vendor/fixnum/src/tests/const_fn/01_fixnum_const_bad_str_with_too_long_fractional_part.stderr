@@ -1,0 +1,31 @@
+error: any use of this value will cause an error
+   --> $DIR/const_fn.rs:105:5
+    |
+105 |     const_assert!(exp <= coef);
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |     |
+    |     exceeded interpreter step limit (see `#[const_eval_limit]`)
+    |     inside `fixnum::_priv::parse_fixed` at $DIR/src/const_fn.rs:9:13
+    |     inside `VALUE_INNER` at $DIR/src/macros.rs:181:34
+    |
+   ::: $WORKSPACE/src/tests/const_fn/01_fixnum_const_bad_str_with_too_long_fractional_part.rs
+    |
+    | const VALUE: FixedPoint<i64, U9> = fixnum_const!(0.1234567891, 9);
+    |                                    ------------------------------
+    |
+    = note: `#[deny(const_err)]` on by default
+    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: any use of this value will cause an error
+ --> $DIR/01_fixnum_const_bad_str_with_too_long_fractional_part.rs:6:36
+  |
+6 | const VALUE: FixedPoint<i64, U9> = fixnum_const!(0.1234567891, 9);
+  | -----------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+  |                                    |
+  |                                    referenced constant has errors
+  |
+  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+  = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+  = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)

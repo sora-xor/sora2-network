@@ -4,8 +4,8 @@ use super::*;
 
 use codec::Decode;
 use common::{
-    balance, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId, PriceToolsProvider,
-    APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, DOT, XOR,
+    balance, AssetId32, AssetInfoProvider, AssetManager, AssetName, AssetSymbol, DEXId,
+    PriceToolsProvider, APOLLO_ASSET_ID, CERES_ASSET_ID, DAI, DEFAULT_BALANCE_PRECISION, XOR,
 };
 use frame_benchmarking::benchmarks;
 use frame_support::traits::Hooks;
@@ -13,6 +13,12 @@ use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
 use sp_runtime::traits::AccountIdConversion;
 use sp_std::prelude::*;
+
+const BENCHMARK_COLLATERAL_SYMBOL: &[u8] = b"DOT";
+const BENCHMARK_COLLATERAL_NAME: &[u8] = b"Polkadot";
+const BENCHMARK_COLLATERAL_ASSET: AssetId32<common::PredefinedAssetId> = AssetId32::from_bytes(
+    hex!("0003b1dbee890acfb1b3bc12d1bb3b4295f52755423f84d1751b2545cebf000b"),
+);
 
 use crate::Pallet as ApolloPlatform;
 use frame_support::PalletId;
@@ -71,9 +77,9 @@ fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str
     // Register assets
     T::AssetManager::register_asset_id(
         owner.clone(),
-        DOT.into(),
-        AssetSymbol(b"DOT".to_vec()),
-        AssetName(b"Polkadot".to_vec()),
+        BENCHMARK_COLLATERAL_ASSET.into(),
+        AssetSymbol(BENCHMARK_COLLATERAL_SYMBOL.to_vec()),
+        AssetName(BENCHMARK_COLLATERAL_NAME.to_vec()),
         DEFAULT_BALANCE_PRECISION,
         Balance::from(0u32),
         true,
@@ -94,7 +100,7 @@ fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str
 
     T::AssetManager::mint(
         owner_origin.clone(),
-        DOT.into(),
+        BENCHMARK_COLLATERAL_ASSET.into(),
         owner.clone(),
         balance!(500),
     )
@@ -133,7 +139,13 @@ fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str
     .unwrap();
 
     // Register trading pairs
-    TradingPair::<T>::register(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into()).unwrap();
+    TradingPair::<T>::register(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        BENCHMARK_COLLATERAL_ASSET.into(),
+    )
+    .unwrap();
     TradingPair::<T>::register(
         owner_origin.clone(),
         DEX.into(),
@@ -150,7 +162,12 @@ fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str
     .unwrap();
 
     // Initialize pools and deposit liquidity
-    XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DOT.into())?;
+    XYKPool::<T>::initialize_pool(
+        owner_origin.clone(),
+        DEX.into(),
+        XOR.into(),
+        BENCHMARK_COLLATERAL_ASSET.into(),
+    )?;
     XYKPool::<T>::initialize_pool(owner_origin.clone(), DEX.into(), XOR.into(), DAI.into())?;
     XYKPool::<T>::initialize_pool(
         owner_origin.clone(),
@@ -169,7 +186,7 @@ fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str
         owner_origin.clone(),
         DEX.into(),
         XOR.into(),
-        DOT.into(),
+        BENCHMARK_COLLATERAL_ASSET.into(),
         balance!(100),
         balance!(100),
         balance!(100),
@@ -210,7 +227,7 @@ fn setup_benchmark<T: Config + price_tools::Config>() -> Result<(), &'static str
     )?;
 
     // Register assets to PriceTools and fill PricesInfos
-    PriceTools::<T>::register_asset(&DOT.into()).unwrap();
+    PriceTools::<T>::register_asset(&BENCHMARK_COLLATERAL_ASSET.into()).unwrap();
     for _ in 0..30 {
         PriceTools::<T>::average_prices_calculation_routine();
     }
@@ -292,7 +309,7 @@ benchmarks! {
         let alice = alice::<T>();
         let bob = bob::<T>();
         let asset_id_xor = XOR;
-        let asset_id_dot = DOT;
+        let asset_id_dot = BENCHMARK_COLLATERAL_ASSET;
         let loan_to_value = balance!(1);
         let liquidation_threshold = balance!(1);
         let optimal_utilization_rate = balance!(1);
@@ -313,7 +330,7 @@ benchmarks! {
 
         T::AssetManager::mint(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             alice.clone(),
             balance!(200)
         ).unwrap();
@@ -351,7 +368,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::lend(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             lending_amount_alice
         ).unwrap();
 
@@ -364,13 +381,19 @@ benchmarks! {
     }: {
         ApolloPlatform::<T>::borrow(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             XOR.into(),
             borrow_amount,
             loan_to_value
         ).unwrap()
     } verify {
-        assert_last_event::<T>(Event::Borrowed(alice, DOT.into(), collateral_amount, XOR.into(), borrow_amount).into());
+        assert_last_event::<T>(Event::Borrowed(
+            alice,
+            BENCHMARK_COLLATERAL_ASSET.into(),
+            collateral_amount,
+            XOR.into(),
+            borrow_amount,
+        ).into());
     }
 
     get_rewards {
@@ -482,7 +505,7 @@ benchmarks! {
         let alice = alice::<T>();
         let bob = bob::<T>();
         let asset_id_xor = XOR;
-        let asset_id_dot = DOT;
+        let asset_id_dot = BENCHMARK_COLLATERAL_ASSET;
         let loan_to_value = balance!(1);
         let liquidation_threshold = balance!(1);
         let optimal_utilization_rate = balance!(1);
@@ -534,7 +557,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::lend(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             lending_amount_alice
         ).unwrap();
 
@@ -546,7 +569,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::borrow(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             XOR.into(),
             borrow_amount,
             loan_to_value
@@ -556,7 +579,7 @@ benchmarks! {
     }: {
         ApolloPlatform::<T>::repay(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             XOR.into(),
             amount_to_repay
         ).unwrap()
@@ -624,7 +647,7 @@ benchmarks! {
         let alice = alice::<T>();
         let bob = bob::<T>();
         let asset_id_xor = XOR;
-        let asset_id_dot = DOT;
+        let asset_id_dot = BENCHMARK_COLLATERAL_ASSET;
         let loan_to_value = balance!(1);
         let liquidation_threshold = balance!(0.1);
         let optimal_utilization_rate = balance!(1);
@@ -674,7 +697,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::lend(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             lending_amount_alice
         ).unwrap();
 
@@ -686,7 +709,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::borrow(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             XOR.into(),
             borrow_amount,
             loan_to_value
@@ -775,7 +798,7 @@ benchmarks! {
         let alice = alice::<T>();
         let bob = bob::<T>();
         let asset_id_xor = XOR;
-        let asset_id_dot = DOT;
+        let asset_id_dot = BENCHMARK_COLLATERAL_ASSET;
         let loan_to_value = balance!(1);
         let liquidation_threshold = balance!(1);
         let optimal_utilization_rate = balance!(1);
@@ -797,7 +820,7 @@ benchmarks! {
 
         T::AssetManager::mint(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             alice.clone(),
             balance!(200)
         ).unwrap();
@@ -835,7 +858,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::lend(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             lending_amount_alice
         ).unwrap();
 
@@ -847,7 +870,7 @@ benchmarks! {
 
         ApolloPlatform::<T>::borrow(
             RawOrigin::Signed(alice.clone()).into(),
-            DOT.into(),
+            BENCHMARK_COLLATERAL_ASSET.into(),
             XOR.into(),
             borrow_amount,
             loan_to_value
@@ -855,12 +878,17 @@ benchmarks! {
     }: {
         ApolloPlatform::<T>::add_collateral(
           RawOrigin::Signed(alice.clone()).into(),
-           DOT.into(),
+           BENCHMARK_COLLATERAL_ASSET.into(),
           additional_collateral_amount,
            XOR.into(),
         ).unwrap()
     }
     verify {
-        assert_last_event::<T>(Event::CollateralAdded(alice, DOT.into(), additional_collateral_amount, XOR.into()).into());
+        assert_last_event::<T>(Event::CollateralAdded(
+            alice,
+            BENCHMARK_COLLATERAL_ASSET.into(),
+            additional_collateral_amount,
+            XOR.into(),
+        ).into());
     }
 }

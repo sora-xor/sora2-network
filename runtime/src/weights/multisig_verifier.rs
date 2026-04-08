@@ -66,7 +66,7 @@ impl<T: frame_system::Config> multisig_verifier::WeightInfo for WeightInfo<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 20_181 nanoseconds.
-		Weight::from_ref_time(21_101_000)
+		Weight::from_parts(21_101_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1))
 	}
 	/// Storage: MultisigVerifier PeerKeys (r:1 w:1)
@@ -99,6 +99,12 @@ impl<T: frame_system::Config> multisig_verifier::WeightInfo for WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(3))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
+	/// Storage: MultisigVerifier PeerKeys (r:0 w:1)
+	/// Proof: MultisigVerifier PeerKeys (max_values: None, max_size: Some(1692), added: 4167, mode: MaxEncodedLen)
+	fn force_set_peers() -> Weight {
+		Weight::from_parts(21_101_000, 4167)
+			.saturating_add(T::DbWeight::get().writes(1))
+	}
 	/// Storage: MultisigVerifier ThisNetworkId (r:1 w:0)
 	/// Proof: MultisigVerifier ThisNetworkId (max_values: Some(1), max_size: Some(33), added: 528, mode: MaxEncodedLen)
 	/// Storage: MultisigVerifier PeerKeys (r:1 w:0)
@@ -111,7 +117,7 @@ impl<T: frame_system::Config> multisig_verifier::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 56_773 nanoseconds.
 		Weight::from_parts(16_389_514, 4695)
 			// Standard Error: 35_503
-			.saturating_add(Weight::from_ref_time(39_179_946).saturating_mul(a.into()))
+			.saturating_add(Weight::from_parts(39_179_946, 0).saturating_mul(a.into()))
 			.saturating_add(T::DbWeight::get().reads(2))
 	}
 }

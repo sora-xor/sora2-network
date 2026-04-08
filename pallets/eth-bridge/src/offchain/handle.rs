@@ -40,23 +40,27 @@ use crate::{
     Call, Config, Error, Pallet, RequestStatuses, Requests, RequestsQueue, CONFIRMATION_INTERVAL,
     MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_GET_LOGS_ITEMS, MAX_PENDING_TX_BLOCKS_PERIOD,
     MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE, RE_HANDLE_TXS_PERIOD,
-    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_PEER_SECRET_KEY,
-    STORAGE_PENDING_TRANSACTIONS_KEY, STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
-    SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
+    STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
+    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
 };
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode};
-use frame_support::log::{debug, error, info, trace, warn};
-use frame_support::sp_io::hashing::blake2_256;
+use frame_support::__private::log::{debug, error, info, trace, warn};
 use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
-use frame_support::sp_runtime::traits::{One, Saturating, Zero};
+use frame_support::sp_runtime::traits::{IdentifyAccount, One, Saturating, Zero};
+use frame_support::sp_runtime::RuntimeAppPublic;
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, log};
-use frame_system::offchain::{CreateSignedTransaction, Signer};
+use frame_support::{ensure, fail};
+use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
+use sp_core::ByteArray;
 use sp_core::H256;
+use sp_io::hashing::blake2_256;
 use sp_std::collections::btree_map::BTreeMap;
+use sp_std::collections::btree_set::BTreeSet;
+use sp_std::convert::TryInto;
 
 impl<T: Config> Pallet<T> {
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
@@ -67,46 +71,81 @@ impl<T: Config> Pallet<T> {
             error!("No local account available");
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
+        let peers = Self::peers(request.network_id());
         let encoded_request = request.to_eth_abi(hash)?;
-        let secret_s = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-        let sk = secp256k1::SecretKey::parse_slice(
-            &secret_s
-                .get::<Vec<u8>>()
-                .ok()
-                .flatten()
-                .expect("Off-chain worker secret key is not specified."),
-        )
-        .expect("Invalid off-chain worker secret key.");
-        // Signs `abi.encodePacked(tokenAddress, amount, to, txHash, from)`.
-        let (signature, public) = Self::sign_message(encoded_request.as_raw(), &sk);
-        let call = Call::approve_request {
-            ocw_public: ecdsa::Public::from_raw(public.serialize_compressed()),
-            hash,
-            signature_params: signature,
-            network_id: request.network_id(),
-        };
-        let result = Self::send_signed_transaction(&signer, &call);
+        let message = common::eth::prepare_message(encoded_request.as_raw()).serialize();
+        let mut found_local_peer_key = false;
+        let mut attempted_submission = false;
 
-        match result {
-            Some((account, res)) => {
-                Self::add_pending_extrinsic(call, &account, res.is_ok());
-                match res {
-                    Ok(_) => trace!("Signed transaction sent"),
-                    Err(e) => {
-                        error!(
-                            "[{:?}] Failed in handle_outgoing_transfer: {:?}",
-                            account.id, e
-                        );
-                        return Err(<Error<T>>::FailedToSendSignedTransaction);
+        for runtime_key in
+            <T::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all()
+        {
+            let ocw_public_raw = runtime_key.to_raw_vec();
+            let Ok(ocw_public) = ecdsa::Public::from_slice(&ocw_public_raw) else {
+                error!("Failed to parse local bridge peer public key");
+                continue;
+            };
+            let runtime_key: <T::PeerId as AppCrypto<T::Public, T::Signature>>::GenericPublic =
+                runtime_key.into();
+            let runtime_public: T::Public = runtime_key.into();
+            let signer_account = runtime_public.clone().into_account();
+            if !peers.contains(&signer_account) {
+                continue;
+            }
+            found_local_peer_key = true;
+
+            let signer = Signer::<T, T::PeerId>::any_account().with_filter(vec![runtime_public]);
+            if !signer.can_sign() {
+                continue;
+            }
+
+            let Some(signature) =
+                sp_io::crypto::ecdsa_sign_prehashed(crate::KEY_TYPE, &ocw_public, &message)
+            else {
+                error!("[{:?}] Failed to sign approve payload", signer_account);
+                continue;
+            };
+            let call = Call::approve_request {
+                ocw_public,
+                hash,
+                signature_params: crate::offchain::SignatureParams::from_ecdsa_signature(
+                    &signature,
+                ),
+                network_id: request.network_id(),
+            };
+            attempted_submission = true;
+
+            match Self::send_signed_transaction(&signer, &call) {
+                Some((account, res)) => {
+                    Self::add_pending_extrinsic(call, &account, res.is_ok());
+                    match res {
+                        Ok(_) => {
+                            trace!("Signed transaction sent");
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            error!(
+                                "[{:?}] Failed in handle_outgoing_transfer: {:?}",
+                                account.id, e
+                            );
+                        }
                     }
                 }
+                None => {
+                    error!("[{:?}] Failed in handle_outgoing_transfer", signer_account);
+                }
             }
-            _ => {
-                error!("Failed in handle_outgoing_transfer");
-                return Err(<Error<T>>::NoLocalAccountForSigning);
-            }
-        };
-        Ok(())
+        }
+
+        if !found_local_peer_key {
+            error!("No local bridge peer key available for outgoing approval");
+            return Err(Error::<T>::NoLocalAccountForSigning);
+        }
+        if !attempted_submission {
+            error!("Failed to sign outgoing approval payload");
+            return Err(Error::<T>::FailedToSignMessage);
+        }
+        Err(Error::<T>::FailedToSendSignedTransaction)
     }
 
     /// Procedure for handling incoming requests.
@@ -134,7 +173,7 @@ impl<T: Config> Pallet<T> {
     /// (`SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION`), it's re-sent.
     fn handle_substrate_block(
         block: SubstrateBlockLimited,
-        current_height: T::BlockNumber,
+        current_height: frame_system::pallet_prelude::BlockNumberFor<T>,
     ) -> Result<(), Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
@@ -257,10 +296,8 @@ impl<T: Config> Pallet<T> {
                         debug!("Loading approved tx {}", tx_hash);
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
-                        // TODO: this flow was used to transfer XOR for free with the `request_from_sidechain`
-                        // extrinsic. This could be used to spam network with transactions. Now it's unneeded,
-                        // since all incoming transactions are loaded automatically. The extrinsic and related
-                        // code should be considered for deletion.
+                        // Legacy path kept for already queued requests. New `TransferXOR` pre-requests
+                        // are blocked in `request_from_sidechain`.
                         if kind == IncomingTransactionRequestKind::TransferXOR {
                             if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
                                 ensure!(
@@ -348,10 +385,10 @@ impl<T: Config> Pallet<T> {
                 .transaction_index
                 .ok_or(Error::<T>::EthTransactionIsPending)?
                 .as_u64();
-            let timepoint = bridge_multisig::Pallet::<T>::sidechain_timepoint(
-                at_height,
-                transaction_index as u32, // TODO: can it exceed u32?
-            );
+            let transaction_index =
+                u32::try_from(transaction_index).map_err(|_| Error::<T>::InvalidUint)?;
+            let timepoint =
+                bridge_multisig::Pallet::<T>::sidechain_timepoint(at_height, transaction_index);
             info!("Got log [{}], {:?}", at_height, log);
             let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
                 event.destination.clone(),
@@ -430,7 +467,8 @@ impl<T: Config> Pallet<T> {
         }
     }
 
-    pub(crate) fn handle_substrate() -> Result<T::BlockNumber, Error<T>>
+    pub(crate) fn handle_substrate(
+    ) -> Result<frame_system::pallet_prelude::BlockNumberFor<T>, Error<T>>
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
@@ -438,9 +476,9 @@ impl<T: Config> Pallet<T> {
             Ok(v) => v,
             Err(e) => {
                 info!(
-                "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
-                e
-            );
+                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
+                    e
+                );
                 return Err(e);
             }
         };
@@ -449,13 +487,16 @@ impl<T: Config> Pallet<T> {
             Self::handle_failed_transactions_queue();
         }
 
-        let substrate_finalized_height = <T::BlockNumber>::from(
-            u32::try_from(substrate_finalized_block.number).expect("cannot cast block height"),
-        );
+        let substrate_finalized_height: frame_system::pallet_prelude::BlockNumberFor<T> =
+            substrate_finalized_block
+                .number
+                .as_u64()
+                .try_into()
+                .map_err(|_| Error::<T>::InvalidUint)?;
         let s_sub_to_handle_from_height =
             StorageValueRef::persistent(STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY);
         let from_block_opt = s_sub_to_handle_from_height
-            .get::<T::BlockNumber>()
+            .get::<frame_system::pallet_prelude::BlockNumberFor<T>>()
             .map_err(|_| Error::<T>::ReadStorageError)?;
         if from_block_opt.is_none() {
             s_sub_to_handle_from_height.set(&substrate_finalized_height);
@@ -463,10 +504,9 @@ impl<T: Config> Pallet<T> {
         let mut from_block = from_block_opt.unwrap_or(substrate_finalized_height);
         let to_block = from_block + SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK.into();
         while from_block <= substrate_finalized_height && from_block < to_block {
-            log::debug!(
+            debug!(
                 "Handle substrate block: {:?}, finalized block: {:?}",
-                from_block,
-                substrate_finalized_height
+                from_block, substrate_finalized_height
             );
             match Self::load_substrate_block(from_block)
                 .and_then(|block| Self::handle_substrate_block(block, from_block))
@@ -480,7 +520,7 @@ impl<T: Config> Pallet<T> {
                     return Ok(substrate_finalized_height);
                 }
             };
-            from_block += T::BlockNumber::one();
+            from_block += frame_system::pallet_prelude::BlockNumberFor::<T>::one();
             // Will not process block with height bigger than finalized height
             s_sub_to_handle_from_height.set(&from_block);
         }
@@ -594,12 +634,12 @@ impl<T: Config> Pallet<T> {
     /// are added to local storage to not be handled twice by the off-chain worker.
     pub(crate) fn handle_network(
         network_id: T::NetworkId,
-        substrate_finalized_height: T::BlockNumber,
+        substrate_finalized_height: frame_system::pallet_prelude::BlockNumberFor<T>,
     ) where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
         if !Self::is_peer_for_network(network_id) {
-            log::debug!("Node is not peer for network {:?}, skipping", network_id);
+            debug!("Node is not peer for network {:?}, skipping", network_id);
             return;
         }
         let current_eth_height = match Self::handle_ethereum(network_id) {
@@ -609,30 +649,42 @@ impl<T: Config> Pallet<T> {
             }
         };
 
-        if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into() == T::BlockNumber::zero() {
+        if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into()
+            == frame_system::pallet_prelude::BlockNumberFor::<T>::zero()
+        {
             Self::handle_pending_multisig_calls(network_id, current_eth_height);
         }
 
+        let mut stale_hashes = BTreeSet::new();
         for request_hash in RequestsQueue::<T>::get(network_id) {
             let request = match Requests::<T>::get(network_id, request_hash) {
                 Some(v) => v,
-                _ => continue, // TODO: remove from queue
+                _ => {
+                    stale_hashes.insert(request_hash);
+                    continue;
+                }
             };
             if request.should_be_skipped() {
-                log::debug!("Temporary skip request: {:?}", request_hash);
+                debug!("Temporary skip request: {:?}", request_hash);
                 continue;
             }
-            let request_submission_height: T::BlockNumber =
+            let request_submission_height: frame_system::pallet_prelude::BlockNumberFor<T> =
                 Self::request_submission_height(network_id, &request_hash);
-            let number = T::BlockNumber::from(MAX_PENDING_TX_BLOCKS_PERIOD);
+            let number = frame_system::pallet_prelude::BlockNumberFor::<T>::from(
+                MAX_PENDING_TX_BLOCKS_PERIOD,
+            );
             let diff = substrate_finalized_height.saturating_sub(request_submission_height);
-            let should_reapprove = diff >= number && diff % number == T::BlockNumber::zero();
+            let should_reapprove = diff >= number
+                && diff % number == frame_system::pallet_prelude::BlockNumberFor::<T>::zero();
             if !should_reapprove && substrate_finalized_height < request_submission_height {
                 continue;
             }
             let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
             let s_handled_request = StorageValueRef::persistent(handled_key.as_bytes());
-            let height_opt = s_handled_request.get::<T::BlockNumber>().ok().flatten();
+            let height_opt = s_handled_request
+                .get::<frame_system::pallet_prelude::BlockNumberFor<T>>()
+                .ok()
+                .flatten();
 
             let need_to_handle = match height_opt {
                 Some(height) => should_reapprove || request_submission_height > height,
@@ -647,29 +699,37 @@ impl<T: Config> Pallet<T> {
             if need_to_handle && confirmed {
                 let timepoint = request.timepoint();
                 let error = Self::handle_offchain_request(request).err();
-                let mut is_handled = true;
+                let mut should_mark_as_handled = true;
                 if let Some(e) = error {
                     error!(
                         "An error occurred while processing off-chain request: {:?}",
                         e
                     );
                     if e.should_retry() {
-                        is_handled = false;
+                        should_mark_as_handled = false;
                     } else if e.should_abort() {
-                        if let Err(abort_err) =
-                            Self::send_abort_request(request_hash, e, timepoint, network_id)
-                        {
-                            error!(
-                                "An error occurred while trying to send abort request: {:?}",
-                                abort_err
-                            );
+                        match Self::send_abort_request(request_hash, e, timepoint, network_id) {
+                            Ok(_) => {}
+                            Err(abort_err) => {
+                                error!(
+                                    "An error occurred while trying to send abort request: {:?}",
+                                    abort_err
+                                );
+                                // Keep request eligible for retries if abort submission itself failed.
+                                should_mark_as_handled = false;
+                            }
                         }
                     }
                 }
-                if is_handled {
+                if should_mark_as_handled {
                     s_handled_request.set(&request_submission_height);
                 }
             }
+        }
+        if !stale_hashes.is_empty() {
+            RequestsQueue::<T>::mutate(network_id, |queue| {
+                queue.retain(|hash| !stale_hashes.contains(hash));
+            });
         }
     }
 }

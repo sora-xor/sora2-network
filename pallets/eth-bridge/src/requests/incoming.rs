@@ -28,10 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::contract::{MethodId, FUNCTIONS, METHOD_ID_SIZE};
+use crate::contract::{functions, MethodId, FUNCTIONS, METHOD_ID_SIZE};
 use crate::offchain::SignatureParams;
 use crate::requests::Assets;
-use crate::util::get_bridge_account;
 use crate::{
     AssetIdOf, AssetKind, BridgeNetworkId, BridgeStatus, BridgeTimepoint, Config, Error,
     EthAddress, EthPeersSync, OffchainRequest, OutgoingRequest, RequestStatus, Timepoint,
@@ -47,18 +46,18 @@ use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
 use common::{AssetName, AssetSymbol, BalancePrecision};
-#[allow(unused_imports)]
-use frame_support::debug;
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
+use frame_support::ensure;
 use frame_support::sp_runtime::app_crypto::sp_core;
 use frame_support::sp_runtime::traits::UniqueSaturatedInto;
 use frame_support::traits::Get;
 use frame_support::weights::WeightToFee;
-use frame_support::{ensure, RuntimeDebug};
 use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
+use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub const MIN_PEERS: usize = 4;
@@ -74,7 +73,7 @@ pub struct IncomingAddToken<T: Config> {
     pub precision: BalancePrecision,
     pub symbol: AssetSymbol,
     pub name: AssetName,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -100,7 +99,7 @@ impl<T: Config> IncomingAddToken<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -110,10 +109,10 @@ impl<T: Config> IncomingAddToken<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeers<T: Config> {
-    pub peer_account_id: Option<T::AccountId>,
+    pub peer_account_id: Option<<T as frame_system::pallet::Config>::AccountId>,
     pub peer_address: EthAddress,
     pub removed: bool,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -161,8 +160,10 @@ impl<T: Config> IncomingChangePeers<T> {
                     .as_ref()
                     .ok_or(Error::<T>::UnknownPeerAddress)?
                     .clone();
+                let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+                    .ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(
-                    RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+                    RawOrigin::Signed(bridge_account).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
@@ -183,7 +184,7 @@ impl<T: Config> IncomingChangePeers<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -199,11 +200,11 @@ pub enum ChangePeersContract {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingChangePeersCompat<T: Config> {
-    pub peer_account_id: T::AccountId,
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub peer_address: EthAddress,
     pub added: bool,
     pub contract: ChangePeersContract,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -236,8 +237,10 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         if is_ready {
             let account_id = self.peer_account_id.clone();
             if self.added {
+                let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+                    .ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(
-                    RawOrigin::Signed(get_bridge_account::<T>(self.network_id)).into(),
+                    RawOrigin::Signed(bridge_account).into(),
                     account_id.clone(),
                 )
                 .map_err(|e| e.error)?;
@@ -260,7 +263,7 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -271,12 +274,12 @@ impl<T: Config> IncomingChangePeersCompat<T> {
 #[scale_info(skip_type_params(T))]
 pub struct IncomingTransfer<T: Config> {
     pub from: EthAddress,
-    pub to: T::AccountId,
+    pub to: <T as frame_system::pallet::Config>::AccountId,
     pub asset_id: AssetIdOf<T>,
     pub asset_kind: AssetKind,
     #[cfg_attr(feature = "std", serde(with = "string_serialization"))]
     pub amount: Balance,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -307,24 +310,28 @@ impl<T: Config> IncomingTransfer<T> {
         } else {
             bridge_types::types::AssetKind::Sidechain
         };
-        T::BridgeAssetLockChecker::before_asset_unlock(
-            generic_network_id,
-            asset_kind,
-            &self.asset_id,
-            &self.amount,
-        )?;
-        if self.asset_kind.is_owned() {
-            let bridge_account = get_bridge_account::<T>(self.network_id);
-            Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
-        }
-        Ok(())
+        common::with_transaction(|| {
+            T::BridgeAssetLockChecker::before_asset_unlock(
+                generic_network_id,
+                asset_kind,
+                &self.asset_id,
+                &self.amount,
+            )?;
+            if self.asset_kind.is_owned() {
+                let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+                    .ok_or(Error::<T>::UnknownNetwork)?;
+                Assets::<T>::reserve(&self.asset_id, &bridge_account, self.amount)?;
+            }
+            Ok(())
+        })
     }
 
     /// Unreserves previously reserved amount of funds if the asset kind is owned.
     pub fn unreserve(&self) -> DispatchResult {
         if self.asset_kind.is_owned() {
-            let bridge_acc = &get_bridge_account::<T>(self.network_id);
-            let remainder = Assets::<T>::unreserve(&self.asset_id, bridge_acc, self.amount)?;
+            let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
+                .ok_or(Error::<T>::UnknownNetwork)?;
+            let remainder = Assets::<T>::unreserve(&self.asset_id, &bridge_acc, self.amount)?;
             ensure!(remainder == 0, Error::<T>::FailedToUnreserve);
         }
         Ok(())
@@ -332,14 +339,30 @@ impl<T: Config> IncomingTransfer<T> {
 
     /// Calls `.unreserve`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
-        self.unreserve()
+        let generic_network_id =
+            GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
+        let asset_kind = if self.asset_kind.is_owned() {
+            bridge_types::types::AssetKind::Thischain
+        } else {
+            bridge_types::types::AssetKind::Sidechain
+        };
+        common::with_transaction(|| {
+            T::BridgeAssetLockChecker::before_asset_lock(
+                generic_network_id,
+                asset_kind,
+                &self.asset_id,
+                &self.amount,
+            )?;
+            self.unreserve()
+        })
     }
 
     /// If the transferring asset kind is owned, the funds are transferred from the bridge account,
     /// otherwise the amount is minted.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         self.validate()?;
-        let bridge_account_id = get_bridge_account::<T>(self.network_id);
+        let bridge_account_id = crate::Pallet::<T>::bridge_account(self.network_id)
+            .ok_or(Error::<T>::UnknownNetwork)?;
         let transfer_fee = Self::fee_amount();
         let amount = if self.should_take_fee {
             self.amount - transfer_fee
@@ -380,7 +403,7 @@ impl<T: Config> IncomingTransfer<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 
@@ -395,7 +418,7 @@ pub fn encode_outgoing_request_eth_call<T: Config>(
     request: &OutgoingRequest<T>,
     request_hash: H256,
 ) -> Result<Vec<u8>, Error<T>> {
-    let fun_metas = &FUNCTIONS.get().unwrap();
+    let fun_metas = FUNCTIONS.get_or_init(functions);
     let fun_meta = fun_metas.get(&method_id).ok_or(Error::UnknownMethodId)?;
     let request_encoded = request.to_eth_abi(request_hash)?;
     let approvals: BTreeSet<SignatureParams> =
@@ -419,7 +442,7 @@ pub struct IncomingCancelOutgoingRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
     pub tx_input: Vec<u8>,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -485,7 +508,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -499,7 +522,7 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 pub struct IncomingMarkAsDoneRequest<T: Config> {
     pub outgoing_request_hash: H256,
     pub initial_request_hash: H256,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
     pub network_id: BridgeNetworkId<T>,
@@ -541,7 +564,7 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -552,7 +575,7 @@ impl<T: Config> IncomingMarkAsDoneRequest<T> {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct IncomingPrepareForMigration<T: Config> {
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -584,7 +607,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }
@@ -596,7 +619,7 @@ impl<T: Config> IncomingPrepareForMigration<T> {
 #[scale_info(skip_type_params(T))]
 pub struct IncomingMigrate<T: Config> {
     pub new_contract_address: EthAddress,
-    pub author: T::AccountId,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
     pub tx_hash: H256,
     pub at_height: u64,
     pub timepoint: BridgeTimepoint<T>,
@@ -633,7 +656,7 @@ impl<T: Config> IncomingMigrate<T> {
         self.timepoint
     }
 
-    pub fn author(&self) -> &T::AccountId {
+    pub fn author(&self) -> &<T as frame_system::pallet::Config>::AccountId {
         &self.author
     }
 }

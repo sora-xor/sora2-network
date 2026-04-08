@@ -29,12 +29,47 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::path::PathBuf;
-use std::{env, fs};
+use std::{env, fs, io::ErrorKind};
 
 #[cfg(feature = "build-wasm-binary")]
 use substrate_wasm_builder::WasmBuilder;
 
+#[cfg(feature = "build-wasm-binary")]
+fn sanitize_wasm_builder_feature_env() {
+    // `substrate-wasm-builder` infers wasm features from `CARGO_FEATURE_*`.
+    // For optional deps that are only pulled into the native build through `std`
+    // or umbrella features, those env vars leak into the wasm build and
+    // incorrectly force extra optional dependencies into the runtime blob.
+    for feature in [
+        "CARGO_FEATURE_PALLET_MMR",
+        "CARGO_FEATURE_BEEFY_LIGHT_CLIENT",
+        "CARGO_FEATURE_BEEFY_LIGHT_CLIENT_RUNTIME_API",
+        "CARGO_FEATURE_EVM_FUNGIBLE_APP",
+        "CARGO_FEATURE_CERES_LIQUIDITY_LOCKER_BENCHMARKING",
+        "CARGO_FEATURE_DEMETER_FARMING_PLATFORM_BENCHMARKING",
+        "CARGO_FEATURE_FAUCET",
+        "CARGO_FEATURE_KENSETSU_BENCHMARKING",
+        "CARGO_FEATURE_LIQUIDITY_PROXY_BENCHMARKING",
+        "CARGO_FEATURE_ORDER_BOOK_BENCHMARKING",
+        "CARGO_FEATURE_POOL_XYK_BENCHMARKING",
+        "CARGO_FEATURE_PRESTO",
+        "CARGO_FEATURE_PSWAP_DISTRIBUTION_BENCHMARKING",
+        "CARGO_FEATURE_QA_TOOLS",
+        "CARGO_FEATURE_XST_BENCHMARKING",
+        "CARGO_FEATURE_FRAME_BENCHMARKING",
+        "CARGO_FEATURE_FRAME_TRY_RUNTIME",
+        "CARGO_FEATURE_PALLET_BEEFY",
+        "CARGO_FEATURE_PALLET_BEEFY_MMR",
+        "CARGO_FEATURE_BRIDGE_TYPES",
+    ] {
+        env::remove_var(feature);
+    }
+}
+
 fn main() {
+    #[cfg(feature = "build-wasm-binary")]
+    sanitize_wasm_builder_feature_env();
+
     #[cfg(feature = "build-wasm-binary")]
     WasmBuilder::new()
         .with_current_project()
@@ -56,10 +91,18 @@ fn main() {
     // Installing git hooks is best-effort: the build should not fail if the repo lives on
     // a read-only volume (common on CI or macOS sandboxed builds).
     if let Err(err) = fs::create_dir_all(&enabled_hooks_dir) {
-        println!("cargo:warning=Failed to create '.git/hooks' dir (skipping hook install): {err}");
+        if err.kind() != ErrorKind::PermissionDenied {
+            println!(
+                "cargo:warning=Failed to create '.git/hooks' dir (skipping hook install): {err}"
+            );
+        }
         return;
     }
     if let Err(err) = fs::copy(&pre_commit_hook_path, enabled_hooks_dir.join("pre-commit")) {
-        println!("cargo:warning=Failed to copy '.hooks/pre_commit' (skipping hook install): {err}");
+        if err.kind() != ErrorKind::PermissionDenied {
+            println!(
+                "cargo:warning=Failed to copy '.hooks/pre-commit' (skipping hook install): {err}"
+            );
+        }
     }
 }

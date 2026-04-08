@@ -29,8 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{AssetId32, Balance, PredefinedAssetId, TechAssetId};
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::dispatch::DispatchError;
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use frame_support::weights::{
     WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
@@ -40,11 +39,13 @@ use serde::{Deserialize, Serialize};
 use smallvec::smallvec;
 use sp_arithmetic::Perbill;
 use sp_runtime::AccountId32;
+use sp_runtime::DispatchError;
 use sp_std::convert::TryFrom;
 
 #[derive(
     Encode,
     Decode,
+    DecodeWithMemTracking,
     Eq,
     PartialEq,
     Copy,
@@ -333,7 +334,6 @@ macro_rules! mock_bridge_channel_outbound_config {
             pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
         }
         impl bridge_channel::outbound::Config for $runtime {
-            type RuntimeEvent = RuntimeEvent;
             type MaxMessagePayloadSize = MaxMessagePayloadSize;
             type MaxMessagesPerCommit = MaxMessagesPerCommit;
             type MessageStatusNotifier = BridgeProxy;
@@ -555,8 +555,8 @@ macro_rules! mock_dispatch_config {
             type MessageId = MessageId;
             type Origin = RuntimeOrigin;
             type OriginOutput = OriginOutput;
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
+            type BenchmarkHelper = ();
         }
     };
 }
@@ -576,7 +576,6 @@ macro_rules! mock_evm_fungible_app_config {
             type MessageStatusNotifier = BridgeProxy;
             type OutboundChannel = BridgeOutboundChannel;
             type PriorityFee = frame_support::traits::ConstU128<100>;
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };
@@ -605,15 +604,14 @@ macro_rules! mock_frame_system_config {
             type BaseCallFilter = frame_support::traits::Everything;
             type BlockHashCount = frame_support::traits::ConstU64<250>;
             type BlockLength = ();
-            type BlockNumber = u64;
             type BlockWeights = ();
             type DbWeight = ();
             type Hash = sp_core::H256;
             type Hashing = sp_runtime::traits::BlakeTwo256;
-            type Header = sp_runtime::testing::Header;
-            type Index = u64;
             type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
+            type Block = Block;
             type MaxConsumers = $max_consumers;
+            type Nonce = u64;
             type OnKilledAccount = ();
             type OnNewAccount = ();
             type OnSetCode = ();
@@ -621,7 +619,14 @@ macro_rules! mock_frame_system_config {
             type RuntimeCall = RuntimeCall;
             type RuntimeEvent = RuntimeEvent;
             type RuntimeOrigin = RuntimeOrigin;
+            type RuntimeTask = RuntimeTask;
             type SS58Prefix = $ss58_prefix;
+            type ExtensionsWeightInfo = ();
+            type SingleBlockMigrations = ();
+            type MultiBlockMigrator = ();
+            type PreInherents = ();
+            type PostInherents = ();
+            type PostTransactions = ();
             type SystemWeightInfo = ();
             type Version = ();
         }
@@ -827,6 +832,7 @@ macro_rules! mock_orml_tokens_config {
         impl orml_tokens::Config for $runtime {
             type Amount = Amount;
             type Balance = Balance;
+            type BenchmarkHelper = ();
             type CurrencyHooks = ();
             type CurrencyId = <$runtime as assets::Config>::AssetId;
             type DustRemovalWhitelist = frame_support::traits::Everything;
@@ -834,7 +840,6 @@ macro_rules! mock_orml_tokens_config {
             type MaxLocks = ();
             type MaxReserves = ();
             type ReserveIdentifier = ();
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };
@@ -845,15 +850,20 @@ macro_rules! mock_orml_tokens_config {
 macro_rules! mock_pallet_balances_config {
     ($runtime:ty) => {
         frame_support::parameter_types! {
-            pub const ExistentialDeposit: u128 = 0;
+            pub const ExistentialDeposit: u128 = 1;
         }
         impl pallet_balances::Config for $runtime {
             type AccountStore = System;
             type Balance = Balance;
             type DustRemoval = ();
+            type DoneSlashHandler = ();
             type ExistentialDeposit = ExistentialDeposit;
+            type FreezeIdentifier = ();
+            type MaxFreezes = ();
             type MaxLocks = ();
             type MaxReserves = ();
+            type RuntimeFreezeReason = ();
+            type RuntimeHoldReason = ();
             type ReserveIdentifier = ();
             type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
@@ -871,6 +881,7 @@ macro_rules! mock_pallet_multisig_config {
             pub const MaxSignatories: u16 = 4;
         }
         impl pallet_multisig::Config for $runtime {
+            type BlockNumberProvider = System;
             type Currency = Balances;
             type DepositBase = DepositBase;
             type DepositFactor = DepositFactor;
@@ -887,9 +898,10 @@ macro_rules! mock_pallet_multisig_config {
 macro_rules! mock_pallet_scheduler_config {
     ($runtime:ty) => {
         frame_support::parameter_types! {
-            pub const SchedulerMaxWeight: Weight = Weight::from_parts(1024, 0);
+            pub const SchedulerMaxWeight: Weight = Weight::MAX;
         }
         impl pallet_scheduler::Config for $runtime {
+            type BlockNumberProvider = System;
             type MaxScheduledPerBlock = ();
             type MaximumWeight = SchedulerMaxWeight;
             type OriginPrivilegeCmp = OriginPrivilegeCmp;
@@ -911,6 +923,7 @@ macro_rules! mock_pallet_sudo_config {
         impl pallet_sudo::Config for $runtime {
             type RuntimeCall = RuntimeCall;
             type RuntimeEvent = RuntimeEvent;
+            type WeightInfo = ();
         }
     };
 }
@@ -948,6 +961,7 @@ macro_rules! mock_pallet_transaction_payment_config {
                 frame_support::traits::ConstU128<0>,
             >;
             type OperationalFeeMultiplier = OperationalFeeMultiplier;
+            type WeightInfo = ();
         }
     };
 }
@@ -1077,6 +1091,7 @@ macro_rules! mock_proxy_config {
             type ParachainApp = ();
             type ReferencePriceProvider = ReferencePriceProvider;
             type RuntimeEvent = RuntimeEvent;
+            type SccpAssetChecker = ();
             type TimepointProvider = GenericTimepointProvider;
             type WeightInfo = ();
         }
@@ -1176,7 +1191,6 @@ macro_rules! mock_rewards_config {
             const TIME_TO_SATURATION: BlockNumber = 100;
             const UPDATE_FREQUENCY: BlockNumber = 5;
             const VAL_BURN_PERCENT: sp_runtime::Percent = sp_runtime::Percent::from_percent(3);
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };
@@ -1228,6 +1242,7 @@ macro_rules! mock_tokens_config {
         impl tokens::Config for $runtime {
             type Amount = Amount;
             type Balance = Balance;
+            type BenchmarkHelper = ();
             type CurrencyHooks = ();
             type CurrencyId = <$runtime as assets::Config>::AssetId;
             type DustRemovalWhitelist = frame_support::traits::Everything;
@@ -1235,7 +1250,6 @@ macro_rules! mock_tokens_config {
             type MaxLocks = MaxLocks;
             type MaxReserves = ();
             type ReserveIdentifier = ();
-            type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();
         }
     };

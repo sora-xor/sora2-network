@@ -6,7 +6,7 @@ use codec::{Decode, Encode};
 use frame_support::traits::Get;
 use frame_support::traits::OnRuntimeUpgrade;
 use frame_support::{
-    log::{error, info},
+    __private::log::{error, info},
     pallet_prelude::StorageVersion,
     traits::GetStorageVersion as _,
 };
@@ -66,7 +66,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn pre_upgrade() -> Result<Vec<u8>, &'static str> {
+    fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 2,
             "must upgrade linearly"
@@ -75,7 +75,7 @@ where
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), &'static str> {
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
         frame_support::ensure!(
             Pallet::<T>::on_chain_storage_version() == 3,
             "should be upgraded to version 3"

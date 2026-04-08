@@ -47,7 +47,7 @@ use crate::{
     STORAGE_NETWORK_IDS_KEY,
 };
 use alloc::string::String;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::eth;
 use ethabi::ParamType;
 use ethereum_types::U256;
@@ -56,18 +56,20 @@ use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::sp_runtime::MultiSigner;
 use frame_support::traits::Get;
-use frame_support::{ensure, fail, RuntimeDebug};
+use frame_support::{ensure, fail};
 use frame_system::offchain::CreateSignedTransaction;
+#[allow(unused_imports)]
 pub use handle::*;
 use hex_literal::hex;
+#[allow(unused_imports)]
 pub use http::*;
 use rustc_hex::ToHex;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
+use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::convert::TryInto;
 use sp_std::fmt;
 use sp_std::fmt::Formatter;
 pub use transaction::*;
@@ -98,7 +100,10 @@ pub mod crypto {
 impl<T: Config> Pallet<T> {
     fn parse_deposit_event(
         log: &Log,
-    ) -> Result<DepositEvent<EthAddress, T::AccountId, U256>, Error<T>> {
+    ) -> Result<
+        DepositEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
+        Error<T>,
+    > {
         if log.removed.unwrap_or(true) {
             return Err(Error::<T>::EthLogWasRemoved);
         }
@@ -129,7 +134,10 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         logs: &[Log],
         kind: IncomingTransactionRequestKind,
-    ) -> Result<ContractEvent<EthAddress, T::AccountId, U256>, Error<T>> {
+    ) -> Result<
+        ContractEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
+        Error<T>,
+    > {
         for log in logs {
             // Check address to be sure what it came from our contract
             if Self::ensure_known_contract(log.address.0.into(), network_id).is_err() {
@@ -202,7 +210,7 @@ impl<T: Config> Pallet<T> {
         msg: &[u8],
         signature: &SignatureParams,
         ecdsa_public_key: &ecdsa::Public,
-        author: &T::AccountId,
+        author: &<T as frame_system::pallet::Config>::AccountId,
     ) -> bool {
         let message = eth::prepare_message(msg);
         let sig_bytes = signature.to_bytes();
@@ -219,6 +227,7 @@ impl<T: Config> Pallet<T> {
     }
 
     /// Signs a message with a peer's secret key.
+    #[allow(dead_code)]
     pub(crate) fn sign_message(
         msg: &[u8],
         secret_key: &secp256k1::SecretKey,
@@ -228,14 +237,11 @@ impl<T: Config> Pallet<T> {
         let pk = secp256k1::PublicKey::from_secret_key(secret_key);
         let v = v.serialize();
         let sig_ser = sig.serialize();
-        (
-            SignatureParams {
-                r: sig_ser[..32].try_into().unwrap(),
-                s: sig_ser[32..].try_into().unwrap(),
-                v,
-            },
-            pk,
-        )
+        let mut r = [0u8; 32];
+        r.copy_from_slice(&sig_ser[..32]);
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&sig_ser[32..]);
+        (SignatureParams { r, s, v }, pk)
     }
 
     /// Parses a 'cancel' incoming request from the given transaction receipt and pre-request.
@@ -251,7 +257,7 @@ impl<T: Config> Pallet<T> {
         ensure!(!tx_approved, Error::<T>::EthTransactionIsSucceeded);
         let at_height = tx_receipt
             .block_number
-            .expect("'block_number' is null only when the log/transaction is pending; qed")
+            .ok_or(Error::<T>::EthTransactionIsPending)?
             .as_u64();
         let tx = Self::load_tx(H256(tx_receipt.transaction_hash.0), pre_request.network_id)?;
         ensure!(
@@ -323,7 +329,7 @@ impl<T: Config> Pallet<T> {
         } else {
             let asset_id = T::AssetId::from(H256(raw_asset_id.0));
             let asset_kind = Self::registered_asset(network_id, &asset_id);
-            if asset_kind.is_none() || asset_kind.unwrap() == AssetKind::Sidechain {
+            if matches!(asset_kind, None | Some(AssetKind::Sidechain)) {
                 fail!(Error::<T>::UnknownAssetId);
             }
             Ok(Some((asset_id, AssetKind::Thischain)))
@@ -365,7 +371,7 @@ impl<T: Config> Pallet<T> {
             fail!(Error::<T>::UnknownMethodId);
         };
 
-        let tokens = (*fun.get().unwrap())
+        let tokens = (*fun.get().ok_or(Error::<T>::UnknownMethodId)?)
             .decode_input(tail)
             .map_err(|_| Error::<T>::EthAbiDecodingError)?;
         let request_hash = parse_hash_from_call::<T>(tokens, arg_pos)?;
@@ -401,7 +407,7 @@ impl<T: Config> Pallet<T> {
                 };
                 let at_height = tx
                     .block_number
-                    .expect("'block_number' is null only when the log/transaction is pending; qed")
+                    .ok_or(Error::<T>::EthTransactionIsPending)?
                     .as_u64();
                 let request = IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
                     peer_account_id,
@@ -441,7 +447,7 @@ impl<T: Config> Pallet<T> {
 
         let at_height = tx_receipt
             .block_number
-            .expect("'block_number' is null only when the log/transaction is pending; qed")
+            .ok_or(Error::<T>::EthTransactionIsPending)?
             .as_u64();
 
         let call = Self::parse_main_event(network_id, &tx_receipt.logs, kind)?;
@@ -496,7 +502,16 @@ impl<T: Config> Pallet<T> {
 
 /// Separated components of a secp256k1 signature.
 #[derive(
-    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Eq,
+    PartialEq,
+    Clone,
+    PartialOrd,
+    Ord,
+    RuntimeDebug,
+    scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(any(test, feature = "runtime-benchmarks"), derive(Default))]
@@ -508,6 +523,15 @@ pub struct SignatureParams {
 }
 
 impl SignatureParams {
+    pub(crate) fn from_ecdsa_signature(signature: &ecdsa::Signature) -> Self {
+        let mut r = [0u8; 32];
+        r.copy_from_slice(&signature.0[..32]);
+        let mut s = [0u8; 32];
+        s.copy_from_slice(&signature.0[32..64]);
+        let v = signature.0[64];
+        Self { r, s, v }
+    }
+
     fn to_bytes(&self) -> [u8; 65] {
         let mut arr = [0u8; 65];
         arr[..32].copy_from_slice(&self.r[..]);

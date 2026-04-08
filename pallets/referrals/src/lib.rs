@@ -118,7 +118,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -226,7 +225,6 @@ pub mod pallet {
         pub referrers: Vec<(T::AccountId, T::AccountId)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -236,7 +234,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.referrers.iter().for_each(|(k, v)| {
                 frame_system::Pallet::<T>::inc_consumers(k).unwrap();
@@ -257,7 +255,7 @@ impl<T: Config> ReferrerAccountProvider<T::AccountId> for Pallet<T> {
 pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         ReferrerBalances::<T>::iter_keys().for_each(|account| {
             ReferrerBalances::<T>::mutate(account, |maybe_balance| {
                 if let Some(balance) = maybe_balance {

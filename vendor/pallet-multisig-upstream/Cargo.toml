@@ -1,0 +1,41 @@
+[package]
+name = "pallet-multisig-upstream"
+version = "45.0.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://paritytech.github.io/polkadot-sdk/"
+repository = "https://github.com/paritytech/polkadot-sdk.git"
+description = "FRAME multi-signature dispatch pallet"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.6.5", default-features = false, features = ["derive", "max-encoded-len"] }
+frame = { package = "polkadot-sdk-frame", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = false, features = ["runtime"] }
+scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+
+# third party
+log = { version = "0.4.20", default-features = false }
+
+[dev-dependencies]
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3", default-features = true }
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"frame/std",
+	"log/std",
+	"scale-info/std",
+]
+runtime-benchmarks = [
+	"frame/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+]
+try-runtime = [
+	"frame/try-runtime",
+	"pallet-balances/try-runtime",
+]

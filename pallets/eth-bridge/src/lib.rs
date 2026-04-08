@@ -77,24 +77,26 @@ use crate::util::majority;
 use alloc::string::String;
 use bridge_types::traits::BridgeApp;
 use bridge_types::GenericNetworkId;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::Balance;
 use common::{
     AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
 };
 use core::stringify;
-use frame_support::dispatch::{DispatchError, DispatchResult};
-use frame_support::log::{debug, error, info, warn};
+use frame_support::__private::log::{debug, error, info, warn};
+use frame_support::dispatch::DispatchResult;
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::sp_runtime::offchain::storage_lock::{StorageLock, Time};
 use frame_support::sp_runtime::traits::{
-    AtLeast32Bit, BlockNumberProvider, MaybeSerializeDeserialize, Member, One, UniqueSaturatedInto,
+    AtLeast32Bit, BlockNumberProvider, IdentifyAccount, MaybeSerializeDeserialize, Member, One,
+    UniqueSaturatedInto,
 };
 use frame_support::sp_runtime::KeyTypeId;
+use frame_support::sp_runtime::RuntimeAppPublic;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use frame_support::{ensure, fail, Parameter, RuntimeDebug};
+use frame_support::{ensure, fail, Parameter};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction};
 use frame_system::pallet_prelude::OriginFor;
 use frame_system::{ensure_root, ensure_signed};
@@ -102,9 +104,10 @@ use hex_literal::hex;
 pub use pallet::*;
 use permissions::{Scope, BURN, MINT};
 use requests::*;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
+use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_std::borrow::Cow;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug};
@@ -155,6 +158,10 @@ pub const MAX_GET_LOGS_ITEMS: u64 = 50;
 
 // Off-chain worker storage paths.
 pub const STORAGE_SUB_NODE_URL_KEY: &[u8] = b"eth-bridge-ocw::sub-node-url";
+/// Non-secret OCW activation marker (current format).
+pub const STORAGE_PEER_MARKER_KEY: &[u8] = b"eth-bridge-ocw::peer-marker";
+/// Legacy OCW activation key (historically used for raw seed bytes).
+/// Kept for backward compatibility with existing offchain DBs.
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
@@ -176,7 +183,8 @@ const RE_HANDLE_TXS_PERIOD: u32 = 200;
 pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
 type AssetIdOf<T> = <T as assets::Config>::AssetId;
-type Timepoint<T> = bridge_multisig::BridgeTimepoint<<T as frame_system::Config>::BlockNumber>;
+type Timepoint<T> =
+    bridge_multisig::BridgeTimepoint<frame_system::pallet_prelude::BlockNumberFor<T>>;
 type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
@@ -206,12 +214,27 @@ pub struct NetworkParams<AccountId: Ord> {
 }
 
 /// Network configuration.
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    not(feature = "std"),
+    serde(bound(
+        serialize = "<T as frame_system::pallet::Config>::AccountId: Serialize, <T as assets::Config>::AssetId: Serialize",
+        deserialize = "<T as frame_system::pallet::Config>::AccountId: Deserialize<'de>, <T as assets::Config>::AssetId: Deserialize<'de>"
+    ))
+)]
+#[cfg_attr(
+    feature = "std",
+    serde(bound(
+        serialize = "<T as frame_system::pallet::Config>::AccountId: Serialize, <T as assets::Config>::AssetId: Serialize",
+        deserialize = "<T as frame_system::pallet::Config>::AccountId: Deserialize<'de>, <T as assets::Config>::AssetId: Deserialize<'de>"
+    ))
+)]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct NetworkConfig<T: Config> {
-    pub initial_peers: BTreeSet<T::AccountId>,
-    pub bridge_account_id: T::AccountId,
+    pub initial_peers: BTreeSet<<T as frame_system::pallet::Config>::AccountId>,
+    pub bridge_account_id: <T as frame_system::pallet::Config>::AccountId,
     pub assets: Vec<AssetConfig<T::AssetId>>,
     pub bridge_contract_address: EthAddress,
     pub reserves: Vec<(T::AssetId, Balance)>,
@@ -267,6 +290,7 @@ impl Default for BridgeStatus {
 }
 
 /// Bridge asset parameters.
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum AssetConfig<AssetId> {
@@ -313,7 +337,17 @@ impl<AssetId> AssetConfig<AssetId> {
 
 /// Bridge function signature version
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+)]
 pub enum BridgeSignatureVersion {
     V1,
     // Fix signature overlapping for addPeer, removePeer and prepareForMigration
@@ -327,13 +361,12 @@ pub enum BridgeSignatureVersion {
 pub mod pallet {
     use super::*;
     use crate::offchain::SignatureParams;
-    use crate::util::get_bridge_account;
     use bridge_types::traits::{BridgeAssetLockChecker, MessageStatusNotifier};
     use codec::Codec;
     use common::prelude::constants::EXTRINSIC_FIXED_WEIGHT;
     use common::weights::{err_pays_no, pays_no, pays_no_with_maybe_weight};
     use common::{ContentSource, Description};
-    use frame_support::log;
+    use frame_support::__private::log;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::{GetCallMetadata, StorageVersion};
     use frame_support::transactional;
@@ -351,6 +384,7 @@ pub mod pallet {
         + bridge_multisig::Config<RuntimeCall = <Self as Config>::RuntimeCall>
         + fmt::Debug
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// The identifier type for an offchain worker.
         type PeerId: AppCrypto<Self::Public, Self::Signature>;
@@ -375,7 +409,11 @@ pub mod pallet {
         #[cfg(test)]
         type Mock: tests::mock::Mock;
 
-        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId, Balance>;
+        type MessageStatusNotifier: MessageStatusNotifier<
+            Self::AssetId,
+            <Self as frame_system::Config>::AccountId,
+            Balance,
+        >;
 
         type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
 
@@ -384,7 +422,7 @@ pub mod pallet {
         /// To retrieve asset info
         type AssetInfoProvider: AssetInfoProvider<
             Self::AssetId,
-            Self::AccountId,
+            <Self as frame_system::Config>::AccountId,
             AssetSymbol,
             AssetName,
             BalancePrecision,
@@ -401,7 +439,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -411,14 +448,59 @@ pub mod pallet {
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
+        fn on_runtime_upgrade() -> Weight {
+            migration::migrate::<T>()
+        }
+
         /// Main off-chain worker procedure.
         ///
         /// Note: only one worker is expected to be used.
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: frame_system::pallet_prelude::BlockNumberFor<T>) {
             debug!("Entering off-chain workers {:?}", block_number);
-            let value_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-            if value_ref.get::<Vec<u8>>().ok().flatten().is_none() {
-                debug!("Peer secret key not found. Skipping off-chain procedure.");
+            let marker_ref = StorageValueRef::persistent(STORAGE_PEER_MARKER_KEY);
+            let legacy_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+            let marker = marker_ref.get::<Vec<u8>>().ok().flatten();
+            let (marker, marker_from_legacy_key) = if let Some(marker) = marker {
+                (Some(marker), false)
+            } else {
+                (legacy_ref.get::<Vec<u8>>().ok().flatten(), true)
+            };
+            if marker.is_none() {
+                debug!("Peer marker not found. Skipping off-chain procedure.");
+                return;
+            }
+
+            let local_keys =
+                <T::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all();
+            if local_keys.is_empty() {
+                debug!(
+                    "Bridge peer key not found in local keystore. Skipping off-chain procedure."
+                );
+                return;
+            }
+
+            // For the new marker format (public key bytes), ensure the marker corresponds to a
+            // currently available local key.
+            if let Some(marker) = marker {
+                let marker_matches = local_keys.iter().any(|key| key.to_raw_vec() == marker);
+                let is_legacy_secret_seed = marker_from_legacy_key && marker.len() == 32;
+                if !marker_matches && !is_legacy_secret_seed {
+                    debug!(
+                        "Bridge peer marker doesn't match a local key. Skipping off-chain procedure."
+                    );
+                    return;
+                }
+            }
+
+            let has_local_peer_account = local_keys.into_iter().any(|runtime_key| {
+                let runtime_key: <T::PeerId as AppCrypto<T::Public, T::Signature>>::GenericPublic =
+                    runtime_key.into();
+                let runtime_public: T::Public = runtime_key.into();
+                let account = runtime_public.into_account();
+                Peers::<T>::iter_values().any(|peers| peers.contains(&account))
+            });
+            if !has_local_peer_account {
+                debug!("No local bridge peer account configured. Skipping off-chain procedure.");
                 return;
             }
 
@@ -450,7 +532,7 @@ pub mod pallet {
         pub fn register_bridge(
             origin: OriginFor<T>,
             bridge_contract_address: EthAddress,
-            initial_peers: Vec<T::AccountId>,
+            initial_peers: Vec<<T as frame_system::pallet::Config>::AccountId>,
             signature_version: BridgeSignatureVersion,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
@@ -607,6 +689,9 @@ pub mod pallet {
             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
             match kind {
                 IncomingRequestKind::Transaction(kind) => {
+                    if kind == IncomingTransactionRequestKind::TransferXOR {
+                        fail!(Error::<T>::Unavailable);
+                    }
                     Self::add_request(&OffchainRequest::LoadIncoming(
                         LoadIncomingRequest::Transaction(LoadIncomingTransactionRequest::new(
                             from,
@@ -676,7 +761,7 @@ pub mod pallet {
         #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn add_peer(
             origin: OriginFor<T>,
-            account_id: T::AccountId,
+            account_id: <T as frame_system::pallet::Config>::AccountId,
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
@@ -725,7 +810,7 @@ pub mod pallet {
         #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn remove_peer(
             origin: OriginFor<T>,
-            account_id: T::AccountId,
+            account_id: <T as frame_system::pallet::Config>::AccountId,
             peer_address: Option<EthAddress>,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
@@ -969,14 +1054,16 @@ pub mod pallet {
         #[pallet::weight(EXTRINSIC_FIXED_WEIGHT)]
         pub fn force_add_peer(
             origin: OriginFor<T>,
-            who: T::AccountId,
+            who: <T as frame_system::pallet::Config>::AccountId,
             address: EthAddress,
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
             if !Self::is_peer(&who, network_id) {
+                let bridge_account =
+                    Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(
-                    RawOrigin::Signed(get_bridge_account::<T>(network_id)).into(),
+                    RawOrigin::Signed(bridge_account).into(),
                     who.clone(),
                 )
                 .map_err(|e| e.error)?;
@@ -1000,6 +1087,10 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
             ensure_root(origin)?;
+            ensure!(
+                !Self::has_active_outgoing_transfer_request(network_id, &asset_id),
+                Error::<T>::ActiveOutgoingTransferRequest
+            );
             T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownAssetId)?;
@@ -1262,6 +1353,8 @@ pub mod pallet {
         RequestsQueueFull,
         /// Signatures can only be reset when a request failed or is broken.
         RequestStatusNotResettable,
+        /// Creation of weak legacy-signature-domain requests is disabled for this network.
+        WeakLegacySigningDisabled,
         /// Expected Ethereum network.
         ExpectedEthNetwork,
         /// Request was removed and refunded.
@@ -1276,6 +1369,8 @@ pub mod pallet {
         UnsafeMigration,
         /// Probably denomination factor is too big and we can't apply it
         FailedToApplyDenomination,
+        /// Asset can't be removed while it has active outgoing transfer requests.
+        ActiveOutgoingTransferRequest,
     }
 
     impl<T: Config> Error<T> {
@@ -1284,6 +1379,7 @@ pub mod pallet {
                 Self::HttpFetchingError
                 | Self::NoLocalAccountForSigning
                 | Self::FailedToSignMessage
+                | Self::FailedToLoadSidechainNodeParams
                 | Self::JsonDeserializationError => true,
                 _ => false,
             }
@@ -1330,7 +1426,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Identity,
         H256,
-        T::BlockNumber,
+        frame_system::pallet_prelude::BlockNumberFor<T>,
         ValueQuery,
     >;
 
@@ -1355,15 +1451,20 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Identity,
         H256,
-        BTreeSet<T::AccountId>,
+        BTreeSet<<T as frame_system::pallet::Config>::AccountId>,
         ValueQuery,
     >;
 
     /// Requests made by an account.
     #[pallet::storage]
     #[pallet::getter(fn account_requests)]
-    pub(super) type AccountRequests<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Vec<(BridgeNetworkId<T>, H256)>, ValueQuery>;
+    pub(super) type AccountRequests<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        <T as frame_system::pallet::Config>::AccountId,
+        Vec<(BridgeNetworkId<T>, H256)>,
+        ValueQuery,
+    >;
 
     /// Registered asset kind.
     #[pallet::storage]
@@ -1412,14 +1513,23 @@ pub mod pallet {
     /// Network peers set.
     #[pallet::storage]
     #[pallet::getter(fn peers)]
-    pub(super) type Peers<T: Config> =
-        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, BTreeSet<T::AccountId>, ValueQuery>;
+    pub(super) type Peers<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        BTreeSet<<T as frame_system::pallet::Config>::AccountId>,
+        ValueQuery,
+    >;
 
     /// Network pending (being added/removed) peer.
     #[pallet::storage]
     #[pallet::getter(fn pending_peer)]
-    pub(super) type PendingPeer<T: Config> =
-        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
+    pub(super) type PendingPeer<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        <T as frame_system::pallet::Config>::AccountId,
+    >;
 
     /// Used for compatibility with XOR and VAL contracts.
     #[pallet::storage]
@@ -1434,7 +1544,7 @@ pub mod pallet {
         BridgeNetworkId<T>,
         Blake2_128Concat,
         EthAddress,
-        T::AccountId,
+        <T as frame_system::pallet::Config>::AccountId,
         OptionQuery,
     >;
 
@@ -1446,7 +1556,7 @@ pub mod pallet {
         Twox64Concat,
         BridgeNetworkId<T>,
         Blake2_128Concat,
-        T::AccountId,
+        <T as frame_system::pallet::Config>::AccountId,
         EthAddress,
         ValueQuery,
     >;
@@ -1454,13 +1564,18 @@ pub mod pallet {
     /// Multi-signature bridge peers' account. `None` if there is no account and network with the given ID.
     #[pallet::storage]
     #[pallet::getter(fn bridge_account)]
-    pub type BridgeAccount<T: Config> =
-        StorageMap<_, Twox64Concat, BridgeNetworkId<T>, T::AccountId>;
+    pub type BridgeAccount<T: Config> = StorageMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        <T as frame_system::pallet::Config>::AccountId,
+    >;
 
     /// Thischain authority account.
     #[pallet::storage]
     #[pallet::getter(fn authority_account)]
-    pub(super) type AuthorityAccount<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+    pub(super) type AuthorityAccount<T: Config> =
+        StorageValue<_, <T as frame_system::pallet::Config>::AccountId, OptionQuery>;
 
     /// Bridge status.
     #[pallet::storage]
@@ -1486,6 +1601,7 @@ pub mod pallet {
 
     /// Next Network ID counter.
     #[pallet::storage]
+    #[pallet::getter(fn next_network_id)]
     pub(super) type NextNetworkId<T: Config> = StorageValue<_, BridgeNetworkId<T>, ValueQuery>;
 
     /// Requests migrating from version '0.1.0' to '0.2.0'. These requests should be removed from
@@ -1516,17 +1632,26 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub authority_account: Option<T::AccountId>,
+        pub authority_account: Option<<T as frame_system::pallet::Config>::AccountId>,
         pub xor_master_contract_address: EthAddress,
         pub val_master_contract_address: EthAddress,
         pub networks: Vec<NetworkConfig<T>>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
+            #[cfg(feature = "std")]
+            let authority_account = Some(
+                <T as frame_system::Config>::AccountId::decode(
+                    &mut sp_runtime::traits::TrailingZeroInput::zeroes(),
+                )
+                .expect("trailing zero input should decode a test authority account"),
+            );
+            #[cfg(not(feature = "std"))]
+            let authority_account = Default::default();
+
             Self {
-                authority_account: Default::default(),
+                authority_account,
                 xor_master_contract_address: Default::default(),
                 val_master_contract_address: Default::default(),
                 networks: Default::default(),
@@ -1535,16 +1660,25 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
-            AuthorityAccount::<T>::put(&self.authority_account.as_ref().unwrap());
+            AuthorityAccount::<T>::put(
+                self.authority_account
+                    .as_ref()
+                    .expect("EthBridge genesis authority account is not configured"),
+            );
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
             for network in &self.networks {
                 let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
+                frame_system::Pallet::<T>::inc_consumers(&peers_account_id).unwrap_or_else(|_| {
+                    panic!(
+                        "EthBridge genesis failed to increase consumers for bridge account {:?}",
+                        peers_account_id
+                    )
+                });
                 BridgeContractAddress::<T>::insert(net_id, network.bridge_contract_address);
-                frame_system::Pallet::<T>::inc_consumers(&peers_account_id).unwrap();
                 BridgeAccount::<T>::insert(net_id, peers_account_id.clone());
                 BridgeStatuses::<T>::insert(net_id, BridgeStatus::Initialized);
                 Peers::<T>::insert(net_id, network.initial_peers.clone());
@@ -1574,7 +1708,12 @@ pub mod pallet {
                         *permission_id,
                         scope,
                     )
-                    .expect("failed to assign permissions for a bridge account");
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "EthBridge genesis failed to assign permission {:?} to {:?}: {:?}",
+                            permission_id, peers_account_id, error
+                        )
+                    });
                 }
                 for (asset_id, balance) in &network.reserves {
                     assets::Pallet::<T>::mint_to(
@@ -1583,7 +1722,12 @@ pub mod pallet {
                         &peers_account_id,
                         *balance,
                     )
-                    .unwrap();
+                    .unwrap_or_else(|error| {
+                        panic!(
+                            "EthBridge genesis failed to mint reserve {:?} for asset {:?}: {:?}",
+                            balance, asset_id, error
+                        )
+                    });
                 }
                 NextNetworkId::<T>::set(net_id + T::NetworkId::one());
             }
@@ -1613,6 +1757,29 @@ impl<T: Config> Pallet<T> {
                     || outgoing_req.is_allowed_during_migration(),
                 Error::<T>::ContractIsInMigrationStage
             );
+            if outgoing_req.uses_weak_signature_domain() {
+                // Transitional exception: ETH peer-management requests still need to support
+                // legacy-signature domains for old-contract compatibility.
+                let is_eth_peer_request = matches!(
+                    outgoing_req,
+                    OutgoingRequest::AddPeer(_)
+                        | OutgoingRequest::RemovePeer(_)
+                        | OutgoingRequest::AddPeerCompat(_)
+                        | OutgoingRequest::RemovePeerCompat(_)
+                ) && net_id == T::GetEthNetworkId::get();
+                ensure!(is_eth_peer_request, Error::<T>::WeakLegacySigningDisabled);
+            }
+            if let OutgoingRequest::AddAsset(add_asset_request) = outgoing_req {
+                ensure!(
+                    !Self::is_add_asset_request_pending(net_id, add_asset_request.asset_id),
+                    Error::<T>::TokenIsAlreadyAdded
+                );
+            } else if let OutgoingRequest::AddToken(add_token_request) = outgoing_req {
+                ensure!(
+                    !Self::is_add_token_request_pending(net_id, add_token_request.token_address),
+                    Error::<T>::SidechainAssetIsAlreadyRegistered
+                );
+            }
         }
         let hash = request.hash();
         let can_resubmit = RequestStatuses::<T>::get(net_id, &hash)
@@ -1650,7 +1817,7 @@ impl<T: Config> Pallet<T> {
     ) -> Result<H256, DispatchError> {
         let sidechain_tx_hash = incoming_request
             .as_incoming()
-            .expect("request is always 'incoming'; qed")
+            .ok_or(Error::<T>::ExpectedIncomingRequest)?
             .0
             .hash();
         let incoming_request_hash = incoming_request.hash();
@@ -1658,6 +1825,11 @@ impl<T: Config> Pallet<T> {
         ensure!(
             !Requests::<T>::contains_key(network_id, incoming_request_hash),
             Error::<T>::RequestIsAlreadyRegistered
+        );
+        let queue_len = RequestsQueue::<T>::get(network_id).len();
+        ensure!(
+            queue_len < T::MaxRequestsPerQueue::get() as usize,
+            Error::<T>::RequestsQueueFull
         );
         if let Err(e) = incoming_request
             .validate()
@@ -1672,11 +1844,6 @@ impl<T: Config> Pallet<T> {
             Self::deposit_event(Event::RegisterRequestFailed(incoming_request_hash, e));
             return Ok(incoming_request_hash);
         }
-        let queue_len = RequestsQueue::<T>::get(network_id).len();
-        ensure!(
-            queue_len < T::MaxRequestsPerQueue::get() as usize,
-            Error::<T>::RequestsQueueFull
-        );
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
         RequestsQueue::<T>::mutate(network_id, |queue| queue.push(incoming_request_hash));
         RequestStatuses::<T>::insert(network_id, incoming_request_hash, RequestStatus::Pending);
@@ -1723,10 +1890,14 @@ impl<T: Config> Pallet<T> {
 
     /// Finds and removes request from `RequestsQueue` by its hash and network id.
     fn remove_request_from_queue(network_id: T::NetworkId, hash: &H256) {
+        let was_queued = RequestsQueue::<T>::get(network_id)
+            .iter()
+            .any(|queued_hash| queued_hash == hash);
+        if !was_queued {
+            return;
+        }
         RequestsQueue::<T>::mutate(network_id, |queue| {
-            if let Some(pos) = queue.iter().position(|x| x == hash) {
-                queue.remove(pos);
-            }
+            queue.retain(|queued_hash| queued_hash != hash);
         });
     }
 
@@ -1752,8 +1923,7 @@ impl<T: Config> Pallet<T> {
             precision <= DEFAULT_BALANCE_PRECISION,
             Error::<T>::UnsupportedAssetPrecision
         );
-        let bridge_account =
-            Self::bridge_account(network_id).expect("networks can't be removed; qed");
+        let bridge_account = Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
         let asset_id = assets::Pallet::<T>::register_from(
             &bridge_account,
             symbol,
@@ -1813,15 +1983,41 @@ impl<T: Config> Pallet<T> {
         Self::add_request(&load_incoming)?;
         match incoming_request_result {
             Ok(incoming_request) => {
-                assert_eq!(net_id, incoming_request.network_id());
+                if net_id != incoming_request.network_id() {
+                    Self::inner_abort_request(
+                        &load_incoming,
+                        sidechain_tx_hash,
+                        Error::<T>::UnknownNetwork.into(),
+                        net_id,
+                    )?;
+                    return Ok(());
+                }
                 let incoming = OffchainRequest::incoming(incoming_request.clone());
                 let incoming_request_hash = incoming.hash();
-                Self::add_request(&incoming)?;
-                Self::finalize_incoming_request_inner(
-                    &incoming_request,
-                    incoming_request_hash,
-                    net_id,
-                )?;
+                if let Err(e) = Self::add_request(&incoming) {
+                    Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
+                    return Ok(());
+                }
+                match RequestStatuses::<T>::get(net_id, incoming_request_hash) {
+                    Some(RequestStatus::Pending) => {
+                        Self::finalize_incoming_request_inner(
+                            &incoming_request,
+                            incoming_request_hash,
+                            net_id,
+                        )?;
+                    }
+                    Some(RequestStatus::Failed(e)) => {
+                        Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
+                    }
+                    _ => {
+                        Self::inner_abort_request(
+                            &load_incoming,
+                            sidechain_tx_hash,
+                            Error::<T>::ExpectedPendingRequest.into(),
+                            net_id,
+                        )?;
+                    }
+                }
             }
             Err(e) => {
                 Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
@@ -1834,7 +2030,7 @@ impl<T: Config> Pallet<T> {
         ocw_public: ecdsa::Public,
         hash: H256,
         signature_params: SignatureParams,
-        author: T::AccountId,
+        author: <T as frame_system::pallet::Config>::AccountId,
         net_id: T::NetworkId,
     ) -> Result<Option<Weight>, DispatchError> {
         let request = Requests::<T>::get(net_id, hash)
@@ -1861,6 +2057,9 @@ impl<T: Config> Pallet<T> {
         let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
         let current_status =
             RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+        if current_status == RequestStatus::Pending && request.should_be_skipped() {
+            return Err(Error::<T>::RequestIsNotReady.into());
+        }
         if !approvers.insert(author.clone()) {
             debug!(
                 "Peer {:?} attempted to resubmit approval for {:?}",
@@ -1872,7 +2071,7 @@ impl<T: Config> Pallet<T> {
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         RequestApprovers::<T>::insert(net_id, &hash, &approvers);
-        if current_status == RequestStatus::Pending && approvals.len() == need_sigs {
+        if current_status == RequestStatus::Pending && approvers.len() == need_sigs {
             if let Err(err) = request.finalize(hash) {
                 error!("Outgoing request finalization failed: {:?}", err);
                 RequestStatuses::<T>::insert(net_id, hash, RequestStatus::Failed(err));
@@ -1912,12 +2111,65 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         asset_id: AssetIdOf<T>,
     ) -> DispatchResult {
+        ensure!(
+            !Self::has_active_outgoing_transfer_request(network_id, &asset_id),
+            Error::<T>::ActiveOutgoingTransferRequest
+        );
         RegisteredAsset::<T>::remove(network_id, asset_id);
         Ok(())
     }
+
+    pub fn is_add_asset_request_pending(network_id: T::NetworkId, asset_id: AssetIdOf<T>) -> bool {
+        RequestsQueue::<T>::get(network_id).into_iter().any(|hash| {
+            matches!(
+                Requests::<T>::get(network_id, hash),
+                Some(OffchainRequest::Outgoing(OutgoingRequest::AddAsset(req), _))
+                    if req.asset_id == asset_id
+            )
+        })
+    }
+
+    pub fn is_add_token_request_pending(
+        network_id: T::NetworkId,
+        token_address: EthAddress,
+    ) -> bool {
+        RequestsQueue::<T>::get(network_id).into_iter().any(|hash| {
+            matches!(
+                Requests::<T>::get(network_id, hash),
+                Some(OffchainRequest::Outgoing(OutgoingRequest::AddToken(req), _))
+                    if req.token_address == token_address
+            )
+        })
+    }
+
+    fn has_active_outgoing_transfer_request(
+        network_id: T::NetworkId,
+        asset_id: &AssetIdOf<T>,
+    ) -> bool {
+        Requests::<T>::iter_prefix(network_id).any(|(hash, request)| {
+            let is_matching_outgoing_transfer = matches!(
+                request,
+                OffchainRequest::Outgoing(OutgoingRequest::Transfer(req), _)
+                    if req.asset_id == *asset_id
+            );
+            let is_active = matches!(
+                RequestStatuses::<T>::get(network_id, hash),
+                Some(
+                    RequestStatus::Pending
+                        | RequestStatus::ApprovalsReady
+                        | RequestStatus::Frozen
+                        | RequestStatus::Broken(_, _)
+                )
+            );
+            is_matching_outgoing_transfer && is_active
+        })
+    }
 }
 
-impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pallet<T> {
+impl<T: Config>
+    BridgeApp<<T as frame_system::pallet::Config>::AccountId, EthAddress, T::AssetId, Balance>
+    for Pallet<T>
+{
     fn is_asset_supported(network_id: GenericNetworkId, asset_id: T::AssetId) -> bool {
         let Ok(network_id) = Self::ensure_generic_network(network_id) else {
             return false;
@@ -1928,7 +2180,7 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
     fn transfer(
         network_id: GenericNetworkId,
         asset_id: T::AssetId,
-        sender: T::AccountId,
+        sender: <T as frame_system::pallet::Config>::AccountId,
         recipient: EthAddress,
         amount: Balance,
     ) -> Result<H256, DispatchError> {
@@ -1954,7 +2206,7 @@ impl<T: Config> BridgeApp<T::AccountId, EthAddress, T::AssetId, Balance> for Pal
     fn refund(
         _network_id: GenericNetworkId,
         _message_id: H256,
-        _recipient: T::AccountId,
+        _recipient: <T as frame_system::pallet::Config>::AccountId,
         _asset_id: T::AssetId,
         _amount: Balance,
     ) -> DispatchResult {

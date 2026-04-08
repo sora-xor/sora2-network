@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -45,8 +47,7 @@ use common::{
     DEFAULT_BALANCE_PRECISION, DOT, KSM, PSWAP, TBCD, VXOR, XOR, XST,
 };
 use currencies::BasicCurrencyAdapter;
-use frame_support::traits::GenesisBuild;
-use frame_support::traits::Hooks;
+use frame_support::traits::{Currency, Hooks};
 use frame_support::weights::Weight;
 use frame_support::{construct_runtime, parameter_types};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -55,7 +56,7 @@ use sp_core::crypto::AccountId32;
 use sp_core::H256;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Zero};
-use sp_runtime::{DispatchError, Perbill};
+use sp_runtime::{BuildStorage, DispatchError, Perbill};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
@@ -66,7 +67,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage, Inherent},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -281,17 +282,19 @@ impl Default for ExtBuilder {
 
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
             .unwrap();
+        let minimum_balance = Balances::minimum_balance();
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
-                (alice(), 0),
-                (bob(), 0),
-                (eve(), 0),
-                (initial_assets_owner(), 0),
+                (alice(), minimum_balance),
+                (bob(), minimum_balance),
+                (eve(), minimum_balance),
+                (initial_assets_owner(), minimum_balance),
             ],
+            dev_accounts: None,
         }
         .assimilate_storage(&mut t)
         .unwrap();

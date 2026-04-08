@@ -32,6 +32,7 @@ use crate::mock::*;
 use common::prelude::Balance;
 use common::{AssetInfoProvider, AssetName, AssetSymbol, DEXId, DEFAULT_BALANCE_PRECISION};
 use frame_support::assert_ok;
+use frame_support::traits::ExistenceRequirement;
 use orml_traits::MultiCurrency;
 use PolySwapActionExample::*;
 
@@ -169,7 +170,13 @@ fn should_have_same_nonce_on_dust_tech_account() {
         assert_eq!(frame_system::Pallet::<Runtime>::account_nonce(&t01), 1);
         tokens::Pallet::<Runtime>::deposit(RedPepper(), &t01, 1u32.into()).unwrap();
         // Would remove the account if its providers count were 0.
-        tokens::Pallet::<Runtime>::withdraw(RedPepper(), &t01, 1u32.into()).unwrap();
+        tokens::Pallet::<Runtime>::withdraw(
+            RedPepper(),
+            &t01,
+            1u32.into(),
+            ExistenceRequirement::AllowDeath,
+        )
+        .unwrap();
         assert_eq!(frame_system::Pallet::<Runtime>::account_nonce(&t01), 1);
     });
 }

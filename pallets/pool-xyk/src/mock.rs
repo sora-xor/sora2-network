@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -48,6 +50,7 @@ use hex_literal::hex;
 use orml_traits::parameter_type_with_key;
 use permissions::{Scope, MANAGE_DEX};
 use sp_core::crypto::AccountId32;
+use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
 use sp_std::collections::btree_set::BTreeSet;
 
@@ -91,7 +94,7 @@ construct_runtime! {
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         DexManager: dex_manager::{Pallet, Call, Config<T>, Storage},
         TradingPair: trading_pair::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -300,9 +303,7 @@ impl Default for ExtBuilder {
 impl ExtBuilder {
     pub fn build(self) -> sp_io::TestExternalities {
         common::test_utils::init_logger();
-        let mut t = frame_system::GenesisConfig::default()
-            .build_storage::<Runtime>()
-            .unwrap();
+        let mut t = SystemConfig::default().build_storage().unwrap();
 
         dex_manager::GenesisConfig::<Runtime> {
             dex_list: self.initial_dex_list,

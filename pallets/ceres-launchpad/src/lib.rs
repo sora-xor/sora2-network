@@ -112,6 +112,7 @@ pub mod pallet {
         const MILLISECONDS_PER_DAY: Self::Moment;
 
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         type TradingPairSourceManager: TradingPairSourceManager<Self::DEXId, AssetIdOf<Self>>;
@@ -142,7 +143,6 @@ pub mod pallet {
     type CeresAssetIdOf<T> = <T as ceres_token_locker::Config>::CeresAssetId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -851,14 +851,28 @@ pub mod pallet {
                         * FixedWrapper::from(ilo_info.team_vesting.team_vesting_percent))
                     .try_into_balance()
                     .unwrap_or(0);
+                let total_vesting_locks = Self::vesting_unlocks_count(
+                    ilo_info.team_vesting.team_vesting_first_release_percent,
+                    ilo_info.team_vesting.team_vesting_percent,
+                );
+                let mut locked_tokens = balance!(0);
 
-                while vesting_amount > balance!(0) {
-                    TokenLocker::<T>::lock_tokens(
-                        origin.clone(),
-                        asset_id,
-                        unlocking_timestamp,
-                        tokens_to_lock_per_period,
-                    )?;
+                for lock_index in 0..total_vesting_locks {
+                    let tokens_to_lock_this_period = if lock_index + 1 == total_vesting_locks {
+                        tokens_to_lock.saturating_sub(locked_tokens)
+                    } else {
+                        tokens_to_lock_per_period
+                    };
+
+                    if !tokens_to_lock_this_period.is_zero() {
+                        TokenLocker::<T>::lock_tokens(
+                            origin.clone(),
+                            asset_id,
+                            unlocking_timestamp,
+                            tokens_to_lock_this_period,
+                        )?;
+                        locked_tokens = locked_tokens.saturating_add(tokens_to_lock_this_period);
+                    }
 
                     unlocking_timestamp += ilo_info.team_vesting.team_vesting_period;
                     vesting_amount = vesting_amount
@@ -946,9 +960,12 @@ pub mod pallet {
             // Get contribution info
             let mut contribution_info = <Contributions<T>>::get(asset_id, &user);
             ensure!(
-                !contribution_info.claiming_finished,
+                !contribution_info.claiming_finished || !ilo_info.failed,
                 Error::<T>::FundsAlreadyClaimed
             );
+            if contribution_info.tokens_claimed >= contribution_info.tokens_bought {
+                return Err(Error::<T>::FundsAlreadyClaimed.into());
+            }
 
             let pallet_account = Self::account_id();
 
@@ -963,71 +980,55 @@ pub mod pallet {
                 )?;
                 contribution_info.claiming_finished = true;
             } else {
-                // First claim
-                if contribution_info.tokens_claimed == balance!(0) {
-                    let tokens_to_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                        * FixedWrapper::from(ilo_info.contributors_vesting.first_release_percent))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                    // Claim first time
-                    T::AssetManager::transfer_from(
-                        &asset_id,
-                        &pallet_account,
-                        &user,
-                        tokens_to_claim,
-                    )?;
-                    contribution_info.tokens_claimed += tokens_to_claim;
-                    if ilo_info.contributors_vesting.first_release_percent == balance!(1) {
-                        contribution_info.claiming_finished = true;
-                    }
+                let first_release_percent = ilo_info.contributors_vesting.first_release_percent;
+                let claimable = if first_release_percent == balance!(1) {
+                    contribution_info
+                        .tokens_bought
+                        .saturating_sub(contribution_info.tokens_claimed)
                 } else {
-                    // Claim the rest parts
                     let current_timestamp = Timestamp::<T>::get();
                     let time_passed = current_timestamp.saturating_sub(ilo_info.finish_timestamp);
-
-                    let potential_claims: u32 = time_passed
+                    let total_vesting_claims: u32 = Self::vesting_unlocks_count(
+                        first_release_percent,
+                        ilo_info.contributors_vesting.vesting_percent,
+                    );
+                    let matured_vesting_claims: u32 = time_passed
                         .checked_div(&ilo_info.contributors_vesting.vesting_period)
                         .unwrap_or(0u32.into())
                         .unique_saturated_into();
-                    if potential_claims == 0 {
-                        return Err(Error::<T>::NothingToClaim.into());
-                    }
-                    let allowed_claims = potential_claims - contribution_info.number_of_claims;
-                    if allowed_claims == 0 {
-                        return Err(Error::<T>::NothingToClaim.into());
-                    }
-
-                    let tokens_per_claim = (FixedWrapper::from(contribution_info.tokens_bought)
-                        * FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                    let mut claimable = (FixedWrapper::from(tokens_per_claim)
-                        * FixedWrapper::from(balance!(allowed_claims)))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                    let left_to_claim =
-                        contribution_info.tokens_bought - contribution_info.tokens_claimed;
-
-                    if left_to_claim < claimable {
-                        claimable = left_to_claim;
-                    }
-
-                    // Claim tokens
-                    T::AssetManager::transfer_from(&asset_id, &pallet_account, &user, claimable)?;
-                    contribution_info.tokens_claimed += claimable;
-                    contribution_info.number_of_claims += (claimable / tokens_per_claim) as u32;
-
-                    let claimed_percent =
-                        (FixedWrapper::from(ilo_info.contributors_vesting.vesting_percent)
-                            * FixedWrapper::from(balance!(contribution_info.number_of_claims)))
+                    let matured_vesting_claims = matured_vesting_claims.min(total_vesting_claims);
+                    let first_release_tokens =
+                        (FixedWrapper::from(contribution_info.tokens_bought)
+                            * FixedWrapper::from(first_release_percent))
                         .try_into_balance()
-                        .unwrap_or(0)
-                            + ilo_info.contributors_vesting.first_release_percent;
+                        .unwrap_or(0);
+                    let vested_tokens = if matured_vesting_claims == total_vesting_claims {
+                        contribution_info.tokens_bought
+                    } else {
+                        let tokens_per_claim =
+                            (FixedWrapper::from(contribution_info.tokens_bought)
+                                * FixedWrapper::from(
+                                    ilo_info.contributors_vesting.vesting_percent,
+                                ))
+                            .try_into_balance()
+                            .unwrap_or(0);
+                        first_release_tokens.saturating_add(
+                            tokens_per_claim.saturating_mul(matured_vesting_claims.into()),
+                        )
+                    };
 
-                    if claimed_percent >= balance!(1) {
-                        contribution_info.claiming_finished = true;
-                    }
+                    contribution_info.number_of_claims = matured_vesting_claims;
+                    vested_tokens.saturating_sub(contribution_info.tokens_claimed)
+                };
+                if claimable.is_zero() {
+                    return Err(Error::<T>::NothingToClaim.into());
                 }
+
+                T::AssetManager::transfer_from(&asset_id, &pallet_account, &user, claimable)?;
+                contribution_info.tokens_claimed =
+                    contribution_info.tokens_claimed.saturating_add(claimable);
+                contribution_info.claiming_finished =
+                    contribution_info.tokens_claimed >= contribution_info.tokens_bought;
             }
 
             <Contributions<T>>::insert(asset_id, &user, contribution_info);
@@ -1233,7 +1234,7 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let mut counter: u64 = 0;
 
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
@@ -1286,6 +1287,14 @@ pub mod pallet {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
             PALLET_ID.into_account_truncating()
+        }
+
+        fn vesting_unlocks_count(first_release_percent: Balance, vesting_percent: Balance) -> u32 {
+            if first_release_percent == balance!(1) {
+                0
+            } else {
+                ((balance!(1) - first_release_percent) / vesting_percent).unique_saturated_into()
+            }
         }
 
         /// Check parameters

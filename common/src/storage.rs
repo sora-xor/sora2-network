@@ -28,14 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use codec::{EncodeLike, FullCodec, FullEncode};
+use codec::{Decode, EncodeLike, FullCodec, FullEncode};
 use frame_support::storage::generator;
 use frame_support::storage::StorageDecodeLength;
 use frame_support::{StorageDoubleMap, StorageMap, StorageValue};
 use sp_core::bounded::{BoundedBTreeMap, BoundedBTreeSet, BoundedVec};
 use sp_core::Get;
 
-pub trait StorageDecodeIsFull: StorageDecodeLength {
+pub trait StorageDecodeIsFull {
     /// Bound on the length of the collection
     fn bound() -> usize;
     /// Decode if the storage value at `key` is full.
@@ -44,26 +44,38 @@ pub trait StorageDecodeIsFull: StorageDecodeLength {
     /// and is a `Compact<u32>`.
     ///
     /// Returns `None` if the storage value does not exist or the decoding failed.
-    fn decode_is_full(key: &[u8]) -> Option<bool> {
-        Self::decode_len(key).map(|l| l >= Self::bound())
-    }
+    fn decode_is_full(key: &[u8]) -> Option<bool>;
 }
 
 impl<K, V, S: Get<u32>> StorageDecodeIsFull for BoundedBTreeMap<K, V, S> {
     fn bound() -> usize {
         S::get() as usize
     }
+
+    fn decode_is_full(key: &[u8]) -> Option<bool> {
+        <Self as StorageDecodeLength>::decode_len(key).map(|l| l >= Self::bound())
+    }
 }
 
-impl<T, S: Get<u32>> StorageDecodeIsFull for BoundedBTreeSet<T, S> {
+impl<T: Decode + Ord, S: Get<u32>> StorageDecodeIsFull for BoundedBTreeSet<T, S> {
     fn bound() -> usize {
         S::get() as usize
+    }
+
+    fn decode_is_full(key: &[u8]) -> Option<bool> {
+        let value = sp_io::storage::get(key)?;
+        let bounded = BoundedBTreeSet::<T, S>::decode(&mut &value[..]).ok()?;
+        Some(bounded.len() >= Self::bound())
     }
 }
 
 impl<T, S: Get<u32>> StorageDecodeIsFull for BoundedVec<T, S> {
     fn bound() -> usize {
         S::get() as usize
+    }
+
+    fn decode_is_full(key: &[u8]) -> Option<bool> {
+        <Self as StorageDecodeLength>::decode_len(key).map(|l| l >= Self::bound())
     }
 }
 

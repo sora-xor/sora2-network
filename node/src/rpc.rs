@@ -33,11 +33,12 @@
 use common::{ContentSource, Description, TradingPair};
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{
-    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, DEXId,
-    FilterMode, Index, LiquiditySourceType, ResolveTime, Runtime, SwapVariant, Symbol,
+    eth_bridge, AccountId, AssetId, AssetName, AssetSymbol, Balance, BalancePrecision, BeefyId,
+    DEXId, FilterMode, Index, LiquiditySourceType, ResolveTime, Runtime, SwapVariant, Symbol,
 };
 use jsonrpsee::RpcModule;
-pub use sc_rpc::{DenyUnsafe, SubscriptionTaskExecutor};
+use sc_client_api::Backend as BackendT;
+pub use sc_rpc::DenyUnsafe;
 use sc_service::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
@@ -53,7 +54,7 @@ use beefy_gadget::communication::notification::{
 /// Dependencies for BEEFY
 pub struct BeefyDeps {
     /// Receives notifications about finality proof events from BEEFY.
-    pub beefy_finality_proof_stream: BeefyVersionedFinalityProofStream<Block>,
+    pub beefy_finality_proof_stream: BeefyVersionedFinalityProofStream<Block, BeefyId>,
     /// Receives notifications about best block events from BEEFY.
     pub beefy_best_block_stream: BeefyBestBlockStream<Block>,
     /// Executor to drive the subscription manager in the BEEFY RPC handler.
@@ -61,11 +62,13 @@ pub struct BeefyDeps {
 }
 
 /// Full client dependencies
-pub struct FullDeps<C, P> {
+pub struct FullDeps<C, P, B> {
     /// The client instance to use.
     pub client: Arc<C>,
     /// Transaction pool instance.
     pub pool: Arc<P>,
+    /// Backend instance.
+    pub backend: Arc<B>,
     /// Whether to deny unsafe calls
     pub deny_unsafe: DenyUnsafe,
     /// BEEFY specific dependencies.
@@ -96,19 +99,20 @@ pub fn add_stage_rpc(
 }
 
 /// Instantiate full RPC extensions.
-pub fn create_full<C, P>(
-    deps: FullDeps<C, P>,
+pub fn create_full<C, P, B>(
+    deps: FullDeps<C, P, B>,
 ) -> Result<RpcExtension, Box<dyn std::error::Error + Send + Sync>>
 where
     C: ProvideRuntimeApi<Block>,
     C: HeaderBackend<Block> + HeaderMetadata<Block, Error = BlockChainError>,
     C: Send + Sync + 'static,
+    B: BackendT<Block> + Send + Sync + 'static,
     C::Api: mmr_rpc::MmrRuntimeApi<
         Block,
         <Block as sp_runtime::traits::Block>::Hash,
         <<Block as sp_runtime::traits::Block>::Header as sp_runtime::traits::Header>::Number,
     >,
-    C::Api: sp_beefy::BeefyApi<Block>,
+    C::Api: sp_beefy::BeefyApi<Block, BeefyId>,
     C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
     C::Api: dex_api_rpc::DEXRuntimeAPI<
@@ -202,13 +206,17 @@ where
     let FullDeps {
         client,
         pool,
-        deny_unsafe,
+        backend,
+        deny_unsafe: _deny_unsafe,
         beefy,
     } = deps;
 
-    io.merge(Mmr::new(client.clone()).into_rpc())?;
+    let offchain_storage = backend
+        .offchain_storage()
+        .ok_or_else(|| std::io::Error::other("offchain storage is not available"))?;
+    io.merge(Mmr::new(client.clone(), offchain_storage).into_rpc())?;
     io.merge(
-        Beefy::<Block>::new(
+        Beefy::<Block, BeefyId>::new(
             beefy.beefy_finality_proof_stream,
             beefy.beefy_best_block_stream,
             beefy.subscription_executor,
@@ -216,7 +224,7 @@ where
         .into_rpc(),
     )?;
 
-    io.merge(System::new(client.clone(), pool.clone(), deny_unsafe).into_rpc())?;
+    io.merge(System::new(client.clone(), pool.clone()).into_rpc())?;
     io.merge(TransactionPayment::new(client.clone()).into_rpc())?;
     io.merge(DEX::new(client.clone()).into_rpc())?;
     io.merge(DEXManager::new(client.clone()).into_rpc())?;

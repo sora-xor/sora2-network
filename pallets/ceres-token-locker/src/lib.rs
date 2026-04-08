@@ -61,6 +61,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config + technical::Config + timestamp::Config {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Ceres asset id
@@ -85,7 +86,6 @@ pub mod pallet {
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub (super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
@@ -252,7 +252,7 @@ pub mod pallet {
             // Get current timestamp
             let current_timestamp = Timestamp::<T>::get();
             ensure!(
-                unlocking_timestamp < current_timestamp,
+                unlocking_timestamp <= current_timestamp,
                 Error::<T>::NotUnlockedYet
             );
 
@@ -334,7 +334,7 @@ pub mod pallet {
     pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
-            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+            frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
             let xor = AssetIdOf::<T>::from(XOR);
             let tbcd = AssetIdOf::<T>::from(TBCD);
 

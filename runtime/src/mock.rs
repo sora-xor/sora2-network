@@ -29,11 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use common::mock::alice;
+use common::DEXId;
 use price_tools::AVG_BLOCK_SPAN;
 
-use crate::{AssetId, PoolXYK, PriceTools, RuntimeOrigin};
+use crate::{AssetId, PoolXYK, PriceTools, RuntimeOrigin, TradingPair};
 
 pub fn ensure_pool_initialized(asset_a: AssetId, asset_b: AssetId) {
+    let _ = TradingPair::register_pair(DEXId::Polkaswap.into(), asset_a, asset_b);
     PoolXYK::initialize_pool(RuntimeOrigin::signed(alice()), 0, asset_a, asset_b).unwrap();
 }
 

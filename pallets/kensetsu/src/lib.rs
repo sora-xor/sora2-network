@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::doc_lazy_continuation, clippy::uninlined_format_args)]
 
 //! Kensetsu is an over collateralized lending protocol, clone of MakerDAO.
 //! An individual can create a collateral debt positions (CDPs) for one of the listed token and
@@ -41,9 +42,9 @@
 
 pub use pallet::*;
 
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::{balance, AssetIdOf, AssetManager, Balance, DataFeed, Rate, SymbolName};
-use frame_support::log::{debug, warn};
+use frame_support::__private::log::{debug, warn};
 use scale_info::TypeInfo;
 use sp_arithmetic::{FixedU128, Perbill, Percent};
 
@@ -76,14 +77,14 @@ const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
 
 /// Staiblecoin may be pegged either to Oracle (like XAU, BTC) or Price tools AssetId (like XOR,
 /// DAI).
-#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq)]
 pub enum PegAsset<AssetId> {
     OracleSymbol(SymbolName),
     SoraAssetId(AssetId),
 }
 
 /// Parameters of the tokens created by the protocol.
-#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq)]
 pub struct StablecoinParameters<AssetId> {
     /// Peg of stablecoin.
     pub peg_asset: PegAsset<AssetId>,
@@ -93,7 +94,7 @@ pub struct StablecoinParameters<AssetId> {
 }
 
 /// Parameters and additional variables related to stablecoins.
-#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub struct StablecoinInfo<AssetId> {
     /// System bad debt, the amount of stablecoins not secured with collateral.
     pub bad_debt: Balance,
@@ -102,7 +103,7 @@ pub struct StablecoinInfo<AssetId> {
     pub stablecoin_parameters: StablecoinParameters<AssetId>,
 }
 
-#[derive(Debug, Clone, Encode, Decode, TypeInfo, PartialEq, Eq)]
+#[derive(Debug, Clone, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq, Eq)]
 pub enum CdpType {
     /// Pays stability fee in underlying collateral, cannot be liquidated.
     Type1,
@@ -112,7 +113,7 @@ pub enum CdpType {
 
 /// Identifier for collateral/stablecoin info.
 /// Consits of collateral and stablecoin asset ids.
-#[derive(Debug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[derive(Debug, Encode, Decode, DecodeWithMemTracking, TypeInfo, MaxEncodedLen)]
 pub struct StablecoinCollateralIdentifier<AssetId> {
     pub collateral_asset_id: AssetId,
     pub stablecoin_asset_id: AssetId,
@@ -124,6 +125,7 @@ pub struct StablecoinCollateralIdentifier<AssetId> {
     Clone,
     Encode,
     Decode,
+    DecodeWithMemTracking,
     MaxEncodedLen,
     TypeInfo,
     PartialEq,
@@ -151,7 +153,7 @@ pub struct CollateralRiskParameters {
 }
 
 /// Collateral parameters, includes risk info and additional data for interest rate calculation
-#[derive(Debug, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, DecodeWithMemTracking, MaxEncodedLen, TypeInfo, PartialEq, Eq)]
 pub struct CollateralInfo<Moment> {
     /// Collateral Risk parameters set by risk management
     pub risk_parameters: CollateralRiskParameters,
@@ -170,7 +172,9 @@ pub struct CollateralInfo<Moment> {
 }
 
 /// CDP - Collateralized Debt Position. It is a single collateral/debt record.
-#[derive(Debug, Clone, Encode, Decode, MaxEncodedLen, TypeInfo, PartialEq)]
+#[derive(
+    Debug, Clone, Encode, Decode, DecodeWithMemTracking, MaxEncodedLen, TypeInfo, PartialEq,
+)]
 pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     /// CDP owner
     pub owner: AccountId,
@@ -192,7 +196,7 @@ pub struct CollateralizedDebtPosition<AccountId, AssetId> {
     pub interest_coefficient: FixedU128,
 }
 
-#[derive(Clone, Debug, Default, Encode, Decode, TypeInfo, PartialEq)]
+#[derive(Clone, Debug, Default, Encode, Decode, DecodeWithMemTracking, TypeInfo, PartialEq)]
 pub struct BorrowTaxes {
     pub ken_borrow_tax: Percent,
     pub karma_borrow_tax: Percent,
@@ -213,7 +217,7 @@ pub mod pallet {
     };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
-    use frame_system::offchain::{SendTransactionTypes, SubmitTransaction};
+    use frame_system::offchain::{CreateBare, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, Saturating};
@@ -229,14 +233,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(5);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Resets liquidation flag.
-        fn on_initialize(_now: T::BlockNumber) -> Weight {
+        fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
             LiquidatedThisBlock::<T>::put(false);
             T::DbWeight::get().writes(1)
         }
@@ -244,7 +247,7 @@ pub mod pallet {
         /// Main off-chain worker procedure.
         ///
         /// Accrues fees and calls liquidations
-        fn offchain_worker(block_number: T::BlockNumber) {
+        fn offchain_worker(block_number: BlockNumberFor<T>) {
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -254,9 +257,8 @@ pub mod pallet {
                 if let Ok(true) = Self::is_accruable(&cdp_id) {
                     debug!("Accrue for CDP {:?}", cdp_id);
                     let call = Call::<T>::accrue { cdp_id };
-                    if let Err(err) =
-                        SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                    {
+                    let tx = T::create_bare(call.into());
+                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
                         debug!(
                             "Failed in offchain_worker send accrue(cdp_id: {:?}): {:?}",
                             cdp_id, err
@@ -298,11 +300,8 @@ pub mod pallet {
                                         |cdp_id| {
                                         debug!("Liquidation of CDP {:?}", cdp_id);
                                         let call = Call::<T>::liquidate { cdp_id: *cdp_id };
-                                        if let Err(err) =
-                                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(
-                                                call.into(),
-                                            )
-                                        {
+                                        let tx = T::create_bare(call.into());
+                                        if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
                                             warn!(
                                                 "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
                                                 cdp_id, err
@@ -320,13 +319,11 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config:
-        frame_system::Config
-        + technical::Config
-        + timestamp::Config
-        + SendTransactionTypes<Call<Self>>
+        frame_system::Config + technical::Config + timestamp::Config + CreateBare<Call<Self>>
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: Randomness<Self::Hash, Self::BlockNumber>;
+        type Randomness: Randomness<Self::Hash, frame_system::pallet_prelude::BlockNumberFor<Self>>;
         type AssetInfoProvider: AssetInfoProvider<
             AssetIdOf<Self>,
             Self::AccountId,
@@ -457,7 +454,6 @@ pub mod pallet {
         pub predefined_stablecoin_oracle_peg: Vec<(AssetIdOf<T>, SymbolName, Balance)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -470,7 +466,7 @@ pub mod pallet {
     /// Populates StablecoinInfos with passed parameters. Used for populating with predefined
     /// stable assets.
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.predefined_stablecoin_sora_peg
                 .iter()
@@ -1609,7 +1605,8 @@ pub mod pallet {
                     tax_percent: Self::tbcd_borrow_tax(),
                     remint_percent: Percent::zero(),
                 });
-                total_borrow_tax_percent = total_borrow_tax_percent + Percent::from_percent(2);
+                total_borrow_tax_percent = total_borrow_tax_percent + Self::karma_borrow_tax();
+                total_borrow_tax_percent = total_borrow_tax_percent + Self::tbcd_borrow_tax();
             }
 
             let borrow_amount_safe = FixedU128::from_inner(borrow_amount_safe_with_tax)
@@ -2385,7 +2382,7 @@ pub mod pallet {
     pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
-            frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+            frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
             for asset_id in [XOR, TBCD] {
                 for (identifier, _) in CollateralInfos::<T>::iter() {
                     if identifier.collateral_asset_id == asset_id.into() {

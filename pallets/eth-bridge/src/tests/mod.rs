@@ -30,13 +30,15 @@
 
 use crate::offchain::SignatureParams;
 use crate::requests::{
-    IncomingRequest, IncomingRequestKind, OffchainRequest, OutgoingRequest, RequestStatus,
+    IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, LoadIncomingMetaRequest,
+    OffchainRequest, OutgoingRequest, RequestStatus,
 };
 use crate::tests::mock::*;
 use crate::util::majority;
 use common::eth;
-use frame_support::dispatch::{DispatchError, Pays, PostDispatchInfo};
+use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::{assert_ok, ensure};
+use sp_runtime::DispatchError;
 
 use secp256k1::{PublicKey, SecretKey};
 use sp_core::{ecdsa, H256};
@@ -45,11 +47,13 @@ use std::collections::BTreeSet;
 mod asset;
 mod cancel;
 mod ethabi;
+mod genesis;
 mod incoming_transfer;
 pub mod mock;
 mod ocw;
 mod outgoing_tranfser;
 mod peer;
+mod rpc;
 
 pub(crate) type Error = crate::Error<Runtime>;
 pub(crate) type Assets = assets::Pallet<Runtime>;
@@ -60,7 +64,7 @@ pub(crate) fn assert_last_event<T: crate::Config>(
     generic_event: <T as crate::Config>::RuntimeEvent,
 ) {
     let events = frame_system::Pallet::<T>::events();
-    let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
+    let system_event: <T as frame_system::pallet::Config>::RuntimeEvent = generic_event.into();
     // compare to the last event record
     let frame_system::EventRecord { event, .. } = &events.last().expect("Event expected");
     assert_eq!(event, &system_event);
@@ -194,12 +198,24 @@ pub fn request_incoming(
     kind: IncomingRequestKind,
     net_id: u32,
 ) -> Result<H256, RuntimeEvent> {
-    assert_ok!(EthBridge::request_from_sidechain(
-        RuntimeOrigin::signed(account_id),
-        tx_hash,
-        kind,
-        net_id
-    ));
+    if let IncomingRequestKind::Meta(IncomingMetaRequestKind::CancelOutgoingRequest) = kind {
+        let timepoint = bridge_multisig::Pallet::<Runtime>::thischain_timepoint();
+        let request = OffchainRequest::load_incoming_meta(LoadIncomingMetaRequest::new(
+            account_id,
+            tx_hash,
+            timepoint,
+            IncomingMetaRequestKind::CancelOutgoingRequest,
+            net_id,
+        ));
+        assert_ok!(EthBridge::add_request(&request));
+    } else {
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(account_id),
+            tx_hash,
+            kind,
+            net_id
+        ));
+    }
     let last_request: OffchainRequest<Runtime> = last_request(net_id).unwrap();
     match last_request {
         OffchainRequest::LoadIncoming(..) => (),

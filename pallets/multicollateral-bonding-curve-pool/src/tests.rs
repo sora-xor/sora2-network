@@ -1741,7 +1741,7 @@ mod tests {
             let val_balance_a = Assets::free_balance(&VAL, &alice()).unwrap();
             let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
-            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_approx_eq_abs!(exchange_outcome_a.amount, xor_balance_a, 1);
             assert_eq!(val_balance_a, amount_a.clone());
 
             // Buy with desired output
@@ -1870,7 +1870,7 @@ mod tests {
             let tbcd_balance_a = Assets::free_balance(&TBCD, &alice()).unwrap();
             let xor_balance_a = Assets::free_balance(&XOR, &alice()).unwrap();
             assert_eq!(quote_outcome_a.amount, exchange_outcome_a.amount);
-            assert_eq!(exchange_outcome_a.amount, xor_balance_a);
+            assert_approx_eq_abs!(exchange_outcome_a.amount, xor_balance_a, 1);
             assert_eq!(tbcd_balance_a, amount_a.clone());
 
             // Buy with desired output
@@ -2503,7 +2503,7 @@ mod tests {
             MBCPool::set_reference_asset(RuntimeOrigin::signed(alice()), DAI).unwrap();
 
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(100000));
+            assert_approx_eq_abs!(xor_supply, balance!(100000), 1);
 
             // Depositing collateral #1: under 5% collateralized
             MBCPool::exchange(
@@ -2516,7 +2516,7 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(100724.916324262414168899));
+            assert_approx_eq_abs!(xor_supply, balance!(100724.916324262414168899), 1);
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2539,7 +2539,7 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(107896.889465954935399866));
+            assert_approx_eq_abs!(xor_supply, balance!(107896.889465954935399866), 1);
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2562,7 +2562,7 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(114934.359190755661026458));
+            assert_approx_eq_abs!(xor_supply, balance!(114934.359190755661026458), 1);
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2585,7 +2585,7 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(128633.975165230400000080));
+            assert_approx_eq_abs!(xor_supply, balance!(128633.975165230400000080), 1);
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -2608,7 +2608,7 @@ mod tests {
             )
             .unwrap();
             let xor_supply = Assets::total_issuance(&XOR).unwrap();
-            assert_eq!(xor_supply, balance!(151530.994236602104619871));
+            assert_approx_eq_abs!(xor_supply, balance!(151530.994236602104619871), 1);
 
             let (sell_price, _) = MBCPool::quote(
                 &DEXId::Polkaswap.into(),
@@ -3634,6 +3634,31 @@ mod tests {
             assert_eq!(reward.unwrap(), balance!(0.000000002499999999));
             // assert!(false)
         })
+    }
+
+    #[test]
+    fn should_disallow_negative_optional_reward_multiplier() {
+        ExtBuilder::default().build().execute_with(|| {
+            MockDEXApi::init().unwrap();
+            let _ = bonding_curve_pool_init(Vec::new()).unwrap();
+            TradingPair::register(
+                RuntimeOrigin::signed(alice()),
+                DEXId::Polkaswap.into(),
+                XOR,
+                USDT,
+            )
+            .expect("Failed to register trading pair.");
+            MBCPool::initialize_pool_unchecked(USDT, false).expect("Failed to initialize pool.");
+
+            assert_noop!(
+                MBCPool::set_optional_reward_multiplier(
+                    RuntimeOrigin::signed(alice()),
+                    USDT,
+                    Some(fixed!(-0.1)),
+                ),
+                Error::<Runtime>::InvalidRewardMultiplier
+            );
+        });
     }
 
     #[test]

@@ -30,7 +30,7 @@
 
 use crate::prelude::FixedWrapper;
 use crate::{Balance, FixedPrecision};
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use fixnum::ops::RoundMode;
@@ -75,7 +75,16 @@ const RATIO: u128 = 1_000_000_000_000_000_000;
 /// - in `StorageMap` (that uses encoded values as keys) `a` and `b` are considered different
 /// keys, but in `BTreeMap` (that uses `Ord`) they are unified.
 #[derive(
-    Encode, Decode, Copy, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BalanceUnit {

@@ -15,10 +15,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#[cfg(feature = "runtime-benchmarks")]
+use crate::benchmarking::{inherent_benchmark_data, AssetTransferBuilder, RemarkBuilder};
 use crate::cli::{Cli, Subcommand};
 use crate::service;
-use sc_cli::{ChainSpec, RuntimeVersion, SubstrateCli};
+#[cfg(feature = "runtime-benchmarks")]
+use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
+use sc_cli::SubstrateCli;
 use sc_service::PartialComponents;
+#[cfg(feature = "runtime-benchmarks")]
+use sp_keyring::Sr25519Keyring;
 
 fn set_default_ss58_version() {
     sp_core::crypto::set_default_ss58_version(sp_core::crypto::Ss58AddressFormat::from(
@@ -92,9 +98,22 @@ impl SubstrateCli for Cli {
 
         Ok(Box::new(chain_spec))
     }
+}
 
-    fn native_runtime_version(_: &Box<dyn ChainSpec>) -> &'static RuntimeVersion {
-        &framenode_runtime::VERSION
+#[cfg(all(test, feature = "private-net"))]
+mod tests {
+    use super::Cli;
+    use clap::Parser;
+    use sc_cli::SubstrateCli;
+
+    #[test]
+    fn private_chain_specs_load_with_default_node_features() {
+        let cli = Cli::parse_from(["framenode"]);
+
+        <Cli as SubstrateCli>::load_spec(&cli, "local")
+            .expect("local chainspec should load with embedded wasm");
+        <Cli as SubstrateCli>::load_spec(&cli, "dev")
+            .expect("dev chainspec should load with embedded wasm");
     }
 }
 
@@ -179,65 +198,57 @@ pub fn run() -> sc_cli::Result<()> {
         }
         #[cfg(feature = "runtime-benchmarks")]
         Some(Subcommand::Benchmark(cmd)) => {
-            use frame_benchmarking_cli::BenchmarkCmd;
-            use sc_chain_spec::ChainType;
-            use sc_service::Error;
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
-            let chain_spec = &runner.config().chain_spec;
 
             match cmd {
                 BenchmarkCmd::Storage(cmd) => runner.sync_run(|mut config| {
-                    let PartialComponents {
-                        client, backend, ..
-                    } = service::new_partial(&mut config, None)?;
-                    let db = backend.expose_db();
-                    let storage = backend.expose_storage();
-                    cmd.run(config, client, db, storage)
+                    let partial = service::new_partial(&mut config, None)?;
+                    let db = partial.backend.expose_db();
+                    let storage = partial.backend.expose_storage();
+                    let shared_trie_cache = partial.backend.expose_shared_trie_cache();
+                    cmd.run(config, partial.client, db, storage, shared_trie_cache)
                 }),
                 BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
-                    let PartialComponents { client, .. } = service::new_partial(&mut config, None)?;
-
-                    cmd.run(client)
+                    let partial = service::new_partial(&mut config, None)?;
+                    cmd.run(partial.client)
                 }),
-                BenchmarkCmd::Pallet(cmd) => {
-                    if !matches!(chain_spec.chain_type(), ChainType::Development) {
-                        return Err(Error::Other("Available only for dev chain".into()).into());
-                    }
+                BenchmarkCmd::Pallet(cmd) => runner.sync_run(|config| {
+                    cmd.run_with_spec::<sp_runtime::traits::HashingFor<framenode_runtime::Block>, ()>(Some(config.chain_spec))
+                }),
+                BenchmarkCmd::Overhead(cmd) => runner.sync_run(|mut config| {
+                    let partial = service::new_partial(&mut config, None)?;
+                    let ext_builder = RemarkBuilder::new(partial.client.clone());
+                    cmd.run(
+                        config.chain_spec.name().into(),
+                        partial.client,
+                        inherent_benchmark_data()?,
+                        Vec::new(),
+                        &ext_builder,
+                        false,
+                    )
+                }),
+                BenchmarkCmd::Extrinsic(cmd) => runner.sync_run(|mut config| {
+                    let partial = service::new_partial(&mut config, None)?;
+                    let ext_factory = ExtrinsicFactory(vec![
+                        Box::new(RemarkBuilder::new(partial.client.clone())),
+                        Box::new(AssetTransferBuilder::new(
+                            partial.client.clone(),
+                            Sr25519Keyring::Alice.to_account_id(),
+                            core::cmp::max(framenode_runtime::ExistentialDeposit::get(), 1_u128),
+                        )),
+                    ]);
 
-                    runner.sync_run(|config| {
-                        cmd.run::<framenode_runtime::Block, service::ExecutorDispatch>(config)
-                    })
-                }
-                #[allow(unreachable_patterns)]
-                _ => Err(Error::Other("Command not implemented".into()).into()),
+                    cmd.run(
+                        partial.client,
+                        inherent_benchmark_data()?,
+                        Vec::new(),
+                        &ext_factory,
+                    )
+                }),
+                BenchmarkCmd::Machine(cmd) =>
+                    runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
             }
-        }
-        #[cfg(feature = "try-runtime")]
-        Some(Subcommand::TryRuntime(cmd)) => {
-            use sc_executor::{sp_wasm_interface::ExtendedHostFunctions, NativeExecutionDispatch};
-            type HostFunctionsOf<E> = ExtendedHostFunctions<
-                sp_io::SubstrateHostFunctions,
-                <E as NativeExecutionDispatch>::ExtendHostFunctions,
-            >;
-            let runner = cli.create_runner(cmd)?;
-            set_default_ss58_version();
-
-            use sc_service::TaskManager;
-            let registry = &runner
-                .config()
-                .prometheus_config
-                .as_ref()
-                .map(|cfg| &cfg.registry);
-            let task_manager = TaskManager::new(runner.config().tokio_handle.clone(), *registry)
-                .map_err(|e| sc_cli::Error::Service(sc_service::Error::Prometheus(e)))?;
-
-            runner.async_run(|_config| {
-                Ok((
-                    cmd.run::<framenode_runtime::Block, HostFunctionsOf<service::ExecutorDispatch>>(),
-                    task_manager,
-                ))
-            })
         }
         #[cfg(feature = "private-net")]
         Some(Subcommand::ForkOff(cmd)) => {

@@ -1,3 +1,5 @@
+#![allow(deprecated, dead_code, unused_imports)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
@@ -39,11 +41,11 @@ use common::{
 };
 use currencies::BasicCurrencyAdapter;
 use frame_support::parameter_types;
-use frame_system::offchain::SendTransactionTypes;
+use frame_system::offchain::{CreateBare, CreateTransactionBase};
 use sp_runtime::MultiSignature;
 use sp_runtime::{
-    testing::TestXt,
     traits::{IdentifyAccount, Verify},
+    BuildStorage,
 };
 
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -62,7 +64,7 @@ frame_support::construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Assets: assets::{Pallet, Call, Storage, Config<T>, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Technical: technical::{Pallet, Call, Config<T>, Event<T>},
@@ -72,14 +74,21 @@ frame_support::construct_runtime!(
     }
 );
 
-pub type MockExtrinsic = TestXt<RuntimeCall, ()>;
-
-impl<LocalCall> SendTransactionTypes<LocalCall> for TestRuntime
+impl<LocalCall> CreateTransactionBase<LocalCall> for TestRuntime
 where
     RuntimeCall: From<LocalCall>,
 {
-    type Extrinsic = MockExtrinsic;
-    type OverarchingCall = RuntimeCall;
+    type Extrinsic = UncheckedExtrinsic;
+    type RuntimeCall = RuntimeCall;
+}
+
+impl<LocalCall> CreateBare<LocalCall> for TestRuntime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_bare(call: RuntimeCall) -> Self::Extrinsic {
+        UncheckedExtrinsic::new_bare(call)
+    }
 }
 
 parameter_types! {
@@ -99,10 +108,7 @@ mock_tokens_config!(TestRuntime);
 
 // Builds testing externalities
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let mut ext: sp_io::TestExternalities = frame_system::GenesisConfig::default()
-        .build_storage::<TestRuntime>()
-        .unwrap()
-        .into();
+    let mut ext: sp_io::TestExternalities = SystemConfig::default().build_storage().unwrap().into();
     ext.execute_with(|| {
         System::set_block_number(1); // No events in zero block
     });

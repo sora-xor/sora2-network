@@ -31,13 +31,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::HasCompact;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use codec::{FullCodec, MaxEncodedLen};
-use frame_support::log;
+use frame_support::__private::log;
 use frame_support::{dispatch::DispatchResult, weights::Weight};
 use frame_support::{
-    CloneNoBound, EqNoBound, PartialEqNoBound, RuntimeDebug, RuntimeDebugNoBound,
-    StoragePrefixedMap,
+    CloneNoBound, EqNoBound, PartialEqNoBound, RuntimeDebugNoBound, StoragePrefixedMap,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
@@ -45,12 +44,25 @@ use sp_core::bounded::BoundedVec;
 use sp_runtime::traits::CheckedMul;
 use sp_runtime::traits::{Convert, ConvertBack, One, Saturating, Zero};
 use sp_runtime::Perbill;
+use sp_runtime::RuntimeDebug;
 use sp_staking::EraIndex;
 use sp_std::prelude::*;
 
 pub use pallet::*;
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, Debug)]
+#[derive(
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    MaxEncodedLen,
+    Debug,
+)]
 pub enum MigrationStage {
     #[default]
     Initial,
@@ -154,13 +166,14 @@ pub mod pallet {
         + pallet_preimage::Config
         + tokens::Config
     {
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         #[pallet::constant]
         type RemoveReadPerBlock: Get<u64>;
 
         type ShouldRemoveAccount: ShouldRemoveAccount<
-            frame_system::AccountInfo<Self::Index, Self::AccountData>,
+            frame_system::AccountInfo<Self::Nonce, Self::AccountData>,
         >;
 
         type OffencesConverter: ConvertBack<
@@ -193,7 +206,6 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -239,7 +251,7 @@ pub mod pallet {
         pallet_identity::Registration<
             BalanceOf<T>,
             <T as pallet_identity::Config>::MaxRegistrars,
-            <T as pallet_identity::Config>::MaxAdditionalFields,
+            <T as pallet_identity::Config>::IdentityInformation,
         >,
         OptionQuery,
     >;
@@ -252,6 +264,7 @@ pub mod pallet {
                 pallet_identity::RegistrarInfo<
                     BalanceOf<T>,
                     <T as frame_system::Config>::AccountId,
+                    <<T as pallet_identity::Config>::IdentityInformation as pallet_identity::IdentityInformationProvider>::FieldsIdentifier,
                 >,
             >,
             <T as pallet_identity::Config>::MaxRegistrars,
@@ -313,12 +326,15 @@ pub mod pallet {
         pallet_preimage::Pallet<T>,
         Identity,
         <T as frame_system::Config>::Hash,
-        pallet_preimage::RequestStatus<<T as frame_system::Config>::AccountId, BalanceOf<T>>,
+        pallet_preimage::RequestStatus<
+            <T as frame_system::Config>::AccountId,
+            <T as pallet_preimage::Config>::Consideration,
+        >,
     >;
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_n: T::BlockNumber) -> Weight {
+        fn on_initialize(_n: BlockNumberFor<T>) -> Weight {
             if Self::current_migration_stage() != MigrationStage::RemoveAccounts {
                 return T::DbWeight::get().reads(1);
             }
@@ -429,14 +445,7 @@ impl<Value: FullCodec, Map: StoragePrefixedMap<Value>> StorageMapExt<Value> for 
             count += 1;
             Some(v)
         });
-        let module = core::str::from_utf8(Self::module_prefix()).unwrap_or_default();
-        let storage = core::str::from_utf8(Self::storage_prefix()).unwrap_or_default();
-        log::info!(
-            "Denominated {} values in storage {}::{}",
-            count,
-            module,
-            storage
-        );
+        log::info!("Denominated {count} values in storage map");
     }
 }
 
@@ -455,16 +464,15 @@ impl<T: Config> Pallet<T> {
 
     fn denominate_balances(denominator: BalanceOf<T>) -> DispatchResult {
         let mut total_issuance = BalanceOf::<T>::zero();
-        for account in frame_system::Account::<T>::iter_keys() {
-            pallet_balances::Pallet::<T>::mutate_account(&account, |account| {
-                account.free /= denominator;
-                account.reserved /= denominator;
-                account.misc_frozen /= denominator;
-                account.fee_frozen /= denominator;
+        for account in pallet_balances::Account::<T>::iter_keys() {
+            pallet_balances::Account::<T>::mutate(&account, |account_data| {
+                account_data.free /= denominator;
+                account_data.reserved /= denominator;
+                account_data.frozen /= denominator;
                 total_issuance = total_issuance
-                    .saturating_add(account.free)
-                    .saturating_add(account.reserved);
-            })?;
+                    .saturating_add(account_data.free)
+                    .saturating_add(account_data.reserved);
+            });
         }
         pallet_balances::Locks::<T>::modify_values(|locks| {
             *locks = locks
@@ -671,19 +679,9 @@ impl<T: Config> Pallet<T> {
     }
 
     fn denominate_preimage(denominator: BalanceOf<T>) -> DispatchResult {
-        StatusFor::<T>::modify_values(|v| match v {
-            pallet_preimage::RequestStatus::Unrequested {
-                deposit: (_, balance),
-                ..
-            }
-            | pallet_preimage::RequestStatus::Requested {
-                deposit: Some((_, balance)),
-                ..
-            } => {
-                *balance /= denominator;
-            }
-            _ => {}
-        });
+        let _ = denominator;
+        // Preimage now stores a generic consideration ticket instead of a balance deposit.
+        // The ticket cannot be safely denominated with arithmetic division.
         Ok(())
     }
 }

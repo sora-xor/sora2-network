@@ -2,7 +2,7 @@ use crate::*;
 use codec::{Decode, Encode};
 use common::generate_storage_instance;
 use common::{AssetIdOf, CERES_ASSET_ID};
-use frame_support::log;
+use frame_support::__private::log;
 use frame_support::pallet_prelude::*;
 use frame_support::BoundedVec;
 use hex_literal::hex;
@@ -40,7 +40,7 @@ type OldVoting<T> = StorageDoubleMap<
     ValueQuery,
 >;
 
-pub fn migrate<T: Config>() -> Result<(), &'static str> {
+pub fn migrate<T: Config>() -> Result<(), sp_runtime::DispatchError> {
     let poll_asset: AssetIdOf<T> = CERES_ASSET_ID.into();
     let user = AuthorityAccount::<T>::get();
     let bytes = hex!("c4e7d5a63d8e887932bb6dc505dd204005c3ecfb6de5f1f0d3ac0a308b2b2915");
@@ -52,7 +52,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
 
     //Drain old data
     let number_of_drained_polls = OldPollData::<T::Moment>::drain().count();
-    log::info!("Number of drained polls: {}", number_of_drained_polls);
+    log::info!("Number of drained polls: {number_of_drained_polls}");
 
     let mut poll_start_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647612888u32.into();
     poll_start_timestamp_a *= 1000u32.into();
@@ -64,7 +64,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     let description_a =  BoundedString::truncate_from(
         "The Ceres v2 staking pool would have 300 CERES rewards taken from the Ceres Treasury wallet. Staking would have a 14,400 CERES pool limit and would last a month and a half with minimum APR 16.66%.");
 
-    let nonce: <T as frame_system::Config>::Index = 305u32.into();
+    let nonce: <T as frame_system::Config>::Nonce = 305u32.into();
     let encoded = (&first_poll_creator, nonce).using_encoded(blake2_256);
     let poll_id_a = H256::from(encoded);
 
@@ -90,7 +90,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
         "Ceres Launchpad is coming soon with new SORA runtime release. Launchpad requires KYC services which should be paid (about $11,740).",
     );
 
-    let nonce: <T as frame_system::Config>::Index = 15u32.into();
+    let nonce: <T as frame_system::Config>::Nonce = 15u32.into();
     let encoded = (&user, nonce).using_encoded(blake2_256);
     let poll_id_b = H256::from(encoded);
 
@@ -115,7 +115,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
     );
     let description_c =  BoundedString::truncate_from("The Ceres team plans to integrate its services and tools on other parachains in the DotSama ecosystem (Ceres/Demeter liquidity and Demeter farming still remain on SORA, it is the base of the Ceres project). The first parachain that the Ceres team wants to integrate their products on is Astar. For this purpose, liquidity should be provided for the CERES token on the Astar network and the proposal is to use 20,000 DAI and 582.46 CERES from the Treasury. If there is an opportunity in the future, the plan is to return the funds to the Treasury. Demeter liquidity (DEO Arena integration) on Astar will be provided from team's funds.");
 
-    let nonce: <T as frame_system::Config>::Index = 69u32.into();
+    let nonce: <T as frame_system::Config>::Nonce = 69u32.into();
     let encoded = (&user, nonce).using_encoded(blake2_256);
     let poll_id_c = H256::from(encoded);
 
@@ -141,7 +141,7 @@ pub fn migrate<T: Config>() -> Result<(), &'static str> {
         "Until now, the portion of Ceres fees was used for rewards for the XOR/CERES farming pool. If the pool were to close, CERES tokens would go for burning.",
     );
 
-    let nonce: <T as frame_system::Config>::Index = 166u32.into();
+    let nonce: <T as frame_system::Config>::Nonce = 166u32.into();
     let encoded = (&user, nonce).using_encoded(blake2_256);
     let poll_id_d = H256::from(encoded);
 

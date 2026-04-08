@@ -600,7 +600,7 @@ pub trait Config: frame_system::Config {
     /// Currency to transfer, reserve/unreserve, lock/unlock assets
     type MultiCurrency: MultiLockableCurrency<
             Self::AccountId,
-            Moment = Self::BlockNumber,
+            Moment = frame_system::pallet_prelude::BlockNumberFor<Self>,
             CurrencyId = AssetIdOf<Self>,
             Balance = Balance,
         > + MultiReservableCurrency<Self::AccountId, CurrencyId = AssetIdOf<Self>, Balance = Balance>

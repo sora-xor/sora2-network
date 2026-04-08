@@ -50,6 +50,7 @@ use common::prelude::{
     Balance, EnsureDEXManager, EnsureTradingPairExists, Fixed, FixedWrapper, GetBaseAssetIdOf,
     OutcomeFee, PriceToolsProvider, QuoteAmount, SwapAmount, SwapOutcome,
 };
+use common::USDT;
 use common::{
     balance, fixed, fixed_u256, fixed_wrapper_u256, AssetIdOf, AssetInfoProvider, AssetManager,
     BalanceOf, BuyBackHandler, DEXId, DexIdOf, FixedWrapper256, GetMarketInfo, LiquidityProxyTrait,
@@ -62,16 +63,12 @@ use frame_support::weights::Weight;
 use frame_support::{ensure, fail};
 use frame_system::pallet_prelude::BlockNumberFor;
 use permissions::{Scope, BURN, MINT};
+use serde::{Deserialize, Serialize};
 use sp_runtime::{traits::One, DispatchError, DispatchResult, Saturating};
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 pub use weights::WeightInfo;
-#[cfg(feature = "std")]
-use {
-    common::USDT,
-    serde::{Deserialize, Serialize},
-};
 
 pub mod migrations;
 
@@ -85,6 +82,7 @@ pub const TECH_ACCOUNT_FREE_RESERVES: &[u8] = b"free_reserves";
 pub use pallet::*;
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum DistributionAccount<AccountId, TechAccountId> {
     Account(AccountId),
@@ -98,6 +96,7 @@ impl<AccountId, TechAccountId: Default> Default for DistributionAccount<AccountI
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccountData<DistributionAccount> {
     pub account: DistributionAccount,
@@ -123,6 +122,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
 }
 
 #[derive(Debug, Encode, Decode, Clone, PartialEq, scale_info::TypeInfo)]
+#[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DistributionAccounts<DistributionAccountData> {
     pub xor_allocation: DistributionAccountData,
@@ -193,6 +193,7 @@ pub mod pallet {
     {
         const RETRY_DISTRIBUTION_FREQUENCY: BlockNumberFor<Self>;
         const SPLIT_FAILED_DISTRIBUTION_COUNT: u32;
+        #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
         type EnsureDEXManager: EnsureDEXManager<Self::DEXId, Self::AccountId, DispatchError>;
@@ -227,14 +228,13 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(block_number: T::BlockNumber) -> Weight {
+        fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
             let elems =
                 Pallet::<T>::free_reserves_distribution_routine(block_number).unwrap_or_default();
             <T as Config>::WeightInfo::on_initialize(elems)
@@ -294,6 +294,9 @@ pub mod pallet {
                 Self::enabled_targets().contains(&collateral_asset_id),
                 Error::<T>::UnsupportedCollateralAssetId
             );
+            if let Some(multiplier) = multiplier {
+                ensure!(multiplier >= fixed!(0), Error::<T>::InvalidRewardMultiplier);
+            }
             // NOTE: not using insert() here because it unwraps Option, which is not intended
             AssetsWithOptionalRewardMultiplier::<T>::mutate(&collateral_asset_id, |opt| {
                 *opt = multiplier.clone()
@@ -391,6 +394,8 @@ pub mod pallet {
         RewardsSupplyShortage,
         /// Indicated collateral asset is not enabled for pool.
         UnsupportedCollateralAssetId,
+        /// Reward multiplier must be non-negative.
+        InvalidRewardMultiplier,
         /// Could not calculate fee including sell penalty.
         FeeCalculationFailed,
         /// Liquidity source can't exchange assets with the given IDs on the given DEXId.
@@ -568,7 +573,6 @@ pub mod pallet {
         pub free_reserves_account_id: Option<T::AccountId>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -583,22 +587,29 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
-            frame_system::Pallet::<T>::inc_consumers(&self.incentives_account_id.as_ref().unwrap())
-                .unwrap();
             ReservesAcc::<T>::put(&self.reserves_account_id);
             DistributionAccountsEntry::<T>::put(&self.distribution_accounts);
             ReferenceAssetId::<T>::put(&self.reference_asset_id);
-            IncentivesAccountId::<T>::put(&self.incentives_account_id.as_ref().unwrap());
-            FreeReservesAccountId::<T>::put(&self.free_reserves_account_id.as_ref().unwrap());
-            self.initial_collateral_assets
-                .iter()
-                .cloned()
-                .for_each(|asset_id| {
-                    Pallet::<T>::initialize_pool_unchecked(asset_id, false)
-                        .expect("Failed to initialize bonding curve.")
-                });
+            if let Some(incentives_account_id) = self.incentives_account_id.as_ref() {
+                if frame_system::Pallet::<T>::inc_consumers(incentives_account_id).is_err() {
+                    frame_system::Pallet::<T>::inc_providers(incentives_account_id);
+                }
+                IncentivesAccountId::<T>::put(incentives_account_id);
+            }
+            if let Some(free_reserves_account_id) = self.free_reserves_account_id.as_ref() {
+                FreeReservesAccountId::<T>::put(free_reserves_account_id);
+            }
+            if self.incentives_account_id.is_some() && self.free_reserves_account_id.is_some() {
+                self.initial_collateral_assets
+                    .iter()
+                    .cloned()
+                    .for_each(|asset_id| {
+                        Pallet::<T>::initialize_pool_unchecked(asset_id, false)
+                            .expect("Failed to initialize bonding curve.")
+                    });
+            }
         }
     }
 }
@@ -834,7 +845,9 @@ impl<T: Config> Pallet<T> {
             Ok(())
         })
         .map_err(|err| {
-            frame_support::log::error!("Reserves distribution failed, will try next time: {err:?}");
+            frame_support::__private::log::error!(
+                "Reserves distribution failed, will try next time: {err:?}"
+            );
             err
         })
     }
@@ -2038,7 +2051,7 @@ pub struct DenominateTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> frame_support::dispatch::DispatchResult {
-        frame_support::log::info!("{}::on_denominate({})", module_path!(), factor);
+        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         let reserves_account_id =
             &Technical::<T>::tech_account_id_to_account_id(&Pallet::<T>::reserves_account_id())?;
         Pallet::<T>::update_collateral_reserves(&TBCD.into(), reserves_account_id)?;

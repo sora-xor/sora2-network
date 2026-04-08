@@ -145,7 +145,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 } else {
                     PriceVariant::Sell
                 };
-                let (Some(deal_amount), Some(average_price)) = (maybe_deal_amount, maybe_average_price) else {
+                let (Some(deal_amount), Some(average_price)) =
+                    (maybe_deal_amount, maybe_average_price)
+                else {
                     // should never happen
                     return Err(Error::<T>::PriceCalculationFailed.into());
                 };
@@ -168,7 +170,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
                 } else {
                     PriceVariant::Sell
                 };
-                let (Some(deal_amount), Some(market_order_average_price)) = (maybe_deal_amount, maybe_average_price) else {
+                let (Some(deal_amount), Some(market_order_average_price)) =
+                    (maybe_deal_amount, maybe_average_price)
+                else {
                     // should never happen
                     return Err(Error::<T>::PriceCalculationFailed.into());
                 };
@@ -244,8 +248,8 @@ impl<T: crate::Config + Sized> OrderBook<T> {
 
         let market_change = self.calculate_market_order_impact(market_order.clone(), data)?;
 
-        let (Some(input), Some(output)) =
-            (market_change.deal_input, market_change.deal_output) else {
+        let (Some(input), Some(output)) = (market_change.deal_input, market_change.deal_output)
+        else {
             // should never happen
             return Err(Error::<T>::PriceCalculationFailed.into());
         };
@@ -460,7 +464,9 @@ impl<T: crate::Config + Sized> OrderBook<T> {
         };
 
         for (price, _) in market_data {
-            let Some(price_level) = data.get_limit_orders_by_price(&self.order_book_id, direction.switched(), price) else {
+            let Some(price_level) =
+                data.get_limit_orders_by_price(&self.order_book_id, direction.switched(), price)
+            else {
                 return Err(Error::<T>::NotEnoughLiquidityInOrderBook.into());
             };
 
