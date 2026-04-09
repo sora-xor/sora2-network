@@ -63,13 +63,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 
-#[cfg(feature = "runtime-benchmarks")]
+// Historical SORA runtimes on mainnet require these imports during sync, so the
+// node must expose them even in non-benchmark release builds.
 type HostFunctions = (
     sp_io::SubstrateHostFunctions,
     frame_benchmarking::benchmarking::HostFunctions,
 );
-#[cfg(not(feature = "runtime-benchmarks"))]
-type HostFunctions = (sp_io::SubstrateHostFunctions,);
 pub(crate) type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 type FullBackend = sc_service::TFullBackend<Block>;
