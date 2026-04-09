@@ -45,7 +45,6 @@ COPY Cargo.lock /app
 COPY Cargo.toml /app
 COPY pallets /app/pallets
 COPY runtime /app/runtime
-COPY relayer /app/relayer
 COPY common /app/common
 COPY utils /app/utils
 COPY node /app/node
@@ -63,7 +62,6 @@ COPY Cargo.lock /app
 COPY Cargo.toml /app
 COPY pallets /app/pallets
 COPY runtime /app/runtime
-COPY relayer /app/relayer
 COPY common /app/common
 COPY utils /app/utils
 COPY node /app/node
@@ -79,4 +77,4 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/framenode /app/target/release/relayer /usr/local/bin
+COPY --from=builder /app/target/release/framenode /usr/local/bin
