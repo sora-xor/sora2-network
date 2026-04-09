@@ -45,6 +45,7 @@ FROM rust AS planner
 WORKDIR /app
 COPY Cargo.lock /app
 COPY Cargo.toml /app
+COPY misc /app/misc
 COPY pallets /app/pallets
 COPY runtime /app/runtime
 COPY common /app/common
@@ -58,10 +59,11 @@ ARG GIT_COMMIT
 ENV GIT_COMMIT=${GIT_COMMIT}
 COPY --from=planner /app/recipe.json recipe.json
 # cache dependencies build
-RUN cargo chef cook --release --features private-net,wip,stage --recipe-path recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 # build
 COPY Cargo.lock /app
 COPY Cargo.toml /app
+COPY misc /app/misc
 COPY pallets /app/pallets
 COPY runtime /app/runtime
 COPY common /app/common
@@ -69,17 +71,10 @@ COPY utils /app/utils
 COPY node /app/node
 COPY .hooks /app/.hooks
 COPY .cargo /app/.cargo
-RUN cargo build --release --features private-net,wip,stage
+RUN cargo build --release
 
 # runtime
 FROM debian:bullseye-slim
-RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec \
-      sed -i 's|http://deb.debian.org|https://deb.debian.org|g; s|http://security.debian.org|https://security.debian.org|g' {} + && \
-    apt-get update -o Acquire::Retries=5 && \
-    apt-get install --no-install-recommends -y \
-    jq && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+COPY misc/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /app/target/release/framenode /usr/local/bin
 ENTRYPOINT ["/usr/local/bin/framenode"]
