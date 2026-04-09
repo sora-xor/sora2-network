@@ -82,3 +82,4 @@ RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /app/target/release/framenode /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/framenode"]
