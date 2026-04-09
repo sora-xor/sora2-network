@@ -2189,6 +2189,7 @@ impl pallet_mmr::Config for Runtime {
     type Hashing = Keccak256;
     type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
     type BlockHashProvider = pallet_mmr::DefaultBlockHashProvider<Self>;
+    #[cfg(feature = "runtime-benchmarks")]
     type BenchmarkHelper = ();
     type WeightInfo = ();
     type LeafData = pallet_beefy_mmr::Pallet<Runtime>;

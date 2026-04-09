@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::offchain::get_storage_value_or_clear;
 use crate::requests::{IncomingRequest, LoadIncomingRequest, RequestStatus};
 #[cfg(test)]
 use crate::tests::mock::Mock;
@@ -292,11 +293,12 @@ impl<T: Config> Pallet<T> {
         T: CreateSignedTransaction<LocalCall>,
         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::RuntimeCall>,
     {
-        let s_signed_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
-        let mut transactions = s_signed_txs
-            .get::<BTreeMap<H256, SignedTransactionData<T>>>()
-            .ok()
-            .flatten()
+        let mut s_signed_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
+        let mut transactions =
+            get_storage_value_or_clear::<BTreeMap<H256, SignedTransactionData<T>>>(
+                &mut s_signed_txs,
+                "pending transactions",
+            )
             .unwrap_or_default();
         let submitted_at = if !added_to_pool {
             None

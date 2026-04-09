@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::contract::ContractEvent;
-use crate::offchain::SignedTransactionData;
+use crate::offchain::{get_storage_value_or_clear, SignedTransactionData};
 use crate::requests::{
     IncomingMarkAsDoneRequest, IncomingMetaRequestKind, IncomingRequest,
     IncomingTransactionRequestKind, LoadIncomingMetaRequest, LoadIncomingRequest,
@@ -178,12 +178,11 @@ impl<T: Config> Pallet<T> {
     where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
-        let s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
-        if let Some(mut txs) = s_pending_txs
-            .get::<BTreeMap<H256, SignedTransactionData<T>>>()
-            .ok()
-            .flatten()
-        {
+        let mut s_pending_txs = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
+        if let Some(mut txs) = get_storage_value_or_clear::<BTreeMap<H256, SignedTransactionData<T>>>(
+            &mut s_pending_txs,
+            "pending transactions",
+        ) {
             debug!("Pending txs count: {}", txs.len());
             for ext in block.extrinsics {
                 let vec = ext.encode();
@@ -237,13 +236,14 @@ impl<T: Config> Pallet<T> {
                 })
                 .collect::<BTreeMap<H256, SignedTransactionData<T>>>();
             if !failed_txs_tmp.is_empty() {
-                let s_failed_pending_txs =
+                let mut s_failed_pending_txs =
                     StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
-                let mut failed_txs = s_failed_pending_txs
-                    .get::<BTreeMap<H256, SignedTransactionData<T>>>()
-                    .ok()
-                    .flatten()
-                    .unwrap_or_default();
+                let mut failed_txs = get_storage_value_or_clear::<
+                    BTreeMap<H256, SignedTransactionData<T>>,
+                >(
+                    &mut s_failed_pending_txs, "failed pending transactions"
+                )
+                .unwrap_or_default();
                 for tx in failed_txs_tmp {
                     failed_txs.insert(tx.extrinsic_hash, tx);
                 }
@@ -421,12 +421,13 @@ impl<T: Config> Pallet<T> {
 
     fn handle_failed_transactions_queue() {
         let network_id = T::GetEthNetworkId::get();
-        let s_failed_pending_txs =
+        let mut s_failed_pending_txs =
             StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
-        let mut failed_txs = s_failed_pending_txs
-            .get::<BTreeMap<H256, SignedTransactionData<T>>>()
-            .ok()
-            .flatten()
+        let mut failed_txs =
+            get_storage_value_or_clear::<BTreeMap<H256, SignedTransactionData<T>>>(
+                &mut s_failed_pending_txs,
+                "failed pending transactions",
+            )
             .unwrap_or_default();
         let mut to_remove = Vec::new();
         for (key, tx) in &failed_txs {

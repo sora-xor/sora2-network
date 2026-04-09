@@ -10,6 +10,43 @@ use sp_runtime::offchain::OffchainStorage;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+fn get_offchain_value<T, S>(storage: &S, key: &[u8], description: &str) -> Option<T>
+where
+    T: Decode,
+    S: OffchainStorage,
+{
+    storage
+        .get(sp_core::offchain::STORAGE_PREFIX, key)
+        .and_then(|value| {
+            T::decode(&mut &value[..])
+                .map_err(|e| {
+                    log::error!("Failed to decode {} offchain value: {:?}", description, e);
+                })
+                .ok()
+        })
+}
+
+fn get_offchain_value_or_clear<T, S>(storage: &mut S, key: &[u8], description: &str) -> Option<T>
+where
+    T: Decode,
+    S: OffchainStorage,
+{
+    storage
+        .get(sp_core::offchain::STORAGE_PREFIX, key)
+        .and_then(|value| match T::decode(&mut &value[..]) {
+            Ok(value) => Some(value),
+            Err(e) => {
+                log::error!("Failed to decode {} offchain value: {:?}", description, e);
+                storage.remove(sp_core::offchain::STORAGE_PREFIX, key);
+                log::warn!(
+                    "Cleared stale {} offchain value after decode failure",
+                    description
+                );
+                None
+            }
+        })
+}
+
 pub struct Metrics<B> {
     pub backend: Arc<B>,
     pub period: std::time::Duration,
@@ -34,7 +71,7 @@ where
         let mut ethereum_height = BTreeMap::new();
 
         if let Some(storage) = backend.offchain_storage() {
-            Self::get_offchain_value(&storage, STORAGE_NETWORK_IDS_KEY, "network ids").map_or_else(
+            get_offchain_value(&storage, STORAGE_NETWORK_IDS_KEY, "network ids").map_or_else(
                 || {
                     log::warn!("No network ids found in offchain storage. If you don't run bridge peer, this is fine");
                     Ok::<(), PrometheusError>(())
@@ -87,53 +124,29 @@ where
         })
     }
 
-    pub fn get_offchain_value<T>(
-        storage: &<B as sc_client_api::Backend<Block>>::OffchainStorage,
-        key: &[u8],
-        description: &str,
-    ) -> Option<T>
-    where
-        T: Decode,
-    {
-        storage
-            .get(sp_core::offchain::STORAGE_PREFIX, key)
-            .and_then(|value| {
-                T::decode(&mut &value[..])
-                    .map_err(|e| {
-                        log::error!("Failed to decode {} offchain value: {:?}", description, e);
-                    })
-                    .ok()
-            })
-    }
-
     pub async fn run(self) {
         loop {
-            if let Some(storage) = self.backend.offchain_storage() {
-                Self::get_offchain_value(
-                    &storage,
+            if let Some(mut storage) = self.backend.offchain_storage() {
+                let pending_transactions = get_offchain_value_or_clear(
+                    &mut storage,
                     STORAGE_PENDING_TRANSACTIONS_KEY,
                     "pending transactions",
                 )
-                .and_then(
-                    |value: BTreeMap<H256, SignedTransactionData<Runtime>>| {
-                        self.pending_transactions.set(value.len() as u64);
-                        Some(())
-                    },
-                );
+                .map(|value: BTreeMap<H256, SignedTransactionData<Runtime>>| value.len() as u64)
+                .unwrap_or(0);
+                self.pending_transactions.set(pending_transactions);
 
-                Self::get_offchain_value(
-                    &storage,
+                let failed_pending_transactions = get_offchain_value_or_clear(
+                    &mut storage,
                     STORAGE_FAILED_PENDING_TRANSACTIONS_KEY,
                     "failed pending transactions",
                 )
-                .and_then(
-                    |value: BTreeMap<H256, SignedTransactionData<Runtime>>| {
-                        self.failed_pending_transactions.set(value.len() as u64);
-                        Some(())
-                    },
-                );
+                .map(|value: BTreeMap<H256, SignedTransactionData<Runtime>>| value.len() as u64)
+                .unwrap_or(0);
+                self.failed_pending_transactions
+                    .set(failed_pending_transactions);
 
-                Self::get_offchain_value(
+                get_offchain_value(
                     &storage,
                     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY,
                     "handle from height for Substrate network",
@@ -144,7 +157,7 @@ where
                 });
 
                 for (network, gauge) in self.ethereum_from_height.iter() {
-                    Self::get_offchain_value(
+                    get_offchain_value(
                         &storage,
                         format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network)
                             .as_bytes(),
@@ -157,7 +170,7 @@ where
                 }
 
                 for (network, gauge) in self.ethereum_height.iter() {
-                    Self::get_offchain_value(
+                    get_offchain_value(
                         &storage,
                         &format!("eth-bridge-ocw::eth-height-{:?}", network).as_bytes(),
                         &format!("height for Ethereum network {:?}", network),
@@ -170,5 +183,49 @@ where
             }
             futures_timer::Delay::new(self.period).await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{get_offchain_value, get_offchain_value_or_clear};
+    use codec::Encode;
+    use sp_core::offchain::storage::InMemOffchainStorage;
+    use sp_core::offchain::OffchainStorage;
+
+    #[test]
+    fn invalid_value_is_cleared_after_decode_failure() {
+        let mut storage = InMemOffchainStorage::default();
+        storage.set(
+            sp_core::offchain::STORAGE_PREFIX,
+            b"bad-key",
+            &[0xff, 0x00, 0x01],
+        );
+
+        let value = get_offchain_value_or_clear::<u32, _>(&mut storage, b"bad-key", "bad key");
+
+        assert!(value.is_none());
+        assert_eq!(
+            storage.get(sp_core::offchain::STORAGE_PREFIX, b"bad-key"),
+            None
+        );
+    }
+
+    #[test]
+    fn valid_value_is_returned_without_clearing() {
+        let mut storage = InMemOffchainStorage::default();
+        storage.set(
+            sp_core::offchain::STORAGE_PREFIX,
+            b"good-key",
+            &42u32.encode(),
+        );
+
+        let value = get_offchain_value::<u32, _>(&storage, b"good-key", "good key");
+
+        assert_eq!(value, Some(42));
+        assert_eq!(
+            storage.get(sp_core::offchain::STORAGE_PREFIX, b"good-key"),
+            Some(42u32.encode())
+        );
     }
 }

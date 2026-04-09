@@ -43,7 +43,7 @@ use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
 use sc_executor::WasmExecutor;
-use sc_network::NetworkBackend;
+use sc_network::{config::MultiaddrWithPeerId, multiaddr::Protocol, Multiaddr, NetworkBackend};
 use sc_network_sync::strategy::warp::WarpSyncConfig;
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
@@ -57,6 +57,7 @@ use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::{Block as BlockT, IdentifyAccount};
 use std::collections::BTreeSet;
 use std::fs::File;
+use std::net::{IpAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -118,6 +119,74 @@ fn bridge_config_path(config: &Configuration) -> Result<PathBuf, ServiceError> {
         })
 }
 
+fn resolve_libp2p_bootnodes(config: &mut Configuration) {
+    if !matches!(
+        config.network.network_backend,
+        sc_network::config::NetworkBackendType::Libp2p
+    ) {
+        return;
+    }
+
+    let mut resolved = Vec::new();
+
+    for bootnode in &config.network.boot_nodes {
+        let mut protocols = bootnode.multiaddr.iter();
+        let host = match protocols.next() {
+            Some(Protocol::Dns(host)) | Some(Protocol::Dns4(host)) | Some(Protocol::Dns6(host)) => {
+                host.into_owned()
+            }
+            _ => continue,
+        };
+        let port = match protocols.next() {
+            Some(Protocol::Tcp(port)) => port,
+            _ => continue,
+        };
+        let tail: Vec<_> = protocols.collect();
+
+        match (host.as_str(), port).to_socket_addrs() {
+            Ok(addresses) => {
+                for address in addresses {
+                    let mut multiaddr = Multiaddr::empty();
+                    match address.ip() {
+                        IpAddr::V4(ip) => multiaddr.push(Protocol::Ip4(ip)),
+                        IpAddr::V6(ip) => multiaddr.push(Protocol::Ip6(ip)),
+                    }
+                    multiaddr.push(Protocol::Tcp(address.port()));
+                    for protocol in &tail {
+                        multiaddr.push(protocol.clone());
+                    }
+
+                    let candidate = MultiaddrWithPeerId {
+                        multiaddr,
+                        peer_id: bootnode.peer_id,
+                    };
+                    if !config.network.boot_nodes.contains(&candidate)
+                        && !resolved.contains(&candidate)
+                    {
+                        resolved.push(candidate);
+                    }
+                }
+            }
+            Err(error) => {
+                log::warn!(
+                    "Failed to resolve libp2p bootnode {}:{}: {}",
+                    host,
+                    port,
+                    error
+                );
+            }
+        }
+    }
+
+    if !resolved.is_empty() {
+        log::info!(
+            "Resolved {} libp2p bootnode address(es) from DNS bootnodes",
+            resolved.len()
+        );
+        config.network.boot_nodes.extend(resolved);
+    }
+}
+
 fn load_bridge_peer_config(path: &Path) -> Result<BridgePeerConfig, ServiceError> {
     let file = File::open(path).map_err(|error| {
         ServiceError::Other(format!(
@@ -132,6 +201,36 @@ fn load_bridge_peer_config(path: &Path) -> Result<BridgePeerConfig, ServiceError
             path, error
         ))
     })
+}
+
+fn local_rpc_listen_addr(config: &Configuration) -> Option<std::net::SocketAddr> {
+    config
+        .rpc
+        .addr
+        .as_ref()
+        .and_then(|endpoints| endpoints.first().map(|endpoint| endpoint.listen_addr))
+}
+
+fn bridge_rpc_url(listen_addr: Option<std::net::SocketAddr>) -> Result<String, ServiceError> {
+    listen_addr
+        .map(|addr| {
+            let normalized = match addr {
+                std::net::SocketAddr::V4(addr) if addr.ip().is_unspecified() => {
+                    std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, addr.port()))
+                }
+                std::net::SocketAddr::V6(addr) if addr.ip().is_unspecified() => {
+                    std::net::SocketAddr::from((std::net::Ipv6Addr::LOCALHOST, addr.port()))
+                }
+                addr => addr,
+            };
+            format!("http://{}", normalized)
+        })
+        .ok_or_else(|| {
+            ServiceError::Other(
+                "HTTP RPC should be enabled for ethereum bridge. Please enable it via `--rpc-port <port>`."
+                    .into(),
+            )
+        })
 }
 
 fn resolve_local_bridge_peer_marker<F>(
@@ -307,17 +406,8 @@ pub fn new_partial(
             STORAGE_NETWORK_IDS_KEY,
             &network_ids.encode(),
         );
-        let rpc_addr = config
-            .rpc
-            .addr
-            .as_ref()
-            .and_then(|endpoints| endpoints.first().map(|endpoint| endpoint.listen_addr))
-            .unwrap_or_else(|| std::net::SocketAddr::from(([127, 0, 0, 1], config.rpc.port)));
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_SUB_NODE_URL_KEY,
-            &format!("http://{}", rpc_addr).encode(),
-        );
+        let rpc_url = bridge_rpc_url(local_rpc_listen_addr(config))?;
+        storage.set(STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY, &rpc_url.encode());
 
         config
             .prometheus_registry()
@@ -426,7 +516,7 @@ pub fn new_partial(
         OffchainTransactionPoolFactory::new(transaction_pool.clone()),
     )?;
 
-    let (import_queue, _babe_worker_handle) =
+    let (import_queue, babe_worker_handle) =
         sc_consensus_babe::import_queue(sc_consensus_babe::ImportQueueParams {
             link: babe_link.clone(),
             block_import: babe_block_import.clone(),
@@ -437,6 +527,16 @@ pub fn new_partial(
             registry: config.prometheus_registry(),
             telemetry: telemetry.as_ref().map(|x| x.handle()),
         })?;
+
+    // `import_queue` spawns the essential `babe-worker` request loop and returns the sender side
+    // that keeps it alive. Dropping the handle closes the channel, makes the worker exit, and the
+    // service shuts down immediately because the worker task is essential.
+    task_manager
+        .spawn_handle()
+        .spawn("babe-worker-keep-alive", None, async move {
+            let _babe_worker_handle = babe_worker_handle;
+            futures::future::pending::<()>().await;
+        });
 
     let import_setup = (
         babe_block_import.clone(),
@@ -493,13 +593,17 @@ pub fn new_partial(
 ///
 /// This is an advanced feature and not recommended for general use. Generally, `build_full` is
 /// a better choice.
-pub fn new_full(
+pub fn new_full<FullNetwork>(
     mut config: Configuration,
     disable_beefy: bool,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
-) -> Result<TaskManager, ServiceError> {
+) -> Result<TaskManager, ServiceError>
+where
+    FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
+{
     // Increase the default value by 2 to make wasm being able to use 128MB, each heap page is 64KiB
     config.executor.default_heap_pages = Some(1024 * 2);
+    resolve_libp2p_bootnodes(&mut config);
 
     debug!("using: {:#?}", config);
 
@@ -519,7 +623,6 @@ pub fn new_full(
         .ok()
         .flatten()
         .expect("Genesis block exists; qed");
-    type FullNetwork = sc_network::Litep2pNetworkBackend;
     let metrics = <FullNetwork as NetworkBackend<Block, <Block as BlockT>::Hash>>::register_notification_metrics(
         config.prometheus_config.as_ref().map(|cfg| &cfg.registry),
     );
@@ -795,10 +898,11 @@ pub fn new_full(
 
 #[cfg(test)]
 mod tests {
-    use super::{load_bridge_peer_config, resolve_local_bridge_bootstrap};
+    use super::{bridge_rpc_url, load_bridge_peer_config, resolve_local_bridge_bootstrap};
     use sp_core::Pair;
     use std::cell::Cell;
     use std::fs;
+    use std::net::SocketAddr;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -860,5 +964,25 @@ mod tests {
 
         assert!(result.is_none());
         assert!(!loader_called.get());
+    }
+
+    #[test]
+    fn bridge_rpc_url_requires_enabled_rpc() {
+        let result = bridge_rpc_url(None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn bridge_rpc_url_uses_listen_addr() {
+        let url = bridge_rpc_url(Some(SocketAddr::from(([127, 0, 0, 1], 9944))))
+            .expect("rpc endpoint should resolve");
+        assert_eq!(url, "http://127.0.0.1:9944");
+    }
+
+    #[test]
+    fn bridge_rpc_url_normalizes_unspecified_listen_addr() {
+        let url = bridge_rpc_url(Some(SocketAddr::from(([0, 0, 0, 0], 9944))))
+            .expect("rpc endpoint should resolve");
+        assert_eq!(url, "http://127.0.0.1:9944");
     }
 }

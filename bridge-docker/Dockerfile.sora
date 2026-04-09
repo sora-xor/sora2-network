@@ -53,6 +53,8 @@ RUN cargo chef prepare --recipe-path recipe.json
 
 FROM rust AS builder
 WORKDIR /app
+ARG GIT_COMMIT
+ENV GIT_COMMIT=${GIT_COMMIT}
 COPY --from=planner /app/recipe.json recipe.json
 # cache dependencies build
 RUN cargo chef cook --release --features private-net,wip,stage --recipe-path recipe.json

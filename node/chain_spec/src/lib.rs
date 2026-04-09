@@ -242,19 +242,19 @@ fn polkamarkt_genesis_config() -> PolkamarktConfig {
 }
 
 pub fn staging_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_staging.json")[..])
+    ChainSpec::from_json_bytes(include_bytes!("./bytes/chain_spec_staging.json").to_vec())
 }
 
 pub fn bridge_staging_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_bridge_staging.json")[..])
+    ChainSpec::from_json_bytes(include_bytes!("./bytes/chain_spec_bridge_staging.json").to_vec())
 }
 
 pub fn test_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_test.json")[..])
+    ChainSpec::from_json_bytes(include_bytes!("./bytes/chain_spec_test.json").to_vec())
 }
 
 pub fn main_net() -> Result<ChainSpec, String> {
-    ChainSpec::from_json_bytes(&our_include_bytes!("./bytes/chain_spec_main.json")[..])
+    ChainSpec::from_json_bytes(include_bytes!("./bytes/chain_spec_main.json").to_vec())
 }
 
 #[cfg(feature = "private-net")]
