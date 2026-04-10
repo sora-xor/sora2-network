@@ -17,8 +17,7 @@ RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec \
     curl jq \
     protobuf-compiler \
     git binaryen \
-    make cmake \
-    software-properties-common && \
+    make cmake && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
