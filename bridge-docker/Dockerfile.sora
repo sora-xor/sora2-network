@@ -38,29 +38,10 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-tool
     rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
-RUN cargo install --version 0.1.61 --locked cargo-chef
-
-# generate recipe.json for dependency caching
-FROM rust AS planner
-WORKDIR /app
-COPY Cargo.lock /app
-COPY Cargo.toml /app
-COPY misc /app/misc
-COPY pallets /app/pallets
-COPY runtime /app/runtime
-COPY common /app/common
-COPY utils /app/utils
-COPY node /app/node
-RUN cargo chef prepare --recipe-path recipe.json
-
 FROM rust AS builder
 WORKDIR /app
 ARG GIT_COMMIT
 ENV GIT_COMMIT=${GIT_COMMIT}
-COPY --from=planner /app/recipe.json recipe.json
-# cache dependencies build
-RUN cargo chef cook --release --recipe-path recipe.json
-# build
 COPY Cargo.lock /app
 COPY Cargo.toml /app
 COPY misc /app/misc
