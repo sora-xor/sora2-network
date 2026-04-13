@@ -2970,9 +2970,19 @@ mod tests {
     use common::eth::EthAddress;
     use common::{balance, Balance};
     #[cfg(not(feature = "private-net"))]
+    use sc_executor::RuntimeVersionOf;
+    #[cfg(not(feature = "private-net"))]
+    use sc_executor::WasmExecutor;
+    #[cfg(not(feature = "private-net"))]
     use serde_json::Value;
     #[cfg(not(feature = "private-net"))]
     use sp_core::blake2_256;
+    #[cfg(not(feature = "private-net"))]
+    use sp_core::traits::RuntimeCode;
+    #[cfg(not(feature = "private-net"))]
+    use sp_core::traits::WrappedRuntimeCode;
+    #[cfg(not(feature = "private-net"))]
+    use sp_version::RuntimeVersion;
 
     #[test]
     fn calculate_reserves() {
@@ -3013,6 +3023,22 @@ mod tests {
     }
 
     #[cfg(not(feature = "private-net"))]
+    fn runtime_version_from_wasm(wasm: &[u8]) -> RuntimeVersion {
+        let executor = WasmExecutor::<sp_io::SubstrateHostFunctions>::default();
+        let mut ext = sp_state_machine::BasicExternalities::default();
+        executor
+            .runtime_version(
+                &mut ext,
+                &RuntimeCode {
+                    code_fetcher: &WrappedRuntimeCode(wasm.into()),
+                    heap_pages: None,
+                    hash: blake2_256(wasm).to_vec(),
+                },
+            )
+            .expect("read runtime version from codesub wasm")
+    }
+
+    #[cfg(not(feature = "private-net"))]
     #[test]
     fn mainnet_codesub_11271782_matches_expected_wasm() {
         let wasm_bytes = mainnet_code_substitute_bytes("11271782");
@@ -3036,6 +3062,27 @@ mod tests {
             "unexpected Wasm hash for 23234813 code substitute"
         );
         assert_eq!(wasm_bytes.len(), 2_815_465);
+    }
+
+    #[cfg(not(feature = "private-net"))]
+    #[test]
+    fn mainnet_codesub_versions_are_known() {
+        let first = runtime_version_from_wasm(&mainnet_code_substitute_bytes("11271782"));
+        let second = runtime_version_from_wasm(&mainnet_code_substitute_bytes("23234813"));
+
+        println!(
+            "11271782 => spec_name={}, spec_version={}, impl_version={}",
+            first.spec_name, first.spec_version, first.impl_version
+        );
+        println!(
+            "23234813 => spec_name={}, spec_version={}, impl_version={}",
+            second.spec_name, second.spec_version, second.impl_version
+        );
+
+        assert_eq!(first.spec_name, "sora-substrate");
+        assert_eq!(second.spec_name, "sora-substrate");
+        assert_eq!(first.spec_version, 57);
+        assert_eq!(second.spec_version, 115);
     }
 
     #[cfg(not(feature = "private-net"))]

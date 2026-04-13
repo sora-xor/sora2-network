@@ -5123,7 +5123,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.7.8"
+version = "4.7.9"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5211,7 +5211,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.7.8"
+version = "4.7.9"
 dependencies = [
  "common",
  "faucet",
@@ -5225,6 +5225,7 @@ dependencies = [
  "permissions",
  "rewards",
  "sc-consensus-grandpa",
+ "sc-executor",
  "sc-network-common",
  "sc-service",
  "serde_json",
@@ -5233,13 +5234,15 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-state-machine",
+ "sp-version",
  "technical",
  "xor-fee",
 ]
 
 [[package]]
 name = "framenode-runtime"
-version = "4.7.8"
+version = "4.7.9"
 dependencies = [
  "apollo-platform",
  "assets",

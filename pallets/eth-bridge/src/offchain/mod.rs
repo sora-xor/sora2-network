@@ -95,6 +95,16 @@ pub(crate) fn get_storage_value_or_clear<T: Decode>(
     }
 }
 
+pub(crate) fn set_offchain_metric_u64(key: &[u8], value: u64) {
+    StorageValueRef::persistent(key).set(&value);
+}
+
+pub(crate) fn increment_offchain_metric_u64(key: &[u8]) {
+    let storage = StorageValueRef::persistent(key);
+    let current = storage.get::<u64>().ok().flatten().unwrap_or_default();
+    storage.set(&current.saturating_add(1));
+}
+
 /// Cryptography used by off-chain workers.
 pub mod crypto {
     use crate::KEY_TYPE;

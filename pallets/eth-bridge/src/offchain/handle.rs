@@ -29,7 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::contract::ContractEvent;
-use crate::offchain::{get_storage_value_or_clear, SignedTransactionData};
+use crate::offchain::{
+    get_storage_value_or_clear, increment_offchain_metric_u64, set_offchain_metric_u64,
+    SignedTransactionData,
+};
 use crate::requests::{
     IncomingMarkAsDoneRequest, IncomingMetaRequestKind, IncomingRequest,
     IncomingTransactionRequestKind, LoadIncomingMetaRequest, LoadIncomingRequest,
@@ -37,12 +40,16 @@ use crate::requests::{
 };
 use crate::types::SubstrateBlockLimited;
 use crate::{
-    Call, Config, Error, Pallet, RequestStatuses, Requests, RequestsQueue, CONFIRMATION_INTERVAL,
-    MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_GET_LOGS_ITEMS, MAX_PENDING_TX_BLOCKS_PERIOD,
-    MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE, RE_HANDLE_TXS_PERIOD,
-    STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
+    Call, Config, Error, Pallet, RequestApprovals, RequestStatuses, Requests, RequestsQueue,
+    CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES, MAX_GET_LOGS_ITEMS,
+    MAX_PENDING_TX_BLOCKS_PERIOD, MAX_SUCCESSFUL_SENT_SIGNED_TX_PER_ONCE,
+    OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX, OUTGOING_APPROVAL_FAILURE_FAILED_SIGN,
+    OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY, OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
+    RE_HANDLE_TXS_PERIOD, STORAGE_FAILED_PENDING_TRANSACTIONS_KEY, STORAGE_LOCAL_PEER_READY_KEY,
+    STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_PENDING_REQUESTS_KEY,
+    STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
-    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION, ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
@@ -63,12 +70,89 @@ use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::TryInto;
 
 impl<T: Config> Pallet<T> {
+    fn per_network_metric_key(prefix: &str, network_id: T::NetworkId) -> Vec<u8> {
+        format!("{}-{:?}", prefix, network_id).into_bytes()
+    }
+
+    fn per_network_reason_metric_key(
+        prefix: &str,
+        network_id: T::NetworkId,
+        reason: &str,
+    ) -> Vec<u8> {
+        format!("{}-{:?}-{}", prefix, network_id, reason).into_bytes()
+    }
+
+    fn set_local_peer_ready_metric(network_id: T::NetworkId, is_ready: bool) {
+        let key = Self::per_network_metric_key(STORAGE_LOCAL_PEER_READY_KEY, network_id);
+        set_offchain_metric_u64(&key, u64::from(is_ready));
+    }
+
+    fn record_outgoing_approval_failure(network_id: T::NetworkId, reason: &str) {
+        let key = Self::per_network_reason_metric_key(
+            STORAGE_OUTGOING_APPROVAL_FAILURES_KEY,
+            network_id,
+            reason,
+        );
+        increment_offchain_metric_u64(&key);
+    }
+
+    fn outgoing_queue_metrics(network_id: T::NetworkId) -> (u64, u64) {
+        RequestsQueue::<T>::get(network_id)
+            .into_iter()
+            .filter_map(|hash| Requests::<T>::get(network_id, hash).map(|request| (hash, request)))
+            .filter(|(_, request)| matches!(request, OffchainRequest::Outgoing(_, _)))
+            .fold((0u64, 0u64), |(pending, zero_approval), (hash, _)| {
+                let is_pending = RequestStatuses::<T>::get(network_id, &hash)
+                    == Some(crate::requests::RequestStatus::Pending);
+                let zero_approval_pending =
+                    is_pending && RequestApprovals::<T>::get(network_id, &hash).is_empty();
+                (
+                    pending.saturating_add(u64::from(is_pending)),
+                    zero_approval.saturating_add(u64::from(zero_approval_pending)),
+                )
+            })
+    }
+
+    fn update_outgoing_queue_metrics(network_id: T::NetworkId) -> (u64, u64) {
+        let (pending_requests, zero_approval_requests) = Self::outgoing_queue_metrics(network_id);
+        let pending_key =
+            Self::per_network_metric_key(STORAGE_OUTGOING_PENDING_REQUESTS_KEY, network_id);
+        set_offchain_metric_u64(&pending_key, pending_requests);
+        let zero_approval_key =
+            Self::per_network_metric_key(STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, network_id);
+        set_offchain_metric_u64(&zero_approval_key, zero_approval_requests);
+        (pending_requests, zero_approval_requests)
+    }
+
+    fn has_pending_approval_tx(_network_id: T::NetworkId, request_hash: H256) -> bool {
+        let request_hash_bytes = request_hash.as_bytes();
+        let mut storage = StorageValueRef::persistent(STORAGE_PENDING_TRANSACTIONS_KEY);
+        get_storage_value_or_clear::<BTreeMap<H256, SignedTransactionData<T>>>(
+            &mut storage,
+            "pending transactions",
+        )
+        .map(|transactions| {
+            transactions.values().any(|transaction| {
+                transaction
+                    .call
+                    .encode()
+                    .windows(request_hash_bytes.len())
+                    .any(|window| window == request_hash_bytes)
+            })
+        })
+        .unwrap_or(false)
+    }
+
     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
     /// key and sends the approve as a signed transaction.
     fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
         let signer = Signer::<T, T::PeerId>::any_account();
         if !signer.can_sign() {
-            error!("No local account available");
+            error!(
+                "No local account available for outgoing approval. network_id={:?} request_hash={:?}",
+                request.network_id(),
+                hash,
+            );
             return Err(<Error<T>>::NoLocalAccountForSigning);
         }
         let peers = Self::peers(request.network_id());
@@ -102,7 +186,12 @@ impl<T: Config> Pallet<T> {
             let Some(signature) =
                 sp_io::crypto::ecdsa_sign_prehashed(crate::KEY_TYPE, &ocw_public, &message)
             else {
-                error!("[{:?}] Failed to sign approve payload", signer_account);
+                error!(
+                    "[{:?}] Failed to sign approve payload. network_id={:?} request_hash={:?}",
+                    signer_account,
+                    request.network_id(),
+                    hash,
+                );
                 continue;
             };
             let call = Call::approve_request {
@@ -125,26 +214,54 @@ impl<T: Config> Pallet<T> {
                         }
                         Err(e) => {
                             error!(
-                                "[{:?}] Failed in handle_outgoing_transfer: {:?}",
-                                account.id, e
+                                "[{:?}] Failed in handle_outgoing_transfer. network_id={:?} request_hash={:?} error={:?}",
+                                account.id,
+                                request.network_id(),
+                                hash,
+                                e,
                             );
                         }
                     }
                 }
                 None => {
-                    error!("[{:?}] Failed in handle_outgoing_transfer", signer_account);
+                    error!(
+                        "[{:?}] Failed in handle_outgoing_transfer. network_id={:?} request_hash={:?}",
+                        signer_account,
+                        request.network_id(),
+                        hash,
+                    );
                 }
             }
         }
 
         if !found_local_peer_key {
-            error!("No local bridge peer key available for outgoing approval");
+            error!(
+                "No local bridge peer key available for outgoing approval. network_id={:?} request_hash={:?}",
+                request.network_id(),
+                hash,
+            );
+            Self::record_outgoing_approval_failure(
+                request.network_id(),
+                OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY,
+            );
             return Err(Error::<T>::NoLocalAccountForSigning);
         }
         if !attempted_submission {
-            error!("Failed to sign outgoing approval payload");
+            error!(
+                "Failed to sign outgoing approval payload. network_id={:?} request_hash={:?}",
+                request.network_id(),
+                hash,
+            );
+            Self::record_outgoing_approval_failure(
+                request.network_id(),
+                OUTGOING_APPROVAL_FAILURE_FAILED_SIGN,
+            );
             return Err(Error::<T>::FailedToSignMessage);
         }
+        Self::record_outgoing_approval_failure(
+            request.network_id(),
+            OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX,
+        );
         Err(Error::<T>::FailedToSendSignedTransaction)
     }
 
@@ -639,21 +756,33 @@ impl<T: Config> Pallet<T> {
     ) where
         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
     {
-        if !Self::is_peer_for_network(network_id) {
+        let is_local_peer = Self::is_peer_for_network(network_id);
+        Self::set_local_peer_ready_metric(network_id, is_local_peer);
+        if !is_local_peer {
             debug!("Node is not peer for network {:?}, skipping", network_id);
             return;
         }
+        let (pending_outgoing_requests, _) = Self::update_outgoing_queue_metrics(network_id);
+
         let current_eth_height = match Self::handle_ethereum(network_id) {
-            Ok(v) => v,
+            Ok(v) => Some(v),
             Err(_e) => {
-                return;
+                if pending_outgoing_requests > 0 {
+                    Self::record_outgoing_approval_failure(
+                        network_id,
+                        OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
+                    );
+                }
+                None
             }
         };
 
-        if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into()
-            == frame_system::pallet_prelude::BlockNumberFor::<T>::zero()
-        {
-            Self::handle_pending_multisig_calls(network_id, current_eth_height);
+        if let Some(current_eth_height) = current_eth_height {
+            if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into()
+                == frame_system::pallet_prelude::BlockNumberFor::<T>::zero()
+            {
+                Self::handle_pending_multisig_calls(network_id, current_eth_height);
+            }
         }
 
         let mut stale_hashes = BTreeSet::new();
@@ -674,10 +803,25 @@ impl<T: Config> Pallet<T> {
             let number = frame_system::pallet_prelude::BlockNumberFor::<T>::from(
                 MAX_PENDING_TX_BLOCKS_PERIOD,
             );
+            let zero_approval_retry_period =
+                frame_system::pallet_prelude::BlockNumberFor::<T>::from(
+                    ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
+                );
             let diff = substrate_finalized_height.saturating_sub(request_submission_height);
             let should_reapprove = diff >= number
                 && diff % number == frame_system::pallet_prelude::BlockNumberFor::<T>::zero();
-            if !should_reapprove && substrate_finalized_height < request_submission_height {
+            let should_retry_zero_approval = matches!(&request, OffchainRequest::Outgoing(_, _))
+                && RequestStatuses::<T>::get(network_id, &request_hash)
+                    == Some(crate::requests::RequestStatus::Pending)
+                && RequestApprovals::<T>::get(network_id, &request_hash).is_empty()
+                && !Self::has_pending_approval_tx(network_id, request_hash)
+                && diff >= zero_approval_retry_period
+                && diff % zero_approval_retry_period
+                    == frame_system::pallet_prelude::BlockNumberFor::<T>::zero();
+            if !should_reapprove
+                && !should_retry_zero_approval
+                && substrate_finalized_height < request_submission_height
+            {
                 continue;
             }
             let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
@@ -688,13 +832,19 @@ impl<T: Config> Pallet<T> {
                 .flatten();
 
             let need_to_handle = match height_opt {
-                Some(height) => should_reapprove || request_submission_height > height,
+                Some(height) => {
+                    should_reapprove
+                        || should_retry_zero_approval
+                        || request_submission_height > height
+                }
                 None => true,
             };
             let confirmed = match &request {
-                OffchainRequest::Incoming(request, _) => {
-                    current_eth_height.saturating_sub(request.at_height()) >= CONFIRMATION_INTERVAL
-                }
+                OffchainRequest::Incoming(request, _) => current_eth_height
+                    .map(|height| {
+                        height.saturating_sub(request.at_height()) >= CONFIRMATION_INTERVAL
+                    })
+                    .unwrap_or(false),
                 _ => true,
             };
             if need_to_handle && confirmed {
@@ -732,5 +882,6 @@ impl<T: Config> Pallet<T> {
                 queue.retain(|hash| !stale_hashes.contains(hash));
             });
         }
+        Self::update_outgoing_queue_metrics(network_id);
     }
 }

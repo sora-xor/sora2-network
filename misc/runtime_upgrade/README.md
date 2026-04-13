@@ -22,6 +22,10 @@ The candidate WASM lives at:
 
 `target/release/wbuild/framenode-runtime/framenode_runtime.wasm`
 
+The runtime blob that `WASM_BINARY` embeds for on-chain code storage is:
+
+`target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm`
+
 ## Rehearse The Upgrade
 
 Run the remote upgrade rehearsal before submitting the upgrade:
@@ -85,7 +89,8 @@ NO_COLOR=true subwasm metadata --format json \
 2. Run `./misc/runtime_upgrade/run_remote_try_runtime.sh`.
 3. Record whether the rehearsal used live `REMOTE_RPC_URL` state, a `SNAP` snapshot, or both.
 4. Capture `framenode --version`, `subwasm info`, and the JSON metadata for downstream review.
-5. Generate the preimage if needed with `generate_preimage.py`.
+5. Generate the preimage from `framenode_runtime.compact.compressed.wasm` with
+   `generate_preimage.py`.
 6. Submit `Preimage.note_preimage`.
 7. Submit the council motion for `Democracy.external_propose_majority`.
 8. Submit the technical committee motion for `Democracy.fast_track`.
@@ -93,7 +98,7 @@ NO_COLOR=true subwasm metadata --format json \
 
 ## Submit The Upgrade
 
-The governance helper now has explicit subcommands for the live `ws.mof.sora.org` flow:
+The governance helper now has explicit subcommands for the live `wss://ws.mof.sora.org` flow:
 
 - `note-preimage`
 - `council-propose-majority`
@@ -105,7 +110,7 @@ The governance helper now has explicit subcommands for the live `ws.mof.sora.org
 1. Install packages:
 
 ```bash
-pip install -r requirements.txt
+pip install -r misc/runtime_upgrade/requirements.txt
 ```
 
 2. Upload the SCALE-encoded `set_code` preimage:
@@ -115,7 +120,7 @@ python misc/runtime_upgrade/main.py \
   --node-url wss://ws.mof.sora.org \
   --uri //Alice \
   note-preimage \
-  --call-file-path target/release/wbuild/framenode-runtime/framenode_runtime.wasm.preimage.call
+  --call-file-path target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm.preimage.call
 ```
 
 3. Propose the external-majority referendum through council:
@@ -125,7 +130,7 @@ python misc/runtime_upgrade/main.py \
   --node-url wss://ws.mof.sora.org \
   --uri //Alice \
   council-propose-majority \
-  --preimage-json target/release/wbuild/framenode-runtime/framenode_runtime.wasm.preimage.json
+  --preimage-json target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm.preimage.json
 ```
 
 4. Fast-track the externally proposed referendum through the technical committee:
@@ -135,7 +140,7 @@ python misc/runtime_upgrade/main.py \
   --node-url wss://ws.mof.sora.org \
   --uri //Alice \
   tech-fast-track \
-  --preimage-json target/release/wbuild/framenode-runtime/framenode_runtime.wasm.preimage.json
+  --preimage-json target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm.preimage.json
 ```
 
 ### Dev / Private-Net

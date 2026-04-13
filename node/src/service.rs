@@ -34,8 +34,10 @@
 
 use codec::Encode;
 use framenode_runtime::eth_bridge::{
-    self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
-    STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
+    self, PeerConfig, STORAGE_BOOTSTRAP_READY_KEY, STORAGE_ETH_NODE_PARAMS,
+    STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
+    STORAGE_PEER_SECRET_KEY, STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY,
+    STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY, STORAGE_SUB_NODE_URL_KEY,
 };
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, BeefyId, Runtime, RuntimeApi};
@@ -232,6 +234,20 @@ fn bridge_rpc_url(listen_addr: Option<std::net::SocketAddr>) -> Result<String, S
         })
 }
 
+fn set_offchain_u64_metric<S: OffchainStorage>(storage: &mut S, key: &[u8], value: u64) {
+    storage.set(STORAGE_PREFIX, key, &value.encode());
+}
+
+fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
+    storage: &mut S,
+    prefix: &str,
+    network_id: N,
+    value: u64,
+) {
+    let key = format!("{}-{:?}", prefix, network_id);
+    storage.set(STORAGE_PREFIX, key.as_bytes(), &value.encode());
+}
+
 fn resolve_local_bridge_peer_marker<F>(
     public_keys: Vec<Vec<u8>>,
     mut has_local_keypair: F,
@@ -274,7 +290,7 @@ where
     }
 
     if saw_any_public_key {
-        log::debug!(
+        log::warn!(
             "Ethereum bridge public key found, but no local signing keypair is available; skipping bridge OCW bootstrap."
         );
     } else {
@@ -360,28 +376,42 @@ pub fn new_partial(
             executor,
         )?;
     let client = Arc::new(client);
-    let bridge_bootstrap = resolve_local_bridge_bootstrap(
-        keystore_container
-            .keystore()
-            .keys(eth_bridge::KEY_TYPE)
-            .unwrap_or_default(),
-        |public_key| {
-            let local_keystore = keystore_container.local_keystore();
-            local_keystore
-                .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
-                .map(|key_pair| key_pair.is_some())
-                .map_err(|error| {
-                    ServiceError::Other(format!(
-                        "Failed to inspect local ethereum bridge keypair: {}",
-                        error
-                    ))
-                })
-        },
-        || {
-            let path = bridge_config_path(config)?;
-            load_bridge_peer_config(&path)
-        },
-    )?;
+    let bridge_public_keys = keystore_container
+        .keystore()
+        .keys(eth_bridge::KEY_TYPE)
+        .unwrap_or_default();
+    let local_bridge_marker = resolve_local_bridge_peer_marker(bridge_public_keys, |public_key| {
+        let local_keystore = keystore_container.local_keystore();
+        local_keystore
+            .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
+            .map(|key_pair| key_pair.is_some())
+            .map_err(|error| {
+                ServiceError::Other(format!(
+                    "Failed to inspect local ethereum bridge keypair: {}",
+                    error
+                ))
+            })
+    })?;
+    let bridge_bootstrap = if let Some(marker) = local_bridge_marker.clone() {
+        let path = bridge_config_path(config)?;
+        Some((marker, load_bridge_peer_config(&path)?))
+    } else {
+        None
+    };
+
+    if let Some(mut storage) = backend.offchain_storage() {
+        set_offchain_u64_metric(
+            &mut storage,
+            STORAGE_LOCAL_SIGNING_KEY_READY_KEY,
+            u64::from(local_bridge_marker.is_some()),
+        );
+        set_offchain_u64_metric(&mut storage, STORAGE_BOOTSTRAP_READY_KEY, 0);
+        set_offchain_u64_metric(
+            &mut storage,
+            STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY,
+            u64::from(local_rpc_listen_addr(config).is_some()),
+        );
+    }
 
     if let Some((marker, peer_config)) = bridge_bootstrap {
         let mut storage = backend.offchain_storage().ok_or_else(|| {
@@ -398,6 +428,12 @@ pub fn new_partial(
         for (net_id, params) in peer_config.networks {
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
             storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
+            set_offchain_network_metric(
+                &mut storage,
+                STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY,
+                net_id,
+                1,
+            );
             network_ids.insert(net_id);
         }
         storage.set(
@@ -407,31 +443,34 @@ pub fn new_partial(
         );
         let rpc_url = bridge_rpc_url(local_rpc_listen_addr(config))?;
         storage.set(STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY, &rpc_url.encode());
-
-        config
-            .prometheus_registry()
-            .and_then(|registry| {
-                crate::eth_bridge_metrics::Metrics::register(
-                    registry,
-                    backend.clone(),
-                    std::time::Duration::from_secs(6),
-                )
-                .map_err(|e| {
-                    log::error!("Failed to register metrics: {:?}", e);
-                })
-                .ok()
-            })
-            .and_then(|metrics| {
-                task_manager.spawn_essential_handle().spawn_blocking(
-                    "eth-bridge-metrics",
-                    Some("eth-bridge-metrics"),
-                    metrics.run(),
-                );
-                Some(())
-            });
-
-        log::info!("Ethereum bridge peer initialized");
+        set_offchain_u64_metric(&mut storage, STORAGE_BOOTSTRAP_READY_KEY, 1);
+        log::info!(
+            "Ethereum bridge peer initialized for networks: {:?}",
+            network_ids
+        );
     }
+    config
+        .prometheus_registry()
+        .and_then(|registry| {
+            crate::eth_bridge_metrics::Metrics::register(
+                registry,
+                backend.clone(),
+                std::time::Duration::from_secs(6),
+            )
+            .map_err(|e| {
+                log::error!("Failed to register metrics: {:?}", e);
+            })
+            .ok()
+        })
+        .and_then(|metrics| {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "eth-bridge-metrics",
+                Some("eth-bridge-metrics"),
+                metrics.run(),
+            );
+            Some(())
+        });
+
     config
         .prometheus_registry()
         .and_then(|registry| {

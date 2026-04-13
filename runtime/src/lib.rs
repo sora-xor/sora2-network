@@ -346,10 +346,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 121,
+    spec_version: 122,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 121,
+    transaction_version: 122,
     system_version: 0,
 };
 
