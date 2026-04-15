@@ -20,6 +20,7 @@ local-test
 
 .idea
 .gradle
+.venv*
 
 tmp
 /ethereum/java-wrapper/build/libs/*.jar

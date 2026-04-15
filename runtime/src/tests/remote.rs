@@ -110,6 +110,7 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
         assert_storage_version!("VestedRewards", vested_rewards::Pallet<Runtime>);
         assert_storage_version!("Identity", pallet_identity::Pallet<Runtime>);
         assert_storage_version!("Farming", farming::Pallet<Runtime>);
+        assert_storage_version!("Kensetsu", kensetsu::Pallet<Runtime>);
         assert_storage_version!("Band", band::Pallet<Runtime>);
         assert_storage_version!("OracleProxy", oracle_proxy::Pallet<Runtime>);
         assert_storage_version!(
