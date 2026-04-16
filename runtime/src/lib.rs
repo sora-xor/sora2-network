@@ -2769,11 +2769,16 @@ impl snowbridge_pallet_ethereum_client::Config for Runtime {
 
 parameter_types! {
     pub const MaxSccpBridgePayloadLen: u32 = 256;
+    pub const MaxSccpBridgeProofBlobLen: u32 = 16 * 1024;
+    pub const AllowManualSccpInboundFinalization: bool = false;
 }
 
 impl sccp_bridge::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type MaxPayloadLen = MaxSccpBridgePayloadLen;
+    type MaxProofBlobLen = MaxSccpBridgeProofBlobLen;
+    type AllowManualInboundFinalization = AllowManualSccpInboundFinalization;
+    type WeightInfo = sccp_bridge::weights::SubstrateWeight<Runtime>;
     type MessageProofVerifier = ();
 }
 impl bridge_proxy::Config for Runtime {
