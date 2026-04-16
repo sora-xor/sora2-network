@@ -43,6 +43,7 @@ const IDENTITY_V1_KEY_LIMIT: u64 = 10_000;
 
 pub type Migrations = (
     order_book::migrations::burn_xor_in_tech_accounts::Migrate<crate::Runtime>,
+    kensetsu::migrations::v5_to_v6::PurgeXorCollateral<crate::Runtime>,
     BandMigrateToV2IfNeeded,
     pallet_offences::migration::v1::MigrateToV1<crate::Runtime>,
     StakingStorageVersionV16,

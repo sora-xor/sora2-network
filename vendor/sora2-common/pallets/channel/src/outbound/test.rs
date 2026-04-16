@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::*;
+use bridge_types::evm::AdditionalEVMOutboundData;
+use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
@@ -38,7 +40,7 @@ use frame_support::traits::Everything;
 use frame_support::{assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
-use sp_core::H256;
+use sp_core::{H160, H256};
 use sp_keyring::AccountKeyring as Keyring;
 
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
@@ -327,5 +329,50 @@ fn test_submit_fails_on_nonce_overflow() {
             ),
             Error::<Test>::Overflow,
         );
+    });
+}
+
+#[test]
+fn evm_queue_total_gas_is_cleared_after_commit() {
+    new_tester().execute_with(|| {
+        let who: AccountId = Keyring::Bob.into();
+        let network_id = EVMChainId::default();
+        let additional_data = AdditionalEVMOutboundData {
+            max_gas: 2_500_000u32.into(),
+            target: H160::zero(),
+        };
+
+        assert_ok!(<BridgeOutboundChannel as OutboundChannel<
+            EVMChainId,
+            AccountId,
+            AdditionalEVMOutboundData,
+        >>::submit(
+            network_id,
+            &RawOrigin::Signed(who.clone()),
+            &[0, 1, 2],
+            additional_data,
+        ));
+        assert_eq!(
+            QueueTotalGas::<Test>::get(GenericNetworkId::EVM(network_id)),
+            2_500_000u32.into(),
+        );
+
+        BridgeOutboundChannel::commit(GenericNetworkId::EVM(network_id));
+        assert!(MessageQueues::<Test>::get(GenericNetworkId::EVM(network_id)).is_empty());
+        assert_eq!(
+            QueueTotalGas::<Test>::get(GenericNetworkId::EVM(network_id)),
+            0u32.into(),
+        );
+
+        assert_ok!(<BridgeOutboundChannel as OutboundChannel<
+            EVMChainId,
+            AccountId,
+            AdditionalEVMOutboundData,
+        >>::submit(
+            network_id,
+            &RawOrigin::Signed(who),
+            &[0, 1, 2],
+            additional_data,
+        ));
     });
 }

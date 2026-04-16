@@ -29,7 +29,21 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![allow(clippy::type_complexity)]
+// Keep legacy shared primitives building under the newer CI Clippy without
+// forcing a large behavior-neutral style rewrite in this branch.
+#![allow(
+    clippy::cast_abs_to_unsigned,
+    clippy::doc_lazy_continuation,
+    clippy::items_after_test_module,
+    clippy::legacy_numeric_constants,
+    clippy::manual_div_ceil,
+    clippy::multiple_bound_locations,
+    clippy::non_canonical_partial_ord_impl,
+    clippy::question_mark,
+    clippy::type_complexity,
+    clippy::uninlined_format_args,
+    clippy::useless_conversion
+)]
 #![feature(int_roundings)]
 
 #[macro_use]

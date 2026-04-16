@@ -36,9 +36,12 @@ use crate::tests::{last_outgoing_request, last_request, Assets, ETH_NETWORK_ID};
 use crate::types::{Log, TransactionReceipt};
 use crate::{
     types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
-    MAX_PENDING_TX_BLOCKS_PERIOD, RE_HANDLE_TXS_PERIOD, STORAGE_ETH_NODE_PARAMS,
+    MAX_PENDING_TX_BLOCKS_PERIOD, OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX,
+    RE_HANDLE_TXS_PERIOD, STORAGE_ETH_NODE_PARAMS, STORAGE_LOCAL_PEER_READY_KEY,
+    STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY,
     STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
     SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
+    ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
 use codec::Encode;
 use common::{DEFAULT_BALANCE_PRECISION, VAL, XOR};
@@ -199,6 +202,73 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, request_hash).unwrap(),
             RequestStatus::Pending
+        );
+    });
+}
+
+#[test]
+fn outgoing_zero_approval_requests_retry_on_short_cadence() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+
+        state.set_should_fail_send_signed_transactions(true);
+        state.run_next_offchain_and_dispatch_txs();
+        let request_hash = last_request(net_id).unwrap().hash();
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, request_hash).len(),
+            0
+        );
+        let zero_approval_key = format!(
+            "{}-{:?}",
+            STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, net_id
+        );
+        assert_eq!(
+            state.storage_read::<u64>(zero_approval_key.as_bytes()),
+            Some(1)
+        );
+        let local_peer_ready_key = format!("{}-{:?}", STORAGE_LOCAL_PEER_READY_KEY, net_id);
+        assert_eq!(
+            state.storage_read::<u64>(local_peer_ready_key.as_bytes()),
+            Some(1)
+        );
+        let failure_key = format!(
+            "{}-{:?}-{}",
+            STORAGE_OUTGOING_APPROVAL_FAILURES_KEY,
+            net_id,
+            OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX
+        );
+        assert_eq!(state.storage_read::<u64>(failure_key.as_bytes()), Some(1));
+        assert_eq!(state.pending_txs().len(), 1);
+        state.storage_remove(STORAGE_PENDING_TRANSACTIONS_KEY);
+
+        state.set_should_fail_send_signed_transactions(false);
+        for _ in 0..ZERO_APPROVAL_OUTGOING_RETRY_PERIOD - 2 {
+            state.run_next_offchain_and_dispatch_txs();
+            assert_eq!(
+                crate::RequestApprovals::<Runtime>::get(net_id, request_hash).len(),
+                0
+            );
+        }
+
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, request_hash).len(),
+            1
+        );
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(
+            state.storage_read::<u64>(zero_approval_key.as_bytes()),
+            Some(0)
         );
     });
 }
@@ -671,6 +741,37 @@ fn ocw_should_retry_when_sidechain_node_params_are_missing() {
             Some(RequestStatus::Pending)
         );
         assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+    });
+}
+
+#[test]
+fn outgoing_approvals_do_not_depend_on_sidechain_rpc_preflight() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            net_id,
+        ));
+
+        let key = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
+        state.storage_remove(key.as_bytes());
+        state.run_next_offchain_and_dispatch_txs();
+
+        let request_hash = last_request(net_id).unwrap().hash();
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(net_id, request_hash).len(),
+            1
+        );
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Pending)
+        );
     });
 }
 

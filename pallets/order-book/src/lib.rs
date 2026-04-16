@@ -31,6 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::manual_repeat_n, clippy::uninlined_format_args)]
 #![feature(int_roundings)]
 
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk};

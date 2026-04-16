@@ -1,6 +1,6 @@
 [package]
 name = "framenode-chain-spec"
-version = "4.7.6"
+version = "4.8.1"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2021"
 
@@ -35,6 +35,9 @@ xor-fee = { path = "../../pallets/xor-fee" }
 [dev-dependencies]
 common = { path = "../../common", features = ["test"] }
 hex = "0.4"
+sc-executor = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
+sp-state-machine = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
+sp-version = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
 
 [features]
 include-real-files = []

@@ -2,6 +2,7 @@
 # will have compiled files and executables
 **/target/
 /target*/
+**/target-*/
 **/node_modules/
 **/artifacts/
 **/cache/
@@ -20,6 +21,7 @@ local-test
 
 .idea
 .gradle
+.venv*
 
 tmp
 /ethereum/java-wrapper/build/libs/*.jar
@@ -44,10 +46,9 @@ pallets/sccp/fuzz/Cargo.lock
 # Generated security docs
 docs/security*
 
-# Local compiled artifacts and temp build outputs
+# Root-level local build outputs
 /.tmp-docker-substrate*/
 /framenode
-/framenode-linux-amd64
-/framenode-linux-arm64
+/framenode-*
 /framenode_runtime.compact.compressed.wasm
 /subwasm_report.json

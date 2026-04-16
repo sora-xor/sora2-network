@@ -163,6 +163,9 @@ pub const STORAGE_PEER_MARKER_KEY: &[u8] = b"eth-bridge-ocw::peer-marker";
 /// Legacy OCW activation key (historically used for raw seed bytes).
 /// Kept for backward compatibility with existing offchain DBs.
 pub const STORAGE_PEER_SECRET_KEY: &[u8] = b"eth-bridge-ocw::secret-key";
+pub const STORAGE_BOOTSTRAP_READY_KEY: &[u8] = b"eth-bridge-ocw::bootstrap-ready";
+pub const STORAGE_LOCAL_SIGNING_KEY_READY_KEY: &[u8] = b"eth-bridge-ocw::local-signing-key-ready";
+pub const STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY: &[u8] = b"eth-bridge-ocw::substrate-rpc-configured";
 pub const STORAGE_ETH_NODE_PARAMS: &str = "eth-bridge-ocw::node-params";
 pub const STORAGE_NETWORK_IDS_KEY: &[u8] = b"eth-bridge-ocw::network-ids";
 pub const STORAGE_PENDING_TRANSACTIONS_KEY: &[u8] = b"eth-bridge-ocw::pending-transactions";
@@ -170,6 +173,18 @@ pub const STORAGE_FAILED_PENDING_TRANSACTIONS_KEY: &[u8] =
     b"eth-bridge-ocw::failed-pending-transactions";
 pub const STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY: &[u8] =
     b"eth-bridge-ocw::sub-to-handle-from-height";
+pub const STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY: &str = "eth-bridge-ocw::sidechain-rpc-configured";
+pub const STORAGE_LOCAL_PEER_READY_KEY: &str = "eth-bridge-ocw::local-peer-ready";
+pub const STORAGE_OUTGOING_PENDING_REQUESTS_KEY: &str = "eth-bridge-ocw::outgoing-pending-requests";
+pub const STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY: &str =
+    "eth-bridge-ocw::outgoing-zero-approval-requests";
+pub const STORAGE_OUTGOING_APPROVAL_FAILURES_KEY: &str =
+    "eth-bridge-ocw::outgoing-approval-failures";
+pub const OUTGOING_APPROVAL_FAILURE_NO_LOCAL_PEER_KEY: &str = "no_local_peer_key";
+pub const OUTGOING_APPROVAL_FAILURE_FAILED_SIGN: &str = "failed_sign";
+pub const OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX: &str = "failed_send_signed_tx";
+pub const OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT: &str =
+    "failed_sidechain_rpc_preflight";
 
 /// Contract's `Deposit(bytes32,uint256,address,bytes32)` event topic.
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
@@ -179,6 +194,7 @@ pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: Weight =
     Weight::from_parts(10_000_000_000_000_000u64, 10_000_000_000_000_000u64);
 const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
 const RE_HANDLE_TXS_PERIOD: u32 = 200;
+pub const ZERO_APPROVAL_OUTGOING_RETRY_PERIOD: u32 = 10;
 /// Minimum peers required to start bridge migration
 pub const MINIMUM_PEERS_FOR_MIGRATION: usize = 3;
 
@@ -466,6 +482,7 @@ pub mod pallet {
                 (legacy_ref.get::<Vec<u8>>().ok().flatten(), true)
             };
             if marker.is_none() {
+                crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 0);
                 debug!("Peer marker not found. Skipping off-chain procedure.");
                 return;
             }
@@ -473,11 +490,14 @@ pub mod pallet {
             let local_keys =
                 <T::PeerId as AppCrypto<T::Public, T::Signature>>::RuntimeAppPublic::all();
             if local_keys.is_empty() {
+                crate::offchain::set_offchain_metric_u64(STORAGE_LOCAL_SIGNING_KEY_READY_KEY, 0);
+                crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 0);
                 debug!(
                     "Bridge peer key not found in local keystore. Skipping off-chain procedure."
                 );
                 return;
             }
+            crate::offchain::set_offchain_metric_u64(STORAGE_LOCAL_SIGNING_KEY_READY_KEY, 1);
 
             // For the new marker format (public key bytes), ensure the marker corresponds to a
             // currently available local key.
@@ -485,6 +505,7 @@ pub mod pallet {
                 let marker_matches = local_keys.iter().any(|key| key.to_raw_vec() == marker);
                 let is_legacy_secret_seed = marker_from_legacy_key && marker.len() == 32;
                 if !marker_matches && !is_legacy_secret_seed {
+                    crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 0);
                     debug!(
                         "Bridge peer marker doesn't match a local key. Skipping off-chain procedure."
                     );
@@ -500,9 +521,11 @@ pub mod pallet {
                 Peers::<T>::iter_values().any(|peers| peers.contains(&account))
             });
             if !has_local_peer_account {
+                crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 0);
                 debug!("No local bridge peer account configured. Skipping off-chain procedure.");
                 return;
             }
+            crate::offchain::set_offchain_metric_u64(STORAGE_BOOTSTRAP_READY_KEY, 1);
 
             let mut lock = StorageLock::<'_, Time>::with_deadline(
                 b"eth-bridge-ocw::lock",

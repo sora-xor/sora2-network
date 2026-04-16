@@ -42,6 +42,15 @@
 
 // Ensure we're `no_std` when compiling for Wasm.
 #![cfg_attr(not(feature = "std"), no_std)]
+// This vendored snapshot predates the Clippy version used in CI.
+#![allow(
+    clippy::crate_in_macro_def,
+    clippy::needless_borrow,
+    clippy::needless_borrows_for_generic_args,
+    clippy::redundant_static_lifetimes,
+    clippy::type_complexity,
+    clippy::useless_conversion
+)]
 
 mod benchmarking;
 pub mod migrations;

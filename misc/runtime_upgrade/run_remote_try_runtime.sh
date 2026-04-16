@@ -9,4 +9,4 @@ cd "${REPO_ROOT}"
 : "${REQUIRE_REMOTE:=1}"
 export REMOTE_RPC_URL REQUIRE_REMOTE
 
-cargo test -p framenode-runtime remote_try_runtime_upgrade_rehearsal -- --exact --nocapture "$@"
+cargo test -p framenode-runtime --features try-runtime remote_try_runtime_upgrade_rehearsal -- --exact --nocapture "$@"

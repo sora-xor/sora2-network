@@ -38,6 +38,7 @@ use bridge_types::traits::TimepointProvider;
 use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use bridge_types::SubNetworkId;
+use bridge_types::{H256, U256};
 use frame_support::ensure;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Get;
@@ -45,7 +46,6 @@ use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
 use frame_system::RawOrigin;
 use log::error;
-use bridge_types::{H256, U256};
 use sp_runtime::DispatchError;
 
 use bridge_types::types::MessageNonce;
@@ -83,7 +83,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config<RuntimeEvent: From<Event<Self>>> + pallet_timestamp::Config
     {
-
         /// Max bytes in a message payload
         type MaxMessagePayloadSize: Get<u32>;
 
@@ -228,6 +227,7 @@ pub mod pallet {
         pub(crate) fn commit(network_id: GenericNetworkId) -> Weight {
             debug!("Commit substrate messages");
             let messages = MessageQueues::<T>::take(network_id);
+            QueueTotalGas::<T>::remove(network_id);
             if messages.is_empty() {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
             }

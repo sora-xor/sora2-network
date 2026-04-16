@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::doc_lazy_continuation, clippy::uninlined_format_args)]
 
 //! Kensetsu is an over collateralized lending protocol, clone of MakerDAO.
 //! An individual can create a collateral debt positions (CDPs) for one of the listed token and
@@ -229,7 +230,7 @@ pub mod pallet {
     pub type CdpId = u128;
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(5);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(6);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]

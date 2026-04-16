@@ -417,7 +417,7 @@ pub mod pallet {
                 );
 
                 if let Err(err) = common::with_transaction(migrations::migrate::<T>) {
-                    log::error!("Failed to migrate: {:?}", err);
+                    log::error!("Failed to migrate: {err:?}");
                 } else {
                     PalletStorageVersion::<T>::put(StorageVersion::V3);
                 }

@@ -1,0 +1,13 @@
+{
+  "call": {
+    "call_index": 2,
+    "pallet_index": 0,
+    "variant": "set_code"
+  },
+  "call_bytes_file": "framenode_runtime.compact.compressed.wasm.preimage.call",
+  "proposal_hash": "0x05434fd5f7e2298cc872418f8a771a8f0c53524aa572091e176088633aaca94d",
+  "proposal_len": 2950829,
+  "wasm_blake2_256": "0xa93abced5452718dd1d2f04104d22ee4ff1e054dbce548c7cb22bb08b5752b82",
+  "wasm_len": 2950823,
+  "wasm_path": "target-zig-releasefix-arm64/aarch64-unknown-linux-gnu/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm"
+}

@@ -40,6 +40,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+#![allow(
+    clippy::collapsible_if,
+    clippy::doc_lazy_continuation,
+    clippy::manual_repeat_n,
+    clippy::useless_conversion
+)]
 
 pub use pallet::*;
 pub use weights::WeightInfo;

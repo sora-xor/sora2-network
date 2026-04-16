@@ -117,6 +117,21 @@ mod tests {
     }
 }
 
+#[cfg(all(test, not(feature = "private-net")))]
+mod default_chain_spec_tests {
+    use super::Cli;
+    use clap::Parser;
+    use sc_cli::SubstrateCli;
+
+    #[test]
+    fn main_chain_spec_loads_with_default_node_features() {
+        let cli = Cli::parse_from(["framenode"]);
+
+        <Cli as SubstrateCli>::load_spec(&cli, "main")
+            .expect("main chainspec should load with embedded json");
+    }
+}
+
 /// Parse and run command line arguments
 pub fn run() -> sc_cli::Result<()> {
     let cli = Cli::from_args();
@@ -271,13 +286,38 @@ pub fn run() -> sc_cli::Result<()> {
             set_default_ss58_version();
             runner.run_node_until_exit(|config| async move {
                 #[cfg(feature = "wip")] // Bridges
-                return service::new_full(config, cli.disable_beefy, None)
-                    .map_err(sc_cli::Error::Service);
+                return match config.network.network_backend {
+                    sc_network::config::NetworkBackendType::Libp2p => {
+                        service::new_full::<sc_network::NetworkWorker<_, _>>(
+                            config,
+                            cli.disable_beefy,
+                            None,
+                        )
+                        .map_err(sc_cli::Error::Service)
+                    }
+                    sc_network::config::NetworkBackendType::Litep2p => {
+                        service::new_full::<sc_network::Litep2pNetworkBackend>(
+                            config,
+                            cli.disable_beefy,
+                            None,
+                        )
+                        .map_err(sc_cli::Error::Service)
+                    }
+                };
                 // Disable BEEFY on production.
                 // BEEFY is still work in progress and probably will contain breaking changes, so it's better to enable it when it's ready
                 // Also before enabling it we need to ensure that validators updated their session keys
                 #[cfg(not(feature = "wip"))] // Bridges
-                service::new_full(config, true, None).map_err(sc_cli::Error::Service)
+                match config.network.network_backend {
+                    sc_network::config::NetworkBackendType::Libp2p => {
+                        service::new_full::<sc_network::NetworkWorker<_, _>>(config, true, None)
+                            .map_err(sc_cli::Error::Service)
+                    }
+                    sc_network::config::NetworkBackendType::Litep2p => {
+                        service::new_full::<sc_network::Litep2pNetworkBackend>(config, true, None)
+                            .map_err(sc_cli::Error::Service)
+                    }
+                }
             })
         }
     }

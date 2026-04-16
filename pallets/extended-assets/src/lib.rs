@@ -476,10 +476,10 @@ impl<T: Config> Pallet<T> {
 
         let sbt_id = Self::regulated_asset_to_sbt(regulated_asset_id);
         let is_holding = <T as Config>::AssetInfoProvider::total_balance(&sbt_id, account_id)
-            .map_or(false, |balance| balance > 0);
+            .is_ok_and(|balance| balance > 0);
 
         let expires_at = Self::sbt_asset_expiration(account_id, sbt_id);
-        let is_expired = expires_at.map_or(false, |expiration_date| expiration_date < *now);
+        let is_expired = expires_at.is_some_and(|expiration_date| expiration_date < *now);
 
         is_holding && !is_expired
     }

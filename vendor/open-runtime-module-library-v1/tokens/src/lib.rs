@@ -34,8 +34,12 @@
 //! configured in genesis configs.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::assertions_on_constants)]
+#![allow(clippy::clone_on_copy)]
 #![allow(clippy::unused_unit)]
 #![allow(clippy::comparison_chain)]
+#![allow(clippy::legacy_numeric_constants)]
+#![allow(clippy::missing_const_for_thread_local)]
 #![allow(clippy::useless_conversion)]
 
 pub use crate::imbalances::{NegativeImbalance, PositiveImbalance};

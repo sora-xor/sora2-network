@@ -140,7 +140,7 @@ impl<T: Config> sp_std::fmt::Debug for LiquidityInfo<T> {
                 )
             }
             LiquidityInfo::Postponed(account_id) => {
-                write!(f, "Postponed({:?})", account_id)
+                write!(f, "Postponed({account_id:?})")
             }
             LiquidityInfo::NotPaid => {
                 write!(f, "NotPaid")
@@ -869,7 +869,7 @@ impl<T: Config> Pallet<T> {
                     xor_to_val = xor_to_val.saturating_add(XorToVal::<T>::take());
                     if xor_to_val != 0 {
                         if let Err(e) = Self::remint_val(&mut weight, xor_to_val) {
-                            error!("xor fee remint failed: {:?}", e);
+                            error!("xor fee remint failed: {e:?}");
                         }
                     }
 
@@ -877,13 +877,13 @@ impl<T: Config> Pallet<T> {
 
                     if xor_to_buy_back != 0 {
                         if let Err(e) = Self::remint_buy_back(&mut weight, xor_to_buy_back) {
-                            error!("XOR remint buy back failed: {:?}", e);
+                            error!("XOR remint buy back failed: {e:?}");
                         }
                     }
                 }
             }
             Err(error) => {
-                warn!("Failed to get randomness for xor-fee: {}", error);
+                warn!("Failed to get randomness for xor-fee: {error}");
             }
         }
         weight
@@ -959,10 +959,7 @@ impl<T: Config> Pallet<T> {
                 T::AssetManager::burn_from(&val, &tech_account_id, &tech_account_id, val_to_burn)?;
             }
             Err(e) => {
-                error!(
-                    "failed to exchange xor to val, burning {} XOR, e: {:?}",
-                    xor_to_val, e
-                );
+                error!("failed to exchange xor to val, burning {xor_to_val} XOR, e: {e:?}");
                 weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
             }
@@ -1017,7 +1014,7 @@ impl<T: Config> Pallet<T> {
                         Ok(())
                     }
                     Err(e) => {
-                        error!("white listed asset fee remint failed: {:?}", e);
+                        error!("white listed asset fee remint failed: {e:?}");
                         Err(())
                     }
                 }
@@ -1078,10 +1075,7 @@ impl<T: Config> Pallet<T> {
                 Ok(xor_to_burn.0.amount)
             }
             Err(e) => {
-                error!(
-                    "failed to exchange asset {:?} to xor, burning {} asset, e: {:?}",
-                    asset_id, amount, e
-                );
+                error!("failed to exchange asset {asset_id:?} to xor, burning {amount} asset, e: {e:?}");
                 weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
                 T::AssetManager::burn_from(&asset_id, &tech_account_id, &tech_account_id, amount)?;
                 Err(e)
@@ -1222,9 +1216,7 @@ pub mod pallet {
                     #[cfg(feature = "std")]
                     warn!(
                         target: "xor-fee",
-                        "Force-applied multiplier override at block {:?}: {:?}",
-                        current_block,
-                        forced_multiplier
+                        "Force-applied multiplier override at block {current_block:?}: {forced_multiplier:?}"
                     );
                 }
             }

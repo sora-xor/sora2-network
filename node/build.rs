@@ -28,9 +28,60 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use substrate_build_script_utils::{generate_cargo_keys, rerun_if_git_head_changed};
+use std::{borrow::Cow, env, process::Command};
+
+use substrate_build_script_utils::rerun_if_git_head_changed;
+
+fn git_commit() -> Cow<'static, str> {
+    if let Ok(commit) = env::var("GIT_COMMIT") {
+        let commit = commit.trim();
+        if !commit.is_empty() {
+            return Cow::Owned(commit.to_owned());
+        }
+    }
+
+    let output = Command::new("git")
+        .args(["rev-parse", "--short", "HEAD"])
+        .output();
+
+    match output {
+        Ok(output) if output.status.success() => {
+            Cow::Owned(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+        }
+        Ok(output) => {
+            println!(
+                "cargo:warning=Git command failed with status: {}",
+                output.status
+            );
+            Cow::Borrowed("unknown")
+        }
+        Err(error) => {
+            println!("cargo:warning=Failed to execute git command: {error}");
+            Cow::Borrowed("unknown")
+        }
+    }
+}
+
+fn target_platform() -> String {
+    env::var("TARGET").unwrap_or_else(|_| "unknown-target".into())
+}
+
+fn impl_version() -> String {
+    let package_version = env::var("CARGO_PKG_VERSION").unwrap_or_default();
+    let commit = git_commit();
+
+    if commit.is_empty() {
+        format!("{package_version}-{}", target_platform())
+    } else {
+        format!("{package_version}-{commit}-{}", target_platform())
+    }
+}
 
 fn main() {
-    generate_cargo_keys();
+    println!(
+        "cargo:rustc-env=SUBSTRATE_CLI_IMPL_VERSION={}",
+        impl_version()
+    );
+    println!("cargo:rerun-if-env-changed=GIT_COMMIT");
     rerun_if_git_head_changed();
 }

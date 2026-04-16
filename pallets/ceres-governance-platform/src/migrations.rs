@@ -52,7 +52,7 @@ pub fn migrate<T: Config>() -> Result<(), sp_runtime::DispatchError> {
 
     //Drain old data
     let number_of_drained_polls = OldPollData::<T::Moment>::drain().count();
-    log::info!("Number of drained polls: {}", number_of_drained_polls);
+    log::info!("Number of drained polls: {number_of_drained_polls}");
 
     let mut poll_start_timestamp_a: <T as pallet_timestamp::Config>::Moment = 1647612888u32.into();
     poll_start_timestamp_a *= 1000u32.into();

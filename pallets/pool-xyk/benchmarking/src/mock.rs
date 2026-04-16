@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg(test)]
+#![allow(dead_code, deprecated, unused_imports)]
 
 use crate::{Config, *};
 use common::mock::ExistentialDeposits;

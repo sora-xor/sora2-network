@@ -166,3 +166,28 @@ If an outgoing request collects signatures but cannot finalize (for example beca
 3. The request status should remain `Failed` or `Broken`; resubmit or re-run the approval flow as appropriate.
 
 This explicit reset replaces the old behaviour where signatures were wiped automatically on failure, preventing accidental loss of evidence while still giving operators a deterministic recovery step.
+
+### Diagnosing SORA to Ethereum Approval Stalls
+
+When Ethereum to SORA keeps working but SORA to Ethereum requests remain `Pending` with `0` approvals, focus on the outgoing approval path on the bridge peers.
+
+Check these Prometheus metrics on each peer:
+
+1. `eth_bridge_bootstrap_ready` should be `1`.
+2. `eth_bridge_local_signing_key_ready` should be `1`.
+3. `eth_bridge_substrate_rpc_configured` should be `1`.
+4. `eth_bridge_local_peer_ready{network_id="..."}` should be `1` for the affected network.
+5. `eth_bridge_sidechain_rpc_configured{network_id="..."}` can be `0` without blocking outgoing approvals after this fix, but it still indicates a broken Ethereum RPC configuration for incoming and reconciliation flows.
+6. `eth_bridge_outgoing_pending_requests{network_id="..."}` shows the queue depth.
+7. `eth_bridge_outgoing_zero_approval_requests{network_id="..."}` shows how many outgoing requests are stuck before the first approval.
+8. `eth_bridge_outgoing_approval_failure_total{network_id="...",reason="..."}` shows which failure mode is repeating:
+   - `no_local_peer_key`
+   - `failed_sign`
+   - `failed_send_signed_tx`
+   - `failed_sidechain_rpc_preflight`
+
+Operational notes:
+
+1. Outgoing requests with zero approvals are retried every 10 finalized blocks.
+2. A broken Ethereum RPC endpoint no longer prevents outgoing approvals from being submitted.
+3. The bridge channel now clears `QueueTotalGas` after each outbound commit, so EVM outbound batches start with a fresh gas budget.

@@ -4,5 +4,5 @@ set -euo pipefail
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/benchmark_helpers.sh"
 
 benchmark::build_local_binary
-benchmark::require_benchmark_binary "${BENCHMARK_LOCAL_BINARY}"
+benchmark::require_runtime_benchmark_binary "${BENCHMARK_LOCAL_BINARY}"
 benchmark::run_all_pallet_targets "${BENCHMARK_LOCAL_BINARY}"
