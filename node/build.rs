@@ -56,7 +56,7 @@ fn git_commit() -> Cow<'static, str> {
             Cow::Borrowed("unknown")
         }
         Err(error) => {
-            println!("cargo:warning=Failed to execute git command: {}", error);
+            println!("cargo:warning=Failed to execute git command: {error}");
             Cow::Borrowed("unknown")
         }
     }
