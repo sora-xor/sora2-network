@@ -1,3 +1,5 @@
+#![allow(dead_code, deprecated)]
+
 // This file is part of the SORA network and Polkaswap app.
 
 // Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.

@@ -445,7 +445,7 @@ impl<Value: FullCodec, Map: StoragePrefixedMap<Value>> StorageMapExt<Value> for 
             count += 1;
             Some(v)
         });
-        log::info!("Denominated {} values in storage map", count);
+        log::info!("Denominated {count} values in storage map");
     }
 }
 

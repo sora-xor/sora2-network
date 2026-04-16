@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::type_complexity)]
 #![allow(clippy::too_many_arguments)]
+#![allow(clippy::uninlined_format_args)]
 use codec::{Decode, Encode};
 use common::Balance;
 pub use weights::WeightInfo;

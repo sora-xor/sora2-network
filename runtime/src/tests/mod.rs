@@ -227,6 +227,10 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
         StorageVersion::new(2)
     );
     assert_eq!(
+        kensetsu::Pallet::<crate::Runtime>::in_code_storage_version(),
+        StorageVersion::new(6)
+    );
+    assert_eq!(
         oracle_proxy::Pallet::<crate::Runtime>::in_code_storage_version(),
         StorageVersion::new(1)
     );

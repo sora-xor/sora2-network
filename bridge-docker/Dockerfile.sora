@@ -1,4 +1,5 @@
 FROM debian:bullseye-slim AS rust
+COPY misc/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 # Set environment variables
 ENV RUSTUP_HOME="/opt/rustup"
 ENV CARGO_HOME="/opt/cargo"
@@ -7,22 +8,23 @@ ENV CARGO_BUILD_DEP_INFO_BASEDIR="."
 ENV CC=clang-13
 ENV CXX=clang++-13
 # Install dependencies
-RUN apt-get update && \
+RUN find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec \
+      sed -i 's|http://deb.debian.org|https://deb.debian.org|g; s|http://security.debian.org|https://security.debian.org|g' {} + && \
+    apt-get update -o Acquire::Retries=5 && \
     apt-get install --no-install-recommends -y \
     ca-certificates apt-transport-https gnupg \
     libssl-dev pkg-config \
     curl jq \
     protobuf-compiler \
     git binaryen \
-    make cmake libssl-dev \
-    software-properties-common && \
+    make cmake && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-    echo "deb http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
-    echo "deb-src http://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
-    apt-get -y update && \
+    echo "deb https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
+    echo "deb-src https://apt.llvm.org/bullseye/ llvm-toolchain-bullseye-13 main" >> /etc/apt/sources.list.d/llvm-toochain-bullseye-13.list && \
+    apt-get -y update -o Acquire::Retries=5 && \
     apt-get install -y --no-install-recommends \
     clang-13 lldb-13 lld-13 libclang-13-dev llvm-13 && \
     update-alternatives --install /usr/bin/cc cc /usr/bin/clang-13 100 && \
@@ -31,50 +33,30 @@ RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     rm -rf /var/lib/apt/lists/*
 # Install rust
 ENV RUST_NIGHTLY_VERSION=nightly-2025-05-08
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_NIGHTLY_VERSION} && \
+RUN curl --retry 5 --retry-delay 3 --retry-all-errors https://sh.rustup.rs -sSf | sh -s -- -y --no-modify-path --default-toolchain ${RUST_NIGHTLY_VERSION} && \
     rustup default ${RUST_NIGHTLY_VERSION} && \
     rustup target add wasm32-unknown-unknown && \
     rustup target add wasm32-unknown-unknown --toolchain ${RUST_NIGHTLY_VERSION} && \
     rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
-RUN cargo install --version 0.1.61 --locked cargo-chef
-
-# generate recipe.json for dependency caching
-FROM rust AS planner
-WORKDIR /app
-COPY Cargo.lock /app
-COPY Cargo.toml /app
-COPY pallets /app/pallets
-COPY runtime /app/runtime
-COPY relayer /app/relayer
-COPY common /app/common
-COPY utils /app/utils
-COPY node /app/node
-RUN cargo chef prepare --recipe-path recipe.json
-
 FROM rust AS builder
 WORKDIR /app
-COPY --from=planner /app/recipe.json recipe.json
-# cache dependencies build
-RUN cargo chef cook --release --features private-net,wip,stage --recipe-path recipe.json
-# build
+ARG GIT_COMMIT
+ENV GIT_COMMIT=${GIT_COMMIT}
 COPY Cargo.lock /app
 COPY Cargo.toml /app
+COPY misc /app/misc
 COPY pallets /app/pallets
 COPY runtime /app/runtime
-COPY relayer /app/relayer
 COPY common /app/common
 COPY utils /app/utils
 COPY node /app/node
+COPY vendor /app/vendor
 COPY .hooks /app/.hooks
 COPY .cargo /app/.cargo
-RUN cargo build --release --features private-net,wip,stage
+RUN cargo build --release
 
 # runtime
 FROM debian:bullseye-slim
-RUN apt-get update && \
-    apt-get install --no-install-recommends -y \
-    jq && \
-    apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-COPY --from=builder /app/target/release/framenode /app/target/release/relayer /usr/local/bin
+COPY misc/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /app/target/release/framenode /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/framenode"]

@@ -567,7 +567,7 @@ fn should_extrinsic_produce_correct_events() {
                 {
                     (collateral_prices, tbcd_prices)
                 }
-                _ => panic!("unexpected asset ids in events: {:?}", init_collaterals),
+                _ => panic!("unexpected asset ids in events: {init_collaterals:?}"),
             };
         assert_approx_eq!(
             collateral_reference_prices.buy,

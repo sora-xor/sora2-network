@@ -34,8 +34,10 @@
 
 use codec::Encode;
 use framenode_runtime::eth_bridge::{
-    self, PeerConfig, STORAGE_ETH_NODE_PARAMS, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
-    STORAGE_PEER_SECRET_KEY, STORAGE_SUB_NODE_URL_KEY,
+    self, PeerConfig, STORAGE_BOOTSTRAP_READY_KEY, STORAGE_ETH_NODE_PARAMS,
+    STORAGE_LOCAL_SIGNING_KEY_READY_KEY, STORAGE_NETWORK_IDS_KEY, STORAGE_PEER_MARKER_KEY,
+    STORAGE_PEER_SECRET_KEY, STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY,
+    STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY, STORAGE_SUB_NODE_URL_KEY,
 };
 use framenode_runtime::opaque::Block;
 use framenode_runtime::{self, BeefyId, Runtime, RuntimeApi};
@@ -43,7 +45,7 @@ use log::debug;
 use prometheus_endpoint::Registry;
 use sc_client_api::{Backend, BlockBackend};
 use sc_executor::WasmExecutor;
-use sc_network::NetworkBackend;
+use sc_network::{config::MultiaddrWithPeerId, multiaddr::Protocol, Multiaddr, NetworkBackend};
 use sc_network_sync::strategy::warp::WarpSyncConfig;
 use sc_service::config::PrometheusConfig;
 use sc_service::error::Error as ServiceError;
@@ -52,23 +54,24 @@ use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_consensus_babe::inherents::BabeCreateInherentDataProviders;
 use sp_core::offchain::OffchainStorage;
 use sp_core::ByteArray;
+use sp_core::Pair;
 use sp_keystore::Keystore;
 use sp_runtime::offchain::STORAGE_PREFIX;
 use sp_runtime::traits::{Block as BlockT, IdentifyAccount};
 use std::collections::BTreeSet;
 use std::fs::File;
+use std::net::{IpAddr, ToSocketAddrs};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use telemetry::{Telemetry, TelemetryWorker, TelemetryWorkerHandle};
 
-#[cfg(feature = "runtime-benchmarks")]
+// Historical SORA runtimes on mainnet require these imports during sync, so the
+// node must expose them even in non-benchmark release builds.
 type HostFunctions = (
     sp_io::SubstrateHostFunctions,
     frame_benchmarking::benchmarking::HostFunctions,
 );
-#[cfg(not(feature = "runtime-benchmarks"))]
-type HostFunctions = (sp_io::SubstrateHostFunctions,);
 pub(crate) type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
 type FullBackend = sc_service::TFullBackend<Block>;
@@ -118,6 +121,74 @@ fn bridge_config_path(config: &Configuration) -> Result<PathBuf, ServiceError> {
         })
 }
 
+fn resolve_libp2p_bootnodes(config: &mut Configuration) {
+    if !matches!(
+        config.network.network_backend,
+        sc_network::config::NetworkBackendType::Libp2p
+    ) {
+        return;
+    }
+
+    let mut resolved = Vec::new();
+
+    for bootnode in &config.network.boot_nodes {
+        let mut protocols = bootnode.multiaddr.iter();
+        let host = match protocols.next() {
+            Some(Protocol::Dns(host)) | Some(Protocol::Dns4(host)) | Some(Protocol::Dns6(host)) => {
+                host.into_owned()
+            }
+            _ => continue,
+        };
+        let port = match protocols.next() {
+            Some(Protocol::Tcp(port)) => port,
+            _ => continue,
+        };
+        let tail: Vec<_> = protocols.collect();
+
+        match (host.as_str(), port).to_socket_addrs() {
+            Ok(addresses) => {
+                for address in addresses {
+                    let mut multiaddr = Multiaddr::empty();
+                    match address.ip() {
+                        IpAddr::V4(ip) => multiaddr.push(Protocol::Ip4(ip)),
+                        IpAddr::V6(ip) => multiaddr.push(Protocol::Ip6(ip)),
+                    }
+                    multiaddr.push(Protocol::Tcp(address.port()));
+                    for protocol in &tail {
+                        multiaddr.push(protocol.clone());
+                    }
+
+                    let candidate = MultiaddrWithPeerId {
+                        multiaddr,
+                        peer_id: bootnode.peer_id,
+                    };
+                    if !config.network.boot_nodes.contains(&candidate)
+                        && !resolved.contains(&candidate)
+                    {
+                        resolved.push(candidate);
+                    }
+                }
+            }
+            Err(error) => {
+                log::warn!(
+                    "Failed to resolve libp2p bootnode {}:{}: {}",
+                    host,
+                    port,
+                    error
+                );
+            }
+        }
+    }
+
+    if !resolved.is_empty() {
+        log::info!(
+            "Resolved {} libp2p bootnode address(es) from DNS bootnodes",
+            resolved.len()
+        );
+        config.network.boot_nodes.extend(resolved);
+    }
+}
+
 fn load_bridge_peer_config(path: &Path) -> Result<BridgePeerConfig, ServiceError> {
     let file = File::open(path).map_err(|error| {
         ServiceError::Other(format!(
@@ -134,12 +205,56 @@ fn load_bridge_peer_config(path: &Path) -> Result<BridgePeerConfig, ServiceError
     })
 }
 
-fn resolve_local_bridge_peer_marker<F>(
+fn local_rpc_listen_addr(config: &Configuration) -> Option<std::net::SocketAddr> {
+    config
+        .rpc
+        .addr
+        .as_ref()
+        .and_then(|endpoints| endpoints.first().map(|endpoint| endpoint.listen_addr))
+}
+
+fn bridge_rpc_url(listen_addr: Option<std::net::SocketAddr>) -> Result<String, ServiceError> {
+    listen_addr
+        .map(|addr| {
+            let normalized = match addr {
+                std::net::SocketAddr::V4(addr) if addr.ip().is_unspecified() => {
+                    std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, addr.port()))
+                }
+                std::net::SocketAddr::V6(addr) if addr.ip().is_unspecified() => {
+                    std::net::SocketAddr::from((std::net::Ipv6Addr::LOCALHOST, addr.port()))
+                }
+                addr => addr,
+            };
+            format!("http://{}", normalized)
+        })
+        .ok_or_else(|| {
+            ServiceError::Other(
+                "HTTP RPC should be enabled for ethereum bridge. Please enable it via `--rpc-port <port>`."
+                    .into(),
+            )
+        })
+}
+
+fn set_offchain_u64_metric<S: OffchainStorage>(storage: &mut S, key: &[u8], value: u64) {
+    storage.set(STORAGE_PREFIX, key, &value.encode());
+}
+
+fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
+    storage: &mut S,
+    prefix: &str,
+    network_id: N,
+    value: u64,
+) {
+    let key = format!("{}-{:?}", prefix, network_id);
+    storage.set(STORAGE_PREFIX, key.as_bytes(), &value.encode());
+}
+
+fn resolve_local_bridge_credentials<F>(
     public_keys: Vec<Vec<u8>>,
-    mut has_local_keypair: F,
-) -> Result<Option<Vec<u8>>, ServiceError>
+    mut local_seed_for_public: F,
+) -> Result<Option<(Vec<u8>, Vec<u8>)>, ServiceError>
 where
-    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<Option<Vec<u8>>, ServiceError>,
 {
     let mut saw_any_public_key = false;
 
@@ -170,13 +285,13 @@ where
             substrate_public
         );
 
-        if has_local_keypair(&bridge_public)? {
-            return Ok(Some(public_key_bytes));
+        if let Some(seed) = local_seed_for_public(&bridge_public)? {
+            return Ok(Some((public_key_bytes, seed)));
         }
     }
 
     if saw_any_public_key {
-        log::debug!(
+        log::warn!(
             "Ethereum bridge public key found, but no local signing keypair is available; skipping bridge OCW bootstrap."
         );
     } else {
@@ -188,18 +303,20 @@ where
 
 fn resolve_local_bridge_bootstrap<F, G>(
     public_keys: Vec<Vec<u8>>,
-    has_local_keypair: F,
+    local_seed_for_public: F,
     load_peer_config: G,
-) -> Result<Option<(Vec<u8>, BridgePeerConfig)>, ServiceError>
+) -> Result<Option<(Vec<u8>, Vec<u8>, BridgePeerConfig)>, ServiceError>
 where
-    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<bool, ServiceError>,
+    F: FnMut(&eth_bridge::offchain::crypto::Public) -> Result<Option<Vec<u8>>, ServiceError>,
     G: FnOnce() -> Result<BridgePeerConfig, ServiceError>,
 {
-    let Some(marker) = resolve_local_bridge_peer_marker(public_keys, has_local_keypair)? else {
+    let Some((marker, legacy_secret)) =
+        resolve_local_bridge_credentials(public_keys, local_seed_for_public)?
+    else {
         return Ok(None);
     };
 
-    Ok(Some((marker, load_peer_config()?)))
+    Ok(Some((marker, legacy_secret, load_peer_config()?)))
 }
 
 pub fn new_partial(
@@ -262,16 +379,17 @@ pub fn new_partial(
             executor,
         )?;
     let client = Arc::new(client);
+    let bridge_public_keys = keystore_container
+        .keystore()
+        .keys(eth_bridge::KEY_TYPE)
+        .unwrap_or_default();
     let bridge_bootstrap = resolve_local_bridge_bootstrap(
-        keystore_container
-            .keystore()
-            .keys(eth_bridge::KEY_TYPE)
-            .unwrap_or_default(),
+        bridge_public_keys,
         |public_key| {
             let local_keystore = keystore_container.local_keystore();
             local_keystore
                 .key_pair::<eth_bridge::offchain::crypto::Pair>(public_key)
-                .map(|key_pair| key_pair.is_some())
+                .map(|key_pair| key_pair.map(|key_pair| key_pair.to_raw_vec()))
                 .map_err(|error| {
                     ServiceError::Other(format!(
                         "Failed to inspect local ethereum bridge keypair: {}",
@@ -285,7 +403,21 @@ pub fn new_partial(
         },
     )?;
 
-    if let Some((marker, peer_config)) = bridge_bootstrap {
+    if let Some(mut storage) = backend.offchain_storage() {
+        set_offchain_u64_metric(
+            &mut storage,
+            STORAGE_LOCAL_SIGNING_KEY_READY_KEY,
+            u64::from(bridge_bootstrap.is_some()),
+        );
+        set_offchain_u64_metric(&mut storage, STORAGE_BOOTSTRAP_READY_KEY, 0);
+        set_offchain_u64_metric(
+            &mut storage,
+            STORAGE_SUBSTRATE_RPC_CONFIGURED_KEY,
+            u64::from(local_rpc_listen_addr(config).is_some()),
+        );
+    }
+
+    if let Some((marker, legacy_secret, peer_config)) = bridge_bootstrap {
         let mut storage = backend.offchain_storage().ok_or_else(|| {
             ServiceError::Other(
                 "Ethereum bridge offchain storage is unavailable for local bridge bootstrap."
@@ -294,12 +426,22 @@ pub fn new_partial(
         })?;
         // Keep a non-secret OCW activation marker in offchain DB for bridge workers.
         storage.set(STORAGE_PREFIX, STORAGE_PEER_MARKER_KEY, &marker.encode());
-        // Legacy compatibility key for nodes/runtimes still reading the old storage path.
-        storage.set(STORAGE_PREFIX, STORAGE_PEER_SECRET_KEY, &marker.encode());
+        // The deployed bridge runtime still reads the legacy 32-byte seed from the offchain DB.
+        storage.set(
+            STORAGE_PREFIX,
+            STORAGE_PEER_SECRET_KEY,
+            &legacy_secret.encode(),
+        );
         let mut network_ids = BTreeSet::new();
         for (net_id, params) in peer_config.networks {
             let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
             storage.set(STORAGE_PREFIX, string.as_bytes(), &params.encode());
+            set_offchain_network_metric(
+                &mut storage,
+                STORAGE_SIDECHAIN_RPC_CONFIGURED_KEY,
+                net_id,
+                1,
+            );
             network_ids.insert(net_id);
         }
         storage.set(
@@ -307,42 +449,36 @@ pub fn new_partial(
             STORAGE_NETWORK_IDS_KEY,
             &network_ids.encode(),
         );
-        let rpc_addr = config
-            .rpc
-            .addr
-            .as_ref()
-            .and_then(|endpoints| endpoints.first().map(|endpoint| endpoint.listen_addr))
-            .unwrap_or_else(|| std::net::SocketAddr::from(([127, 0, 0, 1], config.rpc.port)));
-        storage.set(
-            STORAGE_PREFIX,
-            STORAGE_SUB_NODE_URL_KEY,
-            &format!("http://{}", rpc_addr).encode(),
+        let rpc_url = bridge_rpc_url(local_rpc_listen_addr(config))?;
+        storage.set(STORAGE_PREFIX, STORAGE_SUB_NODE_URL_KEY, &rpc_url.encode());
+        set_offchain_u64_metric(&mut storage, STORAGE_BOOTSTRAP_READY_KEY, 1);
+        log::info!(
+            "Ethereum bridge peer initialized for networks: {:?}",
+            network_ids
         );
-
-        config
-            .prometheus_registry()
-            .and_then(|registry| {
-                crate::eth_bridge_metrics::Metrics::register(
-                    registry,
-                    backend.clone(),
-                    std::time::Duration::from_secs(6),
-                )
-                .map_err(|e| {
-                    log::error!("Failed to register metrics: {:?}", e);
-                })
-                .ok()
-            })
-            .and_then(|metrics| {
-                task_manager.spawn_essential_handle().spawn_blocking(
-                    "eth-bridge-metrics",
-                    Some("eth-bridge-metrics"),
-                    metrics.run(),
-                );
-                Some(())
-            });
-
-        log::info!("Ethereum bridge peer initialized");
     }
+    config
+        .prometheus_registry()
+        .and_then(|registry| {
+            crate::eth_bridge_metrics::Metrics::register(
+                registry,
+                backend.clone(),
+                std::time::Duration::from_secs(6),
+            )
+            .map_err(|e| {
+                log::error!("Failed to register metrics: {:?}", e);
+            })
+            .ok()
+        })
+        .and_then(|metrics| {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "eth-bridge-metrics",
+                Some("eth-bridge-metrics"),
+                metrics.run(),
+            );
+            Some(())
+        });
+
     config
         .prometheus_registry()
         .and_then(|registry| {
@@ -426,7 +562,7 @@ pub fn new_partial(
         OffchainTransactionPoolFactory::new(transaction_pool.clone()),
     )?;
 
-    let (import_queue, _babe_worker_handle) =
+    let (import_queue, babe_worker_handle) =
         sc_consensus_babe::import_queue(sc_consensus_babe::ImportQueueParams {
             link: babe_link.clone(),
             block_import: babe_block_import.clone(),
@@ -437,6 +573,16 @@ pub fn new_partial(
             registry: config.prometheus_registry(),
             telemetry: telemetry.as_ref().map(|x| x.handle()),
         })?;
+
+    // `import_queue` spawns the essential `babe-worker` request loop and returns the sender side
+    // that keeps it alive. Dropping the handle closes the channel, makes the worker exit, and the
+    // service shuts down immediately because the worker task is essential.
+    task_manager
+        .spawn_handle()
+        .spawn("babe-worker-keep-alive", None, async move {
+            let _babe_worker_handle = babe_worker_handle;
+            futures::future::pending::<()>().await;
+        });
 
     let import_setup = (
         babe_block_import.clone(),
@@ -493,13 +639,17 @@ pub fn new_partial(
 ///
 /// This is an advanced feature and not recommended for general use. Generally, `build_full` is
 /// a better choice.
-pub fn new_full(
+pub fn new_full<FullNetwork>(
     mut config: Configuration,
     disable_beefy: bool,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
-) -> Result<TaskManager, ServiceError> {
+) -> Result<TaskManager, ServiceError>
+where
+    FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
+{
     // Increase the default value by 2 to make wasm being able to use 128MB, each heap page is 64KiB
     config.executor.default_heap_pages = Some(1024 * 2);
+    resolve_libp2p_bootnodes(&mut config);
 
     debug!("using: {:#?}", config);
 
@@ -519,7 +669,6 @@ pub fn new_full(
         .ok()
         .flatten()
         .expect("Genesis block exists; qed");
-    type FullNetwork = sc_network::Litep2pNetworkBackend;
     let metrics = <FullNetwork as NetworkBackend<Block, <Block as BlockT>::Hash>>::register_notification_metrics(
         config.prometheus_config.as_ref().map(|cfg| &cfg.registry),
     );
@@ -795,10 +944,11 @@ pub fn new_full(
 
 #[cfg(test)]
 mod tests {
-    use super::{load_bridge_peer_config, resolve_local_bridge_bootstrap};
+    use super::{bridge_rpc_url, load_bridge_peer_config, resolve_local_bridge_bootstrap};
     use sp_core::Pair;
     use std::cell::Cell;
     use std::fs;
+    use std::net::SocketAddr;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -823,7 +973,7 @@ mod tests {
         let missing_path = unique_temp_path("missing-eth-json");
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(true),
+            |_| Ok(Some(vec![7u8; 32])),
             || load_bridge_peer_config(&missing_path),
         );
 
@@ -837,7 +987,7 @@ mod tests {
 
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(true),
+            |_| Ok(Some(vec![7u8; 32])),
             || load_bridge_peer_config(&invalid_path),
         );
 
@@ -850,7 +1000,7 @@ mod tests {
         let loader_called = Cell::new(false);
         let result = resolve_local_bridge_bootstrap(
             vec![sample_bridge_public_key()],
-            |_| Ok(false),
+            |_| Ok(None),
             || {
                 loader_called.set(true);
                 unreachable!("bridge config should not be loaded without a local keypair")
@@ -860,5 +1010,25 @@ mod tests {
 
         assert!(result.is_none());
         assert!(!loader_called.get());
+    }
+
+    #[test]
+    fn bridge_rpc_url_requires_enabled_rpc() {
+        let result = bridge_rpc_url(None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn bridge_rpc_url_uses_listen_addr() {
+        let url = bridge_rpc_url(Some(SocketAddr::from(([127, 0, 0, 1], 9944))))
+            .expect("rpc endpoint should resolve");
+        assert_eq!(url, "http://127.0.0.1:9944");
+    }
+
+    #[test]
+    fn bridge_rpc_url_normalizes_unspecified_listen_addr() {
+        let url = bridge_rpc_url(Some(SocketAddr::from(([0, 0, 0, 0], 9944))))
+            .expect("rpc endpoint should resolve");
+        assert_eq!(url, "http://127.0.0.1:9944");
     }
 }

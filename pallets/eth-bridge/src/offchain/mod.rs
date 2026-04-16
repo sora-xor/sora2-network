@@ -52,7 +52,7 @@ use common::eth;
 use ethabi::ParamType;
 use ethereum_types::U256;
 use frame_support::sp_runtime::app_crypto::{ecdsa, sp_core};
-use frame_support::sp_runtime::offchain::storage::StorageValueRef;
+use frame_support::sp_runtime::offchain::storage::{StorageRetrievalError, StorageValueRef};
 use frame_support::sp_runtime::traits::IdentifyAccount;
 use frame_support::sp_runtime::MultiSigner;
 use frame_support::traits::Get;
@@ -77,6 +77,33 @@ pub use transaction::*;
 mod handle;
 mod http;
 mod transaction;
+
+pub(crate) fn get_storage_value_or_clear<T: Decode>(
+    storage: &mut StorageValueRef<'_>,
+    description: &str,
+) -> Option<T> {
+    match storage.get::<T>() {
+        Ok(value) => value,
+        Err(StorageRetrievalError::Undecodable) => {
+            frame_support::__private::log::error!(
+                "Failed to decode {} offchain value. Clearing stale entry.",
+                description
+            );
+            storage.clear();
+            None
+        }
+    }
+}
+
+pub(crate) fn set_offchain_metric_u64(key: &[u8], value: u64) {
+    StorageValueRef::persistent(key).set(&value);
+}
+
+pub(crate) fn increment_offchain_metric_u64(key: &[u8]) {
+    let storage = StorageValueRef::persistent(key);
+    let current = storage.get::<u64>().ok().flatten().unwrap_or_default();
+    storage.set(&current.saturating_add(1));
+}
 
 /// Cryptography used by off-chain workers.
 pub mod crypto {

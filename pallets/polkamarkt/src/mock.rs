@@ -1,3 +1,5 @@
+#![allow(clippy::missing_const_for_thread_local)]
+
 use crate::{
     self as pallet_polkamarkt, AssetTransfer, ConditionId, OpengovProposalOf, PlazaIntegrationHook,
 };

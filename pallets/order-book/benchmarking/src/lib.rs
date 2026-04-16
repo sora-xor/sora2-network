@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 //! Benchmarking setup for order-book
+#![allow(clippy::doc_lazy_continuation)]
 //!
 //! Includes both regular benchmarks for extrinsics, as well as extra ones designed for figuring
 //! out appropriate parameters for the order book pallet.

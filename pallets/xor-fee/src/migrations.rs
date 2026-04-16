@@ -120,15 +120,13 @@ pub mod add_white_listed_assets_for_xorless_fee {
 
 #[cfg(feature = "wip")] // Dynamic fee
 pub mod v2 {
+    use crate::*;
     use common::balance;
     use core::marker::PhantomData;
     use frame_support::traits::OnRuntimeUpgrade;
     use frame_support::weights::Weight;
     use frame_support::{__private::log::info, traits::StorageVersion};
     use frame_system::pallet_prelude::BlockNumberFor;
-    use sp_std::vec::Vec;
-
-    use crate::*;
 
     pub struct Migrate<T>(PhantomData<T>);
 
@@ -137,17 +135,14 @@ pub mod v2 {
         T: Config,
     {
         fn on_runtime_upgrade() -> Weight {
-            let period = BlockNumberFor::<T>::try_from(3600_u32).unwrap_or_default();
+            let period = BlockNumberFor::<T>::from(3600_u32);
             let small_reference_amount = balance!(0.2);
             if StorageVersion::get::<Pallet<T>>() == StorageVersion::new(1) {
                 // 1 read
                 <UpdatePeriod<T>>::put(period); // 1 write
-                info!("Update period initialized as {:?}", period);
+                info!("Update period initialized as {period:?}");
                 <SmallReferenceAmount<T>>::put(small_reference_amount); // 1 write
-                info!(
-                    "Small reference amount initialized as {:?}",
-                    small_reference_amount
-                );
+                info!("Small reference amount initialized as {small_reference_amount:?}");
                 StorageVersion::new(2).put::<Pallet<T>>();
                 return T::DbWeight::get().reads_writes(1, 2);
             }
@@ -165,7 +160,7 @@ pub mod v2 {
 
         #[cfg(feature = "try-runtime")]
         fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
-            let period = BlockNumberFor::<T>::try_from(3600_u32).unwrap_or_default();
+            let period = BlockNumberFor::<T>::from(3600_u32);
             let small_reference_amount = balance!(0.2);
             frame_support::ensure!(
                 StorageVersion::get::<Pallet<T>>() == StorageVersion::new(2),
