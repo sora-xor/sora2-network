@@ -2771,6 +2771,7 @@ parameter_types! {
     pub const MaxSccpBridgePayloadLen: u32 = 256;
     pub const MaxSccpBridgeProofBlobLen: u32 = 16 * 1024;
     pub const AllowManualSccpInboundFinalization: bool = false;
+    pub const SccpBridgeLocalDomain: sccp_bridge::DomainId = sccp_bridge::SCCP_DOMAIN_SORA2;
 }
 
 impl sccp_bridge::Config for Runtime {
@@ -2778,8 +2779,10 @@ impl sccp_bridge::Config for Runtime {
     type MaxPayloadLen = MaxSccpBridgePayloadLen;
     type MaxProofBlobLen = MaxSccpBridgeProofBlobLen;
     type AllowManualInboundFinalization = AllowManualSccpInboundFinalization;
+    type LocalDomain = SccpBridgeLocalDomain;
     type WeightInfo = sccp_bridge::weights::SubstrateWeight<Runtime>;
     type MessageProofVerifier = ();
+    type ControlMessageProofVerifier = ();
 }
 impl bridge_proxy::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
