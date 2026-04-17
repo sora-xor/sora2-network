@@ -242,7 +242,7 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        debug!("send_incoming_request_result: {:?}", hash);
+        debug!("send_incoming_request_result: {hash:?}");
         let transfer_call = crate::Call::<T>::finalize_incoming_request { hash, network_id };
         Self::send_multisig_transaction(transfer_call, timepoint, network_id)
     }
@@ -253,10 +253,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
         let timepoint = load_incoming_request.timepoint();
-        debug!(
-            "send_import_incoming_request: {:?}",
-            incoming_request_result
-        );
+        debug!("send_import_incoming_request: {incoming_request_result:?}");
         let import_call = crate::Call::<T>::import_incoming_request {
             load_incoming_request,
             incoming_request_result,
@@ -271,7 +268,7 @@ impl<T: Config> Pallet<T> {
         timepoint: Timepoint<T>,
         network_id: T::NetworkId,
     ) -> Result<(), Error<T>> {
-        debug!("send_abort_request: {:?}", request_hash);
+        debug!("send_abort_request: {request_hash:?}");
         ensure!(
             crate::RequestStatuses::<T>::get(network_id, request_hash)
                 == Some(RequestStatus::Pending),

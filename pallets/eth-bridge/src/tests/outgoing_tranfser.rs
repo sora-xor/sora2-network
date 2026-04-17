@@ -69,11 +69,11 @@ fn outgoing_transfer_prepare_should_fail_for_unknown_network() {
 
     ext.execute_with(|| {
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
         let request = OutgoingTransfer::<Runtime> {
             from: alice.clone(),
             to: EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
-            asset_id: XOR.into(),
+            asset_id: XOR,
             amount: 10u32.into(),
             nonce: Default::default(),
             network_id: ETH_NETWORK_ID + 1,
@@ -93,20 +93,20 @@ fn should_approve_outgoing_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100000u32.into()).unwrap();
         assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            Assets::total_balance(&XOR, &alice).unwrap(),
             100000u32.into()
         );
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
         assert_eq!(
-            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            Assets::total_balance(&XOR, &alice).unwrap(),
             99900u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
@@ -119,7 +119,7 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     let mut builder = ExtBuilder::new();
     builder.add_network(
         vec![AssetConfig::Sidechain {
-            id: USDT.into(),
+            id: USDT,
             sidechain_id: H160(hex!("dAC17F958D2ee523a2206206994597C13D831ec7")),
             owned: false,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -133,26 +133,26 @@ fn should_reserve_and_burn_sidechain_asset_in_outgoing_transfer() {
     ext.execute_with(|| {
         let bridge_acc = &state.networks[&net_id].config.bridge_account_id;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&USDT.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&USDT, &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            USDT.into(),
+            USDT,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&USDT, bridge_acc).unwrap(), 0);
         // Sidechain asset was reserved.
         assert_eq!(
-            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&USDT, bridge_acc).unwrap(),
             100u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
         // Sidechain asset was burnt.
-        assert_eq!(Assets::total_balance(&USDT.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::total_balance(&USDT, bridge_acc).unwrap(), 0);
         assert_eq!(
-            Assets::free_balance(&USDT.into(), &bridge_acc).unwrap(),
-            Assets::total_balance(&USDT.into(), &bridge_acc).unwrap()
+            Assets::free_balance(&USDT, bridge_acc).unwrap(),
+            Assets::total_balance(&USDT, bridge_acc).unwrap()
         );
     });
 }
@@ -162,7 +162,7 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::new();
     builder.add_network(
-        vec![AssetConfig::Thischain { id: PSWAP.into() }],
+        vec![AssetConfig::Thischain { id: PSWAP }],
         None,
         None,
         Default::default(),
@@ -172,29 +172,29 @@ fn should_reserve_and_unreserve_thischain_asset_in_outgoing_transfer() {
     ext.execute_with(|| {
         let bridge_acc = &state.networks[&net_id].config.bridge_account_id;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&PSWAP.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&PSWAP, &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            PSWAP.into(),
+            PSWAP,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_u32.into(),
             net_id,
         ));
-        assert_eq!(Assets::free_balance(&PSWAP.into(), &bridge_acc).unwrap(), 0);
+        assert_eq!(Assets::free_balance(&PSWAP, bridge_acc).unwrap(), 0);
         // Thischain asset was reserved.
         assert_eq!(
-            Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&PSWAP, bridge_acc).unwrap(),
             100u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
         // Thischain asset was unreserved.
         assert_eq!(
-            Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap(),
+            Assets::total_balance(&PSWAP, bridge_acc).unwrap(),
             100u32.into()
         );
         assert_eq!(
-            Assets::free_balance(&PSWAP.into(), &bridge_acc).unwrap(),
-            Assets::total_balance(&PSWAP.into(), &bridge_acc).unwrap()
+            Assets::free_balance(&PSWAP, bridge_acc).unwrap(),
+            Assets::total_balance(&PSWAP, bridge_acc).unwrap()
         );
     });
 }
@@ -209,7 +209,7 @@ fn should_not_transfer() {
         assert_err!(
             EthBridge::transfer_to_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
-                KSM.into(),
+                KSM,
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 100_u32.into(),
                 net_id,
@@ -218,7 +218,7 @@ fn should_not_transfer() {
         );
         assert!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100_000_000_u32.into(),
             net_id,
@@ -234,10 +234,10 @@ fn should_register_outgoing_transfer() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from([1; 20]),
             100u32.into(),
             net_id,
@@ -245,7 +245,7 @@ fn should_register_outgoing_transfer() {
         let outgoing_transfer = OutgoingTransfer::<Runtime> {
             from: alice.clone(),
             to: EthAddress::from([1; 20]),
-            asset_id: XOR.into(),
+            asset_id: XOR,
             amount: 100_u32.into(),
             nonce: 3,
             network_id: ETH_NETWORK_ID,
@@ -268,10 +268,10 @@ fn abort_request_removes_all_duplicate_hashes_from_queue() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             10u32.into(),
             net_id,
@@ -316,10 +316,10 @@ fn ocw_should_handle_outgoing_request() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -343,10 +343,10 @@ fn ocw_should_not_handle_outgoing_request_twice() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -380,10 +380,10 @@ fn same_peer_malleated_signature_does_not_advance_quorum() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -414,21 +414,21 @@ fn same_peer_malleated_signature_does_not_advance_quorum() {
 
         assert_ok!(EthBridge::approve_request(
             RuntimeOrigin::signed(account_id.clone()),
-            ocw_public.clone(),
+            ocw_public,
             hash,
             signature_params,
             net_id,
         ));
         assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
         assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             1
         );
         assert!(matches!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            crate::RequestStatuses::<Runtime>::get(net_id, hash),
             Some(RequestStatus::Pending)
         ));
 
@@ -441,15 +441,15 @@ fn same_peer_malleated_signature_does_not_advance_quorum() {
             net_id,
         ));
         assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
         assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             1
         );
         assert!(matches!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            crate::RequestStatuses::<Runtime>::get(net_id, hash),
             Some(RequestStatus::Pending)
         ));
         assert!(last_event().is_none());
@@ -463,10 +463,10 @@ fn quorum_counts_distinct_approvers_even_if_signature_storage_drifts() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 100).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100,
             net_id,
@@ -492,15 +492,15 @@ fn quorum_counts_distinct_approvers_even_if_signature_storage_drifts() {
             net_id,
         ));
 
-        let mut approvals = crate::RequestApprovals::<Runtime>::get(net_id, &hash);
+        let mut approvals = crate::RequestApprovals::<Runtime>::get(net_id, hash);
         approvals.insert(malleate_signature(&first_signature));
-        crate::RequestApprovals::<Runtime>::insert(net_id, &hash, approvals);
+        crate::RequestApprovals::<Runtime>::insert(net_id, hash, approvals);
         assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             2
         );
         assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             1
         );
 
@@ -524,15 +524,15 @@ fn quorum_counts_distinct_approvers_even_if_signature_storage_drifts() {
         ));
 
         assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             3
         );
         assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             2
         );
         assert!(matches!(
-            crate::RequestStatuses::<Runtime>::get(net_id, &hash),
+            crate::RequestStatuses::<Runtime>::get(net_id, hash),
             Some(RequestStatus::Pending)
         ));
         assert!(last_event().is_none());
@@ -547,17 +547,17 @@ fn failed_finalization_allows_fresh_approvals_after_resubmission() {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let amount = 100u32.into();
-        Assets::mint_to(&XOR.into(), &alice, &alice, 1_000_000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 1_000_000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             amount,
             net_id,
         ));
         let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
         let bridge_account = state.networks[&net_id].config.bridge_account_id.clone();
-        Assets::unreserve(&XOR.into(), &bridge_account, amount).unwrap();
+        Assets::unreserve(&XOR, &bridge_account, amount).unwrap();
         System::reset_events();
 
         let encoded = request.to_eth_abi(hash).unwrap();
@@ -590,22 +590,22 @@ fn failed_finalization_allows_fresh_approvals_after_resubmission() {
                     | RuntimeEvent::EthBridge(crate::Event::CancellationFailed(event_hash)) => {
                         event_hash
                     }
-                    other => panic!("unexpected event: {:?}", other),
+                    other => panic!("unexpected event: {other:?}"),
                 };
                 assert_eq!(event_hash, hash);
             }
         }
 
-        match crate::RequestStatuses::<Runtime>::get(net_id, &hash) {
+        match crate::RequestStatuses::<Runtime>::get(net_id, hash) {
             Some(RequestStatus::Failed(_)) | Some(RequestStatus::Broken(_, _)) => {}
-            other => panic!("unexpected status: {:?}", other),
+            other => panic!("unexpected status: {other:?}"),
         }
         assert!(
-            !crate::RequestApprovals::<Runtime>::get(net_id, &hash).is_empty(),
+            !crate::RequestApprovals::<Runtime>::get(net_id, hash).is_empty(),
             "approvals should remain until operators explicitly reset them"
         );
         assert!(
-            !crate::RequestApprovers::<Runtime>::get(net_id, &hash).is_empty(),
+            !crate::RequestApprovers::<Runtime>::get(net_id, hash).is_empty(),
             "approvers should remain until operators explicitly reset them"
         );
 
@@ -618,19 +618,19 @@ fn failed_finalization_allows_fresh_approvals_after_resubmission() {
             RuntimeEvent::EthBridge(crate::Event::RequestSignaturesCleared(event_hash)) => {
                 assert_eq!(event_hash, hash);
             }
-            other => panic!("unexpected event: {:?}", other),
+            other => panic!("unexpected event: {other:?}"),
         }
 
         assert!(
-            crate::RequestApprovals::<Runtime>::get(net_id, &hash).is_empty(),
+            crate::RequestApprovals::<Runtime>::get(net_id, hash).is_empty(),
             "reset must clear approvals before retry"
         );
         assert!(
-            crate::RequestApprovers::<Runtime>::get(net_id, &hash).is_empty(),
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).is_empty(),
             "reset must clear approvers before retry"
         );
 
-        crate::RequestStatuses::<Runtime>::insert(net_id, &hash, RequestStatus::Pending);
+        crate::RequestStatuses::<Runtime>::insert(net_id, hash, RequestStatus::Pending);
         crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| queue.push(hash));
         System::reset_events();
 
@@ -648,11 +648,11 @@ fn failed_finalization_allows_fresh_approvals_after_resubmission() {
             net_id,
         ));
         assert_eq!(
-            crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             1
         );
         assert_eq!(
-            crate::RequestApprovers::<Runtime>::get(net_id, &hash).len(),
+            crate::RequestApprovers::<Runtime>::get(net_id, hash).len(),
             1
         );
     });
@@ -665,10 +665,10 @@ fn reset_request_signatures_requires_failed_status() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 1_000_000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 1_000_000u32.into()).unwrap();
         assert_ok!(EthBridge::transfer_to_sidechain(
             RuntimeOrigin::signed(alice.clone()),
-            XOR.into(),
+            XOR,
             EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
             100u32.into(),
             net_id,
@@ -682,7 +682,7 @@ fn reset_request_signatures_requires_failed_status() {
         // Force the request into Failed state and confirm the extrinsic succeeds afterward.
         crate::RequestStatuses::<Runtime>::insert(
             net_id,
-            &hash,
+            hash,
             RequestStatus::Failed(Error::Cancelled.into()),
         );
         assert_ok!(EthBridge::reset_request_signatures(
@@ -694,7 +694,7 @@ fn reset_request_signatures_requires_failed_status() {
             RuntimeEvent::EthBridge(crate::Event::RequestSignaturesCleared(event_hash)) => {
                 assert_eq!(event_hash, hash);
             }
-            other => panic!("unexpected event: {:?}", other),
+            other => panic!("unexpected event: {other:?}"),
         }
     });
 }
@@ -707,12 +707,12 @@ fn requests_queue_respects_limit() {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
         let max = MaxRequestsPerQueueConst::get() as usize;
-        Assets::mint_to(&XOR.into(), &alice, &alice, 10_000_000u32.into()).unwrap();
+        Assets::mint_to(&XOR, &alice, &alice, 10_000_000u32.into()).unwrap();
 
         for _ in 0..max {
             assert_ok!(EthBridge::transfer_to_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
-                XOR.into(),
+                XOR,
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 10u32.into(),
                 net_id,
@@ -722,7 +722,7 @@ fn requests_queue_respects_limit() {
         assert_err!(
             EthBridge::transfer_to_sidechain(
                 RuntimeOrigin::signed(alice.clone()),
-                XOR.into(),
+                XOR,
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 10u32.into(),
                 net_id,
@@ -741,7 +741,7 @@ fn should_block_v1_signature_domain_requests_without_toggle() {
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&PSWAP.into(), &alice, &alice, 1000).unwrap();
+        Assets::mint_to(&PSWAP, &alice, &alice, 1000).unwrap();
 
         crate::BridgeSignatureVersions::<Runtime>::insert(
             net_id,
@@ -750,7 +750,7 @@ fn should_block_v1_signature_domain_requests_without_toggle() {
         assert_err!(
             EthBridge::transfer_to_sidechain(
                 RuntimeOrigin::signed(alice),
-                PSWAP.into(),
+                PSWAP,
                 EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
                 10,
                 net_id,
@@ -774,7 +774,7 @@ fn should_use_legacy_master_contract_path_for_val_only() {
         let xor_req = OutgoingTransfer::<Runtime> {
             from: alice.clone(),
             to,
-            asset_id: XOR.into(),
+            asset_id: XOR,
             amount: 10,
             nonce,
             network_id: net_id,
@@ -783,7 +783,7 @@ fn should_use_legacy_master_contract_path_for_val_only() {
         let val_req = OutgoingTransfer::<Runtime> {
             from: alice,
             to,
-            asset_id: VAL.into(),
+            asset_id: VAL,
             amount: 10,
             nonce,
             network_id: net_id,

@@ -77,14 +77,14 @@ impl<T: Config> Decoder<T> {
         self.tokens
             .pop()
             .and_then(|x| x.into_string())
-            .ok_or_else(|| Error::<T>::InvalidString.into())
+            .ok_or(Error::<T>::InvalidString)
     }
 
     pub fn next_bool(&mut self) -> Result<bool, Error<T>> {
         self.tokens
             .pop()
             .and_then(|x| x.into_bool())
-            .ok_or_else(|| Error::<T>::InvalidBool.into())
+            .ok_or(Error::<T>::InvalidBool)
     }
 
     #[allow(unused)]
@@ -94,7 +94,7 @@ impl<T: Config> Decoder<T> {
             .and_then(|x| x.into_uint())
             .filter(|x| x.as_u32() <= u8::MAX as u32)
             .map(|x| x.as_u32() as u8)
-            .ok_or_else(|| Error::<T>::InvalidByte.into())
+            .ok_or(Error::<T>::InvalidByte)
     }
 
     pub fn next_address(&mut self) -> Result<EthAddress, Error<T>> {
@@ -121,30 +121,28 @@ impl<T: Config> Decoder<T> {
     }
 
     pub fn next_amount(&mut self) -> Result<U256, Error<T>> {
-        Ok(self
-            .tokens
+        self.tokens
             .pop()
             .and_then(|x| x.into_uint())
-            .ok_or(Error::<T>::InvalidUint)?)
+            .ok_or(Error::<T>::InvalidUint)
     }
 
     pub fn next_account_id(
         &mut self,
     ) -> Result<<T as frame_system::pallet::Config>::AccountId, Error<T>> {
-        Ok(<T as frame_system::pallet::Config>::AccountId::decode(
+        <T as frame_system::pallet::Config>::AccountId::decode(
             &mut &self
                 .tokens
                 .pop()
                 .and_then(|x| x.into_fixed_bytes())
                 .ok_or(Error::<T>::InvalidAccountId)?[..],
         )
-        .map_err(|_| Error::<T>::InvalidAccountId)?)
+        .map_err(|_| Error::<T>::InvalidAccountId)
     }
 
     #[allow(unused)]
     pub fn next_asset_id(&mut self) -> Result<T::AssetId, Error<T>> {
-        Ok(T::AssetId::decode(&mut &self.next_h256()?.0[..])
-            .map_err(|_| Error::<T>::InvalidAssetId)?)
+        T::AssetId::decode(&mut &self.next_h256()?.0[..]).map_err(|_| Error::<T>::InvalidAssetId)
     }
 
     pub fn parse_h256(token: Token) -> Option<H256> {
@@ -157,7 +155,7 @@ impl<T: Config> Decoder<T> {
         self.tokens
             .pop()
             .and_then(Self::parse_h256)
-            .ok_or_else(|| Error::<T>::InvalidH256.into())
+            .ok_or(Error::<T>::InvalidH256)
     }
 
     #[allow(unused)]
@@ -165,7 +163,7 @@ impl<T: Config> Decoder<T> {
         self.tokens
             .pop()
             .and_then(|x| x.into_array())
-            .ok_or_else(|| Error::<T>::InvalidArray.into())
+            .ok_or(Error::<T>::InvalidArray)
     }
 
     #[allow(unused)]

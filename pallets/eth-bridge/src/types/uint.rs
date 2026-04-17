@@ -76,28 +76,28 @@ mod tests {
         let d = U256::from(10000);
 
         // Debug
-        assert_eq!(&format!("{:?}", a), "42949742336");
-        assert_eq!(&format!("{:?}", b), "1023");
-        assert_eq!(&format!("{:?}", c), "0");
-        assert_eq!(&format!("{:?}", d), "10000");
+        assert_eq!(&format!("{a:?}"), "42949742336");
+        assert_eq!(&format!("{b:?}"), "1023");
+        assert_eq!(&format!("{c:?}"), "0");
+        assert_eq!(&format!("{d:?}"), "10000");
 
         // Display
-        assert_eq!(&format!("{}", a), "42949742336");
-        assert_eq!(&format!("{}", b), "1023");
-        assert_eq!(&format!("{}", c), "0");
-        assert_eq!(&format!("{}", d), "10000");
+        assert_eq!(&format!("{a}"), "42949742336");
+        assert_eq!(&format!("{b}"), "1023");
+        assert_eq!(&format!("{c}"), "0");
+        assert_eq!(&format!("{d}"), "10000");
 
         // Lowerhex
-        assert_eq!(&format!("{:x}", a), "a00010f00");
-        assert_eq!(&format!("{:x}", b), "3ff");
-        assert_eq!(&format!("{:x}", c), "0");
-        assert_eq!(&format!("{:x}", d), "2710");
+        assert_eq!(&format!("{a:x}"), "a00010f00");
+        assert_eq!(&format!("{b:x}"), "3ff");
+        assert_eq!(&format!("{c:x}"), "0");
+        assert_eq!(&format!("{d:x}"), "2710");
 
         // Prefixed Lowerhex
-        assert_eq!(&format!("{:#x}", a), "0xa00010f00");
-        assert_eq!(&format!("{:#x}", b), "0x3ff");
-        assert_eq!(&format!("{:#x}", c), "0x0");
-        assert_eq!(&format!("{:#x}", d), "0x2710");
+        assert_eq!(&format!("{a:#x}"), "0xa00010f00");
+        assert_eq!(&format!("{b:#x}"), "0x3ff");
+        assert_eq!(&format!("{c:#x}"), "0x0");
+        assert_eq!(&format!("{d:#x}"), "0x2710");
     }
 
     #[test]
@@ -114,22 +114,22 @@ mod tests {
         let d = H128::from_uint(&10000.into());
 
         // Debug
-        assert_eq!(&format!("{:?}", a), "0x00000000000000000000000a00010f00");
-        assert_eq!(&format!("{:?}", b), "0x000000000000000000000000000003ff");
-        assert_eq!(&format!("{:?}", c), "0x00000000000000000000000000000000");
-        assert_eq!(&format!("{:?}", d), "0x00000000000000000000000000002710");
+        assert_eq!(&format!("{a:?}"), "0x00000000000000000000000a00010f00");
+        assert_eq!(&format!("{b:?}"), "0x000000000000000000000000000003ff");
+        assert_eq!(&format!("{c:?}"), "0x00000000000000000000000000000000");
+        assert_eq!(&format!("{d:?}"), "0x00000000000000000000000000002710");
 
         // Display
-        assert_eq!(&format!("{}", a), "0x0000…0f00");
-        assert_eq!(&format!("{}", b), "0x0000…03ff");
-        assert_eq!(&format!("{}", c), "0x0000…0000");
-        assert_eq!(&format!("{}", d), "0x0000…2710");
+        assert_eq!(&format!("{a}"), "0x0000…0f00");
+        assert_eq!(&format!("{b}"), "0x0000…03ff");
+        assert_eq!(&format!("{c}"), "0x0000…0000");
+        assert_eq!(&format!("{d}"), "0x0000…2710");
 
         // Lowerhex
-        assert_eq!(&format!("{:x}", a), "00000000000000000000000a00010f00");
-        assert_eq!(&format!("{:x}", b), "000000000000000000000000000003ff");
-        assert_eq!(&format!("{:x}", c), "00000000000000000000000000000000");
-        assert_eq!(&format!("{:x}", d), "00000000000000000000000000002710");
+        assert_eq!(&format!("{a:x}"), "00000000000000000000000a00010f00");
+        assert_eq!(&format!("{b:x}"), "000000000000000000000000000003ff");
+        assert_eq!(&format!("{c:x}"), "00000000000000000000000000000000");
+        assert_eq!(&format!("{d:x}"), "00000000000000000000000000002710");
     }
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
         let deserialized4: Res = serde_json::from_str(r#""1000000""#);
         let deserialized5: Res = serde_json::from_str(r#""1000000000000000000""#);
 
-        assert!(deserialized1.is_err(), "{:?}", deserialized1);
+        assert!(deserialized1.is_err(), "{deserialized1:?}");
         assert_eq!(deserialized2.unwrap(), U256::from(0u128));
         assert_eq!(deserialized3.unwrap(), U256::from(16u128));
         assert_eq!(deserialized4.unwrap(), U256::from(16777216u128));

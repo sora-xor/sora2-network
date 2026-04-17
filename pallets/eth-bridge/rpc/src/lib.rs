@@ -28,11 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
-
 use codec::Codec;
-pub use eth_bridge_runtime_api::EthBridgeRuntimeApi;
+pub use eth_bridge_runtime_api::{EthBridgeRuntimeApi, RegisteredAssetInfo};
 use jsonrpsee::{core::RpcResult, proc_macros::rpc, types::ErrorObjectOwned};
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
@@ -40,6 +37,10 @@ use sp_runtime::traits::Block as BlockT;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use std::sync::Arc;
+
+type ApprovedRequestInfo<OutgoingRequestEncoded, Approval> =
+    (OutgoingRequestEncoded, Vec<Approval>);
+type RuntimeResult<T, Error> = RpcResult<Result<T, Error>>;
 
 fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwned {
     ErrorObjectOwned::owned(1, "Runtime error", Some(format!("{error:?}")))
@@ -77,7 +78,7 @@ pub trait EthBridgeApi<
         request_hashes: Vec<Hash>,
         network_id: Option<NetworkId>,
         at: Option<BlockHash>,
-    ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>>;
+    ) -> RuntimeResult<Vec<ApprovedRequestInfo<OutgoingRequestEncoded, Approval>>, DispatchError>;
 
     #[method(name = "ethBridge_getApprovals")]
     fn get_approvals(
@@ -100,15 +101,9 @@ pub trait EthBridgeApi<
         &self,
         network_id: Option<NetworkId>,
         at: Option<BlockHash>,
-    ) -> RpcResult<
-        Result<
-            Vec<(
-                AssetKind,
-                (AssetId, BalancePrecision),
-                Option<(EthAddress, BalancePrecision)>,
-            )>,
-            DispatchError,
-        >,
+    ) -> RuntimeResult<
+        Vec<RegisteredAssetInfo<AssetKind, AssetId, BalancePrecision, EthAddress>>,
+        DispatchError,
     >;
 }
 
@@ -209,7 +204,8 @@ where
         request_hashes: Vec<Hash>,
         network_id: Option<NetworkId>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> RpcResult<Result<Vec<(OutgoingRequestEncoded, Vec<Approval>)>, DispatchError>> {
+    ) -> RuntimeResult<Vec<ApprovedRequestInfo<OutgoingRequestEncoded, Approval>>, DispatchError>
+    {
         let api = self.client.runtime_api();
         let at = at.unwrap_or_else(|| self.client.info().best_hash);
         api.get_approved_requests(at, request_hashes, network_id)
@@ -244,15 +240,9 @@ where
         &self,
         network_id: Option<NetworkId>,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> RpcResult<
-        Result<
-            Vec<(
-                AssetKind,
-                (AssetId, BalancePrecision),
-                Option<(EthAddress, BalancePrecision)>,
-            )>,
-            DispatchError,
-        >,
+    ) -> RuntimeResult<
+        Vec<RegisteredAssetInfo<AssetKind, AssetId, BalancePrecision, EthAddress>>,
+        DispatchError,
     > {
         let api = self.client.runtime_api();
         let at = at.unwrap_or_else(|| self.client.info().best_hash);

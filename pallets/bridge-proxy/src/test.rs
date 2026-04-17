@@ -31,8 +31,9 @@
 use crate::mock::RuntimeCall;
 use crate::mock::RuntimeEvent;
 use crate::mock::{
-    new_tester, AccountId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch, FungibleApp,
-    System, Test, BASE_EVM_NETWORK_ID,
+    mock_bridge_calls, new_tester, set_hashi_supported, set_liberland_supported,
+    set_parachain_supported, AccountId, BridgeOutboundChannel, BridgeProxy, Currencies, Dispatch,
+    FungibleApp, MockBridgeCall, System, Test, BASE_EVM_NETWORK_ID,
 };
 use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
@@ -49,6 +50,7 @@ use sp_keyring::sr25519::Keyring;
 
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types::{MessageDirection, MessageId, MessageStatus};
+use bridge_types::H256;
 
 fn assert_event(event: RuntimeEvent) {
     System::events()
@@ -115,7 +117,7 @@ fn burn_successfull() {
         assert_eq!(
             Transactions::<Test>::get(
                 (GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), &caller),
-                &message_id,
+                message_id,
             ),
             Some(BridgeRequest {
                 source: GenericAccount::Sora(caller.clone()),
@@ -151,6 +153,115 @@ fn burn_failed() {
         );
         assert_eq!(Transactions::<Test>::iter().count(), 0);
         assert_eq!(System::events().len(), 0);
+    })
+}
+
+#[test]
+fn evm_burn_routes_to_hashi_when_only_hashi_supports_asset() {
+    new_tester().execute_with(|| {
+        let asset_id = [42u8; 32].into();
+        let caller: AccountId = Keyring::Alice.into();
+        let network_id = BASE_EVM_NETWORK_ID.into();
+        set_hashi_supported(network_id, asset_id, true);
+
+        assert_ok!(BridgeProxy::burn(
+            RawOrigin::Signed(caller).into(),
+            network_id,
+            asset_id,
+            GenericAccount::EVM(H160::repeat_byte(7)),
+            1000,
+        ));
+        assert_eq!(mock_bridge_calls(), vec![MockBridgeCall::HashiTransfer]);
+    })
+}
+
+#[test]
+fn evm_burn_routes_to_fa_when_only_fa_supports_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        assert_ok!(BridgeProxy::add_limited_asset(RawOrigin::Root.into(), XOR));
+        assert_ok!(Currencies::update_balance(
+            RawOrigin::Root.into(),
+            caller.clone(),
+            XOR,
+            balance!(1) as FixedInner,
+        ));
+
+        assert_ok!(BridgeProxy::burn(
+            RawOrigin::Signed(caller).into(),
+            BASE_EVM_NETWORK_ID.into(),
+            XOR,
+            GenericAccount::EVM(H160::repeat_byte(8)),
+            1000,
+        ));
+        assert!(mock_bridge_calls().is_empty());
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), XOR),
+            1000
+        );
+    })
+}
+
+#[test]
+fn evm_burn_returns_path_is_not_available_when_no_evm_bridge_supports_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+
+        assert_noop!(
+            BridgeProxy::burn(
+                RawOrigin::Signed(caller).into(),
+                BASE_EVM_NETWORK_ID.into(),
+                [43u8; 32].into(),
+                GenericAccount::EVM(H160::repeat_byte(9)),
+                1000,
+            ),
+            crate::Error::<Test>::PathIsNotAvailable
+        );
+        assert!(mock_bridge_calls().is_empty());
+    })
+}
+
+#[test]
+fn evm_burn_returns_ambiguous_bridge_route_when_multiple_evm_bridges_support_asset() {
+    new_tester().execute_with(|| {
+        let caller: AccountId = Keyring::Alice.into();
+        let network_id = BASE_EVM_NETWORK_ID.into();
+        set_hashi_supported(network_id, XOR, true);
+
+        assert_noop!(
+            BridgeProxy::burn(
+                RawOrigin::Signed(caller).into(),
+                network_id,
+                XOR,
+                GenericAccount::EVM(H160::repeat_byte(10)),
+                1000,
+            ),
+            crate::Error::<Test>::AmbiguousBridgeRoute
+        );
+        assert!(mock_bridge_calls().is_empty());
+    })
+}
+
+#[test]
+fn refund_returns_ambiguous_bridge_route_when_multiple_apps_support_route() {
+    new_tester().execute_with(|| {
+        let beneficiary: AccountId = Keyring::Alice.into();
+        let network_id = BASE_EVM_NETWORK_ID.into();
+        set_hashi_supported(network_id, XOR, true);
+        set_parachain_supported(network_id, XOR, true);
+        set_liberland_supported(network_id, XOR, false);
+
+        assert_noop!(
+            BridgeProxy::refund(
+                network_id,
+                H256::repeat_byte(1),
+                GenericAccount::Sora(beneficiary),
+                XOR,
+                1000,
+            ),
+            crate::Error::<Test>::AmbiguousBridgeRoute
+        );
+        assert!(mock_bridge_calls().is_empty());
     })
 }
 

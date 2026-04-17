@@ -140,7 +140,7 @@ mod tests {
   "value": "0x4c4b40",
   "data": "0x010203"
 }"#;
-        let deserialized: CallRequest = serde_json::from_str(&serialized).unwrap();
+        let deserialized: CallRequest = serde_json::from_str(serialized).unwrap();
 
         assert_eq!(deserialized.from, None);
         assert_eq!(deserialized.to, Some(EthAddress::from_low_u64_be(5)));
@@ -193,7 +193,7 @@ mod tests {
     "block": 5
   }
 }"#;
-        let deserialized: TransactionRequest = serde_json::from_str(&serialized).unwrap();
+        let deserialized: TransactionRequest = serde_json::from_str(serialized).unwrap();
 
         assert_eq!(deserialized.from, EthAddress::from_low_u64_be(5));
         assert_eq!(deserialized.to, None);
