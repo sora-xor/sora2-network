@@ -43,6 +43,13 @@ pub trait WeightInfo {
     fn record_outbound() -> Weight;
     fn finalize_inbound() -> Weight;
     fn submit_message_proof(proof_bytes: u32, public_inputs: u32, bundle_bytes: u32) -> Weight;
+    fn submit_control_message_proof(
+        proof_bytes: u32,
+        public_inputs: u32,
+        bundle_bytes: u32,
+    ) -> Weight;
+    fn set_nexus_finality_anchor() -> Weight;
+    fn set_parliament_roster_anchor() -> Weight;
 }
 
 /// Hand-authored pre-benchmark weights for SCCP bridge.
@@ -50,11 +57,11 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     fn import_registry_asset() -> Weight {
-        Weight::from_parts(15_000_000, 0).saturating_add(T::DbWeight::get().writes(1))
+        Weight::from_parts(15_000_000, 0).saturating_add(T::DbWeight::get().reads_writes(1, 1))
     }
 
     fn activate_route() -> Weight {
-        Weight::from_parts(20_000_000, 0).saturating_add(T::DbWeight::get().reads_writes(1, 1))
+        Weight::from_parts(20_000_000, 0).saturating_add(T::DbWeight::get().reads_writes(2, 1))
     }
 
     fn pause_route() -> Weight {
@@ -66,7 +73,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
     }
 
     fn record_outbound() -> Weight {
-        Weight::from_parts(35_000_000, 0).saturating_add(T::DbWeight::get().reads_writes(2, 2))
+        Weight::from_parts(35_000_000, 0).saturating_add(T::DbWeight::get().reads_writes(3, 2))
     }
 
     fn finalize_inbound() -> Weight {
@@ -83,15 +90,38 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
             .saturating_add(Weight::from_parts(500_000, 0).saturating_mul(total_bytes))
             .saturating_add(T::DbWeight::get().reads_writes(4, 3))
     }
+
+    fn submit_control_message_proof(
+        proof_bytes: u32,
+        public_inputs: u32,
+        bundle_bytes: u32,
+    ) -> Weight {
+        // Conservative placeholder until verifier-specific benchmarking is available.
+        let total_bytes = u64::from(proof_bytes)
+            .saturating_add(u64::from(public_inputs))
+            .saturating_add(u64::from(bundle_bytes));
+
+        Weight::from_parts(65_000_000, 0)
+            .saturating_add(Weight::from_parts(500_000, 0).saturating_mul(total_bytes))
+            .saturating_add(T::DbWeight::get().reads_writes(3, 3))
+    }
+
+    fn set_nexus_finality_anchor() -> Weight {
+        Weight::from_parts(10_000_000, 0).saturating_add(T::DbWeight::get().writes(1))
+    }
+
+    fn set_parliament_roster_anchor() -> Weight {
+        Weight::from_parts(10_000_000, 0).saturating_add(T::DbWeight::get().writes(1))
+    }
 }
 
 impl WeightInfo for () {
     fn import_registry_asset() -> Weight {
-        Weight::from_parts(15_000_000, 0).saturating_add(RocksDbWeight::get().writes(1))
+        Weight::from_parts(15_000_000, 0).saturating_add(RocksDbWeight::get().reads_writes(1, 1))
     }
 
     fn activate_route() -> Weight {
-        Weight::from_parts(20_000_000, 0).saturating_add(RocksDbWeight::get().reads_writes(1, 1))
+        Weight::from_parts(20_000_000, 0).saturating_add(RocksDbWeight::get().reads_writes(2, 1))
     }
 
     fn pause_route() -> Weight {
@@ -103,7 +133,7 @@ impl WeightInfo for () {
     }
 
     fn record_outbound() -> Weight {
-        Weight::from_parts(35_000_000, 0).saturating_add(RocksDbWeight::get().reads_writes(2, 2))
+        Weight::from_parts(35_000_000, 0).saturating_add(RocksDbWeight::get().reads_writes(3, 2))
     }
 
     fn finalize_inbound() -> Weight {
@@ -118,5 +148,27 @@ impl WeightInfo for () {
         Weight::from_parts(60_000_000, 0)
             .saturating_add(Weight::from_parts(500_000, 0).saturating_mul(total_bytes))
             .saturating_add(RocksDbWeight::get().reads_writes(4, 3))
+    }
+
+    fn submit_control_message_proof(
+        proof_bytes: u32,
+        public_inputs: u32,
+        bundle_bytes: u32,
+    ) -> Weight {
+        let total_bytes = u64::from(proof_bytes)
+            .saturating_add(u64::from(public_inputs))
+            .saturating_add(u64::from(bundle_bytes));
+
+        Weight::from_parts(65_000_000, 0)
+            .saturating_add(Weight::from_parts(500_000, 0).saturating_mul(total_bytes))
+            .saturating_add(RocksDbWeight::get().reads_writes(3, 3))
+    }
+
+    fn set_nexus_finality_anchor() -> Weight {
+        Weight::from_parts(10_000_000, 0).saturating_add(RocksDbWeight::get().writes(1))
+    }
+
+    fn set_parliament_roster_anchor() -> Weight {
+        Weight::from_parts(10_000_000, 0).saturating_add(RocksDbWeight::get().writes(1))
     }
 }
