@@ -61,29 +61,29 @@ impl<T: Config> Pallet<T> {
         body: Vec<u8>,
         headers: &[(&'static str, String)],
     ) -> Result<Vec<u8>, Error<T>> {
-        trace!("Sending request to: {}", url);
+        trace!("Sending request to: {url}");
         let mut request = rt_offchain::http::Request::post(url, vec![body.clone()]);
         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
             HTTP_REQUEST_TIMEOUT_SECS * 1000,
         ));
         for (key, value) in headers {
-            request = request.add_header(*key, &*value);
+            request = request.add_header(key, value);
         }
         #[allow(unused_mut)]
         let mut pending = request.deadline(timeout).send().map_err(|e| {
-            error!("Failed to send a request {:?}", e);
+            error!("Failed to send a request {e:?}");
             <Error<T>>::HttpFetchingError
         })?;
         #[cfg(test)]
-        T::Mock::on_request(&mut pending, url, String::from_utf8_lossy(&body));
+        T::Mock::on_request(&pending, url, String::from_utf8_lossy(&body));
         let response = pending
             .try_wait(timeout)
             .map_err(|e| {
-                error!("Failed to get a response: {:?}", e);
+                error!("Failed to get a response: {e:?}");
                 <Error<T>>::HttpFetchingError
             })?
             .map_err(|e| {
-                error!("Failed to get a response: {:?}", e);
+                error!("Failed to get a response: {e:?}");
                 <Error<T>>::HttpFetchingError
             })?;
         if response.code != 200 {
@@ -119,21 +119,21 @@ impl<T: Config> Pallet<T> {
                     jsonrpc: Some(jsonrpc::Version::V2),
                     method: method.into(),
                     params,
-                    id: jsonrpc::Id::Num(id as u64),
+                    id: jsonrpc::Id::Num(id),
                 },
             )))
             .map_err(|_| Error::<T>::JsonSerializationError)?,
-            &headers,
+            headers,
         )
         .and_then(|x| {
             String::from_utf8(x).map_err(|e| {
-                error!("json_rpc_request: from utf8 failed, {}", e);
+                error!("json_rpc_request: from utf8 failed, {e}");
                 Error::<T>::HttpFetchingError
             })
         })?;
         let response = jsonrpc::Response::from_json(&raw_response)
             .map_err(|e| {
-                error!("json_rpc_request: from_json failed, {}", e);
+                error!("json_rpc_request: from_json failed, {e}");
             })
             .map_err(|_| Error::<T>::JsonDeserializationError)?;
         let result = match response {
@@ -149,14 +149,14 @@ impl<T: Config> Pallet<T> {
                     Err(Error::<T>::FailedToLoadTransaction)
                 } else {
                     serde_json::from_value(s.result).map_err(|e| {
-                        error!("json_rpc_request: from_value failed, {}", e);
-                        Error::<T>::JsonDeserializationError.into()
+                        error!("json_rpc_request: from_value failed, {e}");
+                        Error::<T>::JsonDeserializationError
                     })
                 }
             }
             _ => {
                 error!("json_rpc_request: request failed");
-                Err(Error::<T>::JsonDeserializationError.into())
+                Err(Error::<T>::JsonDeserializationError)
             }
         }
     }
@@ -168,7 +168,7 @@ impl<T: Config> Pallet<T> {
         params: &I,
         network_id: T::NetworkId,
     ) -> Result<O, Error<T>> {
-        let string = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, network_id);
+        let string = format!("{STORAGE_ETH_NODE_PARAMS}-{network_id:?}");
         let s_node_params = StorageValueRef::persistent(string.as_bytes());
         let node_params = match s_node_params.get::<NodeParams>().ok().flatten() {
             Some(v) => v,
@@ -317,11 +317,7 @@ impl<T: Config> Pallet<T> {
         from_block: u64,
         to_block: u64,
     ) -> Result<Vec<Log>, Error<T>> {
-        trace!(
-            "Loading transfer logs from block {:?} to block {:?}",
-            from_block,
-            to_block,
-        );
+        trace!("Loading transfer logs from block {from_block:?} to block {to_block:?}",);
         Self::eth_json_rpc_request(
             "eth_getLogs",
             &[FilterBuilder::default()

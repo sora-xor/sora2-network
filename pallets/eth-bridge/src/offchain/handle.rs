@@ -71,7 +71,7 @@ use sp_std::convert::TryInto;
 
 impl<T: Config> Pallet<T> {
     fn per_network_metric_key(prefix: &str, network_id: T::NetworkId) -> Vec<u8> {
-        format!("{}-{:?}", prefix, network_id).into_bytes()
+        format!("{prefix}-{network_id:?}").into_bytes()
     }
 
     fn per_network_reason_metric_key(
@@ -79,7 +79,7 @@ impl<T: Config> Pallet<T> {
         network_id: T::NetworkId,
         reason: &str,
     ) -> Vec<u8> {
-        format!("{}-{:?}-{}", prefix, network_id, reason).into_bytes()
+        format!("{prefix}-{network_id:?}-{reason}").into_bytes()
     }
 
     fn set_local_peer_ready_metric(network_id: T::NetworkId, is_ready: bool) {
@@ -102,10 +102,10 @@ impl<T: Config> Pallet<T> {
             .filter_map(|hash| Requests::<T>::get(network_id, hash).map(|request| (hash, request)))
             .filter(|(_, request)| matches!(request, OffchainRequest::Outgoing(_, _)))
             .fold((0u64, 0u64), |(pending, zero_approval), (hash, _)| {
-                let is_pending = RequestStatuses::<T>::get(network_id, &hash)
+                let is_pending = RequestStatuses::<T>::get(network_id, hash)
                     == Some(crate::requests::RequestStatus::Pending);
                 let zero_approval_pending =
-                    is_pending && RequestApprovals::<T>::get(network_id, &hash).is_empty();
+                    is_pending && RequestApprovals::<T>::get(network_id, hash).is_empty();
                 (
                     pending.saturating_add(u64::from(is_pending)),
                     zero_approval.saturating_add(u64::from(zero_approval_pending)),
@@ -410,7 +410,7 @@ impl<T: Config> Pallet<T> {
                     LoadIncomingRequest::Transaction(request) => {
                         let tx_hash = request.hash;
                         let kind = request.kind;
-                        debug!("Loading approved tx {}", tx_hash);
+                        debug!("Loading approved tx {tx_hash}");
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
                         // Legacy path kept for already queued requests. New `TransferXOR` pre-requests
@@ -480,7 +480,7 @@ impl<T: Config> Pallet<T> {
             let event = match Self::parse_deposit_event(&log) {
                 Ok(v) => v,
                 Err(e) => {
-                    info!("Skipped {:?}, error: {:?}", log, e);
+                    info!("Skipped {log:?}, error: {e:?}");
                     continue;
                 }
             };
@@ -491,7 +491,7 @@ impl<T: Config> Pallet<T> {
             );
             if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
                 // Skip already submitted requests.
-                trace!("Skipped already submitted request: {:?}", tx_hash);
+                trace!("Skipped already submitted request: {tx_hash:?}");
                 continue;
             }
             let at_height = log
@@ -506,7 +506,7 @@ impl<T: Config> Pallet<T> {
                 u32::try_from(transaction_index).map_err(|_| Error::<T>::InvalidUint)?;
             let timepoint =
                 bridge_multisig::Pallet::<T>::sidechain_timepoint(at_height, transaction_index);
-            info!("Got log [{}], {:?}", at_height, log);
+            info!("Got log [{at_height}], {log:?}");
             let load_incoming_transaction_request = LoadIncomingTransactionRequest::new(
                 event.destination.clone(),
                 tx_hash,
@@ -559,21 +559,19 @@ impl<T: Config> Pallet<T> {
                     }
                     _ => continue,
                 };
-                match maybe_call {
-                    Ok(Call::<T>::import_incoming_request {
-                        load_incoming_request,
-                        ..
-                    }) => {
-                        let tx_hash = load_incoming_request.hash();
+                if let Ok(Call::<T>::import_incoming_request {
+                    load_incoming_request,
+                    ..
+                }) = maybe_call
+                {
+                    let tx_hash = load_incoming_request.hash();
 
-                        if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
-                            to_remove.push(*key);
-                            // Skip already submitted requests.
-                            continue;
-                        }
-                        let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call);
+                    if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+                        to_remove.push(*key);
+                        // Skip already submitted requests.
+                        continue;
                     }
-                    _ => (),
+                    let _ = Self::send_transaction::<bridge_multisig::Call<T>>(tx_call);
                 };
             }
         }
@@ -594,8 +592,7 @@ impl<T: Config> Pallet<T> {
             Ok(v) => v,
             Err(e) => {
                 info!(
-                    "Failed to load substrate finalized block ({:?}). Skipping off-chain procedure.",
-                    e
+                    "Failed to load substrate finalized block ({e:?}). Skipping off-chain procedure."
                 );
                 return Err(e);
             }
@@ -623,8 +620,7 @@ impl<T: Config> Pallet<T> {
         let to_block = from_block + SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK.into();
         while from_block <= substrate_finalized_height && from_block < to_block {
             debug!(
-                "Handle substrate block: {:?}, finalized block: {:?}",
-                from_block, substrate_finalized_height
+                "Handle substrate block: {from_block:?}, finalized block: {substrate_finalized_height:?}"
             );
             match Self::load_substrate_block(from_block)
                 .and_then(|block| Self::handle_substrate_block(block, from_block))
@@ -632,8 +628,7 @@ impl<T: Config> Pallet<T> {
                 Ok(_) => {}
                 Err(e) => {
                     info!(
-                        "Failed to handle substrate block ({:?}). Skipping off-chain procedure.",
-                        e
+                        "Failed to handle substrate block ({e:?}). Skipping off-chain procedure."
                     );
                     return Ok(substrate_finalized_height);
                 }
@@ -646,31 +641,27 @@ impl<T: Config> Pallet<T> {
     }
 
     fn handle_ethereum(network_id: T::NetworkId) -> Result<u64, Error<T>> {
-        let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
+        let string = format!("eth-bridge-ocw::eth-height-{network_id:?}");
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
             Ok(v) => v,
             Err(e) => {
                 info!(
-                    "Failed to load current ethereum height. Skipping off-chain procedure. {:?}",
-                    e
+                    "Failed to load current ethereum height. Skipping off-chain procedure. {e:?}"
                 );
                 return Err(e);
             }
         };
         s_eth_height.set(&current_eth_height);
 
-        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{:?}", network_id);
+        let string = format!("eth-bridge-ocw::eth-to-handle-from-height-{network_id:?}");
         let s_eth_to_handle_from_height = StorageValueRef::persistent(string.as_bytes());
         let from_block_opt = s_eth_to_handle_from_height.get::<u64>().ok().flatten();
         if from_block_opt.is_none() {
             s_eth_to_handle_from_height.set(&current_eth_height);
         }
         trace!(
-            "Handle network {:?}: current height {}, from height {:?}",
-            network_id,
-            current_eth_height,
-            from_block_opt
+            "Handle network {network_id:?}: current height {current_eth_height}, from height {from_block_opt:?}"
         );
         let from_block = from_block_opt.unwrap_or(current_eth_height);
         // The upper bound of range of blocks to download logs for. Limit the value to
@@ -688,7 +679,7 @@ impl<T: Config> Pallet<T> {
                     s_eth_to_handle_from_height.set(&new_height);
                 }
                 if let Some(err) = err_opt {
-                    warn!("Failed to load handle logs: {:?}.", err);
+                    warn!("Failed to load handle logs: {err:?}.");
                 }
             }
         }
@@ -723,11 +714,11 @@ impl<T: Config> Pallet<T> {
                     continue;
                 }
             };
-            debug!("Re-handling ethereum height {}", from_block);
+            debug!("Re-handling ethereum height {from_block}");
             // +1 block should be ok, because MAX_PENDING_TX_BLOCKS_PERIOD > CONFIRMATION_INTERVAL.
             let err_opt = Self::handle_logs(from_block, from_block + 1, &mut 0, network_id).err();
             if let Some(err) = err_opt {
-                warn!("Failed to re-handle logs: {:?}.", err);
+                warn!("Failed to re-handle logs: {err:?}.");
             }
         }
     }
@@ -759,7 +750,7 @@ impl<T: Config> Pallet<T> {
         let is_local_peer = Self::is_peer_for_network(network_id);
         Self::set_local_peer_ready_metric(network_id, is_local_peer);
         if !is_local_peer {
-            debug!("Node is not peer for network {:?}, skipping", network_id);
+            debug!("Node is not peer for network {network_id:?}, skipping");
             return;
         }
         let (pending_outgoing_requests, _) = Self::update_outgoing_queue_metrics(network_id);
@@ -795,11 +786,11 @@ impl<T: Config> Pallet<T> {
                 }
             };
             if request.should_be_skipped() {
-                debug!("Temporary skip request: {:?}", request_hash);
+                debug!("Temporary skip request: {request_hash:?}");
                 continue;
             }
             let request_submission_height: frame_system::pallet_prelude::BlockNumberFor<T> =
-                Self::request_submission_height(network_id, &request_hash);
+                Self::request_submission_height(network_id, request_hash);
             let number = frame_system::pallet_prelude::BlockNumberFor::<T>::from(
                 MAX_PENDING_TX_BLOCKS_PERIOD,
             );
@@ -811,9 +802,9 @@ impl<T: Config> Pallet<T> {
             let should_reapprove = diff >= number
                 && diff % number == frame_system::pallet_prelude::BlockNumberFor::<T>::zero();
             let should_retry_zero_approval = matches!(&request, OffchainRequest::Outgoing(_, _))
-                && RequestStatuses::<T>::get(network_id, &request_hash)
+                && RequestStatuses::<T>::get(network_id, request_hash)
                     == Some(crate::requests::RequestStatus::Pending)
-                && RequestApprovals::<T>::get(network_id, &request_hash).is_empty()
+                && RequestApprovals::<T>::get(network_id, request_hash).is_empty()
                 && !Self::has_pending_approval_tx(network_id, request_hash)
                 && diff >= zero_approval_retry_period
                 && diff % zero_approval_retry_period
@@ -824,7 +815,7 @@ impl<T: Config> Pallet<T> {
             {
                 continue;
             }
-            let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", request_hash);
+            let handled_key = format!("eth-bridge-ocw::handled-request-{request_hash:?}");
             let s_handled_request = StorageValueRef::persistent(handled_key.as_bytes());
             let height_opt = s_handled_request
                 .get::<frame_system::pallet_prelude::BlockNumberFor<T>>()
@@ -852,10 +843,7 @@ impl<T: Config> Pallet<T> {
                 let error = Self::handle_offchain_request(request).err();
                 let mut should_mark_as_handled = true;
                 if let Some(e) = error {
-                    error!(
-                        "An error occurred while processing off-chain request: {:?}",
-                        e
-                    );
+                    error!("An error occurred while processing off-chain request: {e:?}");
                     if e.should_retry() {
                         should_mark_as_handled = false;
                     } else if e.should_abort() {
@@ -863,8 +851,7 @@ impl<T: Config> Pallet<T> {
                             Ok(_) => {}
                             Err(abort_err) => {
                                 error!(
-                                    "An error occurred while trying to send abort request: {:?}",
-                                    abort_err
+                                    "An error occurred while trying to send abort request: {abort_err:?}"
                                 );
                                 // Keep request eligible for retries if abort submission itself failed.
                                 should_mark_as_handled = false;

@@ -282,9 +282,9 @@ pub trait Mock {
 }
 
 thread_local! {
-    pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
-    pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
-    pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
+    pub static RESPONSES: RefCell<Vec<Vec<u8>>> = const { RefCell::new(Vec::new()) };
+    pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = const { RefCell::new(None) };
+    pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = const { RefCell::new(false) };
 }
 
 fn push_response(data: Vec<u8>) {
@@ -326,12 +326,7 @@ impl Mock for State {
                 let oc_state_opt = oc_state_ref_cell.borrow();
                 let mut offchain_state = oc_state_opt.as_ref().unwrap().write();
                 let mut responses = ref_cell.borrow_mut();
-                assert!(
-                    !responses.is_empty(),
-                    "expected response to {}:\n{}",
-                    url,
-                    body
-                );
+                assert!(!responses.is_empty(), "expected response to {url}:\n{body}");
                 let response = responses.remove(0);
                 offchain_state
                     .requests
@@ -481,7 +476,7 @@ impl State {
             // about validation etc.
             let origin = Some(who).into();
             if let Err(e) = call.dispatch_bypass_filter(origin) {
-                eprintln!("call dispatch error {:?}", e);
+                eprintln!("call dispatch error {e:?}");
             }
         }
     }
@@ -551,9 +546,9 @@ impl Default for ExtBuilder {
         };
         builder.add_network(
             vec![
-                AssetConfig::Thischain { id: PSWAP.into() },
+                AssetConfig::Thischain { id: PSWAP },
                 AssetConfig::Sidechain {
-                    id: XOR.into(),
+                    id: XOR,
                     sidechain_id: sp_core::H160::from_str(
                         "40fd72257597aa14c7231a7b1aaa29fce868f677",
                     )
@@ -562,7 +557,7 @@ impl Default for ExtBuilder {
                     precision: DEFAULT_BALANCE_PRECISION,
                 },
                 AssetConfig::Sidechain {
-                    id: VAL.into(),
+                    id: VAL,
                     sidechain_id: sp_core::H160::from_str(
                         "3f9feac97e5feb15d8bf98042a9a01b515da3dfb",
                     )
@@ -572,8 +567,8 @@ impl Default for ExtBuilder {
                 },
             ],
             Some(vec![
-                (XOR.into(), common::balance!(350000)),
-                (VAL.into(), common::balance!(33900000)),
+                (XOR, common::balance!(350000)),
+                (VAL, common::balance!(33900000)),
             ]),
             Some(4),
             Default::default(),
@@ -638,7 +633,7 @@ impl ExtBuilder {
             1,
             net_id as u64 + 10,
         );
-        let peers_keys = gen_peers_keys(&format!("OCW{}", net_id), peers_num.unwrap_or(4));
+        let peers_keys = gen_peers_keys(&format!("OCW{net_id}"), peers_num.unwrap_or(4));
         self.networks.insert(
             net_id,
             ExtendedNetworkConfig {
@@ -669,13 +664,13 @@ impl ExtBuilder {
         let mut bridge_accounts = Vec::new();
         let mut bridge_network_configs = Vec::new();
         let mut endowed_accounts: Vec<(_, AssetId, _)> = Vec::new();
-        let network_ids: Vec<_> = self.networks.iter().map(|(id, _)| *id).collect();
+        let network_ids: Vec<_> = self.networks.keys().copied().collect();
         let mut networks: Vec<_> = self.networks.clone().into_iter().collect();
         networks.sort_by(|(x, _), (y, _)| x.cmp(y));
         let mut offchain_guard = offchain.0.write();
         let offchain_storage = &mut offchain_guard.persistent_storage;
         for (net_id, ext_network) in networks {
-            let key = format!("{}-{:?}", STORAGE_ETH_NODE_PARAMS, net_id);
+            let key = format!("{STORAGE_ETH_NODE_PARAMS}-{net_id:?}");
             offchain_storage.set(
                 b"",
                 key.as_bytes(),
@@ -690,7 +685,7 @@ impl ExtBuilder {
                 |asset_config| {
                     (
                         ext_network.config.bridge_account_id.clone(),
-                        asset_config.asset_id().clone(),
+                        *asset_config.asset_id(),
                         0,
                     )
                 },
@@ -776,7 +771,7 @@ impl ExtBuilder {
             .map(|x| (x.clone(), Balance::from(0u32)))
             .collect();
         balances.extend(bridge_accounts.iter().map(|(acc, _)| (acc.clone(), 0)));
-        for (_net_id, ext_network) in &self.networks {
+        for ext_network in self.networks.values() {
             balances.extend(ext_network.ocw_keypairs.iter().map(|x| (x.1.clone(), 0)));
         }
         balances.sort_by_key(|x| x.0.clone());
@@ -886,7 +881,7 @@ impl ExtBuilder {
 }
 
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
-    TPublic::Pair::from_string(&format!("//{}", seed), None)
+    TPublic::Pair::from_string(&format!("//{seed}"), None)
         .expect("static values are valid; qed")
         .public()
 }
@@ -907,7 +902,7 @@ pub fn gen_peers_keys(
 ) -> Vec<(AccountPublic, AccountId32, [u8; 32])> {
     (0..peers_num)
         .map(|i| {
-            let kp = ecdsa::Pair::from_string(&format!("//{}{}", prefix, i), None).unwrap();
+            let kp = ecdsa::Pair::from_string(&format!("//{prefix}{i}"), None).unwrap();
             let signer = AccountPublic::from(kp.public());
             (signer.clone(), signer.into_account(), kp.seed())
         })

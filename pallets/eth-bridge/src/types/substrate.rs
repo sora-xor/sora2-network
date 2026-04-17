@@ -57,11 +57,10 @@ impl<'a> serde::Deserialize<'a> for OpaqueExtrinsic {
         D: serde::Deserializer<'a>,
     {
         let s: String = Deserialize::deserialize(de)?;
-        let r = common::utils::parse_hex_string(&s).ok_or(serde::de::Error::custom(format!(
-            "Expected hex string \"0x..\""
-        )))?;
+        let r = common::utils::parse_hex_string(&s)
+            .ok_or(serde::de::Error::custom("Expected hex string \"0x..\""))?;
         Decode::decode(&mut &r[..])
-            .map_err(|e| serde::de::Error::custom(format!("Decode error: {}", e)))
+            .map_err(|e| serde::de::Error::custom(format!("Decode error: {e}")))
     }
 }
 

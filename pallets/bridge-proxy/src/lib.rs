@@ -1,6 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 #[cfg(test)]
 mod mock;
@@ -60,6 +58,7 @@ pub struct TransferLimitSettings<BlockNumber> {
 
 pub use pallet::*;
 
+#[allow(clippy::large_enum_variant)]
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -209,6 +208,7 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         PathIsNotAvailable,
+        AmbiguousBridgeRoute,
         WrongAccountKind,
         NotEnoughLockedLiquidity,
         Overflow,
@@ -232,12 +232,24 @@ pub mod pallet {
             let sender = ensure_signed(origin)?;
             match recipient {
                 GenericAccount::EVM(recipient) => {
-                    if T::HashiBridge::is_asset_supported(network_id, asset_id) {
-                        T::HashiBridge::transfer(network_id, asset_id, sender, recipient, amount)?;
-                    } else if T::FAApp::is_asset_supported(network_id, asset_id) {
-                        T::FAApp::transfer(network_id, asset_id, sender, recipient, amount)?;
-                    } else {
-                        frame_support::fail!(Error::<T>::PathIsNotAvailable);
+                    let hashi_supported = T::HashiBridge::is_asset_supported(network_id, asset_id);
+                    let fa_supported = T::FAApp::is_asset_supported(network_id, asset_id);
+
+                    match (hashi_supported, fa_supported) {
+                        (true, false) => {
+                            T::HashiBridge::transfer(
+                                network_id, asset_id, sender, recipient, amount,
+                            )?;
+                        }
+                        (false, true) => {
+                            T::FAApp::transfer(network_id, asset_id, sender, recipient, amount)?;
+                        }
+                        (false, false) => {
+                            frame_support::fail!(Error::<T>::PathIsNotAvailable);
+                        }
+                        (true, true) => {
+                            frame_support::fail!(Error::<T>::AmbiguousBridgeRoute);
+                        }
                     }
                 }
                 GenericAccount::Parachain(recipient) => {
@@ -338,13 +350,32 @@ pub mod pallet {
                 return Err(Error::<T>::WrongAccountKind.into());
             };
             let beneficiary = T::AccountIdConverter::convert(beneficiary);
-            if T::HashiBridge::is_asset_supported(network_id, asset_id) {
+
+            let hashi_supported = T::HashiBridge::is_asset_supported(network_id, asset_id);
+            let parachain_supported = T::ParachainApp::is_asset_supported(network_id, asset_id);
+            let liberland_supported = T::LiberlandApp::is_asset_supported(network_id, asset_id);
+            let fa_supported = T::FAApp::is_asset_supported(network_id, asset_id);
+            let supported_routes = [
+                hashi_supported,
+                parachain_supported,
+                liberland_supported,
+                fa_supported,
+            ]
+            .into_iter()
+            .filter(|is_supported| *is_supported)
+            .count();
+
+            if supported_routes > 1 {
+                return Err(Error::<T>::AmbiguousBridgeRoute.into());
+            }
+
+            if hashi_supported {
                 T::HashiBridge::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else if T::ParachainApp::is_asset_supported(network_id, asset_id) {
+            } else if parachain_supported {
                 T::ParachainApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else if T::LiberlandApp::is_asset_supported(network_id, asset_id) {
+            } else if liberland_supported {
                 T::LiberlandApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
-            } else if T::FAApp::is_asset_supported(network_id, asset_id) {
+            } else if fa_supported {
                 T::FAApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             }
             Ok(())
@@ -376,9 +407,7 @@ where
             Some(sender) => sender,
             None => {
                 log::warn!(
-                    "Message status update called for unknown message: {:?} {:?}",
-                    network_id,
-                    message_id
+                    "Message status update called for unknown message: {network_id:?} {message_id:?}"
                 );
                 return;
             }
@@ -422,10 +451,10 @@ where
         status: MessageStatus,
     ) {
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
-        Senders::<T>::insert(&network_id, &message_id, &dest);
+        Senders::<T>::insert(network_id, message_id, &dest);
         Transactions::<T>::insert(
-            (&network_id, &dest),
-            &message_id,
+            (network_id, &dest),
+            message_id,
             BridgeRequest {
                 source,
                 dest: GenericAccount::Sora(dest.clone().into()),
@@ -449,10 +478,10 @@ where
         status: MessageStatus,
     ) {
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
-        Senders::<T>::insert(&network_id, &message_id, &source);
+        Senders::<T>::insert(network_id, message_id, &source);
         Transactions::<T>::insert(
-            (&network_id, &source),
-            &message_id,
+            (network_id, &source),
+            message_id,
             BridgeRequest {
                 source: GenericAccount::Sora(source.clone().into()),
                 dest,
@@ -562,7 +591,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         amount: &Self::Balance,
     ) -> DispatchResult {
         let bridge_account = Self::bridge_fee_tech_account(network_id);
-        technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
+        technical::Pallet::<T>::transfer_out(asset_id, &bridge_account, who, *amount)?;
         Ok(())
     }
 
@@ -573,7 +602,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         amount: &Self::Balance,
     ) -> DispatchResult {
         let bridge_account = Self::bridge_fee_tech_account(network_id);
-        technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
+        technical::Pallet::<T>::transfer_in(asset_id, who, &bridge_account, *amount)?;
         Ok(())
     }
 }
@@ -603,7 +632,7 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
                 }
             },
         )?;
-        if Self::is_asset_limited(&asset_id) {
+        if Self::is_asset_limited(asset_id) {
             if let Ok(reference_price) = T::ReferencePriceProvider::get_reference_price(asset_id) {
                 let reference_amount =
                     FixedWrapper::from(reference_price) * FixedWrapper::from(*amount);
@@ -746,7 +775,7 @@ impl<T: Config> EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>> for Pallet<T> {
         asset_id: AssetIdOf<T>,
     ) -> DispatchResult {
         if T::FAApp::is_asset_supported(chain_id.into(), asset_id) {
-            T::FAApp::withdraw_transfer_fee(who, chain_id.into(), asset_id)
+            T::FAApp::withdraw_transfer_fee(who, chain_id, asset_id)
         } else {
             Err(Error::<T>::PathIsNotAvailable.into())
         }

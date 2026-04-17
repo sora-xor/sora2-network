@@ -130,8 +130,7 @@ pub mod generic_account_v2 {
             );
 
             frame_support::__private::log::info!(
-                "BridgeProxy Migration to v2: {:?} BridgeRequests translated",
-                reads_writes
+                "BridgeProxy Migration to v2: {reads_writes:?} BridgeRequests translated"
             );
 
             StorageVersion::new(2).put::<Pallet<T>>();
@@ -171,17 +170,17 @@ pub mod generic_account_v2 {
         direction: MessageDirection,
     }
 
-    impl<AssetId> Into<BridgeRequest<AssetId>> for OldBridgeRequest<AssetId> {
-        fn into(self) -> BridgeRequest<AssetId> {
+    impl<AssetId> From<OldBridgeRequest<AssetId>> for BridgeRequest<AssetId> {
+        fn from(value: OldBridgeRequest<AssetId>) -> BridgeRequest<AssetId> {
             BridgeRequest {
-                source: self.source.into(),
-                dest: self.dest.into(),
-                asset_id: self.asset_id,
-                amount: self.amount,
-                status: self.status,
-                start_timepoint: self.start_timepoint,
-                end_timepoint: self.end_timepoint,
-                direction: self.direction,
+                source: value.source.into(),
+                dest: value.dest.into(),
+                asset_id: value.asset_id,
+                amount: value.amount,
+                status: value.status,
+                start_timepoint: value.start_timepoint,
+                end_timepoint: value.end_timepoint,
+                direction: value.direction,
             }
         }
     }
@@ -202,9 +201,9 @@ pub mod generic_account_v2 {
         Root,
     }
 
-    impl Into<GenericAccount> for OldGenericAccount {
-        fn into(self) -> GenericAccount {
-            match self {
+    impl From<OldGenericAccount> for GenericAccount {
+        fn from(value: OldGenericAccount) -> GenericAccount {
+            match value {
                 OldGenericAccount::EVM(account) => GenericAccount::EVM(account),
                 OldGenericAccount::Sora(account) => GenericAccount::Sora(account),
                 OldGenericAccount::Parachain(account) => {

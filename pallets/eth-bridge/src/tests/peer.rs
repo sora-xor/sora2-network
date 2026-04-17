@@ -84,7 +84,7 @@ fn should_add_peer_in_eth_network() {
             new_peer_id
         );
         assert_eq!(
-            crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
+            crate::PeerAccountId::<Runtime>::get(net_id, new_peer_address),
             Some(new_peer_id.clone())
         );
         assert_eq!(
@@ -200,7 +200,7 @@ fn should_add_peer_in_simple_networks() {
             new_peer_id
         );
         assert_eq!(
-            crate::PeerAccountId::<Runtime>::get(&net_id, &new_peer_address),
+            crate::PeerAccountId::<Runtime>::get(net_id, new_peer_address),
             Some(new_peer_id.clone())
         );
         assert_eq!(
@@ -259,16 +259,16 @@ fn should_remove_peer_in_simple_network() {
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
 
         // incoming request part
         let tx_hash = request_incoming(
@@ -291,10 +291,10 @@ fn should_remove_peer_in_simple_network() {
         });
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_none());
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
     });
 }
 
@@ -323,17 +323,17 @@ fn should_remove_peer_in_eth_network() {
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         approve_next_request(&state, net_id).expect("request wasn't approved");
         approve_next_request(&state, net_id).expect("request wasn't approved");
         assert_eq!(
             &crate::PendingPeer::<Runtime>::get(net_id).unwrap(),
             peer_id
         );
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
 
         // incoming request part
         let tx_hash = request_incoming(
@@ -355,7 +355,7 @@ fn should_remove_peer_in_eth_network() {
             network_id: net_id,
         });
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         // peer is added to XOR contract
         let tx_hash = request_incoming(
             alice.clone(),
@@ -377,7 +377,7 @@ fn should_remove_peer_in_eth_network() {
                 network_id: net_id,
             });
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         // peer is added to VAL contract
         let tx_hash = request_incoming(
             alice.clone(),
@@ -398,13 +398,13 @@ fn should_remove_peer_in_eth_network() {
                 timepoint: Default::default(),
                 network_id: net_id,
             });
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
         assert!(crate::PendingPeer::<Runtime>::get(net_id).is_none());
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
+        assert!(!crate::Peers::<Runtime>::get(net_id).contains(peer_id));
         assert!(!bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
-            .is_signatory(&peer_id));
+            .is_signatory(peer_id));
     });
 }
 

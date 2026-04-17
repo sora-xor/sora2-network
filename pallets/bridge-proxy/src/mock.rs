@@ -37,7 +37,7 @@ use bridge_types::traits::TimepointProvider;
 use bridge_types::traits::{AppRegistry, BalancePrecisionConverter};
 use bridge_types::types::{AssetKind, CallOriginOutput, GenericAdditionalInboundData, MessageId};
 use bridge_types::H256;
-use bridge_types::{EVMChainId, U256};
+use bridge_types::{EVMChainId, GenericAccount, U256};
 use bridge_types::{GenericNetworkId, H160};
 use common::mock::ExistentialDeposits;
 use common::{
@@ -49,10 +49,12 @@ use common::{
 };
 use frame_support::parameter_types;
 use frame_support::traits::ConstU32;
+use frame_support::weights::Weight;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::traits::{Convert, IdentifyAccount, Verify};
 use sp_runtime::BuildStorage;
 use sp_runtime::{DispatchResult, MultiSignature};
+use std::cell::RefCell;
 
 use crate as proxy;
 
@@ -91,7 +93,6 @@ mock_assets_config!(Test);
 mock_bridge_channel_outbound_config!(Test);
 mock_common_config!(Test);
 mock_currencies_config!(Test);
-mock_dispatch_config!(Test);
 mock_evm_fungible_app_config!(Test);
 mock_frame_system_config!(Test, (), ConstU32<65536>);
 mock_pallet_balances_config!(Test);
@@ -129,32 +130,26 @@ parameter_types! {
 
 parameter_types! {
     pub GetTrustlessBridgeTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
+        TechAccountId::from_generic_pair(
             bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
             bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
+        )
     };
     pub GetTrustlessBridgeAccountId: AccountId = {
         let tech_account_id = GetTrustlessBridgeTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
+        technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+            .expect("Failed to get ordinary account id for technical account id.")
     };
     pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
+        TechAccountId::from_generic_pair(
             bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
             bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
-        );
-        tech_account_id
+        )
     };
     pub GetTrustlessBridgeFeesAccountId: AccountId = {
         let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
+        technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
+            .expect("Failed to get ordinary account id for technical account id.")
     };
 }
 
@@ -190,6 +185,18 @@ impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConve
     }
 }
 
+impl dispatch::Config for Test {
+    type Call = RuntimeCall;
+    type CallFilter = frame_support::traits::Everything;
+    type Hashing = sp_runtime::traits::Keccak256;
+    type MessageId = MessageId;
+    type Origin = RuntimeOrigin;
+    type OriginOutput = OriginOutput;
+    type WeightInfo = ();
+    #[cfg(feature = "runtime-benchmarks")]
+    type BenchmarkHelper = ();
+}
+
 pub struct GenericTimepointProvider;
 
 impl TimepointProvider for GenericTimepointProvider {
@@ -206,20 +213,282 @@ impl common::ReferencePriceProvider<AssetId, Balance> for ReferencePriceProvider
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MockBridgeCall {
+    HashiTransfer,
+    HashiRefund,
+    ParachainTransfer,
+    ParachainRefund,
+    LiberlandTransfer,
+    LiberlandRefund,
+}
+
+#[derive(Default)]
+struct MockBridgeState {
+    hashi_supported: Vec<(GenericNetworkId, AssetId)>,
+    parachain_supported: Vec<(GenericNetworkId, AssetId)>,
+    liberland_supported: Vec<(GenericNetworkId, AssetId)>,
+    calls: Vec<MockBridgeCall>,
+}
+
+thread_local! {
+    static MOCK_BRIDGE_STATE: RefCell<MockBridgeState> =
+        RefCell::new(MockBridgeState::default());
+}
+
+fn set_supported_asset(
+    routes: &mut Vec<(GenericNetworkId, AssetId)>,
+    network_id: GenericNetworkId,
+    asset_id: AssetId,
+    supported: bool,
+) {
+    if supported {
+        if !routes.contains(&(network_id, asset_id)) {
+            routes.push((network_id, asset_id));
+        }
+    } else {
+        routes.retain(|route| route != &(network_id, asset_id));
+    }
+}
+
+fn is_supported_asset(
+    routes: &[(GenericNetworkId, AssetId)],
+    network_id: GenericNetworkId,
+    asset_id: AssetId,
+) -> bool {
+    routes.contains(&(network_id, asset_id))
+}
+
+fn record_call(call: MockBridgeCall) {
+    MOCK_BRIDGE_STATE.with(|state| state.borrow_mut().calls.push(call));
+}
+
+pub fn reset_mock_bridge_state() {
+    MOCK_BRIDGE_STATE.with(|state| *state.borrow_mut() = MockBridgeState::default());
+}
+
+pub fn set_hashi_supported(network_id: GenericNetworkId, asset_id: AssetId, supported: bool) {
+    MOCK_BRIDGE_STATE.with(|state| {
+        set_supported_asset(
+            &mut state.borrow_mut().hashi_supported,
+            network_id,
+            asset_id,
+            supported,
+        )
+    });
+}
+
+pub fn set_parachain_supported(network_id: GenericNetworkId, asset_id: AssetId, supported: bool) {
+    MOCK_BRIDGE_STATE.with(|state| {
+        set_supported_asset(
+            &mut state.borrow_mut().parachain_supported,
+            network_id,
+            asset_id,
+            supported,
+        )
+    });
+}
+
+pub fn set_liberland_supported(network_id: GenericNetworkId, asset_id: AssetId, supported: bool) {
+    MOCK_BRIDGE_STATE.with(|state| {
+        set_supported_asset(
+            &mut state.borrow_mut().liberland_supported,
+            network_id,
+            asset_id,
+            supported,
+        )
+    });
+}
+
+pub fn mock_bridge_calls() -> Vec<MockBridgeCall> {
+    MOCK_BRIDGE_STATE.with(|state| state.borrow().calls.clone())
+}
+
+pub struct HashiBridgeMock;
+
+impl bridge_types::traits::BridgeApp<AccountId, H160, AssetId, Balance> for HashiBridgeMock {
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: AssetId) -> bool {
+        MOCK_BRIDGE_STATE
+            .with(|state| is_supported_asset(&state.borrow().hashi_supported, network_id, asset_id))
+    }
+
+    fn transfer(
+        _network_id: GenericNetworkId,
+        _asset_id: AssetId,
+        _sender: AccountId,
+        _recipient: H160,
+        _amount: Balance,
+    ) -> Result<H256, sp_runtime::DispatchError> {
+        record_call(MockBridgeCall::HashiTransfer);
+        Ok(H256::repeat_byte(1))
+    }
+
+    fn refund(
+        _network_id: GenericNetworkId,
+        _message_id: H256,
+        _recipient: AccountId,
+        _asset_id: AssetId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        record_call(MockBridgeCall::HashiRefund);
+        Ok(())
+    }
+
+    fn list_supported_assets(
+        _network_id: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        vec![]
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        vec![]
+    }
+
+    fn transfer_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn refund_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn is_asset_supported_weight() -> Weight {
+        Weight::zero()
+    }
+}
+
+pub struct ParachainAppMock;
+
+impl
+    bridge_types::traits::BridgeApp<
+        AccountId,
+        bridge_types::substrate::ParachainAccountId,
+        AssetId,
+        Balance,
+    > for ParachainAppMock
+{
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: AssetId) -> bool {
+        MOCK_BRIDGE_STATE.with(|state| {
+            is_supported_asset(&state.borrow().parachain_supported, network_id, asset_id)
+        })
+    }
+
+    fn transfer(
+        _network_id: GenericNetworkId,
+        _asset_id: AssetId,
+        _sender: AccountId,
+        _recipient: bridge_types::substrate::ParachainAccountId,
+        _amount: Balance,
+    ) -> Result<H256, sp_runtime::DispatchError> {
+        record_call(MockBridgeCall::ParachainTransfer);
+        Ok(H256::repeat_byte(2))
+    }
+
+    fn refund(
+        _network_id: GenericNetworkId,
+        _message_id: H256,
+        _recipient: AccountId,
+        _asset_id: AssetId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        record_call(MockBridgeCall::ParachainRefund);
+        Ok(())
+    }
+
+    fn list_supported_assets(
+        _network_id: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        vec![]
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        vec![]
+    }
+
+    fn transfer_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn refund_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn is_asset_supported_weight() -> Weight {
+        Weight::zero()
+    }
+}
+
+pub struct LiberlandAppMock;
+
+impl bridge_types::traits::BridgeApp<AccountId, GenericAccount, AssetId, Balance>
+    for LiberlandAppMock
+{
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: AssetId) -> bool {
+        MOCK_BRIDGE_STATE.with(|state| {
+            is_supported_asset(&state.borrow().liberland_supported, network_id, asset_id)
+        })
+    }
+
+    fn transfer(
+        _network_id: GenericNetworkId,
+        _asset_id: AssetId,
+        _sender: AccountId,
+        _recipient: GenericAccount,
+        _amount: Balance,
+    ) -> Result<H256, sp_runtime::DispatchError> {
+        record_call(MockBridgeCall::LiberlandTransfer);
+        Ok(H256::repeat_byte(3))
+    }
+
+    fn refund(
+        _network_id: GenericNetworkId,
+        _message_id: H256,
+        _recipient: AccountId,
+        _asset_id: AssetId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        record_call(MockBridgeCall::LiberlandRefund);
+        Ok(())
+    }
+
+    fn list_supported_assets(
+        _network_id: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        vec![]
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        vec![]
+    }
+
+    fn transfer_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn refund_weight() -> Weight {
+        Weight::zero()
+    }
+
+    fn is_asset_supported_weight() -> Weight {
+        Weight::zero()
+    }
+}
+
 impl proxy::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type ManagerOrigin = frame_system::EnsureRoot<AccountId>;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type FAApp = FungibleApp;
-    type HashiBridge = ();
-    type LiberlandApp = ();
-    type ParachainApp = ();
+    type HashiBridge = HashiBridgeMock;
+    type LiberlandApp = LiberlandAppMock;
+    type ParachainApp = ParachainAppMock;
     type ReferencePriceProvider = ReferencePriceProvider;
     type TimepointProvider = GenericTimepointProvider;
     type WeightInfo = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
+    reset_mock_bridge_state();
     let mut storage = frame_system::GenesisConfig::<Test>::default()
         .build_storage()
         .unwrap();
@@ -280,7 +549,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     assets::GenesisConfig::<Test> {
         endowed_assets: vec![
             (
-                XOR.into(),
+                XOR,
                 bob.clone(),
                 AssetSymbol(b"XOR".to_vec()),
                 AssetName(b"SORA".to_vec()),
@@ -291,7 +560,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
                 None,
             ),
             (
-                DAI.into(),
+                DAI,
                 bob.clone(),
                 AssetSymbol(b"DAI".to_vec()),
                 AssetName(b"DAI".to_vec()),
@@ -302,7 +571,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
                 None,
             ),
             (
-                ETH.into(),
+                ETH,
                 bob.clone(),
                 AssetSymbol(b"ETH".to_vec()),
                 AssetName(b"Ether".to_vec()),

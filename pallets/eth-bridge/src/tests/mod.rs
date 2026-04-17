@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![allow(clippy::result_large_err)]
+
 use crate::offchain::SignatureParams;
 use crate::requests::{
     IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, LoadIncomingMetaRequest,
@@ -115,7 +117,7 @@ pub fn approve_request(
             0
         };
         let sigs_needed = majority(keypairs.len()) + additional_sigs;
-        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, &request_hash).unwrap();
+        let current_status = crate::RequestStatuses::<Runtime>::get(net_id, request_hash).unwrap();
         ensure!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account_id.clone()),
@@ -141,7 +143,7 @@ pub fn approve_request(
                         return Err(Some(RuntimeEvent::EthBridge(e)));
                     }
                 },
-                e => panic!("Unexpected event: {:?}", e),
+                e => panic!("Unexpected event: {e:?}"),
             }
         } else {
             assert!(no_event());
@@ -223,7 +225,7 @@ pub fn request_incoming(
     }
     let hash = last_request.hash();
     assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &hash).unwrap(),
+        crate::RequestStatuses::<Runtime>::get(net_id, hash).unwrap(),
         RequestStatus::Pending
     );
     Ok(hash)
@@ -256,7 +258,7 @@ pub fn assert_incoming_request_done(
     );
     assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
     assert_eq!(
-        *crate::Requests::get(net_id, &req_hash)
+        *crate::Requests::get(net_id, req_hash)
             .unwrap()
             .as_incoming()
             .unwrap()
@@ -269,7 +271,7 @@ pub fn assert_incoming_request_done(
         net_id,
     ));
     assert_eq!(
-        crate::RequestStatuses::<Runtime>::get(net_id, &req_hash).unwrap(),
+        crate::RequestStatuses::<Runtime>::get(net_id, req_hash).unwrap(),
         RequestStatus::Done
     );
     assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
@@ -289,7 +291,7 @@ pub fn assert_incoming_request_registration_failed(
             incoming_request.clone(),
         ),
         PostDispatchInfo {
-            pays_fee: Pays::No.into(),
+            pays_fee: Pays::No,
             actual_weight: None
         }
     );
@@ -304,10 +306,10 @@ pub fn assert_incoming_request_registration_failed(
                     assert_eq!(actual.index, expected.index);
                     assert_eq!(actual.error, expected.error);
                 }
-                other => panic!("unexpected error tuple: {:?}", other),
+                other => panic!("unexpected error tuple: {other:?}"),
             }
         }
-        other => panic!("unexpected event: {:?}", other),
+        other => panic!("unexpected event: {other:?}"),
     }
     Ok(())
 }

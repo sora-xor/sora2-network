@@ -41,6 +41,12 @@ use sp_core::{H160, H256};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
+type RegisteredAssetInfo<AssetId> = (
+    AssetKind,
+    (AssetId, BalancePrecision),
+    Option<(H160, BalancePrecision)>,
+);
+
 impl<T: Config> Pallet<T> {
     const ITEMS_LIMIT: usize = 50;
 
@@ -217,21 +223,14 @@ impl<T: Config> Pallet<T> {
     /// Get registered assets and tokens.
     pub fn get_registered_assets(
         network_id: Option<T::NetworkId>,
-    ) -> Result<
-        Vec<(
-            AssetKind,
-            (AssetIdOf<T>, BalancePrecision),
-            Option<(H160, BalancePrecision)>,
-        )>,
-        DispatchError,
-    > {
+    ) -> Result<Vec<RegisteredAssetInfo<AssetIdOf<T>>>, DispatchError> {
         Ok(iter_storage::<RegisteredAsset<T>, _, _, _, _, _>(
             network_id,
             |(network_id, asset_id, kind)| {
-                let token_info = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
+                let token_info = RegisteredSidechainToken::<T>::get(network_id, asset_id)
                     .map(|x| H160(x.0))
                     .map(|address| {
-                        let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
+                        let precision = SidechainAssetPrecision::<T>::get(network_id, asset_id);
                         (address, precision)
                     });
                 let asset_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
