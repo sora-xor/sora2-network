@@ -346,10 +346,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 121,
+    spec_version: 123,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 121,
+    transaction_version: 122,
     system_version: 0,
 };
 
@@ -2189,6 +2189,7 @@ impl pallet_mmr::Config for Runtime {
     type Hashing = Keccak256;
     type OnNewRoot = pallet_beefy_mmr::DepositBeefyDigest<Runtime>;
     type BlockHashProvider = pallet_mmr::DefaultBlockHashProvider<Self>;
+    #[cfg(feature = "runtime-benchmarks")]
     type BenchmarkHelper = ();
     type WeightInfo = ();
     type LeafData = pallet_beefy_mmr::Pallet<Runtime>;

@@ -1242,6 +1242,7 @@ macro_rules! mock_tokens_config {
         impl tokens::Config for $runtime {
             type Amount = Amount;
             type Balance = Balance;
+            #[cfg(feature = "runtime-benchmarks")]
             type BenchmarkHelper = ();
             type CurrencyHooks = ();
             type CurrencyId = <$runtime as assets::Config>::AssetId;

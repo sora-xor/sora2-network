@@ -73,6 +73,14 @@ std = [
     'fallible-iterator/std',
 ]
 
+runtime-benchmarks = [
+    "common/runtime-benchmarks",
+    "currencies/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "tokens/runtime-benchmarks",
+]
+
 try-runtime = ["frame-support/try-runtime"]
 
 test = []

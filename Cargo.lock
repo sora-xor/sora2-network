@@ -5123,7 +5123,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.7.6"
+version = "4.8.1"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5211,7 +5211,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.7.6"
+version = "4.8.1"
 dependencies = [
  "common",
  "faucet",
@@ -5225,6 +5225,7 @@ dependencies = [
  "permissions",
  "rewards",
  "sc-consensus-grandpa",
+ "sc-executor",
  "sc-network-common",
  "sc-service",
  "serde_json",
@@ -5233,13 +5234,15 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-runtime",
+ "sp-state-machine",
+ "sp-version",
  "technical",
  "xor-fee",
 ]
 
 [[package]]
 name = "framenode-runtime"
-version = "4.7.6"
+version = "4.8.1"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -9318,7 +9321,6 @@ dependencies = [
 [[package]]
 name = "pallet-identity"
 version = "45.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2512-3#47f1ee9e5272eb9816561e502f93aa1e0d447856"
 dependencies = [
  "enumflags2",
  "frame-benchmarking",
@@ -18278,3 +18280,13 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "pallet-identity"
+version = "45.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2512-3#47f1ee9e5272eb9816561e502f93aa1e0d447856"
+
+[[patch.unused]]
+name = "pallet-identity"
+version = "45.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2512-3#47f1ee9e5272eb9816561e502f93aa1e0d447856"

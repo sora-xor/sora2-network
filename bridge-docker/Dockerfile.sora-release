@@ -1,0 +1,17 @@
+FROM debian:bullseye-slim
+
+ARG TARGETARCH
+
+COPY misc/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY target-zig-releasefix-amd64/x86_64-unknown-linux-gnu/release/framenode /tmp/framenode-amd64
+COPY target-zig-releasefix-arm64/aarch64-unknown-linux-gnu/release/framenode /tmp/framenode-arm64
+
+RUN case "${TARGETARCH}" in \
+      amd64) cp /tmp/framenode-amd64 /usr/local/bin/framenode ;; \
+      arm64) cp /tmp/framenode-arm64 /usr/local/bin/framenode ;; \
+      *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    chmod 0755 /usr/local/bin/framenode && \
+    rm -f /tmp/framenode-amd64 /tmp/framenode-arm64
+
+ENTRYPOINT ["/usr/local/bin/framenode"]
