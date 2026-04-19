@@ -81,6 +81,17 @@ function local_id() {
 function logger_for_first_node() {
 	tee $1
 }
+
+function normalize_ansi_escapes() {
+	# Some wrappers forward ANSI escapes as text literals like "\x1b[31m".
+	# Normalize those sequences back into real ESC bytes before printing or saving logs.
+	if which perl > /dev/null 2>&1; then
+		perl -pe 's/\\x1b/\e/g; s/\\u001b/\e/g; s/\\033/\e/g'
+	else
+		cat
+	fi
+}
+
 if [ $keep_db -eq 0 ]; then
   find . -name "db*" -type d -maxdepth 1 -exec rm -rf {}/chains/sora-substrate-local/network {}/chains/sora-substrate-local/db \;
 fi
@@ -96,9 +107,9 @@ do
 	mkdir -p "db$num/chains/sora-substrate-$chain/bridge"
 	cp misc/eth.json "db$num/chains/sora-substrate-$chain/bridge"
 	if [ "$num" == "0" ]; then
-		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$unbuffer $binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | normalize_ansi_escapes | logger_for_first_node $tmpdir/port_${newport}_name_$name.txt &
 	else
-		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" > $tmpdir/port_${newport}_name_$name.txt &
+		sh -c "$binary --pruning=archive --enable-offchain-indexing true $offchain_flags -d db$num --$name --port $newport --ws-port $wsport --rpc-port $rpcport --chain $chain $execution 2>&1" | normalize_ansi_escapes > $tmpdir/port_${newport}_name_$name.txt &
 	fi
 	echo SCRIPT: "Port:" $newport "P2P port:" $port "Name:" $name "WS:" $wsport "RPC:" $rpcport $tmpdir/port_${newport}_name_$name.txt
 	port="$newport"
