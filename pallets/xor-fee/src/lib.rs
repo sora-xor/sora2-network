@@ -51,7 +51,7 @@ use frame_support::traits::{Currency, ExistenceRequirement, Get, Imbalance, With
 use frame_support::unsigned::TransactionValidityError;
 use frame_support::weights::Weight;
 use frame_support::weights::{
-    WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
+    WeightToFee, WeightToFeeCoefficient, WeightToFeeCoefficients, WeightToFeePolynomial,
 };
 use pallet_transaction_payment as ptp;
 use pallet_transaction_payment::{
@@ -711,6 +711,11 @@ where
 
         fee
     }
+
+    fn length_fee(len: u32) -> BalanceOf<T> {
+        <T as ptp::Config>::LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0))
+    }
+
     pub fn compute_fee_details(
         len: u32,
         call: &CallOf<T>,
@@ -739,7 +744,7 @@ where
                 FeeDetails {
                     inclusion_fee: Some(InclusionFee {
                         base_fee: 0_u32.into(),
-                        len_fee: 0_u32.into(),
+                        len_fee: Self::length_fee(len),
                         adjusted_weight_fee: BalanceOf::<T>::saturated_from(custom_fee),
                     }),
                     tip,
@@ -801,7 +806,7 @@ where
             Some(custom_fee) => FeeDetails {
                 inclusion_fee: Some(InclusionFee {
                     base_fee: 0_u32.into(),
-                    len_fee: 0_u32.into(),
+                    len_fee: Self::length_fee(len),
                     adjusted_weight_fee: BalanceOf::<T>::saturated_from(custom_fee),
                 }),
                 tip,

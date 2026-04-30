@@ -36,8 +36,8 @@ use crate::{
     AccountId, AssetId, Assets, Balance, Balances, Currencies, FeeKusdBurnedWeight,
     FeeReferrerWeight, FeeValBurnedWeight, FeeXorBurnedWeight, ForcedMultiplierAt,
     ForcedMultiplierValue, GetXorFeeAccountId, PoolXYK, Referrals, RemintKusdBuyBackPercent,
-    RemintTbcdBuyBackPercent, Runtime, RuntimeCall, RuntimeOrigin, Staking, System, Tokens, Weight,
-    XorFee,
+    RemintTbcdBuyBackPercent, Runtime, RuntimeCall, RuntimeOrigin, Signature, SignedExtra, Staking,
+    System, Tokens, UncheckedExtrinsic, Weight, XorFee,
 };
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::{BIG_FEE, SMALL_FEE};
@@ -59,9 +59,12 @@ use framenode_chain_spec::ext;
 use pallet_balances::NegativeImbalance;
 use pallet_transaction_payment::OnChargeTransaction;
 use referrals::ReferrerBalances;
-use sp_core::twox_128;
-use sp_runtime::traits::{Dispatchable, SignedExtension};
-use sp_runtime::{AccountId32, FixedPointNumber, FixedU128};
+use sp_core::{sr25519, twox_128};
+use sp_runtime::generic;
+use sp_runtime::traits::{
+    transaction_extension::AsTransactionExtension, Dispatchable, SignedExtension,
+};
+use sp_runtime::{AccountId32, DispatchError, FixedPointNumber, FixedU128};
 use traits::MultiCurrency;
 
 use vested_rewards::vesting_currencies::{LinearVestingSchedule, VestingScheduleVariant};
@@ -114,6 +117,33 @@ fn post_info_pays_no() -> PostDispatchInfo {
         actual_weight: None,
         pays_fee: Pays::No,
     }
+}
+
+fn length_fee(len: usize) -> Balance {
+    LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0))
+}
+
+fn signed_extra() -> SignedExtra {
+    #[allow(deprecated)]
+    let charge_tx_payment = AsTransactionExtension(ChargeTransactionPayment::<Runtime>::new());
+    (
+        frame_system::CheckSpecVersion::<Runtime>::new(),
+        frame_system::CheckTxVersion::<Runtime>::new(),
+        frame_system::CheckGenesis::<Runtime>::new(),
+        frame_system::CheckEra::<Runtime>::from(generic::Era::Immortal),
+        frame_system::CheckNonce::<Runtime>::from(0),
+        frame_system::CheckWeight::<Runtime>::new(),
+        charge_tx_payment,
+    )
+}
+
+fn signed_unchecked_extrinsic(call: RuntimeCall) -> UncheckedExtrinsic {
+    UncheckedExtrinsic::new_signed(
+        call,
+        alice(),
+        Signature::Sr25519(sr25519::Signature::from_raw([0; 64])),
+        signed_extra(),
+    )
 }
 
 fn give_xor_initial_balance(target: AccountId) {
@@ -214,12 +244,12 @@ fn referrer_gets_bonus_from_xorless_tx_fee() {
                 asset_id: VAL.into(),
             });
 
-        let val_price = FixedWrapper::from(9999000);
-        let val_fee = SMALL_FEE * val_price;
-        let balance_after_reserving_fee = (INITIAL_BALANCE - val_fee.clone()).into_balance();
-
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let len_fee = length_fee(len);
+        let val_price = FixedWrapper::from(9999000);
+        let val_fee = (SMALL_FEE + len_fee) * val_price;
+        let balance_after_reserving_fee = (INITIAL_BALANCE - val_fee.clone()).into_balance();
 
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
@@ -390,14 +420,13 @@ fn remint_for_xorless_works() {
                 asset_id: VAL.into(),
             });
 
+        let len = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
         let val_price = 999900009999000099;
-        let val_fee = FixedWrapper::from(SMALL_FEE) * val_price;
+        let val_fee = FixedWrapper::from(SMALL_FEE + length_fee(len)) * val_price;
         let balance_after_reserving_fee =
             (INITIAL_BALANCE - val_fee.clone() - val_fee.clone()).into_balance();
         let val_fee = val_fee.into_balance();
-
-        let len = 10;
-        let dispatch_info = info_from_weight(MOCK_WEIGHT);
 
         // call without referral
         let pre = ChargeTransactionPayment::<Runtime>::new()
@@ -604,10 +633,11 @@ fn referrer_gets_bonus_from_tx_fee() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let fee = SMALL_FEE + length_fee(len);
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
-        let balance_after_reserving_fee = FixedWrapper::from(INITIAL_BALANCE) - SMALL_FEE;
+        let balance_after_reserving_fee = FixedWrapper::from(INITIAL_BALANCE) - fee;
         let balance_after_reserving_fee = balance_after_reserving_fee.into_balance();
         assert_eq!(Balances::free_balance(alice()), balance_after_reserving_fee);
         assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -625,7 +655,7 @@ fn referrer_gets_bonus_from_tx_fee() {
             + FixedWrapper::from(balance!(FeeValBurnedWeight::get()));
         let referrer_weight = FixedWrapper::from(balance!(FeeReferrerWeight::get()));
         let initial_balance = FixedWrapper::from(INITIAL_BALANCE);
-        let referrer_fee = SMALL_FEE * referrer_weight / weights_sum;
+        let referrer_fee = fee * referrer_weight / weights_sum;
         let expected_referrer_balance = referrer_fee.clone() + initial_balance;
         #[cfg(feature = "wip")] // Xorless fee
         assert_eq!(
@@ -723,6 +753,7 @@ fn notify_val_burned_works() {
 
             let len = 10;
             let dispatch_info = info_from_weight(MOCK_WEIGHT);
+            let fee = SMALL_FEE + length_fee(len);
             let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), call, &dispatch_info, len)
                 .unwrap();
@@ -738,10 +769,9 @@ fn notify_val_burned_works() {
                 + FeeXorBurnedWeight::get() as u128
                 + FeeValBurnedWeight::get() as u128
                 + FeeKusdBurnedWeight::get() as u128;
-            total_xor_to_val += SMALL_FEE * FeeValBurnedWeight::get() as u128 / weights_sum;
-            total_xor_to_buy_back += SMALL_FEE
-                * (FeeKusdBurnedWeight::get() + FeeReferrerWeight::get()) as u128
-                / weights_sum;
+            total_xor_to_val += fee * FeeValBurnedWeight::get() as u128 / weights_sum;
+            total_xor_to_buy_back +=
+                fee * (FeeKusdBurnedWeight::get() + FeeReferrerWeight::get()) as u128 / weights_sum;
         }
 
         // Bucket values may differ by a few base units due to integer ration rounding.
@@ -802,6 +832,536 @@ fn calc_xyk_swap_result(reserve_a: Balance, reserve_b: Balance, input: Balance) 
 }
 
 #[test]
+fn length_fee_charges_encoded_bytes() {
+    ext().execute_with(|| {
+        assert_eq!(length_fee(0), 0);
+        assert_eq!(length_fee(1024), balance!(0.0001024));
+    });
+}
+
+#[test]
+fn paid_fees_increase_with_encoded_len() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let short_len = 100;
+        let long_len = 10_000;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+
+        let standard_call = RuntimeCall::OracleProxy(oracle_proxy::Call::enable_oracle {
+            oracle: common::Oracle::BandChainFeed,
+        });
+        let standard_short = XorFee::compute_fee(short_len, &standard_call, &dispatch_info, 0).0;
+        let standard_long = XorFee::compute_fee(long_len, &standard_call, &dispatch_info, 0).0;
+        assert!(standard_long > standard_short);
+
+        let custom_call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+        let custom_short = XorFee::compute_fee(short_len, &custom_call, &dispatch_info, 0).0;
+        let custom_long = XorFee::compute_fee(long_len, &custom_call, &dispatch_info, 0).0;
+        assert_eq!(custom_short, SMALL_FEE + length_fee(short_len as usize));
+        assert!(custom_long > custom_short);
+    });
+}
+
+#[test]
+fn standard_fee_details_expose_length_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 4096;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let call = RuntimeCall::OracleProxy(oracle_proxy::Call::enable_oracle {
+            oracle: common::Oracle::BandChainFeed,
+        });
+
+        let (fee_details, custom_fee_details) =
+            XorFee::compute_fee_details(len as u32, &call, &dispatch_info, 0);
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+
+        assert_eq!(custom_fee_details, None);
+        assert_eq!(
+            inclusion_fee.base_fee,
+            WeightToFee::weight_to_fee(
+                &BlockWeights::get().get(dispatch_info.class).base_extrinsic
+            )
+        );
+        assert_eq!(inclusion_fee.len_fee, length_fee(len));
+        assert_eq!(
+            inclusion_fee.adjusted_weight_fee,
+            WeightToFee::weight_to_fee(&MOCK_WEIGHT)
+        );
+        assert_eq!(
+            fee_details.final_fee(),
+            inclusion_fee.base_fee + inclusion_fee.len_fee + inclusion_fee.adjusted_weight_fee
+        );
+    });
+}
+
+#[test]
+fn custom_fee_details_add_length_without_changing_custom_metadata() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 2048;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+
+        let (fee_details, custom_fee_details) =
+            XorFee::compute_fee_details(len as u32, &call, &dispatch_info, 0);
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+
+        assert_eq!(
+            custom_fee_details,
+            Some(CustomFeeDetails::Regular(SMALL_FEE))
+        );
+        assert_eq!(inclusion_fee.base_fee, 0);
+        assert_eq!(inclusion_fee.len_fee, length_fee(len));
+        assert_eq!(inclusion_fee.adjusted_weight_fee, SMALL_FEE);
+        assert_eq!(fee_details.final_fee(), SMALL_FEE + length_fee(len));
+    });
+}
+
+#[test]
+fn custom_actual_fee_details_add_length_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 512;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let fee_details = XorFee::compute_actual_fee_details(
+            len as u32,
+            &dispatch_info,
+            &default_post_info(),
+            &Ok(()),
+            0,
+            Some(CustomFeeDetails::Regular(BIG_FEE)),
+        );
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+
+        assert_eq!(inclusion_fee.base_fee, 0);
+        assert_eq!(inclusion_fee.len_fee, length_fee(len));
+        assert_eq!(inclusion_fee.adjusted_weight_fee, BIG_FEE);
+        assert_eq!(fee_details.final_fee(), BIG_FEE + length_fee(len));
+    });
+}
+
+#[test]
+fn standard_actual_fee_details_preserve_weight_and_length() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 777;
+        let actual_weight = MOCK_WEIGHT / 2;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let fee_details = XorFee::compute_actual_fee_details(
+            len as u32,
+            &dispatch_info,
+            &post_info_from_weight(actual_weight),
+            &Ok(()),
+            0,
+            None,
+        );
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+
+        assert_eq!(
+            inclusion_fee.base_fee,
+            WeightToFee::weight_to_fee(
+                &BlockWeights::get().get(dispatch_info.class).base_extrinsic
+            )
+        );
+        assert_eq!(inclusion_fee.len_fee, length_fee(len));
+        assert_eq!(
+            inclusion_fee.adjusted_weight_fee,
+            WeightToFee::weight_to_fee(&MOCK_WEIGHT)
+        );
+    });
+}
+
+#[test]
+fn vested_transfer_actual_fee_variants_keep_length_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 333;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let fee_details = Some(CustomFeeDetails::VestedTransferClaims((
+            3 * SMALL_FEE,
+            SMALL_FEE,
+        )));
+
+        let ok_fee = XorFee::compute_actual_fee_details(
+            len as u32,
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            &Ok(()),
+            0,
+            fee_details,
+        );
+        let ok_inclusion_fee = ok_fee.inclusion_fee.clone().unwrap();
+        assert_eq!(ok_inclusion_fee.len_fee, length_fee(len));
+        assert_eq!(ok_inclusion_fee.adjusted_weight_fee, 3 * SMALL_FEE);
+        assert_eq!(ok_fee.final_fee(), 3 * SMALL_FEE + length_fee(len));
+
+        let err_fee = XorFee::compute_actual_fee_details(
+            len as u32,
+            &dispatch_info,
+            &post_info_from_weight(MOCK_WEIGHT),
+            &Err(DispatchError::Other("vested transfer failed")),
+            0,
+            fee_details,
+        );
+        let err_inclusion_fee = err_fee.inclusion_fee.clone().unwrap();
+        assert_eq!(err_inclusion_fee.len_fee, length_fee(len));
+        assert_eq!(err_inclusion_fee.adjusted_weight_fee, SMALL_FEE);
+        assert_eq!(err_fee.final_fee(), SMALL_FEE + length_fee(len));
+    });
+}
+
+#[test]
+fn zero_actual_custom_fee_stays_free_even_with_length() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 10_000;
+        let fee_details = XorFee::compute_actual_fee_details(
+            len,
+            &info_from_weight(MOCK_WEIGHT),
+            &default_post_info(),
+            &Ok(()),
+            0,
+            Some(CustomFeeDetails::Regular(0)),
+        );
+
+        assert!(fee_details.inclusion_fee.is_none());
+        assert_eq!(fee_details.final_fee(), 0);
+    });
+}
+
+#[test]
+fn zero_actual_custom_fee_keeps_multiplied_tip_without_length_fee() {
+    ext().execute_with(|| {
+        let multiplier = 6;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 10_000;
+        let tip = balance!(0.000002);
+        let fee_details = XorFee::compute_actual_fee_details(
+            len,
+            &info_from_weight(MOCK_WEIGHT),
+            &default_post_info(),
+            &Ok(()),
+            tip,
+            Some(CustomFeeDetails::Regular(0)),
+        );
+        let multiplier = Balance::from(multiplier);
+
+        assert!(fee_details.inclusion_fee.is_none());
+        assert_eq!(fee_details.tip, multiplier * tip);
+        assert_eq!(fee_details.final_fee(), multiplier * tip);
+    });
+}
+
+#[test]
+fn pays_no_fee_details_ignore_length_fee() {
+    ext().execute_with(|| {
+        let len = 10_000;
+        let dispatch_info = DispatchInfo {
+            pays_fee: Pays::No,
+            ..info_from_weight(MOCK_WEIGHT)
+        };
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+
+        let (fee_details, custom_fee_details) =
+            XorFee::compute_fee_details(len, &call, &dispatch_info, 0);
+        assert_eq!(custom_fee_details, None);
+        assert!(fee_details.inclusion_fee.is_none());
+        assert_eq!(fee_details.final_fee(), 0);
+
+        let actual_fee_details = XorFee::compute_actual_fee_details(
+            len,
+            &info_from_weight(MOCK_WEIGHT),
+            &post_info_pays_no(),
+            &Ok(()),
+            0,
+            Some(CustomFeeDetails::Regular(BIG_FEE)),
+        );
+        assert!(actual_fee_details.inclusion_fee.is_none());
+        assert_eq!(actual_fee_details.final_fee(), 0);
+    });
+}
+
+#[test]
+fn pays_no_fee_details_keep_tip_but_ignore_length_and_custom_fee() {
+    ext().execute_with(|| {
+        let multiplier = 5;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 10_000;
+        let tip = balance!(0.000009);
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+        let dispatch_info = DispatchInfo {
+            pays_fee: Pays::No,
+            ..info_from_weight(MOCK_WEIGHT)
+        };
+
+        let (fee_details, custom_fee_details) =
+            XorFee::compute_fee_details(len, &call, &dispatch_info, tip);
+        assert_eq!(custom_fee_details, None);
+        assert!(fee_details.inclusion_fee.is_none());
+        assert_eq!(fee_details.tip, tip);
+        assert_eq!(fee_details.final_fee(), tip);
+
+        let actual_fee_details = XorFee::compute_actual_fee_details(
+            len,
+            &info_from_weight(MOCK_WEIGHT),
+            &post_info_pays_no(),
+            &Ok(()),
+            tip,
+            Some(CustomFeeDetails::Regular(BIG_FEE)),
+        );
+        assert!(actual_fee_details.inclusion_fee.is_none());
+        assert_eq!(actual_fee_details.tip, tip);
+        assert_eq!(actual_fee_details.final_fee(), tip);
+    });
+}
+
+#[test]
+fn fee_multiplier_applies_to_custom_length_fee() {
+    ext().execute_with(|| {
+        let multiplier = 3;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 100;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+
+        let (fee_details, custom_fee_details) =
+            XorFee::compute_fee_details(len as u32, &call, &dispatch_info, 0);
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+        let multiplier = Balance::from(multiplier);
+
+        assert_eq!(
+            custom_fee_details,
+            Some(CustomFeeDetails::Regular(SMALL_FEE))
+        );
+        assert_eq!(inclusion_fee.base_fee, 0);
+        assert_eq!(inclusion_fee.len_fee, multiplier * length_fee(len));
+        assert_eq!(inclusion_fee.adjusted_weight_fee, multiplier * SMALL_FEE);
+        assert_eq!(
+            fee_details.final_fee(),
+            multiplier * (SMALL_FEE + length_fee(len))
+        );
+    });
+}
+
+#[test]
+fn fee_multiplier_applies_to_tip_and_custom_length_fee() {
+    ext().execute_with(|| {
+        let multiplier = 4;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 123;
+        let tip = balance!(0.000003);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+
+        let (fee_details, custom_fee_details) =
+            XorFee::compute_fee_details(len as u32, &call, &dispatch_info, tip);
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+        let multiplier = Balance::from(multiplier);
+
+        assert_eq!(
+            custom_fee_details,
+            Some(CustomFeeDetails::Regular(SMALL_FEE))
+        );
+        assert_eq!(inclusion_fee.base_fee, 0);
+        assert_eq!(inclusion_fee.len_fee, multiplier * length_fee(len));
+        assert_eq!(inclusion_fee.adjusted_weight_fee, multiplier * SMALL_FEE);
+        assert_eq!(fee_details.tip, multiplier * tip);
+        assert_eq!(
+            fee_details.final_fee(),
+            multiplier * (SMALL_FEE + length_fee(len) + tip)
+        );
+    });
+}
+
+#[test]
+fn compute_fee_matches_fee_details_for_standard_and_custom_calls() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 321;
+        let tip = balance!(0.000007);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let standard_call = RuntimeCall::OracleProxy(oracle_proxy::Call::enable_oracle {
+            oracle: common::Oracle::BandChainFeed,
+        });
+        let custom_call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+
+        let (standard_fee_details, standard_custom_details) =
+            XorFee::compute_fee_details(len as u32, &standard_call, &dispatch_info, tip);
+        let (standard_fee, standard_compute_details) =
+            XorFee::compute_fee(len as u32, &standard_call, &dispatch_info, tip);
+        assert_eq!(standard_custom_details, None);
+        assert_eq!(standard_compute_details, None);
+        assert_eq!(standard_fee, standard_fee_details.final_fee());
+
+        let (custom_fee_details, custom_details) =
+            XorFee::compute_fee_details(len as u32, &custom_call, &dispatch_info, tip);
+        let (custom_fee, custom_compute_details) =
+            XorFee::compute_fee(len as u32, &custom_call, &dispatch_info, tip);
+        assert_eq!(custom_details, Some(CustomFeeDetails::Regular(SMALL_FEE)));
+        assert_eq!(
+            custom_compute_details,
+            Some(CustomFeeDetails::Regular(SMALL_FEE))
+        );
+        assert_eq!(custom_fee, custom_fee_details.final_fee());
+        assert_eq!(custom_fee, SMALL_FEE + length_fee(len) + tip);
+    });
+}
+
+#[test]
+fn compute_actual_fee_matches_details_for_standard_and_custom_calls() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 654;
+        let tip = balance!(0.000004);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let post_info = post_info_from_weight(MOCK_WEIGHT / 2);
+
+        let standard_fee_details =
+            XorFee::compute_actual_fee_details(len, &dispatch_info, &post_info, &Ok(()), tip, None);
+        let standard_fee =
+            XorFee::compute_actual_fee(len, &dispatch_info, &post_info, &Ok(()), tip, None);
+        assert_eq!(standard_fee, standard_fee_details.final_fee());
+
+        let custom_fee_details = XorFee::compute_actual_fee_details(
+            len,
+            &dispatch_info,
+            &post_info,
+            &Ok(()),
+            tip,
+            Some(CustomFeeDetails::Regular(SMALL_FEE)),
+        );
+        let custom_fee = XorFee::compute_actual_fee(
+            len,
+            &dispatch_info,
+            &post_info,
+            &Ok(()),
+            tip,
+            Some(CustomFeeDetails::Regular(SMALL_FEE)),
+        );
+        assert_eq!(custom_fee, custom_fee_details.final_fee());
+        assert_eq!(custom_fee, SMALL_FEE + length_fee(len as usize) + tip);
+    });
+}
+
+#[test]
+fn bare_query_info_and_fee_details_stay_free_with_length() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 4096;
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+        let unchecked_extrinsic = UncheckedExtrinsic::new_bare(call.clone());
+
+        let info = XorFee::query_info(&unchecked_extrinsic, &call, len);
+        assert_eq!(info.partial_fee, 0);
+
+        let fee_details = XorFee::query_fee_details(&unchecked_extrinsic, &call, len);
+        assert!(fee_details.inclusion_fee.is_none());
+        assert_eq!(fee_details.final_fee(), 0);
+    });
+}
+
+#[test]
+fn signed_query_info_and_fee_details_charge_custom_length_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 2048;
+        let call = RuntimeCall::Assets(assets::Call::mint {
+            asset_id: XOR,
+            to: bob(),
+            amount: balance!(1),
+        });
+        let unchecked_extrinsic = signed_unchecked_extrinsic(call.clone());
+
+        let info = XorFee::query_info(&unchecked_extrinsic, &call, len);
+        assert_eq!(info.partial_fee, SMALL_FEE + length_fee(len as usize));
+
+        let fee_details = XorFee::query_fee_details(&unchecked_extrinsic, &call, len);
+        let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+        assert_eq!(inclusion_fee.base_fee, 0);
+        assert_eq!(inclusion_fee.len_fee, length_fee(len as usize));
+        assert_eq!(inclusion_fee.adjusted_weight_fee, SMALL_FEE);
+        assert_eq!(fee_details.final_fee(), info.partial_fee);
+    });
+}
+
+#[test]
+fn bridge_peer_with_nonzero_length_fee_still_skips_withdrawal() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let who = crate::EthBridge::bridge_account(0).unwrap();
+        let call = RuntimeCall::EthBridge(eth_bridge::Call::finalize_incoming_request {
+            hash: Default::default(),
+            network_id: 0,
+        });
+        let len = 100;
+        let dispatch_info = info_from_weight(Weight::from_parts(100, 100));
+        let quoted_fee = XorFee::compute_fee(len, &call, &dispatch_info, 0).0;
+
+        assert_eq!(quoted_fee, SMALL_FEE + length_fee(len as usize));
+        assert_ok!(XorFee::can_withdraw_fee(
+            &who,
+            &call,
+            &dispatch_info,
+            quoted_fee,
+            0
+        ));
+        assert_eq!(
+            XorFee::withdraw_fee(&who, &call, &dispatch_info, quoted_fee, 0),
+            Ok(LiquidityInfo::Paid(who, None, None))
+        );
+    });
+}
+
+#[test]
 fn custom_fees_work() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
@@ -813,10 +1373,10 @@ fn custom_fees_work() {
         let base_fee = WeightToFee::weight_to_fee(
             &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
         );
-        let len_fee = LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
+        let len_fee = length_fee(len);
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
 
-        // A ten-fold extrinsic; fee is 0.007 XOR
+        // A ten-fold extrinsic; fee is 0.007 XOR plus encoded length
         let calls: Vec<<Runtime as frame_system::Config>::RuntimeCall> = vec![
             RuntimeCall::Assets(assets::Call::register {
                 symbol: AssetSymbol(b"ALIC".to_vec()),
@@ -835,7 +1395,7 @@ fn custom_fees_work() {
             let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), &call, &dispatch_info, len)
                 .unwrap();
-            balance_after_fee_withdrawal = balance_after_fee_withdrawal - BIG_FEE;
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - (BIG_FEE + len_fee);
             let result = balance_after_fee_withdrawal.clone().into_balance();
             assert_eq!(Balances::free_balance(alice()), result);
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -849,7 +1409,7 @@ fn custom_fees_work() {
             assert_eq!(Balances::free_balance(alice()), result);
         }
 
-        // A normal extrinsic; fee is 0.0007 XOR
+        // A normal extrinsic; fee is 0.0007 XOR plus encoded length
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::mint {
                 asset_id: XOR,
@@ -860,7 +1420,7 @@ fn custom_fees_work() {
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
-        let balance_after_fee_withdrawal = balance_after_fee_withdrawal - SMALL_FEE;
+        let balance_after_fee_withdrawal = balance_after_fee_withdrawal - (SMALL_FEE + len_fee);
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
@@ -917,6 +1477,7 @@ fn polkamarkt_growth_calls_charge_small_fee() {
         give_xor_initial_balance(alice());
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
         let calls: Vec<<Runtime as frame_system::Config>::RuntimeCall> = vec![
             RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_condition {
@@ -952,7 +1513,7 @@ fn polkamarkt_growth_calls_charge_small_fee() {
             let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), &call, &dispatch_info, len)
                 .unwrap();
-            balance_after_fee_withdrawal = balance_after_fee_withdrawal - SMALL_FEE;
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - (SMALL_FEE + len_fee);
             let result = balance_after_fee_withdrawal.clone().into_balance();
             assert_eq!(Balances::free_balance(alice()), result);
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -1031,8 +1592,9 @@ fn custom_fees_multiplied() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let len_fee = length_fee(len);
 
-        // A ten-fold extrinsic; fee is (0.007 * multiplier) XOR
+        // A ten-fold extrinsic; fee is (0.007 plus encoded length) * multiplier XOR
         let calls: Vec<<Runtime as frame_system::Config>::RuntimeCall> = vec![
             RuntimeCall::Assets(assets::Call::register {
                 symbol: AssetSymbol(b"ALIC".to_vec()),
@@ -1051,7 +1613,8 @@ fn custom_fees_multiplied() {
             let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), &call, &dispatch_info, len)
                 .unwrap();
-            balance_after_fee_withdrawal = balance_after_fee_withdrawal - multiplier * BIG_FEE;
+            balance_after_fee_withdrawal =
+                balance_after_fee_withdrawal - multiplier * (BIG_FEE + len_fee);
             let result = balance_after_fee_withdrawal.clone().into_balance();
             assert_eq!(Balances::free_balance(alice()), result);
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -1065,7 +1628,7 @@ fn custom_fees_multiplied() {
             assert_eq!(Balances::free_balance(alice()), result);
         }
 
-        // A normal extrinsic; fee is (0.0007 * multiplier) XOR
+        // A normal extrinsic; fee is (0.0007 plus encoded length) * multiplier XOR
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::mint {
                 asset_id: XOR,
@@ -1076,7 +1639,8 @@ fn custom_fees_multiplied() {
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
-        let balance_after_fee_withdrawal = balance_after_fee_withdrawal - multiplier * SMALL_FEE;
+        let balance_after_fee_withdrawal =
+            balance_after_fee_withdrawal - multiplier * (SMALL_FEE + len_fee);
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
@@ -1156,6 +1720,7 @@ fn refund_if_pays_no_works() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let len_fee = length_fee(len);
 
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::register {
@@ -1172,7 +1737,7 @@ fn refund_if_pays_no_works() {
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal =
-            FixedWrapper::from(INITIAL_BALANCE) - fixed_wrapper!(0.007);
+            FixedWrapper::from(INITIAL_BALANCE) - (BIG_FEE + len_fee);
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
@@ -1199,6 +1764,7 @@ fn actual_weight_is_ignored_works() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let len_fee = length_fee(len);
 
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::transfer {
@@ -1210,7 +1776,8 @@ fn actual_weight_is_ignored_works() {
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
-        let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE) - SMALL_FEE;
+        let balance_after_fee_withdrawal =
+            FixedWrapper::from(INITIAL_BALANCE) - (SMALL_FEE + len_fee);
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
@@ -1512,8 +2079,9 @@ fn it_works_eth_bridge_pays_no() {
         });
         let info = info_from_weight(Weight::from_parts(100, 100));
         let len = 100;
+        let len_fee = length_fee(len as usize);
         let (fee, custom_fee_details) = XorFee::compute_fee(len, &call, &info, 0);
-        assert_eq!(fee, SMALL_FEE);
+        assert_eq!(fee, SMALL_FEE + len_fee);
         assert_eq!(
             custom_fee_details,
             Some(CustomFeeDetails::Regular(SMALL_FEE))
@@ -1586,6 +2154,7 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
         let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
             order_book_id,
@@ -1607,7 +2176,7 @@ fn withdraw_fee_place_limit_order_with_default_lifetime() {
         )
         .is_ok());
 
-        let fee = SMALL_FEE / 2;
+        let fee = SMALL_FEE / 2 + len_fee;
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -1631,6 +2200,7 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
         let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
             order_book_id,
@@ -1652,7 +2222,7 @@ fn withdraw_fee_place_limit_order_with_some_lifetime() {
         )
         .is_ok());
 
-        let fee = balance!(0.000215);
+        let fee = balance!(0.000215) + len_fee;
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -1676,6 +2246,7 @@ fn withdraw_fee_place_limit_order_with_error() {
         let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
             order_book_id,
@@ -1697,7 +2268,7 @@ fn withdraw_fee_place_limit_order_with_error() {
         )
         .is_ok());
 
-        let fee = SMALL_FEE;
+        let fee = SMALL_FEE + len_fee;
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -1721,6 +2292,7 @@ fn withdraw_fee_place_limit_order_with_crossing_spread() {
         let initial_balance = Assets::free_balance(&XOR.into(), &alice()).unwrap();
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::OrderBook(order_book::Call::place_limit_order {
             order_book_id,
@@ -1742,7 +2314,7 @@ fn withdraw_fee_place_limit_order_with_crossing_spread() {
         )
         .is_ok());
 
-        let fee = SMALL_FEE;
+        let fee = SMALL_FEE + len_fee;
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -1936,6 +2508,7 @@ fn right_custom_fee_for_vested_transfer_ok() {
         });
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
             dest: alice(),
@@ -1955,7 +2528,7 @@ fn right_custom_fee_for_vested_transfer_ok() {
         .is_ok());
 
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
-        let transaction_fee = multiplier.saturating_mul_int(3 * SMALL_FEE);
+        let transaction_fee = multiplier.saturating_mul_int(3 * SMALL_FEE + len_fee);
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -1983,6 +2556,7 @@ fn right_custom_fee_for_vested_transfer_err() {
         });
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(Weight::from_parts(100_000_000, 0));
         let call = RuntimeCall::VestedRewards(vested_rewards::Call::vested_transfer {
             dest: alice(),
@@ -2004,7 +2578,7 @@ fn right_custom_fee_for_vested_transfer_err() {
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
-            initial_balance - multiplier.saturating_mul_int(SMALL_FEE)
+            initial_balance - multiplier.saturating_mul_int(SMALL_FEE + len_fee)
         );
     });
 }
@@ -2055,6 +2629,7 @@ fn random_remint_works() {
 
             let len = 10;
             let dispatch_info = info_from_weight(MOCK_WEIGHT);
+            let fee = SMALL_FEE + length_fee(len);
             let pre = ChargeTransactionPayment::<Runtime>::new()
                 .pre_dispatch(&alice(), call, &dispatch_info, len)
                 .unwrap();
@@ -2070,10 +2645,9 @@ fn random_remint_works() {
                 + FeeXorBurnedWeight::get() as u128
                 + FeeValBurnedWeight::get() as u128
                 + FeeKusdBurnedWeight::get() as u128;
-            total_xor_to_val += SMALL_FEE * FeeValBurnedWeight::get() as u128 / weights_sum;
-            total_xor_to_buy_back += SMALL_FEE
-                * (FeeKusdBurnedWeight::get() + FeeReferrerWeight::get()) as u128
-                / weights_sum;
+            total_xor_to_val += fee * FeeValBurnedWeight::get() as u128 / weights_sum;
+            total_xor_to_buy_back +=
+                fee * (FeeKusdBurnedWeight::get() + FeeReferrerWeight::get()) as u128 / weights_sum;
         }
 
         // Bucket values may differ by a few base units due to integer ration rounding.

@@ -5,9 +5,9 @@
     "variant": "set_code"
   },
   "call_bytes_file": "framenode_runtime.compact.compressed.wasm.preimage.call",
-  "proposal_hash": "0x05434fd5f7e2298cc872418f8a771a8f0c53524aa572091e176088633aaca94d",
-  "proposal_len": 2950829,
-  "wasm_blake2_256": "0xa93abced5452718dd1d2f04104d22ee4ff1e054dbce548c7cb22bb08b5752b82",
-  "wasm_len": 2950823,
-  "wasm_path": "target-zig-releasefix-arm64/aarch64-unknown-linux-gnu/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm"
+  "proposal_hash": "0xb60724a83aefc133043d5c3331ba12e0169c1aeee1efbf39f0a3bac18e579e72",
+  "proposal_len": 2950943,
+  "wasm_blake2_256": "0x4dfa7465b07b2b9dde95eeca18a158cef69680760a316b26de6c310422e10c85",
+  "wasm_len": 2950937,
+  "wasm_path": "framenode_runtime.compact.compressed.wasm"
 }

@@ -85,7 +85,7 @@ parameter_types! {
     .build_or_panic();
     pub BlockLength: limits::BlockLength =
         limits::BlockLength::max_with_normal_ratio(7 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-    pub const TransactionByteFee: Balance = 0;
+    pub const TransactionByteFee: Balance = crate::balance!(0.0000001);
 }
 
 #[inline(always)]
