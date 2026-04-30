@@ -158,9 +158,7 @@ use frame_election_provider_support::{
 };
 use frame_support::genesis_builder_helper::{build_state, get_preset};
 use frame_support::traits::tokens::fungible::HoldConsideration;
-use frame_support::traits::{
-    ConstBool, ConstU128, ConstU32, EitherOfDiverse, LinearStoragePrice, Nothing,
-};
+use frame_support::traits::{ConstBool, ConstU32, EitherOfDiverse, LinearStoragePrice, Nothing};
 use frame_system::offchain::{Account, SigningTypes};
 use frame_system::EnsureRoot;
 use frame_system::EnsureSigned;
@@ -346,7 +344,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 123,
+    spec_version: 125,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 122,
@@ -1640,7 +1638,7 @@ impl pallet_transaction_payment::Config for Runtime {
     type WeightToFee = XorFee;
     type FeeMultiplierUpdate = ConstantFeeMultiplier;
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
-    type LengthToFee = ConstantMultiplier<Balance, ConstU128<0>>;
+    type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
     type WeightInfo = ();
 }
 

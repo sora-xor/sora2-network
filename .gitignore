@@ -54,5 +54,5 @@ docs/security*
 /.tmp-docker-substrate*/
 /framenode
 /framenode-*
-/framenode_runtime.compact.compressed.wasm
+/framenode_runtime.compact*
 /subwasm_report.json

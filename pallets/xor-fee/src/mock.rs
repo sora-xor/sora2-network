@@ -165,10 +165,24 @@ parameter_types! {
 
 pub struct CustomFees;
 
+pub const FREE_CUSTOM_FEE_REMARK: &[u8] = b"free-custom-fee";
+pub const ASSET_NOT_FOUND_REMARK: &[u8] = b"asset-not-found";
+pub const FEE_CALC_FAILED_REMARK: &[u8] = b"fee-calc-failed";
+pub const OTHER_WITHDRAW_ERROR_REMARK: &[u8] = b"other-withdraw-error";
+
+fn is_remark(call: &RuntimeCall, expected: &[u8]) -> bool {
+    matches!(
+        call,
+        RuntimeCall::System(frame_system::Call::remark { remark })
+            if remark.as_slice() == expected
+    )
+}
+
 impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
     type FeeDetails = Balance;
     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, Self::FeeDetails)> {
         let fee = match call {
+            _ if is_remark(call, FREE_CUSTOM_FEE_REMARK) => Some(0),
             RuntimeCall::Assets(assets::Call::register { .. }) => Some(balance!(0.007)),
             RuntimeCall::Assets(..) => Some(balance!(0.0007)),
             _ => None,
@@ -229,9 +243,19 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     fn can_withdraw_fee(
         _who: &AccountId,
         fee_source: &AccountId,
-        _call: &RuntimeCall,
+        call: &RuntimeCall,
         fee: Balance,
     ) -> Result<(), DispatchError> {
+        if is_remark(call, ASSET_NOT_FOUND_REMARK) {
+            return Err(xor_fee::Error::<Runtime>::AssetNotFound.into());
+        }
+        if is_remark(call, FEE_CALC_FAILED_REMARK) {
+            return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into());
+        }
+        if is_remark(call, OTHER_WITHDRAW_ERROR_REMARK) {
+            return Err(DispatchError::Other("mock withdraw error"));
+        }
+
         let current_balance = Balances::free_balance(fee_source);
         let resulting_balance = current_balance
             .checked_sub(fee)
@@ -248,7 +272,7 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
     fn withdraw_fee(
         _who: &AccountId,
         fee_source: &AccountId,
-        _call: &RuntimeCall,
+        call: &RuntimeCall,
         fee: Balance,
     ) -> Result<
         (
@@ -258,6 +282,16 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         ),
         DispatchError,
     > {
+        if is_remark(call, ASSET_NOT_FOUND_REMARK) {
+            return Err(xor_fee::Error::<Runtime>::AssetNotFound.into());
+        }
+        if is_remark(call, FEE_CALC_FAILED_REMARK) {
+            return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into());
+        }
+        if is_remark(call, OTHER_WITHDRAW_ERROR_REMARK) {
+            return Err(DispatchError::Other("mock withdraw error"));
+        }
+
         Ok((
             fee_source.clone(),
             Some(Balances::withdraw(
