@@ -704,7 +704,7 @@ where
         let multiplier = Multiplier::<T>::get();
         fee.inclusion_fee = fee.inclusion_fee.map(|fee| InclusionFee {
             base_fee: multiplier.saturating_mul_int(fee.base_fee),
-            len_fee: multiplier.saturating_mul_int(fee.len_fee),
+            len_fee: fee.len_fee,
             adjusted_weight_fee: multiplier.saturating_mul_int(fee.adjusted_weight_fee),
         });
         fee.tip = multiplier.saturating_mul_int(fee.tip);
@@ -1526,8 +1526,8 @@ pub mod pallet {
     #[pallet::getter(fn remint_period)]
     pub type RemintPeriod<T> = StorageValue<_, u32, ValueQuery, DefaultForRemintPeriod<T>>;
 
-    // This affects `base_fee` and `weight_fee`. `length_fee` is too small
-    // in comparison to them, so we should be fine multiplying only this parts.
+    // This affects `base_fee` and `weight_fee`; `length_fee` is charged per byte
+    // via `LengthToFee` and is not scaled by the multiplier.
     impl<T: Config> WeightToFeePolynomial for Pallet<T> {
         type Balance = Balance;
 

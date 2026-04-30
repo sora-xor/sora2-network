@@ -330,7 +330,7 @@ fn zero_custom_fee_pre_dispatch_does_not_withdraw() {
 }
 
 #[test]
-fn multiplied_fee_scales_each_inclusion_component_and_tip() {
+fn multiplied_fee_scales_base_weight_and_tip_but_not_length() {
     ExtBuilder::build().execute_with(|| {
         let multiplier = 7;
         set_weight_to_fee_multiplier(multiplier);
@@ -349,10 +349,10 @@ fn multiplied_fee_scales_each_inclusion_component_and_tip() {
         let multiplier = Balance::from(multiplier);
 
         assert_eq!(inclusion_fee.base_fee, multiplier * 11);
-        assert_eq!(inclusion_fee.len_fee, multiplier * 17);
+        assert_eq!(inclusion_fee.len_fee, 17);
         assert_eq!(inclusion_fee.adjusted_weight_fee, multiplier * 23);
         assert_eq!(multiplied.tip, multiplier * 29);
-        assert_eq!(multiplied.final_fee(), multiplier * (11 + 17 + 23 + 29));
+        assert_eq!(multiplied.final_fee(), multiplier * (11 + 23 + 29) + 17);
     });
 }
 

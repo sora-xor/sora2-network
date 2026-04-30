@@ -1142,7 +1142,7 @@ fn pays_no_fee_details_keep_tip_but_ignore_length_and_custom_fee() {
 }
 
 #[test]
-fn fee_multiplier_applies_to_custom_length_fee() {
+fn fee_multiplier_does_not_apply_to_custom_length_fee() {
     ext().execute_with(|| {
         let multiplier = 3;
         set_weight_to_fee_multiplier(multiplier);
@@ -1165,17 +1165,17 @@ fn fee_multiplier_applies_to_custom_length_fee() {
             Some(CustomFeeDetails::Regular(SMALL_FEE))
         );
         assert_eq!(inclusion_fee.base_fee, 0);
-        assert_eq!(inclusion_fee.len_fee, multiplier * length_fee(len));
+        assert_eq!(inclusion_fee.len_fee, length_fee(len));
         assert_eq!(inclusion_fee.adjusted_weight_fee, multiplier * SMALL_FEE);
         assert_eq!(
             fee_details.final_fee(),
-            multiplier * (SMALL_FEE + length_fee(len))
+            multiplier * SMALL_FEE + length_fee(len)
         );
     });
 }
 
 #[test]
-fn fee_multiplier_applies_to_tip_and_custom_length_fee() {
+fn fee_multiplier_applies_to_tip_but_not_custom_length_fee() {
     ext().execute_with(|| {
         let multiplier = 4;
         set_weight_to_fee_multiplier(multiplier);
@@ -1199,12 +1199,12 @@ fn fee_multiplier_applies_to_tip_and_custom_length_fee() {
             Some(CustomFeeDetails::Regular(SMALL_FEE))
         );
         assert_eq!(inclusion_fee.base_fee, 0);
-        assert_eq!(inclusion_fee.len_fee, multiplier * length_fee(len));
+        assert_eq!(inclusion_fee.len_fee, length_fee(len));
         assert_eq!(inclusion_fee.adjusted_weight_fee, multiplier * SMALL_FEE);
         assert_eq!(fee_details.tip, multiplier * tip);
         assert_eq!(
             fee_details.final_fee(),
-            multiplier * (SMALL_FEE + length_fee(len) + tip)
+            multiplier * (SMALL_FEE + tip) + length_fee(len)
         );
     });
 }
