@@ -3052,14 +3052,14 @@ mod tests {
 
     #[cfg(not(feature = "private-net"))]
     #[test]
-    fn mainnet_codesub_23234813_matches_expected_wasm() {
+    fn mainnet_codesub_23234812_matches_expected_wasm() {
         // The live chain is upgraded via codeSubstitutes, so we verify the embedded JSON still
-        // carries the correct Wasm blob for the emergency fork height.
-        let wasm_bytes = mainnet_code_substitute_bytes("23234813");
+        // carries the correct Wasm blob at the parent height that executes the fork block.
+        let wasm_bytes = mainnet_code_substitute_bytes("23234812");
         assert_eq!(
             blake2_256(&wasm_bytes),
             hex!("311d77b61faf6950680f520333e2c8af5ad3155f0d3e60ec9439fcf2bbceef3e"),
-            "unexpected Wasm hash for 23234813 code substitute"
+            "unexpected Wasm hash for 23234812 code substitute"
         );
         assert_eq!(wasm_bytes.len(), 2_815_465);
     }
@@ -3068,14 +3068,14 @@ mod tests {
     #[test]
     fn mainnet_codesub_versions_are_known() {
         let first = runtime_version_from_wasm(&mainnet_code_substitute_bytes("11271782"));
-        let second = runtime_version_from_wasm(&mainnet_code_substitute_bytes("23234813"));
+        let second = runtime_version_from_wasm(&mainnet_code_substitute_bytes("23234812"));
 
         println!(
             "11271782 => spec_name={}, spec_version={}, impl_version={}",
             first.spec_name, first.spec_version, first.impl_version
         );
         println!(
-            "23234813 => spec_name={}, spec_version={}, impl_version={}",
+            "23234812 => spec_name={}, spec_version={}, impl_version={}",
             second.spec_name, second.spec_version, second.impl_version
         );
 
@@ -3098,6 +3098,7 @@ mod tests {
         let spec = super::main_net_coded();
         let code_substitutes = sc_service::ChainSpec::code_substitutes(&spec);
         assert!(code_substitutes.contains_key("11271782"));
-        assert!(code_substitutes.contains_key("23234813"));
+        assert!(code_substitutes.contains_key("23234812"));
+        assert!(!code_substitutes.contains_key("23234813"));
     }
 }
