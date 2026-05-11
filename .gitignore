@@ -49,6 +49,7 @@ pallets/sccp/fuzz/Cargo.lock
 
 # Generated security docs
 docs/security*
+/security_best_practices_report.md
 
 # Root-level local build outputs
 /.tmp-docker-substrate*/

@@ -26,6 +26,8 @@ pub enum StorageVersion {
     V1,
     /// After adding base_asset field
     V2,
+    /// After adding lazy reward accounting fields
+    V3,
 }
 
 #[derive(Encode, Decode, Default, PartialEq, Eq, scale_info::TypeInfo)]
@@ -38,6 +40,7 @@ pub struct PoolData<AssetId> {
     pub total_tokens_in_pool: Balance,
     pub rewards: Balance,
     pub rewards_to_be_distributed: Balance,
+    pub reward_per_token: Balance,
     pub is_removed: bool,
     pub base_asset: AssetId,
 }
@@ -63,6 +66,7 @@ pub struct UserInfo<AssetId> {
     pub is_farm: bool,
     pub pooled_tokens: Balance,
     pub rewards: Balance,
+    pub reward_per_token_paid: Balance,
 }
 
 pub use pallet::*;
@@ -306,6 +310,12 @@ pub mod pallet {
         PoolDoesNotHaveRewards,
         /// Unauthorized
         Unauthorized,
+        /// Deposit amount is zero
+        ZeroDeposit,
+        /// User info does not exist
+        UserInfoDoesNotExist,
+        /// Arithmetic error
+        ArithmeticError,
     }
 
     #[pallet::call]
@@ -337,11 +347,7 @@ pub mod pallet {
             // Check if token_per_block is zero
             ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
 
-            if (farms_allocation == 0 && staking_allocation == 0)
-                || (farms_allocation + staking_allocation + team_allocation != balance!(1))
-            {
-                return Err(Error::<T>::InvalidAllocationParameters.into());
-            }
+            Self::ensure_valid_allocations(farms_allocation, staking_allocation, team_allocation)?;
 
             let token_info = TokenInfo {
                 farms_total_multiplier: 0,
@@ -410,14 +416,21 @@ pub mod pallet {
                 total_tokens_in_pool: 0,
                 rewards: 0,
                 rewards_to_be_distributed: 0,
+                reward_per_token: 0,
                 is_removed: false,
                 base_asset,
             };
 
             if is_farm {
-                token_info.farms_total_multiplier += multiplier;
+                token_info.farms_total_multiplier = token_info
+                    .farms_total_multiplier
+                    .checked_add(multiplier)
+                    .ok_or(Error::<T>::ArithmeticError)?;
             } else {
-                token_info.staking_total_multiplier += multiplier;
+                token_info.staking_total_multiplier = token_info
+                    .staking_total_multiplier
+                    .checked_add(multiplier)
+                    .ok_or(Error::<T>::ArithmeticError)?;
             }
 
             <TokenInfos<T>>::insert(&reward_asset, token_info);
@@ -447,47 +460,39 @@ pub mod pallet {
             pool_asset: AssetIdOf<T>,
             reward_asset: AssetIdOf<T>,
             is_farm: bool,
-            mut pooled_tokens: Balance,
+            pooled_tokens: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(pooled_tokens != 0, Error::<T>::ZeroDeposit);
 
             // Get pool info and check if pool exists
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
-            let mut exist = false;
-            let mut pool_info = &mut Default::default();
-            for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == base_asset
-                {
-                    exist = true;
-                    pool_info = p_info;
-                }
-            }
-            ensure!(exist, Error::<T>::PoolDoesNotExist);
+            let pool_index = pool_infos
+                .iter()
+                .position(|p_info| {
+                    !p_info.is_removed
+                        && p_info.is_farm == is_farm
+                        && p_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::PoolDoesNotExist)?;
 
             // Get user info if exists or create new if does not exist
-            let mut user_info = UserInfo {
-                base_asset,
-                pool_asset,
-                reward_asset,
-                is_farm,
-                pooled_tokens: 0,
-                rewards: 0,
-            };
-            exist = false;
             let mut user_infos = <UserInfos<T>>::get(&user);
-            for u_info in &user_infos {
-                if u_info.pool_asset == pool_asset
+            let user_index = user_infos.iter().position(|u_info| {
+                u_info.pool_asset == pool_asset
                     && u_info.reward_asset == reward_asset
                     && u_info.is_farm == is_farm
                     && u_info.base_asset == base_asset
-                {
-                    user_info.pooled_tokens = u_info.pooled_tokens;
-                    user_info.rewards = u_info.rewards;
-                    exist = true;
-                }
-            }
+            });
+            let user_pooled_tokens = user_index
+                .map(|index| user_infos[index].pooled_tokens)
+                .unwrap_or(0);
+
+            let fee = Self::calculate_fee(pooled_tokens, pool_infos[pool_index].deposit_fee)?;
+            let pooled_tokens_after_fee = pooled_tokens
+                .checked_sub(fee)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            ensure!(pooled_tokens_after_fee != 0, Error::<T>::ZeroDeposit);
 
             // Transfer pooled_tokens
             if !is_farm {
@@ -498,13 +503,7 @@ pub mod pallet {
                     Error::<T>::InsufficientFunds
                 );
 
-                if pool_info.deposit_fee != balance!(0) {
-                    let fee = (FixedWrapper::from(pooled_tokens)
-                        * FixedWrapper::from(pool_info.deposit_fee))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                    pooled_tokens -= fee;
-
+                if fee != balance!(0) {
                     T::AssetManager::transfer_from(
                         &pool_asset,
                         &user,
@@ -516,31 +515,22 @@ pub mod pallet {
                     &pool_asset,
                     &user,
                     &Self::account_id(),
-                    pooled_tokens,
+                    pooled_tokens_after_fee,
                 )?;
             } else {
                 let pool_account = T::XYKPool::properties_of_pool(base_asset, pool_asset.clone())
                     .ok_or(Error::<T>::PoolDoesNotExist)?
                     .0;
 
-                let mut lp_tokens =
+                let lp_tokens =
                     T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
                         .unwrap_or(0);
-                if lp_tokens < user_info.pooled_tokens {
-                    lp_tokens = user_info.pooled_tokens;
-                }
                 ensure!(
-                    pooled_tokens <= lp_tokens - user_info.pooled_tokens,
+                    pooled_tokens <= lp_tokens.saturating_sub(user_pooled_tokens),
                     Error::<T>::InsufficientLPTokens
                 );
 
-                if pool_info.deposit_fee != balance!(0) {
-                    let fee = (FixedWrapper::from(pooled_tokens)
-                        * FixedWrapper::from(pool_info.deposit_fee))
-                    .try_into_balance()
-                    .unwrap_or(0);
-                    pooled_tokens -= fee;
-
+                if fee != balance!(0) {
                     T::XYKPool::transfer_lp_tokens(
                         pool_account.clone(),
                         base_asset,
@@ -549,13 +539,12 @@ pub mod pallet {
                         FeeAccount::<T>::get(),
                         fee,
                     )?;
-
-                    lp_tokens =
-                        T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
-                            .unwrap_or(0);
                 }
 
                 // Handle total LP changed in other XOR or XSTUSD/pool_asset farming pools
+                let lp_tokens =
+                    T::XYKPool::balance_of_pool_provider(pool_account.clone(), user.clone())
+                        .unwrap_or(0);
                 for u_info in user_infos.iter_mut() {
                     if u_info.pool_asset == pool_asset
                         && u_info.reward_asset != reward_asset
@@ -564,16 +553,20 @@ pub mod pallet {
                     {
                         if u_info.pooled_tokens > lp_tokens {
                             let pool_tokens_diff = u_info.pooled_tokens - lp_tokens;
-                            u_info.pooled_tokens = lp_tokens;
                             let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
                             for p_info in pool_data.iter_mut() {
                                 if !p_info.is_removed
                                     && p_info.is_farm == is_farm
                                     && p_info.base_asset == base_asset
                                 {
-                                    p_info.total_tokens_in_pool -= pool_tokens_diff;
+                                    Self::accrue_user_rewards(u_info, p_info);
+                                    p_info.total_tokens_in_pool = p_info
+                                        .total_tokens_in_pool
+                                        .checked_sub(pool_tokens_diff)
+                                        .ok_or(Error::<T>::ArithmeticError)?;
                                 }
                             }
+                            u_info.pooled_tokens = lp_tokens;
                             <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
                         }
                     }
@@ -581,31 +574,31 @@ pub mod pallet {
             }
 
             // Update user info
-            if exist {
-                for u_info in user_infos.iter_mut() {
-                    if u_info.pool_asset == pool_asset
-                        && u_info.reward_asset == reward_asset
-                        && u_info.is_farm == is_farm
-                        && u_info.base_asset == base_asset
-                    {
-                        u_info.pooled_tokens += pooled_tokens;
-                    }
-                }
+            if let Some(index) = user_index {
+                let u_info = &mut user_infos[index];
+                Self::accrue_user_rewards(u_info, &pool_infos[pool_index]);
+                u_info.pooled_tokens = u_info
+                    .pooled_tokens
+                    .checked_add(pooled_tokens_after_fee)
+                    .ok_or(Error::<T>::ArithmeticError)?;
             } else {
-                user_info.pooled_tokens += pooled_tokens;
-                user_infos.push(user_info);
+                user_infos.push(UserInfo {
+                    base_asset,
+                    pool_asset,
+                    reward_asset,
+                    is_farm,
+                    pooled_tokens: pooled_tokens_after_fee,
+                    rewards: 0,
+                    reward_per_token_paid: pool_infos[pool_index].reward_per_token,
+                });
             }
             <UserInfos<T>>::insert(&user, user_infos);
 
             // Update pool info
-            for p_info in pool_infos.iter_mut() {
-                if !p_info.is_removed
-                    && p_info.is_farm == is_farm
-                    && p_info.base_asset == base_asset
-                {
-                    p_info.total_tokens_in_pool += pooled_tokens;
-                }
-            }
+            pool_infos[pool_index].total_tokens_in_pool = pool_infos[pool_index]
+                .total_tokens_in_pool
+                .checked_add(pooled_tokens_after_fee)
+                .ok_or(Error::<T>::ArithmeticError)?;
 
             <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
 
@@ -616,7 +609,7 @@ pub mod pallet {
                 pool_asset,
                 reward_asset,
                 is_farm,
-                pooled_tokens,
+                pooled_tokens_after_fee,
             ));
 
             // Return a successful DispatchResult
@@ -639,50 +632,40 @@ pub mod pallet {
 
             // Get pool info and check if pool has rewards
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
-            let mut exist = false;
-            let mut pool_info_rewards = balance!(0);
-
-            for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
-                    exist = true;
-                    pool_info_rewards = p_info.rewards;
-                }
-            }
-            ensure!(exist, Error::<T>::PoolDoesNotExist);
+            let pool_index = pool_infos
+                .iter()
+                .position(|p_info| p_info.is_farm == is_farm && p_info.base_asset == base_asset)
+                .ok_or(Error::<T>::PoolDoesNotExist)?;
 
             // Get user info
             let mut user_infos = <UserInfos<T>>::get(&user);
-            let mut rewards = 0;
+            let user_index = user_infos
+                .iter()
+                .position(|user_info| {
+                    user_info.pool_asset == pool_asset
+                        && user_info.reward_asset == reward_asset
+                        && user_info.is_farm == is_farm
+                        && user_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::ZeroRewards)?;
 
-            for user_info in user_infos.iter_mut() {
-                if user_info.pool_asset == pool_asset
-                    && user_info.reward_asset == reward_asset
-                    && user_info.is_farm == is_farm
-                    && user_info.base_asset == base_asset
-                {
-                    ensure!(user_info.rewards != 0, Error::<T>::ZeroRewards);
-                    ensure!(
-                        pool_info_rewards >= user_info.rewards,
-                        Error::<T>::PoolDoesNotHaveRewards
-                    );
+            Self::accrue_user_rewards(&mut user_infos[user_index], &pool_infos[pool_index]);
+            let rewards = user_infos[user_index].rewards;
+            ensure!(rewards != 0, Error::<T>::ZeroRewards);
+            ensure!(
+                pool_infos[pool_index].rewards >= rewards,
+                Error::<T>::PoolDoesNotHaveRewards
+            );
 
-                    T::AssetManager::transfer_from(
-                        &user_info.reward_asset,
-                        &Self::account_id(),
-                        &user,
-                        user_info.rewards,
-                    )?;
+            T::AssetManager::transfer_from(&reward_asset, &Self::account_id(), &user, rewards)?;
 
-                    rewards = user_info.rewards;
-                    pool_info_rewards -= user_info.rewards;
-                    user_info.rewards = 0;
-                }
-            }
-
-            for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
-                    p_info.rewards = pool_info_rewards;
-                }
+            pool_infos[pool_index].rewards = pool_infos[pool_index]
+                .rewards
+                .checked_sub(rewards)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            user_infos[user_index].rewards = 0;
+            if user_infos[user_index].pooled_tokens == 0 {
+                user_infos.remove(user_index);
             }
 
             // Update storage
@@ -717,44 +700,54 @@ pub mod pallet {
             is_farm: bool,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(pooled_tokens != 0, Error::<T>::ZeroDeposit);
 
             // Get user info
             let mut user_infos = <UserInfos<T>>::get(&user);
-            let mut found = false;
-
-            for user_info in user_infos.iter_mut() {
-                if user_info.pool_asset == pool_asset
-                    && user_info.reward_asset == reward_asset
-                    && user_info.is_farm == is_farm
-                    && user_info.base_asset == base_asset
-                {
-                    ensure!(
-                        pooled_tokens <= user_info.pooled_tokens,
-                        Error::<T>::InsufficientFunds
-                    );
-
-                    if is_farm == false {
-                        T::AssetManager::transfer_from(
-                            &pool_asset,
-                            &Self::account_id(),
-                            &user,
-                            pooled_tokens,
-                        )?;
-                    }
-                    user_info.pooled_tokens -= pooled_tokens;
-                    found = true;
-                }
-            }
-
-            ensure!(found, Error::<T>::InsufficientFunds);
+            let user_index = user_infos
+                .iter()
+                .position(|user_info| {
+                    user_info.pool_asset == pool_asset
+                        && user_info.reward_asset == reward_asset
+                        && user_info.is_farm == is_farm
+                        && user_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::InsufficientFunds)?;
+            ensure!(
+                pooled_tokens <= user_infos[user_index].pooled_tokens,
+                Error::<T>::InsufficientFunds
+            );
 
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
-            for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm && pool_info.base_asset == base_asset {
-                    pool_info.total_tokens_in_pool -= pooled_tokens;
-                }
+            let pool_index = pool_infos
+                .iter()
+                .position(|pool_info| {
+                    pool_info.is_farm == is_farm && pool_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::PoolDoesNotExist)?;
+
+            Self::accrue_user_rewards(&mut user_infos[user_index], &pool_infos[pool_index]);
+
+            if is_farm == false {
+                T::AssetManager::transfer_from(
+                    &pool_asset,
+                    &Self::account_id(),
+                    &user,
+                    pooled_tokens,
+                )?;
             }
+            user_infos[user_index].pooled_tokens = user_infos[user_index]
+                .pooled_tokens
+                .checked_sub(pooled_tokens)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            if user_infos[user_index].pooled_tokens == 0 && user_infos[user_index].rewards == 0 {
+                user_infos.remove(user_index);
+            }
+            pool_infos[pool_index].total_tokens_in_pool = pool_infos[pool_index]
+                .total_tokens_in_pool
+                .checked_sub(pooled_tokens)
+                .ok_or(Error::<T>::ArithmeticError)?;
 
             // Update storage
             <UserInfos<T>>::insert(&user, user_infos);
@@ -792,12 +785,32 @@ pub mod pallet {
 
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
-            for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm && pool_info.base_asset == base_asset {
-                    pool_info.is_removed = true;
-                }
+            let pool_index = pool_infos
+                .iter()
+                .position(|pool_info| {
+                    !pool_info.is_removed
+                        && pool_info.is_farm == is_farm
+                        && pool_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::PoolDoesNotExist)?;
+            let old_multiplier = pool_infos[pool_index].multiplier;
+            pool_infos[pool_index].is_removed = true;
+
+            let mut token_info = <TokenInfos<T>>::get(&reward_asset)
+                .ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
+            if is_farm {
+                token_info.farms_total_multiplier = token_info
+                    .farms_total_multiplier
+                    .checked_sub(old_multiplier)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+            } else {
+                token_info.staking_total_multiplier = token_info
+                    .staking_total_multiplier
+                    .checked_sub(old_multiplier)
+                    .ok_or(Error::<T>::ArithmeticError)?;
             }
 
+            <TokenInfos<T>>::insert(&reward_asset, &token_info);
             <Pools<T>>::insert(&pool_asset, &reward_asset, &pool_infos);
 
             // Emit an event
@@ -829,6 +842,7 @@ pub mod pallet {
             if user != AuthorityAccount::<T>::get() {
                 return Err(Error::<T>::Unauthorized.into());
             }
+            ensure!(new_multiplier >= 1, Error::<T>::InvalidMultiplier);
 
             // Get pool info and check if pool exists
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
@@ -836,7 +850,10 @@ pub mod pallet {
             let mut exist = false;
 
             for p_info in pool_infos.iter_mut() {
-                if p_info.is_farm == is_farm && p_info.base_asset == base_asset {
+                if !p_info.is_removed
+                    && p_info.is_farm == is_farm
+                    && p_info.base_asset == base_asset
+                {
                     exist = true;
                     old_multiplier = p_info.multiplier;
                     p_info.multiplier = new_multiplier;
@@ -848,11 +865,17 @@ pub mod pallet {
                 .ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
 
             if is_farm {
-                token_info.farms_total_multiplier =
-                    token_info.farms_total_multiplier - old_multiplier + new_multiplier;
+                token_info.farms_total_multiplier = token_info
+                    .farms_total_multiplier
+                    .checked_sub(old_multiplier)
+                    .and_then(|value| value.checked_add(new_multiplier))
+                    .ok_or(Error::<T>::ArithmeticError)?;
             } else {
-                token_info.staking_total_multiplier =
-                    token_info.staking_total_multiplier - old_multiplier + new_multiplier;
+                token_info.staking_total_multiplier = token_info
+                    .staking_total_multiplier
+                    .checked_sub(old_multiplier)
+                    .and_then(|value| value.checked_add(new_multiplier))
+                    .ok_or(Error::<T>::ArithmeticError)?;
             }
 
             <TokenInfos<T>>::insert(&reward_asset, &token_info);
@@ -938,19 +961,47 @@ pub mod pallet {
                 return Err(Error::<T>::Unauthorized.into());
             }
 
-            // Get pool info
+            let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
+            let pool_index = pool_infos
+                .iter()
+                .position(|p_info| {
+                    !p_info.is_removed
+                        && p_info.is_farm == is_farm
+                        && p_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::PoolDoesNotExist)?;
+
             let mut user_infos = <UserInfos<T>>::get(&changed_user);
-            for u_info in user_infos.iter_mut() {
-                if u_info.pool_asset == pool_asset
-                    && u_info.reward_asset == reward_asset
-                    && u_info.is_farm == is_farm
-                    && u_info.base_asset == base_asset
-                {
-                    u_info.pooled_tokens = pool_tokens;
-                }
+            let user_index = user_infos
+                .iter()
+                .position(|u_info| {
+                    u_info.pool_asset == pool_asset
+                        && u_info.reward_asset == reward_asset
+                        && u_info.is_farm == is_farm
+                        && u_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::UserInfoDoesNotExist)?;
+
+            Self::accrue_user_rewards(&mut user_infos[user_index], &pool_infos[pool_index]);
+            let old_pool_tokens = user_infos[user_index].pooled_tokens;
+            user_infos[user_index].pooled_tokens = pool_tokens;
+            if pool_tokens >= old_pool_tokens {
+                pool_infos[pool_index].total_tokens_in_pool = pool_infos[pool_index]
+                    .total_tokens_in_pool
+                    .checked_add(pool_tokens - old_pool_tokens)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+            } else {
+                pool_infos[pool_index].total_tokens_in_pool = pool_infos[pool_index]
+                    .total_tokens_in_pool
+                    .checked_sub(old_pool_tokens - pool_tokens)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+            }
+            if user_infos[user_index].pooled_tokens == 0 && user_infos[user_index].rewards == 0 {
+                user_infos.remove(user_index);
             }
 
             <UserInfos<T>>::insert(&changed_user, &user_infos);
+            <Pools<T>>::insert(&pool_asset, &reward_asset, pool_infos);
 
             // Emit an event
             Self::deposit_event(Event::<T>::InfoChanged(
@@ -1041,11 +1092,7 @@ pub mod pallet {
             // Check if token_per_block is zero
             ensure!(token_per_block != 0, Error::<T>::TokenPerBlockCantBeZero);
 
-            if (farms_allocation == 0 && staking_allocation == 0)
-                || (farms_allocation + staking_allocation + team_allocation != balance!(1))
-            {
-                return Err(Error::<T>::InvalidAllocationParameters.into());
-            }
+            Self::ensure_valid_allocations(farms_allocation, staking_allocation, team_allocation)?;
 
             token_info.token_per_block = token_per_block;
             token_info.farms_allocation = farms_allocation;
@@ -1080,12 +1127,40 @@ pub mod pallet {
 
             // Get pool info
             let mut pool_infos = <Pools<T>>::get(&pool_asset, &reward_asset);
-            for pool_info in pool_infos.iter_mut() {
-                if pool_info.is_farm == is_farm && pool_info.base_asset == base_asset {
-                    pool_info.is_removed = false;
-                }
+            ensure!(
+                !pool_infos.iter().any(|pool_info| {
+                    !pool_info.is_removed
+                        && pool_info.is_farm == is_farm
+                        && pool_info.base_asset == base_asset
+                }),
+                Error::<T>::PoolAlreadyExists
+            );
+            let pool_index = pool_infos
+                .iter()
+                .position(|pool_info| {
+                    pool_info.is_removed
+                        && pool_info.is_farm == is_farm
+                        && pool_info.base_asset == base_asset
+                })
+                .ok_or(Error::<T>::PoolDoesNotExist)?;
+            let multiplier = pool_infos[pool_index].multiplier;
+            pool_infos[pool_index].is_removed = false;
+
+            let mut token_info = <TokenInfos<T>>::get(&reward_asset)
+                .ok_or(Error::<T>::RewardTokenIsNotRegistered)?;
+            if is_farm {
+                token_info.farms_total_multiplier = token_info
+                    .farms_total_multiplier
+                    .checked_add(multiplier)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+            } else {
+                token_info.staking_total_multiplier = token_info
+                    .staking_total_multiplier
+                    .checked_add(multiplier)
+                    .ok_or(Error::<T>::ArithmeticError)?;
             }
 
+            <TokenInfos<T>>::insert(&reward_asset, &token_info);
             <Pools<T>>::insert(&pool_asset, &reward_asset, &pool_infos);
 
             // Emit an event
@@ -1105,25 +1180,31 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
-            let mut counter = Weight::zero();
+            let mut weight = Weight::zero();
 
             if (now % T::BLOCKS_PER_HOUR_AND_A_HALF).is_zero() {
-                counter = Self::distribute_rewards_to_users();
+                weight = weight.saturating_add(Self::distribute_rewards_to_users());
             }
             if (now % T::BLOCKS_PER_ONE_DAY).is_zero() {
-                counter = Self::distribute_rewards_to_pools();
+                weight = weight.saturating_add(Self::distribute_rewards_to_pools());
             }
 
-            counter
+            weight
         }
 
         fn on_runtime_upgrade() -> Weight {
-            if Self::pallet_storage_version() == StorageVersion::V1 {
-                let weight = migrations::migrate::<T>();
-                PalletStorageVersion::<T>::put(StorageVersion::V2);
-                weight
-            } else {
-                Weight::zero()
+            match Self::pallet_storage_version() {
+                StorageVersion::V1 => {
+                    let weight = migrations::migrate::<T>();
+                    PalletStorageVersion::<T>::put(StorageVersion::V3);
+                    weight
+                }
+                StorageVersion::V2 => {
+                    let weight = migrations::migrate_v2_to_v3::<T>();
+                    PalletStorageVersion::<T>::put(StorageVersion::V3);
+                    weight
+                }
+                StorageVersion::V3 => Weight::zero(),
             }
         }
     }
@@ -1132,6 +1213,69 @@ pub mod pallet {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
             PALLET_ID.into_account_truncating()
+        }
+
+        fn ensure_valid_allocations(
+            farms_allocation: Balance,
+            staking_allocation: Balance,
+            team_allocation: Balance,
+        ) -> DispatchResult {
+            let allocation_sum = farms_allocation
+                .checked_add(staking_allocation)
+                .and_then(|value| value.checked_add(team_allocation))
+                .ok_or(Error::<T>::InvalidAllocationParameters)?;
+
+            ensure!(
+                !(farms_allocation == 0 && staking_allocation == 0)
+                    && allocation_sum == balance!(1),
+                Error::<T>::InvalidAllocationParameters
+            );
+
+            Ok(())
+        }
+
+        fn calculate_fee(
+            pooled_tokens: Balance,
+            deposit_fee: Balance,
+        ) -> Result<Balance, DispatchError> {
+            if deposit_fee == balance!(0) {
+                return Ok(0);
+            }
+
+            (FixedWrapper::from(pooled_tokens) * FixedWrapper::from(deposit_fee))
+                .try_into_balance()
+                .map_err(|_| Error::<T>::ArithmeticError.into())
+        }
+
+        pub(crate) fn accrue_user_rewards(
+            user_info: &mut UserInfo<AssetIdOf<T>>,
+            pool_info: &PoolData<AssetIdOf<T>>,
+        ) {
+            if pool_info.reward_per_token > user_info.reward_per_token_paid {
+                let reward_per_token_diff =
+                    pool_info.reward_per_token - user_info.reward_per_token_paid;
+                let pending_rewards = (FixedWrapper::from(user_info.pooled_tokens)
+                    * FixedWrapper::from(reward_per_token_diff))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                user_info.rewards = user_info.rewards.saturating_add(pending_rewards);
+                user_info.reward_per_token_paid = pool_info.reward_per_token;
+            }
+        }
+
+        fn reserved_pool_rewards(token_asset_id: &AssetIdOf<T>) -> (Balance, u64) {
+            let mut reserved = 0u128;
+            let mut reads = 0u64;
+            for (_, reward_asset, pool_infos) in Pools::<T>::iter() {
+                reads = reads.saturating_add(1);
+                if &reward_asset == token_asset_id {
+                    for pool_info in pool_infos {
+                        reserved = reserved.saturating_add(pool_info.rewards);
+                    }
+                }
+            }
+            (reserved, reads)
         }
 
         fn mint_deo() {
@@ -1146,23 +1290,19 @@ pub mod pallet {
                 * FixedWrapper::from(deo_info.token_per_block))
             .try_into_balance()
             .unwrap_or(0);
-            let amount_for_team = (FixedWrapper::from(amount)
-                * FixedWrapper::from(deo_info.team_allocation))
-            .try_into_balance()
-            .unwrap_or(0);
-            let amount_for_farming_and_staking = amount - amount_for_team;
 
             let _ = T::AssetManager::mint(
                 RawOrigin::Signed(AuthorityAccount::<T>::get()).into(),
                 T::DemeterAssetId::get(),
                 Self::account_id(),
-                amount_for_farming_and_staking,
+                amount,
             );
         }
 
         /// Distribute rewards to pools
         fn distribute_rewards_to_pools() -> Weight {
-            let mut counter: u64 = 0;
+            let mut reads: u64 = 0;
+            let mut writes: u64 = 0;
             let blocks = 14400_u32;
 
             Self::mint_deo();
@@ -1170,10 +1310,28 @@ pub mod pallet {
             // Distribute rewards to pools
             let zero = balance!(0);
             for (token_asset_id, token_info) in TokenInfos::<T>::iter() {
-                let amount_per_day = (FixedWrapper::from(balance!(blocks))
+                reads = reads.saturating_add(1);
+
+                let scheduled_amount_per_day = (FixedWrapper::from(balance!(blocks))
                     * FixedWrapper::from(token_info.token_per_block))
                 .try_into_balance()
                 .unwrap_or(zero);
+
+                let (reserved_rewards, reserved_reads) =
+                    Self::reserved_pool_rewards(&token_asset_id);
+                reads = reads.saturating_add(reserved_reads);
+                let available_balance = <T as Config>::AssetInfoProvider::free_balance(
+                    &token_asset_id,
+                    &Self::account_id(),
+                )
+                .unwrap_or(0);
+                let available_for_new_rewards = available_balance.saturating_sub(reserved_rewards);
+                let amount_per_day = if scheduled_amount_per_day > available_for_new_rewards {
+                    available_for_new_rewards
+                } else {
+                    scheduled_amount_per_day
+                };
+
                 let amount_for_farming = (FixedWrapper::from(amount_per_day)
                     * FixedWrapper::from(token_info.farms_allocation))
                 .try_into_balance()
@@ -1195,7 +1353,9 @@ pub mod pallet {
                 );
 
                 for (pool_asset, reward_asset, mut pool_infos) in Pools::<T>::iter() {
+                    reads = reads.saturating_add(1);
                     if reward_asset == token_asset_id {
+                        let mut changed = false;
                         for pool_info in pool_infos.iter_mut() {
                             if !pool_info.is_removed && pool_info.total_tokens_in_pool != zero {
                                 let total_multiplier;
@@ -1208,6 +1368,9 @@ pub mod pallet {
                                     total_multiplier = token_info.farms_total_multiplier;
                                     amount = amount_for_farming;
                                 }
+                                if total_multiplier == 0 {
+                                    continue;
+                                }
 
                                 let reward = (FixedWrapper::from(amount)
                                     * (FixedWrapper::from(balance!(pool_info.multiplier))
@@ -1216,67 +1379,62 @@ pub mod pallet {
                                 .unwrap_or(zero);
 
                                 pool_info.rewards_to_be_distributed = reward;
+                                changed = true;
                             }
                         }
 
-                        <Pools<T>>::insert(pool_asset, reward_asset, pool_infos);
-                        counter += 1;
+                        if changed {
+                            <Pools<T>>::insert(pool_asset, reward_asset, pool_infos);
+                            writes = writes.saturating_add(1);
+                        }
                     }
                 }
             }
 
             T::DbWeight::get()
-                .reads(counter + 1)
-                .saturating_add(T::DbWeight::get().writes(counter))
+                .reads(reads)
+                .saturating_add(T::DbWeight::get().writes(writes))
         }
 
         fn distribute_rewards_to_users() -> Weight {
-            let mut counter: u64 = 0;
+            let mut reads: u64 = 0;
+            let mut writes: u64 = 0;
             let per_hour_and_half = balance!(0.0625);
             let zero = balance!(0);
 
             for (pool_asset, reward_asset, mut pool_infos) in Pools::<T>::iter() {
+                reads = reads.saturating_add(1);
+                let mut changed = false;
                 for pool_info in pool_infos.iter_mut() {
-                    if pool_info.rewards_to_be_distributed != zero && !pool_info.is_removed {
+                    if pool_info.rewards_to_be_distributed != zero
+                        && !pool_info.is_removed
+                        && pool_info.total_tokens_in_pool != zero
+                    {
                         let amount_per_hour =
                             (FixedWrapper::from(pool_info.rewards_to_be_distributed)
                                 * FixedWrapper::from(per_hour_and_half))
                             .try_into_balance()
                             .unwrap_or(zero);
+                        let reward_per_token = (FixedWrapper::from(amount_per_hour)
+                            / FixedWrapper::from(pool_info.total_tokens_in_pool))
+                        .try_into_balance()
+                        .unwrap_or(zero);
 
-                        for (user, mut user_infos) in UserInfos::<T>::iter() {
-                            let mut changed = false;
-                            for user_info in user_infos.iter_mut() {
-                                if user_info.pool_asset == pool_asset
-                                    && user_info.reward_asset == reward_asset
-                                    && user_info.is_farm == pool_info.is_farm
-                                    && user_info.base_asset == pool_info.base_asset
-                                {
-                                    let amount_per_user = (FixedWrapper::from(amount_per_hour)
-                                        * (FixedWrapper::from(user_info.pooled_tokens)
-                                            / FixedWrapper::from(pool_info.total_tokens_in_pool)))
-                                    .try_into_balance()
-                                    .unwrap_or(zero);
-                                    user_info.rewards += amount_per_user;
-                                    changed = true;
-                                }
-                            }
-                            if changed {
-                                <UserInfos<T>>::insert(user, user_infos);
-                                counter += 1;
-                            }
-                        }
-
-                        pool_info.rewards += amount_per_hour;
+                        pool_info.rewards = pool_info.rewards.saturating_add(amount_per_hour);
+                        pool_info.reward_per_token =
+                            pool_info.reward_per_token.saturating_add(reward_per_token);
+                        changed = true;
                     }
                 }
-                <Pools<T>>::insert(pool_asset, reward_asset, pool_infos);
-                counter += 1;
+                if changed {
+                    <Pools<T>>::insert(pool_asset, reward_asset, pool_infos);
+                    writes = writes.saturating_add(1);
+                }
             }
 
             T::DbWeight::get()
-                .reads(counter)
-                .saturating_add(T::DbWeight::get().writes(counter))
+                .reads(reads)
+                .saturating_add(T::DbWeight::get().writes(writes))
         }
 
         /// Check if user has enough free liquidity for withdrawing
@@ -1335,13 +1493,17 @@ impl<T: Config> DemeterFarming<T::AccountId, AssetIdOf<T>> for Pallet<T> {
             {
                 if u_info.pooled_tokens > pool_tokens {
                     let pool_tokens_diff = u_info.pooled_tokens - pool_tokens;
-                    u_info.pooled_tokens = pool_tokens;
                     let mut pool_data = <Pools<T>>::get(&pool_asset, &u_info.reward_asset);
                     for p_info in pool_data.iter_mut() {
                         if !p_info.is_removed && p_info.is_farm && p_info.base_asset == base_asset {
-                            p_info.total_tokens_in_pool -= pool_tokens_diff;
+                            Pallet::<T>::accrue_user_rewards(u_info, p_info);
+                            p_info.total_tokens_in_pool = p_info
+                                .total_tokens_in_pool
+                                .checked_sub(pool_tokens_diff)
+                                .ok_or(Error::<T>::ArithmeticError)?;
                         }
                     }
+                    u_info.pooled_tokens = pool_tokens;
                     <Pools<T>>::insert(&pool_asset, &u_info.reward_asset, pool_data);
                 }
             }
@@ -1362,20 +1524,12 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
 
         let update_token_info = |asset_id: &AssetIdOf<T>| {
             if let Some(mut token_info) = TokenInfos::<T>::get(asset_id) {
-                token_info.farms_allocation = token_info
-                    .farms_allocation
+                token_info.token_per_block = token_info
+                    .token_per_block
                     .checked_div(*factor)
-                    .unwrap_or(token_info.farms_allocation);
-                token_info.staking_allocation = token_info
-                    .staking_allocation
-                    .checked_div(*factor)
-                    .unwrap_or(token_info.staking_allocation);
-                token_info.team_allocation = token_info
-                    .team_allocation
-                    .checked_div(*factor)
-                    .unwrap_or(token_info.team_allocation);
+                    .unwrap_or(token_info.token_per_block);
 
-                TokenInfos::<T>::insert(xor, token_info);
+                TokenInfos::<T>::insert(asset_id, token_info);
             }
         };
 
@@ -1400,9 +1554,14 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
                     {
                         pool_info.total_tokens_in_pool =
                             (FixedWrapper256::from(pool_info.total_tokens_in_pool)
-                                / fxw_issuance_ratio)
+                                / fxw_issuance_ratio.clone())
+                            .try_into_balance()
+                            .unwrap_or(pool_info.total_tokens_in_pool);
+                        pool_info.reward_per_token =
+                            (FixedWrapper256::from(pool_info.reward_per_token)
+                                * fxw_issuance_ratio)
                                 .try_into_balance()
-                                .unwrap_or(pool_info.total_tokens_in_pool);
+                                .unwrap_or(pool_info.reward_per_token);
                     } else {
                         pool_infos.remove(i);
                         continue;
@@ -1418,6 +1577,10 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
                         .rewards_to_be_distributed
                         .checked_div(*factor)
                         .unwrap_or(pool_info.rewards_to_be_distributed);
+                    pool_info.reward_per_token = pool_info
+                        .reward_per_token
+                        .checked_div(*factor)
+                        .unwrap_or(pool_info.reward_per_token);
                     updated = true;
                 }
 
@@ -1447,14 +1610,19 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
                         &user_info.pool_asset,
                     ) {
                         let new_pooled_tokens = (FixedWrapper256::from(user_info.pooled_tokens)
-                            / fxw_issuance_ratio)
-                            .try_into_balance()
-                            .unwrap_or(user_info.pooled_tokens);
+                            / fxw_issuance_ratio.clone())
+                        .try_into_balance()
+                        .unwrap_or(user_info.pooled_tokens);
                         if new_pooled_tokens.is_zero() {
                             user_infos.remove(i);
                             continue;
                         } else {
                             user_info.pooled_tokens = new_pooled_tokens;
+                            user_info.reward_per_token_paid =
+                                (FixedWrapper256::from(user_info.reward_per_token_paid)
+                                    * fxw_issuance_ratio)
+                                    .try_into_balance()
+                                    .unwrap_or(user_info.reward_per_token_paid);
                         }
                     } else {
                         user_infos.remove(i);
@@ -1467,6 +1635,10 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
                         .rewards
                         .checked_div(*factor)
                         .unwrap_or(user_info.rewards);
+                    user_info.reward_per_token_paid = user_info
+                        .reward_per_token_paid
+                        .checked_div(*factor)
+                        .unwrap_or(user_info.reward_per_token_paid);
                     updated = true;
                 }
 

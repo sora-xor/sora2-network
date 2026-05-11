@@ -75,6 +75,13 @@ pub struct FullDeps<C, P, B> {
     pub beefy: BeefyDeps,
 }
 
+fn rpc_module_with_unsafe_policy(deny_unsafe: DenyUnsafe) -> RpcExtension {
+    let mut io = RpcModule::new(());
+    // Unsafe-aware RPC methods read this extension during local/direct calls.
+    io.extensions_mut().insert(deny_unsafe);
+    io
+}
+
 #[cfg(feature = "wip")]
 pub fn add_wip_rpc<C>(
     mut rpc: RpcExtension,
@@ -202,14 +209,14 @@ where
     use trading_pair_rpc::{TradingPairAPIServer, TradingPairClient};
     use vested_rewards_rpc::{VestedRewardsApiServer, VestedRewardsClient};
 
-    let mut io = RpcModule::new(());
     let FullDeps {
         client,
         pool,
         backend,
-        deny_unsafe: _deny_unsafe,
+        deny_unsafe,
         beefy,
     } = deps;
+    let mut io = rpc_module_with_unsafe_policy(deny_unsafe);
 
     let offchain_storage = backend
         .offchain_storage()
@@ -241,4 +248,56 @@ where
     io.merge(LeafProviderClient::new(client.clone()).into_rpc())?;
     io.merge(BridgeProxyClient::new(client.clone()).into_rpc())?;
     Ok(io)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn rpc_module_enforces_configured_unsafe_policy_for_local_calls() {
+        let mut denied = rpc_module_with_unsafe_policy(DenyUnsafe::Yes);
+        denied
+            .register_method::<jsonrpsee::core::RpcResult<&'static str>, _>(
+                "unsafe_policy_probe",
+                |_, _, extensions| {
+                    let deny_unsafe = *extensions
+                        .get::<DenyUnsafe>()
+                        .expect("DenyUnsafe extension must be configured for local RPC calls");
+                    deny_unsafe.check_if_safe()?;
+                    Ok("allowed")
+                },
+            )
+            .expect("probe method registration should succeed");
+
+        let err = denied
+            .call::<_, String>("unsafe_policy_probe", jsonrpsee::rpc_params![])
+            .await
+            .expect_err("unsafe-aware local RPC calls must be denied when policy says so");
+        assert!(
+            err.to_string()
+                .contains("RPC call is unsafe to be called externally"),
+            "unexpected RPC error: {err}"
+        );
+
+        let mut allowed = rpc_module_with_unsafe_policy(DenyUnsafe::No);
+        allowed
+            .register_method::<jsonrpsee::core::RpcResult<&'static str>, _>(
+                "unsafe_policy_probe",
+                |_, _, extensions| {
+                    let deny_unsafe = *extensions
+                        .get::<DenyUnsafe>()
+                        .expect("DenyUnsafe extension must be configured for local RPC calls");
+                    deny_unsafe.check_if_safe()?;
+                    Ok("allowed")
+                },
+            )
+            .expect("probe method registration should succeed");
+
+        let result = allowed
+            .call::<_, String>("unsafe_policy_probe", jsonrpsee::rpc_params![])
+            .await
+            .expect("unsafe-aware local RPC calls must be allowed when policy says so");
+        assert_eq!(result, "allowed");
+    }
 }

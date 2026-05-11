@@ -31,7 +31,7 @@
 #[cfg(feature = "try-runtime")]
 use codec::{Decode, Encode};
 use frame_support::traits::{
-    GetStorageVersion, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
+    GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
 };
 use frame_support::weights::Weight;
 #[cfg(feature = "try-runtime")]
@@ -59,6 +59,8 @@ pub type Migrations = (
     SubstrateBridgeInboundChannelStorageVersionV1,
     SubstrateBridgeOutboundChannelStorageVersionV1,
     BridgePeerIsolationAudit,
+    DemeterFarmingPlatformStorageVersionV3,
+    pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
     PrivateNetMigrations,
     WipMigrations,
 );
@@ -278,6 +280,42 @@ impl OnRuntimeUpgrade for BridgePeerIsolationAudit {
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         audit_bridge_peer_isolation()
+    }
+}
+
+pub struct DemeterFarmingPlatformStorageVersionV3;
+
+impl OnRuntimeUpgrade for DemeterFarmingPlatformStorageVersionV3 {
+    fn on_runtime_upgrade() -> Weight {
+        <demeter_farming_platform::Pallet<crate::Runtime> as Hooks<crate::BlockNumber>>::on_runtime_upgrade()
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::get().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let previous =
+            demeter_farming_platform::StorageVersion::decode(&mut &state[..]).map_err(|_| {
+                TryRuntimeError::Other("failed to decode previous Demeter storage version")
+            })?;
+        let expected = match previous {
+            demeter_farming_platform::StorageVersion::V1
+            | demeter_farming_platform::StorageVersion::V2
+            | demeter_farming_platform::StorageVersion::V3 => {
+                demeter_farming_platform::StorageVersion::V3
+            }
+        };
+        let current = demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::get();
+        if current == expected {
+            Ok(())
+        } else {
+            Err(TryRuntimeError::Other(
+                "Demeter storage version did not reach the expected version",
+            ))
+        }
     }
 }
 

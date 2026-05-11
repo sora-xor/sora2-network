@@ -18,8 +18,8 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::{
-    AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, MaybeSerializeDeserialize, One,
-    SaturatedConversion, Saturating, Zero,
+    AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, MaybeSerializeDeserialize,
+    One, SaturatedConversion, Saturating, Zero,
 };
 use sp_runtime::{DispatchError, Perbill, RuntimeDebug, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
@@ -34,7 +34,7 @@ pub type ConditionId = u32;
 pub type MarketId = u32;
 
 const STORAGE_VERSION: frame_support::traits::StorageVersion =
-    frame_support::traits::StorageVersion::new(1);
+    frame_support::traits::StorageVersion::new(2);
 const CREATION_FEE_BUYBACK_BPS: u32 = 2_000;
 
 fn with_storage_transaction<T>(
@@ -52,7 +52,6 @@ fn with_storage_transaction<T>(
 
 pub trait WeightInfo {
     fn create_condition() -> Weight;
-    fn create_opengov_condition() -> Weight;
     fn create_market() -> Weight;
     fn buy() -> Weight;
     fn sell() -> Weight;
@@ -65,75 +64,6 @@ pub trait WeightInfo {
     fn claim_creator_fees() -> Weight;
     fn claim_creator_liquidity() -> Weight;
     fn sweep_xor_buyback_and_burn() -> Weight;
-}
-
-/// Hook notifying off-chain integrations (e.g., Polkadot Plaza) when a condition
-/// tied to an OpenGov referendum is registered.
-pub trait PlazaIntegrationHook<Metadata> {
-    fn on_opengov_condition(_condition_id: ConditionId, _metadata: &Metadata) {}
-}
-
-impl<Metadata> PlazaIntegrationHook<Metadata> for () {}
-
-pub struct PolkadotPlazaBridge<T>(PhantomData<T>);
-
-impl<T: Config> PlazaIntegrationHook<OpengovProposalOf<T>> for PolkadotPlazaBridge<T> {
-    fn on_opengov_condition(condition_id: ConditionId, metadata: &OpengovProposalOf<T>) {
-        if metadata.plaza_tag.is_empty() {
-            return;
-        }
-        let tag: Vec<u8> = metadata.plaza_tag.clone().into();
-        Pallet::<T>::deposit_event(Event::PolkadotPlazaBroadcast { condition_id, tag });
-    }
-}
-
-#[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
-    Default,
-)]
-pub enum RelayNetwork {
-    #[default]
-    Polkadot,
-    Kusama,
-}
-
-#[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
-)]
-pub struct OpengovProposalMetadata<Tag> {
-    pub network: RelayNetwork,
-    pub parachain_id: u32,
-    pub track_id: u16,
-    pub referendum_index: u32,
-    pub plaza_tag: Tag,
-}
-
-#[derive(
-    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default,
-)]
-pub struct OpengovProposalInput {
-    pub network: RelayNetwork,
-    pub parachain_id: u32,
-    pub track_id: u16,
-    pub referendum_index: u32,
-    pub plaza_tag: Vec<u8>,
 }
 
 #[derive(
@@ -297,9 +227,6 @@ struct TradeFeeSplit<Balance> {
 pub type MetadataString<T> = BoundedVec<u8, <T as pallet::Config>::MaxMetadataLength>;
 pub type ConditionMetadataOf<T> = ConditionMetadata<MetadataString<T>>;
 
-pub type PlazaTagOf<T> = BoundedVec<u8, <T as pallet::Config>::MaxPlazaTagLength>;
-pub type OpengovProposalOf<T> = OpengovProposalMetadata<PlazaTagOf<T>>;
-
 pub type MarketOf<T> = Market<
     <T as Config>::AssetId,
     <T as frame_system::Config>::AccountId,
@@ -372,10 +299,6 @@ pub mod pallet {
         #[pallet::constant]
         type MinQuestionLength: Get<u32>;
 
-        /// Creation fee expressed in basis points (e.g., 35 == 0.35%).
-        #[pallet::constant]
-        type CreationFeeBps: Get<u32>;
-
         /// Minimum absolute creation fee in canonical stable units.
         #[pallet::constant]
         type MinCreationFee: Get<Self::Balance>;
@@ -398,9 +321,6 @@ pub mod pallet {
         /// Maximum metadata length (question/oracle/source).
         #[pallet::constant]
         type MaxMetadataLength: Get<u32>;
-        /// Maximum length for Polkadot Plaza tags associated with OpenGov proposals.
-        #[pallet::constant]
-        type MaxPlazaTagLength: Get<u32>;
         /// Weight information for extrinsics.
         type WeightInfo: crate::WeightInfo;
 
@@ -418,9 +338,6 @@ pub mod pallet {
 
         /// Origin allowed to finalize market outcomes.
         type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
-
-        /// Hook for notifying third-party integrations (e.g., Polkadot Plaza).
-        type PlazaIntegration: PlazaIntegrationHook<OpengovProposalOf<Self>>;
     }
 
     #[pallet::pallet]
@@ -440,6 +357,16 @@ pub mod pallet {
     #[pallet::getter(fn conditions)]
     pub type Conditions<T: Config> =
         StorageMap<_, Blake2_128Concat, ConditionId, ConditionMetadataOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn condition_creators)]
+    pub type ConditionCreators<T: Config> =
+        StorageMap<_, Blake2_128Concat, ConditionId, T::AccountId, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn condition_market)]
+    pub type ConditionMarket<T: Config> =
+        StorageMap<_, Blake2_128Concat, ConditionId, MarketId, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn markets)]
@@ -501,11 +428,6 @@ pub mod pallet {
     #[pallet::getter(fn market_bond_lock)]
     pub type MarketBondLock<T: Config> =
         StorageMap<_, Blake2_128Concat, MarketId, T::Balance, OptionQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn opengov_proposals)]
-    pub type OpengovConditions<T: Config> =
-        StorageMap<_, Blake2_128Concat, ConditionId, OpengovProposalOf<T>, OptionQuery>;
 
     #[pallet::storage]
     pub type FeeCollectorOverride<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
@@ -604,20 +526,6 @@ pub mod pallet {
             user: T::AccountId,
             amount: T::Balance,
         },
-        OpengovConditionCreated {
-            condition_id: ConditionId,
-            network: RelayNetwork,
-            parachain_id: u32,
-            track_id: u16,
-            referendum_index: u32,
-        },
-        PolkadotPlazaBroadcast {
-            condition_id: ConditionId,
-            tag: Vec<u8>,
-        },
-        OpengovConditionCleared {
-            condition_id: ConditionId,
-        },
         MarketBondLockReleased {
             market_id: MarketId,
             creator: T::AccountId,
@@ -643,7 +551,9 @@ pub mod pallet {
         GovernanceBondTooLow,
         AccountNotBonded,
         GovernanceBondLocked,
-        InvalidOpengovProposal,
+        NotConditionCreator,
+        ConditionAlreadyUsed,
+        InvalidMetadata,
         MarketUnknown,
         TradeAmountTooSmall,
         ZeroSeedLiquidity,
@@ -658,51 +568,14 @@ pub mod pallet {
         /// Register a new prediction condition with oracle metadata.
         #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::create_condition())]
+        #[transactional]
         pub fn create_condition(origin: OriginFor<T>, metadata: ConditionInput) -> DispatchResult {
             let who = ensure_signed(origin)?;
             Self::ensure_authorized_creator(&who)?;
-            Self::create_condition_entry(&who, metadata)?;
-            Ok(())
-        }
-
-        /// Register an OpenGov-linked condition with oracle metadata.
-        #[pallet::call_index(16)]
-        #[pallet::weight(T::WeightInfo::create_opengov_condition())]
-        #[transactional]
-        pub fn create_opengov_condition(
-            origin: OriginFor<T>,
-            metadata: ConditionInput,
-            proposal: OpengovProposalInput,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_authorized_creator(&who)?;
-            ensure!(
-                proposal.parachain_id > 0,
-                Error::<T>::InvalidOpengovProposal
-            );
-            let condition_id = Self::create_condition_entry(&who, metadata)?;
-            let plaza_tag = PlazaTagOf::<T>::try_from(proposal.plaza_tag)
-                .map_err(|_| Error::<T>::MetadataTooLong)?;
-            let record = OpengovProposalMetadata {
-                network: proposal.network,
-                parachain_id: proposal.parachain_id,
-                track_id: proposal.track_id,
-                referendum_index: proposal.referendum_index,
-                plaza_tag,
-            };
-            let network = record.network;
-            let parachain_id = record.parachain_id;
-            let track_id = record.track_id;
-            let referendum_index = record.referendum_index;
-            OpengovConditions::<T>::insert(condition_id, record.clone());
-            T::PlazaIntegration::on_opengov_condition(condition_id, &record);
-            Self::deposit_event(Event::OpengovConditionCreated {
-                condition_id,
-                network,
-                parachain_id,
-                track_id,
-                referendum_index,
-            });
+            let bounded = Self::validate_condition_metadata(metadata)?;
+            Self::ensure_next_condition_id_available()?;
+            Self::withdraw_creation_fee(&who)?;
+            Self::create_condition_entry(&who, bounded)?;
             Ok(())
         }
 
@@ -742,14 +615,19 @@ pub mod pallet {
                 Conditions::<T>::contains_key(condition_id),
                 Error::<T>::ConditionNotFound
             );
+            let creator =
+                ConditionCreators::<T>::get(condition_id).ok_or(Error::<T>::NotConditionCreator)?;
+            ensure!(creator == who, Error::<T>::NotConditionCreator);
+            ensure!(
+                !ConditionMarket::<T>::contains_key(condition_id),
+                Error::<T>::ConditionAlreadyUsed
+            );
             ensure!(!seed_liquidity.is_zero(), Error::<T>::ZeroSeedLiquidity);
             let now = <frame_system::Pallet<T>>::block_number();
             let min_close = now
                 .checked_add(&T::MinMarketDuration::get())
                 .ok_or(Error::<T>::Overflow)?;
             ensure!(close_block >= min_close, Error::<T>::MarketDurationTooShort);
-
-            Self::withdraw_creation_fee(&who, seed_liquidity)?;
 
             let market_id =
                 NextMarketId::<T>::try_mutate(|next_id| -> Result<MarketId, DispatchError> {
@@ -760,6 +638,7 @@ pub mod pallet {
                     Ok(id)
                 })?;
 
+            Self::lock_creator_bond_for_market(&who, market_id)?;
             let deposited = Self::escrow_seed_liquidity(&who, seed_liquidity)?;
             let data = Market {
                 creator: who.clone(),
@@ -778,7 +657,7 @@ pub mod pallet {
                     no: deposited,
                 },
             );
-            Self::lock_creator_bond_for_market(&who, market_id)?;
+            ConditionMarket::<T>::insert(condition_id, market_id);
             Self::deposit_event(Event::MarketCreated {
                 market_id,
                 seed_liquidity: deposited,
@@ -817,6 +696,16 @@ pub mod pallet {
                     share_amount >= min_shares_out,
                     Error::<T>::SlippageToleranceExceeded
                 );
+                Self::ensure_position_can_credit(
+                    market_id,
+                    &who,
+                    outcome,
+                    share_amount,
+                    pricing_input,
+                )?;
+                let fee_split = Self::split_trade_fee(total_fee);
+                let updated_pool =
+                    Self::pool_after_buy(pool, outcome, pricing_input, fee_split.pool)?;
 
                 T::Assets::transfer(
                     T::CanonicalStableAssetId::get(),
@@ -824,9 +713,7 @@ pub mod pallet {
                     &Self::account_id(),
                     collateral_in,
                 )?;
-                let fee_split = Self::apply_trade_fees(market_id, total_fee)?;
-                let updated_pool =
-                    Self::pool_after_buy(pool, outcome, pricing_input, fee_split.pool)?;
+                Self::record_trade_fees(market_id, fee_split);
                 MarketPools::<T>::insert(market_id, updated_pool);
                 Self::record_market_volume(market_id, pricing_input);
                 Self::credit_position_on_buy(
@@ -881,7 +768,7 @@ pub mod pallet {
                     Error::<T>::SlippageToleranceExceeded
                 );
 
-                let fee_split = Self::apply_trade_fees(market_id, total_fee)?;
+                let fee_split = Self::split_trade_fee(total_fee);
                 let updated_pool = Self::pool_after_sell(
                     pool,
                     outcome,
@@ -889,6 +776,7 @@ pub mod pallet {
                     gross_collateral_out,
                     fee_split.pool,
                 )?;
+                Self::record_trade_fees(market_id, fee_split);
                 MarketPools::<T>::insert(market_id, updated_pool);
                 Self::record_market_volume(market_id, gross_collateral_out);
                 Self::debit_position_on_sell(
@@ -926,11 +814,12 @@ pub mod pallet {
             ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
             let min_bond = Self::governance_bond_minimum();
             ensure!(amount >= min_bond, Error::<T>::GovernanceBondTooLow);
+            let updated_bond = GovernanceBonds::<T>::get(&who)
+                .checked_add(&amount)
+                .ok_or(Error::<T>::Overflow)?;
             let received =
                 Self::deposit_canonical(&who, &Self::creator_bond_escrow_account(), amount)?;
-            GovernanceBonds::<T>::mutate(&who, |bond| {
-                *bond = bond.saturating_add(received);
-            });
+            GovernanceBonds::<T>::insert(&who, updated_bond);
             Self::deposit_event(Event::GovernanceBonded {
                 who,
                 amount: received,
@@ -976,7 +865,6 @@ pub mod pallet {
             T::GovernanceOrigin::ensure_origin(origin)?;
             let (market, _) = Self::ensure_market_can_finalize(market_id)?;
             let creator = market.creator;
-            let condition_id = market.condition_id;
             with_storage_transaction(|| -> DispatchResult {
                 Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
                     let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
@@ -984,7 +872,6 @@ pub mod pallet {
                     Ok(())
                 })?;
                 MarketResolution::<T>::insert(market_id, outcome);
-                Self::clear_linked_opengov_condition(condition_id);
                 Self::unlock_market_bond(market_id, &creator)?;
                 Self::deposit_event(Event::MarketResolved { market_id, outcome });
                 Ok(())
@@ -998,7 +885,6 @@ pub mod pallet {
             T::GovernanceOrigin::ensure_origin(origin)?;
             let (market, _) = Self::ensure_market_can_finalize(market_id)?;
             let creator = market.creator;
-            let condition_id = market.condition_id;
             with_storage_transaction(|| -> DispatchResult {
                 Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
                     let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
@@ -1006,7 +892,6 @@ pub mod pallet {
                     Ok(())
                 })?;
                 MarketResolution::<T>::remove(market_id);
-                Self::clear_linked_opengov_condition(condition_id);
                 Self::unlock_market_bond(market_id, &creator)?;
                 Self::deposit_event(Event::MarketCancelled { market_id });
                 Ok(())
@@ -1040,7 +925,7 @@ pub mod pallet {
 
             with_storage_transaction(|| -> DispatchResult {
                 MarketPositions::<T>::remove(market_id, &who);
-                Self::debit_market_totals(market_id, &position);
+                Self::debit_market_totals(market_id, &position)?;
                 Self::debit_market_collateral(market_id, payout)?;
                 if !payout.is_zero() {
                     T::Assets::transfer(
@@ -1141,17 +1026,8 @@ pub mod pallet {
             GovernanceBondMinimumOverride::<T>::get().unwrap_or_else(T::GovernanceBondMinimum::get)
         }
 
-        fn withdraw_creation_fee(who: &T::AccountId, seed: T::Balance) -> DispatchResult {
-            let bps = T::CreationFeeBps::get();
-            let ratio = Perbill::from_rational(bps, 10_000u32);
-            let fee_from_bps = ratio * seed;
-            let min_fee = T::MinCreationFee::get();
-            let fee = if fee_from_bps < min_fee {
-                min_fee
-            } else {
-                fee_from_bps
-            };
-
+        fn withdraw_creation_fee(who: &T::AccountId) -> DispatchResult {
+            let fee = T::MinCreationFee::get();
             let fee_collector = Self::fee_collector_account();
             let deposited = Self::deposit_canonical(who, &fee_collector, fee)?;
 
@@ -1264,11 +1140,7 @@ pub mod pallet {
             }
         }
 
-        fn apply_trade_fees(
-            market_id: MarketId,
-            total_fee: T::Balance,
-        ) -> Result<TradeFeeSplit<T::Balance>, DispatchError> {
-            let split = Self::split_trade_fee(total_fee);
+        fn record_trade_fees(market_id: MarketId, split: TradeFeeSplit<T::Balance>) {
             if !split.creator.is_zero() {
                 MarketCreatorFees::<T>::mutate(market_id, |total| {
                     *total = total.saturating_add(split.creator);
@@ -1279,7 +1151,6 @@ pub mod pallet {
                     *total = total.saturating_add(split.buyback);
                 });
             }
-            Ok(split)
         }
 
         fn quote_buy(
@@ -1288,6 +1159,10 @@ pub mod pallet {
             collateral_in: T::Balance,
         ) -> Result<T::Balance, DispatchError> {
             let (selected, opposite) = Self::pool_reserves(pool, outcome);
+            ensure!(
+                !selected.is_zero() && !opposite.is_zero(),
+                Error::<T>::Overflow
+            );
             let selected_u = U256::from(selected.saturated_into::<u128>());
             let opposite_u = U256::from(opposite.saturated_into::<u128>());
             let input_u = U256::from(collateral_in.saturated_into::<u128>());
@@ -1350,30 +1225,41 @@ pub mod pallet {
             Ok(pool)
         }
 
-        fn quote_sell(
+        pub(crate) fn quote_sell(
             pool: &MarketPoolOf<T>,
             outcome: BinaryOutcome,
             shares_in: T::Balance,
         ) -> Result<T::Balance, DispatchError> {
             let (selected, opposite) = Self::pool_reserves(pool, outcome);
-            let selected_u = selected.saturated_into::<u128>();
-            let opposite_u = opposite.saturated_into::<u128>();
-            let shares_u = shares_in.saturated_into::<u128>();
-            let invariant = U256::from(selected_u) * U256::from(opposite_u);
+            ensure!(
+                !selected.is_zero() && !opposite.is_zero(),
+                Error::<T>::Overflow
+            );
+            let selected_u = U256::from(selected.saturated_into::<u128>());
+            let opposite_u = U256::from(opposite.saturated_into::<u128>());
+            let shares_u = U256::from(shares_in.saturated_into::<u128>());
+            let invariant = selected_u * opposite_u;
+            let selected_after_base = selected_u
+                .checked_add(shares_u)
+                .ok_or(Error::<T>::Overflow)?;
 
-            let mut low = 0u128;
+            let mut low = U256::zero();
             let mut high = opposite_u;
             while low < high {
-                let mid = low + (high - low + 1) / 2;
-                let lhs = U256::from(selected_u.saturating_add(shares_u).saturating_sub(mid))
-                    * U256::from(opposite_u.saturating_sub(mid));
+                let mid = low + ((high - low + U256::one()) / U256::from(2u8));
+                let lhs = match selected_after_base.checked_sub(mid) {
+                    Some(selected_after) => selected_after
+                        .checked_mul(opposite_u - mid)
+                        .unwrap_or(U256::MAX),
+                    None => U256::zero(),
+                };
                 if lhs >= invariant {
                     low = mid;
                 } else {
-                    high = mid.saturating_sub(1);
+                    high = mid.saturating_sub(U256::one());
                 }
             }
-            Ok(low.saturated_into::<T::Balance>())
+            Self::u256_to_balance(low)
         }
 
         fn pool_after_sell(
@@ -1430,6 +1316,55 @@ pub mod pallet {
             }
         }
 
+        fn ensure_position_can_credit(
+            market_id: MarketId,
+            who: &T::AccountId,
+            outcome: BinaryOutcome,
+            shares: T::Balance,
+            collateral_paid: T::Balance,
+        ) -> DispatchResult {
+            let position = MarketPositions::<T>::get(market_id, who).unwrap_or_default();
+            match outcome {
+                BinaryOutcome::Yes => {
+                    position
+                        .yes_shares
+                        .checked_add(&shares)
+                        .ok_or(Error::<T>::Overflow)?;
+                }
+                BinaryOutcome::No => {
+                    position
+                        .no_shares
+                        .checked_add(&shares)
+                        .ok_or(Error::<T>::Overflow)?;
+                }
+            }
+            position
+                .net_collateral_paid
+                .checked_add(&collateral_paid)
+                .ok_or(Error::<T>::Overflow)?;
+
+            let totals = MarketPositionTotals::<T>::get(market_id);
+            match outcome {
+                BinaryOutcome::Yes => {
+                    totals
+                        .total_yes_shares
+                        .checked_add(&shares)
+                        .ok_or(Error::<T>::Overflow)?;
+                }
+                BinaryOutcome::No => {
+                    totals
+                        .total_no_shares
+                        .checked_add(&shares)
+                        .ok_or(Error::<T>::Overflow)?;
+                }
+            }
+            totals
+                .total_net_collateral_paid
+                .checked_add(&collateral_paid)
+                .ok_or(Error::<T>::Overflow)?;
+            Ok(())
+        }
+
         fn credit_position_on_buy(
             market_id: MarketId,
             who: &T::AccountId,
@@ -1437,33 +1372,49 @@ pub mod pallet {
             shares: T::Balance,
             collateral_paid: T::Balance,
         ) -> DispatchResult {
-            MarketPositions::<T>::mutate(market_id, who, |position| {
+            MarketPositions::<T>::try_mutate(market_id, who, |position| -> DispatchResult {
                 let entry = position.get_or_insert_with(Default::default);
                 match outcome {
                     BinaryOutcome::Yes => {
-                        entry.yes_shares = entry.yes_shares.saturating_add(shares);
+                        entry.yes_shares = entry
+                            .yes_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
                     }
                     BinaryOutcome::No => {
-                        entry.no_shares = entry.no_shares.saturating_add(shares);
+                        entry.no_shares = entry
+                            .no_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
                     }
                 }
-                entry.net_collateral_paid =
-                    entry.net_collateral_paid.saturating_add(collateral_paid);
-            });
-            MarketPositionTotals::<T>::mutate(market_id, |totals| {
+                entry.net_collateral_paid = entry
+                    .net_collateral_paid
+                    .checked_add(&collateral_paid)
+                    .ok_or(Error::<T>::Overflow)?;
+                Ok(())
+            })?;
+            MarketPositionTotals::<T>::try_mutate(market_id, |totals| -> DispatchResult {
                 match outcome {
                     BinaryOutcome::Yes => {
-                        totals.total_yes_shares = totals.total_yes_shares.saturating_add(shares);
+                        totals.total_yes_shares = totals
+                            .total_yes_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
                     }
                     BinaryOutcome::No => {
-                        totals.total_no_shares = totals.total_no_shares.saturating_add(shares);
+                        totals.total_no_shares = totals
+                            .total_no_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
                     }
                 }
                 totals.total_net_collateral_paid = totals
                     .total_net_collateral_paid
-                    .saturating_add(collateral_paid);
-            });
-            Ok(())
+                    .checked_add(&collateral_paid)
+                    .ok_or(Error::<T>::Overflow)?;
+                Ok(())
+            })
         }
 
         fn ensure_position_has_shares(
@@ -1522,31 +1473,48 @@ pub mod pallet {
                     Ok(())
                 },
             )?;
-            MarketPositionTotals::<T>::mutate(market_id, |totals| {
+            MarketPositionTotals::<T>::try_mutate(market_id, |totals| -> DispatchResult {
                 match outcome {
                     BinaryOutcome::Yes => {
-                        totals.total_yes_shares = totals.total_yes_shares.saturating_sub(shares_in);
+                        totals.total_yes_shares = totals
+                            .total_yes_shares
+                            .checked_sub(&shares_in)
+                            .ok_or(Error::<T>::Overflow)?;
                     }
                     BinaryOutcome::No => {
-                        totals.total_no_shares = totals.total_no_shares.saturating_sub(shares_in);
+                        totals.total_no_shares = totals
+                            .total_no_shares
+                            .checked_sub(&shares_in)
+                            .ok_or(Error::<T>::Overflow)?;
                     }
                 }
                 totals.total_net_collateral_paid = totals
                     .total_net_collateral_paid
-                    .saturating_sub(net_paid_reduction);
-            });
-            Ok(())
+                    .checked_sub(&net_paid_reduction)
+                    .ok_or(Error::<T>::Overflow)?;
+                Ok(())
+            })
         }
 
-        fn debit_market_totals(market_id: MarketId, position: &MarketPositionOf<T>) {
-            MarketPositionTotals::<T>::mutate(market_id, |totals| {
-                totals.total_yes_shares =
-                    totals.total_yes_shares.saturating_sub(position.yes_shares);
-                totals.total_no_shares = totals.total_no_shares.saturating_sub(position.no_shares);
+        fn debit_market_totals(
+            market_id: MarketId,
+            position: &MarketPositionOf<T>,
+        ) -> DispatchResult {
+            MarketPositionTotals::<T>::try_mutate(market_id, |totals| -> DispatchResult {
+                totals.total_yes_shares = totals
+                    .total_yes_shares
+                    .checked_sub(&position.yes_shares)
+                    .ok_or(Error::<T>::Overflow)?;
+                totals.total_no_shares = totals
+                    .total_no_shares
+                    .checked_sub(&position.no_shares)
+                    .ok_or(Error::<T>::Overflow)?;
                 totals.total_net_collateral_paid = totals
                     .total_net_collateral_paid
-                    .saturating_sub(position.net_collateral_paid);
-            });
+                    .checked_sub(&position.net_collateral_paid)
+                    .ok_or(Error::<T>::Overflow)?;
+                Ok(())
+            })
         }
 
         fn debit_market_collateral(market_id: MarketId, amount: T::Balance) -> DispatchResult {
@@ -1616,12 +1584,6 @@ pub mod pallet {
             Ok(raw.saturated_into::<T::Balance>())
         }
 
-        fn clear_linked_opengov_condition(condition_id: ConditionId) {
-            if OpengovConditions::<T>::take(condition_id).is_some() {
-                Self::deposit_event(Event::OpengovConditionCleared { condition_id });
-            }
-        }
-
         fn ensure_authorized_creator(who: &T::AccountId) -> DispatchResult {
             let min_bond = Self::governance_bond_minimum();
             ensure!(
@@ -1631,23 +1593,37 @@ pub mod pallet {
             Ok(())
         }
 
-        fn create_condition_entry(
-            _who: &T::AccountId,
+        fn validate_condition_metadata(
             metadata: ConditionInput,
-        ) -> Result<ConditionId, DispatchError> {
+        ) -> Result<ConditionMetadataOf<T>, DispatchError> {
             ensure!(
                 metadata.question.len() as u32 >= T::MinQuestionLength::get(),
                 Error::<T>::QuestionTooShort
             );
-            let bounded = ConditionMetadata {
+            ensure!(
+                !metadata.oracle.is_empty() && !metadata.resolution_source.is_empty(),
+                Error::<T>::InvalidMetadata
+            );
+            ensure!(
+                core::str::from_utf8(&metadata.question).is_ok()
+                    && core::str::from_utf8(&metadata.oracle).is_ok()
+                    && core::str::from_utf8(&metadata.resolution_source).is_ok(),
+                Error::<T>::InvalidMetadata
+            );
+            Ok(ConditionMetadata {
                 question: MetadataString::<T>::try_from(metadata.question)
                     .map_err(|_| Error::<T>::MetadataTooLong)?,
                 oracle: MetadataString::<T>::try_from(metadata.oracle)
                     .map_err(|_| Error::<T>::MetadataTooLong)?,
                 resolution_source: MetadataString::<T>::try_from(metadata.resolution_source)
                     .map_err(|_| Error::<T>::MetadataTooLong)?,
-            };
+            })
+        }
 
+        fn create_condition_entry(
+            who: &T::AccountId,
+            metadata: ConditionMetadataOf<T>,
+        ) -> Result<ConditionId, DispatchError> {
             let condition_id = NextConditionId::<T>::try_mutate(
                 |next_id| -> Result<ConditionId, DispatchError> {
                     let id = *next_id;
@@ -1658,9 +1634,17 @@ pub mod pallet {
                 },
             )?;
 
-            Conditions::<T>::insert(condition_id, bounded);
+            Conditions::<T>::insert(condition_id, metadata);
+            ConditionCreators::<T>::insert(condition_id, who.clone());
             Self::deposit_event(Event::ConditionCreated { condition_id });
             Ok(condition_id)
+        }
+
+        fn ensure_next_condition_id_available() -> DispatchResult {
+            NextConditionId::<T>::get()
+                .checked_add(One::one())
+                .ok_or(Error::<T>::Overflow)?;
+            Ok(())
         }
 
         fn lock_creator_bond_for_market(
@@ -1682,6 +1666,37 @@ pub mod pallet {
             CreatorLockedBond::<T>::insert(creator, required_locked);
             MarketBondLock::<T>::insert(market_id, lock_amount);
             Ok(())
+        }
+    }
+}
+
+pub mod migrations {
+    pub mod v2 {
+        use super::super::*;
+        use frame_support::{
+            storage::{storage_prefix, unhashed},
+            traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion},
+        };
+        use sp_core::Get;
+
+        pub struct Migrate<T>(PhantomData<T>);
+
+        impl<T: Config> OnRuntimeUpgrade for Migrate<T> {
+            fn on_runtime_upgrade() -> Weight {
+                let db_weight = T::DbWeight::get();
+                let on_chain = Pallet::<T>::on_chain_storage_version();
+                let mut weight = db_weight.reads(1);
+                let prefix = storage_prefix(b"Polkamarkt", b"OpengovConditions");
+                let removed = unhashed::clear_prefix(&prefix, None, None);
+                weight.saturating_accrue(db_weight.writes(removed.unique.into()));
+
+                if on_chain < StorageVersion::new(2) {
+                    StorageVersion::new(2).put::<Pallet<T>>();
+                    weight.saturating_accrue(db_weight.writes(1));
+                }
+
+                weight
+            }
         }
     }
 }

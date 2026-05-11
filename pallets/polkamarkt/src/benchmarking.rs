@@ -176,27 +176,11 @@ mod benchmarks {
     fn create_condition() {
         let caller: T::AccountId = whitelisted_caller();
         GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
+        fund_canonical_fee::<T>(&caller);
         let metadata = default_condition_input::<T>();
 
         #[extrinsic_call]
         create_condition(RawOrigin::Signed(caller), metadata);
-    }
-
-    #[benchmark]
-    fn create_opengov_condition() {
-        let caller: T::AccountId = whitelisted_caller();
-        GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
-        let metadata = default_condition_input::<T>();
-        let proposal = OpengovProposalInput {
-            network: RelayNetwork::Polkadot,
-            parachain_id: 1,
-            track_id: 1,
-            referendum_index: 1,
-            plaza_tag: repeated_bytes(b'P', T::MaxPlazaTagLength::get()),
-        };
-
-        #[extrinsic_call]
-        create_opengov_condition(RawOrigin::Signed(caller), metadata, proposal);
     }
 
     #[benchmark]
