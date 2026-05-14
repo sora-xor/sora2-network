@@ -63,7 +63,6 @@ use core::marker::PhantomData;
 #[allow(dead_code)]
 pub trait WeightInfo {
 	fn create_condition() -> Weight;
-	fn create_opengov_condition() -> Weight;
 	fn create_market() -> Weight;
 	fn buy() -> Weight;
 	fn sell() -> Weight;
@@ -94,28 +93,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `204`
 		//  Estimated: `3669`
 		// Minimum execution time: 18_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3669)
-			.saturating_add(T::DbWeight::get().reads(3_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-	}
-	/// Storage: `Polkamarkt::GovernanceBondMinimumOverride` (r:1 w:0)
-	/// Proof: `Polkamarkt::GovernanceBondMinimumOverride` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::GovernanceBonds` (r:1 w:0)
-	/// Proof: `Polkamarkt::GovernanceBonds` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::NextConditionId` (r:1 w:1)
-	/// Proof: `Polkamarkt::NextConditionId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpengovConditions` (r:0 w:1)
-	/// Proof: `Polkamarkt::OpengovConditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::Conditions` (r:0 w:1)
-	/// Proof: `Polkamarkt::Conditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn create_opengov_condition() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `204`
-		//  Estimated: `3669`
-		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 3669)
-			.saturating_add(T::DbWeight::get().reads(3_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
+		Weight::from_parts(141_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(15_u64))
+			.saturating_add(T::DbWeight::get().writes(11_u64))
 	}
 	/// Storage: `Polkamarkt::GovernanceBondMinimumOverride` (r:1 w:0)
 	/// Proof: `Polkamarkt::GovernanceBondMinimumOverride` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
@@ -182,7 +162,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `325556`
 		// Minimum execution time: 80_000_000 picoseconds.
 		Weight::from_parts(84_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(12_u64))
+			.saturating_add(T::DbWeight::get().reads(14_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
@@ -271,8 +251,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpengovConditions` (r:1 w:0)
-	/// Proof: `Polkamarkt::OpengovConditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::MarketBondLock` (r:1 w:1)
 	/// Proof: `Polkamarkt::MarketBondLock` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::CreatorLockedBond` (r:1 w:1)
@@ -290,8 +268,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpengovConditions` (r:1 w:0)
-	/// Proof: `Polkamarkt::OpengovConditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::MarketBondLock` (r:1 w:1)
 	/// Proof: `Polkamarkt::MarketBondLock` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::CreatorLockedBond` (r:1 w:1)
@@ -430,9 +406,6 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 	fn create_condition() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::create_condition()
 	}
-	fn create_opengov_condition() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::create_opengov_condition()
-	}
 	fn create_market() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::create_market()
 	}
@@ -486,28 +459,9 @@ impl WeightInfo for () {
 		//  Measured:  `204`
 		//  Estimated: `3669`
 		// Minimum execution time: 18_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3669)
-			.saturating_add(RocksDbWeight::get().reads(3_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-	}
-	/// Storage: `Polkamarkt::GovernanceBondMinimumOverride` (r:1 w:0)
-	/// Proof: `Polkamarkt::GovernanceBondMinimumOverride` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::GovernanceBonds` (r:1 w:0)
-	/// Proof: `Polkamarkt::GovernanceBonds` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::NextConditionId` (r:1 w:1)
-	/// Proof: `Polkamarkt::NextConditionId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpengovConditions` (r:0 w:1)
-	/// Proof: `Polkamarkt::OpengovConditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::Conditions` (r:0 w:1)
-	/// Proof: `Polkamarkt::Conditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn create_opengov_condition() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `204`
-		//  Estimated: `3669`
-		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 3669)
-			.saturating_add(RocksDbWeight::get().reads(3_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
+		Weight::from_parts(141_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(15_u64))
+			.saturating_add(RocksDbWeight::get().writes(11_u64))
 	}
 	/// Storage: `Polkamarkt::GovernanceBondMinimumOverride` (r:1 w:0)
 	/// Proof: `Polkamarkt::GovernanceBondMinimumOverride` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
@@ -574,7 +528,7 @@ impl WeightInfo for () {
 		//  Estimated: `325556`
 		// Minimum execution time: 80_000_000 picoseconds.
 		Weight::from_parts(84_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(12_u64))
+			.saturating_add(RocksDbWeight::get().reads(14_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
@@ -663,8 +617,6 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpengovConditions` (r:1 w:0)
-	/// Proof: `Polkamarkt::OpengovConditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::MarketBondLock` (r:1 w:1)
 	/// Proof: `Polkamarkt::MarketBondLock` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::CreatorLockedBond` (r:1 w:1)
@@ -682,8 +634,6 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpengovConditions` (r:1 w:0)
-	/// Proof: `Polkamarkt::OpengovConditions` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::MarketBondLock` (r:1 w:1)
 	/// Proof: `Polkamarkt::MarketBondLock` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::CreatorLockedBond` (r:1 w:1)

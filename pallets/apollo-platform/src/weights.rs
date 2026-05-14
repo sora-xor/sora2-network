@@ -147,7 +147,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(11_u64))
 			.saturating_add(T::DbWeight::get().writes(7_u64))
 	}
-	/// Storage: ApolloPlatform PoolData (r:1 w:0)
+	/// Storage: ApolloPlatform PoolData (r:1 w:1)
 	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform UserLendingInfo (r:1 w:1)
 	/// Proof Skipped: ApolloPlatform UserLendingInfo (max_values: None, max_size: None, mode: Measured)
@@ -164,9 +164,9 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `2367`
 		//  Estimated: `346917`
 		// Minimum execution time: 124_533_000 picoseconds.
-		Weight::from_parts(128_657_000, 346917)
-			.saturating_add(T::DbWeight::get().reads(7_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
+			Weight::from_parts(128_657_000, 346917)
+				.saturating_add(T::DbWeight::get().reads(7_u64))
+			.saturating_add(T::DbWeight::get().writes(4_u64))
 	}
 	/// Storage: ApolloPlatform PoolData (r:1 w:1)
 	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
@@ -242,6 +242,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform LendingRewardsPerBlock (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform LendingRewardsPerBlock (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform LendingRewards (r:0 w:1)
 	/// Proof Skipped: ApolloPlatform LendingRewards (max_values: Some(1), max_size: None, mode: Measured)
 	fn change_rewards_amount() -> Weight {
@@ -250,7 +252,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `723`
 		// Minimum execution time: 21_911_000 picoseconds.
 		Weight::from_parts(22_235_000, 723)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
@@ -268,6 +270,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform LendingRewards (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform LendingRewards (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform PoolData (r:2 w:1)
 	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform LendingRewardsPerBlock (r:0 w:1)
@@ -278,7 +282,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `6897`
 		// Minimum execution time: 66_226_000 picoseconds.
 		Weight::from_parts(67_967_000, 6897)
-			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	/// Storage: ApolloPlatform UserBorrowingInfo (r:1 w:1)
@@ -450,7 +454,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(11_u64))
 			.saturating_add(RocksDbWeight::get().writes(7_u64))
 	}
-	/// Storage: ApolloPlatform PoolData (r:1 w:0)
+	/// Storage: ApolloPlatform PoolData (r:1 w:1)
 	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform UserLendingInfo (r:1 w:1)
 	/// Proof Skipped: ApolloPlatform UserLendingInfo (max_values: None, max_size: None, mode: Measured)
@@ -467,9 +471,9 @@ impl WeightInfo for () {
 		//  Measured:  `2367`
 		//  Estimated: `346917`
 		// Minimum execution time: 124_533_000 picoseconds.
-		Weight::from_parts(128_657_000, 346917)
-			.saturating_add(RocksDbWeight::get().reads(7_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
+			Weight::from_parts(128_657_000, 346917)
+				.saturating_add(RocksDbWeight::get().reads(7_u64))
+			.saturating_add(RocksDbWeight::get().writes(4_u64))
 	}
 	/// Storage: ApolloPlatform PoolData (r:1 w:1)
 	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
@@ -545,6 +549,8 @@ impl WeightInfo for () {
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform LendingRewardsPerBlock (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform LendingRewardsPerBlock (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform LendingRewards (r:0 w:1)
 	/// Proof Skipped: ApolloPlatform LendingRewards (max_values: Some(1), max_size: None, mode: Measured)
 	fn change_rewards_amount() -> Weight {
@@ -553,7 +559,7 @@ impl WeightInfo for () {
 		//  Estimated: `723`
 		// Minimum execution time: 21_911_000 picoseconds.
 		Weight::from_parts(22_235_000, 723)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
@@ -571,6 +577,8 @@ impl WeightInfo for () {
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ApolloPlatform LendingRewards (r:1 w:0)
+	/// Proof Skipped: ApolloPlatform LendingRewards (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform PoolData (r:2 w:1)
 	/// Proof Skipped: ApolloPlatform PoolData (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ApolloPlatform LendingRewardsPerBlock (r:0 w:1)
@@ -581,7 +589,7 @@ impl WeightInfo for () {
 		//  Estimated: `6897`
 		// Minimum execution time: 66_226_000 picoseconds.
 		Weight::from_parts(67_967_000, 6897)
-			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	/// Storage: ApolloPlatform UserBorrowingInfo (r:1 w:1)

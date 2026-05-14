@@ -398,6 +398,53 @@ fn validate_zero_custom_fee_succeeds_without_balance() {
 }
 
 #[test]
+fn validate_payable_fee_checks_without_withdrawing() {
+    ExtBuilder::build().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let who = bob();
+        let call = RuntimeCall::Assets(assets::Call::transfer {
+            to: alice(),
+            asset_id: common::VAL,
+            amount: 10,
+        });
+        let info = info_from_weight(100.into());
+        let len = 100;
+        let starting_balance = balance!(1000);
+        let _ = Balances::deposit_creating(&who, starting_balance + Balances::minimum_balance());
+        let fee = XorFee::compute_fee(len as u32, &call, &info, 0).0;
+
+        let valid = ChargeTransactionPayment::<Runtime>::new()
+            .validate(&who, &call, &info, len)
+            .unwrap();
+
+        assert_eq!(valid.priority, 0);
+        assert_eq!(Balances::usable_balance_for_fees(&who), starting_balance);
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&who, &call, &info, len)
+            .unwrap();
+        assert_eq!(
+            Balances::usable_balance_for_fees(&who),
+            starting_balance - fee
+        );
+
+        ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &info,
+            &default_post_info(),
+            len,
+            &Ok(()),
+        )
+        .unwrap();
+        assert_eq!(
+            Balances::usable_balance_for_fees(&who),
+            starting_balance - fee
+        );
+    });
+}
+
+#[test]
 fn can_withdraw_fee_short_circuits_zero_fee_and_unpaid_accounts() {
     ExtBuilder::build().execute_with(|| {
         let info = info_from_weight(100.into());

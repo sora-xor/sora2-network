@@ -1202,10 +1202,10 @@ macro_rules! mock_soratopia_config {
     ($runtime:ty) => {
         frame_support::parameter_types! {
             pub const CheckInTransferAmount: Balance = 1_000;
-            pub AdminAccount: AccountId = hex_literal::hex!("8eaf04151687736326c9fea17e25fc5287613693c912909cb226aa4794f26a48").into();
+            pub const CheckInInterval: BlockNumber = 10;
         }
         impl soratopia::Config for $runtime {
-            type AdminAccount = AdminAccount;
+            type CheckInInterval = CheckInInterval;
             type CheckInTransferAmount = CheckInTransferAmount;
             type RuntimeEvent = RuntimeEvent;
             type WeightInfo = ();

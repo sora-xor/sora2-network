@@ -98,10 +98,20 @@ fn band_migrate_to_v2_if_needed_handles_expected_versions() {
 fn staking_storage_version_bridge_reaches_v16() {
     tests::staking_storage_version_bridge_reaches_v16();
 }
+#[cfg(test)]
+#[test]
+fn demeter_storage_version_bridge_reaches_v3() {
+    tests::demeter_storage_version_bridge_reaches_v3();
+}
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
 fn band_migrate_to_v2_if_needed_try_runtime_hooks() {
     tests::band_migrate_to_v2_if_needed_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn demeter_storage_version_bridge_try_runtime_hooks() {
+    tests::demeter_storage_version_bridge_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
@@ -344,10 +354,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 125,
+    spec_version: 126,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 122,
+    transaction_version: 126,
     system_version: 0,
 };
 
@@ -1118,11 +1128,9 @@ parameter_types! {
         "02000c0000000000000000000000000000000000000000000000000000000000"
     ));
     pub const PolkamarktMinQuestionLength: u32 = 32;
-    pub const PolkamarktCreationFeeBps: u32 = 35;
     pub const PolkamarktMinCreationFee: Balance = balance!(5);
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
-    pub const PolkamarktMaxPlazaTagLength: u32 = 64;
     pub const PolkamarktTradeFeeBps: u32 = 50;
     pub PolkamarktGovernanceBondMinimum: Balance = balance!(5000);
 }
@@ -1169,14 +1177,13 @@ impl trading_pair::Config for Runtime {
 impl dex_manager::Config for Runtime {}
 
 parameter_types! {
-    // Soratopia admin account
-    pub AdminAccount: AccountId = hex!("881b87c9f83664b95bd13e2bb40675bfa186287da93becc0b22683334d411e4e").into();
-    pub const CheckInTransferAmount: Balance = balance!(1000);
+    pub const CheckInTransferAmount: Balance = balance!(0.1);
+    pub const CheckInInterval: BlockNumber = DAYS;
 }
 
 impl soratopia::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type AdminAccount = AdminAccount;
+    type CheckInInterval = CheckInInterval;
     type CheckInTransferAmount = CheckInTransferAmount;
     type WeightInfo = soratopia::weights::SubstrateWeight<Runtime>;
 }
@@ -1323,20 +1330,17 @@ impl pallet_polkamarkt::Config for Runtime {
     type Balance = Balance;
     type FeeCollector = PolkamarktFeeCollector;
     type MinQuestionLength = PolkamarktMinQuestionLength;
-    type CreationFeeBps = PolkamarktCreationFeeBps;
     type MinCreationFee = PolkamarktMinCreationFee;
     type PalletId = PolkamarktPalletId;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type GetBuyBackAssetId = GetXorAssetId;
     type MinMarketDuration = PolkamarktMinMarketDuration;
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
-    type MaxPlazaTagLength = PolkamarktMaxPlazaTagLength;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
     type GovernanceBondMinimum = PolkamarktGovernanceBondMinimum;
     type CreatorBondEscrowAccount = PolkamarktCreatorBondEscrowAccount;
     type GovernanceOrigin = EnsureRoot<AccountId>;
-    type PlazaIntegration = pallet_polkamarkt::PolkadotPlazaBridge<Self>;
 }
 
 impl mock_liquidity_source::Config<mock_liquidity_source::Instance1> for Runtime {
