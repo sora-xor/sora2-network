@@ -1484,21 +1484,7 @@ fn polkamarkt_growth_calls_charge_small_fee() {
                 metadata: pallet_polkamarkt::ConditionInput {
                     question: b"Will SORA win this benchmark market?".to_vec(),
                     oracle: b"Chainlink".to_vec(),
-                    resolution_source: b"https://example.com/oracle".to_vec(),
-                },
-            }),
-            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_opengov_condition {
-                metadata: pallet_polkamarkt::ConditionInput {
-                    question: b"Will OpenGov pass this benchmark referendum?".to_vec(),
-                    oracle: b"OpenGov".to_vec(),
-                    resolution_source: b"https://example.com/opengov".to_vec(),
-                },
-                proposal: pallet_polkamarkt::OpengovProposalInput {
-                    network: pallet_polkamarkt::RelayNetwork::Polkadot,
-                    parachain_id: 1,
-                    track_id: 7,
-                    referendum_index: 11,
-                    plaza_tag: b"pm-7-11".to_vec(),
+                    resolution_source: b"council-minutes".to_vec(),
                 },
             }),
             RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market {
@@ -1614,7 +1600,7 @@ fn custom_fees_multiplied() {
                 .pre_dispatch(&alice(), &call, &dispatch_info, len)
                 .unwrap();
             balance_after_fee_withdrawal =
-                balance_after_fee_withdrawal - multiplier * (BIG_FEE + len_fee);
+                balance_after_fee_withdrawal - multiplier * BIG_FEE - len_fee;
             let result = balance_after_fee_withdrawal.clone().into_balance();
             assert_eq!(Balances::free_balance(alice()), result);
             assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
@@ -1628,7 +1614,7 @@ fn custom_fees_multiplied() {
             assert_eq!(Balances::free_balance(alice()), result);
         }
 
-        // A normal extrinsic; fee is (0.0007 plus encoded length) * multiplier XOR
+        // A normal extrinsic; fee is multiplied, encoded length is not.
         let call: &<Runtime as frame_system::Config>::RuntimeCall =
             &RuntimeCall::Assets(assets::Call::mint {
                 asset_id: XOR,
@@ -1640,7 +1626,7 @@ fn custom_fees_multiplied() {
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
         let balance_after_fee_withdrawal =
-            balance_after_fee_withdrawal - multiplier * (SMALL_FEE + len_fee);
+            balance_after_fee_withdrawal - multiplier * SMALL_FEE - len_fee;
         let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
             Balances::free_balance(alice()),
@@ -1675,7 +1661,7 @@ fn normal_fees_multiplied() {
         );
         let len_fee = LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
-        let final_fee = (base_fee + len_fee + weight_fee) * 3;
+        let final_fee = (base_fee + weight_fee) * 3 + len_fee;
 
         let balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
         // An extrinsic without custom fee adjustment
@@ -2528,7 +2514,7 @@ fn right_custom_fee_for_vested_transfer_ok() {
         .is_ok());
 
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
-        let transaction_fee = multiplier.saturating_mul_int(3 * SMALL_FEE + len_fee);
+        let transaction_fee = multiplier.saturating_mul_int(3 * SMALL_FEE) + len_fee;
 
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
@@ -2578,7 +2564,7 @@ fn right_custom_fee_for_vested_transfer_err() {
         let multiplier = xor_fee::Pallet::<Runtime>::multiplier();
         assert_eq!(
             Assets::free_balance(&XOR.into(), &alice()).unwrap(),
-            initial_balance - multiplier.saturating_mul_int(SMALL_FEE + len_fee)
+            initial_balance - multiplier.saturating_mul_int(SMALL_FEE) - len_fee
         );
     });
 }

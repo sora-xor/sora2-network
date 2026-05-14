@@ -95,6 +95,20 @@ where
     }
 
     #[allow(clippy::type_complexity)] // This function can only be called in this module
+    fn can_withdraw_fee(
+        &self,
+        who: &T::AccountId,
+        call: &CallOf<T>,
+        info: &DispatchInfoOf<CallOf<T>>,
+        len: usize,
+    ) -> Result<(BalanceOf<T>, Option<CustomFeeDetailsOf<T>>), TransactionValidityError> {
+        let tip = self.tip;
+        let (fee, fee_details) = crate::Pallet::<T>::compute_fee(len as u32, call, info, tip);
+        T::OnChargeTransaction::can_withdraw_fee(who, call, info, fee, tip)?;
+        Ok((fee, fee_details))
+    }
+
+    #[allow(clippy::type_complexity)] // This function can only be called in this module
     fn withdraw_fee(
         &self,
         who: &T::AccountId,
@@ -147,7 +161,7 @@ where
         info: &DispatchInfoOf<Self::Call>,
         len: usize,
     ) -> TransactionValidity {
-        let (final_fee, _, _) = self.withdraw_fee(who, call, info, len)?;
+        let (final_fee, _) = self.can_withdraw_fee(who, call, info, len)?;
         let priority = match info.class {
             DispatchClass::Normal => TransactionPriority::default(),
             DispatchClass::Operational | DispatchClass::Mandatory => {

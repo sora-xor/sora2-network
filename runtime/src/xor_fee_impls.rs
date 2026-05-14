@@ -220,9 +220,6 @@ impl CustomFees {
             | RuntimeCall::LiquidityProxy(..)
             | RuntimeCall::MulticollateralBondingCurvePool(..)
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_condition { .. })
-            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_opengov_condition {
-                ..
-            })
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market { .. })
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)

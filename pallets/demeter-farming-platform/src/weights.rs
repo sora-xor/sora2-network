@@ -174,14 +174,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform TokenInfos (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform TokenInfos (max_values: None, max_size: None, mode: Measured)
 	fn remove_pool() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `268`
-		//  Estimated: `3506`
+		//  Measured:  `427`
+		//  Estimated: `6726`
 		// Minimum execution time: 31_115_000 picoseconds.
-		Weight::from_parts(31_386_000, 3506)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		Weight::from_parts(40_122_000, 6726)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	/// Storage: DemeterFarmingPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
@@ -228,14 +230,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: DemeterFarmingPlatform UserInfos (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform UserInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
 	fn change_info() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `296`
-		//  Estimated: `3562`
+		//  Measured:  `427`
+		//  Estimated: `6726`
 		// Minimum execution time: 31_823_000 picoseconds.
-		Weight::from_parts(32_504_000, 3562)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		Weight::from_parts(45_000_000, 6726)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 	/// Storage: DemeterFarmingPlatform TokenInfos (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform TokenInfos (max_values: None, max_size: None, mode: Measured)
@@ -254,14 +258,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform TokenInfos (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform TokenInfos (max_values: None, max_size: None, mode: Measured)
 	fn activate_removed_pool() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `268`
-		//  Estimated: `3506`
+		//  Measured:  `427`
+		//  Estimated: `6726`
 		// Minimum execution time: 31_092_000 picoseconds.
-		Weight::from_parts(31_547_000, 3506)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		Weight::from_parts(40_122_000, 6726)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
 	}
 }
 
@@ -364,14 +370,16 @@ impl WeightInfo for () {
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform TokenInfos (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform TokenInfos (max_values: None, max_size: None, mode: Measured)
 	fn remove_pool() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `268`
-		//  Estimated: `3506`
+		//  Measured:  `427`
+		//  Estimated: `6726`
 		// Minimum execution time: 31_115_000 picoseconds.
-		Weight::from_parts(31_386_000, 3506)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
+		Weight::from_parts(40_122_000, 6726)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	/// Storage: DemeterFarmingPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
@@ -418,14 +426,16 @@ impl WeightInfo for () {
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: DemeterFarmingPlatform UserInfos (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform UserInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
 	fn change_info() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `296`
-		//  Estimated: `3562`
+		//  Measured:  `427`
+		//  Estimated: `6726`
 		// Minimum execution time: 31_823_000 picoseconds.
-		Weight::from_parts(32_504_000, 3562)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
+		Weight::from_parts(45_000_000, 6726)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 	/// Storage: DemeterFarmingPlatform TokenInfos (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform TokenInfos (max_values: None, max_size: None, mode: Measured)
@@ -444,13 +454,15 @@ impl WeightInfo for () {
 	/// Proof Skipped: DemeterFarmingPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: DemeterFarmingPlatform Pools (r:1 w:1)
 	/// Proof Skipped: DemeterFarmingPlatform Pools (max_values: None, max_size: None, mode: Measured)
+	/// Storage: DemeterFarmingPlatform TokenInfos (r:1 w:1)
+	/// Proof Skipped: DemeterFarmingPlatform TokenInfos (max_values: None, max_size: None, mode: Measured)
 	fn activate_removed_pool() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `268`
-		//  Estimated: `3506`
+		//  Measured:  `427`
+		//  Estimated: `6726`
 		// Minimum execution time: 31_092_000 picoseconds.
-		Weight::from_parts(31_547_000, 3506)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
+		Weight::from_parts(40_122_000, 6726)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
 	}
 }

@@ -1,8 +1,6 @@
 #![allow(clippy::missing_const_for_thread_local)]
 
-use crate::{
-    self as pallet_polkamarkt, AssetTransfer, ConditionId, OpengovProposalOf, PlazaIntegrationHook,
-};
+use crate::{self as pallet_polkamarkt, AssetTransfer};
 use common::BuyBackHandler;
 use frame_support::{
     construct_runtime, parameter_types,
@@ -17,7 +15,7 @@ use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
     BuildStorage, DispatchError,
 };
-use sp_std::{cell::RefCell, collections::btree_map::BTreeMap, vec::Vec};
+use sp_std::{cell::RefCell, collections::btree_map::BTreeMap};
 
 pub type AccountId = u64;
 pub type AssetId = u32;
@@ -34,7 +32,6 @@ pub const USDC_ASSET: AssetId = 100;
 
 thread_local! {
     static ASSET_BALANCES: RefCell<BTreeMap<(AccountId, AssetId), Balance>> = RefCell::new(BTreeMap::new());
-    static PLAZA_NOTIFIED: RefCell<Option<ConditionId>> = RefCell::new(None);
     static LAST_BUYBACK_CALL: RefCell<Option<(AccountId, AssetId, AssetId, Balance)>> = const { RefCell::new(None) };
     static XOR_BURNED: RefCell<Balance> = const { RefCell::new(0) };
 }
@@ -44,7 +41,6 @@ parameter_types! {
     pub const CanonicalStable: AssetId = CANONICAL_ASSET;
     pub const FeeCollectorAccount: AccountId = FEE_COLLECTOR;
     pub const MinQuestionLengthConst: u32 = 4;
-    pub const CreationFeeBpsConst: u32 = 35;
     pub const MinCreationFeeConst: Balance = 10;
     pub const TestPalletId: PalletId = PalletId(*b"pk/mktpl");
     pub const MinMarketDurationConst: BlockNumber = 5;
@@ -53,7 +49,6 @@ parameter_types! {
     pub const BuyBackAssetConst: AssetId = BUYBACK_ASSET;
     pub const CreatorBondEscrowAccountConst: AccountId = MAINTENANCE_ACCOUNT;
     pub const GovernanceBondMinimumConst: Balance = 1_000;
-    pub const MaxPlazaTagLenConst: u32 = 32;
 }
 
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -103,9 +98,6 @@ pub struct MockAssets;
 pub struct TestWeightInfo;
 impl crate::WeightInfo for TestWeightInfo {
     fn create_condition() -> Weight {
-        Weight::zero()
-    }
-    fn create_opengov_condition() -> Weight {
         Weight::zero()
     }
     fn create_market() -> Weight {
@@ -190,7 +182,6 @@ impl pallet_polkamarkt::Config for Test {
     type Balance = Balance;
     type FeeCollector = FeeCollectorAccount;
     type MinQuestionLength = MinQuestionLengthConst;
-    type CreationFeeBps = CreationFeeBpsConst;
     type MinCreationFee = MinCreationFeeConst;
     type PalletId = TestPalletId;
     type BuyBackHandler = MockBuyBackHandler;
@@ -201,14 +192,11 @@ impl pallet_polkamarkt::Config for Test {
     type GovernanceBondMinimum = GovernanceBondMinimumConst;
     type CreatorBondEscrowAccount = CreatorBondEscrowAccountConst;
     type GovernanceOrigin = EnsureRoot<AccountId>;
-    type MaxPlazaTagLength = MaxPlazaTagLenConst;
-    type PlazaIntegration = MockPlazaIntegration;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
     ASSET_BALANCES.with(|balances| balances.borrow_mut().clear());
     LAST_BUYBACK_CALL.with(|call| *call.borrow_mut() = None);
-    PLAZA_NOTIFIED.with(|cell| *cell.borrow_mut() = None);
     XOR_BURNED.with(|value| *value.borrow_mut() = 0);
     set_balance(ALICE, CANONICAL_ASSET, 1_000_000_000_000);
     set_balance(BOB, CANONICAL_ASSET, 1_000_000_000_000);
@@ -223,7 +211,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .expect("polkamarkt genesis build");
     let mut ext = sp_io::TestExternalities::new(t);
     ext.execute_with(|| {
-        frame_support::traits::StorageVersion::new(1).put::<crate::Pallet<Test>>();
+        frame_support::traits::StorageVersion::new(2).put::<crate::Pallet<Test>>();
     });
     ext
 }
@@ -242,28 +230,6 @@ pub fn balance_of(account: AccountId, asset: AssetId) -> Balance {
     ASSET_BALANCES
         .with(|balances| balances.borrow().get(&(account, asset)).copied())
         .unwrap_or_default()
-}
-
-pub struct MockPlazaIntegration;
-
-impl PlazaIntegrationHook<OpengovProposalOf<Test>> for MockPlazaIntegration {
-    fn on_opengov_condition(condition_id: ConditionId, metadata: &OpengovProposalOf<Test>) {
-        PLAZA_NOTIFIED.with(|cell| {
-            *cell.borrow_mut() = Some(condition_id);
-        });
-        pallet_polkamarkt::PolkadotPlazaBridge::<Test>::on_opengov_condition(
-            condition_id,
-            metadata,
-        );
-    }
-}
-
-pub fn reset_plaza_notifications() {
-    PLAZA_NOTIFIED.with(|cell| *cell.borrow_mut() = None);
-}
-
-pub fn last_plaza_condition() -> Option<ConditionId> {
-    PLAZA_NOTIFIED.with(|cell| *cell.borrow())
 }
 
 pub fn xor_burned() -> Balance {

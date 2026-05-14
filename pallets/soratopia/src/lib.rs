@@ -48,8 +48,9 @@ pub mod pallet {
     use super::*;
     use crate::weights::WeightInfo;
     use common::{AccountIdOf, AssetManager, Balance, XOR};
-    use frame_support::pallet_prelude::*;
+    use frame_support::{pallet_prelude::*, transactional};
     use frame_system::pallet_prelude::*;
+    use sp_runtime::Saturating;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -64,10 +65,11 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         #[pallet::constant]
-        type AdminAccount: Get<Self::AccountId>;
-
-        #[pallet::constant]
         type CheckInTransferAmount: Get<Balance>;
+
+        /// Minimum number of blocks between successful check-ins for one account.
+        #[pallet::constant]
+        type CheckInInterval: Get<BlockNumberFor<Self>>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -79,8 +81,16 @@ pub mod pallet {
         CheckIn(AccountIdOf<T>),
     }
 
+    #[pallet::storage]
+    #[pallet::getter(fn last_check_in)]
+    pub type LastCheckIn<T: Config> =
+        StorageMap<_, Blake2_128Concat, AccountIdOf<T>, BlockNumberFor<T>, OptionQuery>;
+
     #[pallet::error]
-    pub enum Error<T> {}
+    pub enum Error<T> {
+        /// The account has already checked in within the configured interval.
+        CheckInTooSoon,
+    }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -88,17 +98,23 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Soratopia on-chain check in.
-        /// Transfers XOR from caller to admin account.
+        /// Burns XOR from caller.
+        #[transactional]
         #[pallet::call_index(0)]
         #[pallet::weight(< T as Config>::WeightInfo::check_in())]
         pub fn check_in(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            T::AssetManager::transfer_from(
-                &XOR.into(),
-                &who,
-                &T::AdminAccount::get(),
-                T::CheckInTransferAmount::get(),
-            )?;
+            let current_block = frame_system::Pallet::<T>::block_number();
+
+            if let Some(last_check_in) = LastCheckIn::<T>::get(&who) {
+                ensure!(
+                    current_block.saturating_sub(last_check_in) >= T::CheckInInterval::get(),
+                    Error::<T>::CheckInTooSoon
+                );
+            }
+
+            T::AssetManager::burn_from(&XOR.into(), &who, &who, T::CheckInTransferAmount::get())?;
+            LastCheckIn::<T>::insert(&who, current_block);
             Self::deposit_event(Event::CheckIn(who));
             Ok(().into())
         }

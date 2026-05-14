@@ -32,8 +32,9 @@
 
 use super::*;
 use codec::Decode;
-use common::{balance, AssetManager, XOR};
+use common::{AssetManager, XOR};
 use frame_benchmarking::benchmarks;
+use frame_support::traits::Get;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 
@@ -49,7 +50,7 @@ benchmarks! {
             RawOrigin::Root.into(),
             caller::<T>(),
             XOR.into(),
-            balance!(1000).try_into().unwrap(),
+            T::CheckInTransferAmount::get().try_into().unwrap(),
         )
         .expect("Shall mint");
     }: {

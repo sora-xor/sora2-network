@@ -693,15 +693,12 @@ mod test {
             run_to_block(151);
 
             let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
-            let lending_interest_gains_first = calculate_lending_earnings(alice(), XOR, 149);
+            let lending_interest_gains_first = calculate_lending_earnings(alice(), XOR, 150);
             let lending_interest_gain_first =
                 lending_interest_gains_first.0 + lending_interest_gains_first.1;
 
             assert_eq!(lending_user_info.lending_amount, balance!(100000));
-            assert_eq!(
-                lending_user_info.lending_interest,
-                lending_interest_gain_first
-            );
+            assert_eq!(lending_user_info.lending_interest, 0);
 
             assert_ok!(ApolloPlatform::lend(
                 RuntimeOrigin::signed(alice()),
@@ -711,14 +708,12 @@ mod test {
 
             let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
-            let lending_interest_gains = calculate_lending_earnings(alice(), XOR, 1);
-            let lending_interest_gain = lending_interest_gains.0 + lending_interest_gains.1;
 
             assert_eq!(lending_user_info.last_lending_block, 151);
             assert_eq!(lending_user_info.lending_amount, balance!(200000));
             assert_eq!(
                 lending_user_info.lending_interest,
-                lending_interest_gain_first + lending_interest_gain
+                lending_interest_gain_first
             );
 
             assert_eq!(
@@ -1422,21 +1417,15 @@ mod test {
             );
 
             let calculated_borrowing_interest_first =
-                calculate_borrowing_interest(alice(), XOR, DOT, 149);
+                calculate_borrowing_interest(alice(), XOR, DOT, 150);
 
             // Borrowing user tests (before borrow)
-            assert_eq!(borrowing_user_debt.last_borrowing_block, 150);
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 1);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(50));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
-            assert_eq!(
-                borrowing_user_debt.borrowing_interest,
-                calculated_borrowing_interest_first.0
-            );
+            assert_eq!(borrowing_user_debt.borrowing_interest, 0);
 
-            assert_eq!(
-                borrowing_user_debt.borrowing_rewards,
-                calculated_borrowing_interest_first.1
-            );
+            assert_eq!(borrowing_user_debt.borrowing_rewards, 0);
 
             assert_ok!(ApolloPlatform::borrow(
                 RuntimeOrigin::signed(alice()),
@@ -1483,21 +1472,18 @@ mod test {
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299900));
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(100));
 
-            // The result will be divided by 2, because borrowing_amount has been raised from 50 to 100
-            let calculated_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 1);
-
             // Borrowing user tests (after borrow)
             assert_eq!(borrowing_user_debt.last_borrowing_block, 151);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(100));
             assert_eq!(
                 borrowing_user_debt.borrowing_interest,
-                calculated_borrowing_interest_first.0 + calculated_borrowing_interest.0 / 2,
+                calculated_borrowing_interest_first.0,
             );
 
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculated_borrowing_interest_first.1 + calculated_borrowing_interest.1,
+                calculated_borrowing_interest_first.1,
             );
         });
     }
@@ -2192,10 +2178,10 @@ mod test {
             run_to_block(151);
 
             let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
-            let lending_earnings = calculate_lending_earnings(alice(), XOR, 149);
+            let lending_earnings = calculate_lending_earnings(alice(), XOR, 150);
             let lending_interest = lending_earnings.0 + lending_earnings.1;
 
-            assert_eq!(lending_user_info.lending_interest, lending_interest);
+            assert_eq!(lending_user_info.lending_interest, 0);
 
             assert_ok!(ApolloPlatform::get_rewards(
                 RuntimeOrigin::signed(alice()),
@@ -2206,9 +2192,6 @@ mod test {
             let lending_user_info = pallet::UserLendingInfo::<Runtime>::get(XOR, alice()).unwrap();
 
             assert_eq!(lending_user_info.lending_interest, balance!(0));
-
-            let lending_earnings = calculate_lending_earnings(alice(), XOR, 150);
-            let lending_interest = lending_earnings.0 + lending_earnings.1;
 
             let new_pallet_balance = balance!(10000) - lending_interest;
             let new_user_balance = balance!(300000) + lending_interest;
@@ -3229,11 +3212,7 @@ mod test {
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
 
             // Check Alice interest rate before repay
-            let calculated_borrowing_interests =
-                calculate_borrowing_interest(alice(), XOR, DOT, 149);
-            let calculated_borrowing_interest = calculated_borrowing_interests.0;
-
-            assert_eq!(borrowing_interest, calculated_borrowing_interest);
+            assert_eq!(borrowing_interest, 0);
 
             // Check balances before repay
             // Pool
@@ -3407,11 +3386,7 @@ mod test {
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(800));
 
             // Check Alice interest rate before repay
-            let calculated_borrowing_interests =
-                calculate_borrowing_interest(alice(), XOR, DOT, 149);
-            let calculated_borrowing_interest = calculated_borrowing_interests.0;
-
-            assert_eq!(borrowing_interest, calculated_borrowing_interest);
+            assert_eq!(borrowing_interest, 0);
 
             // Check balances before repay
             // Pool
@@ -3589,11 +3564,7 @@ mod test {
             let borrowing_interest = borrowing_user_debt.borrowing_interest;
 
             // Check Alice interest rate before repay
-            let calculated_borrowing_interests =
-                calculate_borrowing_interest(alice(), XOR, DOT, 149);
-            let calculated_borrowing_interest = calculated_borrowing_interests.0;
-
-            assert_eq!(borrowing_interest, calculated_borrowing_interest);
+            assert_eq!(borrowing_interest, 0);
 
             // Check Alice position values before repay
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(200));
@@ -4572,27 +4543,51 @@ mod test {
                 balance!(1)
             ));
 
+            let alice_xor_borrowing_position_before =
+                pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice())
+                    .unwrap()
+                    .get(&DOT)
+                    .cloned()
+                    .unwrap();
+            let bob_dot_borrowing_position_before =
+                pallet::UserBorrowingInfo::<Runtime>::get(DOT, bob())
+                    .unwrap()
+                    .get(&XOR)
+                    .cloned()
+                    .unwrap();
+
             run_to_block(151);
 
-            // Calculate interest for Alice and Bob
+            // Block initialization must not perform user-inflatable position updates.
             let alice_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
             let alice_xor_borrowing_position = alice_user_info.get(&DOT).unwrap();
-            let alice_repay_amount = alice_xor_borrowing_position.borrowing_interest;
+            assert_eq!(
+                alice_xor_borrowing_position,
+                &alice_xor_borrowing_position_before
+            );
 
             let bob_user_info = pallet::UserBorrowingInfo::<Runtime>::get(DOT, bob()).unwrap();
             let bob_dot_borrowing_position = bob_user_info.get(&XOR).unwrap();
-            let bob_repay_amount = bob_dot_borrowing_position.borrowing_interest;
-
-            // CHECK BORROWING INTERESTS
-            let calculated_borrowing_interest_alice =
-                calculate_borrowing_interest(alice(), XOR, DOT, 149);
-
-            assert_eq!(alice_xor_borrowing_position.last_borrowing_block, 150);
-            assert_eq!(alice_xor_borrowing_position.borrowing_amount, balance!(40));
             assert_eq!(
-                alice_xor_borrowing_position.borrowing_interest,
-                calculated_borrowing_interest_alice.0
+                bob_dot_borrowing_position,
+                &bob_dot_borrowing_position_before
             );
+
+            let calculated_borrowing_interest_alice =
+                calculate_borrowing_interest(alice(), XOR, DOT, 150);
+
+            assert_ok!(ApolloPlatform::repay(
+                RuntimeOrigin::signed(alice()),
+                DOT,
+                XOR,
+                calculated_borrowing_interest_alice.0
+            ));
+
+            let alice_user_info = pallet::UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap();
+            let alice_xor_borrowing_position = alice_user_info.get(&DOT).unwrap();
+            assert_eq!(alice_xor_borrowing_position.last_borrowing_block, 151);
+            assert_eq!(alice_xor_borrowing_position.borrowing_amount, balance!(40));
+            assert_eq!(alice_xor_borrowing_position.borrowing_interest, 0);
             assert_eq!(
                 alice_xor_borrowing_position.borrowing_rewards,
                 calculated_borrowing_interest_alice.1
@@ -4601,75 +4596,101 @@ mod test {
             let calculated_borrowing_interest_bob =
                 calculate_borrowing_interest(bob(), DOT, XOR, 150);
 
-            assert_eq!(bob_dot_borrowing_position.last_borrowing_block, 151);
-            assert_eq!(bob_dot_borrowing_position.borrowing_amount, balance!(40));
-            assert_eq!(
-                bob_dot_borrowing_position.borrowing_interest,
-                calculated_borrowing_interest_bob.0
-            );
-            assert_eq!(
-                bob_dot_borrowing_position.borrowing_rewards,
-                calculated_borrowing_interest_bob.1
-            );
-
-            // Repay interest for Alice and Bob
-            assert_ok!(ApolloPlatform::repay(
-                RuntimeOrigin::signed(alice()),
-                DOT,
-                XOR,
-                alice_repay_amount
-            ));
-
             assert_ok!(ApolloPlatform::repay(
                 RuntimeOrigin::signed(bob()),
                 XOR,
                 DOT,
-                bob_repay_amount
+                calculated_borrowing_interest_bob.0
             ));
+
+            let bob_user_info = pallet::UserBorrowingInfo::<Runtime>::get(DOT, bob()).unwrap();
+            let bob_dot_borrowing_position = bob_user_info.get(&XOR).unwrap();
+            assert_eq!(bob_dot_borrowing_position.last_borrowing_block, 151);
+            assert_eq!(bob_dot_borrowing_position.borrowing_amount, balance!(40));
+            assert_eq!(bob_dot_borrowing_position.borrowing_interest, 0);
+            assert_eq!(
+                bob_dot_borrowing_position.borrowing_rewards,
+                calculated_borrowing_interest_bob.1
+            );
 
             let lending_user_info_alice_before =
                 pallet::UserLendingInfo::<Runtime>::get(DOT, alice()).unwrap();
             let lending_user_info_bob_before =
                 pallet::UserLendingInfo::<Runtime>::get(XOR, bob()).unwrap();
 
-            run_to_block(299);
-            let lending_interest_bob = calculate_lending_earnings(bob(), XOR, 150);
             run_to_block(300);
-            let lending_interest_alice = calculate_lending_earnings(alice(), DOT, 150);
-            run_to_block(301);
 
-            // CHECK LENDING INTERESTS
             let lending_user_info_alice =
                 pallet::UserLendingInfo::<Runtime>::get(DOT, alice()).unwrap();
             let lending_user_info_bob =
                 pallet::UserLendingInfo::<Runtime>::get(XOR, bob()).unwrap();
+            assert_eq!(lending_user_info_alice, lending_user_info_alice_before);
+            assert_eq!(lending_user_info_bob, lending_user_info_bob_before);
+        });
+    }
 
-            assert_eq!(lending_user_info_alice.last_lending_block, 301);
-            assert_eq!(
-                lending_user_info_alice.lending_interest,
-                lending_user_info_alice_before.lending_interest
-                    + lending_interest_alice.0
-                    + lending_interest_alice.1
-            );
-            assert_eq!(lending_user_info_bob.last_lending_block, 300);
-            assert_eq!(
-                lending_user_info_bob.lending_interest,
-                lending_user_info_bob_before.lending_interest
-                    + lending_interest_bob.0
-                    + lending_interest_bob.1
+    #[test]
+    fn reward_counters_do_not_underflow_after_exhaustion() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::change_rewards_amount(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                true,
+                balance!(1)
+            ));
+            assert_ok!(ApolloPlatform::change_rewards_per_block(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                true,
+                balance!(1)
+            ));
+            assert_ok!(ApolloPlatform::change_rewards_amount(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                false,
+                balance!(1)
+            ));
+            assert_ok!(ApolloPlatform::change_rewards_per_block(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                false,
+                balance!(1)
+            ));
+
+            run_to_block(3);
+
+            assert_eq!(pallet::LendingRewards::<Runtime>::get(), 0);
+            assert_eq!(pallet::BorrowingRewards::<Runtime>::get(), 0);
+        });
+    }
+
+    #[test]
+    fn reward_rate_cannot_exceed_remaining_bucket() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            assert_ok!(ApolloPlatform::change_rewards_amount(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                true,
+                balance!(1)
+            ));
+            assert_err!(
+                ApolloPlatform::change_rewards_per_block(
+                    RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                    true,
+                    balance!(2)
+                ),
+                Error::<Runtime>::RewardRateExceedsRemaining
             );
 
-            // CHECK POOL REWARDS
-            let xor_pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
-            let dot_pool_info = pallet::PoolData::<Runtime>::get(DOT).unwrap();
-
-            assert_eq!(
-                xor_pool_info.rewards,
-                alice_repay_amount - lending_interest_bob.1
-            );
-            assert_eq!(
-                dot_pool_info.rewards,
-                bob_repay_amount - lending_interest_alice.1
+            assert_ok!(ApolloPlatform::change_rewards_amount(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                false,
+                balance!(1)
+            ));
+            assert_err!(
+                ApolloPlatform::change_rewards_per_block(
+                    RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                    false,
+                    balance!(2)
+                ),
+                Error::<Runtime>::RewardRateExceedsRemaining
             );
         });
     }
@@ -5567,6 +5588,33 @@ mod test {
     }
 
     #[test]
+    fn remove_last_active_pool_does_not_divide_by_zero() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let user = RuntimeOrigin::signed(ApolloPlatform::authority_account());
+
+            assert_ok!(ApolloPlatform::add_pool(
+                user.clone(),
+                XOR,
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+                balance!(1),
+            ));
+
+            assert_ok!(ApolloPlatform::remove_pool(user, XOR));
+
+            let pool_info = pallet::PoolData::<Runtime>::get(XOR).unwrap();
+            assert_eq!(pool_info.basic_lending_rate, 0);
+            assert_eq!(pool_info.borrowing_rewards_rate, 0);
+            assert!(pool_info.is_removed);
+        });
+    }
+
+    #[test]
     fn edit_pool_info_ok() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
@@ -6093,21 +6141,15 @@ mod test {
             );
 
             let calculated_borrowing_interest_first =
-                calculate_borrowing_interest(alice(), XOR, DOT, 149);
+                calculate_borrowing_interest(alice(), XOR, DOT, 150);
 
             // Borrowing user tests (before borrow)
-            assert_eq!(borrowing_user_debt.last_borrowing_block, 150);
+            assert_eq!(borrowing_user_debt.last_borrowing_block, 1);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(50));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
-            assert_eq!(
-                borrowing_user_debt.borrowing_interest,
-                calculated_borrowing_interest_first.0
-            );
+            assert_eq!(borrowing_user_debt.borrowing_interest, 0);
 
-            assert_eq!(
-                borrowing_user_debt.borrowing_rewards,
-                calculated_borrowing_interest_first.1
-            );
+            assert_eq!(borrowing_user_debt.borrowing_rewards, 0);
 
             assert_ok!(ApolloPlatform::add_collateral(
                 RuntimeOrigin::signed(alice()),
@@ -6153,20 +6195,18 @@ mod test {
             assert_eq!(borrowing_asset_pool_info.total_liquidity, balance!(299950));
             assert_eq!(borrowing_asset_pool_info.total_borrowed, balance!(50));
 
-            let calculated_borrowing_interest = calculate_borrowing_interest(alice(), XOR, DOT, 1);
-
             // Borrowing user tests (after borrow)
             assert_eq!(borrowing_user_debt.last_borrowing_block, 151);
             assert_eq!(borrowing_user_debt.collateral_amount, balance!(100));
             assert_eq!(borrowing_user_debt.borrowing_amount, balance!(50));
             assert_eq!(
                 borrowing_user_debt.borrowing_interest,
-                calculated_borrowing_interest_first.0 + calculated_borrowing_interest.0,
+                calculated_borrowing_interest_first.0,
             );
 
             assert_eq!(
                 borrowing_user_debt.borrowing_rewards,
-                calculated_borrowing_interest_first.1 + calculated_borrowing_interest.1,
+                calculated_borrowing_interest_first.1,
             );
         });
     }

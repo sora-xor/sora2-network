@@ -70,16 +70,20 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
 	/// Storage: Assets AssetInfosV2 (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: System Account (r:2 w:2)
+	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Tokens TotalIssuance (r:1 w:1)
+	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+	/// Storage: Soratopia LastCheckIn (r:1 w:1)
+	/// Proof: Soratopia LastCheckIn (max_values: None, max_size: Some(36), added: 2511, mode: MaxEncodedLen)
 	fn check_in() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1241`
-		//  Estimated: `333488`
+		//  Estimated: `336000`
 		// Minimum execution time: 105_107_000 picoseconds.
-		Weight::from_parts(108_003_000, 333488)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
+		Weight::from_parts(108_003_000, 336000)
+			.saturating_add(T::DbWeight::get().reads(5_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 }
 
@@ -89,15 +93,19 @@ impl WeightInfo for () {
 	/// Proof: ExtendedAssets SoulboundAsset (max_values: None, max_size: Some(322091), added: 324566, mode: MaxEncodedLen)
 	/// Storage: Assets AssetInfosV2 (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfosV2 (max_values: None, max_size: None, mode: Measured)
-	/// Storage: System Account (r:2 w:2)
+	/// Storage: System Account (r:1 w:1)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: Tokens TotalIssuance (r:1 w:1)
+	/// Proof: Tokens TotalIssuance (max_values: None, max_size: Some(56), added: 2531, mode: MaxEncodedLen)
+	/// Storage: Soratopia LastCheckIn (r:1 w:1)
+	/// Proof: Soratopia LastCheckIn (max_values: None, max_size: Some(36), added: 2511, mode: MaxEncodedLen)
 	fn check_in() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1241`
-		//  Estimated: `333488`
+		//  Estimated: `336000`
 		// Minimum execution time: 105_107_000 picoseconds.
-		Weight::from_parts(108_003_000, 333488)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
+		Weight::from_parts(108_003_000, 336000)
+			.saturating_add(RocksDbWeight::get().reads(5_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 }

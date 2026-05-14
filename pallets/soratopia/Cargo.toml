@@ -52,6 +52,7 @@ std = [
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
+    "frame-benchmarking/std",
     "frame-benchmarking/runtime-benchmarks",
     "hex-literal",
 ]

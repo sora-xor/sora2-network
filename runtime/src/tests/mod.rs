@@ -244,7 +244,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         pallet_polkamarkt::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(1)
+        StorageVersion::new(2)
     );
     assert_eq!(
         vested_rewards::Pallet::<crate::Runtime>::in_code_storage_version(),
@@ -388,6 +388,36 @@ pub(crate) fn staking_storage_version_bridge_reaches_v16() {
     });
 }
 
+pub(crate) fn demeter_storage_version_bridge_reaches_v3() {
+    sp_io::TestExternalities::new_empty().execute_with(|| {
+        demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::put(
+            demeter_farming_platform::StorageVersion::V2,
+        );
+
+        crate::migrations::DemeterFarmingPlatformStorageVersionV3::on_runtime_upgrade();
+
+        assert!(
+            demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::get()
+                == demeter_farming_platform::StorageVersion::V3
+        );
+    });
+
+    sp_io::TestExternalities::new_empty().execute_with(|| {
+        demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::put(
+            demeter_farming_platform::StorageVersion::V3,
+        );
+
+        let weight =
+            crate::migrations::DemeterFarmingPlatformStorageVersionV3::on_runtime_upgrade();
+
+        assert!(
+            demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::get()
+                == demeter_farming_platform::StorageVersion::V3
+        );
+        assert_eq!(weight, frame_support::weights::Weight::zero());
+    });
+}
+
 #[cfg(feature = "try-runtime")]
 pub(crate) fn band_migrate_to_v2_if_needed_try_runtime_hooks() {
     use band::migrations::storages::{BandRateV1, SymbolRatesV1};
@@ -419,6 +449,29 @@ pub(crate) fn band_migrate_to_v2_if_needed_try_runtime_hooks() {
         let state = crate::migrations::BandMigrateToV2IfNeeded::pre_upgrade().unwrap();
         crate::migrations::BandMigrateToV2IfNeeded::on_runtime_upgrade();
         crate::migrations::BandMigrateToV2IfNeeded::post_upgrade(state).unwrap();
+    });
+}
+
+#[cfg(feature = "try-runtime")]
+pub(crate) fn demeter_storage_version_bridge_try_runtime_hooks() {
+    sp_io::TestExternalities::new_empty().execute_with(|| {
+        demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::put(
+            demeter_farming_platform::StorageVersion::V2,
+        );
+        let state =
+            crate::migrations::DemeterFarmingPlatformStorageVersionV3::pre_upgrade().unwrap();
+        crate::migrations::DemeterFarmingPlatformStorageVersionV3::on_runtime_upgrade();
+        crate::migrations::DemeterFarmingPlatformStorageVersionV3::post_upgrade(state).unwrap();
+    });
+
+    sp_io::TestExternalities::new_empty().execute_with(|| {
+        demeter_farming_platform::PalletStorageVersion::<crate::Runtime>::put(
+            demeter_farming_platform::StorageVersion::V3,
+        );
+        let state =
+            crate::migrations::DemeterFarmingPlatformStorageVersionV3::pre_upgrade().unwrap();
+        crate::migrations::DemeterFarmingPlatformStorageVersionV3::on_runtime_upgrade();
+        crate::migrations::DemeterFarmingPlatformStorageVersionV3::post_upgrade(state).unwrap();
     });
 }
 
