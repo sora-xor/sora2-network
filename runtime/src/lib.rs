@@ -1561,7 +1561,7 @@ parameter_types! {
     pub const FeeKusdBurnedWeight: u32 = 5; // 5%
     // Minimal amount for proportions calculations (fee ratio: 10:20:50:5).
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
-    pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
+    pub const RemintXorBurnPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
     pub const ForcedMultiplierAt: BlockNumber = 23_206_222;
     pub const ForcedMultiplierValue: FixedU128 =
@@ -1584,12 +1584,11 @@ impl xor_fee::Config for Runtime {
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type KusdId = GetKusdAssetId;
-    type TbcdId = GetTbcdAssetId;
     type FeeReferrerWeight = FeeReferrerWeight;
     type FeeXorBurnedWeight = FeeXorBurnedWeight;
     type FeeValBurnedWeight = FeeValBurnedWeight;
     type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
-    type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    type RemintXorBurnPercent = RemintXorBurnPercent;
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
@@ -1934,7 +1933,7 @@ impl farming::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(39u32, 100u32)), (common::TBCD.into(), Permill::from_rational(1u32, 100u32))];
+    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(4u32, 100u32)), (common::XOR.into(), Permill::from_rational(36u32, 100u32))];
 }
 
 impl pswap_distribution::Config for Runtime {
