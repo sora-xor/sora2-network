@@ -1132,15 +1132,11 @@ parameter_types! {
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
     pub const PolkamarktTradeFeeBps: u32 = 50;
-    pub PolkamarktGovernanceBondMinimum: Balance = balance!(5000);
 }
 
 parameter_types! {
     pub PolkamarktFeeCollector: AccountId = AccountId::new(hex!(
         "c0e6629c9baf600a20be6cdeda7545c03ae60175982debe124a369b9a1aa8a38"
-    ));
-    pub PolkamarktCreatorBondEscrowAccount: AccountId = AccountId::new(hex!(
-        "9e6663fbfc3f0bd24b00f984adc0f4a585ccf84ab1bb1049433e9fa680f6c828"
     ));
 }
 
@@ -1338,8 +1334,6 @@ impl pallet_polkamarkt::Config for Runtime {
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
-    type GovernanceBondMinimum = PolkamarktGovernanceBondMinimum;
-    type CreatorBondEscrowAccount = PolkamarktCreatorBondEscrowAccount;
     type GovernanceOrigin = EnsureRoot<AccountId>;
 }
 

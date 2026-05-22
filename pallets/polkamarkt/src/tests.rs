@@ -1,7 +1,7 @@
 use crate::{
-    BinaryOutcome, ConditionCreators, ConditionInput, ConditionMarket, CreatorLockedBond, Error,
-    Event, MarketBondLock, MarketCreatorFees, MarketPools, MarketPositionTotals, MarketPositions,
-    MarketResolution, MarketStatus, PendingXorBuybackCollateral,
+    BinaryOutcome, ConditionCreators, ConditionInput, ConditionMarket, Error, Event,
+    MarketCreatorFees, MarketPools, MarketPositionTotals, MarketPositions, MarketResolution,
+    MarketStatus, PendingXorBuybackCollateral,
 };
 use frame_support::{
     assert_noop, assert_ok,
@@ -14,13 +14,11 @@ use sp_runtime::{DispatchError, Perbill};
 use super::mock::*;
 use super::mock::{
     balance_of, last_buyback_call, new_test_ext, run_to_block, xor_burned, BlockNumber,
-    GovernanceBondMinimumConst, MinCreationFeeConst, RuntimeEvent, RuntimeOrigin, TradeFeeBpsConst,
-    BUYBACK_ASSET, CANONICAL_ASSET, FEE_COLLECTOR, MAINTENANCE_ACCOUNT, USDC_ASSET,
+    MinCreationFeeConst, RuntimeEvent, RuntimeOrigin, TradeFeeBpsConst, BUYBACK_ASSET,
+    CANONICAL_ASSET, FEE_COLLECTOR, USDC_ASSET,
 };
 
 type Polkamarkt = crate::Pallet<Test>;
-
-const TEST_BOND: Balance = 2_000;
 
 fn default_condition() -> ConditionInput {
     ConditionInput {
@@ -28,20 +26,6 @@ fn default_condition() -> ConditionInput {
         oracle: b"Chainlink".to_vec(),
         resolution_source: b"council-minutes".to_vec(),
     }
-}
-
-fn bond_alice() {
-    assert_ok!(Polkamarkt::bond_governance(
-        RuntimeOrigin::signed(ALICE),
-        TEST_BOND,
-    ));
-}
-
-fn bond_bob() {
-    assert_ok!(Polkamarkt::bond_governance(
-        RuntimeOrigin::signed(BOB),
-        TEST_BOND,
-    ));
 }
 
 fn create_market(seed_liquidity: Balance, close_block: BlockNumber) {
@@ -59,7 +43,6 @@ fn create_market(seed_liquidity: Balance, close_block: BlockNumber) {
 
 fn setup_market(seed_liquidity: Balance, close_block: BlockNumber) {
     run_to_block(1);
-    bond_alice();
     create_market(seed_liquidity, close_block);
 }
 
@@ -107,27 +90,9 @@ fn sell_quote_rejects_zero_reserve_invariant() {
 }
 
 #[test]
-fn creator_bond_escrows_collateral() {
-    new_test_ext().execute_with(|| {
-        assert_ok!(Polkamarkt::bond_governance(
-            RuntimeOrigin::signed(ALICE),
-            TEST_BOND,
-        ));
-
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), TEST_BOND);
-        assert_eq!(
-            balance_of(ALICE, CANONICAL_ASSET),
-            1_000_000_000_000 - TEST_BOND
-        );
-        assert_eq!(balance_of(MAINTENANCE_ACCOUNT, CANONICAL_ASSET), TEST_BOND);
-    });
-}
-
-#[test]
 fn create_condition_charges_flat_fee_and_records_creator() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_ok!(Polkamarkt::create_condition(
@@ -148,29 +113,9 @@ fn create_condition_charges_flat_fee_and_records_creator() {
 }
 
 #[test]
-fn create_condition_requires_bond_before_charging_fee() {
-    new_test_ext().execute_with(|| {
-        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
-
-        assert_noop!(
-            Polkamarkt::create_condition(RuntimeOrigin::signed(ALICE), default_condition()),
-            Error::<Test>::AccountNotBonded
-        );
-
-        assert_eq!(crate::NextConditionId::<Test>::get(), 0);
-        assert!(crate::Conditions::<Test>::get(0).is_none());
-        assert!(ConditionCreators::<Test>::get(0).is_none());
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
-        assert_eq!(balance_of(FEE_COLLECTOR, CANONICAL_ASSET), 0);
-        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), 0);
-    });
-}
-
-#[test]
 fn create_condition_rolls_back_when_fee_payment_fails() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         set_balance(ALICE, CANONICAL_ASSET, MinCreationFeeConst::get() - 1);
 
         assert_noop!(
@@ -195,7 +140,6 @@ fn create_condition_rolls_back_when_fee_payment_fails() {
 fn create_condition_rejects_bad_origins_before_fee_collection() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_noop!(
@@ -220,7 +164,6 @@ fn create_condition_rejects_bad_origins_before_fee_collection() {
 fn create_condition_counter_overflow_rolls_back_pallet_storage() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         crate::NextConditionId::<Test>::put(u32::MAX);
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
         let fee_collector_before = balance_of(FEE_COLLECTOR, CANONICAL_ASSET);
@@ -251,7 +194,6 @@ fn create_condition_counter_overflow_rolls_back_pallet_storage() {
 fn oversized_metadata_is_rejected_before_fee_collection() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
         let too_long = vec![b'Q'; MaxMetadataLengthConst::get() as usize + 1];
 
@@ -278,7 +220,6 @@ fn oversized_metadata_is_rejected_before_fee_collection() {
 fn oversized_oracle_and_source_are_rejected_before_fee_collection() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
         let too_long = vec![b'x'; MaxMetadataLengthConst::get() as usize + 1];
 
@@ -316,7 +257,6 @@ fn oversized_oracle_and_source_are_rejected_before_fee_collection() {
 fn exact_max_metadata_with_local_source_is_accepted_once() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let question = vec![b'q'; MaxMetadataLengthConst::get() as usize];
         let oracle = vec![b'o'; MaxMetadataLengthConst::get() as usize];
         let resolution_source = vec![b's'; MaxMetadataLengthConst::get() as usize];
@@ -348,7 +288,6 @@ fn exact_max_metadata_with_local_source_is_accepted_once() {
 fn pending_buyback_saturates_when_creation_fee_is_charged() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         PendingXorBuybackCollateral::<Test>::put(Balance::MAX - 1);
 
         assert_ok!(Polkamarkt::create_condition(
@@ -365,7 +304,6 @@ fn pending_buyback_saturates_when_creation_fee_is_charged() {
 fn create_market_rejects_bad_origins_without_consuming_condition() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -386,7 +324,6 @@ fn create_market_rejects_bad_origins_without_consuming_condition() {
         assert!(ConditionMarket::<Test>::get(0).is_none());
         assert!(crate::Markets::<Test>::get(0).is_none());
         assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
         assert_eq!(
             balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
@@ -396,47 +333,9 @@ fn create_market_rejects_bad_origins_without_consuming_condition() {
 }
 
 #[test]
-fn creator_must_remain_bonded_to_create_market_from_condition() {
+fn create_market_seeds_pool_and_does_not_charge_condition_fee_again() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
-        assert_ok!(Polkamarkt::create_condition(
-            RuntimeOrigin::signed(ALICE),
-            default_condition(),
-        ));
-        assert_ok!(Polkamarkt::unbond_governance(
-            RuntimeOrigin::signed(ALICE),
-            TEST_BOND,
-        ));
-        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
-
-        assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10, 100_000),
-            Error::<Test>::AccountNotBonded
-        );
-
-        assert_eq!(crate::NextMarketId::<Test>::get(), 0);
-        assert!(ConditionMarket::<Test>::get(0).is_none());
-        assert!(crate::Markets::<Test>::get(0).is_none());
-        assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
-
-        bond_alice();
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            0,
-            10,
-            100_000,
-        ));
-        assert_eq!(ConditionMarket::<Test>::get(0), Some(0));
-    });
-}
-
-#[test]
-fn create_market_seeds_pool_locks_bond_and_does_not_charge_condition_fee_again() {
-    new_test_ext().execute_with(|| {
-        run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -456,14 +355,6 @@ fn create_market_seeds_pool_locks_bond_and_does_not_charge_condition_fee_again()
         assert_eq!(pool.collateral, 100_000);
         assert_eq!(pool.yes, 100_000);
         assert_eq!(pool.no, 100_000);
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
-        assert_eq!(
-            MarketBondLock::<Test>::get(0),
-            Some(GovernanceBondMinimumConst::get())
-        );
         assert_eq!(ConditionMarket::<Test>::get(0), Some(0));
         assert_eq!(PendingXorBuybackCollateral::<Test>::get(), pending_before);
         assert_eq!(
@@ -478,7 +369,6 @@ fn create_market_seeds_pool_locks_bond_and_does_not_charge_condition_fee_again()
 fn create_market_leaves_noncanonical_balances_untouched() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_usdc_before = balance_of(ALICE, USDC_ASSET);
         let pallet_usdc_before = balance_of(Polkamarkt::account_id(), USDC_ASSET);
         let fee_collector_usdc_before = balance_of(FEE_COLLECTOR, USDC_ASSET);
@@ -501,8 +391,6 @@ fn create_market_leaves_noncanonical_balances_untouched() {
 fn non_creator_cannot_create_market_from_condition() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
-        bond_bob();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -519,7 +407,6 @@ fn non_creator_cannot_create_market_from_condition() {
 fn legacy_condition_without_recorded_creator_is_not_marketable() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -542,7 +429,6 @@ fn legacy_condition_without_recorded_creator_is_not_marketable() {
 fn stale_condition_market_index_blocks_creation_without_side_effects() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -560,7 +446,6 @@ fn stale_condition_market_index_blocks_creation_without_side_effects() {
         assert_eq!(ConditionMarket::<Test>::get(0), Some(777));
         assert!(crate::Markets::<Test>::get(0).is_none());
         assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
         assert_eq!(
             balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
@@ -610,7 +495,6 @@ fn finalized_condition_cannot_be_reused_for_new_market() {
 fn failed_market_preflight_does_not_consume_condition() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -643,7 +527,6 @@ fn failed_market_preflight_does_not_consume_condition() {
 fn overflowing_market_close_window_does_not_consume_condition() {
     new_test_ext().execute_with(|| {
         run_to_block(BlockNumber::MAX - 1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -659,7 +542,6 @@ fn overflowing_market_close_window_does_not_consume_condition() {
         assert!(ConditionMarket::<Test>::get(0).is_none());
         assert!(crate::Markets::<Test>::get(0).is_none());
         assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
     });
 }
@@ -668,7 +550,6 @@ fn overflowing_market_close_window_does_not_consume_condition() {
 fn next_market_id_overflow_does_not_seed_or_consume_condition() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -686,7 +567,6 @@ fn next_market_id_overflow_does_not_seed_or_consume_condition() {
         assert!(ConditionMarket::<Test>::get(0).is_none());
         assert!(crate::Markets::<Test>::get(u32::MAX).is_none());
         assert!(MarketPools::<Test>::get(u32::MAX).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
         assert_eq!(
             balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
@@ -699,7 +579,6 @@ fn next_market_id_overflow_does_not_seed_or_consume_condition() {
 fn failed_seed_transfer_rolls_back_market_id_and_condition_use() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         assert_ok!(Polkamarkt::create_condition(
             RuntimeOrigin::signed(ALICE),
             default_condition(),
@@ -715,8 +594,6 @@ fn failed_seed_transfer_rolls_back_market_id_and_condition_use() {
         assert!(ConditionMarket::<Test>::get(0).is_none());
         assert!(crate::Markets::<Test>::get(0).is_none());
         assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
-        assert!(MarketBondLock::<Test>::get(0).is_none());
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), 99);
 
         set_balance(ALICE, CANONICAL_ASSET, 100_000);
@@ -735,7 +612,6 @@ fn failed_seed_transfer_rolls_back_market_id_and_condition_use() {
 fn missing_condition_market_creation_does_not_touch_market_state() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_noop!(
@@ -747,52 +623,7 @@ fn missing_condition_market_creation_does_not_touch_market_state() {
         assert!(ConditionMarket::<Test>::get(42).is_none());
         assert!(crate::Markets::<Test>::get(0).is_none());
         assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
-    });
-}
-
-#[test]
-fn bond_lock_failure_rolls_back_market_storage_and_condition_use() {
-    new_test_ext().execute_with(|| {
-        run_to_block(1);
-        bond_alice();
-        for _ in 0..3 {
-            assert_ok!(Polkamarkt::create_condition(
-                RuntimeOrigin::signed(ALICE),
-                default_condition(),
-            ));
-        }
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            0,
-            10,
-            1_000,
-        ));
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            1,
-            10,
-            1_000,
-        ));
-        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
-        let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
-        assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 2, 10, 1_000),
-            Error::<Test>::GovernanceBondTooLow
-        );
-
-        assert_eq!(crate::NextMarketId::<Test>::get(), 2);
-        assert!(ConditionMarket::<Test>::get(2).is_none());
-        assert!(crate::Markets::<Test>::get(2).is_none());
-        assert!(MarketPools::<Test>::get(2).is_none());
-        assert!(MarketBondLock::<Test>::get(2).is_none());
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), TEST_BOND);
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
-        assert_eq!(
-            balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
-            pallet_before
-        );
     });
 }
 
@@ -800,7 +631,6 @@ fn bond_lock_failure_rolls_back_market_storage_and_condition_use() {
 fn invalid_metadata_is_rejected() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
-        bond_alice();
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_noop!(
@@ -870,109 +700,6 @@ fn invalid_metadata_is_rejected() {
         assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
         assert_eq!(balance_of(FEE_COLLECTOR, CANONICAL_ASSET), 0);
         assert_eq!(PendingXorBuybackCollateral::<Test>::get(), 0);
-    });
-}
-
-#[test]
-fn governance_bond_failures_do_not_corrupt_escrow_state() {
-    new_test_ext().execute_with(|| {
-        assert_noop!(
-            Polkamarkt::bond_governance(RuntimeOrigin::signed(ALICE), 0),
-            Error::<Test>::InvalidCollateralAsset
-        );
-        assert_noop!(
-            Polkamarkt::bond_governance(
-                RuntimeOrigin::signed(ALICE),
-                GovernanceBondMinimumConst::get() - 1,
-            ),
-            Error::<Test>::GovernanceBondTooLow
-        );
-
-        set_balance(
-            ALICE,
-            CANONICAL_ASSET,
-            GovernanceBondMinimumConst::get() - 1,
-        );
-        assert_noop!(
-            Polkamarkt::bond_governance(
-                RuntimeOrigin::signed(ALICE),
-                GovernanceBondMinimumConst::get(),
-            ),
-            DispatchError::Other("insufficient-balance")
-        );
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), 0);
-        assert_eq!(balance_of(MAINTENANCE_ACCOUNT, CANONICAL_ASSET), 0);
-
-        set_balance(ALICE, CANONICAL_ASSET, 1_000_000);
-        crate::GovernanceBonds::<Test>::insert(ALICE, Balance::MAX);
-        assert_noop!(
-            Polkamarkt::bond_governance(
-                RuntimeOrigin::signed(ALICE),
-                GovernanceBondMinimumConst::get(),
-            ),
-            Error::<Test>::Overflow
-        );
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), Balance::MAX);
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), 1_000_000);
-        assert_eq!(balance_of(MAINTENANCE_ACCOUNT, CANONICAL_ASSET), 0);
-        crate::GovernanceBonds::<Test>::remove(ALICE);
-
-        set_balance(ALICE, CANONICAL_ASSET, 1_000_000);
-        assert_ok!(Polkamarkt::bond_governance(
-            RuntimeOrigin::signed(ALICE),
-            TEST_BOND,
-        ));
-        set_balance(MAINTENANCE_ACCOUNT, CANONICAL_ASSET, 0);
-        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
-
-        assert_noop!(
-            Polkamarkt::unbond_governance(RuntimeOrigin::signed(ALICE), TEST_BOND),
-            DispatchError::Other("insufficient-balance")
-        );
-
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), TEST_BOND);
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
-        assert_eq!(balance_of(MAINTENANCE_ACCOUNT, CANONICAL_ASSET), 0);
-    });
-}
-
-#[test]
-fn unbond_zero_excess_and_locked_boundary_do_not_release_collateral() {
-    new_test_ext().execute_with(|| {
-        bond_alice();
-        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
-
-        assert_noop!(
-            Polkamarkt::unbond_governance(RuntimeOrigin::signed(ALICE), 0),
-            Error::<Test>::InvalidCollateralAsset
-        );
-        assert_noop!(
-            Polkamarkt::unbond_governance(RuntimeOrigin::signed(ALICE), TEST_BOND + 1),
-            Error::<Test>::AccountNotBonded
-        );
-
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), TEST_BOND);
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
-        assert_eq!(balance_of(MAINTENANCE_ACCOUNT, CANONICAL_ASSET), TEST_BOND);
-
-        create_market(100_000, 10);
-        let alice_after_market = balance_of(ALICE, CANONICAL_ASSET);
-        assert_noop!(
-            Polkamarkt::unbond_governance(
-                RuntimeOrigin::signed(ALICE),
-                TEST_BOND - GovernanceBondMinimumConst::get() + 1,
-            ),
-            Error::<Test>::GovernanceBondLocked
-        );
-
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), TEST_BOND);
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_after_market);
     });
 }
 
@@ -1416,14 +1143,6 @@ fn signed_extrinsics_reject_bad_origins_without_touching_market_state() {
         let bob_before = balance_of(BOB, CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::bond_governance(RuntimeOrigin::root(), TEST_BOND),
-            DispatchError::BadOrigin
-        );
-        assert_noop!(
-            Polkamarkt::unbond_governance(RuntimeOrigin::none(), 1),
-            DispatchError::BadOrigin
-        );
-        assert_noop!(
             Polkamarkt::buy(RuntimeOrigin::root(), 0, BinaryOutcome::No, 10_000, 0),
             DispatchError::BadOrigin
         );
@@ -1814,7 +1533,7 @@ fn finalized_markets_reject_new_trades_without_mutation() {
 }
 
 #[test]
-fn sync_before_close_does_not_lock_or_emit_events() {
+fn sync_before_close_does_not_emit_events() {
     new_test_ext().execute_with(|| {
         setup_market(100_000, 10);
         let events_before = System::<Test>::events().len();
@@ -1829,10 +1548,6 @@ fn sync_before_close_does_not_lock_or_emit_events() {
             MarketStatus::Open
         );
         assert_eq!(System::<Test>::events().len(), events_before);
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
     });
 }
 
@@ -2286,7 +2001,7 @@ fn losing_claim_is_single_use_and_pays_nothing() {
 }
 
 #[test]
-fn resolve_market_auto_locks_finalizes_and_unlocks_creator_bond() {
+fn resolve_market_finalizes_and_allows_claims() {
     new_test_ext().execute_with(|| {
         setup_market(100_000, 10);
         assert_ok!(Polkamarkt::buy(
@@ -2310,7 +2025,6 @@ fn resolve_market_auto_locks_finalizes_and_unlocks_creator_bond() {
             MarketStatus::Resolved
         );
         assert_eq!(MarketResolution::<Test>::get(0), Some(BinaryOutcome::Yes));
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
 
         let bob_before = balance_of(BOB, CANONICAL_ASSET);
         assert_ok!(Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0));
@@ -2345,10 +2059,6 @@ fn finalization_rejects_bad_origin_early_and_duplicate_calls() {
             crate::Markets::<Test>::get(0).unwrap().status,
             MarketStatus::Open
         );
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
 
         run_to_block(10);
         assert_ok!(Polkamarkt::resolve_market(
@@ -2369,7 +2079,7 @@ fn finalization_rejects_bad_origin_early_and_duplicate_calls() {
 }
 
 #[test]
-fn finalization_bad_origin_after_close_does_not_lock_or_release_bond() {
+fn finalization_bad_origin_after_close_does_not_mutate_market() {
     new_test_ext().execute_with(|| {
         setup_market(100_000, 10);
         run_to_block(10);
@@ -2389,41 +2099,7 @@ fn finalization_bad_origin_after_close_does_not_lock_or_release_bond() {
             MarketStatus::Open
         );
         assert_eq!(MarketResolution::<Test>::get(0), None);
-        assert_eq!(
-            MarketBondLock::<Test>::get(0),
-            Some(GovernanceBondMinimumConst::get())
-        );
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
         assert_eq!(System::<Test>::events().len(), events_before);
-    });
-}
-
-#[test]
-fn oversized_bond_lock_release_saturates_creator_locked_bond() {
-    new_test_ext().execute_with(|| {
-        setup_market(100_000, 10);
-        MarketBondLock::<Test>::insert(0, TEST_BOND * 10);
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
-
-        run_to_block(10);
-        assert_ok!(Polkamarkt::resolve_market(
-            RuntimeOrigin::root(),
-            0,
-            BinaryOutcome::Yes,
-        ));
-
-        assert_eq!(CreatorLockedBond::<Test>::get(ALICE), 0);
-        assert!(MarketBondLock::<Test>::get(0).is_none());
-        assert_eq!(
-            crate::Markets::<Test>::get(0).unwrap().status,
-            MarketStatus::Resolved
-        );
     });
 }
 
@@ -2832,31 +2508,6 @@ fn claim_and_creator_withdrawal_negative_paths_do_not_payout() {
 }
 
 #[test]
-fn creator_cannot_unbond_locked_market_bond() {
-    new_test_ext().execute_with(|| {
-        setup_market(100_000, 10);
-
-        assert_noop!(
-            Polkamarkt::unbond_governance(RuntimeOrigin::signed(ALICE), TEST_BOND),
-            Error::<Test>::GovernanceBondLocked
-        );
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), TEST_BOND);
-        assert_eq!(
-            CreatorLockedBond::<Test>::get(ALICE),
-            GovernanceBondMinimumConst::get()
-        );
-
-        run_to_block(10);
-        assert_ok!(Polkamarkt::cancel_market(RuntimeOrigin::root(), 0));
-        assert_ok!(Polkamarkt::unbond_governance(
-            RuntimeOrigin::signed(ALICE),
-            TEST_BOND,
-        ));
-        assert_eq!(crate::GovernanceBonds::<Test>::get(ALICE), 0);
-    });
-}
-
-#[test]
 fn buyback_sweep_negative_paths_do_not_clear_or_burn_pending_collateral() {
     new_test_ext().execute_with(|| {
         assert_noop!(
@@ -2956,7 +2607,7 @@ fn sync_market_status_is_permissionless_and_idempotent() {
 #[test]
 fn genesis_sets_current_storage_version() {
     new_test_ext().execute_with(|| {
-        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(2));
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
     });
 }
 
@@ -2978,7 +2629,7 @@ fn migration_clears_legacy_opengov_prefix_and_sets_v2() {
 }
 
 #[test]
-fn migration_at_current_version_clears_legacy_prefix() {
+fn v2_migration_at_v2_clears_legacy_prefix_without_bumping_version() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(2).put::<Polkamarkt>();
         let prefix = storage_prefix(b"Polkamarkt", b"OpengovConditions");
@@ -2992,5 +2643,34 @@ fn migration_at_current_version_clears_legacy_prefix() {
         assert!(!unhashed::contains_prefixed_key(&prefix));
         assert_eq!(unhashed::get_raw(&key), None);
         assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(2));
+    });
+}
+
+#[test]
+fn v3_migration_clears_legacy_bond_storage_and_sets_v3() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        let storage_items = [
+            b"GovernanceBonds".as_slice(),
+            b"CreatorLockedBond".as_slice(),
+            b"MarketBondLock".as_slice(),
+            b"GovernanceBondMinimumOverride".as_slice(),
+        ];
+
+        for storage_item in storage_items {
+            let prefix = storage_prefix(b"Polkamarkt", storage_item);
+            let mut key = prefix.to_vec();
+            key.extend_from_slice(&[4, 3, 2, 1]);
+            unhashed::put_raw(&key, b"legacy-bond");
+            assert!(unhashed::contains_prefixed_key(&prefix));
+        }
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+
+        for storage_item in storage_items {
+            let prefix = storage_prefix(b"Polkamarkt", storage_item);
+            assert!(!unhashed::contains_prefixed_key(&prefix));
+        }
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
     });
 }
