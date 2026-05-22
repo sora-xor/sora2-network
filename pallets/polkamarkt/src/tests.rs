@@ -2647,30 +2647,33 @@ fn v2_migration_at_v2_clears_legacy_prefix_without_bumping_version() {
 }
 
 #[test]
-fn v3_migration_clears_legacy_bond_storage_and_sets_v3() {
+fn v3_migration_clears_legacy_bond_config_and_sets_v3() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(2).put::<Polkamarkt>();
-        let storage_items = [
-            b"GovernanceBonds".as_slice(),
-            b"CreatorLockedBond".as_slice(),
-            b"MarketBondLock".as_slice(),
-            b"GovernanceBondMinimumOverride".as_slice(),
-        ];
-
-        for storage_item in storage_items {
-            let prefix = storage_prefix(b"Polkamarkt", storage_item);
-            let mut key = prefix.to_vec();
-            key.extend_from_slice(&[4, 3, 2, 1]);
-            unhashed::put_raw(&key, b"legacy-bond");
-            assert!(unhashed::contains_prefixed_key(&prefix));
-        }
+        let prefix = storage_prefix(b"Polkamarkt", b"GovernanceBondMinimumOverride");
+        let mut key = prefix.to_vec();
+        key.extend_from_slice(&[4, 3, 2, 1]);
+        unhashed::put_raw(&key, b"legacy-bond-config");
+        assert!(unhashed::contains_prefixed_key(&prefix));
 
         let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
 
-        for storage_item in storage_items {
-            let prefix = storage_prefix(b"Polkamarkt", storage_item);
-            assert!(!unhashed::contains_prefixed_key(&prefix));
-        }
+        assert!(!unhashed::contains_prefixed_key(&prefix));
         assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt v3 migration requires empty legacy governance bond storage")]
+fn v3_migration_rejects_legacy_governance_bond_claims() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        let prefix = storage_prefix(b"Polkamarkt", b"GovernanceBonds");
+        let mut key = prefix.to_vec();
+        key.extend_from_slice(&[4, 3, 2, 1]);
+        unhashed::put_raw(&key, b"legacy-bond-claim");
+        assert!(unhashed::contains_prefixed_key(&prefix));
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
     });
 }

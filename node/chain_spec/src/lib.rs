@@ -60,10 +60,10 @@ use framenode_runtime::{
     GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
     IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
     MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktConfig,
-    PolkamarktFeeCollector, PolkamarktGovernanceBondMinimum, PswapDistributionConfig,
-    RewardsConfig, Runtime, RuntimeGenesisConfig, SS58Prefix, SessionConfig, Signature,
-    StakerStatus, StakingConfig, SystemConfig, TechAccountId, TechnicalCommitteeConfig,
-    TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig, XSTPoolConfig,
+    PolkamarktFeeCollector, PswapDistributionConfig, RewardsConfig, Runtime, RuntimeGenesisConfig,
+    SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId,
+    TechnicalCommitteeConfig, TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig,
+    XSTPoolConfig,
 };
 #[cfg(not(feature = "runtime-wasm"))]
 const WASM_BINARY: Option<&[u8]> = None;
@@ -237,7 +237,6 @@ fn chain_spec_from_genesis(
 fn polkamarkt_genesis_config() -> PolkamarktConfig {
     PolkamarktConfig {
         fee_collector: Some(PolkamarktFeeCollector::get()),
-        governance_bond_minimum: Some(PolkamarktGovernanceBondMinimum::get()),
     }
 }
 

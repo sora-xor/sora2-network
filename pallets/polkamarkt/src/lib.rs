@@ -1564,6 +1564,19 @@ pub mod migrations {
                         b"GovernanceBonds".as_slice(),
                         b"CreatorLockedBond".as_slice(),
                         b"MarketBondLock".as_slice(),
+                    ] {
+                        let prefix = storage_prefix(b"Polkamarkt", storage_item);
+                        assert!(
+                            !unhashed::contains_prefixed_key(&prefix),
+                            "Polkamarkt v3 migration requires empty legacy governance bond storage"
+                        );
+                    }
+                    weight.saturating_accrue(db_weight.reads(3));
+
+                    for storage_item in [
+                        b"GovernanceBonds".as_slice(),
+                        b"CreatorLockedBond".as_slice(),
+                        b"MarketBondLock".as_slice(),
                         b"GovernanceBondMinimumOverride".as_slice(),
                     ] {
                         let prefix = storage_prefix(b"Polkamarkt", storage_item);
