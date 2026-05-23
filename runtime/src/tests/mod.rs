@@ -38,7 +38,7 @@ use crate::{genesis_config_presets, Currencies, Referrals, RuntimeOrigin};
 use assets::GetTotalBalance;
 use common::mock::{alice, bob};
 use common::prelude::constants::SMALL_FEE;
-use common::{fixed, SymbolName, XOR};
+use common::{fixed, SymbolName, KUSD, TBCD, XOR};
 use frame_support::assert_ok;
 use frame_support::genesis_builder_helper;
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
@@ -89,6 +89,23 @@ fn merged_benchmark_genesis_json() -> Vec<u8> {
     merge_json_patch(&mut default_config, benchmark_preset_json());
     ensure_phantom_field(&mut default_config, "dexapi");
     serde_json::to_vec(&default_config).expect("merged benchmark genesis should serialize")
+}
+
+#[test]
+fn pswap_buy_back_fractions_split_kusd_10_xor_90() {
+    let fractions = <crate::Runtime as pswap_distribution::Config>::GetBuyBackFractions::get();
+    let kusd_fraction = fractions
+        .iter()
+        .find_map(|(asset_id, fraction)| (*asset_id == KUSD.into()).then_some(*fraction));
+    let xor_fraction = fractions
+        .iter()
+        .find_map(|(asset_id, fraction)| (*asset_id == XOR.into()).then_some(*fraction));
+
+    assert_eq!(kusd_fraction, Some(sp_runtime::Permill::from_percent(4)));
+    assert_eq!(xor_fraction, Some(sp_runtime::Permill::from_percent(36)));
+    assert!(!fractions
+        .iter()
+        .any(|(asset_id, _)| *asset_id == TBCD.into()));
 }
 
 fn value_for_key<'a>(

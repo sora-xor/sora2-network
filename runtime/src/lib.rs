@@ -354,10 +354,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 126,
+    spec_version: 127,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 126,
+    transaction_version: 127,
     system_version: 0,
 };
 
@@ -1132,15 +1132,11 @@ parameter_types! {
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
     pub const PolkamarktTradeFeeBps: u32 = 50;
-    pub PolkamarktGovernanceBondMinimum: Balance = balance!(5000);
 }
 
 parameter_types! {
     pub PolkamarktFeeCollector: AccountId = AccountId::new(hex!(
         "c0e6629c9baf600a20be6cdeda7545c03ae60175982debe124a369b9a1aa8a38"
-    ));
-    pub PolkamarktCreatorBondEscrowAccount: AccountId = AccountId::new(hex!(
-        "9e6663fbfc3f0bd24b00f984adc0f4a585ccf84ab1bb1049433e9fa680f6c828"
     ));
 }
 
@@ -1338,8 +1334,6 @@ impl pallet_polkamarkt::Config for Runtime {
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
-    type GovernanceBondMinimum = PolkamarktGovernanceBondMinimum;
-    type CreatorBondEscrowAccount = PolkamarktCreatorBondEscrowAccount;
     type GovernanceOrigin = EnsureRoot<AccountId>;
 }
 
@@ -1561,7 +1555,7 @@ parameter_types! {
     pub const FeeKusdBurnedWeight: u32 = 5; // 5%
     // Minimal amount for proportions calculations (fee ratio: 10:20:50:5).
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
-    pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
+    pub const RemintXorBurnPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
     pub const ForcedMultiplierAt: BlockNumber = 23_206_222;
     pub const ForcedMultiplierValue: FixedU128 =
@@ -1584,12 +1578,11 @@ impl xor_fee::Config for Runtime {
     type XorId = GetXorAssetId;
     type ValId = GetValAssetId;
     type KusdId = GetKusdAssetId;
-    type TbcdId = GetTbcdAssetId;
     type FeeReferrerWeight = FeeReferrerWeight;
     type FeeXorBurnedWeight = FeeXorBurnedWeight;
     type FeeValBurnedWeight = FeeValBurnedWeight;
     type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
-    type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    type RemintXorBurnPercent = RemintXorBurnPercent;
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
@@ -1934,7 +1927,7 @@ impl farming::Config for Runtime {
 }
 
 parameter_types! {
-    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(39u32, 100u32)), (common::TBCD.into(), Permill::from_rational(1u32, 100u32))];
+    pub GetBuyBackFractions: Vec<(AssetId, Permill)> = vec![(common::KUSD.into(), Permill::from_rational(4u32, 100u32)), (common::XOR.into(), Permill::from_rational(36u32, 100u32))];
 }
 
 impl pswap_distribution::Config for Runtime {

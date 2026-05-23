@@ -1,0 +1,46 @@
+{
+  "runtime": {
+    "package_version": "4.8.5",
+    "spec_name": "sora-substrate",
+    "spec_version": 127,
+    "transaction_version": 127,
+    "impl_version": 2
+  },
+  "wasm": {
+    "source_path": "/Users/takemiyamakoto/dev/sora2-network/target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
+    "release_path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.5/framenode-runtime-4.8.5.compact.compressed.wasm",
+    "bytes": 2950840,
+    "blake2_256": "0x1d680dfa1dc7f2069034bf82e069c0ea982223b0966c6d7c73294f2413e86db9",
+    "sha256": "0xf357eb6ddc07ee2a713a281f12369fbfb89fe1e6c9ce92833a889688b2cb22b3"
+  },
+  "proposal_preimage": {
+    "call": "system.set_code",
+    "bytes_to_note_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.5/set-code-call.hex",
+    "encoded_len": 2950846,
+    "hash": "0x1a9a3533cdce40096691c5a9d92ba5da4a55b532340691ae686bba820b61d86b"
+  },
+  "preimage_note": {
+    "call": "preimage.note_preimage(bytes = system.set_code call bytes)",
+    "call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.5/preimage-note-call.hex",
+    "encoded_len": 2950852
+  },
+  "council": {
+    "inner_call": "democracy.external_propose_majority(Bounded::Lookup { hash, len })",
+    "inner_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.5/democracy-external-propose-majority-call.hex",
+    "inner_call_hex": "0x1d05021a9a3533cdce40096691c5a9d92ba5da4a55b532340691ae686bba820b61d86bbe062d00",
+    "inner_call_hash": "0xd03ca6cc09c26898d4de24c25dd93c0890a0af322047605e35eda495873c06c5",
+    "length_bound": 39,
+    "threshold_rule": "Submit as council.propose with threshold >= ceil(current council members / 2). Threshold 1 is not enough because the dispatched origin must satisfy AtLeastHalfCouncil."
+  },
+  "technical_committee": {
+    "inner_call": "democracy.fast_track(proposal_hash, voting_period, delay)",
+    "inner_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.5/democracy-fast-track-call.hex",
+    "inner_call_hex": "0x1d071a9a3533cdce40096691c5a9d92ba5da4a55b532340691ae686bba820b61d86b0807000000000000",
+    "inner_call_hash": "0x88e1cf6e192e3dd1a419d6c23481c26f248f7422aeb551a936318722750a6b6a",
+    "length_bound": 42,
+    "voting_period_blocks": 1800,
+    "voting_period_note": "3 hours at 6 second blocks",
+    "delay_blocks": 0,
+    "threshold_rule": "Submit as technicalCommittee.propose with threshold > current technical committee members / 2. For instant or voting_period < 1800, threshold must be at least 2/3."
+  }
+}

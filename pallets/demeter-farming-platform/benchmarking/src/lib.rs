@@ -6,11 +6,12 @@
 #![allow(dead_code)]
 
 use codec::Decode;
+use common::prelude::FixedWrapper;
 use common::{
-    balance, AssetManager, AssetName, AssetSymbol, Balance, CERES_ASSET_ID,
+    balance, AssetIdOf, AssetManager, AssetName, AssetSymbol, Balance, CERES_ASSET_ID,
     DEFAULT_BALANCE_PRECISION, XOR, XSTUSD,
 };
-use demeter_farming_platform::{AccountIdOf, AuthorityAccount, UserInfos};
+use demeter_farming_platform::{AccountIdOf, AuthorityAccount, Pools, UserInfos};
 use frame_benchmarking::benchmarks;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
@@ -295,10 +296,37 @@ benchmarks! {
 
         run_to_block::<T>(16201);
 
+        let reward_asset_id: AssetIdOf<T> = reward_asset.into();
+        let pool_infos = Pools::<T>::get(reward_asset_id, reward_asset_id);
+        let pool_info = pool_infos
+            .iter()
+            .find(|pool_info| {
+                !pool_info.is_removed
+                    && pool_info.is_farm == is_farm
+                    && pool_info.base_asset == reward_asset_id
+            })
+            .unwrap();
         let user_infos = UserInfos::<T>::get(&caller);
         let mut rewards = balance!(0);
         for user_info in user_infos {
-            rewards = user_info.rewards;
+            if user_info.pool_asset == reward_asset_id
+                && user_info.reward_asset == reward_asset_id
+                && user_info.is_farm == is_farm
+                && user_info.base_asset == reward_asset_id
+            {
+                let pending_rewards =
+                    if pool_info.reward_per_token > user_info.reward_per_token_paid {
+                        let reward_per_token_diff =
+                            pool_info.reward_per_token - user_info.reward_per_token_paid;
+                        (FixedWrapper::from(user_info.pooled_tokens)
+                            * FixedWrapper::from(reward_per_token_diff))
+                        .try_into_balance()
+                        .unwrap_or(0)
+                    } else {
+                        0
+                    };
+                rewards = user_info.rewards.saturating_add(pending_rewards);
+            }
         }
 
     }: {
@@ -688,8 +716,17 @@ benchmarks! {
             CERES_ASSET_ID.into(),
             true,
             2,
-            balance!(0.4),
+            deposit_fee,
             true,
+        );
+
+        // Mark the pool removed so the benchmark measures the activation path.
+        let _ = DemeterFarmingPlatform::<T>::remove_pool(
+            RawOrigin::Signed(caller.clone()).into(),
+            XOR.into(),
+            XOR.into(),
+            CERES_ASSET_ID.into(),
+            is_farm,
         );
     }: {
         DemeterFarmingPlatform::<T>::activate_removed_pool(

@@ -899,22 +899,17 @@ impl<T: Config> Pallet<T> {
         let xor = T::XorId::get();
         let val = T::ValId::get();
         let kusd = T::KusdId::get();
-        let xor_to_burn_for_tbcd = T::RemintTbcdBuyBackPercent::get() * xor_to_val;
+        let xor_to_burn = T::RemintXorBurnPercent::get() * xor_to_val;
 
         // Re-minting the `xor_to_val` tokens amount to `tech_account_id` of this pallet.
         // The tokens being re-minted had initially been withdrawn as a part of the fee.
         weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
         T::AssetManager::mint_to(&xor, &tech_account_id, &tech_account_id, xor_to_val)?;
-        if !xor_to_burn_for_tbcd.is_zero() {
+        if !xor_to_burn.is_zero() {
             weight.saturating_accrue(T::DbWeight::get().reads_writes(2, 1));
-            T::AssetManager::burn_from(
-                &xor,
-                &tech_account_id,
-                &tech_account_id,
-                xor_to_burn_for_tbcd,
-            )?;
+            T::AssetManager::burn_from(&xor, &tech_account_id, &tech_account_id, xor_to_burn)?;
         }
-        let xor_to_val = xor_to_val.saturating_sub(xor_to_burn_for_tbcd);
+        let xor_to_val = xor_to_val.saturating_sub(xor_to_burn);
         if xor_to_val.is_zero() {
             return Ok(());
         }
@@ -1157,12 +1152,11 @@ pub mod pallet {
         type XorId: Get<AssetIdOf<Self>>;
         type ValId: Get<AssetIdOf<Self>>;
         type KusdId: Get<AssetIdOf<Self>>;
-        type TbcdId: Get<AssetIdOf<Self>>;
         type FeeReferrerWeight: Get<u32>;
         type FeeXorBurnedWeight: Get<u32>;
         type FeeValBurnedWeight: Get<u32>;
         type FeeKusdBurnedWeight: Get<u32>;
-        type RemintTbcdBuyBackPercent: Get<Percent>;
+        type RemintXorBurnPercent: Get<Percent>;
         type RemintKusdBuyBackPercent: Get<Percent>;
         type DEXIdValue: Get<Self::DEXId>;
         type LiquidityProxy: LiquidityProxyTrait<Self::DEXId, Self::AccountId, AssetIdOf<Self>>;
