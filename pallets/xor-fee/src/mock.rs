@@ -93,12 +93,11 @@ parameter_types! {
     pub const FeeValBurnedWeight: u32 = 50; // 50%
     pub const FeeKusdBurnedWeight: u32 = 20; // 20%
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001); // Minimal amount for proportions right calculations
-    pub const RemintTbcdBuyBackPercent: Percent = Percent::from_percent(1);
+    pub const RemintXorBurnPercent: Percent = Percent::from_percent(1);
     pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const KusdId: AssetId = KUSD;
-    pub const TbcdId: AssetId = TBCD;
     pub const DEXIdValue: DEXId = DEXId::Polkaswap;
     pub const GetBaseAssetId: AssetId = XOR;
     pub GetXorFeeAccountId: AccountId = account_from_str("xor-fee");
@@ -319,7 +318,6 @@ impl Randomness<H256, BlockNumber> for MockRandomness {
 impl Config for Runtime {
     type XorCurrency = Balances;
     type KusdId = KusdId;
-    type TbcdId = TbcdId;
     type ValId = ValId;
     type XorId = XorId;
     type ForcedMultiplierAt = ForcedMultiplierAt;
@@ -328,7 +326,7 @@ impl Config for Runtime {
     type FeeXorBurnedWeight = FeeXorBurnedWeight;
     type FeeValBurnedWeight = FeeValBurnedWeight;
     type FeeKusdBurnedWeight = FeeKusdBurnedWeight;
-    type RemintTbcdBuyBackPercent = RemintTbcdBuyBackPercent;
+    type RemintXorBurnPercent = RemintXorBurnPercent;
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;

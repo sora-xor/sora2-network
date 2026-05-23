@@ -75,4 +75,6 @@ std = [
     "trading-pair/std",
 ]
 
+runtime-benchmarks = ["orml-tokens/runtime-benchmarks"]
+
 try-runtime = ["frame-support/try-runtime"]

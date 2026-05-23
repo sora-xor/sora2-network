@@ -53,24 +53,11 @@ where
     mint_canonical_balance::<T>(who, amount);
 }
 
-fn benchmark_bond_amount<T>() -> BenchBalanceOf<T>
-where
-    T: crate::Config,
-{
-    let min = T::GovernanceBondMinimum::get();
-    if min.is_zero() {
-        BenchBalanceOf::<T>::one()
-    } else {
-        min
-    }
-}
-
 fn setup_creator_market<T>(caller: &T::AccountId, seed: BenchBalanceOf<T>)
 where
     T: crate::Config + frame_system::Config,
     T::AccountId: Clone,
 {
-    GovernanceBonds::<T>::insert(caller, T::GovernanceBondMinimum::get());
     fund_canonical_fee::<T>(caller);
     mint_canonical_balance::<T>(caller, seed);
     let metadata = default_condition_input::<T>();
@@ -175,7 +162,6 @@ mod benchmarks {
     #[benchmark]
     fn create_condition() {
         let caller: T::AccountId = whitelisted_caller();
-        GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
         fund_canonical_fee::<T>(&caller);
         let metadata = default_condition_input::<T>();
 
@@ -186,7 +172,6 @@ mod benchmarks {
     #[benchmark]
     fn create_market() {
         let caller: T::AccountId = whitelisted_caller();
-        GovernanceBonds::<T>::insert(&caller, T::GovernanceBondMinimum::get());
         fund_canonical_fee::<T>(&caller);
         let seed = bench_balance::<T>(10_000);
         mint_canonical_balance::<T>(&caller, seed);
@@ -252,30 +237,6 @@ mod benchmarks {
 
         #[extrinsic_call]
         sync_market_status(RawOrigin::Signed(caller), 0);
-    }
-
-    #[benchmark]
-    fn bond_governance() {
-        let caller: T::AccountId = whitelisted_caller();
-        let amount = benchmark_bond_amount::<T>();
-        T::Assets::mint_for_bench(T::CanonicalStableAssetId::get(), &caller, amount)
-            .expect("bond funding");
-
-        #[extrinsic_call]
-        bond_governance(RawOrigin::Signed(caller), amount);
-    }
-
-    #[benchmark]
-    fn unbond_governance() {
-        let caller: T::AccountId = whitelisted_caller();
-        let amount = benchmark_bond_amount::<T>();
-        T::Assets::mint_for_bench(T::CanonicalStableAssetId::get(), &caller, amount)
-            .expect("bond funding");
-        Pallet::<T>::bond_governance(RawOrigin::Signed(caller.clone()).into(), amount)
-            .expect("bond setup");
-
-        #[extrinsic_call]
-        unbond_governance(RawOrigin::Signed(caller), amount);
     }
 
     #[benchmark]

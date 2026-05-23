@@ -125,12 +125,22 @@ mod tests {
     fn withdraw_tokens_not_unlocked_yet() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
+            let unlocking_timestamp = pallet_timestamp::Pallet::<Runtime>::get() + 1;
+            let locked_tokens = balance!(1);
+
+            assert_ok!(CeresTokenLocker::lock_tokens(
+                RuntimeOrigin::signed(ALICE),
+                CERES_ASSET_ID,
+                unlocking_timestamp,
+                locked_tokens
+            ));
+
             assert_err!(
                 CeresTokenLocker::withdraw_tokens(
                     RuntimeOrigin::signed(ALICE),
                     CERES_ASSET_ID,
-                    pallet_timestamp::Pallet::<Runtime>::get(),
-                    balance!(1)
+                    unlocking_timestamp,
+                    locked_tokens
                 ),
                 Error::<Runtime>::NotUnlockedYet
             );

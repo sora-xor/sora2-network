@@ -61,6 +61,7 @@ pub type Migrations = (
     BridgePeerIsolationAudit,
     DemeterFarmingPlatformStorageVersionV3,
     pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
+    pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
     PrivateNetMigrations,
     WipMigrations,
 );

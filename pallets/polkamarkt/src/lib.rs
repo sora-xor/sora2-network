@@ -34,7 +34,7 @@ pub type ConditionId = u32;
 pub type MarketId = u32;
 
 const STORAGE_VERSION: frame_support::traits::StorageVersion =
-    frame_support::traits::StorageVersion::new(2);
+    frame_support::traits::StorageVersion::new(3);
 const CREATION_FEE_BUYBACK_BPS: u32 = 2_000;
 
 fn with_storage_transaction<T>(
@@ -56,8 +56,6 @@ pub trait WeightInfo {
     fn buy() -> Weight;
     fn sell() -> Weight;
     fn sync_market_status() -> Weight;
-    fn bond_governance() -> Weight;
-    fn unbond_governance() -> Weight;
     fn resolve_market() -> Weight;
     fn cancel_market() -> Weight;
     fn claim_market() -> Weight;
@@ -328,14 +326,6 @@ pub mod pallet {
         #[pallet::constant]
         type TradeFeeBps: Get<u32>;
 
-        /// Minimum bond required to join the governance whitelist (canonical stable units).
-        #[pallet::constant]
-        type GovernanceBondMinimum: Get<Self::Balance>;
-
-        /// Canonical stable escrow account backing creator bonds.
-        #[pallet::constant]
-        type CreatorBondEscrowAccount: Get<Self::AccountId>;
-
         /// Origin allowed to finalize market outcomes.
         type GovernanceOrigin: EnsureOrigin<Self::RuntimeOrigin>;
     }
@@ -415,37 +405,17 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    #[pallet::getter(fn governance_bonds)]
-    pub type GovernanceBonds<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn creator_locked_bond)]
-    pub type CreatorLockedBond<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, T::Balance, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn market_bond_lock)]
-    pub type MarketBondLock<T: Config> =
-        StorageMap<_, Blake2_128Concat, MarketId, T::Balance, OptionQuery>;
-
-    #[pallet::storage]
     pub type FeeCollectorOverride<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
-
-    #[pallet::storage]
-    pub type GovernanceBondMinimumOverride<T: Config> = StorageValue<_, T::Balance, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         pub fee_collector: Option<T::AccountId>,
-        pub governance_bond_minimum: Option<T::Balance>,
     }
 
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 fee_collector: None,
-                governance_bond_minimum: None,
             }
         }
     }
@@ -455,9 +425,6 @@ pub mod pallet {
         fn build(&self) {
             if let Some(ref account) = self.fee_collector {
                 FeeCollectorOverride::<T>::put(account.clone());
-            }
-            if let Some(value) = self.governance_bond_minimum {
-                GovernanceBondMinimumOverride::<T>::put(value);
             }
         }
     }
@@ -514,21 +481,8 @@ pub mod pallet {
             collateral_amount: T::Balance,
             xor_burned: T::Balance,
         },
-        GovernanceBonded {
-            who: T::AccountId,
-            amount: T::Balance,
-        },
-        GovernanceUnbonded {
-            who: T::AccountId,
-            amount: T::Balance,
-        },
         HollarRouted {
             user: T::AccountId,
-            amount: T::Balance,
-        },
-        MarketBondLockReleased {
-            market_id: MarketId,
-            creator: T::AccountId,
             amount: T::Balance,
         },
     }
@@ -548,9 +502,6 @@ pub mod pallet {
         MarketNotResolved,
         MetadataTooLong,
         SlippageToleranceExceeded,
-        GovernanceBondTooLow,
-        AccountNotBonded,
-        GovernanceBondLocked,
         NotConditionCreator,
         ConditionAlreadyUsed,
         InvalidMetadata,
@@ -571,7 +522,6 @@ pub mod pallet {
         #[transactional]
         pub fn create_condition(origin: OriginFor<T>, metadata: ConditionInput) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_authorized_creator(&who)?;
             let bounded = Self::validate_condition_metadata(metadata)?;
             Self::ensure_next_condition_id_available()?;
             Self::withdraw_creation_fee(&who)?;
@@ -610,7 +560,6 @@ pub mod pallet {
             seed_liquidity: T::Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            Self::ensure_authorized_creator(&who)?;
             ensure!(
                 Conditions::<T>::contains_key(condition_id),
                 Error::<T>::ConditionNotFound
@@ -638,7 +587,6 @@ pub mod pallet {
                     Ok(id)
                 })?;
 
-            Self::lock_creator_bond_for_market(&who, market_id)?;
             let deposited = Self::escrow_seed_liquidity(&who, seed_liquidity)?;
             let data = Market {
                 creator: who.clone(),
@@ -806,54 +754,6 @@ pub mod pallet {
             })
         }
 
-        /// Bond canonical stable as creator collateral.
-        #[pallet::call_index(7)]
-        #[pallet::weight(T::WeightInfo::bond_governance())]
-        pub fn bond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            let min_bond = Self::governance_bond_minimum();
-            ensure!(amount >= min_bond, Error::<T>::GovernanceBondTooLow);
-            let updated_bond = GovernanceBonds::<T>::get(&who)
-                .checked_add(&amount)
-                .ok_or(Error::<T>::Overflow)?;
-            let received =
-                Self::deposit_canonical(&who, &Self::creator_bond_escrow_account(), amount)?;
-            GovernanceBonds::<T>::insert(&who, updated_bond);
-            Self::deposit_event(Event::GovernanceBonded {
-                who,
-                amount: received,
-            });
-            Ok(())
-        }
-
-        /// Withdraw bonded creator collateral that is not locked by active markets.
-        #[pallet::call_index(8)]
-        #[pallet::weight(T::WeightInfo::unbond_governance())]
-        #[transactional]
-        pub fn unbond_governance(origin: OriginFor<T>, amount: T::Balance) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            ensure!(!amount.is_zero(), Error::<T>::InvalidCollateralAsset);
-            GovernanceBonds::<T>::try_mutate(&who, |bond| -> DispatchResult {
-                ensure!(*bond >= amount, Error::<T>::AccountNotBonded);
-                let remaining = bond.saturating_sub(amount);
-                ensure!(
-                    remaining >= CreatorLockedBond::<T>::get(&who),
-                    Error::<T>::GovernanceBondLocked
-                );
-                *bond = remaining;
-                Ok(())
-            })?;
-            T::Assets::transfer(
-                T::CanonicalStableAssetId::get(),
-                &Self::creator_bond_escrow_account(),
-                &who,
-                amount,
-            )?;
-            Self::deposit_event(Event::GovernanceUnbonded { who, amount });
-            Ok(())
-        }
-
         /// Resolve an expired market to YES or NO.
         #[pallet::call_index(20)]
         #[pallet::weight(T::WeightInfo::resolve_market())]
@@ -863,8 +763,7 @@ pub mod pallet {
             outcome: BinaryOutcome,
         ) -> DispatchResult {
             T::GovernanceOrigin::ensure_origin(origin)?;
-            let (market, _) = Self::ensure_market_can_finalize(market_id)?;
-            let creator = market.creator;
+            let _ = Self::ensure_market_can_finalize(market_id)?;
             with_storage_transaction(|| -> DispatchResult {
                 Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
                     let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
@@ -872,7 +771,6 @@ pub mod pallet {
                     Ok(())
                 })?;
                 MarketResolution::<T>::insert(market_id, outcome);
-                Self::unlock_market_bond(market_id, &creator)?;
                 Self::deposit_event(Event::MarketResolved { market_id, outcome });
                 Ok(())
             })
@@ -883,8 +781,7 @@ pub mod pallet {
         #[pallet::weight(T::WeightInfo::cancel_market())]
         pub fn cancel_market(origin: OriginFor<T>, market_id: MarketId) -> DispatchResult {
             T::GovernanceOrigin::ensure_origin(origin)?;
-            let (market, _) = Self::ensure_market_can_finalize(market_id)?;
-            let creator = market.creator;
+            let _ = Self::ensure_market_can_finalize(market_id)?;
             with_storage_transaction(|| -> DispatchResult {
                 Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
                     let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
@@ -892,7 +789,6 @@ pub mod pallet {
                     Ok(())
                 })?;
                 MarketResolution::<T>::remove(market_id);
-                Self::unlock_market_bond(market_id, &creator)?;
                 Self::deposit_event(Event::MarketCancelled { market_id });
                 Ok(())
             })
@@ -1016,14 +912,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         fn fee_collector_account() -> T::AccountId {
             FeeCollectorOverride::<T>::get().unwrap_or_else(T::FeeCollector::get)
-        }
-
-        fn creator_bond_escrow_account() -> T::AccountId {
-            T::CreatorBondEscrowAccount::get()
-        }
-
-        fn governance_bond_minimum() -> T::Balance {
-            GovernanceBondMinimumOverride::<T>::get().unwrap_or_else(T::GovernanceBondMinimum::get)
         }
 
         fn withdraw_creation_fee(who: &T::AccountId) -> DispatchResult {
@@ -1557,21 +1445,6 @@ pub mod pallet {
             Ok(pool.collateral.saturating_sub(locked))
         }
 
-        fn unlock_market_bond(market_id: MarketId, creator: &T::AccountId) -> DispatchResult {
-            let Some(amount) = MarketBondLock::<T>::take(market_id) else {
-                return Ok(());
-            };
-            CreatorLockedBond::<T>::mutate(creator, |locked| {
-                *locked = locked.saturating_sub(amount);
-            });
-            Self::deposit_event(Event::MarketBondLockReleased {
-                market_id,
-                creator: creator.clone(),
-                amount,
-            });
-            Ok(())
-        }
-
         fn div_ceil_u256(numerator: U256, denominator: U256) -> U256 {
             if numerator.is_zero() {
                 return U256::zero();
@@ -1582,15 +1455,6 @@ pub mod pallet {
         fn u256_to_balance(value: U256) -> Result<T::Balance, DispatchError> {
             let raw = u128::try_from(value).map_err(|_| Error::<T>::Overflow)?;
             Ok(raw.saturated_into::<T::Balance>())
-        }
-
-        fn ensure_authorized_creator(who: &T::AccountId) -> DispatchResult {
-            let min_bond = Self::governance_bond_minimum();
-            ensure!(
-                GovernanceBonds::<T>::get(who) >= min_bond,
-                Error::<T>::AccountNotBonded
-            );
-            Ok(())
         }
 
         fn validate_condition_metadata(
@@ -1646,27 +1510,6 @@ pub mod pallet {
                 .ok_or(Error::<T>::Overflow)?;
             Ok(())
         }
-
-        fn lock_creator_bond_for_market(
-            creator: &T::AccountId,
-            market_id: MarketId,
-        ) -> DispatchResult {
-            let lock_amount = Self::governance_bond_minimum();
-            if lock_amount.is_zero() {
-                return Ok(());
-            }
-            let total_locked = CreatorLockedBond::<T>::get(creator);
-            let required_locked = total_locked
-                .checked_add(&lock_amount)
-                .ok_or(Error::<T>::Overflow)?;
-            ensure!(
-                GovernanceBonds::<T>::get(creator) >= required_locked,
-                Error::<T>::GovernanceBondTooLow
-            );
-            CreatorLockedBond::<T>::insert(creator, required_locked);
-            MarketBondLock::<T>::insert(market_id, lock_amount);
-            Ok(())
-        }
     }
 }
 
@@ -1692,6 +1535,56 @@ pub mod migrations {
 
                 if on_chain < StorageVersion::new(2) {
                     StorageVersion::new(2).put::<Pallet<T>>();
+                    weight.saturating_accrue(db_weight.writes(1));
+                }
+
+                weight
+            }
+        }
+    }
+
+    pub mod v3 {
+        use super::super::*;
+        use frame_support::{
+            storage::{storage_prefix, unhashed},
+            traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion},
+        };
+        use sp_core::Get;
+
+        pub struct Migrate<T>(PhantomData<T>);
+
+        impl<T: Config> OnRuntimeUpgrade for Migrate<T> {
+            fn on_runtime_upgrade() -> Weight {
+                let db_weight = T::DbWeight::get();
+                let on_chain = Pallet::<T>::on_chain_storage_version();
+                let mut weight = db_weight.reads(1);
+
+                if on_chain < StorageVersion::new(3) {
+                    for storage_item in [
+                        b"GovernanceBonds".as_slice(),
+                        b"CreatorLockedBond".as_slice(),
+                        b"MarketBondLock".as_slice(),
+                    ] {
+                        let prefix = storage_prefix(b"Polkamarkt", storage_item);
+                        assert!(
+                            !unhashed::contains_prefixed_key(&prefix),
+                            "Polkamarkt v3 migration requires empty legacy governance bond storage"
+                        );
+                    }
+                    weight.saturating_accrue(db_weight.reads(3));
+
+                    for storage_item in [
+                        b"GovernanceBonds".as_slice(),
+                        b"CreatorLockedBond".as_slice(),
+                        b"MarketBondLock".as_slice(),
+                        b"GovernanceBondMinimumOverride".as_slice(),
+                    ] {
+                        let prefix = storage_prefix(b"Polkamarkt", storage_item);
+                        let removed = unhashed::clear_prefix(&prefix, None, None);
+                        weight.saturating_accrue(db_weight.writes(removed.unique.into()));
+                    }
+
+                    StorageVersion::new(3).put::<Pallet<T>>();
                     weight.saturating_accrue(db_weight.writes(1));
                 }
 

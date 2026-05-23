@@ -25,7 +25,6 @@ pub type BlockNumber = u64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const FEE_COLLECTOR: AccountId = 99;
-pub const MAINTENANCE_ACCOUNT: AccountId = 55;
 pub const CANONICAL_ASSET: AssetId = 0;
 pub const BUYBACK_ASSET: AssetId = 2;
 pub const USDC_ASSET: AssetId = 100;
@@ -47,8 +46,6 @@ parameter_types! {
     pub const MaxMetadataLengthConst: u32 = 128;
     pub const TradeFeeBpsConst: u32 = 50;
     pub const BuyBackAssetConst: AssetId = BUYBACK_ASSET;
-    pub const CreatorBondEscrowAccountConst: AccountId = MAINTENANCE_ACCOUNT;
-    pub const GovernanceBondMinimumConst: Balance = 1_000;
 }
 
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -110,12 +107,6 @@ impl crate::WeightInfo for TestWeightInfo {
         Weight::zero()
     }
     fn sync_market_status() -> Weight {
-        Weight::zero()
-    }
-    fn bond_governance() -> Weight {
-        Weight::zero()
-    }
-    fn unbond_governance() -> Weight {
         Weight::zero()
     }
     fn resolve_market() -> Weight {
@@ -189,8 +180,6 @@ impl pallet_polkamarkt::Config for Test {
     type MinMarketDuration = MinMarketDurationConst;
     type MaxMetadataLength = MaxMetadataLengthConst;
     type TradeFeeBps = TradeFeeBpsConst;
-    type GovernanceBondMinimum = GovernanceBondMinimumConst;
-    type CreatorBondEscrowAccount = CreatorBondEscrowAccountConst;
     type GovernanceOrigin = EnsureRoot<AccountId>;
 }
 
@@ -211,7 +200,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .expect("polkamarkt genesis build");
     let mut ext = sp_io::TestExternalities::new(t);
     ext.execute_with(|| {
-        frame_support::traits::StorageVersion::new(2).put::<crate::Pallet<Test>>();
+        frame_support::traits::StorageVersion::new(3).put::<crate::Pallet<Test>>();
     });
     ext
 }

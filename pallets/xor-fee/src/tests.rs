@@ -682,6 +682,44 @@ fn correct_and_deposit_fee_postponed_with_tip_withdraws_and_distributes() {
 }
 
 #[test]
+fn post_dispatch_burns_paid_xor_fee_from_total_issuance() {
+    ExtBuilder::build().execute_with(|| {
+        let who = bob();
+        let starting_balance = balance!(1000);
+        let len = 100usize;
+        let call = RuntimeCall::Assets(assets::Call::transfer {
+            to: alice(),
+            asset_id: common::VAL,
+            amount: 10,
+        });
+        let info = info_from_weight(100.into());
+        let post_info = post_info_from_weight(100.into());
+
+        set_weight_to_fee_multiplier(1);
+        let _ = Balances::deposit_creating(&who, starting_balance + Balances::minimum_balance());
+        let total_issuance_before_fee = Balances::total_issuance();
+
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&who, &call, &info, len)
+            .unwrap();
+        let fee = XorFee::compute_fee(len as u32, &call, &info, 0).0;
+
+        assert_eq!(Balances::total_issuance(), total_issuance_before_fee);
+
+        ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &info,
+            &post_info,
+            len,
+            &Ok(()),
+        )
+        .unwrap();
+
+        assert_eq!(Balances::total_issuance(), total_issuance_before_fee - fee);
+    });
+}
+
+#[test]
 fn post_dispatch_without_pre_is_noop() {
     ExtBuilder::build().execute_with(|| {
         let info = info_from_weight(100.into());
