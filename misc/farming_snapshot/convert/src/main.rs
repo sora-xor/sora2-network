@@ -38,7 +38,7 @@ fn parse_pools() -> HashMap<String, Vec<(String, u32)>> {
 fn convert_pools(
     pools: HashMap<String, Vec<(String, u32)>>,
 ) -> BTreeMap<AccountId32, Vec<(AccountId32, u32)>> {
-    sp_core::crypto::set_default_ss58_version(Ss58AddressFormat::Custom(69));
+    sp_core::crypto::set_default_ss58_version(Ss58AddressFormat::custom(69));
 
     pools
         .into_iter()
@@ -82,7 +82,7 @@ fn parse_rewards() -> HashMap<String, u128> {
 }
 
 fn convert_rewards(rewards: HashMap<String, u128>) -> Vec<(AccountId32, u128)> {
-    sp_core::crypto::set_default_ss58_version(Ss58AddressFormat::Custom(69));
+    sp_core::crypto::set_default_ss58_version(Ss58AddressFormat::custom(69));
 
     rewards
         .into_iter()

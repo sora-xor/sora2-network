@@ -95,7 +95,7 @@ sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", 
 sc-transaction-pool-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
 frame-remote-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
 finality-grandpa = "=0.16.3"
-substrate-bip39 = "=0.4.5"
+substrate-bip39 = "0.6.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Netlink-based watchers rely on Linux-specific libc types; keep them off macOS builds.
