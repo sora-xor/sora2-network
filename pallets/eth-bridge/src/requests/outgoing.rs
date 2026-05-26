@@ -194,6 +194,24 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Checks that the given asset can be transferred through the bridge.
     pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
+                self.network_id,
+                &self.asset_id
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
+        ensure!(
+            !crate::Pallet::<T>::is_deprecated_sidechain_token_mapping(
+                self.network_id,
+                &self.asset_id
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
+        ensure!(
+            !crate::Pallet::<T>::is_legacy_ethereum_xor_mapping(self.network_id, &self.asset_id),
+            Error::<T>::DeprecatedLegacyXor
+        );
         if let Some(kind) = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id) {
             if !kind.is_owned() {
                 let dust = self.sidechain_amount().map(|x| x.1)?;
@@ -424,6 +442,11 @@ impl<T: Config> OutgoingAddAsset<T> {
     pub fn validate(&self) -> Result<(), DispatchError> {
         Assets::<T>::ensure_asset_exists(&self.asset_id)?;
         ensure!(
+            self.network_id != T::GetEthNetworkId::get()
+                || !crate::Pallet::<T>::is_legacy_ethereum_xor_asset(&self.asset_id),
+            Error::<T>::DeprecatedLegacyXor
+        );
+        ensure!(
             crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
             Error::<T>::TokenIsAlreadyAdded
         );
@@ -591,6 +614,13 @@ impl<T: Config> OutgoingAddToken<T> {
 
     /// Checks that the asset isn't registered yet and the given symbol is valid.
     pub fn validate(&self) -> Result<(AssetSymbol, AssetName), DispatchError> {
+        ensure!(
+            !crate::Pallet::<T>::is_deprecated_sidechain_token(
+                self.network_id,
+                &self.token_address
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
         ensure!(
             self.decimals <= common::DEFAULT_BALANCE_PRECISION,
             Error::<T>::UnsupportedAssetPrecision
@@ -1326,11 +1356,8 @@ impl OutgoingMigrateEncoded {
 
 /// A helper structure used to add or remove peer on Ethereum network.
 ///
-/// On Ethereum network there are 3 bridge contracts: Main, XOR and VAL. Each of them has a set of
-/// peers' public keys that's need to be almost the same at any time (+- 1 signatory). To
-/// synchronize them, we use this structure, that contains the current readiness state of each
-/// contract. We add or remove peer only when all of them is in `true` state
-/// (see `EthPeersSync::is_ready`).
+/// On Ethereum network, legacy peer compatibility still applies to the Main and VAL contracts.
+/// The old XOR contract is deprecated and no longer gates peer readiness.
 #[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthPeersSync {
@@ -1341,7 +1368,7 @@ pub struct EthPeersSync {
 
 impl EthPeersSync {
     pub fn is_ready(&self) -> bool {
-        self.is_bridge_ready && self.is_xor_ready && self.is_val_ready
+        self.is_bridge_ready && self.is_val_ready
     }
 
     pub fn bridge_ready(&mut self) {

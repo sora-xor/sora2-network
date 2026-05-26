@@ -81,6 +81,17 @@ pub struct IncomingAddToken<T: Config> {
 }
 
 impl<T: Config> IncomingAddToken<T> {
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            !crate::Pallet::<T>::is_deprecated_sidechain_token(
+                self.network_id,
+                &self.token_address
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
+        Ok(())
+    }
+
     /// Registers the sidechain asset.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
         common::with_transaction(|| {
@@ -212,7 +223,16 @@ pub struct IncomingChangePeersCompat<T: Config> {
 }
 
 impl<T: Config> IncomingChangePeersCompat<T> {
+    pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            self.contract != ChangePeersContract::XOR,
+            Error::<T>::DeprecatedLegacyXor
+        );
+        Ok(())
+    }
+
     pub fn finalize(&self) -> Result<H256, DispatchError> {
+        self.validate()?;
         let pending_peer =
             crate::PendingPeer::<T>::get(self.network_id).ok_or(Error::<T>::NoPendingPeer)?;
         ensure!(
@@ -294,6 +314,24 @@ impl<T: Config> IncomingTransfer<T> {
     }
 
     pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
+                self.network_id,
+                &self.asset_id
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
+        ensure!(
+            !crate::Pallet::<T>::is_deprecated_sidechain_token_mapping(
+                self.network_id,
+                &self.asset_id
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
+        ensure!(
+            !crate::Pallet::<T>::is_legacy_ethereum_xor_mapping(self.network_id, &self.asset_id),
+            Error::<T>::DeprecatedLegacyXor
+        );
         if self.should_take_fee {
             let transfer_fee = Self::fee_amount();
             ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);

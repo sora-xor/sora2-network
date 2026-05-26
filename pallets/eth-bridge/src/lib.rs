@@ -190,6 +190,10 @@ pub const OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT: &str =
 pub const DEPOSIT_TOPIC: H256 = H256(hex!(
     "85c0fa492ded927d3acca961da52b0dda1debb06d8c27fe189315f06bb6e26c8"
 ));
+pub const LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS: EthAddress =
+    H160(hex!("40fd72257597aa14c7231a7b1aaa29fce868f677"));
+pub const LEGACY_ETHEREUM_XOR_MASTER_CONTRACT_ADDRESS: EthAddress =
+    H160(hex!("c08edf13be9b9cc584c5da8004ce7e6be63c1316"));
 pub const OFFCHAIN_TRANSACTION_WEIGHT_LIMIT: Weight =
     Weight::from_parts(10_000_000_000_000_000u64, 10_000_000_000_000_000u64);
 const MAX_PENDING_TX_BLOCKS_PERIOD: u32 = 100;
@@ -1143,6 +1147,15 @@ pub mod pallet {
             ensure_root(origin)?;
             T::AssetInfoProvider::ensure_asset_exists(&asset_id)?;
             ensure!(
+                network_id != T::GetEthNetworkId::get()
+                    || !Self::is_legacy_ethereum_xor_asset(&asset_id),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(
+                !Self::is_deprecated_sidechain_token(network_id, &token_address),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(
                 !RegisteredAsset::<T>::contains_key(network_id, &asset_id),
                 Error::<T>::TokenIsAlreadyAdded
             );
@@ -1394,6 +1407,8 @@ pub mod pallet {
         FailedToApplyDenomination,
         /// Asset can't be removed while it has active outgoing transfer requests.
         ActiveOutgoingTransferRequest,
+        /// Legacy Ethereum XOR must not be bridged or registered again.
+        DeprecatedLegacyXor,
     }
 
     impl<T: Config> Error<T> {
@@ -1532,6 +1547,23 @@ pub mod pallet {
         T::AssetId,
         EthAddress,
     >;
+
+    /// Sidechain tokens that must not be accepted again.
+    #[pallet::storage]
+    #[pallet::getter(fn deprecated_sidechain_token)]
+    pub(super) type DeprecatedSidechainTokens<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        BridgeNetworkId<T>,
+        Blake2_128Concat,
+        EthAddress,
+        bool,
+        ValueQuery,
+    >;
+
+    /// One-shot marker for the legacy Ethereum XOR decommissioning migration.
+    #[pallet::storage]
+    pub(super) type LegacyEthereumXorDecommissioned<T: Config> = StorageValue<_, bool, ValueQuery>;
 
     /// Network peers set.
     #[pallet::storage]
@@ -1930,6 +1962,48 @@ impl<T: Config> Pallet<T> {
         RequestApprovers::<T>::remove(network_id, hash);
     }
 
+    pub fn is_deprecated_sidechain_token(
+        network_id: T::NetworkId,
+        token_address: &EthAddress,
+    ) -> bool {
+        DeprecatedSidechainTokens::<T>::get(network_id, token_address)
+            || (network_id == T::GetEthNetworkId::get()
+                && *token_address == LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS)
+    }
+
+    pub fn is_legacy_ethereum_xor_asset(asset_id: &AssetIdOf<T>) -> bool {
+        *asset_id == common::XOR.into()
+    }
+
+    pub fn is_decommissioned_legacy_ethereum_xor_asset(
+        network_id: T::NetworkId,
+        asset_id: &AssetIdOf<T>,
+    ) -> bool {
+        network_id == T::GetEthNetworkId::get()
+            && LegacyEthereumXorDecommissioned::<T>::get()
+            && Self::is_legacy_ethereum_xor_asset(asset_id)
+    }
+
+    pub fn is_legacy_ethereum_xor_mapping(
+        network_id: T::NetworkId,
+        asset_id: &AssetIdOf<T>,
+    ) -> bool {
+        if network_id != T::GetEthNetworkId::get() || !Self::is_legacy_ethereum_xor_asset(asset_id)
+        {
+            return false;
+        }
+        Self::is_deprecated_sidechain_token_mapping(network_id, asset_id)
+    }
+
+    pub fn is_deprecated_sidechain_token_mapping(
+        network_id: T::NetworkId,
+        asset_id: &AssetIdOf<T>,
+    ) -> bool {
+        RegisteredSidechainToken::<T>::get(network_id, asset_id)
+            .map(|token| Self::is_deprecated_sidechain_token(network_id, &token))
+            .unwrap_or(false)
+    }
+
     /// Registers new sidechain asset and grants mint permission to the bridge account.
     fn register_sidechain_asset(
         token_address: EthAddress,
@@ -1938,6 +2012,10 @@ impl<T: Config> Pallet<T> {
         name: AssetName,
         network_id: T::NetworkId,
     ) -> Result<T::AssetId, DispatchError> {
+        ensure!(
+            !Self::is_deprecated_sidechain_token(network_id, &token_address),
+            Error::<T>::DeprecatedLegacyXor
+        );
         ensure!(
             RegisteredSidechainAsset::<T>::get(network_id, &token_address).is_none(),
             Error::<T>::TokenIsAlreadyAdded
@@ -2197,6 +2275,13 @@ impl<T: Config>
         let Ok(network_id) = Self::ensure_generic_network(network_id) else {
             return false;
         };
+        if network_id == T::GetEthNetworkId::get() && Self::is_legacy_ethereum_xor_asset(&asset_id)
+        {
+            return false;
+        }
+        if Self::is_deprecated_sidechain_token_mapping(network_id, &asset_id) {
+            return false;
+        }
         RegisteredAsset::<T>::contains_key(network_id, &asset_id)
     }
 
@@ -2245,9 +2330,19 @@ impl<T: Config>
             return vec![];
         };
         RegisteredAsset::<T>::iter_prefix(network_id)
-            .map(|(asset_id, _kind)| {
-                let evm_address =
-                    RegisteredSidechainToken::<T>::get(network_id, &asset_id).map(|x| H160(x.0));
+            .filter_map(|(asset_id, _kind)| {
+                if network_id == T::GetEthNetworkId::get() && asset_id == common::XOR.into() {
+                    return None;
+                }
+                let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id);
+                if token_address
+                    .as_ref()
+                    .map(|address| Self::is_deprecated_sidechain_token(network_id, address))
+                    .unwrap_or(false)
+                {
+                    return None;
+                }
+                let evm_address = token_address.map(|x| H160(x.0));
                 let precision = evm_address.map(|_address| {
                     let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
                     precision
@@ -2261,12 +2356,12 @@ impl<T: Config>
                     EVMAppKind::HashiBridge
                 };
 
-                BridgeAssetInfo::EVMLegacy(EVMLegacyAssetInfo {
+                Some(BridgeAssetInfo::EVMLegacy(EVMLegacyAssetInfo {
                     asset_id: asset_id.into(),
                     app_kind,
                     evm_address,
                     precision,
-                })
+                }))
             })
             .collect()
     }
@@ -2283,16 +2378,6 @@ impl<T: Config>
                 EVMAppInfo {
                     evm_address: bridge_address,
                     app_kind: EVMAppKind::HashiBridge,
-                },
-            );
-            apps.push(app);
-        }
-        if let Ok(xor_master) = XorMasterContractAddress::<T>::try_get() {
-            let app = BridgeAppInfo::EVM(
-                generic_network_id,
-                EVMAppInfo {
-                    evm_address: xor_master,
-                    app_kind: EVMAppKind::XorMaster,
                 },
             );
             apps.push(app);

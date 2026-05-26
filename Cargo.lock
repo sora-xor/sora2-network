@@ -1482,7 +1482,7 @@ checksum = "90dbd31c98227229239363921e60fcf5e558e43ec69094d46fc4996f08d1d5bc"
 dependencies = [
  "bitcoin_hashes",
  "rand 0.8.5",
- "rand_core 0.6.4",
+ "rand_core 0.5.1",
  "serde",
  "unicode-normalization",
 ]
@@ -5123,7 +5123,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.8.5"
+version = "4.8.6"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5160,6 +5160,7 @@ dependencies = [
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
+ "polkamarkt-rpc",
  "pswap-distribution-rpc",
  "rewards-rpc",
  "sc-basic-authorship",
@@ -5211,7 +5212,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.8.5"
+version = "4.8.6"
 dependencies = [
  "common",
  "faucet",
@@ -5242,7 +5243,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.8.5"
+version = "4.8.6"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -5334,6 +5335,7 @@ dependencies = [
  "pallet-preimage",
  "pallet-scheduler",
  "pallet-session",
+ "pallet-skip-feeless-payment",
  "pallet-staking",
  "pallet-sudo",
  "pallet-timestamp",
@@ -5345,6 +5347,7 @@ dependencies = [
  "parity-scale-codec",
  "parity-scale-codec-derive",
  "permissions",
+ "polkamarkt-runtime-api",
  "pool-xyk",
  "pool-xyk-benchmarking",
  "presto",
@@ -9550,6 +9553,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-skip-feeless-payment"
+version = "20.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2512-3#47f1ee9e5272eb9816561e502f93aa1e0d447856"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-staking"
 version = "45.1.0"
 source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2512-3#47f1ee9e5272eb9816561e502f93aa1e0d447856"
@@ -10385,6 +10400,30 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-primitives",
  "tracing-gum",
+]
+
+[[package]]
+name = "polkamarkt-rpc"
+version = "0.1.0"
+dependencies = [
+ "jsonrpsee",
+ "parity-scale-codec",
+ "polkamarkt-runtime-api",
+ "sp-api",
+ "sp-blockchain",
+ "sp-runtime",
+]
+
+[[package]]
+name = "polkamarkt-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-runtime",
 ]
 
 [[package]]

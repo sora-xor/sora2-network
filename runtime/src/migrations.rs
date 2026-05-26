@@ -59,11 +59,14 @@ pub type Migrations = (
     SubstrateBridgeInboundChannelStorageVersionV1,
     SubstrateBridgeOutboundChannelStorageVersionV1,
     BridgePeerIsolationAudit,
+    DecommissionLegacyEthereumXor,
     DemeterFarmingPlatformStorageVersionV3,
     pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
+    pallet_polkamarkt::migrations::v4::Migrate<crate::Runtime>,
     PrivateNetMigrations,
     WipMigrations,
+    xor_fee::migrations::v3::Migrate<crate::Runtime>,
 );
 
 pub type MultiBlockMigrations =
@@ -115,6 +118,25 @@ fn audit_bridge_peer_isolation() -> Result<(), TryRuntimeError> {
     multisig_verifier::Pallet::<crate::Runtime>::ensure_unique_substrate_peers()
         .map_err(|err| bridge_peer_audit_error("MultisigVerifier", err))?;
     Ok(())
+}
+
+#[cfg(feature = "try-runtime")]
+fn legacy_ethereum_xor_decommission_error(message: &'static str) -> TryRuntimeError {
+    TryRuntimeError::Other(message)
+}
+
+#[cfg(feature = "try-runtime")]
+fn audit_legacy_ethereum_xor_decommission_blockers() -> Result<(), TryRuntimeError> {
+    let blockers =
+        eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<crate::Runtime>();
+    if blockers == 0 {
+        Ok(())
+    } else {
+        Err(TryRuntimeError::Other(Box::leak(format!(
+            "legacy Ethereum XOR decommission blocked by {blockers} unsafe outgoing transfer requests"
+        )
+        .into_boxed_str())))
+    }
 }
 
 #[cfg(feature = "try-runtime")]
@@ -281,6 +303,32 @@ impl OnRuntimeUpgrade for BridgePeerIsolationAudit {
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
         audit_bridge_peer_isolation()
+    }
+}
+
+pub struct DecommissionLegacyEthereumXor;
+
+impl OnRuntimeUpgrade for DecommissionLegacyEthereumXor {
+    fn on_runtime_upgrade() -> Weight {
+        eth_bridge::migration::decommission_legacy_ethereum_xor::<crate::Runtime>()
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        audit_legacy_ethereum_xor_decommission_blockers()?;
+        Ok(Vec::new())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        audit_legacy_ethereum_xor_decommission_blockers()?;
+        if eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
+            Ok(())
+        } else {
+            Err(legacy_ethereum_xor_decommission_error(
+                "legacy Ethereum XOR was not decommissioned",
+            ))
+        }
     }
 }
 

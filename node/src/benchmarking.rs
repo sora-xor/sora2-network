@@ -12,8 +12,6 @@ use sc_client_api::BlockBackend;
 use sp_core::{sr25519, Pair};
 use sp_inherents::{InherentData, InherentDataProvider};
 use sp_keyring::Sr25519Keyring;
-#[allow(deprecated)]
-use sp_runtime::traits::transaction_extension::AsTransactionExtension;
 use sp_runtime::{generic, OpaqueExtrinsic, SaturatedConversion};
 
 use std::{sync::Arc, time::Duration};
@@ -120,10 +118,7 @@ pub fn create_benchmark_extrinsic(
     let best_hash = client.chain_info().best_hash;
     let best_block = client.chain_info().best_number;
     let period = runtime::BlockHashCount::get() as u64;
-    #[allow(deprecated)]
-    let charge_tx_payment = AsTransactionExtension(xor_fee::extension::ChargeTransactionPayment::<
-        runtime::Runtime,
-    >::new());
+    let charge_tx_payment = runtime::charge_tx_payment_extension();
     let extra: runtime::SignedExtra = (
         frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
         frame_system::CheckTxVersion::<runtime::Runtime>::new(),

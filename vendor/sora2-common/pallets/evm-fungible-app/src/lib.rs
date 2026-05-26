@@ -196,6 +196,8 @@ pub mod pallet {
         #[pallet::constant]
         type PriorityFee: Get<u128>;
 
+        type DeprecatedTokenAddress: Get<Option<(EVMChainId, H160)>>;
+
         type WeightInfo: WeightInfo;
     }
 
@@ -306,6 +308,7 @@ pub mod pallet {
         NotEnoughFeesCollected,
         BaseFeeIsNotAvailable,
         InvalidBaseFeeUpdate,
+        DeprecatedTokenAddress,
     }
 
     #[pallet::genesis_config]
@@ -367,6 +370,7 @@ pub mod pallet {
             else {
                 frame_support::fail!(DispatchError::BadOrigin);
             };
+            Self::ensure_token_address_allowed(network_id, token)?;
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
                 // should never return this error, because called from Ethereum
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -437,6 +441,7 @@ pub mod pallet {
             if additional.source != app_address {
                 return Err(DispatchError::BadOrigin);
             }
+            Self::ensure_token_address_allowed(network_id, contract)?;
 
             let asset_info = T::AssetRegistry::get_raw_info(asset_id.clone());
             Self::register_asset_inner(
@@ -482,6 +487,7 @@ pub mod pallet {
                 !AssetsByAddresses::<T>::contains_key(network_id, address),
                 Error::<T>::TokenAlreadyRegistered
             );
+            Self::ensure_token_address_allowed(network_id, address)?;
             let target =
                 AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
@@ -526,6 +532,7 @@ pub mod pallet {
                 !AssetsByAddresses::<T>::contains_key(network_id, address),
                 Error::<T>::TokenAlreadyRegistered
             );
+            Self::ensure_token_address_allowed(network_id, address)?;
             let target =
                 AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
@@ -599,6 +606,7 @@ pub mod pallet {
             sidechain_precision: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            Self::ensure_token_address_allowed(network_id, contract)?;
             ensure!(
                 !AppAddresses::<T>::contains_key(network_id),
                 Error::<T>::AppAlreadyRegistered
@@ -626,6 +634,7 @@ pub mod pallet {
             sidechain_precision: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            Self::ensure_token_address_allowed(network_id, contract)?;
             ensure!(
                 !AppAddresses::<T>::contains_key(network_id),
                 Error::<T>::AppAlreadyRegistered
@@ -692,6 +701,22 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        pub fn is_deprecated_token_address(network_id: EVMChainId, address: H160) -> bool {
+            T::DeprecatedTokenAddress::get()
+                .map(|(blocked_network_id, blocked_address)| {
+                    blocked_network_id == network_id && blocked_address == address
+                })
+                .unwrap_or(false)
+        }
+
+        fn ensure_token_address_allowed(network_id: EVMChainId, address: H160) -> DispatchResult {
+            ensure!(
+                !Self::is_deprecated_token_address(network_id, address),
+                Error::<T>::DeprecatedTokenAddress
+            );
+            Ok(())
+        }
+
         pub fn get_claim_prehashed_message(network_id: EVMChainId, who: &T::AccountId) -> H256 {
             sp_runtime::traits::Keccak256::hash_of(&(
                 "claim-relayer-fees",
@@ -731,6 +756,7 @@ pub mod pallet {
                 !TokenAddresses::<T>::contains_key(network_id, &asset_id),
                 Error::<T>::TokenAlreadyRegistered
             );
+            Self::ensure_token_address_allowed(network_id, contract)?;
             TokenAddresses::<T>::insert(network_id, &asset_id, contract);
             AssetsByAddresses::<T>::insert(network_id, contract, &asset_id);
             AssetKinds::<T>::insert(network_id, &asset_id, asset_kind);
@@ -766,6 +792,10 @@ pub mod pallet {
 
             ensure!(sidechain_amount > 0.into(), Error::<T>::WrongAmount);
 
+            let token_address = TokenAddresses::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            Self::ensure_token_address_allowed(network_id, token_address)?;
+
             T::BridgeAssetLocker::lock_asset(
                 network_id.into(),
                 asset_kind,
@@ -773,9 +803,6 @@ pub mod pallet {
                 &asset_id,
                 &amount,
             )?;
-
-            let token_address = TokenAddresses::<T>::get(network_id, &asset_id)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             let message = MintPayload {
                 token: token_address,

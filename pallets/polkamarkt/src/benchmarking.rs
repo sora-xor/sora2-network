@@ -26,6 +26,24 @@ fn default_condition_input<T: crate::Config>() -> ConditionInput {
     }
 }
 
+fn default_condition_details<T: crate::Config>() -> ConditionDetailsInput {
+    let metadata_len = T::MaxMetadataLength::get();
+    ConditionDetailsInput {
+        category: repeated_bytes(b'C', metadata_len),
+        tags: repeated_bytes(b'T', metadata_len),
+        metadata_uri: repeated_bytes(b'M', metadata_len),
+        metadata_hash: Some([7; 32]),
+        rules_uri: repeated_bytes(b'R', metadata_len),
+    }
+}
+
+fn default_evidence<T: crate::Config>() -> EvidenceInput {
+    EvidenceInput {
+        uri: repeated_bytes(b'E', T::MaxMetadataLength::get()),
+        hash: Some([9; 32]),
+    }
+}
+
 fn bench_balance<T>(amount: u32) -> BenchBalanceOf<T>
 where
     T: crate::Config,
@@ -170,6 +188,17 @@ mod benchmarks {
     }
 
     #[benchmark]
+    fn create_condition_with_details() {
+        let caller: T::AccountId = whitelisted_caller();
+        fund_canonical_fee::<T>(&caller);
+        let metadata = default_condition_input::<T>();
+        let details = default_condition_details::<T>();
+
+        #[extrinsic_call]
+        create_condition_with_details(RawOrigin::Signed(caller), metadata, details);
+    }
+
+    #[benchmark]
     fn create_market() {
         let caller: T::AccountId = whitelisted_caller();
         fund_canonical_fee::<T>(&caller);
@@ -229,6 +258,48 @@ mod benchmarks {
     }
 
     #[benchmark]
+    fn flip_position() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+        let trader: T::AccountId = account("trader", 0, 0);
+        mint_canonical_balance::<T>(&trader, bench_balance::<T>(20_000));
+        Pallet::<T>::buy(
+            RawOrigin::Signed(trader.clone()).into(),
+            0,
+            BinaryOutcome::Yes,
+            bench_balance::<T>(10_000),
+            BenchBalanceOf::<T>::zero(),
+        )
+        .expect("buy setup");
+
+        #[extrinsic_call]
+        flip_position(
+            RawOrigin::Signed(trader),
+            0,
+            BinaryOutcome::Yes,
+            bench_balance::<T>(5_000),
+            BenchBalanceOf::<T>::zero(),
+            BenchBalanceOf::<T>::zero(),
+        );
+    }
+
+    #[benchmark]
+    fn add_liquidity() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+        let provider: T::AccountId = account("provider", 0, 0);
+        mint_canonical_balance::<T>(&provider, bench_balance::<T>(20_000));
+
+        #[extrinsic_call]
+        add_liquidity(
+            RawOrigin::Signed(provider),
+            0,
+            bench_balance::<T>(10_000),
+            BenchBalanceOf::<T>::zero(),
+        );
+    }
+
+    #[benchmark]
     fn sync_market_status() {
         let caller: T::AccountId = whitelisted_caller();
         setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
@@ -251,6 +322,22 @@ mod benchmarks {
     }
 
     #[benchmark]
+    fn resolve_market_with_evidence() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+        let close = market_close_block::<T>();
+        <frame_system::Pallet<T>>::set_block_number(close);
+
+        #[extrinsic_call]
+        resolve_market_with_evidence(
+            RawOrigin::Root,
+            0,
+            BinaryOutcome::Yes,
+            default_evidence::<T>(),
+        );
+    }
+
+    #[benchmark]
     fn cancel_market() {
         let caller: T::AccountId = whitelisted_caller();
         setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
@@ -259,6 +346,15 @@ mod benchmarks {
 
         #[extrinsic_call]
         cancel_market(RawOrigin::Root, 0);
+    }
+
+    #[benchmark]
+    fn emergency_cancel_market() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+
+        #[extrinsic_call]
+        emergency_cancel_market(RawOrigin::Root, 0, default_evidence::<T>());
     }
 
     #[benchmark]
@@ -282,6 +378,55 @@ mod benchmarks {
 
         #[extrinsic_call]
         claim_market(RawOrigin::Signed(trader), 0);
+    }
+
+    #[benchmark]
+    fn claim_markets(n: Linear<1, { T::MaxBatchClaims::get() }>) {
+        let caller: T::AccountId = whitelisted_caller();
+        let trader: T::AccountId = account("trader", 0, 0);
+        let batch = n;
+        let seed = bench_balance::<T>(10_000);
+        let stake = bench_balance::<T>(1_000);
+        let mut market_ids = Vec::new();
+        for market_id in 0..batch {
+            fund_canonical_fee::<T>(&caller);
+            mint_canonical_balance::<T>(&caller, seed);
+            mint_canonical_balance::<T>(&trader, stake);
+            Pallet::<T>::create_condition(
+                RawOrigin::Signed(caller.clone()).into(),
+                default_condition_input::<T>(),
+            )
+            .expect("condition setup");
+            let close = <frame_system::Pallet<T>>::block_number()
+                + T::MinMarketDuration::get()
+                + BlockNumberFor::<T>::one();
+            Pallet::<T>::create_market(
+                RawOrigin::Signed(caller.clone()).into(),
+                market_id,
+                close,
+                seed,
+            )
+            .expect("market setup");
+            Pallet::<T>::buy(
+                RawOrigin::Signed(trader.clone()).into(),
+                market_id,
+                BinaryOutcome::Yes,
+                stake,
+                BenchBalanceOf::<T>::zero(),
+            )
+            .expect("buy setup");
+            market_ids.push(market_id);
+        }
+        let close = market_close_block::<T>();
+        <frame_system::Pallet<T>>::set_block_number(close);
+        for market_id in 0..batch {
+            Pallet::<T>::resolve_market(RawOrigin::Root.into(), market_id, BinaryOutcome::Yes)
+                .expect("resolve setup");
+        }
+        let market_ids = market_ids.try_into().ok().expect("bounded batch");
+
+        #[extrinsic_call]
+        claim_markets(RawOrigin::Signed(trader), market_ids);
     }
 
     #[benchmark]
@@ -314,6 +459,28 @@ mod benchmarks {
 
         #[extrinsic_call]
         claim_creator_liquidity(RawOrigin::Signed(caller), 0);
+    }
+
+    #[benchmark]
+    fn claim_liquidity() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+        let provider: T::AccountId = account("provider", 0, 0);
+        mint_canonical_balance::<T>(&provider, bench_balance::<T>(20_000));
+        Pallet::<T>::add_liquidity(
+            RawOrigin::Signed(provider.clone()).into(),
+            0,
+            bench_balance::<T>(10_000),
+            BenchBalanceOf::<T>::zero(),
+        )
+        .expect("liquidity setup");
+        let close = market_close_block::<T>();
+        <frame_system::Pallet<T>>::set_block_number(close);
+        Pallet::<T>::resolve_market(RawOrigin::Root.into(), 0, BinaryOutcome::Yes)
+            .expect("resolve setup");
+
+        #[extrinsic_call]
+        claim_liquidity(RawOrigin::Signed(provider), 0, BenchBalanceOf::<T>::zero());
     }
 
     #[benchmark]

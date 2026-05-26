@@ -150,6 +150,7 @@ where
         ContentSource,
         Description,
     >,
+    C::Api: polkamarkt_rpc::PolkamarktRuntimeAPI<Block, AccountId, Balance>,
     C::Api: liquidity_proxy_rpc::LiquidityProxyRuntimeAPI<
         Block,
         DEXId,
@@ -203,6 +204,7 @@ where
     use mmr_rpc::{Mmr, MmrApiServer};
     use oracle_proxy_rpc::{OracleProxyApiServer, OracleProxyClient};
     use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
+    use polkamarkt_rpc::{PolkamarktAPIServer, PolkamarktClient};
     use pswap_distribution_rpc::{PswapDistributionAPIServer, PswapDistributionClient};
     use rewards_rpc::{RewardsAPIServer, RewardsClient};
     use substrate_frame_rpc_system::{System, SystemApiServer};
@@ -237,6 +239,7 @@ where
     io.merge(DEXManager::new(client.clone()).into_rpc())?;
     io.merge(TradingPairClient::new(client.clone()).into_rpc())?;
     io.merge(AssetsClient::new(client.clone()).into_rpc())?;
+    io.merge(PolkamarktClient::new(client.clone()).into_rpc())?;
     io.merge(LiquidityProxyClient::new(client.clone()).into_rpc())?;
     io.merge(OracleProxyClient::new(client.clone()).into_rpc())?;
     io.merge(EthBridgeRpc::new(client.clone()).into_rpc())?;

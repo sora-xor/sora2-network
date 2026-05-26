@@ -341,6 +341,10 @@ impl<T: Config> Pallet<T> {
         token_address: &EthAddress,
         network_id: T::NetworkId,
     ) -> Result<Option<(T::AssetId, AssetKind)>, Error<T>> {
+        ensure!(
+            !Self::is_deprecated_sidechain_token(network_id, token_address),
+            Error::<T>::DeprecatedLegacyXor
+        );
         let is_sidechain_token = raw_asset_id == H256::zero();
         if is_sidechain_token {
             let asset_id = match Self::registered_sidechain_asset(network_id, &token_address) {
@@ -424,9 +428,6 @@ impl<T: Config> Pallet<T> {
                 _,
             ) => {
                 let contract = match tx.to {
-                    Some(x) if x.0 == Self::xor_master_contract_address().0 => {
-                        ChangePeersContract::XOR
-                    }
                     Some(x) if x.0 == Self::val_master_contract_address().0 => {
                         ChangePeersContract::VAL
                     }
@@ -489,7 +490,6 @@ impl<T: Config> Pallet<T> {
         if network_id == T::GetEthNetworkId::get() {
             ensure!(
                 to == BridgeContractAddress::<T>::get(network_id)
-                    || to == Self::xor_master_contract_address()
                     || to == Self::val_master_contract_address(),
                 Error::<T>::UnknownContractAddress
             );

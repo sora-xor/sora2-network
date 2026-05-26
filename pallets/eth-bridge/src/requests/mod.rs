@@ -489,13 +489,13 @@ impl<T: Config> IncomingRequest<T> {
     pub fn validate(&self) -> Result<(), DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.validate(),
-            IncomingRequest::AddToken(_request) => Ok(()),
+            IncomingRequest::AddToken(request) => request.validate(),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
             IncomingRequest::MarkAsDone(request) => request.validate(),
             IncomingRequest::PrepareForMigration(_request) => Ok(()),
             IncomingRequest::Migrate(_request) => Ok(()),
-            IncomingRequest::ChangePeersCompat(_request) => Ok(()),
+            IncomingRequest::ChangePeersCompat(request) => request.validate(),
         }
     }
 

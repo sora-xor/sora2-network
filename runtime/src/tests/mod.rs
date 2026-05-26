@@ -261,7 +261,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         pallet_polkamarkt::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(2)
+        StorageVersion::new(4)
     );
     assert_eq!(
         vested_rewards::Pallet::<crate::Runtime>::in_code_storage_version(),
@@ -279,15 +279,9 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
         substrate_bridge_channel::outbound::Pallet::<crate::Runtime>::in_code_storage_version(),
         StorageVersion::new(1)
     );
-    #[cfg(feature = "wip")]
     assert_eq!(
         ::xor_fee::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(2)
-    );
-    #[cfg(not(feature = "wip"))]
-    assert_eq!(
-        ::xor_fee::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(1)
+        StorageVersion::new(3)
     );
 }
 
@@ -620,6 +614,72 @@ pub(crate) fn bridge_peer_isolation_audit_try_runtime_hooks() {
         );
 
         assert!(crate::migrations::BridgePeerIsolationAudit::pre_upgrade().is_err());
+    });
+}
+
+#[cfg(feature = "try-runtime")]
+pub(crate) fn legacy_ethereum_xor_decommission_try_runtime_hooks() {
+    use eth_bridge::requests::{OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus};
+
+    ext().execute_with(|| {
+        let state = crate::migrations::DecommissionLegacyEthereumXor::pre_upgrade().unwrap();
+        crate::migrations::DecommissionLegacyEthereumXor::on_runtime_upgrade();
+        crate::migrations::DecommissionLegacyEthereumXor::post_upgrade(state).unwrap();
+    });
+
+    ext().execute_with(|| {
+        let net_id = crate::GetEthNetworkId::get();
+        let request = OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer::<
+            crate::Runtime,
+        > {
+            from: alice(),
+            to: sp_core::H160::from([7; 20]),
+            asset_id: XOR.into(),
+            amount: 1,
+            nonce: 1,
+            network_id: net_id,
+            timepoint: Default::default(),
+        }));
+        let request_hash = sp_core::H256::repeat_byte(42);
+        eth_bridge::Requests::<crate::Runtime>::insert(net_id, request_hash, request);
+        eth_bridge::RequestStatuses::<crate::Runtime>::insert(
+            net_id,
+            request_hash,
+            RequestStatus::ApprovalsReady,
+        );
+        eth_bridge::RequestsQueue::<crate::Runtime>::mutate(net_id, |queue| {
+            queue.push(request_hash)
+        });
+
+        assert!(eth_bridge::Requests::<crate::Runtime>::contains_key(
+            net_id,
+            request_hash
+        ));
+        assert_eq!(
+            eth_bridge::RequestStatuses::<crate::Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::ApprovalsReady)
+        );
+        assert!(matches!(
+            eth_bridge::Requests::<crate::Runtime>::get(net_id, request_hash),
+            Some(OffchainRequest::Outgoing(
+                OutgoingRequest::Transfer(OutgoingTransfer { asset_id, .. }),
+                _
+            )) if asset_id == XOR.into()
+        ));
+        assert_eq!(
+            eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<crate::Runtime>(),
+            1
+        );
+        assert!(crate::migrations::DecommissionLegacyEthereumXor::pre_upgrade().is_err());
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            crate::migrations::DecommissionLegacyEthereumXor::on_runtime_upgrade();
+        }));
+        assert!(result.is_err());
+        assert!(!eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>());
+        assert_eq!(
+            eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<crate::Runtime>(),
+            1
+        );
     });
 }
 

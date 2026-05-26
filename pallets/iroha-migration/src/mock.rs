@@ -71,6 +71,7 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
     pub const GetBaseAssetId: AssetId32<PredefinedAssetId> = AssetId32::from_asset_id(XOR);
+    pub const MigrationGenesisHash: sp_core::H256 = sp_core::H256([42; 32]);
 }
 
 construct_runtime!(
@@ -109,6 +110,7 @@ parameter_types! {
 
 impl Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type MigrationGenesisHash = MigrationGenesisHash;
     type WeightInfo = ();
 }
 

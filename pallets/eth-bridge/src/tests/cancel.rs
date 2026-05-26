@@ -269,7 +269,7 @@ fn should_cancel_outgoing_prepared_requests() {
             AssetConfig::Thischain { id: PSWAP.into() },
             AssetConfig::Sidechain {
                 id: XOR.into(),
-                sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+                sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                     .unwrap(),
                 owned: true,
                 precision: DEFAULT_BALANCE_PRECISION,

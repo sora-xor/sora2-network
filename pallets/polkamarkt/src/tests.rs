@@ -1,7 +1,9 @@
 use crate::{
-    BinaryOutcome, ConditionCreators, ConditionInput, ConditionMarket, Error, Event,
-    MarketCreatorFees, MarketPools, MarketPositionTotals, MarketPositions, MarketResolution,
-    MarketStatus, PendingXorBuybackCollateral,
+    BinaryOutcome, ConditionCreators, ConditionDetails, ConditionDetailsInput, ConditionInput,
+    ConditionMarket, Error, Event, EvidenceInput, LiquidityPosition, LiquidityPositionTotals,
+    LiquidityPositions, LiquidityTotals, Market, MarketCancellationEvidence, MarketCreatorFees,
+    MarketPools, MarketPositionTotals, MarketPositions, MarketResolution, MarketResolutionEvidence,
+    MarketStatus, Markets, PendingXorBuybackCollateral,
 };
 use frame_support::{
     assert_noop, assert_ok,
@@ -15,7 +17,7 @@ use super::mock::*;
 use super::mock::{
     balance_of, last_buyback_call, new_test_ext, run_to_block, xor_burned, BlockNumber,
     MinCreationFeeConst, RuntimeEvent, RuntimeOrigin, TradeFeeBpsConst, BUYBACK_ASSET,
-    CANONICAL_ASSET, FEE_COLLECTOR, USDC_ASSET,
+    CANONICAL_ASSET, FEE_COLLECTOR, LEGACY_BOND_ESCROW, USDC_ASSET,
 };
 
 type Polkamarkt = crate::Pallet<Test>;
@@ -739,6 +741,494 @@ fn buy_updates_pool_positions_and_fee_buckets() {
 }
 
 #[test]
+fn runtime_quote_buy_returns_fee_pricing_and_shares() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let collateral_in = 10_000;
+        let fee = trade_fee(collateral_in);
+        let pricing_input = collateral_in - fee;
+        let pool = MarketPools::<Test>::get(0).expect("pool");
+
+        let quote =
+            Polkamarkt::quote_buy_market(0, BinaryOutcome::Yes, collateral_in).expect("quote");
+
+        assert_eq!(quote.market_id, 0);
+        assert_eq!(quote.outcome, BinaryOutcome::Yes);
+        assert_eq!(quote.collateral_in, collateral_in);
+        assert_eq!(quote.fee_amount, fee);
+        assert_eq!(quote.pricing_collateral, pricing_input);
+        assert_eq!(
+            quote.shares_out,
+            Polkamarkt::quote_buy(&pool, BinaryOutcome::Yes, pricing_input).expect("raw quote")
+        );
+    });
+}
+
+#[test]
+fn runtime_quote_sell_returns_gross_fee_and_net_collateral() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let shares_in = 1_000;
+        let pool = MarketPools::<Test>::get(0).expect("pool");
+        let gross = Polkamarkt::quote_sell(&pool, BinaryOutcome::No, shares_in).expect("raw quote");
+        let fee = trade_fee(gross);
+
+        let quote = Polkamarkt::quote_sell_market(0, BinaryOutcome::No, shares_in).expect("quote");
+
+        assert_eq!(quote.market_id, 0);
+        assert_eq!(quote.outcome, BinaryOutcome::No);
+        assert_eq!(quote.shares_in, shares_in);
+        assert_eq!(quote.gross_collateral_out, gross);
+        assert_eq!(quote.fee_amount, fee);
+        assert_eq!(quote.collateral_out, gross - fee);
+    });
+}
+
+#[test]
+fn runtime_quote_add_liquidity_matches_minted_lp_shares() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+
+        let quote = Polkamarkt::quote_add_liquidity_market(0, 25_000).expect("quote");
+        assert_eq!(quote.market_id, 0);
+        assert_eq!(quote.collateral_in, 25_000);
+        assert!(quote.lp_shares_out > 0);
+        assert_eq!(
+            quote.pool_collateral,
+            MarketPools::<Test>::get(0).expect("pool").collateral
+        );
+        assert_eq!(
+            quote.total_lp_shares,
+            LiquidityPositionTotals::<Test>::get(0).total_shares
+        );
+
+        assert_ok!(Polkamarkt::add_liquidity(
+            RuntimeOrigin::signed(BOB),
+            0,
+            25_000,
+            quote.lp_shares_out,
+        ));
+        assert_eq!(
+            LiquidityPositions::<Test>::get(0, BOB)
+                .expect("bob lp")
+                .shares,
+            quote.lp_shares_out
+        );
+    });
+}
+
+#[test]
+fn runtime_quote_flip_matches_atomic_flip_outputs() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        let shares_in = MarketPositions::<Test>::get(0, BOB)
+            .expect("position")
+            .yes_shares
+            / 2;
+        let quote =
+            Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, shares_in)
+                .expect("quote");
+
+        assert_eq!(quote.from_outcome, BinaryOutcome::Yes);
+        assert_eq!(quote.to_outcome, BinaryOutcome::No);
+        assert!(quote.collateral_reinvested > 0);
+        assert!(quote.shares_out > 0);
+
+        assert_ok!(Polkamarkt::flip_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            shares_in,
+            quote.collateral_reinvested,
+            quote.shares_out,
+        ));
+        let position = MarketPositions::<Test>::get(0, BOB).expect("flipped position");
+        assert_eq!(position.no_shares, quote.shares_out);
+        assert!(position.yes_shares > 0);
+        assert!(System::<Test>::events().iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::PositionFlipped { market_id, trader, from_outcome, to_outcome, shares_out, .. })
+                    if market_id == 0
+                        && trader == BOB
+                        && from_outcome == BinaryOutcome::Yes
+                        && to_outcome == BinaryOutcome::No
+                        && shares_out == quote.shares_out
+            )
+        }));
+    });
+}
+
+#[test]
+fn flip_quote_rejects_bad_inputs_without_mutating_market_state() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        let pool_before = MarketPools::<Test>::get(0);
+        let position_before = MarketPositions::<Test>::get(0, BOB);
+        let totals_before = MarketPositionTotals::<Test>::get(0);
+        let creator_fees_before = MarketCreatorFees::<Test>::get(0);
+        let buyback_before = PendingXorBuybackCollateral::<Test>::get();
+        let volume_before = crate::MarketVolume::<Test>::get(0);
+
+        assert_noop!(
+            Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, 0),
+            Error::<Test>::InvalidTradeAmount
+        );
+
+        MarketPools::<Test>::remove(0);
+        assert_noop!(
+            Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, 1),
+            Error::<Test>::MarketUnknown
+        );
+        MarketPools::<Test>::insert(0, pool_before.clone().expect("pool"));
+
+        MarketPools::<Test>::mutate(0, |pool| {
+            pool.as_mut().expect("pool").collateral = 0;
+        });
+        assert_noop!(
+            Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, 1_000),
+            Error::<Test>::Overflow
+        );
+
+        MarketPools::<Test>::insert(0, pool_before.clone().expect("pool"));
+        assert_eq!(MarketPools::<Test>::get(0), pool_before);
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), position_before);
+        assert_eq!(MarketPositionTotals::<Test>::get(0), totals_before);
+        assert_eq!(MarketCreatorFees::<Test>::get(0), creator_fees_before);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), buyback_before);
+        assert_eq!(crate::MarketVolume::<Test>::get(0), volume_before);
+    });
+}
+
+#[test]
+fn flip_position_rejects_bad_amounts_sides_and_slippage_without_mutation() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        let position = MarketPositions::<Test>::get(0, BOB).expect("position");
+        let pool_before = MarketPools::<Test>::get(0);
+        let totals_before = MarketPositionTotals::<Test>::get(0);
+        let creator_fees_before = MarketCreatorFees::<Test>::get(0);
+        let buyback_before = PendingXorBuybackCollateral::<Test>::get();
+        let volume_before = crate::MarketVolume::<Test>::get(0);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
+
+        assert_noop!(
+            Polkamarkt::flip_position(RuntimeOrigin::signed(BOB), 0, BinaryOutcome::Yes, 0, 0, 0),
+            Error::<Test>::InvalidTradeAmount
+        );
+        assert_noop!(
+            Polkamarkt::flip_position(RuntimeOrigin::signed(BOB), 0, BinaryOutcome::No, 1, 0, 0),
+            Error::<Test>::InsufficientShares
+        );
+        assert_noop!(
+            Polkamarkt::flip_position(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                position.yes_shares + 1,
+                0,
+                0
+            ),
+            Error::<Test>::InsufficientShares
+        );
+        assert_noop!(
+            Polkamarkt::flip_position(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                1_000,
+                Balance::MAX,
+                0
+            ),
+            Error::<Test>::SlippageToleranceExceeded
+        );
+        assert_noop!(
+            Polkamarkt::flip_position(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                1_000,
+                0,
+                Balance::MAX
+            ),
+            Error::<Test>::SlippageToleranceExceeded
+        );
+
+        assert_eq!(MarketPools::<Test>::get(0), pool_before);
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), Some(position));
+        assert_eq!(MarketPositionTotals::<Test>::get(0), totals_before);
+        assert_eq!(MarketCreatorFees::<Test>::get(0), creator_fees_before);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), buyback_before);
+        assert_eq!(crate::MarketVolume::<Test>::get(0), volume_before);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert_eq!(
+            balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
+            pallet_before
+        );
+    });
+}
+
+#[test]
+fn failed_flip_does_not_emit_trade_or_flip_events_or_accrue_accounting() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        let position_before = MarketPositions::<Test>::get(0, BOB).expect("position");
+        let pool_before = MarketPools::<Test>::get(0);
+        let totals_before = MarketPositionTotals::<Test>::get(0);
+        let creator_fees_before = MarketCreatorFees::<Test>::get(0);
+        let buyback_before = PendingXorBuybackCollateral::<Test>::get();
+        let volume_before = crate::MarketVolume::<Test>::get(0);
+        let events_before = System::<Test>::events().len();
+
+        assert_noop!(
+            Polkamarkt::flip_position(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                position_before.yes_shares / 2,
+                Balance::MAX,
+                Balance::MAX
+            ),
+            Error::<Test>::SlippageToleranceExceeded
+        );
+
+        assert_eq!(MarketPools::<Test>::get(0), pool_before);
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), Some(position_before));
+        assert_eq!(MarketPositionTotals::<Test>::get(0), totals_before);
+        assert_eq!(MarketCreatorFees::<Test>::get(0), creator_fees_before);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), buyback_before);
+        assert_eq!(crate::MarketVolume::<Test>::get(0), volume_before);
+        assert_eq!(System::<Test>::events().len(), events_before);
+    });
+}
+
+#[test]
+fn flip_position_rolls_back_when_sell_debit_or_buy_credit_accounting_fails() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        let shares_in = 1_000;
+        MarketPositionTotals::<Test>::mutate(0, |totals| {
+            totals.total_yes_shares = shares_in - 1;
+        });
+        let pool_before = MarketPools::<Test>::get(0);
+        let position_before = MarketPositions::<Test>::get(0, BOB);
+        let totals_before = MarketPositionTotals::<Test>::get(0);
+        let creator_fees_before = MarketCreatorFees::<Test>::get(0);
+        let buyback_before = PendingXorBuybackCollateral::<Test>::get();
+        let volume_before = crate::MarketVolume::<Test>::get(0);
+
+        assert_noop!(
+            Polkamarkt::flip_position(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                shares_in,
+                0,
+                0
+            ),
+            Error::<Test>::Overflow
+        );
+
+        assert_eq!(MarketPools::<Test>::get(0), pool_before);
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), position_before);
+        assert_eq!(MarketPositionTotals::<Test>::get(0), totals_before);
+        assert_eq!(MarketCreatorFees::<Test>::get(0), creator_fees_before);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), buyback_before);
+        assert_eq!(crate::MarketVolume::<Test>::get(0), volume_before);
+
+        MarketPositionTotals::<Test>::mutate(0, |totals| {
+            totals.total_yes_shares = position_before.as_ref().expect("position").yes_shares;
+            totals.total_no_shares = Balance::MAX;
+        });
+        MarketPositions::<Test>::mutate(0, BOB, |position| {
+            let position = position.as_mut().expect("position");
+            position.no_shares = Balance::MAX;
+        });
+        let pool_before = MarketPools::<Test>::get(0);
+        let position_before = MarketPositions::<Test>::get(0, BOB);
+        let totals_before = MarketPositionTotals::<Test>::get(0);
+        let creator_fees_before = MarketCreatorFees::<Test>::get(0);
+        let buyback_before = PendingXorBuybackCollateral::<Test>::get();
+        let volume_before = crate::MarketVolume::<Test>::get(0);
+
+        assert_noop!(
+            Polkamarkt::flip_position(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                shares_in,
+                0,
+                0
+            ),
+            Error::<Test>::Overflow
+        );
+
+        assert_eq!(MarketPools::<Test>::get(0), pool_before);
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), position_before);
+        assert_eq!(MarketPositionTotals::<Test>::get(0), totals_before);
+        assert_eq!(MarketCreatorFees::<Test>::get(0), creator_fees_before);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), buyback_before);
+        assert_eq!(crate::MarketVolume::<Test>::get(0), volume_before);
+    });
+}
+
+#[test]
+fn flip_position_does_not_move_external_asset_balances() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        let shares_in = 1_000;
+        let quote = Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, shares_in)
+            .expect("quote");
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
+        let fee_collector_before = balance_of(FEE_COLLECTOR, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::flip_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            shares_in,
+            quote.collateral_reinvested,
+            quote.shares_out,
+        ));
+
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert_eq!(
+            balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
+            pallet_before
+        );
+        assert_eq!(
+            balance_of(FEE_COLLECTOR, CANONICAL_ASSET),
+            fee_collector_before
+        );
+    });
+}
+
+#[test]
+fn runtime_quotes_reject_non_open_or_unknown_markets_without_status_mutation() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        run_to_block(10);
+
+        assert_noop!(
+            Polkamarkt::quote_buy_market(0, BinaryOutcome::Yes, 10_000),
+            Error::<Test>::MarketNotOpen
+        );
+        assert_noop!(
+            Polkamarkt::quote_sell_market(0, BinaryOutcome::Yes, 100),
+            Error::<Test>::MarketNotOpen
+        );
+        assert_noop!(
+            Polkamarkt::quote_add_liquidity_market(0, 10_000),
+            Error::<Test>::MarketNotOpen
+        );
+        assert_noop!(
+            Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, 100),
+            Error::<Test>::MarketNotOpen
+        );
+        assert_noop!(
+            Polkamarkt::quote_buy_market(77, BinaryOutcome::Yes, 10_000),
+            Error::<Test>::MarketUnknown
+        );
+        assert_eq!(
+            crate::Markets::<Test>::get(0).unwrap().status,
+            MarketStatus::Open
+        );
+    });
+}
+
+#[test]
+fn runtime_claimable_reports_trader_and_creator_balances() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            10_000,
+            0,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+
+        let trader = Polkamarkt::claimable_info(BOB, 0).expect("trader claimable");
+        let position = MarketPositions::<Test>::get(0, BOB).expect("position");
+        assert_eq!(trader.status, MarketStatus::Resolved);
+        assert_eq!(trader.resolution_outcome, Some(BinaryOutcome::Yes));
+        assert_eq!(trader.yes_shares, position.yes_shares);
+        assert_eq!(trader.trader_payout, position.yes_shares);
+        assert_eq!(trader.creator_fees, 0);
+        assert!(!trader.is_creator);
+
+        let creator = Polkamarkt::claimable_info(ALICE, 0).expect("creator claimable");
+        assert_eq!(creator.status, MarketStatus::Resolved);
+        assert_eq!(creator.resolution_outcome, Some(BinaryOutcome::Yes));
+        assert_eq!(creator.creator_fees, MarketCreatorFees::<Test>::get(0));
+        assert!(creator.creator_liquidity > 0);
+        assert!(creator.is_creator);
+
+        assert_noop!(
+            Polkamarkt::claimable_info(BOB, 77),
+            Error::<Test>::MarketUnknown
+        );
+    });
+}
+
+#[test]
 fn fee_and_volume_counters_saturate_on_buy() {
     new_test_ext().execute_with(|| {
         setup_market(100_000, 10);
@@ -1049,6 +1539,10 @@ fn unknown_market_paths_do_not_create_or_mutate_state() {
             Error::<Test>::MarketUnknown
         );
         assert_noop!(
+            Polkamarkt::flip_position(RuntimeOrigin::signed(BOB), 77, BinaryOutcome::Yes, 1, 0, 0),
+            Error::<Test>::MarketUnknown
+        );
+        assert_noop!(
             Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 77),
             Error::<Test>::MarketUnknown
         );
@@ -1148,6 +1642,10 @@ fn signed_extrinsics_reject_bad_origins_without_touching_market_state() {
         );
         assert_noop!(
             Polkamarkt::sell(RuntimeOrigin::root(), 0, BinaryOutcome::Yes, 1, 0),
+            DispatchError::BadOrigin
+        );
+        assert_noop!(
+            Polkamarkt::flip_position(RuntimeOrigin::root(), 0, BinaryOutcome::Yes, 1, 0, 0),
             DispatchError::BadOrigin
         );
         assert_noop!(
@@ -2647,6 +3145,40 @@ fn v2_migration_at_v2_clears_legacy_prefix_without_bumping_version() {
 }
 
 #[test]
+fn v2_migration_exact_cap_clears_all_legacy_opengov_entries() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(1).put::<Polkamarkt>();
+        let prefix = storage_prefix(b"Polkamarkt", b"OpengovConditions");
+        for i in 0..crate::migrations::MAX_LEGACY_OPENGOV_CONDITIONS {
+            let mut key = prefix.to_vec();
+            key.extend_from_slice(&i.to_le_bytes());
+            unhashed::put_raw(&key, b"legacy-condition");
+        }
+
+        let _ = crate::migrations::v2::Migrate::<Test>::on_runtime_upgrade();
+
+        assert!(!unhashed::contains_prefixed_key(&prefix));
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(2));
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration OpengovConditions exceeds limit 1024")]
+fn v2_migration_panics_when_legacy_opengov_prefix_exceeds_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(1).put::<Polkamarkt>();
+        let prefix = storage_prefix(b"Polkamarkt", b"OpengovConditions");
+        for i in 0..=crate::migrations::MAX_LEGACY_OPENGOV_CONDITIONS {
+            let mut key = prefix.to_vec();
+            key.extend_from_slice(&i.to_le_bytes());
+            unhashed::put_raw(&key, b"legacy-condition");
+        }
+
+        let _ = crate::migrations::v2::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[test]
 fn v3_migration_clears_legacy_bond_config_and_sets_v3() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(2).put::<Polkamarkt>();
@@ -2664,16 +3196,1218 @@ fn v3_migration_clears_legacy_bond_config_and_sets_v3() {
 }
 
 #[test]
-#[should_panic(expected = "Polkamarkt v3 migration requires empty legacy governance bond storage")]
-fn v3_migration_rejects_legacy_governance_bond_claims() {
+fn v3_migration_refunds_legacy_governance_bond_claims() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(2).put::<Polkamarkt>();
-        let prefix = storage_prefix(b"Polkamarkt", b"GovernanceBonds");
-        let mut key = prefix.to_vec();
-        key.extend_from_slice(&[4, 3, 2, 1]);
-        unhashed::put_raw(&key, b"legacy-bond-claim");
-        assert!(unhashed::contains_prefixed_key(&prefix));
+        let alice_bond = 1_000;
+        let bob_bond = 2_000;
+        set_balance(LEGACY_BOND_ESCROW, CANONICAL_ASSET, alice_bond + bob_bond);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        crate::migrations::v3::GovernanceBonds::<Test>::insert(ALICE, alice_bond);
+        crate::migrations::v3::GovernanceBonds::<Test>::insert(BOB, bob_bond);
+        crate::migrations::v3::CreatorLockedBond::<Test>::insert(ALICE, alice_bond);
+        crate::migrations::v3::MarketBondLock::<Test>::insert(0, alice_bond);
+        crate::migrations::v3::GovernanceBondMinimumOverride::<Test>::put(alice_bond);
 
         let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+
+        assert_eq!(balance_of(LEGACY_BOND_ESCROW, CANONICAL_ASSET), 0);
+        assert_eq!(
+            balance_of(ALICE, CANONICAL_ASSET),
+            alice_before + alice_bond
+        );
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before + bob_bond);
+        assert!(crate::migrations::v3::GovernanceBonds::<Test>::iter()
+            .next()
+            .is_none());
+        assert!(crate::migrations::v3::CreatorLockedBond::<Test>::iter()
+            .next()
+            .is_none());
+        assert!(crate::migrations::v3::MarketBondLock::<Test>::iter()
+            .next()
+            .is_none());
+        assert!(crate::migrations::v3::GovernanceBondMinimumOverride::<Test>::get().is_none());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
+    });
+}
+
+#[test]
+fn v3_migration_panics_pre_v2_state_without_touching_legacy_storage() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(1).put::<Polkamarkt>();
+        crate::migrations::v3::GovernanceBonds::<Test>::insert(ALICE, 777);
+        crate::migrations::v3::CreatorLockedBond::<Test>::insert(ALICE, 888);
+        crate::migrations::v3::MarketBondLock::<Test>::insert(1, 999);
+        crate::migrations::v3::GovernanceBondMinimumOverride::<Test>::put(111);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        set_balance(LEGACY_BOND_ESCROW, CANONICAL_ASSET, 777);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(1));
+        assert_eq!(
+            crate::migrations::v3::GovernanceBonds::<Test>::get(ALICE),
+            777
+        );
+        assert_eq!(
+            crate::migrations::v3::CreatorLockedBond::<Test>::get(ALICE),
+            888
+        );
+        assert_eq!(
+            crate::migrations::v3::MarketBondLock::<Test>::get(1),
+            Some(999)
+        );
+        assert_eq!(
+            crate::migrations::v3::GovernanceBondMinimumOverride::<Test>::get(),
+            Some(111)
+        );
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
+        assert_eq!(balance_of(LEGACY_BOND_ESCROW, CANONICAL_ASSET), 777);
+    });
+}
+
+#[test]
+fn v3_migration_accepts_exact_governance_bond_cap_and_clears_related_storage() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        let mut expected_refund = 0;
+        let mut accounts = Vec::new();
+        for i in 0..crate::migrations::MAX_LEGACY_GOVERNANCE_BONDS {
+            let account = 100 + i as AccountId;
+            let amount = (i as Balance) + 1;
+            accounts.push((account, amount, balance_of(account, CANONICAL_ASSET)));
+            expected_refund += amount;
+            crate::migrations::v3::GovernanceBonds::<Test>::insert(account, amount);
+        }
+        crate::migrations::v3::CreatorLockedBond::<Test>::insert(ALICE, 5);
+        crate::migrations::v3::MarketBondLock::<Test>::insert(7, 6);
+        crate::migrations::v3::GovernanceBondMinimumOverride::<Test>::put(4);
+        set_balance(LEGACY_BOND_ESCROW, CANONICAL_ASSET, expected_refund);
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
+        assert_eq!(balance_of(LEGACY_BOND_ESCROW, CANONICAL_ASSET), 0);
+        for (account, amount, before) in accounts {
+            assert_eq!(balance_of(account, CANONICAL_ASSET), before + amount);
+        }
+        assert!(crate::migrations::v3::GovernanceBonds::<Test>::iter()
+            .next()
+            .is_none());
+        assert!(crate::migrations::v3::CreatorLockedBond::<Test>::iter()
+            .next()
+            .is_none());
+        assert!(crate::migrations::v3::MarketBondLock::<Test>::iter()
+            .next()
+            .is_none());
+        assert!(crate::migrations::v3::GovernanceBondMinimumOverride::<Test>::get().is_none());
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration GovernanceBonds exceeds limit 16")]
+fn v3_migration_panics_when_governance_bonds_exceed_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        let accounts = 10..=10 + crate::migrations::MAX_LEGACY_GOVERNANCE_BONDS;
+        set_balance(
+            LEGACY_BOND_ESCROW,
+            CANONICAL_ASSET,
+            accounts.clone().count() as Balance,
+        );
+        for account in accounts {
+            crate::migrations::v3::GovernanceBonds::<Test>::insert(account as AccountId, 1);
+        }
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration CreatorLockedBond exceeds limit 1024")]
+fn v3_migration_panics_when_creator_locked_bonds_exceed_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        for i in 0..=crate::migrations::MAX_LEGACY_CREATOR_LOCKED_BONDS {
+            crate::migrations::v3::CreatorLockedBond::<Test>::insert(200 + i as AccountId, 1);
+        }
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration MarketBondLock exceeds limit 1024")]
+fn v3_migration_panics_when_market_bond_locks_exceed_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        for market_id in 0..=crate::migrations::MAX_LEGACY_MARKET_BOND_LOCKS {
+            crate::migrations::v3::MarketBondLock::<Test>::insert(market_id, 1);
+        }
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration GovernanceBondMinimumOverride exceeds limit 16")]
+fn v3_migration_panics_when_governance_bond_config_prefix_exceeds_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        let prefix = storage_prefix(b"Polkamarkt", b"GovernanceBondMinimumOverride");
+        for i in 0..=crate::migrations::MAX_LEGACY_GOVERNANCE_BOND_CONFIGS {
+            let mut key = prefix.to_vec();
+            key.extend_from_slice(&i.to_le_bytes());
+            unhashed::put_raw(&key, b"legacy-config");
+        }
+
+        let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[test]
+fn v3_migration_rolls_back_when_legacy_escrow_cannot_refund() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        let alice_bond = 1_000;
+        set_balance(LEGACY_BOND_ESCROW, CANONICAL_ASSET, alice_bond - 1);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        let escrow_before = balance_of(LEGACY_BOND_ESCROW, CANONICAL_ASSET);
+        crate::migrations::v3::GovernanceBonds::<Test>::insert(ALICE, alice_bond);
+        crate::migrations::v3::CreatorLockedBond::<Test>::insert(ALICE, alice_bond);
+        crate::migrations::v3::MarketBondLock::<Test>::insert(0, alice_bond);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+        }));
+        assert!(result.is_err());
+
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
+        assert_eq!(
+            balance_of(LEGACY_BOND_ESCROW, CANONICAL_ASSET),
+            escrow_before
+        );
+        assert_eq!(
+            crate::migrations::v3::GovernanceBonds::<Test>::get(ALICE),
+            alice_bond
+        );
+        assert_eq!(
+            crate::migrations::v3::CreatorLockedBond::<Test>::get(ALICE),
+            alice_bond
+        );
+        assert_eq!(
+            crate::migrations::v3::MarketBondLock::<Test>::get(0),
+            Some(alice_bond)
+        );
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(2));
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
+        }));
+        assert!(result.is_err());
+
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(2));
+    });
+}
+
+#[test]
+fn v3_migration_panics_before_v2_completes() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(1).put::<Polkamarkt>();
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v3::Migrate::<Test>::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(1));
+    });
+}
+
+#[test]
+fn create_condition_with_details_stores_ui_metadata() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::create_condition_with_details(
+            RuntimeOrigin::signed(ALICE),
+            default_condition(),
+            ConditionDetailsInput {
+                category: b"Crypto".to_vec(),
+                tags: b"SORA,governance".to_vec(),
+                metadata_uri: b"ipfs://metadata".to_vec(),
+                metadata_hash: Some([7; 32]),
+                rules_uri: b"ipfs://rules".to_vec(),
+            },
+        ));
+
+        let details = ConditionDetails::<Test>::get(0).expect("details stored");
+        assert_eq!(details.category.expect("category").to_vec(), b"Crypto");
+        assert_eq!(details.tags.expect("tags").to_vec(), b"SORA,governance");
+        assert_eq!(
+            details.metadata_uri.expect("metadata uri").to_vec(),
+            b"ipfs://metadata"
+        );
+        assert_eq!(details.metadata_hash, Some([7; 32]));
+        assert_eq!(
+            details.rules_uri.expect("rules uri").to_vec(),
+            b"ipfs://rules"
+        );
+        assert_eq!(
+            balance_of(ALICE, CANONICAL_ASSET),
+            alice_before - MinCreationFeeConst::get()
+        );
+    });
+}
+
+#[test]
+fn create_condition_with_details_rejects_adversarial_details_without_fee() {
+    new_test_ext().execute_with(|| {
+        run_to_block(1);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        let fee_collector_before = balance_of(FEE_COLLECTOR, CANONICAL_ASSET);
+        let invalid_utf8 = vec![0xff, 0xfe, 0xfd];
+        let too_long = vec![b'x'; MaxMetadataLengthConst::get() as usize + 1];
+
+        assert_noop!(
+            Polkamarkt::create_condition_with_details(
+                RuntimeOrigin::signed(ALICE),
+                default_condition(),
+                ConditionDetailsInput {
+                    category: invalid_utf8,
+                    tags: Vec::new(),
+                    metadata_uri: Vec::new(),
+                    metadata_hash: Some([1; 32]),
+                    rules_uri: Vec::new(),
+                },
+            ),
+            Error::<Test>::InvalidMetadata
+        );
+        assert_noop!(
+            Polkamarkt::create_condition_with_details(
+                RuntimeOrigin::signed(ALICE),
+                default_condition(),
+                ConditionDetailsInput {
+                    category: Vec::new(),
+                    tags: Vec::new(),
+                    metadata_uri: too_long,
+                    metadata_hash: Some([2; 32]),
+                    rules_uri: Vec::new(),
+                },
+            ),
+            Error::<Test>::MetadataTooLong
+        );
+
+        assert_eq!(crate::NextConditionId::<Test>::get(), 0);
+        assert!(crate::Conditions::<Test>::get(0).is_none());
+        assert!(ConditionDetails::<Test>::get(0).is_none());
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
+        assert_eq!(
+            balance_of(FEE_COLLECTOR, CANONICAL_ASSET),
+            fee_collector_before
+        );
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), 0);
+    });
+}
+
+#[test]
+fn resolve_with_evidence_stores_resolution_evidence() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        run_to_block(10);
+
+        assert_ok!(Polkamarkt::resolve_market_with_evidence(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://resolution".to_vec(),
+                hash: Some([9; 32]),
+            },
+        ));
+
+        assert_eq!(MarketResolution::<Test>::get(0), Some(BinaryOutcome::Yes));
+        let evidence = MarketResolutionEvidence::<Test>::get(0).expect("evidence stored");
+        assert_eq!(evidence.uri.to_vec(), b"ipfs://resolution");
+        assert_eq!(evidence.hash, Some([9; 32]));
+        assert_eq!(evidence.at_block, 10);
+    });
+}
+
+#[test]
+fn resolve_with_evidence_rejects_bad_origin_and_invalid_evidence() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        run_to_block(10);
+
+        assert_noop!(
+            Polkamarkt::resolve_market_with_evidence(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: b"ipfs://resolution".to_vec(),
+                    hash: Some([9; 32]),
+                },
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Open
+        );
+
+        assert_noop!(
+            Polkamarkt::resolve_market_with_evidence(
+                RuntimeOrigin::root(),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: Vec::new(),
+                    hash: Some([9; 32]),
+                },
+            ),
+            Error::<Test>::InvalidEvidence
+        );
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Open
+        );
+        assert!(MarketResolution::<Test>::get(0).is_none());
+        assert!(MarketResolutionEvidence::<Test>::get(0).is_none());
+
+        assert_noop!(
+            Polkamarkt::resolve_market_with_evidence(
+                RuntimeOrigin::root(),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: vec![0xff, 0xfe],
+                    hash: Some([9; 32]),
+                },
+            ),
+            Error::<Test>::InvalidEvidence
+        );
+        assert!(MarketResolution::<Test>::get(0).is_none());
+        assert!(MarketResolutionEvidence::<Test>::get(0).is_none());
+
+        assert_ok!(Polkamarkt::resolve_market_with_evidence(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::No,
+            EvidenceInput {
+                uri: b"ipfs://resolution-v2".to_vec(),
+                hash: None,
+            },
+        ));
+        assert_eq!(MarketResolution::<Test>::get(0), Some(BinaryOutcome::No));
+    });
+}
+
+#[test]
+fn emergency_cancel_market_requires_governance_valid_evidence_and_nonfinalized_market() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+
+        assert_noop!(
+            Polkamarkt::emergency_cancel_market(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                EvidenceInput {
+                    uri: b"ipfs://cancel".to_vec(),
+                    hash: Some([4; 32]),
+                },
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_noop!(
+            Polkamarkt::emergency_cancel_market(
+                RuntimeOrigin::root(),
+                0,
+                EvidenceInput {
+                    uri: Vec::new(),
+                    hash: Some([4; 32]),
+                },
+            ),
+            Error::<Test>::InvalidEvidence
+        );
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Open
+        );
+        assert!(MarketCancellationEvidence::<Test>::get(0).is_none());
+
+        assert_ok!(Polkamarkt::emergency_cancel_market(
+            RuntimeOrigin::root(),
+            0,
+            EvidenceInput {
+                uri: b"ipfs://cancel".to_vec(),
+                hash: Some([4; 32]),
+            },
+        ));
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Cancelled
+        );
+        let evidence = MarketCancellationEvidence::<Test>::get(0).expect("evidence");
+        assert_eq!(evidence.uri.to_vec(), b"ipfs://cancel");
+        assert_eq!(evidence.hash, Some([4; 32]));
+
+        assert_noop!(
+            Polkamarkt::emergency_cancel_market(
+                RuntimeOrigin::root(),
+                0,
+                EvidenceInput {
+                    uri: b"ipfs://cancel-again".to_vec(),
+                    hash: Some([5; 32]),
+                },
+            ),
+            Error::<Test>::MarketAlreadyFinalized
+        );
+        assert_eq!(
+            MarketCancellationEvidence::<Test>::get(0)
+                .expect("existing evidence")
+                .hash,
+            Some([4; 32])
+        );
+    });
+}
+
+#[test]
+fn add_liquidity_rejects_bad_inputs_without_mutating_pool_or_positions() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        let pool_before = MarketPools::<Test>::get(0).expect("pool");
+        let totals_before = LiquidityPositionTotals::<Test>::get(0);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_noop!(
+            Polkamarkt::add_liquidity(RuntimeOrigin::signed(BOB), 0, 0, 0),
+            Error::<Test>::InvalidTradeAmount
+        );
+        assert_noop!(
+            Polkamarkt::add_liquidity(RuntimeOrigin::signed(BOB), 0, 100, 101),
+            Error::<Test>::SlippageToleranceExceeded
+        );
+        set_balance(BOB, CANONICAL_ASSET, 99);
+        assert_noop!(
+            Polkamarkt::add_liquidity(RuntimeOrigin::signed(BOB), 0, 100, 0),
+            DispatchError::Other("insufficient-balance")
+        );
+
+        assert_eq!(MarketPools::<Test>::get(0), Some(pool_before));
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0), totals_before);
+        assert!(LiquidityPositions::<Test>::get(0, BOB).is_none());
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), 99);
+
+        set_balance(BOB, CANONICAL_ASSET, bob_before);
+        run_to_block(10);
+        assert_noop!(
+            Polkamarkt::add_liquidity(RuntimeOrigin::signed(BOB), 0, 100, 0),
+            Error::<Test>::MarketNotOpen
+        );
+        assert!(LiquidityPositions::<Test>::get(0, BOB).is_none());
+    });
+}
+
+#[test]
+fn liquidity_provider_can_add_and_claim_locked_lp_share() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::add_liquidity(
+            RuntimeOrigin::signed(BOB),
+            0,
+            500,
+            500,
+        ));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - 500);
+        assert_eq!(
+            LiquidityPositions::<Test>::get(0, BOB)
+                .expect("bob lp")
+                .shares,
+            500
+        );
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 1_500);
+
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        assert_ok!(Polkamarkt::claim_liquidity(
+            RuntimeOrigin::signed(BOB),
+            0,
+            0,
+        ));
+
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert!(LiquidityPositions::<Test>::get(0, BOB).is_none());
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 1_000);
+    });
+}
+
+#[test]
+fn claim_liquidity_rejects_unfinalized_missing_and_excessive_lp_claims() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::add_liquidity(
+            RuntimeOrigin::signed(BOB),
+            0,
+            500,
+            500,
+        ));
+
+        assert_noop!(
+            Polkamarkt::claim_liquidity(RuntimeOrigin::signed(BOB), 0, 0),
+            Error::<Test>::MarketNotFinalized
+        );
+
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+
+        assert_noop!(
+            Polkamarkt::claim_liquidity(RuntimeOrigin::signed(FEE_COLLECTOR), 0, 0),
+            Error::<Test>::NothingToClaim
+        );
+        assert_noop!(
+            Polkamarkt::claim_liquidity(RuntimeOrigin::signed(BOB), 0, 501),
+            Error::<Test>::InsufficientLiquidityShares
+        );
+        assert_eq!(
+            LiquidityPositions::<Test>::get(0, BOB)
+                .expect("bob lp still intact")
+                .shares,
+            500
+        );
+
+        assert_ok!(Polkamarkt::claim_liquidity(
+            RuntimeOrigin::signed(BOB),
+            0,
+            250,
+        ));
+        assert_eq!(
+            LiquidityPositions::<Test>::get(0, BOB)
+                .expect("partial lp")
+                .shares,
+            250
+        );
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 1_250);
+    });
+}
+
+#[test]
+fn trader_can_change_vote_with_atomic_flip() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        let yes_shares = MarketPositions::<Test>::get(0, BOB)
+            .expect("bob yes")
+            .yes_shares;
+        assert!(yes_shares > 0);
+        let quote = Polkamarkt::quote_flip_position_market(0, BinaryOutcome::Yes, yes_shares)
+            .expect("flip quote");
+
+        assert_ok!(Polkamarkt::flip_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            yes_shares,
+            quote.collateral_reinvested,
+            quote.shares_out,
+        ));
+        let changed = MarketPositions::<Test>::get(0, BOB).expect("bob changed position");
+        assert_eq!(changed.yes_shares, 0);
+        assert_eq!(changed.no_shares, quote.shares_out);
+    });
+}
+
+#[test]
+fn batch_claims_available_markets_and_skips_unavailable() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+
+        assert_ok!(Polkamarkt::create_condition(
+            RuntimeOrigin::signed(ALICE),
+            default_condition(),
+        ));
+        assert_ok!(Polkamarkt::create_market(
+            RuntimeOrigin::signed(ALICE),
+            1,
+            20,
+            1_000,
+        ));
+
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        assert_ok!(Polkamarkt::claim_markets(
+            RuntimeOrigin::signed(BOB),
+            vec![0, 1].try_into().expect("bounded batch"),
+        ));
+
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+        assert_eq!(MarketPositions::<Test>::get(1, BOB), None);
+    });
+}
+
+#[test]
+fn batch_claims_rejects_batches_with_no_claimable_markets() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+
+        assert_noop!(
+            Polkamarkt::claim_markets(
+                RuntimeOrigin::signed(BOB),
+                vec![0].try_into().expect("bounded batch"),
+            ),
+            Error::<Test>::NothingToClaim
+        );
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        let position_before = MarketPositions::<Test>::get(0, BOB).expect("bob position");
+        assert_noop!(
+            Polkamarkt::claim_markets(
+                RuntimeOrigin::signed(BOB),
+                vec![0].try_into().expect("bounded batch"),
+            ),
+            Error::<Test>::NothingToClaim
+        );
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), Some(position_before));
+    });
+}
+
+#[test]
+fn batch_claims_deduplicate_effectively_and_do_not_double_pay_duplicate_ids() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        let position = MarketPositions::<Test>::get(0, BOB).expect("position");
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::claim_markets(
+            RuntimeOrigin::signed(BOB),
+            vec![0, 0, 0].try_into().expect("bounded batch"),
+        ));
+
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+        assert_eq!(
+            balance_of(BOB, CANONICAL_ASSET),
+            bob_before + position.yes_shares
+        );
+        assert!(System::<Test>::events().iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::MarketClaimsBatched { trader, requested, claimed })
+                    if trader == BOB && requested == 3 && claimed == 1
+            )
+        }));
+    });
+}
+
+#[test]
+fn batch_claims_skip_unknown_unfinalized_and_duplicate_ids_while_claiming_valid_once() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        assert_ok!(Polkamarkt::create_condition(
+            RuntimeOrigin::signed(ALICE),
+            default_condition(),
+        ));
+        assert_ok!(Polkamarkt::create_market(
+            RuntimeOrigin::signed(ALICE),
+            1,
+            20,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            1,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        let first_position = MarketPositions::<Test>::get(0, BOB).expect("first");
+        let open_position = MarketPositions::<Test>::get(1, BOB).expect("open");
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let events_before = System::<Test>::events().len();
+
+        assert_ok!(Polkamarkt::claim_markets(
+            RuntimeOrigin::signed(BOB),
+            vec![99, 0, 0, 1].try_into().expect("bounded batch"),
+        ));
+
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+        assert_eq!(MarketPositions::<Test>::get(1, BOB), Some(open_position));
+        assert_eq!(
+            balance_of(BOB, CANONICAL_ASSET),
+            bob_before + first_position.yes_shares
+        );
+        let new_events = &System::<Test>::events()[events_before..];
+        assert_eq!(
+            new_events
+                .iter()
+                .filter(|record| matches!(
+                    record.event,
+                    RuntimeEvent::Polkamarkt(Event::MarketClaimed { market_id, trader, .. })
+                        if market_id == 0 && trader == BOB
+                ))
+                .count(),
+            1
+        );
+        assert!(new_events.iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::MarketClaimsBatched { trader, requested, claimed })
+                    if trader == BOB && requested == 4 && claimed == 1
+            )
+        }));
+    });
+}
+
+#[test]
+fn batch_claims_losing_duplicate_claims_once_and_pays_nothing() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::No,
+            100,
+            1,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let events_before = System::<Test>::events().len();
+
+        assert_ok!(Polkamarkt::claim_markets(
+            RuntimeOrigin::signed(BOB),
+            vec![0, 0, 0].try_into().expect("bounded batch"),
+        ));
+
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+        let new_events = &System::<Test>::events()[events_before..];
+        assert_eq!(
+            new_events
+                .iter()
+                .filter(|record| matches!(
+                    record.event,
+                    RuntimeEvent::Polkamarkt(Event::MarketClaimed { market_id, trader, payout })
+                        if market_id == 0 && trader == BOB && payout == 0
+                ))
+                .count(),
+            1
+        );
+        assert!(new_events.iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::MarketClaimsBatched { trader, requested, claimed })
+                    if trader == BOB && requested == 3 && claimed == 1
+            )
+        }));
+    });
+}
+
+#[test]
+fn batch_claims_mix_losing_and_winning_positions_without_overpaying() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::No,
+            100,
+            1,
+        ));
+        assert_ok!(Polkamarkt::create_condition(
+            RuntimeOrigin::signed(ALICE),
+            default_condition(),
+        ));
+        assert_ok!(Polkamarkt::create_market(
+            RuntimeOrigin::signed(ALICE),
+            1,
+            20,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            1,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        run_to_block(20);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            1,
+            BinaryOutcome::Yes,
+        ));
+        let winning_position = MarketPositions::<Test>::get(1, BOB).expect("winner");
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let events_before = System::<Test>::events().len();
+
+        assert_ok!(Polkamarkt::claim_markets(
+            RuntimeOrigin::signed(BOB),
+            vec![0, 1, 1].try_into().expect("bounded batch"),
+        ));
+
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+        assert!(MarketPositions::<Test>::get(1, BOB).is_none());
+        assert_eq!(
+            balance_of(BOB, CANONICAL_ASSET),
+            bob_before + winning_position.yes_shares
+        );
+        let new_events = &System::<Test>::events()[events_before..];
+        assert!(new_events.iter().any(|record| matches!(
+            record.event,
+            RuntimeEvent::Polkamarkt(Event::MarketClaimed { market_id, trader, payout })
+                if market_id == 0 && trader == BOB && payout == 0
+        )));
+        assert!(new_events.iter().any(|record| matches!(
+            record.event,
+            RuntimeEvent::Polkamarkt(Event::MarketClaimed { market_id, trader, payout })
+                if market_id == 1 && trader == BOB && payout == winning_position.yes_shares
+        )));
+        assert!(new_events.iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::MarketClaimsBatched { trader, requested, claimed })
+                    if trader == BOB && requested == 3 && claimed == 2
+            )
+        }));
+    });
+}
+
+#[test]
+fn batch_claims_keep_successes_when_later_claim_transfer_fails() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        assert_ok!(Polkamarkt::create_condition(
+            RuntimeOrigin::signed(ALICE),
+            default_condition(),
+        ));
+        assert_ok!(Polkamarkt::create_market(
+            RuntimeOrigin::signed(ALICE),
+            1,
+            20,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            1,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        run_to_block(20);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            1,
+            BinaryOutcome::Yes,
+        ));
+        let first_position = MarketPositions::<Test>::get(0, BOB).expect("first");
+        let second_position = MarketPositions::<Test>::get(1, BOB).expect("second");
+        set_balance(
+            Polkamarkt::account_id(),
+            CANONICAL_ASSET,
+            first_position.yes_shares,
+        );
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::claim_markets(
+            RuntimeOrigin::signed(BOB),
+            vec![0, 1].try_into().expect("bounded batch"),
+        ));
+
+        assert!(MarketPositions::<Test>::get(0, BOB).is_none());
+        assert_eq!(MarketPositions::<Test>::get(1, BOB), Some(second_position));
+        assert_eq!(
+            balance_of(BOB, CANONICAL_ASSET),
+            bob_before + first_position.yes_shares
+        );
+        assert!(System::<Test>::events().iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::MarketClaimsBatched { trader, requested, claimed })
+                    if trader == BOB && requested == 2 && claimed == 1
+            )
+        }));
+    });
+}
+
+#[test]
+fn batch_claims_reject_bad_origin_and_unknown_only_batches_without_mutation() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            100,
+            1,
+        ));
+        let position_before = MarketPositions::<Test>::get(0, BOB);
+        let totals_before = MarketPositionTotals::<Test>::get(0);
+        let pool_before = MarketPools::<Test>::get(0);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let events_before = System::<Test>::events().len();
+
+        assert_noop!(
+            Polkamarkt::claim_markets(
+                RuntimeOrigin::root(),
+                vec![0].try_into().expect("bounded batch")
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_noop!(
+            Polkamarkt::claim_markets(
+                RuntimeOrigin::signed(BOB),
+                vec![77, 78].try_into().expect("bounded batch")
+            ),
+            Error::<Test>::NothingToClaim
+        );
+
+        assert_eq!(MarketPositions::<Test>::get(0, BOB), position_before);
+        assert_eq!(MarketPositionTotals::<Test>::get(0), totals_before);
+        assert_eq!(MarketPools::<Test>::get(0), pool_before);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert_eq!(System::<Test>::events().len(), events_before);
+    });
+}
+
+#[test]
+fn v4_migration_initializes_creator_lp_for_legacy_markets() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(3).put::<Polkamarkt>();
+        setup_market(1_000, 10);
+        LiquidityPositions::<Test>::remove(0, ALICE);
+        LiquidityPositionTotals::<Test>::remove(0);
+
+        let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
+
+        assert_eq!(
+            LiquidityPositions::<Test>::get(0, ALICE)
+                .expect("creator lp")
+                .shares,
+            1_000
+        );
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 1_000);
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(4));
+    });
+}
+
+#[test]
+fn v4_migration_does_not_run_before_v3_completes() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(2).put::<Polkamarkt>();
+        Markets::<Test>::insert(
+            0,
+            Market {
+                creator: ALICE,
+                condition_id: 0,
+                close_block: 10,
+                collateral_asset: CANONICAL_ASSET,
+                seed_liquidity: 1_000,
+                status: MarketStatus::Open,
+            },
+        );
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
+        }));
+
+        assert!(LiquidityPositions::<Test>::get(0, ALICE).is_none());
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 0);
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(2));
+        assert!(result.is_err());
+    });
+}
+
+#[test]
+fn v4_migration_does_not_overwrite_zero_seed_or_existing_lp_state() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(3).put::<Polkamarkt>();
+        Markets::<Test>::insert(
+            0,
+            Market {
+                creator: ALICE,
+                condition_id: 0,
+                close_block: 10,
+                collateral_asset: CANONICAL_ASSET,
+                seed_liquidity: 0,
+                status: MarketStatus::Open,
+            },
+        );
+        Markets::<Test>::insert(
+            1,
+            Market {
+                creator: ALICE,
+                condition_id: 1,
+                close_block: 10,
+                collateral_asset: CANONICAL_ASSET,
+                seed_liquidity: 1_000,
+                status: MarketStatus::Open,
+            },
+        );
+        LiquidityPositions::<Test>::insert(
+            1,
+            BOB,
+            LiquidityPosition {
+                shares: 333,
+                collateral_contributed: 333,
+            },
+        );
+        LiquidityPositionTotals::<Test>::insert(
+            1,
+            LiquidityTotals {
+                total_shares: 333,
+                total_collateral_contributed: 333,
+            },
+        );
+
+        let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
+
+        assert!(LiquidityPositions::<Test>::get(0, ALICE).is_none());
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 0);
+        assert!(LiquidityPositions::<Test>::get(1, ALICE).is_none());
+        assert_eq!(
+            LiquidityPositions::<Test>::get(1, BOB)
+                .expect("existing LP remains")
+                .shares,
+            333
+        );
+        assert_eq!(LiquidityPositionTotals::<Test>::get(1).total_shares, 333);
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(4));
+    });
+}
+
+#[test]
+fn v4_migration_accepts_exact_market_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(3).put::<Polkamarkt>();
+        for market_id in 0..crate::migrations::MAX_LEGACY_MARKETS {
+            Markets::<Test>::insert(
+                market_id,
+                Market {
+                    creator: ALICE,
+                    condition_id: market_id,
+                    close_block: 10,
+                    collateral_asset: CANONICAL_ASSET,
+                    seed_liquidity: 0,
+                    status: MarketStatus::Open,
+                },
+            );
+        }
+
+        let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
+
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(4));
+        assert!(LiquidityPositions::<Test>::get(0, ALICE).is_none());
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 0);
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration Markets exceeds limit 1024")]
+fn v4_migration_panics_when_markets_exceed_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(3).put::<Polkamarkt>();
+        for market_id in 0..=crate::migrations::MAX_LEGACY_MARKETS {
+            Markets::<Test>::insert(
+                market_id,
+                Market {
+                    creator: ALICE,
+                    condition_id: 0,
+                    close_block: 10,
+                    collateral_asset: CANONICAL_ASSET,
+                    seed_liquidity: 0,
+                    status: MarketStatus::Open,
+                },
+            );
+        }
+
+        let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
     });
 }

@@ -129,6 +129,11 @@ fn bridge_peer_isolation_audit_try_runtime_hooks() {
     tests::bridge_peer_isolation_audit_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn legacy_ethereum_xor_decommission_try_runtime_hooks() {
+    tests::legacy_ethereum_xor_decommission_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
 #[tokio::test]
 async fn remote_try_runtime_upgrade_rehearsal() {
     tests::remote_try_runtime_upgrade_rehearsal().await;
@@ -176,7 +181,10 @@ use hex_literal::hex;
 use pallet_grandpa::{
     fg_primitives, AuthorityId as GrandpaId, AuthorityList as GrandpaAuthorityList,
 };
-use pallet_polkamarkt::AssetTransfer as PolkamarktAssetTransfer;
+use pallet_polkamarkt::{
+    AssetTransfer as PolkamarktAssetTransfer, BinaryOutcome as PolkamarktBinaryOutcome,
+    MarketStatus as PolkamarktMarketStatus,
+};
 use pallet_session::historical as pallet_session_historical;
 use snowbridge_beacon_primitives::{Fork, ForkVersions};
 use sp_api::impl_runtime_apis;
@@ -354,10 +362,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 127,
+    spec_version: 128,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 127,
+    transaction_version: 128,
     system_version: 0,
 };
 
@@ -1131,12 +1139,16 @@ parameter_types! {
     pub const PolkamarktMinCreationFee: Balance = balance!(5);
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
+    pub const PolkamarktMaxBatchClaims: u32 = 24;
     pub const PolkamarktTradeFeeBps: u32 = 50;
 }
 
 parameter_types! {
     pub PolkamarktFeeCollector: AccountId = AccountId::new(hex!(
         "c0e6629c9baf600a20be6cdeda7545c03ae60175982debe124a369b9a1aa8a38"
+    ));
+    pub PolkamarktLegacyCreatorBondEscrowAccount: AccountId = AccountId::new(hex!(
+        "9e6663fbfc3f0bd24b00f984adc0f4a585ccf84ab1bb1049433e9fa680f6c828"
     ));
 }
 
@@ -1328,10 +1340,12 @@ impl pallet_polkamarkt::Config for Runtime {
     type MinQuestionLength = PolkamarktMinQuestionLength;
     type MinCreationFee = PolkamarktMinCreationFee;
     type PalletId = PolkamarktPalletId;
+    type LegacyCreatorBondEscrowAccount = PolkamarktLegacyCreatorBondEscrowAccount;
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type GetBuyBackAssetId = GetXorAssetId;
     type MinMarketDuration = PolkamarktMinMarketDuration;
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
+    type MaxBatchClaims = PolkamarktMaxBatchClaims;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
     type GovernanceOrigin = EnsureRoot<AccountId>;
@@ -1397,7 +1411,14 @@ impl pallet_multisig::Config for Runtime {
 
 impl iroha_migration::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
+    type MigrationGenesisHash = IrohaMigrationGenesisHash;
     type WeightInfo = iroha_migration::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+    pub const IrohaMigrationGenesisHash: Hash = sp_core::H256(hex!(
+        "7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5"
+    ));
 }
 
 impl pallet_identity::Config for Runtime {
@@ -1469,8 +1490,7 @@ where
         let current_block = System::block_number()
             .saturated_into::<u64>()
             .saturating_sub(1);
-        #[allow(deprecated)]
-        let charge_tx_payment = AsTransactionExtension(ChargeTransactionPayment::<Runtime>::new());
+        let charge_tx_payment = charge_tx_payment_extension();
         let extra: SignedExtra = (
             frame_system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
@@ -1539,7 +1559,9 @@ pub struct ValBurnedAggregator;
 
 impl OnValBurned for ValBurnedAggregator {
     fn on_val_burned(amount: Balance) {
-        Rewards::on_val_burned(amount);
+        let reward = amount.saturating_sub(VAL_BURN_PERCENT * amount);
+        let era = pallet_staking::ActiveEra::<Runtime>::get().map(|active_era| active_era.index);
+        XorFee::record_val_staking_reward(era, reward);
     }
 }
 
@@ -1550,13 +1572,13 @@ parameter_types! {
 
 parameter_types! {
     pub const FeeReferrerWeight: u32 = 10; // 10%
-    pub const FeeXorBurnedWeight: u32 = 20; // 20%
-    pub const FeeValBurnedWeight: u32 = 50; // 50%
-    pub const FeeKusdBurnedWeight: u32 = 5; // 5%
-    // Minimal amount for proportions calculations (fee ratio: 10:20:50:5).
+    pub const FeeXorBurnedWeight: u32 = 35; // 35%
+    pub const FeeValBurnedWeight: u32 = 40; // 40%
+    pub const FeeKusdBurnedWeight: u32 = 0;
+    // Minimal amount for proportions calculations.
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001);
-    pub const RemintXorBurnPercent: Percent = Percent::from_percent(1);
-    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
+    pub const RemintXorBurnPercent: Percent = Percent::from_percent(40);
+    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(0);
     pub const ForcedMultiplierAt: BlockNumber = 23_206_222;
     pub const ForcedMultiplierValue: FixedU128 =
         FixedU128::from_inner(14_862_961_117_709_108_000_000_000_000_000u128);
@@ -1587,6 +1609,7 @@ impl xor_fee::Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
     type OnValBurned = ValBurnedAggregator;
+    type StakingValPayout = xor_fee_impls::StakingValPayout;
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
@@ -1637,6 +1660,10 @@ impl pallet_transaction_payment::Config for Runtime {
     type OperationalFeeMultiplier = OperationalFeeMultiplier;
     type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
     type WeightInfo = ();
+}
+
+impl pallet_skip_feeless_payment::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
 }
 
 #[cfg(feature = "private-net")]
@@ -2676,6 +2703,10 @@ parameter_types! {
 #[cfg(feature = "wip")] // EVM bridge
 parameter_types! {
     pub const BaseFeeLifetime: BlockNumber = 10 * MINUTES;
+    pub DeprecatedEthereumMainnetXorToken: Option<(bridge_types::EVMChainId, H160)> = Some((
+        bridge_types::EVMChainId::from_low_u64_be(1),
+        H160(hex!("40fd72257597aa14c7231a7b1aaa29fce868f677")),
+    ));
 }
 
 #[cfg(feature = "wip")] // EVM bridge
@@ -2696,6 +2727,7 @@ impl evm_fungible_app::Config for Runtime {
     type BridgeAssetLocker = BridgeProxy;
     type BaseFeeLifetime = BaseFeeLifetime;
     type PriorityFee = EVMBridgePriorityFee;
+    type DeprecatedTokenAddress = DeprecatedEthereumMainnetXorToken;
     type WeightInfo = ();
 }
 
@@ -3074,6 +3106,7 @@ construct_runtime! {
         Balances: pallet_balances::{Pallet, Storage, Config<T>, Event<T>} = 2,
         RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 4,
         TransactionPayment: pallet_transaction_payment::{Pallet, Storage, Event<T>} = 5,
+        SkipFeelessPayment: pallet_skip_feeless_payment::{Pallet, Event<T>} = 119,
         Permissions: permissions::{Pallet, Call, Storage, Config<T>, Event<T>} = 6,
         Referrals: referrals::{Pallet, Call, Storage} = 7,
         Rewards: rewards::{Pallet, Call, Config<T>, Storage, Event<T>} = 8,
@@ -3243,6 +3276,7 @@ pub mod genesis_config_presets {
     const BENCHMARK_BEEFY: [u8; 33] =
         hex!("02b702b6684a4d93a2c1044e7f8c1e5b42fd4ae24fc2ea571347b45665898de590");
     // Standard Substrate dev account (//Alice) for private-net sudo rehearsals.
+    #[cfg(feature = "private-net")]
     const BENCHMARK_PRIVATE_NET_SUDO_ACCOUNT: [u8; 32] =
         hex!("d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d");
 
@@ -3278,18 +3312,30 @@ pub mod genesis_config_presets {
 
     fn benchmark_endowments() -> Vec<(AccountId, Balance)> {
         let endowment = 1_000_000 * UNITS;
-        let mut balances = vec![
-            (benchmark_validator_stash(), endowment),
-            (benchmark_validator_account(), endowment),
-            (benchmark_account(1), endowment),
-            (benchmark_account(2), endowment),
-            (benchmark_account(3), endowment),
-        ];
+
+        #[cfg(not(feature = "private-net"))]
+        {
+            vec![
+                (benchmark_validator_stash(), endowment),
+                (benchmark_validator_account(), endowment),
+                (benchmark_account(1), endowment),
+                (benchmark_account(2), endowment),
+                (benchmark_account(3), endowment),
+            ]
+        }
 
         #[cfg(feature = "private-net")]
-        balances.push((benchmark_private_net_sudo_account(), endowment));
-
-        balances
+        {
+            let mut balances = vec![
+                (benchmark_validator_stash(), endowment),
+                (benchmark_validator_account(), endowment),
+                (benchmark_account(1), endowment),
+                (benchmark_account(2), endowment),
+                (benchmark_account(3), endowment),
+            ];
+            balances.push((benchmark_private_net_sudo_account(), endowment));
+            balances
+        }
     }
 
     fn benchmark_genesis_patch() -> Value {
@@ -3502,7 +3548,17 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
 #[allow(deprecated)]
-type ChargeTxPaymentExtension = AsTransactionExtension<ChargeTransactionPayment<Runtime>>;
+pub type ChargeTxPaymentInnerExtension = AsTransactionExtension<ChargeTransactionPayment<Runtime>>;
+pub type ChargeTxPaymentExtension =
+    pallet_skip_feeless_payment::SkipCheckIfFeeless<Runtime, ChargeTxPaymentInnerExtension>;
+
+#[allow(deprecated)]
+pub fn charge_tx_payment_extension() -> ChargeTxPaymentExtension {
+    ChargeTxPaymentExtension::from(AsTransactionExtension(
+        ChargeTransactionPayment::<Runtime>::new(),
+    ))
+}
+
 /// The SignedExtension to the basic transaction logic.
 pub type SignedExtra = (
     frame_system::CheckSpecVersion<Runtime>,
@@ -3530,6 +3586,30 @@ pub type Executive = frame_executive::Executive<
 
 #[cfg(feature = "wip")] // Trustless bridges
 pub type MmrHashing = <Runtime as pallet_mmr::Config>::Hashing;
+
+fn polkamarkt_outcome_from_string(outcome: String) -> Option<PolkamarktBinaryOutcome> {
+    match outcome.as_bytes() {
+        b"YES" | b"Yes" | b"yes" => Some(PolkamarktBinaryOutcome::Yes),
+        b"NO" | b"No" | b"no" => Some(PolkamarktBinaryOutcome::No),
+        _ => None,
+    }
+}
+
+fn polkamarkt_outcome_label(outcome: PolkamarktBinaryOutcome) -> String {
+    match outcome {
+        PolkamarktBinaryOutcome::Yes => String::from("Yes"),
+        PolkamarktBinaryOutcome::No => String::from("No"),
+    }
+}
+
+fn polkamarkt_status_label(status: &PolkamarktMarketStatus) -> String {
+    match status {
+        PolkamarktMarketStatus::Open => String::from("Open"),
+        PolkamarktMarketStatus::Locked => String::from("Locked"),
+        PolkamarktMarketStatus::Resolved => String::from("Resolved"),
+        PolkamarktMarketStatus::Cancelled => String::from("Cancelled"),
+    }
+}
 
 impl_runtime_apis! {
     impl sp_api::Core<Block> for Runtime {
@@ -3695,6 +3775,97 @@ impl_runtime_apis! {
 
         fn list_supported_sources() -> Vec<LiquiditySourceType> {
             DEXAPI::get_supported_types()
+        }
+    }
+
+    impl polkamarkt_runtime_api::PolkamarktAPI<Block, AccountId, Balance> for Runtime {
+        fn quote_buy(
+            market_id: u32,
+            outcome: String,
+            collateral_in: Balance,
+        ) -> Option<polkamarkt_runtime_api::BuyQuote<Balance>> {
+            let outcome = polkamarkt_outcome_from_string(outcome)?;
+            let quote = Polkamarkt::quote_buy_market(market_id, outcome, collateral_in).ok()?;
+            Some(polkamarkt_runtime_api::BuyQuote {
+                market_id: quote.market_id,
+                outcome: polkamarkt_outcome_label(quote.outcome),
+                collateral_in: quote.collateral_in,
+                fee_amount: quote.fee_amount,
+                pricing_collateral: quote.pricing_collateral,
+                shares_out: quote.shares_out,
+            })
+        }
+
+        fn quote_sell(
+            market_id: u32,
+            outcome: String,
+            shares_in: Balance,
+        ) -> Option<polkamarkt_runtime_api::SellQuote<Balance>> {
+            let outcome = polkamarkt_outcome_from_string(outcome)?;
+            let quote = Polkamarkt::quote_sell_market(market_id, outcome, shares_in).ok()?;
+            Some(polkamarkt_runtime_api::SellQuote {
+                market_id: quote.market_id,
+                outcome: polkamarkt_outcome_label(quote.outcome),
+                shares_in: quote.shares_in,
+                gross_collateral_out: quote.gross_collateral_out,
+                fee_amount: quote.fee_amount,
+                collateral_out: quote.collateral_out,
+            })
+        }
+
+        fn quote_add_liquidity(
+            market_id: u32,
+            collateral_in: Balance,
+        ) -> Option<polkamarkt_runtime_api::LiquidityQuote<Balance>> {
+            let quote = Polkamarkt::quote_add_liquidity_market(market_id, collateral_in).ok()?;
+            Some(polkamarkt_runtime_api::LiquidityQuote {
+                market_id: quote.market_id,
+                collateral_in: quote.collateral_in,
+                lp_shares_out: quote.lp_shares_out,
+                pool_collateral: quote.pool_collateral,
+                total_lp_shares: quote.total_lp_shares,
+            })
+        }
+
+        fn quote_flip_position(
+            market_id: u32,
+            from_outcome: String,
+            shares_in: Balance,
+        ) -> Option<polkamarkt_runtime_api::FlipQuote<Balance>> {
+            let from_outcome = polkamarkt_outcome_from_string(from_outcome)?;
+            let quote = Polkamarkt::quote_flip_position_market(market_id, from_outcome, shares_in).ok()?;
+            Some(polkamarkt_runtime_api::FlipQuote {
+                market_id: quote.market_id,
+                from_outcome: polkamarkt_outcome_label(quote.from_outcome),
+                to_outcome: polkamarkt_outcome_label(quote.to_outcome),
+                shares_in: quote.shares_in,
+                gross_collateral_out: quote.gross_collateral_out,
+                sell_fee_amount: quote.sell_fee_amount,
+                collateral_reinvested: quote.collateral_reinvested,
+                buy_fee_amount: quote.buy_fee_amount,
+                pricing_collateral: quote.pricing_collateral,
+                shares_out: quote.shares_out,
+            })
+        }
+
+        fn claimable(
+            account_id: AccountId,
+            market_id: u32,
+        ) -> Option<polkamarkt_runtime_api::ClaimableInfo<AccountId, Balance>> {
+            let info = Polkamarkt::claimable_info(account_id, market_id).ok()?;
+            Some(polkamarkt_runtime_api::ClaimableInfo {
+                market_id: info.market_id,
+                account: info.account,
+                status: polkamarkt_status_label(&info.status),
+                resolution_outcome: info.resolution_outcome.map(polkamarkt_outcome_label),
+                yes_shares: info.yes_shares,
+                no_shares: info.no_shares,
+                net_collateral_paid: info.net_collateral_paid,
+                trader_payout: info.trader_payout,
+                creator_fees: info.creator_fees,
+                creator_liquidity: info.creator_liquidity,
+                is_creator: info.is_creator,
+            })
         }
     }
 

@@ -112,6 +112,7 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
         assert_storage_version!("Farming", farming::Pallet<Runtime>);
         assert_storage_version!("Kensetsu", kensetsu::Pallet<Runtime>);
         assert_storage_version!("Band", band::Pallet<Runtime>);
+        assert_storage_version!("Polkamarkt", pallet_polkamarkt::Pallet<Runtime>);
         assert_storage_version!("OracleProxy", oracle_proxy::Pallet<Runtime>);
         assert_storage_version!(
             "BridgeInboundChannel",
@@ -124,6 +125,41 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
         assert_storage_version!(
             "SubstrateBridgeOutboundChannel",
             substrate_bridge_channel::outbound::Pallet<Runtime>
+        );
+
+        let eth_network_id = GetEthNetworkId::get();
+        let xor_asset_id: AssetId = common::XOR.into();
+        assert!(
+            eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<Runtime>(),
+            "legacy Ethereum XOR decommission marker was not written"
+        );
+        assert_eq!(
+            eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<Runtime>(),
+            0,
+            "legacy Ethereum XOR decommission blockers remain"
+        );
+        assert!(
+            EthBridge::deprecated_sidechain_token(
+                eth_network_id,
+                eth_bridge::LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS
+            ),
+            "legacy Ethereum XOR token was not marked deprecated"
+        );
+        assert!(
+            EthBridge::registered_asset(eth_network_id, xor_asset_id).is_none(),
+            "legacy Ethereum XOR bridge asset mapping still exists"
+        );
+        assert!(
+            EthBridge::registered_sidechain_token(eth_network_id, xor_asset_id).is_none(),
+            "legacy Ethereum XOR sidechain token mapping still exists"
+        );
+        assert!(
+            EthBridge::registered_sidechain_asset(
+                eth_network_id,
+                eth_bridge::LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS
+            )
+            .is_none(),
+            "legacy Ethereum XOR sidechain asset mapping still exists"
         );
     });
 }
