@@ -45,7 +45,6 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 #[cfg(feature = "std")]
 use common::utils::string_serialization;
-use common::Denominator;
 use common::{AssetInfoProvider, AssetName, AssetSymbol, IsValid, VAL};
 use ethabi::{FixedBytes, Token};
 use frame_support::sp_runtime::app_crypto::sp_core;
@@ -105,7 +104,8 @@ impl<T: Config> OutgoingTransfer<T> {
         let to = self.to;
         let currency_id;
         let amount;
-        let denomination_factor = T::Denominator::current_factor(&self.asset_id);
+        let denomination_factor =
+            Pallet::<T>::bridge_denomination_factor(self.network_id, &self.asset_id);
         if let Some(token_address) =
             Pallet::<T>::registered_sidechain_token(self.network_id, &self.asset_id)
         {
@@ -441,14 +441,21 @@ impl<T: Config> OutgoingAddAsset<T> {
     /// Checks that the asset isn't registered yet.
     pub fn validate(&self) -> Result<(), DispatchError> {
         Assets::<T>::ensure_asset_exists(&self.asset_id)?;
+        let registered_asset = crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id);
         ensure!(
             !crate::Pallet::<T>::is_legacy_ethereum_xor_mapping(self.network_id, &self.asset_id),
             Error::<T>::DeprecatedLegacyXor
         );
-        ensure!(
-            crate::RegisteredAsset::<T>::get(self.network_id, &self.asset_id).is_none(),
-            Error::<T>::TokenIsAlreadyAdded
-        );
+        if self.network_id == T::GetEthNetworkId::get()
+            && crate::Pallet::<T>::is_legacy_ethereum_xor_asset(&self.asset_id)
+            && registered_asset.is_none()
+        {
+            ensure!(
+                crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
+                Error::<T>::DeprecatedLegacyXor
+            );
+        }
+        ensure!(registered_asset.is_none(), Error::<T>::TokenIsAlreadyAdded);
         Ok(())
     }
 

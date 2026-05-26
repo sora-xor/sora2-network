@@ -42,9 +42,10 @@ use crate::tests::{
     approve_last_request, assert_incoming_request_done, request_incoming, ETH_NETWORK_ID,
 };
 use crate::{
-    BridgeAccount, DeprecatedSidechainTokens, EthAddress, LegacyEthereumXorDecommissioned,
-    RegisteredAsset, RegisteredSidechainAsset, RegisteredSidechainToken,
-    LEGACY_ETHEREUM_XOR_MASTER_CONTRACT_ADDRESS, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+    AssetConfig, BridgeAccount, DeprecatedSidechainTokens, EthAddress,
+    LegacyEthereumXorDecommissioned, RegisteredAsset, RegisteredSidechainAsset,
+    RegisteredSidechainToken, LEGACY_ETHEREUM_XOR_MASTER_CONTRACT_ADDRESS,
+    LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
 };
 use bridge_types::evm::EVMAppKind;
 use bridge_types::traits::BridgeApp;
@@ -1302,6 +1303,46 @@ fn should_allow_xor_thischain_add_request_after_legacy_decommission() {
 }
 
 #[test]
+fn should_reject_fresh_ethereum_xor_add_before_decommission_even_after_partial_cleanup() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let authority = EthBridge::authority_account().unwrap();
+        let xor_asset_id: AssetId = XOR.into();
+
+        RegisteredAsset::<Runtime>::remove(net_id, &xor_asset_id);
+        RegisteredSidechainToken::<Runtime>::remove(net_id, &xor_asset_id);
+        RegisteredSidechainAsset::<Runtime>::remove(net_id, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS);
+
+        assert!(!LegacyEthereumXorDecommissioned::<Runtime>::get());
+        assert!(RegisteredAsset::<Runtime>::get(net_id, XOR).is_none());
+        assert!(RegisteredSidechainToken::<Runtime>::get(net_id, XOR).is_none());
+
+        let nonce = frame_system::Pallet::<Runtime>::account_nonce(&authority);
+        assert_noop!(
+            EthBridge::add_asset(RuntimeOrigin::root(), XOR.into(), net_id),
+            Error::DeprecatedLegacyXor
+        );
+        assert_eq!(
+            frame_system::Pallet::<Runtime>::account_nonce(&authority),
+            nonce
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).is_empty());
+
+        let add_xor_asset = OutgoingAddAsset::<Runtime> {
+            author: authority,
+            asset_id: XOR.into(),
+            nonce,
+            network_id: net_id,
+            timepoint: Default::default(),
+        };
+        assert_err!(add_xor_asset.finalize(), Error::DeprecatedLegacyXor);
+        assert!(RegisteredAsset::<Runtime>::get(net_id, XOR).is_none());
+    });
+}
+
+#[test]
 fn should_reject_manually_deprecated_sidechain_token_before_other_errors() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
@@ -1931,6 +1972,54 @@ fn should_allow_xor_transfer_after_thischain_reregistration() {
             )
         }));
 
+        let outgoing_transfer = OutgoingTransfer::<Runtime> {
+            from: alice.clone(),
+            to: EthAddress::from([7; 20]),
+            asset_id: XOR.into(),
+            amount: 100u32.into(),
+            nonce: Default::default(),
+            network_id: net_id,
+            timepoint: Default::default(),
+        };
+        let encoded = outgoing_transfer.to_eth_abi(H256::repeat_byte(8)).unwrap();
+        assert_eq!(encoded.amount, 100u32.into());
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[16u8; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        let raw_xor_asset_id = H256(
+            AssetId32::<PredefinedAssetId>::from_asset_id(PredefinedAssetId::XOR).code,
+        );
+        let incoming_transfer = IncomingRequest::<Runtime>::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                100u32.into(),
+                EthAddress::zero(),
+                raw_xor_asset_id,
+            )),
+            LoadIncomingTransactionRequest::new(
+                alice.clone(),
+                tx_hash,
+                Default::default(),
+                IncomingTransactionRequestKind::Transfer,
+                net_id,
+            ),
+            1,
+        )
+        .unwrap();
+        match incoming_transfer {
+            IncomingRequest::Transfer(req) => {
+                assert_eq!(req.asset_id, XOR.into());
+                assert_eq!(req.asset_kind, AssetKind::Thischain);
+                assert_eq!(req.amount, 100u32.into());
+            }
+            other => panic!("unexpected incoming request: {:?}", other),
+        }
+
         assert_ok!(
             <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::transfer(
                 generic_network_id,
@@ -1944,6 +2033,173 @@ fn should_allow_xor_transfer_after_thischain_reregistration() {
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             900u32.into()
         );
+    });
+}
+
+#[test]
+fn should_block_xor_thischain_registration_with_stale_sidechain_mapping_after_decommission() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let generic_network_id = GenericNetworkId::EVMLegacy(net_id);
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let xor_asset_id: AssetId = XOR.into();
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        RegisteredAsset::<Runtime>::insert(net_id, &xor_asset_id, AssetKind::Thischain);
+        RegisteredSidechainToken::<Runtime>::insert(net_id, &xor_asset_id, EthAddress::from([9; 20]));
+        Assets::mint_to(&xor_asset_id, &alice, &alice, 1000u32.into()).unwrap();
+
+        assert!(
+            !EthBridge::is_ethereum_xor_thischain_registration(net_id, &xor_asset_id),
+            "stale sidechain token mapping must prevent clean XOR classification"
+        );
+        assert_eq!(EthBridge::bridge_denomination_factor(net_id, &xor_asset_id), 10);
+        assert!(
+            !<EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::is_asset_supported(
+                generic_network_id,
+                xor_asset_id,
+            )
+        );
+        let assets =
+            <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::list_supported_assets(
+                generic_network_id,
+            );
+        assert!(!assets.iter().any(|asset| {
+            matches!(asset, BridgeAssetInfo::EVMLegacy(info) if info.asset_id == XOR.into())
+        }));
+
+        assert_err!(
+            <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::transfer(
+                generic_network_id,
+                XOR.into(),
+                alice,
+                EthAddress::from([10; 20]),
+                100u32.into(),
+            ),
+            Error::DeprecatedLegacyXor
+        );
+        assert_err!(
+            EthBridge::add_asset(RuntimeOrigin::root(), XOR.into(), net_id),
+            Error::TokenIsAlreadyAdded
+        );
+    });
+}
+
+#[test]
+fn should_block_xor_registered_as_sidechain_after_decommission() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let generic_network_id = GenericNetworkId::EVMLegacy(net_id);
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let xor_asset_id: AssetId = XOR.into();
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        RegisteredAsset::<Runtime>::insert(net_id, &xor_asset_id, AssetKind::Sidechain);
+        Assets::mint_to(&xor_asset_id, &alice, &alice, 1000u32.into()).unwrap();
+
+        assert!(!EthBridge::is_ethereum_xor_thischain_registration(
+            net_id,
+            &xor_asset_id
+        ));
+        assert_eq!(
+            EthBridge::bridge_denomination_factor(net_id, &xor_asset_id),
+            10
+        );
+        assert!(!<EthBridge as BridgeApp<
+            AccountId,
+            EthAddress,
+            AssetId,
+            Balance,
+        >>::is_asset_supported(
+            generic_network_id, xor_asset_id,
+        ));
+        assert_err!(
+            <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::transfer(
+                generic_network_id,
+                XOR.into(),
+                alice,
+                EthAddress::from([11; 20]),
+                100u32.into(),
+            ),
+            Error::DeprecatedLegacyXor
+        );
+        assert_err!(
+            EthBridge::add_asset(RuntimeOrigin::root(), XOR.into(), net_id),
+            Error::TokenIsAlreadyAdded
+        );
+    });
+}
+
+#[test]
+fn should_keep_non_ethereum_xor_denominated() {
+    let mut builder = ExtBuilder::default();
+    let net_id = builder.add_network(
+        vec![AssetConfig::Thischain { id: XOR.into() }],
+        None,
+        None,
+        Default::default(),
+    );
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let xor_asset_id: AssetId = XOR.into();
+        let raw_xor_asset_id =
+            H256(AssetId32::<PredefinedAssetId>::from_asset_id(PredefinedAssetId::XOR).code);
+
+        assert_eq!(
+            EthBridge::bridge_denomination_factor(net_id, &xor_asset_id),
+            10
+        );
+
+        let outgoing_transfer = OutgoingTransfer::<Runtime> {
+            from: alice.clone(),
+            to: EthAddress::from([12; 20]),
+            asset_id: XOR.into(),
+            amount: 100u32.into(),
+            nonce: Default::default(),
+            network_id: net_id,
+            timepoint: Default::default(),
+        };
+        let encoded = outgoing_transfer.to_eth_abi(H256::repeat_byte(12)).unwrap();
+        assert_eq!(encoded.amount, 1000u32.into());
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[17u8; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::<Runtime>::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                1000u32.into(),
+                EthAddress::zero(),
+                raw_xor_asset_id,
+            )),
+            LoadIncomingTransactionRequest::new(
+                alice,
+                tx_hash,
+                Default::default(),
+                IncomingTransactionRequestKind::Transfer,
+                net_id,
+            ),
+            1,
+        )
+        .unwrap();
+        match incoming_transfer {
+            IncomingRequest::Transfer(req) => {
+                assert_eq!(req.asset_id, XOR.into());
+                assert_eq!(req.asset_kind, AssetKind::Thischain);
+                assert_eq!(req.amount, 100u32.into());
+            }
+            other => panic!("unexpected incoming request: {:?}", other),
+        }
     });
 }
 

@@ -80,7 +80,8 @@ use bridge_types::GenericNetworkId;
 use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::Balance;
 use common::{
-    AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, DEFAULT_BALANCE_PRECISION,
+    AssetInfoProvider, AssetName, AssetSymbol, BalancePrecision, Denominator,
+    DEFAULT_BALANCE_PRECISION,
 };
 use core::stringify;
 use frame_support::__private::log::{debug, error, info, warn};
@@ -1986,6 +1987,17 @@ impl<T: Config> Pallet<T> {
                 Some(AssetKind::Thischain)
             )
             && !RegisteredSidechainToken::<T>::contains_key(network_id, asset_id)
+    }
+
+    pub fn bridge_denomination_factor(
+        network_id: T::NetworkId,
+        asset_id: &AssetIdOf<T>,
+    ) -> Balance {
+        if Self::is_ethereum_xor_thischain_registration(network_id, asset_id) {
+            Balance::one()
+        } else {
+            T::Denominator::current_factor(asset_id)
+        }
     }
 
     pub fn is_decommissioned_legacy_ethereum_xor_asset(

@@ -60,6 +60,7 @@ pub type Migrations = (
     SubstrateBridgeOutboundChannelStorageVersionV1,
     BridgePeerIsolationAudit,
     DecommissionLegacyEthereumXor,
+    QueueEthereumXorThischainAddAsset,
     DemeterFarmingPlatformStorageVersionV3,
     pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
@@ -137,6 +138,85 @@ fn audit_legacy_ethereum_xor_decommission_blockers() -> Result<(), TryRuntimeErr
         )
         .into_boxed_str())))
     }
+}
+
+const ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY: &[u8] =
+    b"runtime:migrations:ethereum_xor_thischain_add_asset_queued";
+
+pub fn ethereum_xor_thischain_add_asset_queued() -> bool {
+    frame_support::storage::unhashed::get(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY)
+        .unwrap_or(false)
+}
+
+fn mark_ethereum_xor_thischain_add_asset_queued() {
+    frame_support::storage::unhashed::put(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY, &true);
+}
+
+fn ethereum_xor_thischain_add_asset_is_pending_or_registered() -> bool {
+    let network_id = crate::GetEthNetworkId::get();
+    let xor_asset_id: crate::AssetId = common::XOR.into();
+    eth_bridge::Pallet::<crate::Runtime>::is_ethereum_xor_thischain_registration(
+        network_id,
+        &xor_asset_id,
+    ) || eth_bridge::Pallet::<crate::Runtime>::is_add_asset_request_pending(
+        network_id,
+        xor_asset_id,
+    )
+}
+
+fn queue_ethereum_xor_thischain_add_asset() -> Weight {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    let mut weight = db_weight.reads(1);
+
+    if ethereum_xor_thischain_add_asset_queued() {
+        return weight;
+    }
+
+    weight.saturating_accrue(db_weight.reads(1));
+    if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
+        frame_support::__private::log::warn!(
+            "Skipping Ethereum XOR Thischain add-asset request: legacy Ethereum XOR is not decommissioned"
+        );
+        return weight;
+    }
+
+    let network_id = crate::GetEthNetworkId::get();
+    let xor_asset_id: crate::AssetId = common::XOR.into();
+
+    weight.saturating_accrue(db_weight.reads(2));
+    if ethereum_xor_thischain_add_asset_is_pending_or_registered() {
+        mark_ethereum_xor_thischain_add_asset_queued();
+        return weight.saturating_add(db_weight.writes(1));
+    }
+
+    if eth_bridge::Pallet::<crate::Runtime>::registered_asset(network_id, &xor_asset_id).is_some() {
+        panic!("Ethereum XOR has a non-Thischain bridge registration after legacy decommission");
+    }
+
+    if let Err(error) = eth_bridge::Pallet::<crate::Runtime>::add_asset(
+        crate::RuntimeOrigin::root(),
+        xor_asset_id,
+        network_id,
+    ) {
+        frame_support::__private::log::error!(
+            "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
+            error
+        );
+        panic!(
+            "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
+            error
+        );
+    }
+
+    mark_ethereum_xor_thischain_add_asset_queued();
+    weight
+        .saturating_add(common::weights::constants::EXTRINSIC_FIXED_WEIGHT)
+        .saturating_add(db_weight.writes(1))
+}
+
+#[cfg(feature = "try-runtime")]
+fn ethereum_xor_thischain_add_asset_error(message: &'static str) -> TryRuntimeError {
+    TryRuntimeError::Other(message)
 }
 
 #[cfg(feature = "try-runtime")]
@@ -329,6 +409,41 @@ impl OnRuntimeUpgrade for DecommissionLegacyEthereumXor {
                 "legacy Ethereum XOR was not decommissioned",
             ))
         }
+    }
+}
+
+pub struct QueueEthereumXorThischainAddAsset;
+
+impl OnRuntimeUpgrade for QueueEthereumXorThischainAddAsset {
+    fn on_runtime_upgrade() -> Weight {
+        queue_ethereum_xor_thischain_add_asset()
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        audit_legacy_ethereum_xor_decommission_blockers()?;
+        Ok(Vec::new())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        audit_legacy_ethereum_xor_decommission_blockers()?;
+        if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
+            return Err(ethereum_xor_thischain_add_asset_error(
+                "legacy Ethereum XOR was not decommissioned before queueing the Thischain add-asset request",
+            ));
+        }
+        if !ethereum_xor_thischain_add_asset_queued() {
+            return Err(ethereum_xor_thischain_add_asset_error(
+                "Ethereum XOR Thischain add-asset request was not marked as queued",
+            ));
+        }
+        if !ethereum_xor_thischain_add_asset_is_pending_or_registered() {
+            return Err(ethereum_xor_thischain_add_asset_error(
+                "Ethereum XOR Thischain add-asset request is neither pending nor finalized",
+            ));
+        }
+        Ok(())
     }
 }
 

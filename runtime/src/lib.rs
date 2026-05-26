@@ -128,10 +128,25 @@ fn staking_storage_version_bridge_try_runtime_hooks() {
 fn bridge_peer_isolation_audit_try_runtime_hooks() {
     tests::bridge_peer_isolation_audit_try_runtime_hooks();
 }
+#[cfg(test)]
+#[test]
+fn queue_ethereum_xor_thischain_add_asset_migration_queues_once() {
+    tests::queue_ethereum_xor_thischain_add_asset_migration_queues_once();
+}
+#[cfg(test)]
+#[test]
+fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states() {
+    tests::queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states();
+}
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
 fn legacy_ethereum_xor_decommission_try_runtime_hooks() {
     tests::legacy_ethereum_xor_decommission_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn queue_ethereum_xor_thischain_add_asset_try_runtime_hooks() {
+    tests::queue_ethereum_xor_thischain_add_asset_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[tokio::test]

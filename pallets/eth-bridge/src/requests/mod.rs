@@ -36,7 +36,6 @@ use crate::{
 };
 use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::AssetInfoProvider;
-use common::Denominator;
 use ethabi::Token;
 use ethereum_types::U256;
 use frame_support::__private::log::warn;
@@ -374,7 +373,8 @@ impl<T: Config> IncomingRequest<T> {
                     network_id,
                 )?
                 .ok_or(Error::<T>::UnsupportedAssetId)?;
-                let denomination_factor = T::Denominator::current_factor(&asset_id);
+                let denomination_factor =
+                    Pallet::<T>::bridge_denomination_factor(network_id, &asset_id);
                 let amount = u128::try_from(
                     amount
                         .checked_div(denomination_factor.into())

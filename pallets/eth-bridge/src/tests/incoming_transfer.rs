@@ -38,8 +38,8 @@ use crate::requests::{
 };
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
-    assert_incoming_request_done, assert_incoming_request_registration_failed, request_incoming,
-    Assets, ETH_NETWORK_ID,
+    approve_last_request, assert_incoming_request_done,
+    assert_incoming_request_registration_failed, request_incoming, Assets, ETH_NETWORK_ID,
 };
 use crate::types::{Log, TransactionReceipt};
 use crate::{
@@ -294,6 +294,52 @@ fn should_reject_direct_incoming_xor_transfer_after_legacy_ethereum_xor_decommis
         )
         .unwrap();
         assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+    });
+}
+
+#[test]
+fn should_accept_direct_incoming_xor_transfer_after_thischain_reregistration() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            XOR.into(),
+            net_id
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        Assets::mint_to(&XOR.into(), &bridge_acc_id, &bridge_acc_id, 100u32.into()).unwrap();
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[15u8; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: alice.clone(),
+            asset_id: XOR.into(),
+            asset_kind: AssetKind::Thischain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: ETH_NETWORK_ID,
+            should_take_fee: false,
+        });
+
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_incoming_request_done(&state, incoming_transfer).unwrap();
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            100u32.into()
+        );
     });
 }
 
