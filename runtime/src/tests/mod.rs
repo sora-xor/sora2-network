@@ -727,7 +727,9 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_full_queu
 }
 
 pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states() {
-    use eth_bridge::requests::{AssetKind, OffchainRequest, OutgoingAddAsset, OutgoingRequest};
+    use eth_bridge::requests::{
+        AssetKind, OffchainRequest, OutgoingAddAsset, OutgoingRequest, RequestStatus,
+    };
 
     ext().execute_with(|| {
         let net_id = crate::GetEthNetworkId::get();
@@ -741,6 +743,61 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
             eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
             initial_queue
         );
+    });
+
+    ext().execute_with(|| {
+        let net_id = crate::GetEthNetworkId::get();
+        let xor_asset_id: crate::AssetId = XOR.into();
+
+        crate::migrations::DecommissionLegacyEthereumXor::on_runtime_upgrade();
+        let stale_request =
+            OffchainRequest::outgoing(OutgoingRequest::AddAsset(OutgoingAddAsset::<
+                crate::Runtime,
+            > {
+                author: crate::EthBridge::authority_account().unwrap(),
+                asset_id: xor_asset_id.clone(),
+                nonce: 999u32 as crate::Index,
+                network_id: net_id,
+                timepoint: Default::default(),
+            }));
+        let stale_hash = match &stale_request {
+            OffchainRequest::Outgoing(_, hash) => *hash,
+            _ => unreachable!("stale add-asset request must be outgoing"),
+        };
+        eth_bridge::Requests::<crate::Runtime>::insert(net_id, stale_hash, stale_request);
+        eth_bridge::RequestStatuses::<crate::Runtime>::insert(
+            net_id,
+            stale_hash,
+            RequestStatus::Failed(sp_runtime::DispatchError::Other("stale add asset")),
+        );
+        eth_bridge::RequestsQueue::<crate::Runtime>::mutate(net_id, |queue| queue.push(stale_hash));
+        let stale_queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
+
+        assert!(
+            !eth_bridge::Pallet::<crate::Runtime>::is_add_asset_request_pending(
+                net_id,
+                xor_asset_id.clone()
+            )
+        );
+
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
+
+        assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
+        let queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
+        assert_eq!(queue.len(), stale_queue.len() + 1);
+        assert_eq!(&queue[..stale_queue.len()], stale_queue.as_slice());
+        let request_hash = *queue.last().unwrap();
+        assert_eq!(
+            eth_bridge::RequestStatuses::<crate::Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Pending)
+        );
+        match eth_bridge::Requests::<crate::Runtime>::get(net_id, request_hash) {
+            Some(OffchainRequest::Outgoing(OutgoingRequest::AddAsset(req), _)) => {
+                assert_eq!(req.network_id, net_id);
+                assert_eq!(req.asset_id, xor_asset_id);
+            }
+            other => panic!("unexpected queued request: {:?}", other),
+        }
     });
 
     ext().execute_with(|| {

@@ -2248,11 +2248,20 @@ impl<T: Config> Pallet<T> {
 
     pub fn is_add_asset_request_pending(network_id: T::NetworkId, asset_id: AssetIdOf<T>) -> bool {
         RequestsQueue::<T>::get(network_id).into_iter().any(|hash| {
+            let is_active = matches!(
+                RequestStatuses::<T>::get(network_id, hash),
+                Some(
+                    RequestStatus::Pending
+                        | RequestStatus::ApprovalsReady
+                        | RequestStatus::Frozen
+                        | RequestStatus::Broken(_, _)
+                )
+            );
             matches!(
                 Requests::<T>::get(network_id, hash),
                 Some(OffchainRequest::Outgoing(OutgoingRequest::AddAsset(req), _))
                     if req.asset_id == asset_id
-            )
+            ) && is_active
         })
     }
 
@@ -2261,11 +2270,20 @@ impl<T: Config> Pallet<T> {
         token_address: EthAddress,
     ) -> bool {
         RequestsQueue::<T>::get(network_id).into_iter().any(|hash| {
+            let is_active = matches!(
+                RequestStatuses::<T>::get(network_id, hash),
+                Some(
+                    RequestStatus::Pending
+                        | RequestStatus::ApprovalsReady
+                        | RequestStatus::Frozen
+                        | RequestStatus::Broken(_, _)
+                )
+            );
             matches!(
                 Requests::<T>::get(network_id, hash),
                 Some(OffchainRequest::Outgoing(OutgoingRequest::AddToken(req), _))
                     if req.token_address == token_address
-            )
+            ) && is_active
         })
     }
 

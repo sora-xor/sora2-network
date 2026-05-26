@@ -298,6 +298,61 @@ fn add_asset_pending_helper_tracks_request_lifecycle() {
 }
 
 #[test]
+fn add_asset_pending_helper_ignores_finished_stale_queue_entries() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let authority = EthBridge::authority_account().unwrap();
+
+        for (nonce, status) in [
+            (
+                100u64,
+                Some(RequestStatus::Failed(Error::UnsupportedToken.into())),
+            ),
+            (101u64, Some(RequestStatus::Done)),
+            (102u64, None),
+        ] {
+            let asset_id = Assets::register_from(
+                &alice,
+                AssetSymbol(format!("STL{nonce}").into_bytes()),
+                AssetName(format!("Stale Add Asset {nonce}").into_bytes()),
+                DEFAULT_BALANCE_PRECISION,
+                Balance::from(0u32),
+                true,
+                common::AssetType::Regular,
+                None,
+                None,
+            )
+            .unwrap();
+            let request =
+                OffchainRequest::outgoing(OutgoingRequest::AddAsset(OutgoingAddAsset::<Runtime> {
+                    author: authority.clone(),
+                    asset_id,
+                    nonce,
+                    network_id: net_id,
+                    timepoint: Default::default(),
+                }));
+            let hash = request.hash();
+            crate::Requests::<Runtime>::insert(net_id, hash, request);
+            if let Some(status) = status {
+                crate::RequestStatuses::<Runtime>::insert(net_id, hash, status);
+            }
+            crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| queue.push(hash));
+
+            assert!(!EthBridge::is_add_asset_request_pending(net_id, asset_id));
+            assert_ok!(EthBridge::add_asset(
+                RuntimeOrigin::root(),
+                asset_id,
+                net_id,
+            ));
+            assert!(EthBridge::is_add_asset_request_pending(net_id, asset_id));
+        }
+    });
+}
+
+#[test]
 fn should_reject_duplicate_pending_add_asset_request() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
@@ -394,6 +449,61 @@ fn add_sidechain_token_pending_helper_tracks_request_lifecycle() {
             net_id,
             token_address
         ));
+    });
+}
+
+#[test]
+fn add_sidechain_token_pending_helper_ignores_finished_stale_queue_entries() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let authority = EthBridge::authority_account().unwrap();
+
+        for (nonce, status) in [
+            (
+                110u64,
+                Some(RequestStatus::Failed(Error::UnsupportedToken.into())),
+            ),
+            (111u64, Some(RequestStatus::Done)),
+            (112u64, None),
+        ] {
+            let token_address = EthAddress::from([nonce as u8; 20]);
+            let request =
+                OffchainRequest::outgoing(OutgoingRequest::AddToken(OutgoingAddToken::<Runtime> {
+                    author: authority.clone(),
+                    token_address,
+                    symbol: format!("STK{nonce}"),
+                    name: format!("Stale Token {nonce}"),
+                    decimals: DEFAULT_BALANCE_PRECISION,
+                    nonce,
+                    network_id: net_id,
+                    timepoint: Default::default(),
+                }));
+            let hash = request.hash();
+            crate::Requests::<Runtime>::insert(net_id, hash, request);
+            if let Some(status) = status {
+                crate::RequestStatuses::<Runtime>::insert(net_id, hash, status);
+            }
+            crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| queue.push(hash));
+
+            assert!(!EthBridge::is_add_token_request_pending(
+                net_id,
+                token_address
+            ));
+            assert_ok!(EthBridge::add_sidechain_token(
+                RuntimeOrigin::root(),
+                token_address,
+                format!("TOK{nonce}"),
+                format!("Token {nonce}"),
+                DEFAULT_BALANCE_PRECISION,
+                net_id,
+            ));
+            assert!(EthBridge::is_add_token_request_pending(
+                net_id,
+                token_address
+            ));
+        }
     });
 }
 

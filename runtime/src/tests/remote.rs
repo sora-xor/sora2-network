@@ -6,7 +6,7 @@ use frame_support::migrations::MultiStepMigrator;
 use frame_support::traits::GetStorageVersion;
 use std::env::var;
 
-const DEFAULT_REMOTE_RPC_URL: &str = "https://ws.mof.sora.org";
+const DEFAULT_REMOTE_RPC_URL: &str = "https://mof2.sora.org";
 
 fn env_flag(name: &str, default: bool) -> bool {
     var(name)
@@ -145,9 +145,12 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
             ),
             "legacy Ethereum XOR token was not marked deprecated"
         );
+        let xor_is_clean_thischain_registration =
+            EthBridge::is_ethereum_xor_thischain_registration(eth_network_id, &xor_asset_id);
         assert!(
-            EthBridge::registered_asset(eth_network_id, xor_asset_id).is_none(),
-            "legacy Ethereum XOR bridge asset mapping still exists"
+            EthBridge::registered_asset(eth_network_id, xor_asset_id).is_none()
+                || xor_is_clean_thischain_registration,
+            "Ethereum XOR bridge asset mapping is neither removed nor a clean Thischain registration"
         );
         assert!(
             EthBridge::registered_sidechain_token(eth_network_id, xor_asset_id).is_none(),
@@ -160,6 +163,15 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
             )
             .is_none(),
             "legacy Ethereum XOR sidechain asset mapping still exists"
+        );
+        assert!(
+            migrations::ethereum_xor_thischain_add_asset_queued(),
+            "Ethereum XOR Thischain add-asset migration marker was not written"
+        );
+        assert!(
+            xor_is_clean_thischain_registration
+                || EthBridge::is_add_asset_request_pending(eth_network_id, xor_asset_id),
+            "Ethereum XOR Thischain add-asset request is neither pending nor finalized"
         );
     });
 }
