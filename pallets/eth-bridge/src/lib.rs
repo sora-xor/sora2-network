@@ -1975,6 +1975,19 @@ impl<T: Config> Pallet<T> {
         *asset_id == common::XOR.into()
     }
 
+    pub fn is_ethereum_xor_thischain_registration(
+        network_id: T::NetworkId,
+        asset_id: &AssetIdOf<T>,
+    ) -> bool {
+        network_id == T::GetEthNetworkId::get()
+            && Self::is_legacy_ethereum_xor_asset(asset_id)
+            && matches!(
+                RegisteredAsset::<T>::get(network_id, asset_id),
+                Some(AssetKind::Thischain)
+            )
+            && !RegisteredSidechainToken::<T>::contains_key(network_id, asset_id)
+    }
+
     pub fn is_decommissioned_legacy_ethereum_xor_asset(
         network_id: T::NetworkId,
         asset_id: &AssetIdOf<T>,
@@ -1982,6 +1995,7 @@ impl<T: Config> Pallet<T> {
         network_id == T::GetEthNetworkId::get()
             && LegacyEthereumXorDecommissioned::<T>::get()
             && Self::is_legacy_ethereum_xor_asset(asset_id)
+            && !Self::is_ethereum_xor_thischain_registration(network_id, asset_id)
     }
 
     pub fn is_legacy_ethereum_xor_mapping(
@@ -2275,7 +2289,9 @@ impl<T: Config>
         let Ok(network_id) = Self::ensure_generic_network(network_id) else {
             return false;
         };
-        if network_id == T::GetEthNetworkId::get() && Self::is_legacy_ethereum_xor_asset(&asset_id)
+        if network_id == T::GetEthNetworkId::get()
+            && Self::is_legacy_ethereum_xor_asset(&asset_id)
+            && !Self::is_ethereum_xor_thischain_registration(network_id, &asset_id)
         {
             return false;
         }
@@ -2331,7 +2347,10 @@ impl<T: Config>
         };
         RegisteredAsset::<T>::iter_prefix(network_id)
             .filter_map(|(asset_id, _kind)| {
-                if network_id == T::GetEthNetworkId::get() && asset_id == common::XOR.into() {
+                if network_id == T::GetEthNetworkId::get()
+                    && Self::is_legacy_ethereum_xor_asset(&asset_id)
+                    && !Self::is_ethereum_xor_thischain_registration(network_id, &asset_id)
+                {
                     return None;
                 }
                 let token_address = RegisteredSidechainToken::<T>::get(network_id, &asset_id);
@@ -2348,9 +2367,7 @@ impl<T: Config>
                     precision
                 });
 
-                let app_kind = if asset_id == common::XOR.into() {
-                    EVMAppKind::XorMaster
-                } else if asset_id == common::VAL.into() {
+                let app_kind = if asset_id == common::VAL.into() {
                     EVMAppKind::ValMaster
                 } else {
                     EVMAppKind::HashiBridge

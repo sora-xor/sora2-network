@@ -1230,7 +1230,7 @@ fn should_allow_legacy_xor_address_on_non_ethereum_network() {
 }
 
 #[test]
-fn should_reject_legacy_ethereum_xor_add_requests_before_queueing() {
+fn should_allow_xor_thischain_add_request_after_legacy_decommission() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -1241,7 +1241,7 @@ fn should_reject_legacy_ethereum_xor_add_requests_before_queueing() {
 
         assert_noop!(
             EthBridge::add_asset(RuntimeOrigin::root(), XOR.into(), net_id),
-            Error::DeprecatedLegacyXor
+            Error::TokenIsAlreadyAdded
         );
         assert_eq!(
             frame_system::Pallet::<Runtime>::account_nonce(&authority),
@@ -1281,18 +1281,23 @@ fn should_reject_legacy_ethereum_xor_add_requests_before_queueing() {
         let post_migration_nonce = frame_system::Pallet::<Runtime>::account_nonce(&authority);
         let post_migration_queue_len = crate::RequestsQueue::<Runtime>::get(net_id).len();
 
-        assert_noop!(
-            EthBridge::add_asset(RuntimeOrigin::root(), XOR.into(), net_id),
-            Error::DeprecatedLegacyXor
-        );
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            XOR.into(),
+            net_id
+        ));
         assert_eq!(
             frame_system::Pallet::<Runtime>::account_nonce(&authority),
-            post_migration_nonce
+            post_migration_nonce + 1
         );
-        assert_eq!(
-            crate::RequestsQueue::<Runtime>::get(net_id).len(),
-            post_migration_queue_len
-        );
+        let queue = crate::RequestsQueue::<Runtime>::get(net_id);
+        assert_eq!(queue.len(), post_migration_queue_len + 1);
+        let request = crate::Requests::<Runtime>::get(net_id, queue.last().unwrap()).unwrap();
+        assert!(matches!(
+            request,
+            OffchainRequest::Outgoing(OutgoingRequest::AddAsset(req), _)
+                if req.asset_id == XOR.into()
+        ));
     });
 }
 
@@ -1349,7 +1354,7 @@ fn should_reject_manually_deprecated_sidechain_token_before_other_errors() {
 }
 
 #[test]
-fn should_reject_preexisting_legacy_xor_add_requests_at_finalization() {
+fn should_finalize_xor_thischain_add_request_after_legacy_decommission() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -1366,12 +1371,20 @@ fn should_reject_preexisting_legacy_xor_add_requests_at_finalization() {
         });
         assert_err!(
             add_xor_asset.finalize(H256::repeat_byte(31)),
-            Error::DeprecatedLegacyXor
+            Error::TokenIsAlreadyAdded
         );
         assert_eq!(
             RegisteredAsset::<Runtime>::get(net_id, XOR),
             initial_xor_kind
         );
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_ok!(add_xor_asset.finalize(H256::repeat_byte(33)));
+        assert_eq!(
+            RegisteredAsset::<Runtime>::get(net_id, XOR),
+            Some(AssetKind::Thischain)
+        );
+        assert!(RegisteredSidechainToken::<Runtime>::get(net_id, XOR).is_none());
 
         let add_legacy_token = OutgoingRequest::AddToken(OutgoingAddToken::<Runtime> {
             author: authority,
@@ -1851,8 +1864,8 @@ fn should_leave_non_queued_finished_legacy_ethereum_xor_history_untouched() {
 }
 
 #[test]
-fn should_reject_legacy_ethereum_xor_reregistration_and_transfer_after_decommission() {
-    let (mut ext, _state) = ExtBuilder::default().build();
+fn should_allow_xor_transfer_after_thischain_reregistration() {
+    let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
@@ -1885,6 +1898,51 @@ fn should_reject_legacy_ethereum_xor_reregistration_and_transfer_after_decommiss
         assert_eq!(
             Assets::total_balance(&XOR.into(), &alice).unwrap(),
             1000u32.into()
+        );
+
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            XOR.into(),
+            net_id
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert_eq!(
+            RegisteredAsset::<Runtime>::get(net_id, XOR),
+            Some(AssetKind::Thischain)
+        );
+        assert!(
+            <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::is_asset_supported(
+                generic_network_id,
+                XOR.into(),
+            )
+        );
+        let assets =
+            <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::list_supported_assets(
+                generic_network_id,
+            );
+        assert!(assets.iter().any(|asset| {
+            matches!(
+                asset,
+                BridgeAssetInfo::EVMLegacy(info)
+                    if info.asset_id == XOR.into()
+                        && info.app_kind == EVMAppKind::HashiBridge
+                        && info.evm_address.is_none()
+                        && info.precision.is_none()
+            )
+        }));
+
+        assert_ok!(
+            <EthBridge as BridgeApp<AccountId, EthAddress, AssetId, Balance>>::transfer(
+                generic_network_id,
+                XOR.into(),
+                alice.clone(),
+                EthAddress::from([7; 20]),
+                100u32.into(),
+            )
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            900u32.into()
         );
     });
 }

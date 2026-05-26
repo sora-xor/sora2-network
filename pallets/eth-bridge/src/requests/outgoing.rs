@@ -442,8 +442,7 @@ impl<T: Config> OutgoingAddAsset<T> {
     pub fn validate(&self) -> Result<(), DispatchError> {
         Assets::<T>::ensure_asset_exists(&self.asset_id)?;
         ensure!(
-            self.network_id != T::GetEthNetworkId::get()
-                || !crate::Pallet::<T>::is_legacy_ethereum_xor_asset(&self.asset_id),
+            !crate::Pallet::<T>::is_legacy_ethereum_xor_mapping(self.network_id, &self.asset_id),
             Error::<T>::DeprecatedLegacyXor
         );
         ensure!(
