@@ -2589,8 +2589,7 @@ pub mod migrations {
                 }
                 if on_chain < StorageVersion::new(2) {
                     panic!(
-                        "Polkamarkt v3 migration requires storage version at least 2, found {:?}",
-                        on_chain
+                        "Polkamarkt v3 migration requires storage version at least 2, found {on_chain:?}"
                     );
                 }
 
@@ -2666,24 +2665,22 @@ pub mod migrations {
 
                 match migration_result {
                     Ok(stats) => {
+                        let MigrationStats {
+                            refunded_accounts,
+                            cleared_bonds,
+                            cleared_locks,
+                            cleared_market_locks,
+                            cleared_config,
+                        } = stats;
                         log::info!(
-                            "Polkamarkt v3 migration refunded {} legacy bond accounts and cleared {} bond, {} creator-lock, {} market-lock, {} config entries",
-                            stats.refunded_accounts,
-                            stats.cleared_bonds,
-                            stats.cleared_locks,
-                            stats.cleared_market_locks,
-                            stats.cleared_config,
+                            "Polkamarkt v3 migration refunded {refunded_accounts} legacy bond accounts and cleared {cleared_bonds} bond, {cleared_locks} creator-lock, {cleared_market_locks} market-lock, {cleared_config} config entries",
                         );
                     }
                     Err(error) => {
                         log::error!(
-                            "Polkamarkt v3 migration failed and was rolled back: {:?}",
-                            error
+                            "Polkamarkt v3 migration failed and was rolled back: {error:?}",
                         );
-                        panic!(
-                            "Polkamarkt v3 migration failed and was rolled back: {:?}",
-                            error
-                        );
+                        panic!("Polkamarkt v3 migration failed and was rolled back: {error:?}");
                     }
                 }
 
@@ -2711,8 +2708,7 @@ pub mod migrations {
                 }
                 if on_chain != StorageVersion::new(3) {
                     panic!(
-                        "Polkamarkt v4 migration requires storage version 3, found {:?}",
-                        on_chain
+                        "Polkamarkt v4 migration requires storage version 3, found {on_chain:?}"
                     );
                 }
 
@@ -2758,9 +2754,7 @@ pub mod migrations {
 
                 StorageVersion::new(4).put::<Pallet<T>>();
                 log::info!(
-                    "Polkamarkt v4 migration initialized locked LP shares for {} of {} markets",
-                    seeded_markets,
-                    scanned_markets,
+                    "Polkamarkt v4 migration initialized locked LP shares for {seeded_markets} of {scanned_markets} markets",
                 );
                 db_weight.reads_writes(
                     preflight_reads

@@ -423,7 +423,7 @@ mod benchmarks {
             Pallet::<T>::resolve_market(RawOrigin::Root.into(), market_id, BinaryOutcome::Yes)
                 .expect("resolve setup");
         }
-        let market_ids = market_ids.try_into().ok().expect("bounded batch");
+        let market_ids = market_ids.try_into().expect("bounded batch");
 
         #[extrinsic_call]
         claim_markets(RawOrigin::Signed(trader), market_ids);
