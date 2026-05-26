@@ -38,10 +38,10 @@ use crate::{genesis_config_presets, Currencies, Referrals, RuntimeOrigin};
 use assets::GetTotalBalance;
 use common::mock::{alice, bob};
 use common::prelude::constants::SMALL_FEE;
-use common::{fixed, SymbolName, KUSD, TBCD, XOR};
-use frame_support::assert_ok;
+use common::{fixed, SymbolName, KUSD, TBCD, VAL, XOR};
 use frame_support::genesis_builder_helper;
 use frame_support::traits::{GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
+use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use serde_json::Value;
 
@@ -656,6 +656,73 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_queues_once() {
             eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
             queue
         );
+    });
+}
+
+pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue() {
+    use eth_bridge::requests::{OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus};
+
+    ext().execute_with(|| {
+        let net_id = crate::GetEthNetworkId::get();
+        let xor_asset_id: crate::AssetId = XOR.into();
+
+        crate::migrations::DecommissionLegacyEthereumXor::on_runtime_upgrade();
+        assert!(eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>());
+
+        let max = crate::MaxEthBridgeRequestsPerQueue::get() as usize;
+        for nonce in 0..max {
+            let request_hash = sp_core::H256::from_low_u64_be(nonce as u64 + 1);
+            let request = OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer::<
+                crate::Runtime,
+            > {
+                from: alice(),
+                to: sp_core::H160::from([7; 20]),
+                asset_id: VAL.into(),
+                amount: 1,
+                nonce: nonce as crate::Index,
+                network_id: net_id,
+                timepoint: Default::default(),
+            }));
+            eth_bridge::Requests::<crate::Runtime>::insert(net_id, request_hash, request);
+            eth_bridge::RequestStatuses::<crate::Runtime>::insert(
+                net_id,
+                request_hash,
+                RequestStatus::Pending,
+            );
+            eth_bridge::RequestsQueue::<crate::Runtime>::mutate(net_id, |queue| {
+                queue.push(request_hash)
+            });
+        }
+
+        let full_queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
+        assert_eq!(full_queue.len(), max);
+        assert_err!(
+            crate::EthBridge::add_asset(crate::RuntimeOrigin::root(), xor_asset_id.clone(), net_id),
+            eth_bridge::Error::<crate::Runtime>::RequestsQueueFull
+        );
+        assert_eq!(
+            eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
+            full_queue
+        );
+
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
+
+        assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
+        let queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
+        assert_eq!(queue.len(), max + 1);
+        assert_eq!(&queue[..max], full_queue.as_slice());
+        let request_hash = *queue.last().unwrap();
+        assert_eq!(
+            eth_bridge::RequestStatuses::<crate::Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Pending)
+        );
+        match eth_bridge::Requests::<crate::Runtime>::get(net_id, request_hash) {
+            Some(OffchainRequest::Outgoing(OutgoingRequest::AddAsset(req), _)) => {
+                assert_eq!(req.network_id, net_id);
+                assert_eq!(req.asset_id, xor_asset_id);
+            }
+            other => panic!("unexpected queued request: {:?}", other),
+        }
     });
 }
 

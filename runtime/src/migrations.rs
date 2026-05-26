@@ -193,11 +193,11 @@ fn queue_ethereum_xor_thischain_add_asset() -> Weight {
         panic!("Ethereum XOR has a non-Thischain bridge registration after legacy decommission");
     }
 
-    if let Err(error) = eth_bridge::Pallet::<crate::Runtime>::add_asset(
-        crate::RuntimeOrigin::root(),
-        xor_asset_id,
-        network_id,
-    ) {
+    if let Err(error) =
+        eth_bridge::migration::queue_ethereum_xor_thischain_add_asset_unchecked_capacity::<
+            crate::Runtime,
+        >()
+    {
         frame_support::__private::log::error!(
             "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
             error

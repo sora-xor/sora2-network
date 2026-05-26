@@ -1,6 +1,7 @@
-use crate::requests::RequestStatus;
+use crate::requests::{OutgoingAddAsset, RequestStatus};
 use codec::Decode;
 use codec::Encode;
+use frame_support::ensure;
 use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::sp_runtime::ModuleError;
@@ -8,6 +9,7 @@ use frame_support::traits::Get;
 use frame_support::traits::GetStorageVersion;
 use frame_support::traits::StorageVersion;
 use frame_support::weights::Weight;
+use sp_runtime::traits::BlockNumberProvider;
 use sp_runtime::RuntimeDebug;
 
 use crate::Config;
@@ -15,11 +17,12 @@ use crate::Pallet;
 use crate::RequestApprovals;
 use crate::RequestApprovers;
 use crate::RequestStatuses;
+use crate::RequestSubmissionHeight;
 use crate::Requests;
 use crate::{
-    BridgeAccount, DeprecatedSidechainTokens, LegacyEthereumXorDecommissioned, RegisteredAsset,
-    RegisteredSidechainAsset, RegisteredSidechainToken, SidechainAssetPrecision,
-    LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+    AccountRequests, BridgeAccount, BridgeStatus, BridgeStatuses, DeprecatedSidechainTokens, Event,
+    LegacyEthereumXorDecommissioned, RegisteredAsset, RegisteredSidechainAsset,
+    RegisteredSidechainToken, SidechainAssetPrecision, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
 };
 use crate::{Error, RequestsQueue};
 use crate::{IncomingRequest, OffchainRequest, OutgoingRequest};
@@ -204,6 +207,84 @@ pub fn legacy_ethereum_xor_decommission_blockers<T: Config>() -> u32 {
 
 pub fn is_legacy_ethereum_xor_decommissioned<T: Config>() -> bool {
     LegacyEthereumXorDecommissioned::<T>::get()
+}
+
+pub fn queue_ethereum_xor_thischain_add_asset_unchecked_capacity<T: Config>(
+) -> Result<(), DispatchError> {
+    let network_id = T::GetEthNetworkId::get();
+    let asset_id = common::XOR.into();
+    let from = Pallet::<T>::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+    let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+    let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
+    let request = OffchainRequest::outgoing(OutgoingRequest::AddAsset(OutgoingAddAsset {
+        author: from.clone(),
+        asset_id,
+        nonce,
+        network_id,
+        timepoint,
+    }));
+
+    add_request_unchecked_capacity::<T>(&request)?;
+    frame_system::Pallet::<T>::inc_account_nonce(&from);
+    Ok(())
+}
+
+fn add_request_unchecked_capacity<T: Config>(
+    request: &OffchainRequest<T>,
+) -> Result<(), DispatchError> {
+    let net_id = request.network_id();
+    let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
+    let Some((outgoing_req, _)) = request.as_outgoing() else {
+        return Err(Error::<T>::ExpectedOutgoingRequest.into());
+    };
+
+    ensure!(
+        bridge_status != BridgeStatus::Migrating || outgoing_req.is_allowed_during_migration(),
+        Error::<T>::ContractIsInMigrationStage
+    );
+    if outgoing_req.uses_weak_signature_domain() {
+        let is_eth_peer_request = matches!(
+            outgoing_req,
+            OutgoingRequest::AddPeer(_)
+                | OutgoingRequest::RemovePeer(_)
+                | OutgoingRequest::AddPeerCompat(_)
+                | OutgoingRequest::RemovePeerCompat(_)
+        ) && net_id == T::GetEthNetworkId::get();
+        ensure!(is_eth_peer_request, Error::<T>::WeakLegacySigningDisabled);
+    }
+    if let OutgoingRequest::AddAsset(add_asset_request) = outgoing_req {
+        ensure!(
+            !Pallet::<T>::is_add_asset_request_pending(net_id, add_asset_request.asset_id),
+            Error::<T>::TokenIsAlreadyAdded
+        );
+    } else if let OutgoingRequest::AddToken(add_token_request) = outgoing_req {
+        ensure!(
+            !Pallet::<T>::is_add_token_request_pending(net_id, add_token_request.token_address),
+            Error::<T>::SidechainAssetIsAlreadyRegistered
+        );
+    }
+
+    let hash = request.hash();
+    let can_resubmit = RequestStatuses::<T>::get(net_id, &hash)
+        .map(|status| matches!(status, RequestStatus::Failed(_)))
+        .unwrap_or(false);
+    if !can_resubmit {
+        ensure!(
+            Requests::<T>::get(net_id, &hash).is_none(),
+            Error::<T>::DuplicatedRequest
+        );
+    }
+    request.validate()?;
+    request.prepare()?;
+    Pallet::<T>::clear_request_signatures(net_id, &hash);
+    AccountRequests::<T>::mutate(request.author(), |vec| vec.push((net_id, hash)));
+    Requests::<T>::insert(net_id, &hash, request);
+    RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
+    RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
+    let block_number = frame_system::Pallet::<T>::current_block_number();
+    RequestSubmissionHeight::<T>::insert(net_id, &hash, block_number);
+    Pallet::<T>::deposit_event(Event::RequestRegistered(hash));
+    Ok(())
 }
 
 fn legacy_ethereum_xor_decommission_blocker_count<T: Config>() -> (u32, u64) {

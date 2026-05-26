@@ -135,6 +135,11 @@ fn queue_ethereum_xor_thischain_add_asset_migration_queues_once() {
 }
 #[cfg(test)]
 #[test]
+fn queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue() {
+    tests::queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue();
+}
+#[cfg(test)]
+#[test]
 fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states() {
     tests::queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states();
 }

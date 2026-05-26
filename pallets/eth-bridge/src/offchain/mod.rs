@@ -353,6 +353,12 @@ impl<T: Config> Pallet<T> {
                     return Ok(None);
                 }
             };
+            ensure!(
+                network_id != T::GetEthNetworkId::get()
+                    || !Self::is_legacy_ethereum_xor_asset(&asset_id)
+                    || !crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
+                Error::<T>::DeprecatedLegacyXor
+            );
             Ok(Some((
                 asset_id,
                 Self::registered_asset(network_id, &asset_id).unwrap_or(AssetKind::Sidechain),

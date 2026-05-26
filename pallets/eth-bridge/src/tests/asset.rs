@@ -2135,6 +2135,64 @@ fn should_block_xor_registered_as_sidechain_after_decommission() {
 }
 
 #[test]
+fn should_reject_xor_resolution_through_orphan_sidechain_asset_mapping() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let xor_asset_id: AssetId = XOR.into();
+        let orphan_token = EthAddress::from([13; 20]);
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            xor_asset_id,
+            net_id
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert!(EthBridge::is_ethereum_xor_thischain_registration(
+            net_id,
+            &xor_asset_id
+        ));
+
+        RegisteredSidechainAsset::<Runtime>::insert(net_id, orphan_token, xor_asset_id);
+
+        assert_err!(
+            EthBridge::get_asset_by_raw_asset_id(H256::zero(), &orphan_token, net_id),
+            Error::DeprecatedLegacyXor
+        );
+
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[18u8; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        assert_err!(
+            IncomingRequest::<Runtime>::try_from_contract_event(
+                ContractEvent::Deposit(DepositEvent::new(
+                    alice.clone(),
+                    100u32.into(),
+                    orphan_token,
+                    H256::zero(),
+                )),
+                LoadIncomingTransactionRequest::new(
+                    alice,
+                    tx_hash,
+                    Default::default(),
+                    IncomingTransactionRequestKind::Transfer,
+                    net_id,
+                ),
+                1,
+            ),
+            Error::DeprecatedLegacyXor
+        );
+    });
+}
+
+#[test]
 fn should_keep_non_ethereum_xor_denominated() {
     let mut builder = ExtBuilder::default();
     let net_id = builder.add_network(
