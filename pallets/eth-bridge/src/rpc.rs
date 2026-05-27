@@ -32,17 +32,29 @@ use crate::offchain::SignatureParams;
 use crate::requests::{AssetKind, OffchainRequest, OutgoingRequestEncoded, RequestStatus};
 use crate::util::iter_storage;
 use crate::{
-    AssetIdOf, Config, LoadToIncomingRequestHash, Pallet, RegisteredAsset,
+    AssetIdOf, Config, Error, LoadToIncomingRequestHash, Pallet, RegisteredAsset,
     RegisteredSidechainToken, RequestApprovals, RequestStatuses, Requests, SidechainAssetPrecision,
 };
 use common::{AssetInfoProvider, BalancePrecision};
 use frame_support::sp_runtime::app_crypto::sp_core;
+use frame_support::traits::Get;
 use sp_core::{H160, H256};
 use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 impl<T: Config> Pallet<T> {
     const ITEMS_LIMIT: usize = 50;
+
+    fn visible_request_status(network_id: T::NetworkId, hash: &H256) -> Option<RequestStatus> {
+        let status = Self::request_status(network_id, hash)?;
+        if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(network_id, hash) {
+            Some(RequestStatus::Failed(
+                Error::<T>::DeprecatedLegacyXor.into(),
+            ))
+        } else {
+            Some(status)
+        }
+    }
 
     /// Get requests data and their statuses by hash.
     pub fn get_requests(
@@ -78,7 +90,7 @@ impl<T: Config> Pallet<T> {
             .filter(|(_, h, _)| h == hash)
             .map(|(net_id, hash, request)| {
                 let status: RequestStatus =
-                    Self::request_status(net_id, hash).unwrap_or(RequestStatus::Pending);
+                    Self::visible_request_status(net_id, &hash).unwrap_or(RequestStatus::Pending);
                 (net_id, request, status)
             })
             .filter_map(|(net_id, req, status)| {
@@ -88,8 +100,9 @@ impl<T: Config> Pallet<T> {
                 if redirect_to_incoming {
                     let redirect_hash = LoadToIncomingRequestHash::<T>::get(net_id, hash);
                     Requests::<T>::get(net_id, redirect_hash).map(|req| {
-                        let status: RequestStatus = Self::request_status(net_id, redirect_hash)
-                            .unwrap_or(RequestStatus::Pending);
+                        let status: RequestStatus =
+                            Self::visible_request_status(net_id, &redirect_hash)
+                                .unwrap_or(RequestStatus::Pending);
                         (req, status)
                     })
                 } else {
@@ -106,7 +119,7 @@ impl<T: Config> Pallet<T> {
     ) -> Vec<(OffchainRequest<T>, RequestStatus)> {
         Requests::<T>::get(net_id, hash)
             .zip({
-                let status: Option<RequestStatus> = Self::request_status(net_id, hash);
+                let status: Option<RequestStatus> = Self::visible_request_status(net_id, hash);
                 status
             })
             .and_then(|(req, status)| {
@@ -116,8 +129,9 @@ impl<T: Config> Pallet<T> {
                 if redirect_to_incoming {
                     let redirect_hash = LoadToIncomingRequestHash::<T>::get(net_id, hash);
                     Requests::<T>::get(net_id, redirect_hash).map(|req| {
-                        let status: RequestStatus = Self::request_status(net_id, redirect_hash)
-                            .unwrap_or(RequestStatus::Pending);
+                        let status: RequestStatus =
+                            Self::visible_request_status(net_id, &redirect_hash)
+                                .unwrap_or(RequestStatus::Pending);
                         (req, status)
                     })
                 } else {
@@ -138,7 +152,13 @@ impl<T: Config> Pallet<T> {
             .take(Self::ITEMS_LIMIT)
             .filter_map(|hash| {
                 if let Some(net_id) = network_id {
-                    if Self::request_status(net_id, hash)? == RequestStatus::ApprovalsReady {
+                    if Self::visible_request_status(net_id, hash)? == RequestStatus::ApprovalsReady
+                    {
+                        if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                            net_id, hash,
+                        ) {
+                            return None;
+                        }
                         let request: OffchainRequest<T> = Requests::get(net_id, hash)?;
                         match request {
                             OffchainRequest::Outgoing(request, hash) => {
@@ -156,8 +176,15 @@ impl<T: Config> Pallet<T> {
                 } else {
                     Some(
                         RequestStatuses::<T>::iter()
-                            .filter(|(_, _hash, v)| v == &RequestStatus::ApprovalsReady)
+                            .filter(|(_, status_hash, v)| {
+                                status_hash == hash && v == &RequestStatus::ApprovalsReady
+                            })
                             .filter_map(|(net_id, hash, _v)| {
+                                if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                                    net_id, &hash,
+                                ) {
+                                    return None;
+                                }
                                 let request: OffchainRequest<T> = Requests::get(net_id, hash)?;
                                 match request {
                                     OffchainRequest::Outgoing(request, hash) => {
@@ -189,13 +216,27 @@ impl<T: Config> Pallet<T> {
             .take(Self::ITEMS_LIMIT)
             .flat_map(|hash| {
                 if let Some(net_id) = network_id {
-                    vec![RequestApprovals::<T>::get(net_id, hash)
-                        .into_iter()
-                        .collect()]
+                    if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                        net_id, hash,
+                    ) {
+                        vec![Vec::new()]
+                    } else {
+                        vec![RequestApprovals::<T>::get(net_id, hash)
+                            .into_iter()
+                            .collect()]
+                    }
                 } else {
                     RequestApprovals::<T>::iter()
                         .filter(|(_, h, _)| h == hash)
-                        .map(|(_, _, v)| v.into_iter().collect::<Vec<_>>())
+                        .filter_map(|(net_id, hash, v)| {
+                            if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                                net_id, &hash,
+                            ) {
+                                None
+                            } else {
+                                Some(v.into_iter().collect::<Vec<_>>())
+                            }
+                        })
                         .collect()
                 }
             })
@@ -209,7 +250,9 @@ impl<T: Config> Pallet<T> {
     ) -> Result<Vec<(T::NetworkId, H256)>, DispatchError> {
         let mut requests: Vec<(T::NetworkId, H256)> = Self::account_requests(account);
         if let Some(filter) = status_filter {
-            requests.retain(|(net_id, h)| Self::request_status(net_id, h).as_ref() == Some(&filter))
+            requests.retain(|(net_id, h)| {
+                Self::visible_request_status(*net_id, h).as_ref() == Some(&filter)
+            })
         }
         Ok(requests)
     }
@@ -225,18 +268,32 @@ impl<T: Config> Pallet<T> {
         )>,
         DispatchError,
     > {
-        Ok(iter_storage::<RegisteredAsset<T>, _, _, _, _, _>(
+        let registered_assets = iter_storage::<RegisteredAsset<T>, _, _, _, _, _>(
             network_id,
             |(network_id, asset_id, kind)| {
+                if network_id == T::GetEthNetworkId::get()
+                    && Self::is_legacy_ethereum_xor_asset(&asset_id)
+                    && !Self::is_ethereum_xor_thischain_registration(network_id, &asset_id)
+                {
+                    return None;
+                }
                 let token_info = RegisteredSidechainToken::<T>::get(network_id, &asset_id)
                     .map(|x| H160(x.0))
                     .map(|address| {
                         let precision = SidechainAssetPrecision::<T>::get(network_id, &asset_id);
                         (address, precision)
                     });
+                if token_info
+                    .as_ref()
+                    .map(|(address, _)| Self::is_deprecated_sidechain_token(network_id, address))
+                    .unwrap_or(false)
+                {
+                    return None;
+                }
                 let asset_precision = assets::Pallet::<T>::get_asset_info(&asset_id).2;
-                (kind, (asset_id, asset_precision), token_info)
+                Some((kind, (asset_id, asset_precision), token_info))
             },
-        ))
+        );
+        Ok(registered_assets.into_iter().flatten().collect())
     }
 }

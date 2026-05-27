@@ -649,10 +649,24 @@ impl<T: Config> LoadIncomingRequest<T> {
     /// Checks that the request can be initiated.
     pub fn validate(&self) -> Result<(), DispatchError> {
         match self {
-            Self::Transaction(_request) => Ok(()),
+            Self::Transaction(request) => {
+                ensure!(
+                    request.kind != IncomingTransactionRequestKind::TransferXOR
+                        || !crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
+                    Error::<T>::DeprecatedLegacyXor
+                );
+                Ok(())
+            }
             Self::Meta(request, _) => {
                 match request.kind {
                     IncomingMetaRequestKind::MarkAsDone => {
+                        ensure!(
+                            !Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                                request.network_id,
+                                &request.hash,
+                            ),
+                            Error::<T>::DeprecatedLegacyXor
+                        );
                         let request_status =
                             RequestStatuses::<T>::get(request.network_id, request.hash)
                                 .ok_or(Error::<T>::UnknownRequest)?;

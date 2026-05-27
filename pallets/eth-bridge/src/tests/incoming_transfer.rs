@@ -344,6 +344,173 @@ fn should_accept_direct_incoming_xor_transfer_after_thischain_reregistration() {
 }
 
 #[test]
+fn should_reject_stale_incoming_xor_asset_kind_after_thischain_reregistration() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            XOR.into(),
+            net_id
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert!(EthBridge::is_ethereum_xor_thischain_registration(
+            net_id,
+            &XOR.into()
+        ));
+
+        for (asset_kind, tx_hash) in [
+            (AssetKind::Sidechain, H256::from_slice(&[16u8; 32])),
+            (AssetKind::SidechainOwned, H256::from_slice(&[17u8; 32])),
+        ] {
+            let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+                from: EthAddress::from([1; 20]),
+                to: alice.clone(),
+                asset_id: XOR.into(),
+                asset_kind,
+                amount: 100u32.into(),
+                author: alice.clone(),
+                tx_hash,
+                at_height: 1,
+                timepoint: Default::default(),
+                network_id: net_id,
+                should_take_fee: false,
+            });
+
+            assert_incoming_request_registration_failed(
+                &state,
+                incoming_transfer,
+                Error::DeprecatedLegacyXor,
+            )
+            .unwrap();
+        }
+
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+    });
+}
+
+#[test]
+fn should_reject_imported_legacy_transfer_xor_after_thischain_reregistration() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            XOR.into(),
+            net_id
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert!(EthBridge::is_ethereum_xor_thischain_registration(
+            net_id,
+            &XOR.into()
+        ));
+
+        let load_request = LoadIncomingRequest::Transaction(LoadIncomingTransactionRequest::new(
+            alice.clone(),
+            H256::from_slice(&[18u8; 32]),
+            Default::default(),
+            IncomingTransactionRequestKind::TransferXOR,
+            net_id,
+        ));
+        let load_request_hash = load_request.hash();
+        let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: alice.clone(),
+            asset_id: XOR.into(),
+            asset_kind: AssetKind::Thischain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash: load_request_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+            should_take_fee: false,
+        });
+        let queue = crate::RequestsQueue::<Runtime>::get(net_id);
+
+        let error = EthBridge::import_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id),
+            load_request,
+            Ok(incoming_transfer),
+        )
+        .unwrap_err();
+        let expected_error: DispatchError = Error::DeprecatedLegacyXor.into();
+        assert_eq!(error.error, expected_error);
+        assert_eq!(error.post_info.pays_fee, Pays::No.into());
+
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id), queue);
+        assert!(crate::Requests::<Runtime>::get(net_id, load_request_hash).is_none());
+        assert!(crate::RequestStatuses::<Runtime>::get(net_id, load_request_hash).is_none());
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+    });
+}
+
+#[test]
+fn should_reject_stale_pending_xor_sidechain_transfer_on_finalize_after_reregistration() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+        assert_ok!(EthBridge::add_asset(
+            RuntimeOrigin::root(),
+            XOR.into(),
+            net_id
+        ));
+        approve_last_request(&state, net_id).expect("request wasn't approved");
+        assert!(EthBridge::is_ethereum_xor_thischain_registration(
+            net_id,
+            &XOR.into()
+        ));
+
+        let stale_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: alice.clone(),
+            asset_id: XOR.into(),
+            asset_kind: AssetKind::Sidechain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash: H256::from_slice(&[19u8; 32]),
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+            should_take_fee: false,
+        });
+        let stale_request = OffchainRequest::incoming(stale_transfer);
+        let stale_request_hash = stale_request.hash();
+        crate::Requests::<Runtime>::insert(net_id, stale_request_hash, stale_request);
+        crate::RequestStatuses::<Runtime>::insert(
+            net_id,
+            stale_request_hash,
+            RequestStatus::Pending,
+        );
+        crate::RequestsQueue::<Runtime>::mutate(net_id, |queue| queue.push(stale_request_hash));
+
+        assert_ok!(EthBridge::finalize_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id),
+            stale_request_hash,
+            net_id,
+        ));
+
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, stale_request_hash),
+            Some(RequestStatus::Failed(Error::DeprecatedLegacyXor.into()))
+        );
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&stale_request_hash));
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+    });
+}
+
+#[test]
 fn should_reject_direct_incoming_add_token_for_legacy_ethereum_xor_address() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {

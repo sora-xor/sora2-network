@@ -35,7 +35,10 @@ use crate::mock::{
 use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, SidechainPrecision, TokenAddresses};
 use bridge_types::evm::AdditionalEVMInboundData;
-use bridge_types::types::{AssetKind, CallOriginOutput, GenericAdditionalInboundData};
+use bridge_types::traits::BridgeApp;
+use bridge_types::types::{
+    AssetKind, BridgeAssetInfo, CallOriginOutput, GenericAdditionalInboundData,
+};
 use bridge_types::{EVMChainId, GenericNetworkId, H160, H256};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
@@ -332,6 +335,34 @@ fn deprecated_token_address_cannot_be_minted_or_burned() {
             Error::<Test>::DeprecatedTokenAddress
         );
         assert_eq!(Tokens::total_balance(asset_id, &bob), 500);
+    })
+}
+
+#[test]
+fn deprecated_token_address_is_not_reported_as_supported() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(99);
+        let network_id = BASE_NETWORK_ID;
+        let asset_id = ETH;
+
+        TokenAddresses::<Test>::insert(network_id, asset_id, address);
+        AssetsByAddresses::<Test>::insert(network_id, address, asset_id);
+        AssetKinds::<Test>::insert(network_id, asset_id, AssetKind::Thischain);
+        SidechainPrecision::<Test>::insert(network_id, asset_id, 18);
+
+        assert!(
+            !<FungibleApp as BridgeApp<AccountId, H160, H256, u128>>::is_asset_supported(
+                GenericNetworkId::EVM(network_id),
+                asset_id,
+            )
+        );
+        assert!(
+            <FungibleApp as BridgeApp<AccountId, H160, H256, u128>>::list_supported_assets(
+                GenericNetworkId::EVM(network_id)
+            )
+            .into_iter()
+            .all(|asset| !matches!(asset, BridgeAssetInfo::EVM(info) if info.asset_id == asset_id))
+        );
     })
 }
 

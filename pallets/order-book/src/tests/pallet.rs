@@ -33,8 +33,8 @@ use assets::AssetIdOf;
 use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
 use common::prelude::{QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
-    balance, AssetName, AssetSymbol, Balance, LiquiditySource, OrderBookId, PriceVariant, VAL, XOR,
-    XSTUSD,
+    balance, AssetName, AssetSymbol, Balance, LiquiditySource, OnDenominate, OrderBookId,
+    PriceVariant, VAL, XOR, XSTUSD,
 };
 use core::cmp::min;
 use frame_support::traits::Get;
@@ -47,6 +47,7 @@ use framenode_runtime::order_book::{
 };
 use framenode_runtime::{Runtime, RuntimeOrigin};
 use sp_runtime::traits::UniqueSaturatedInto;
+use sp_runtime::BoundedVec;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::vec_deque::VecDeque;
 
@@ -1104,6 +1105,133 @@ fn cannot_exchange_with_not_trade_status() {
         order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book);
         assert!(OrderBookPallet::can_exchange(&DEX.into(), &XOR, &VAL));
         assert!(OrderBookPallet::can_exchange(&DEX.into(), &VAL, &XOR));
+    });
+}
+
+#[test]
+fn denominate_xor_quote_order_book_scales_limit_order_prices_and_indexes() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let old_price = OrderPrice::divisible(balance!(20));
+        let new_price = OrderPrice::divisible(balance!(2));
+        let amount = OrderVolume::divisible(balance!(5));
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(100)),
+        );
+        let order = LimitOrder::<Runtime>::new(
+            1,
+            accounts::alice::<Runtime>(),
+            PriceVariant::Buy,
+            old_price,
+            amount,
+            0,
+            60_000,
+            1,
+        );
+        let price_orders = BoundedVec::<
+            <Runtime as Config>::OrderId,
+            <Runtime as Config>::MaxLimitOrdersForPrice,
+        >::try_from(vec![1])
+        .unwrap();
+        let mut aggregated =
+            order_book::MarketSide::<<Runtime as Config>::MaxSidePriceCount>::new();
+        assert_ok!(aggregated.try_insert(old_price, amount));
+
+        order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book);
+        order_book::LimitOrders::<Runtime>::insert(order_book_id, 1, order);
+        order_book::Bids::<Runtime>::insert(order_book_id, old_price, price_orders.clone());
+        order_book::AggregatedBids::<Runtime>::insert(order_book_id, aggregated);
+
+        assert_ok!(order_book::DenominateXor::<Runtime>::on_denominate(
+            &balance!(10)
+        ));
+
+        assert_eq!(
+            order_book::LimitOrders::<Runtime>::get(order_book_id, 1)
+                .unwrap()
+                .price,
+            new_price
+        );
+        assert!(order_book::Bids::<Runtime>::get(order_book_id, old_price).is_none());
+        assert_eq!(
+            order_book::Bids::<Runtime>::get(order_book_id, new_price).unwrap(),
+            price_orders
+        );
+        assert!(order_book::AggregatedBids::<Runtime>::get(order_book_id).contains_key(&new_price));
+    });
+}
+
+#[test]
+fn denominate_xor_quote_order_book_rejects_price_collision_without_partial_update() {
+    ext().execute_with(|| {
+        let order_book_id = OrderBookId::<AssetIdOf<Runtime>, DEXId> {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let first_price = OrderPrice::divisible(balance!(10));
+        let second_price = OrderPrice::divisible(balance!(10) + 1);
+        let amount = OrderVolume::divisible(balance!(5));
+        let order_book = OrderBook::<Runtime>::new(
+            order_book_id,
+            OrderPrice::divisible(balance!(0.000000000000000001)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(1)),
+            OrderVolume::divisible(balance!(100)),
+        );
+        let order = LimitOrder::<Runtime>::new(
+            1,
+            accounts::alice::<Runtime>(),
+            PriceVariant::Buy,
+            first_price,
+            amount,
+            0,
+            60_000,
+            1,
+        );
+        let first_orders = BoundedVec::<
+            <Runtime as Config>::OrderId,
+            <Runtime as Config>::MaxLimitOrdersForPrice,
+        >::try_from(vec![1])
+        .unwrap();
+        let second_orders = BoundedVec::<
+            <Runtime as Config>::OrderId,
+            <Runtime as Config>::MaxLimitOrdersForPrice,
+        >::try_from(vec![2])
+        .unwrap();
+
+        order_book::OrderBooks::<Runtime>::insert(order_book_id, order_book);
+        order_book::LimitOrders::<Runtime>::insert(order_book_id, 1, order);
+        order_book::Bids::<Runtime>::insert(order_book_id, first_price, first_orders.clone());
+        order_book::Bids::<Runtime>::insert(order_book_id, second_price, second_orders.clone());
+
+        assert_err!(
+            order_book::DenominateXor::<Runtime>::on_denominate(&balance!(10)),
+            sp_runtime::DispatchError::Other("OrderBookDenominationFailed")
+        );
+
+        assert_eq!(
+            order_book::LimitOrders::<Runtime>::get(order_book_id, 1)
+                .unwrap()
+                .price,
+            first_price
+        );
+        assert_eq!(
+            order_book::Bids::<Runtime>::get(order_book_id, first_price).unwrap(),
+            first_orders
+        );
+        assert_eq!(
+            order_book::Bids::<Runtime>::get(order_book_id, second_price).unwrap(),
+            second_orders
+        );
     });
 }
 

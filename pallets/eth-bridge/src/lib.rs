@@ -457,7 +457,7 @@ pub mod pallet {
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(2);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -1566,6 +1566,11 @@ pub mod pallet {
     #[pallet::storage]
     pub(super) type LegacyEthereumXorDecommissioned<T: Config> = StorageValue<_, bool, ValueQuery>;
 
+    /// Block at which the legacy Ethereum XOR decommissioning migration ran.
+    #[pallet::storage]
+    pub(super) type LegacyEthereumXorDecommissionedAt<T: Config> =
+        StorageValue<_, frame_system::pallet_prelude::BlockNumberFor<T>>;
+
     /// Network peers set.
     #[pallet::storage]
     #[pallet::getter(fn peers)]
@@ -1982,6 +1987,7 @@ impl<T: Config> Pallet<T> {
     ) -> bool {
         network_id == T::GetEthNetworkId::get()
             && Self::is_legacy_ethereum_xor_asset(asset_id)
+            && crate::migration::is_legacy_ethereum_xor_decommissioned::<T>()
             && matches!(
                 RegisteredAsset::<T>::get(network_id, asset_id),
                 Some(AssetKind::Thischain)
@@ -2008,6 +2014,30 @@ impl<T: Config> Pallet<T> {
             && LegacyEthereumXorDecommissioned::<T>::get()
             && Self::is_legacy_ethereum_xor_asset(asset_id)
             && !Self::is_ethereum_xor_thischain_registration(network_id, asset_id)
+    }
+
+    pub fn is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+        network_id: T::NetworkId,
+        request_hash: &H256,
+    ) -> bool {
+        let Some(decommissioned_at) = LegacyEthereumXorDecommissionedAt::<T>::get() else {
+            return network_id == T::GetEthNetworkId::get()
+                && LegacyEthereumXorDecommissioned::<T>::get()
+                && matches!(
+                    Requests::<T>::get(network_id, request_hash),
+                    Some(OffchainRequest::Outgoing(OutgoingRequest::Transfer(request), _))
+                        if Self::is_legacy_ethereum_xor_asset(&request.asset_id)
+                );
+        };
+
+        network_id == T::GetEthNetworkId::get()
+            && LegacyEthereumXorDecommissioned::<T>::get()
+            && RequestSubmissionHeight::<T>::get(network_id, request_hash) < decommissioned_at
+            && matches!(
+                Requests::<T>::get(network_id, request_hash),
+                Some(OffchainRequest::Outgoing(OutgoingRequest::Transfer(request), _))
+                    if Self::is_legacy_ethereum_xor_asset(&request.asset_id)
+            )
     }
 
     pub fn is_legacy_ethereum_xor_mapping(
@@ -2163,6 +2193,10 @@ impl<T: Config> Pallet<T> {
         let request = Requests::<T>::get(net_id, hash)
             .and_then(|x| x.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(
+            !Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(net_id, &hash),
+            Error::<T>::DeprecatedLegacyXor
+        );
         let request_encoded = request.to_eth_abi(hash)?;
         if !Self::verify_message(
             request_encoded.as_raw(),

@@ -30,6 +30,7 @@
 
 #[cfg(feature = "try-runtime")]
 use codec::{Decode, Encode};
+use frame_support::dispatch::DispatchResult;
 use frame_support::traits::{
     GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
 };
@@ -62,6 +63,7 @@ pub type Migrations = (
     DecommissionLegacyEthereumXor,
     QueueEthereumXorThischainAddAsset,
     DemeterFarmingPlatformStorageVersionV3,
+    RepairXorTbcdRewardDenomination,
     pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v4::Migrate<crate::Runtime>,
@@ -127,16 +129,29 @@ fn legacy_ethereum_xor_decommission_error(message: &'static str) -> TryRuntimeEr
 }
 
 #[cfg(feature = "try-runtime")]
-fn audit_legacy_ethereum_xor_decommission_blockers() -> Result<(), TryRuntimeError> {
+fn log_legacy_ethereum_xor_decommission_blockers() {
+    let blockers =
+        eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<crate::Runtime>();
+    if blockers != 0 {
+        frame_support::__private::log::warn!(
+            "legacy Ethereum XOR decommission will quarantine {blockers} unsafe outgoing transfer requests"
+        );
+    }
+}
+
+#[cfg(feature = "try-runtime")]
+fn audit_legacy_ethereum_xor_decommission_cleanup() -> Result<(), TryRuntimeError> {
     let blockers =
         eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<crate::Runtime>();
     if blockers == 0 {
         Ok(())
     } else {
-        Err(TryRuntimeError::Other(Box::leak(format!(
-            "legacy Ethereum XOR decommission blocked by {blockers} unsafe outgoing transfer requests"
+        Err(TryRuntimeError::Other(Box::leak(
+            format!(
+            "legacy Ethereum XOR decommission left {blockers} unsafe outgoing transfer requests"
         )
-        .into_boxed_str())))
+            .into_boxed_str(),
+        )))
     }
 }
 
@@ -152,16 +167,63 @@ fn mark_ethereum_xor_thischain_add_asset_queued() {
     frame_support::storage::unhashed::put(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY, &true);
 }
 
-fn ethereum_xor_thischain_add_asset_is_pending_or_registered() -> bool {
+fn ethereum_xor_has_sidechain_token_mapping() -> bool {
+    let network_id = crate::GetEthNetworkId::get();
+    let xor_asset_id: crate::AssetId = common::XOR.into();
+    eth_bridge::Pallet::<crate::Runtime>::registered_sidechain_token(network_id, &xor_asset_id)
+        .is_some()
+}
+
+fn ethereum_bridge_signature_version_is_v3() -> bool {
+    eth_bridge::Pallet::<crate::Runtime>::bridge_signature_version(crate::GetEthNetworkId::get())
+        == eth_bridge::BridgeSignatureVersion::V3
+}
+
+fn ethereum_xor_thischain_add_asset_is_registered() -> bool {
     let network_id = crate::GetEthNetworkId::get();
     let xor_asset_id: crate::AssetId = common::XOR.into();
     eth_bridge::Pallet::<crate::Runtime>::is_ethereum_xor_thischain_registration(
         network_id,
         &xor_asset_id,
-    ) || eth_bridge::Pallet::<crate::Runtime>::is_add_asset_request_pending(
-        network_id,
-        xor_asset_id,
     )
+}
+
+fn ethereum_xor_thischain_add_asset_is_pending() -> bool {
+    let network_id = crate::GetEthNetworkId::get();
+    let xor_asset_id: crate::AssetId = common::XOR.into();
+    eth_bridge::Pallet::<crate::Runtime>::is_add_asset_request_pending(network_id, xor_asset_id)
+}
+
+fn ethereum_xor_thischain_add_asset_is_pending_or_registered() -> bool {
+    ethereum_xor_thischain_add_asset_is_registered()
+        || ethereum_xor_thischain_add_asset_is_pending()
+}
+
+fn ethereum_bridge_is_migrating() -> bool {
+    matches!(
+        eth_bridge::Pallet::<crate::Runtime>::bridge_contract_status(crate::GetEthNetworkId::get()),
+        Some(eth_bridge::BridgeStatus::Migrating)
+    )
+}
+
+fn assert_ethereum_xor_thischain_add_asset_queue_state() {
+    if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
+        panic!(
+            "Ethereum XOR Thischain add-asset marker is set before legacy Ethereum XOR decommission"
+        );
+    }
+    if !ethereum_bridge_signature_version_is_v3() {
+        panic!("Ethereum bridge signature version is not V3 after marking XOR Thischain add-asset request queued");
+    }
+    if ethereum_xor_has_sidechain_token_mapping() {
+        panic!("Ethereum XOR has a stale sidechain token mapping after marking XOR Thischain add-asset request queued");
+    }
+    if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
+        panic!("Ethereum XOR Thischain add-asset marker is set but pending request cannot finalize while bridge is migrating");
+    }
+    if !ethereum_xor_thischain_add_asset_is_pending_or_registered() {
+        panic!("Ethereum XOR Thischain add-asset marker is set but request is neither pending nor finalized");
+    }
 }
 
 fn queue_ethereum_xor_thischain_add_asset() -> Weight {
@@ -169,6 +231,8 @@ fn queue_ethereum_xor_thischain_add_asset() -> Weight {
     let mut weight = db_weight.reads(1);
 
     if ethereum_xor_thischain_add_asset_queued() {
+        weight.saturating_accrue(db_weight.reads(7));
+        assert_ethereum_xor_thischain_add_asset_queue_state();
         return weight;
     }
 
@@ -183,8 +247,22 @@ fn queue_ethereum_xor_thischain_add_asset() -> Weight {
     let network_id = crate::GetEthNetworkId::get();
     let xor_asset_id: crate::AssetId = common::XOR.into();
 
+    weight.saturating_accrue(db_weight.reads(1));
+    if !ethereum_bridge_signature_version_is_v3() {
+        panic!("Ethereum bridge signature version must be V3 before queueing XOR Thischain add-asset request");
+    }
+
+    weight.saturating_accrue(db_weight.reads(1));
+    if ethereum_xor_has_sidechain_token_mapping() {
+        panic!("Ethereum XOR has a stale sidechain token mapping after legacy decommission");
+    }
+
     weight.saturating_accrue(db_weight.reads(2));
     if ethereum_xor_thischain_add_asset_is_pending_or_registered() {
+        weight.saturating_accrue(db_weight.reads(2));
+        if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
+            panic!("Ethereum XOR Thischain add-asset request is pending while bridge is migrating");
+        }
         mark_ethereum_xor_thischain_add_asset_queued();
         return weight.saturating_add(db_weight.writes(1));
     }
@@ -395,20 +473,26 @@ impl OnRuntimeUpgrade for DecommissionLegacyEthereumXor {
 
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-        audit_legacy_ethereum_xor_decommission_blockers()?;
+        log_legacy_ethereum_xor_decommission_blockers();
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
-        audit_legacy_ethereum_xor_decommission_blockers()?;
-        if eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
-            Ok(())
-        } else {
-            Err(legacy_ethereum_xor_decommission_error(
+        audit_legacy_ethereum_xor_decommission_cleanup()?;
+        if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
+            return Err(legacy_ethereum_xor_decommission_error(
                 "legacy Ethereum XOR was not decommissioned",
-            ))
+            ));
         }
+        if eth_bridge::migration::legacy_ethereum_xor_decommissioned_at::<crate::Runtime>()
+            .is_none()
+        {
+            return Err(legacy_ethereum_xor_decommission_error(
+                "legacy Ethereum XOR decommission block was not recorded",
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -421,21 +505,36 @@ impl OnRuntimeUpgrade for QueueEthereumXorThischainAddAsset {
 
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-        audit_legacy_ethereum_xor_decommission_blockers()?;
+        log_legacy_ethereum_xor_decommission_blockers();
         Ok(Vec::new())
     }
 
     #[cfg(feature = "try-runtime")]
     fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
-        audit_legacy_ethereum_xor_decommission_blockers()?;
+        audit_legacy_ethereum_xor_decommission_cleanup()?;
         if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
             return Err(ethereum_xor_thischain_add_asset_error(
                 "legacy Ethereum XOR was not decommissioned before queueing the Thischain add-asset request",
             ));
         }
+        if !ethereum_bridge_signature_version_is_v3() {
+            return Err(ethereum_xor_thischain_add_asset_error(
+                "Ethereum bridge signature version is not V3",
+            ));
+        }
+        if ethereum_xor_has_sidechain_token_mapping() {
+            return Err(ethereum_xor_thischain_add_asset_error(
+                "Ethereum XOR has a stale sidechain token mapping after legacy decommission",
+            ));
+        }
         if !ethereum_xor_thischain_add_asset_queued() {
             return Err(ethereum_xor_thischain_add_asset_error(
                 "Ethereum XOR Thischain add-asset request was not marked as queued",
+            ));
+        }
+        if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
+            return Err(ethereum_xor_thischain_add_asset_error(
+                "Ethereum XOR Thischain add-asset request is pending while bridge is migrating",
             ));
         }
         if !ethereum_xor_thischain_add_asset_is_pending_or_registered() {
@@ -444,6 +543,85 @@ impl OnRuntimeUpgrade for QueueEthereumXorThischainAddAsset {
             ));
         }
         Ok(())
+    }
+}
+
+const XOR_TBCD_REWARD_DENOMINATION_REPAIR_KEY: &[u8] =
+    b"runtime:migrations:xor_tbcd_reward_denomination_repaired";
+
+pub fn xor_tbcd_reward_denomination_repaired() -> bool {
+    frame_support::storage::unhashed::get(XOR_TBCD_REWARD_DENOMINATION_REPAIR_KEY).unwrap_or(false)
+}
+
+fn mark_xor_tbcd_reward_denomination_repaired() {
+    frame_support::storage::unhashed::put(XOR_TBCD_REWARD_DENOMINATION_REPAIR_KEY, &true);
+}
+
+fn current_xor_tbcd_denominator() -> crate::Balance {
+    <crate::Denomination as common::Denominator<crate::AssetId, crate::Balance>>::current_factor(
+        &common::XOR.into(),
+    )
+}
+
+fn repair_xor_tbcd_reward_denomination() -> Weight {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    let mut weight = db_weight.reads(1);
+
+    if xor_tbcd_reward_denomination_repaired() {
+        return weight;
+    }
+
+    let factor = current_xor_tbcd_denominator();
+    weight.saturating_accrue(db_weight.reads(1));
+
+    if factor <= 1 {
+        mark_xor_tbcd_reward_denomination_repaired();
+        return weight.saturating_add(db_weight.writes(1));
+    }
+
+    if let Err(error) = common::with_transaction(|| -> DispatchResult {
+        apollo_platform::Pallet::<crate::Runtime>::denominate_xor_and_tbcd_state(&factor)?;
+        vested_rewards::Pallet::<crate::Runtime>::denominate_crowdloan_reward_storage(&factor)?;
+        Ok(())
+    }) {
+        frame_support::__private::log::error!(
+            "Failed to repair stale XOR/TBCD reward denomination state: {:?}",
+            error
+        );
+        panic!(
+            "Failed to repair stale XOR/TBCD reward denomination state: {:?}",
+            error
+        );
+    }
+
+    mark_xor_tbcd_reward_denomination_repaired();
+    <crate::Runtime as frame_system::Config>::BlockWeights::get().max_block
+}
+
+pub struct RepairXorTbcdRewardDenomination;
+
+impl OnRuntimeUpgrade for RepairXorTbcdRewardDenomination {
+    fn on_runtime_upgrade() -> Weight {
+        repair_xor_tbcd_reward_denomination()
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(xor_tbcd_reward_denomination_repaired().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let was_repaired = bool::decode(&mut &state[..]).map_err(|_| {
+            TryRuntimeError::Other("failed to decode XOR/TBCD reward denomination repair marker")
+        })?;
+        if was_repaired || xor_tbcd_reward_denomination_repaired() {
+            Ok(())
+        } else {
+            Err(TryRuntimeError::Other(
+                "XOR/TBCD reward denomination repair marker was not written",
+            ))
+        }
     }
 }
 

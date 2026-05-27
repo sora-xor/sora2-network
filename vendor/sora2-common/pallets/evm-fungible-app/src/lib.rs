@@ -161,7 +161,6 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
-
         type OutboundChannel: OutboundChannel<EVMChainId, Self::AccountId, AdditionalEVMOutboundData>
             + EVMOutboundChannel;
 
@@ -874,7 +873,9 @@ pub mod pallet {
             let GenericNetworkId::EVM(network_id) = network_id else {
                 return false;
             };
-            TokenAddresses::<T>::get(network_id, asset_id).is_some()
+            TokenAddresses::<T>::get(network_id, asset_id)
+                .map(|address| !Pallet::<T>::is_deprecated_token_address(network_id, address))
+                .unwrap_or(false)
         }
 
         fn transfer(
@@ -907,6 +908,9 @@ pub mod pallet {
                 .filter_map(|(asset_id, _asset_kind)| {
                     TokenAddresses::<T>::get(network_id, &asset_id)
                         .zip(SidechainPrecision::<T>::get(network_id, &asset_id))
+                        .filter(|(evm_address, _)| {
+                            !Pallet::<T>::is_deprecated_token_address(network_id, *evm_address)
+                        })
                         .map(|(evm_address, precision)| {
                             Some(BridgeAssetInfo::EVM(EVMAssetInfo {
                                 asset_id: T::AssetIdConverter::convert(asset_id),

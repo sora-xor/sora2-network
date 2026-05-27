@@ -131,36 +131,42 @@ impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
         target_account_id: T::AccountId,
         pool_tokens: Balance,
     ) -> Result<(), DispatchError> {
-        // Subtract lp_tokens from base_account
-        let mut result: Result<_, Error<T>> =
-            PoolProviders::<T>::mutate_exists(pool_account.clone(), base_account_id, |balance| {
-                let old_balance = balance.ok_or(Error::<T>::AccountBalanceIsInvalid)?;
-                let new_balance = old_balance
-                    .checked_sub(pool_tokens)
-                    .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
-                *balance = (new_balance != 0).then(|| new_balance);
-                Ok(())
-            });
-        result?;
+        let old_base_balance = PoolProviders::<T>::get(&pool_account, &base_account_id)
+            .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+        let new_base_balance = old_base_balance
+            .checked_sub(pool_tokens)
+            .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+        let old_target_balance = PoolProviders::<T>::get(&pool_account, &target_account_id);
+        let new_target_balance = old_target_balance
+            .unwrap_or(0)
+            .checked_add(pool_tokens)
+            .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+        let new_target_pool = if old_target_balance.unwrap_or(0).is_zero() && !pool_tokens.is_zero()
+        {
+            Some(Pallet::<T>::get_trading_pair(
+                &asset_a.clone(),
+                &asset_a,
+                &asset_b,
+            )?)
+        } else {
+            None
+        };
+
+        PoolProviders::<T>::mutate_exists(pool_account.clone(), base_account_id, |balance| {
+            *balance = (new_base_balance != 0).then(|| new_base_balance);
+        });
 
         // Pool tokens balance is zero while minted amount will be non-zero.
-        if PoolProviders::<T>::get(&pool_account, target_account_id.clone())
-            .unwrap_or(0)
-            .is_zero()
-            && !pool_tokens.is_zero()
-        {
-            let pair = Pallet::<T>::get_trading_pair(&asset_a.clone(), &asset_a, &asset_b)?;
+        if let Some(pair) = new_target_pool {
             AccountPools::<T>::mutate(target_account_id.clone(), &pair.base_asset_id, |set| {
                 set.insert(pair.target_asset_id)
             });
         }
 
         // Add lp_tokens to target_account
-        result = PoolProviders::<T>::mutate(pool_account.clone(), target_account_id, |balance| {
-            *balance = Some(balance.unwrap_or(0) + pool_tokens);
-            Ok(())
+        PoolProviders::<T>::mutate(pool_account, target_account_id, |balance| {
+            *balance = Some(new_target_balance);
         });
-        result?;
 
         Ok(())
     }
@@ -720,80 +726,85 @@ impl<T: Config> LiquiditySource<T::DEXId, T::AccountId, AssetIdOf<T>, Balance, D
         output_asset_id: &AssetIdOf<T>,
         swap_amount: SwapAmount<Balance>,
     ) -> Result<(SwapOutcome<Balance, AssetIdOf<T>>, Weight), DispatchError> {
-        T::AssetRegulator::check_permission(
-            &sender,
-            &receiver,
-            &input_asset_id,
-            &common::permissions::TRANSFER,
-        )
-        .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+        common::with_transaction(|| {
+            T::AssetRegulator::check_permission(
+                &sender,
+                &receiver,
+                &input_asset_id,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-        T::AssetRegulator::check_permission(
-            &sender,
-            &receiver,
-            &output_asset_id,
-            &common::permissions::TRANSFER,
-        )
-        .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+            T::AssetRegulator::check_permission(
+                &sender,
+                &receiver,
+                &output_asset_id,
+                &common::permissions::TRANSFER,
+            )
+            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-        let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
-        let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
-            *dex_id,
-            *input_asset_id,
-            *output_asset_id,
-        )?;
-        let (source_amount, destination_amount) =
-            Pallet::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
-        let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
-            client_account: None,
-            receiver_account: Some(receiver.clone()),
-            pool_account: tech_acc_id,
-            source: Resource {
-                asset: *input_asset_id,
-                amount: source_amount,
-            },
-            destination: Resource {
-                asset: *output_asset_id,
-                amount: destination_amount,
-            },
-            fee: Default::default(),
-            fee_account: None,
-            get_fee_from_destination: None,
-            base_chameleon_asset: None,
-            is_chameleon_pool: None,
-            dex_id: *dex_id,
-        });
-        common::SwapRulesValidation::<AccountIdOf<T>, TechAccountIdOf<T>, AssetIdOf<T>, T>::prepare_and_validate(
-            &mut action,
-            Some(sender),
-            &dex_info.base_asset_id,
-        )?;
+            let dex_info = T::DexInfoProvider::get_dex_info(&dex_id)?;
+            let (_, tech_acc_id) = Pallet::<T>::tech_account_from_dex_and_asset_pair(
+                *dex_id,
+                *input_asset_id,
+                *output_asset_id,
+            )?;
+            let (source_amount, destination_amount) =
+                Pallet::<T>::get_bounds_from_swap_amount(swap_amount.clone())?;
+            let mut action = PolySwapActionStructOf::<T>::PairSwap(PairSwapActionOf::<T> {
+                client_account: None,
+                receiver_account: Some(receiver.clone()),
+                pool_account: tech_acc_id,
+                source: Resource {
+                    asset: *input_asset_id,
+                    amount: source_amount,
+                },
+                destination: Resource {
+                    asset: *output_asset_id,
+                    amount: destination_amount,
+                },
+                fee: Default::default(),
+                fee_account: None,
+                get_fee_from_destination: None,
+                base_chameleon_asset: None,
+                is_chameleon_pool: None,
+                dex_id: *dex_id,
+            });
+            common::SwapRulesValidation::<
+                AccountIdOf<T>,
+                TechAccountIdOf<T>,
+                AssetIdOf<T>,
+                T,
+            >::prepare_and_validate(&mut action, Some(sender), &dex_info.base_asset_id)?;
 
-        // It is guarantee that unwrap is always ok.
-        // Clone is used here because action is used for create_swap_unchecked.
-        let retval = match action.clone() {
-            PolySwapAction::PairSwap(a) => {
-                let (fee, amount) = match swap_amount {
-                    SwapAmount::WithDesiredInput { .. } => (a.fee, a.destination.amount.unwrap()),
-                    SwapAmount::WithDesiredOutput { .. } => (a.fee, a.source.amount.unwrap()),
-                };
-                Ok((
-                    common::prelude::SwapOutcome::new(amount, fee),
-                    Self::exchange_weight(),
-                ))
-            }
-            _ => unreachable!("we know that always PairSwap is used"),
-        };
+            // It is guarantee that unwrap is always ok.
+            // Clone is used here because action is used for create_swap_unchecked.
+            let retval = match action.clone() {
+                PolySwapAction::PairSwap(a) => {
+                    let (fee, amount) = match swap_amount {
+                        SwapAmount::WithDesiredInput { .. } => {
+                            (a.fee, a.destination.amount.unwrap())
+                        }
+                        SwapAmount::WithDesiredOutput { .. } => (a.fee, a.source.amount.unwrap()),
+                    };
+                    Ok((
+                        common::prelude::SwapOutcome::new(amount, fee),
+                        Self::exchange_weight(),
+                    ))
+                }
+                _ => unreachable!("we know that always PairSwap is used"),
+            };
 
-        let action = T::PolySwapAction::from(action);
-        let mut action = action.into();
-        technical::Pallet::<T>::create_swap_unchecked(
-            sender.clone(),
-            &mut action,
-            &dex_info.base_asset_id,
-        )?;
+            let action = T::PolySwapAction::from(action);
+            let mut action = action.into();
+            technical::Pallet::<T>::create_swap_unchecked(
+                sender.clone(),
+                &mut action,
+                &dex_info.base_asset_id,
+            )?;
 
-        retval
+            retval
+        })
     }
 
     fn check_rewards(
@@ -1170,53 +1181,55 @@ pub mod pallet {
             input_a_min: Balance,
             input_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
+            common::with_transaction(|| {
+                let source = ensure_signed(origin)?;
 
-            ensure!(
-                !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_a)
-                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_b),
-                Error::<T>::UnableToOperateWithIndivisibleAssets
-            );
-            ensure!(
-                input_a_desired > 0 && input_a_min > 0,
-                Error::<T>::InvalidDepositLiquidityBasicAssetAmount
-            );
-            ensure!(
-                input_b_desired > 0 && input_b_min > 0,
-                Error::<T>::InvalidDepositLiquidityTargetAssetAmount
-            );
-            ensure!(
-                input_a_desired >= input_a_min && input_b_desired >= input_b_min,
-                Error::<T>::InvalidMinimumBoundValueOfBalance
-            );
+                ensure!(
+                    !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_a)
+                        && !<T as Config>::AssetInfoProvider::is_non_divisible(&input_asset_b),
+                    Error::<T>::UnableToOperateWithIndivisibleAssets
+                );
+                ensure!(
+                    input_a_desired > 0 && input_a_min > 0,
+                    Error::<T>::InvalidDepositLiquidityBasicAssetAmount
+                );
+                ensure!(
+                    input_b_desired > 0 && input_b_min > 0,
+                    Error::<T>::InvalidDepositLiquidityTargetAssetAmount
+                );
+                ensure!(
+                    input_a_desired >= input_a_min && input_b_desired >= input_b_min,
+                    Error::<T>::InvalidMinimumBoundValueOfBalance
+                );
 
-            T::AssetRegulator::check_permission(
-                &source,
-                &source,
-                &input_asset_a,
-                &common::permissions::TRANSFER,
-            )
-            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+                T::AssetRegulator::check_permission(
+                    &source,
+                    &source,
+                    &input_asset_a,
+                    &common::permissions::TRANSFER,
+                )
+                .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-            T::AssetRegulator::check_permission(
-                &source,
-                &source,
-                &input_asset_b,
-                &common::permissions::TRANSFER,
-            )
-            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+                T::AssetRegulator::check_permission(
+                    &source,
+                    &source,
+                    &input_asset_b,
+                    &common::permissions::TRANSFER,
+                )
+                .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-            Pallet::<T>::deposit_liquidity_unchecked(
-                source,
-                dex_id,
-                input_asset_a,
-                input_asset_b,
-                input_a_desired,
-                input_b_desired,
-                input_a_min,
-                input_b_min,
-            )?;
-            Ok(().into())
+                Pallet::<T>::deposit_liquidity_unchecked(
+                    source,
+                    dex_id,
+                    input_asset_a,
+                    input_asset_b,
+                    input_a_desired,
+                    input_b_desired,
+                    input_a_min,
+                    input_b_min,
+                )?;
+                Ok(().into())
+            })
         }
 
         #[pallet::call_index(1)]
@@ -1230,48 +1243,50 @@ pub mod pallet {
             output_a_min: Balance,
             output_b_min: Balance,
         ) -> DispatchResultWithPostInfo {
-            let source = ensure_signed(origin)?;
+            common::with_transaction(|| {
+                let source = ensure_signed(origin)?;
 
-            ensure!(
-                !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_a)
-                    && !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_b),
-                Error::<T>::UnableToOperateWithIndivisibleAssets
-            );
-            ensure!(
-                output_a_min > 0,
-                Error::<T>::InvalidWithdrawLiquidityBasicAssetAmount
-            );
-            ensure!(
-                output_b_min > 0,
-                Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
-            );
+                ensure!(
+                    !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_a)
+                        && !<T as Config>::AssetInfoProvider::is_non_divisible(&output_asset_b),
+                    Error::<T>::UnableToOperateWithIndivisibleAssets
+                );
+                ensure!(
+                    output_a_min > 0,
+                    Error::<T>::InvalidWithdrawLiquidityBasicAssetAmount
+                );
+                ensure!(
+                    output_b_min > 0,
+                    Error::<T>::InvalidWithdrawLiquidityTargetAssetAmount
+                );
 
-            T::AssetRegulator::check_permission(
-                &source,
-                &source,
-                &output_asset_a,
-                &common::permissions::TRANSFER,
-            )
-            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+                T::AssetRegulator::check_permission(
+                    &source,
+                    &source,
+                    &output_asset_a,
+                    &common::permissions::TRANSFER,
+                )
+                .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-            T::AssetRegulator::check_permission(
-                &source,
-                &source,
-                &output_asset_b,
-                &common::permissions::TRANSFER,
-            )
-            .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
+                T::AssetRegulator::check_permission(
+                    &source,
+                    &source,
+                    &output_asset_b,
+                    &common::permissions::TRANSFER,
+                )
+                .map_err(|_| Error::<T>::AssetRegulationsCheckFailed)?;
 
-            Pallet::<T>::withdraw_liquidity_unchecked(
-                source,
-                dex_id,
-                output_asset_a,
-                output_asset_b,
-                marker_asset_desired,
-                output_a_min,
-                output_b_min,
-            )?;
-            Ok(().into())
+                Pallet::<T>::withdraw_liquidity_unchecked(
+                    source,
+                    dex_id,
+                    output_asset_a,
+                    output_asset_b,
+                    marker_asset_desired,
+                    output_a_min,
+                    output_b_min,
+                )?;
+                Ok(().into())
+            })
         }
 
         #[pallet::call_index(2)]

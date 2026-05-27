@@ -155,6 +155,45 @@ impl<T: Config> Pallet<T> {
         })
     }
 
+    pub(crate) fn parse_deposit_event_from_known_contract(
+        network_id: T::NetworkId,
+        log: &Log,
+    ) -> Result<
+        DepositEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
+        Error<T>,
+    > {
+        let event = Self::parse_deposit_event(log)?;
+        Self::validate_deposit_event_source(network_id, H160(log.address.0), &event)?;
+        Ok(event)
+    }
+
+    fn validate_deposit_event_source(
+        network_id: T::NetworkId,
+        contract_address: EthAddress,
+        event: &DepositEvent<EthAddress, <T as frame_system::pallet::Config>::AccountId, U256>,
+    ) -> Result<(), Error<T>> {
+        if network_id != T::GetEthNetworkId::get()
+            || contract_address != Self::val_master_contract_address()
+        {
+            return Ok(());
+        }
+
+        ensure!(
+            event.sidechain_asset == H256::zero(),
+            Error::<T>::UnsupportedAssetId
+        );
+        let Some((asset_id, _)) =
+            Self::get_asset_by_raw_asset_id(event.sidechain_asset, &event.token, network_id)?
+        else {
+            fail!(Error::<T>::UnsupportedAssetId);
+        };
+        ensure!(
+            asset_id == common::VAL.into(),
+            Error::<T>::UnsupportedAssetId
+        );
+        Ok(())
+    }
+
     /// Loops through the given array of logs and finds the first one that matches the type
     /// and topic.
     pub fn parse_main_event(
@@ -177,14 +216,18 @@ impl<T: Config> Pallet<T> {
                 Some(x) => &x.0,
                 None => continue,
             };
+            let is_val_master_log = network_id == T::GetEthNetworkId::get()
+                && log.address.0 == Self::val_master_contract_address().0;
             match *topic {
                 topic
                     if topic == DEPOSIT_TOPIC.0
                         && (kind == IncomingTransactionRequestKind::Transfer
                             || kind == IncomingTransactionRequestKind::TransferXOR) =>
                 {
-                    return Ok(ContractEvent::Deposit(Self::parse_deposit_event(log)?));
+                    let event = Self::parse_deposit_event_from_known_contract(network_id, log)?;
+                    return Ok(ContractEvent::Deposit(event));
                 }
+                _ if is_val_master_log => continue,
                 // ChangePeers(address,bool)
                 topic
                     if topic

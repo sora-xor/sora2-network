@@ -129,10 +129,12 @@ pub mod v4 {
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account)?;
         let account = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account)?;
 
-        let mut total_contribution = 0;
+        let mut total_contribution = 0u128;
         for (account, reward_info) in CrowdloanRewards::<T>::drain() {
             let contribution = reward_info.contribution.into_bits() as Balance;
-            total_contribution += contribution;
+            total_contribution = total_contribution
+                .checked_add(contribution)
+                .ok_or(Error::<T>::ArithmeticError)?;
             let mut rewarded = vec![];
             for (asset_id, last_claim_block) in CrowdloanClaimHistory::<T>::drain_prefix(&account) {
                 let last_claim_block: u128 = last_claim_block.unique_saturated_into();
@@ -279,17 +281,27 @@ pub fn move_market_making_rewards_to_liquidity_provider_rewards_pool<T: Config>(
     weight += T::DbWeight::get().reads_writes(2, 2);
 
     Rewards::<T>::translate_values(|mut reward_info: RewardInfo| {
-        let market_maker_rewards = *reward_info
+        let Some(market_maker_rewards) = reward_info
             .rewards
             .get(&RewardReason::DeprecatedMarketMakerVolume)
-            .unwrap_or(&Balance::zero());
+            .copied()
+        else {
+            return Some(reward_info);
+        };
         weight += T::DbWeight::get().reads(1);
-        if let Some(balance) = reward_info
+        let balance = reward_info
             .rewards
-            .get_mut(&RewardReason::BuyOnBondingCurve)
-        {
-            *balance += market_maker_rewards;
+            .entry(RewardReason::BuyOnBondingCurve)
+            .or_insert(0);
+        if let Some(new_balance) = balance.checked_add(market_maker_rewards) {
+            *balance = new_balance;
             weight += T::DbWeight::get().writes(1);
+        } else {
+            log::error!(
+                target: "runtime",
+                "Failed to move market maker reward to liquidity provider reward pool: arithmetic overflow"
+            );
+            return Some(reward_info);
         }
         reward_info
             .rewards

@@ -1933,53 +1933,99 @@ impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
         frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
         let factor = BalanceUnit::divisible(*factor);
+        let divide_price = |price: OrderPrice| -> Result<OrderPrice, DispatchError> {
+            price.checked_div(&factor).ok_or(DispatchError::Arithmetic(
+                sp_runtime::ArithmeticError::DivisionByZero,
+            ))
+        };
 
         let quote_books = OrderBooks::<T>::iter()
             .filter(|order_book| order_book.0.quote.eq(&XOR.into()))
             .map(|order_book| order_book.0)
             .collect::<Vec<_>>();
 
+        let mut limit_order_updates = Vec::new();
         for (order_book_id, order_id, mut order) in LimitOrders::<T>::iter() {
             if quote_books.contains(&order_book_id) {
-                order.price = order.price.checked_div(&factor).unwrap_or(order.price);
-                LimitOrders::<T>::insert(order_book_id, order_id, order);
+                order.price = divide_price(order.price)?;
+                limit_order_updates.push((order_book_id, order_id, order));
             }
         }
 
+        let mut bid_updates = Vec::new();
         for (order_book_id, price, orders) in Bids::<T>::iter() {
             if quote_books.contains(&order_book_id) {
-                let new_price = price.checked_div(&factor).unwrap_or(price);
-                Bids::<T>::remove(order_book_id, price);
-                Bids::<T>::insert(order_book_id, new_price, orders);
+                let new_price = divide_price(price)?;
+                if bid_updates
+                    .iter()
+                    .any(|(existing_order_book_id, _, existing_new_price, _)| {
+                        existing_order_book_id == &order_book_id && existing_new_price == &new_price
+                    })
+                {
+                    return Err(DispatchError::Other("OrderBookDenominationFailed"));
+                }
+                bid_updates.push((order_book_id, price, new_price, orders));
             }
         }
+        let mut ask_updates = Vec::new();
         for (order_book_id, price, orders) in Asks::<T>::iter() {
             if quote_books.contains(&order_book_id) {
-                let new_price = price.checked_div(&factor).unwrap_or(price);
-                Asks::<T>::remove(order_book_id, price);
-                Asks::<T>::insert(order_book_id, new_price, orders);
+                let new_price = divide_price(price)?;
+                if ask_updates
+                    .iter()
+                    .any(|(existing_order_book_id, _, existing_new_price, _)| {
+                        existing_order_book_id == &order_book_id && existing_new_price == &new_price
+                    })
+                {
+                    return Err(DispatchError::Other("OrderBookDenominationFailed"));
+                }
+                ask_updates.push((order_book_id, price, new_price, orders));
             }
         }
 
+        let mut aggregated_bid_updates = Vec::new();
         for (order_book_id, side) in AggregatedBids::<T>::iter() {
             if quote_books.contains(&order_book_id) {
                 let mut new_side = MarketSide::<T::MaxSidePriceCount>::new();
                 for (price, volume) in side.iter() {
-                    let new_price = price.checked_div(&factor).unwrap_or(*price);
-                    let _ = new_side.try_insert(new_price, *volume);
+                    let new_price = divide_price(*price)?;
+                    new_side
+                        .try_insert(new_price, *volume)
+                        .map_err(|_| DispatchError::Other("OrderBookDenominationFailed"))?;
                 }
-                AggregatedBids::<T>::insert(order_book_id, new_side);
+                aggregated_bid_updates.push((order_book_id, new_side));
             }
         }
+        let mut aggregated_ask_updates = Vec::new();
         for (order_book_id, side) in AggregatedAsks::<T>::iter() {
             if quote_books.contains(&order_book_id) {
                 let mut new_side = MarketSide::<T::MaxSidePriceCount>::new();
                 for (price, volume) in side.iter() {
-                    let new_price = price.checked_div(&factor).unwrap_or(*price);
-                    let _ = new_side.try_insert(new_price, *volume);
+                    let new_price = divide_price(*price)?;
+                    new_side
+                        .try_insert(new_price, *volume)
+                        .map_err(|_| DispatchError::Other("OrderBookDenominationFailed"))?;
                 }
-                AggregatedAsks::<T>::insert(order_book_id, new_side);
+                aggregated_ask_updates.push((order_book_id, new_side));
             }
+        }
+
+        for (order_book_id, order_id, order) in limit_order_updates {
+            LimitOrders::<T>::insert(order_book_id, order_id, order);
+        }
+        for (order_book_id, price, new_price, orders) in bid_updates {
+            Bids::<T>::remove(order_book_id, price);
+            Bids::<T>::insert(order_book_id, new_price, orders);
+        }
+        for (order_book_id, price, new_price, orders) in ask_updates {
+            Asks::<T>::remove(order_book_id, price);
+            Asks::<T>::insert(order_book_id, new_price, orders);
+        }
+        for (order_book_id, side) in aggregated_bid_updates {
+            AggregatedBids::<T>::insert(order_book_id, side);
+        }
+        for (order_book_id, side) in aggregated_ask_updates {
+            AggregatedAsks::<T>::insert(order_book_id, side);
         }
 
         Ok(())

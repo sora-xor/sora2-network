@@ -145,7 +145,7 @@ pub trait ShouldRemoveAccount<AccountData> {
 pub mod pallet {
     use super::*;
     use common::OnDenominate;
-    use frame_support::{pallet_prelude::*, traits::Currency};
+    use frame_support::{pallet_prelude::*, traits::Currency, transactional};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::{ConvertBack, One};
 
@@ -398,6 +398,7 @@ pub mod pallet {
 
         #[pallet::call_index(1)]
         #[pallet::weight(common::weights::constants::EXTRINSIC_FIXED_WEIGHT)]
+        #[transactional]
         pub fn start_denomination(
             origin: OriginFor<T>,
             denominator: BalanceOf<T>,
@@ -407,9 +408,11 @@ pub mod pallet {
                 CurrentMigrationStage::<T>::get() == MigrationStage::Denomination,
                 Error::<T>::WrongMigrationStage
             );
+            ensure!(!denominator.is_zero(), Error::<T>::InvalidDenominator);
             let new_denominator = Denominator::<T>::get()
                 .checked_mul(&denominator)
                 .ok_or(Error::<T>::InvalidDenominator)?;
+            ensure!(!new_denominator.is_zero(), Error::<T>::InvalidDenominator);
             Self::denominate(denominator)?;
             T::OnDenominate::on_denominate(&denominator)?;
             CurrentMigrationStage::<T>::set(MigrationStage::Complete);

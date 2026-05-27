@@ -332,6 +332,13 @@ impl<T: Config> IncomingTransfer<T> {
             !crate::Pallet::<T>::is_legacy_ethereum_xor_mapping(self.network_id, &self.asset_id),
             Error::<T>::DeprecatedLegacyXor
         );
+        ensure!(
+            !crate::Pallet::<T>::is_ethereum_xor_thischain_registration(
+                self.network_id,
+                &self.asset_id
+            ) || self.asset_kind == AssetKind::Thischain,
+            Error::<T>::DeprecatedLegacyXor
+        );
         if self.should_take_fee {
             let transfer_fee = Self::fee_amount();
             ensure!(self.amount >= transfer_fee, Error::<T>::UnableToPayFees);
@@ -488,10 +495,21 @@ pub struct IncomingCancelOutgoingRequest<T: Config> {
 }
 
 impl<T: Config> IncomingCancelOutgoingRequest<T> {
+    fn is_decommissioned_legacy_ethereum_xor_outgoing_transfer(&self) -> bool {
+        crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+            self.network_id,
+            &self.outgoing_request_hash,
+        )
+    }
+
     /// Checks that the request status is `ApprovalsReady`, and encoded request's call matches
     /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
     /// is changed to `Frozen` to stop receiving approvals.
     pub fn prepare(&self) -> Result<(), DispatchError> {
+        ensure!(
+            !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
+            Error::<T>::DeprecatedLegacyXor
+        );
         let request_hash = self.outgoing_request_hash;
         let net_id = self.network_id;
         let req_status = crate::RequestStatuses::<T>::get(net_id, &self.outgoing_request_hash)
@@ -518,6 +536,18 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
 
     /// Changes the request's status back to `ApprovalsReady`.
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        if self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer() {
+            crate::RequestStatuses::<T>::insert(
+                self.network_id,
+                &self.outgoing_request_hash,
+                RequestStatus::Failed(Error::<T>::DeprecatedLegacyXor.into()),
+            );
+            crate::Pallet::<T>::clear_request_signatures(
+                self.network_id,
+                &self.outgoing_request_hash,
+            );
+            return Ok(());
+        }
         crate::RequestStatuses::<T>::insert(
             self.network_id,
             &self.outgoing_request_hash,
@@ -529,6 +559,10 @@ impl<T: Config> IncomingCancelOutgoingRequest<T> {
     /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
     /// make it available for resubmission.
     pub fn finalize(&self) -> Result<H256, DispatchError> {
+        ensure!(
+            !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
+            Error::<T>::DeprecatedLegacyXor
+        );
         // TODO: `common::with_transaction` should be removed in the future after stabilization.
         common::with_transaction(|| self.outgoing_request.cancel())?;
         let hash = &self.outgoing_request_hash;
@@ -569,6 +603,13 @@ pub struct IncomingMarkAsDoneRequest<T: Config> {
 impl<T: Config> IncomingMarkAsDoneRequest<T> {
     /// Checks that the marking request status is `ApprovalsReady`.
     pub fn validate(&self) -> Result<(), DispatchError> {
+        ensure!(
+            !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                self.network_id,
+                &self.outgoing_request_hash,
+            ),
+            Error::<T>::DeprecatedLegacyXor
+        );
         let request_status =
             crate::RequestStatuses::<T>::get(self.network_id, self.outgoing_request_hash)
                 .ok_or(Error::<T>::UnknownRequest)?;

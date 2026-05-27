@@ -451,6 +451,13 @@ impl<T: Config> OutgoingAddAsset<T> {
             && registered_asset.is_none()
         {
             ensure!(
+                !crate::RegisteredSidechainToken::<T>::contains_key(
+                    self.network_id,
+                    &self.asset_id
+                ),
+                Error::<T>::DeprecatedLegacyXor
+            );
+            ensure!(
                 crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
                 Error::<T>::DeprecatedLegacyXor
             );

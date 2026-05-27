@@ -201,21 +201,27 @@ impl<T: Config> Pallet<T> {
         user_account: &AccountIdOf<T>,
         pool_tokens: Balance,
     ) -> Result<(), DispatchError> {
+        let old_provider_balance = PoolProviders::<T>::get(pool_account, user_account);
+        let new_provider_balance = old_provider_balance
+            .unwrap_or(0)
+            .checked_add(pool_tokens)
+            .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
+        let new_issuance = TotalIssuances::<T>::get(pool_account)
+            .unwrap_or(0)
+            .checked_add(pool_tokens)
+            .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
+
         let result: Result<_, Error<T>> =
             PoolProviders::<T>::mutate(pool_account, user_account, |balance| {
-                if balance.is_none() {
+                if old_provider_balance.is_none() {
                     frame_system::Pallet::<T>::inc_consumers(user_account)
                         .map_err(|_| Error::<T>::IncRefError)?;
                 }
-                *balance = Some(balance.unwrap_or(0) + pool_tokens);
+                *balance = Some(new_provider_balance);
                 Ok(())
             });
         result?;
-        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(&pool_account, |issuance| {
-            let new_issuance = issuance
-                .unwrap_or(0)
-                .checked_add(pool_tokens)
-                .ok_or(Error::<T>::PoolTokenSupplyOverflow)?;
+        let result: Result<_, Error<T>> = TotalIssuances::<T>::mutate(pool_account, |issuance| {
             *issuance = Some(new_issuance);
             Ok(())
         });

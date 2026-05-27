@@ -113,6 +113,7 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
         assert_storage_version!("Kensetsu", kensetsu::Pallet<Runtime>);
         assert_storage_version!("Band", band::Pallet<Runtime>);
         assert_storage_version!("Polkamarkt", pallet_polkamarkt::Pallet<Runtime>);
+        assert_storage_version!("EthBridge", eth_bridge::Pallet<Runtime>);
         assert_storage_version!("OracleProxy", oracle_proxy::Pallet<Runtime>);
         assert_storage_version!(
             "BridgeInboundChannel",

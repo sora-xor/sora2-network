@@ -41,8 +41,9 @@ use crate::{Error, RewardInfo};
 use crate::{VestingSchedules, VESTING_LOCK_ID};
 use common::mock::charlie;
 use common::{
-    balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, OnPswapBurned, PredefinedAssetId,
-    PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP, VAL, XOR, XSTUSD,
+    balance, AssetId32, AssetInfoProvider, Balance, CrowdloanTag, Fixed, OnDenominate,
+    OnPswapBurned, PredefinedAssetId, PswapRemintInfo, RewardReason, Vesting, DOT, KSM, PSWAP,
+    TBCD, VAL, XOR, XSTUSD,
 };
 use frame_support::traits::{Currency, GetStorageVersion, OnRuntimeUpgrade, StorageVersion};
 use frame_support::weights::Weight;
@@ -142,6 +143,311 @@ fn register_crowdloan_fails() {
 }
 
 #[test]
+fn register_crowdloan_rejects_contribution_overflow_without_mutating_state() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+
+        assert_noop!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![(XOR, balance!(100))],
+                vec![(alice(), Balance::MAX), (bob(), 1)],
+            ),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert!(!CrowdloanInfos::<Runtime>::contains_key(&tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(alice(), &tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(bob(), &tag));
+    });
+}
+
+#[test]
+fn register_crowdloan_rejects_duplicate_reward_overflow_without_mutating_state() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+
+        assert_noop!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![(XOR, Balance::MAX), (XOR, 1)],
+                vec![(alice(), balance!(1)), (bob(), balance!(1))],
+            ),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert!(!CrowdloanInfos::<Runtime>::contains_key(&tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(alice(), &tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(bob(), &tag));
+    });
+}
+
+#[test]
+fn register_crowdloan_rejects_zero_total_contribution_without_mutating_state() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+
+        assert_noop!(
+            VestedRewards::register_crowdloan(
+                RuntimeOrigin::root(),
+                tag.clone(),
+                0,
+                100,
+                vec![(XOR, balance!(100))],
+                vec![(alice(), 0), (bob(), 0)],
+            ),
+            Error::<Runtime>::WrongCrowdloanInfo
+        );
+
+        assert!(!CrowdloanInfos::<Runtime>::contains_key(&tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(alice(), &tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(bob(), &tag));
+    });
+}
+
+#[test]
+fn claim_crowdloan_rewards_rolls_back_partial_asset_transfer() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"partial".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            1,
+            1,
+            vec![(XOR, balance!(100)), (PSWAP, balance!(100))],
+            vec![(alice(), balance!(1))],
+        ));
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
+        Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(100)).unwrap();
+
+        frame_system::Pallet::<Runtime>::set_block_number(2);
+        assert_err!(
+            VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
+            tokens::Error::<Runtime>::BalanceTooLow
+        );
+
+        assert_eq!(
+            Assets::total_balance(&XOR, &alice()).unwrap(),
+            Balances::minimum_balance()
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR, &crowdloan_info.account).unwrap(),
+            balance!(100)
+        );
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag)
+                .unwrap()
+                .rewarded,
+            vec![]
+        );
+    });
+}
+
+#[test]
+fn duplicate_crowdloan_reward_assets_are_merged_before_claim() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"duplicate".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            1,
+            1,
+            vec![(XOR, balance!(100)), (XOR, balance!(50))],
+            vec![(alice(), balance!(1))],
+        ));
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
+        assert_eq!(crowdloan_info.rewards, vec![(XOR, balance!(150))]);
+        Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(150)).unwrap();
+
+        frame_system::Pallet::<Runtime>::set_block_number(2);
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ));
+
+        assert_eq!(
+            Assets::total_balance(&XOR, &alice()).unwrap(),
+            balance!(150) + Balances::minimum_balance()
+        );
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag)
+                .unwrap()
+                .rewarded,
+            vec![(XOR, balance!(150))]
+        );
+    });
+}
+
+#[test]
+fn duplicate_rewarded_entries_are_merged_before_crowdloan_claim() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"rewarded".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            1,
+            1,
+            vec![(XOR, balance!(100))],
+            vec![(alice(), balance!(1))],
+        ));
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
+        let mut user_info = CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap();
+        user_info.rewarded = vec![(XOR, balance!(40)), (XOR, balance!(20))];
+        CrowdloanUserInfos::<Runtime>::insert(alice(), &tag, user_info);
+        Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(40)).unwrap();
+
+        frame_system::Pallet::<Runtime>::set_block_number(2);
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ));
+
+        assert_eq!(
+            Assets::total_balance(&XOR, &alice()).unwrap(),
+            balance!(40) + Balances::minimum_balance()
+        );
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag)
+                .unwrap()
+                .rewarded,
+            vec![(XOR, balance!(100))]
+        );
+    });
+}
+
+#[test]
+fn duplicate_rewarded_entries_overflow_fails_crowdloan_claim_without_transfer() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"bad-rewarded".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            1,
+            1,
+            vec![(XOR, balance!(100))],
+            vec![(alice(), balance!(1))],
+        ));
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
+        let mut user_info = CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap();
+        user_info.rewarded = vec![(XOR, Balance::MAX), (XOR, 1)];
+        CrowdloanUserInfos::<Runtime>::insert(alice(), &tag, user_info.clone());
+        Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(100)).unwrap();
+
+        frame_system::Pallet::<Runtime>::set_block_number(2);
+        assert_err!(
+            VestedRewards::claim_crowdloan_rewards(RuntimeOrigin::signed(alice()), tag.clone()),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert_eq!(
+            Assets::total_balance(&XOR, &alice()).unwrap(),
+            Balances::minimum_balance()
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR, &crowdloan_info.account).unwrap(),
+            balance!(100)
+        );
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
+            user_info
+        );
+    });
+}
+
+#[test]
+fn denominate_scales_crowdloan_xor_and_tbcd_rewards_only() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"denom".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            1,
+            10,
+            vec![
+                (XOR, balance!(100)),
+                (PSWAP, balance!(1000)),
+                (TBCD, balance!(30)),
+            ],
+            vec![(alice(), balance!(1))],
+        ));
+        let mut user_info = CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap();
+        user_info.rewarded = vec![
+            (XOR, balance!(10)),
+            (XOR, balance!(5)),
+            (PSWAP, balance!(20)),
+            (TBCD, balance!(10)),
+        ];
+        CrowdloanUserInfos::<Runtime>::insert(alice(), &tag, user_info);
+
+        assert_ok!(crate::DenominateXorAndTbcd::<Runtime>::on_denominate(&10));
+
+        assert_eq!(
+            CrowdloanInfos::<Runtime>::get(&tag).unwrap().rewards,
+            vec![
+                (XOR, balance!(10)),
+                (PSWAP, balance!(1000)),
+                (TBCD, balance!(3)),
+            ]
+        );
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag)
+                .unwrap()
+                .rewarded,
+            vec![
+                (XOR, balance!(1.5)),
+                (PSWAP, balance!(20)),
+                (TBCD, balance!(1)),
+            ]
+        );
+    });
+}
+
+#[test]
+fn denominate_crowdloan_reward_overflow_rolls_back_vesting_updates() {
+    ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
+        let schedule = VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+            asset_id: XOR,
+            start: 0u64,
+            period: 10u64,
+            period_count: 2u32,
+            per_period: balance!(10),
+            remainder_amount: balance!(5),
+        });
+        let mut schedules = BoundedVec::default();
+        schedules.try_push(schedule).unwrap();
+        VestingSchedules::<Runtime>::insert(alice(), schedules.clone());
+
+        let tag = CrowdloanTag(b"bad-denom".to_vec().try_into().unwrap());
+        let crowdloan_info = CrowdloanInfo {
+            total_contribution: balance!(1),
+            rewards: vec![(XOR, Balance::MAX), (XOR, 1)],
+            start_block: 1,
+            length: 1,
+            account: alice(),
+        };
+        CrowdloanInfos::<Runtime>::insert(&tag, crowdloan_info.clone());
+
+        assert_err!(
+            crate::DenominateXorAndTbcd::<Runtime>::on_denominate(&10),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert_eq!(VestingSchedules::<Runtime>::get(alice()), schedules);
+        assert_eq!(
+            CrowdloanInfos::<Runtime>::get(&tag).unwrap(),
+            crowdloan_info
+        );
+    });
+}
+
+#[test]
 fn can_claim_crowdloan_reward() {
     ExtBuilder::default().build().execute_with(|| {
         const BLOCKS_PER_DAY: u64 = 14400;
@@ -209,6 +515,14 @@ fn can_claim_crowdloan_reward() {
                 rewarded: vec![]
             }
         );
+        assert_eq!(
+            VestedRewards::get_claimable_crowdloan_reward(&tag, &alice(), &XOR),
+            Some(balance!(1.351351351351351350))
+        );
+        assert_eq!(
+            VestedRewards::get_claimable_crowdloan_reward(&tag, &alice(), &PSWAP),
+            Some(balance!(13.513513513513513500))
+        );
         Assets::mint_unchecked(&XOR, &crowdloan_info.account, balance!(100)).unwrap();
         Assets::mint_unchecked(&PSWAP, &crowdloan_info.account, balance!(1000)).unwrap();
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
@@ -233,7 +547,15 @@ fn can_claim_crowdloan_reward() {
                 ]
             }
         );
+        assert_eq!(
+            VestedRewards::get_claimable_crowdloan_reward(&tag, &alice(), &XOR),
+            Some(0)
+        );
         frame_system::Pallet::<Runtime>::set_block_number(BLOCKS_PER_DAY * 3 + BLOCKS_PER_DAY / 2);
+        assert_eq!(
+            VestedRewards::get_claimable_crowdloan_reward(&tag, &alice(), &XOR),
+            Some(balance!(2.027027027027027025))
+        );
         assert_ok!(VestedRewards::claim_crowdloan_rewards(
             RuntimeOrigin::signed(alice()),
             tag.clone()
@@ -242,17 +564,17 @@ fn can_claim_crowdloan_reward() {
             (
                 alice(),
                 XOR,
-                balance!(2.702702702702702700) + Balances::minimum_balance(),
+                balance!(3.378378378378378375) + Balances::minimum_balance(),
             ),
-            (alice(), PSWAP, balance!(27.027027027027027000)),
+            (alice(), PSWAP, balance!(33.783783783783783750)),
         ]);
         assert_eq!(
             CrowdloanUserInfos::<Runtime>::get(alice(), &tag).unwrap(),
             CrowdloanUserInfo {
                 contribution: balance!(5),
                 rewarded: vec![
-                    (XOR, balance!(2.702702702702702700)),
-                    (PSWAP, balance!(27.027027027027027000))
+                    (XOR, balance!(3.378378378378378375)),
+                    (PSWAP, balance!(33.783783783783783750))
                 ]
             }
         );
@@ -311,6 +633,55 @@ fn can_claim_crowdloan_reward() {
                 + Assets::total_balance(&PSWAP, &bob()).unwrap()
                 + Assets::total_balance(&PSWAP, &charlie()).unwrap(),
             balance!(999.999999999999999000)
+        );
+    });
+}
+
+#[test]
+fn crowdloan_short_length_vests_by_block_ratio() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"short".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            10,
+            10,
+            vec![(PSWAP, balance!(100))],
+            vec![(alice(), balance!(1))],
+        ));
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
+        Assets::mint_unchecked(&PSWAP, &crowdloan_info.account, balance!(100)).unwrap();
+
+        frame_system::Pallet::<Runtime>::set_block_number(15);
+        assert_eq!(
+            VestedRewards::get_claimable_crowdloan_reward(&tag, &alice(), &PSWAP),
+            Some(balance!(50))
+        );
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ));
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag)
+                .unwrap()
+                .rewarded,
+            vec![(PSWAP, balance!(50))]
+        );
+
+        frame_system::Pallet::<Runtime>::set_block_number(20);
+        assert_eq!(
+            VestedRewards::get_claimable_crowdloan_reward(&tag, &alice(), &PSWAP),
+            Some(balance!(50))
+        );
+        assert_ok!(VestedRewards::claim_crowdloan_rewards(
+            RuntimeOrigin::signed(alice()),
+            tag.clone()
+        ));
+        assert_eq!(
+            CrowdloanUserInfos::<Runtime>::get(alice(), &tag)
+                .unwrap()
+                .rewarded,
+            vec![(PSWAP, balance!(100))]
         );
     });
 }
@@ -696,6 +1067,114 @@ fn some_rewards_reserves_are_depleted() {
 }
 
 #[test]
+fn distribute_limits_handles_large_total_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let total = i128::MAX as Balance + 1;
+        crate::Rewards::<Runtime>::insert(
+            alice(),
+            RewardInfo {
+                limit: 0,
+                total_available: total,
+                rewards: [(RewardReason::BuyOnBondingCurve, total)]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            },
+        );
+        crate::TotalRewards::<Runtime>::put(total);
+
+        VestedRewards::distribute_limits(balance!(1));
+
+        assert_eq!(crate::Rewards::<Runtime>::get(&alice()).limit, balance!(1));
+    });
+}
+
+#[test]
+fn claim_rewards_caps_corrupt_reason_amounts_by_total_available() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        Currencies::deposit(
+            PSWAP,
+            &GetBondingCurveRewardsAccountId::get(),
+            balance!(100),
+        )
+        .unwrap();
+        crate::Rewards::<Runtime>::insert(
+            alice(),
+            RewardInfo {
+                limit: balance!(100),
+                total_available: balance!(10),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(100))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            },
+        );
+        crate::TotalRewards::<Runtime>::put(balance!(10));
+
+        assert_ok!(VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())));
+
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(10)
+        );
+        assert!(!crate::Rewards::<Runtime>::contains_key(alice()));
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), 0);
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetBondingCurveRewardsAccountId::get()),
+            balance!(90)
+        );
+    });
+}
+
+#[test]
+fn claim_rewards_caps_multiple_corrupt_reason_amounts_by_remaining_total_available() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        Currencies::deposit(
+            PSWAP,
+            &GetBondingCurveRewardsAccountId::get(),
+            balance!(100),
+        )
+        .unwrap();
+        Currencies::deposit(PSWAP, &GetFarmingRewardsAccountId::get(), balance!(100)).unwrap();
+        crate::Rewards::<Runtime>::insert(
+            alice(),
+            RewardInfo {
+                limit: balance!(100),
+                total_available: balance!(15),
+                rewards: [
+                    (RewardReason::BuyOnBondingCurve, balance!(10)),
+                    (RewardReason::LiquidityProvisionFarming, balance!(100)),
+                ]
+                .iter()
+                .cloned()
+                .collect(),
+            },
+        );
+        crate::TotalRewards::<Runtime>::put(balance!(15));
+
+        assert_ok!(VestedRewards::claim_rewards(RuntimeOrigin::signed(alice())));
+
+        assert_eq!(
+            Assets::free_balance(&PSWAP, &alice()).unwrap(),
+            balance!(15)
+        );
+        assert!(!crate::Rewards::<Runtime>::contains_key(alice()));
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), 0);
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetBondingCurveRewardsAccountId::get()),
+            balance!(90)
+        );
+        assert_eq!(
+            Currencies::free_balance(PSWAP, &GetFarmingRewardsAccountId::get()),
+            balance!(95)
+        );
+    });
+}
+
+#[test]
 fn all_rewards_reserves_are_depleted() {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| {
@@ -886,6 +1365,12 @@ fn market_maker_reward_pool_migration() {
         .unwrap();
         VestedRewards::add_pending_reward(&alice(), RewardReason::BuyOnBondingCurve, balance!(200))
             .unwrap();
+        VestedRewards::add_pending_reward(
+            &bob(),
+            RewardReason::DeprecatedMarketMakerVolume,
+            balance!(50),
+        )
+        .unwrap();
 
         crate::migrations::move_market_making_rewards_to_liquidity_provider_rewards_pool::<Runtime>(
         );
@@ -906,6 +1391,234 @@ fn market_maker_reward_pool_migration() {
                     .collect(),
             }
         );
+        assert_eq!(
+            VestedRewards::rewards(&bob()),
+            RewardInfo {
+                limit: balance!(0),
+                total_available: balance!(50),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(50))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            }
+        );
+    });
+}
+
+#[test]
+fn migration_to_v4_rejects_contribution_overflow_without_advancing_version() {
+    ExtBuilder::default().build().execute_with(|| {
+        let tag = CrowdloanTag(b"crowdloan".to_vec().try_into().unwrap());
+        let reward = crate::migrations::v4::CrowdloanReward {
+            contribution: Fixed::from_bits(i128::MAX),
+            ..Default::default()
+        };
+
+        crate::migrations::v4::CrowdloanRewards::<Runtime>::insert(alice(), reward.clone());
+        crate::migrations::v4::CrowdloanRewards::<Runtime>::insert(bob(), reward.clone());
+        crate::migrations::v4::CrowdloanRewards::<Runtime>::insert(charlie(), reward);
+        StorageVersion::new(3).put::<crate::Pallet<Runtime>>();
+
+        crate::migrations::v4::Migration::<Runtime>::on_runtime_upgrade();
+
+        assert_eq!(crate::Pallet::<Runtime>::on_chain_storage_version(), 3);
+        assert!(!CrowdloanInfos::<Runtime>::contains_key(&tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(alice(), &tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(bob(), &tag));
+        assert!(!CrowdloanUserInfos::<Runtime>::contains_key(
+            charlie(),
+            &tag
+        ));
+        assert!(crate::migrations::v4::CrowdloanRewards::<Runtime>::contains_key(alice()));
+        assert!(crate::migrations::v4::CrowdloanRewards::<Runtime>::contains_key(bob()));
+        assert!(crate::migrations::v4::CrowdloanRewards::<Runtime>::contains_key(charlie()));
+    });
+}
+
+#[test]
+fn market_maker_reward_pool_migration_rejects_overflow_without_wrapping_rewards() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let reward_info = RewardInfo {
+            limit: balance!(0),
+            total_available: Balance::MAX,
+            rewards: [
+                (RewardReason::BuyOnBondingCurve, Balance::MAX),
+                (RewardReason::DeprecatedMarketMakerVolume, balance!(1)),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+        crate::Rewards::<Runtime>::insert(alice(), reward_info.clone());
+
+        crate::migrations::move_market_making_rewards_to_liquidity_provider_rewards_pool::<Runtime>(
+        );
+
+        assert_eq!(crate::Rewards::<Runtime>::get(alice()), reward_info);
+    });
+}
+
+#[test]
+fn add_pending_reward_rejects_overflow_without_mutating_state() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let reward_info = RewardInfo {
+            limit: balance!(0),
+            total_available: Balance::MAX,
+            rewards: [(
+                RewardReason::LiquidityProvisionFarming,
+                Balance::MAX,
+            )]
+            .iter()
+            .cloned()
+            .collect(),
+        };
+        crate::Rewards::<Runtime>::insert(alice(), reward_info.clone());
+        crate::TotalRewards::<Runtime>::put(Balance::MAX);
+
+        assert_noop!(
+            VestedRewards::add_pending_reward(
+                &alice(),
+                RewardReason::LiquidityProvisionFarming,
+                1,
+            ),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert_eq!(crate::Rewards::<Runtime>::get(alice()), reward_info);
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), Balance::MAX);
+    });
+}
+
+#[test]
+fn update_rewards_rejects_overflow_without_mutating_state() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let reward_info = RewardInfo {
+            limit: balance!(0),
+            total_available: balance!(0),
+            rewards: [(RewardReason::LiquidityProvisionFarming, Balance::MAX)]
+                .iter()
+                .cloned()
+                .collect(),
+        };
+        crate::Rewards::<Runtime>::insert(alice(), reward_info.clone());
+        crate::TotalRewards::<Runtime>::put(Balance::MAX);
+        let rewards = [(
+            alice(),
+            [(RewardReason::LiquidityProvisionFarming, balance!(1))]
+                .iter()
+                .cloned()
+                .collect(),
+        )]
+        .iter()
+        .cloned()
+        .collect();
+
+        assert_noop!(
+            VestedRewards::update_rewards(RawOrigin::Root.into(), rewards),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert_eq!(crate::Rewards::<Runtime>::get(alice()), reward_info);
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), Balance::MAX);
+    });
+}
+
+#[test]
+fn update_rewards_rejects_unknown_account_without_mutating_state() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        crate::TotalRewards::<Runtime>::put(balance!(123));
+        let rewards = [(
+            alice(),
+            [(RewardReason::LiquidityProvisionFarming, balance!(1))]
+                .iter()
+                .cloned()
+                .collect(),
+        )]
+        .iter()
+        .cloned()
+        .collect();
+
+        assert_noop!(
+            VestedRewards::update_rewards(RawOrigin::Root.into(), rewards),
+            Error::<Runtime>::NothingToClaim
+        );
+
+        assert!(!crate::Rewards::<Runtime>::contains_key(alice()));
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(123));
+    });
+}
+
+#[test]
+fn update_rewards_reconciles_total_available_and_caps_limit() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        crate::Rewards::<Runtime>::insert(
+            alice(),
+            RewardInfo {
+                limit: 0,
+                total_available: balance!(50),
+                rewards: [(RewardReason::LiquidityProvisionFarming, balance!(80))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            },
+        );
+        crate::Rewards::<Runtime>::insert(
+            bob(),
+            RewardInfo {
+                limit: balance!(80),
+                total_available: balance!(100),
+                rewards: [(RewardReason::BuyOnBondingCurve, balance!(40))]
+                    .iter()
+                    .cloned()
+                    .collect(),
+            },
+        );
+        crate::TotalRewards::<Runtime>::put(balance!(150));
+
+        let rewards = vec![
+            (
+                alice(),
+                vec![(RewardReason::LiquidityProvisionFarming, balance!(20))]
+                    .into_iter()
+                    .collect(),
+            ),
+            (bob(), Default::default()),
+        ]
+        .into_iter()
+        .collect();
+
+        assert_ok!(VestedRewards::update_rewards(
+            RawOrigin::Root.into(),
+            rewards
+        ));
+
+        let alice_rewards = crate::Rewards::<Runtime>::get(alice());
+        assert_eq!(alice_rewards.total_available, balance!(100));
+        assert_eq!(alice_rewards.limit, 0);
+        assert_eq!(
+            alice_rewards.rewards,
+            [(RewardReason::LiquidityProvisionFarming, balance!(100))]
+                .iter()
+                .cloned()
+                .collect()
+        );
+
+        let bob_rewards = crate::Rewards::<Runtime>::get(bob());
+        assert_eq!(bob_rewards.total_available, balance!(40));
+        assert_eq!(bob_rewards.limit, balance!(40));
+        assert_eq!(
+            bob_rewards.rewards,
+            [(RewardReason::BuyOnBondingCurve, balance!(40))]
+                .iter()
+                .cloned()
+                .collect()
+        );
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(140));
     });
 }
 
@@ -959,9 +1672,12 @@ fn update_rewards_works() {
         );
         assert_eq!(
             crate::Rewards::<Runtime>::get(&alice()).rewards,
-            vec![(RewardReason::LiquidityProvisionFarming, balance!(200))]
-                .into_iter()
-                .collect()
+            vec![
+                (RewardReason::BuyOnBondingCurve, balance!(100)),
+                (RewardReason::LiquidityProvisionFarming, balance!(200))
+            ]
+            .into_iter()
+            .collect()
         );
         assert_eq!(
             crate::Rewards::<Runtime>::get(&bob()).total_available,
@@ -979,9 +1695,12 @@ fn update_rewards_works() {
         );
         assert_eq!(
             crate::Rewards::<Runtime>::get(&charlie()).rewards,
-            vec![(RewardReason::LiquidityProvisionFarming, balance!(600))]
-                .into_iter()
-                .collect()
+            vec![
+                (RewardReason::BuyOnBondingCurve, balance!(500)),
+                (RewardReason::LiquidityProvisionFarming, balance!(600))
+            ]
+            .into_iter()
+            .collect()
         );
 
         let rewards = vec![
@@ -1005,16 +1724,16 @@ fn update_rewards_works() {
             rewards
         ));
 
-        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(2100));
+        assert_eq!(crate::TotalRewards::<Runtime>::get(), balance!(2700));
         assert_eq!(
             crate::Rewards::<Runtime>::get(&alice()).total_available,
-            balance!(300)
+            balance!(400)
         );
         assert_eq!(
             crate::Rewards::<Runtime>::get(&alice()).rewards,
             vec![
                 (RewardReason::LiquidityProvisionFarming, balance!(200)),
-                (RewardReason::BuyOnBondingCurve, balance!(100))
+                (RewardReason::BuyOnBondingCurve, balance!(200))
             ]
             .into_iter()
             .collect()
@@ -1031,13 +1750,13 @@ fn update_rewards_works() {
         );
         assert_eq!(
             crate::Rewards::<Runtime>::get(&charlie()).total_available,
-            balance!(1100)
+            balance!(1600)
         );
         assert_eq!(
             crate::Rewards::<Runtime>::get(&charlie()).rewards,
             vec![
                 (RewardReason::LiquidityProvisionFarming, balance!(600)),
-                (RewardReason::BuyOnBondingCurve, balance!(500))
+                (RewardReason::BuyOnBondingCurve, balance!(1000))
             ]
             .into_iter()
             .collect()
@@ -1097,6 +1816,57 @@ fn linear_vested_transfer_works() {
         assert_eq!(
             VestedRewards::vesting_schedules(&bob()),
             vec![schedule, schedule_locked]
+        );
+    });
+}
+
+#[test]
+fn denominate_rejects_zero_factor_without_mutating_schedules() {
+    ExtBuilder::default().build().execute_with(|| {
+        System::set_block_number(1);
+        let linear_schedule =
+            VestingScheduleVariant::LinearVestingSchedule(LinearVestingSchedule {
+                asset_id: XOR,
+                start: 0u64,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+                remainder_amount: 5,
+            });
+        let pending_schedule =
+            VestingScheduleVariant::LinearPendingVestingSchedule(LinearPendingVestingSchedule {
+                asset_id: TBCD,
+                manager_id: alice(),
+                start: None,
+                period: 10u64,
+                period_count: 2u32,
+                per_period: 10,
+                remainder_amount: 5,
+            });
+        let mut schedules = BoundedVec::default();
+        schedules.try_push(linear_schedule).unwrap();
+        schedules.try_push(pending_schedule).unwrap();
+        VestingSchedules::<Runtime>::insert(alice(), schedules.clone());
+        let tag = CrowdloanTag(b"zero-denom".to_vec().try_into().unwrap());
+        assert_ok!(VestedRewards::register_crowdloan(
+            RuntimeOrigin::root(),
+            tag.clone(),
+            1,
+            10,
+            vec![(XOR, balance!(100)), (PSWAP, balance!(1000))],
+            vec![(alice(), balance!(1))],
+        ));
+        let crowdloan_info = CrowdloanInfos::<Runtime>::get(&tag).unwrap();
+
+        assert_err!(
+            crate::DenominateXorAndTbcd::<Runtime>::on_denominate(&0),
+            Error::<Runtime>::ArithmeticError
+        );
+
+        assert_eq!(VestingSchedules::<Runtime>::get(alice()), schedules);
+        assert_eq!(
+            CrowdloanInfos::<Runtime>::get(&tag).unwrap(),
+            crowdloan_info
         );
     });
 }

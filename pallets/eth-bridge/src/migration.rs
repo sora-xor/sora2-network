@@ -1,4 +1,8 @@
-use crate::requests::{OutgoingAddAsset, RequestStatus};
+use crate::requests::{
+    IncomingAddToken, IncomingCancelOutgoingRequest, IncomingChangePeers,
+    IncomingChangePeersCompat, IncomingMarkAsDoneRequest, IncomingMigrate,
+    IncomingPrepareForMigration, IncomingTransfer, OutgoingAddAsset, RequestStatus,
+};
 use codec::Decode;
 use codec::Encode;
 use frame_support::ensure;
@@ -21,11 +25,15 @@ use crate::RequestSubmissionHeight;
 use crate::Requests;
 use crate::{
     AccountRequests, BridgeAccount, BridgeStatus, BridgeStatuses, DeprecatedSidechainTokens, Event,
-    LegacyEthereumXorDecommissioned, RegisteredAsset, RegisteredSidechainAsset,
-    RegisteredSidechainToken, SidechainAssetPrecision, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+    LegacyEthereumXorDecommissioned, LegacyEthereumXorDecommissionedAt, RegisteredAsset,
+    RegisteredSidechainAsset, RegisteredSidechainToken, SidechainAssetPrecision,
+    LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
 };
 use crate::{Error, RequestsQueue};
-use crate::{IncomingRequest, OffchainRequest, OutgoingRequest};
+use crate::{
+    IncomingRequest, IncomingTransactionRequestKind, LoadIncomingRequest, OffchainRequest,
+    OutgoingRequest,
+};
 use common::prelude::Balance;
 use common::AssetInfoProvider;
 use sp_std::vec::Vec;
@@ -44,8 +52,9 @@ pub enum OldRequestStatus {
 pub fn migrate<T: Config>() -> Weight {
     let mut reads = 0u64;
     let mut writes = 0u64;
+    let mut on_chain_storage_version = Pallet::<T>::on_chain_storage_version();
 
-    if Pallet::<T>::on_chain_storage_version() < StorageVersion::new(2) {
+    if on_chain_storage_version < StorageVersion::new(2) {
         reads = reads.saturating_add(1);
         let mut translated = 0u64;
         RequestStatuses::<T>::translate::<OldRequestStatus, _>(|_, _, status| {
@@ -66,9 +75,168 @@ pub fn migrate<T: Config>() -> Weight {
         writes = writes.saturating_add(translated);
         StorageVersion::new(2).put::<Pallet<T>>();
         writes = writes.saturating_add(1);
+        on_chain_storage_version = StorageVersion::new(2);
+    }
+
+    if on_chain_storage_version < StorageVersion::new(3) {
+        let (migration_reads, migration_writes) =
+            migrate_legacy_incoming_change_peers_requests::<T>();
+        reads = reads.saturating_add(migration_reads);
+        writes = writes.saturating_add(migration_writes);
+        StorageVersion::new(3).put::<Pallet<T>>();
+        writes = writes.saturating_add(1);
     }
 
     T::DbWeight::get().reads_writes(reads, writes)
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq)]
+struct OldIncomingChangePeers<T: Config> {
+    pub peer_account_id: <T as frame_system::pallet::Config>::AccountId,
+    pub peer_address: crate::EthAddress,
+    pub removed: bool,
+    pub author: <T as frame_system::pallet::Config>::AccountId,
+    pub tx_hash: sp_core::H256,
+    pub at_height: u64,
+    pub timepoint: crate::BridgeTimepoint<T>,
+    pub network_id: crate::BridgeNetworkId<T>,
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq)]
+enum OldIncomingRequest<T: Config> {
+    Transfer(IncomingTransfer<T>),
+    AddToken(IncomingAddToken<T>),
+    ChangePeers(OldIncomingChangePeers<T>),
+    CancelOutgoingRequest(IncomingCancelOutgoingRequest<T>),
+    MarkAsDone(IncomingMarkAsDoneRequest<T>),
+    PrepareForMigration(IncomingPrepareForMigration<T>),
+    Migrate(IncomingMigrate<T>),
+    ChangePeersCompat(IncomingChangePeersCompat<T>),
+}
+
+#[derive(Clone, Encode, Decode, PartialEq, Eq)]
+enum OldOffchainRequest<T: Config> {
+    Outgoing(OutgoingRequest<T>, sp_core::H256),
+    LoadIncoming(LoadIncomingRequest<T>),
+    Incoming(OldIncomingRequest<T>, sp_core::H256),
+}
+
+enum DecodedOffchainRequest<T: Config> {
+    Current(OffchainRequest<T>),
+    Legacy(OffchainRequest<T>),
+}
+
+impl<T: Config> DecodedOffchainRequest<T> {
+    fn into_request(self) -> OffchainRequest<T> {
+        match self {
+            Self::Current(request) | Self::Legacy(request) => request,
+        }
+    }
+}
+
+impl<T: Config> From<OldIncomingChangePeers<T>> for IncomingChangePeers<T> {
+    fn from(request: OldIncomingChangePeers<T>) -> Self {
+        Self {
+            peer_account_id: Some(request.peer_account_id),
+            peer_address: request.peer_address,
+            removed: request.removed,
+            author: request.author,
+            tx_hash: request.tx_hash,
+            at_height: request.at_height,
+            timepoint: request.timepoint,
+            network_id: request.network_id,
+        }
+    }
+}
+
+impl<T: Config> From<OldIncomingRequest<T>> for IncomingRequest<T> {
+    fn from(request: OldIncomingRequest<T>) -> Self {
+        match request {
+            OldIncomingRequest::Transfer(request) => IncomingRequest::Transfer(request),
+            OldIncomingRequest::AddToken(request) => IncomingRequest::AddToken(request),
+            OldIncomingRequest::ChangePeers(request) => {
+                IncomingRequest::ChangePeers(request.into())
+            }
+            OldIncomingRequest::CancelOutgoingRequest(request) => {
+                IncomingRequest::CancelOutgoingRequest(request)
+            }
+            OldIncomingRequest::MarkAsDone(request) => IncomingRequest::MarkAsDone(request),
+            OldIncomingRequest::PrepareForMigration(request) => {
+                IncomingRequest::PrepareForMigration(request)
+            }
+            OldIncomingRequest::Migrate(request) => IncomingRequest::Migrate(request),
+            OldIncomingRequest::ChangePeersCompat(request) => {
+                IncomingRequest::ChangePeersCompat(request)
+            }
+        }
+    }
+}
+
+impl<T: Config> From<OldOffchainRequest<T>> for OffchainRequest<T> {
+    fn from(request: OldOffchainRequest<T>) -> Self {
+        match request {
+            OldOffchainRequest::Outgoing(request, hash) => OffchainRequest::Outgoing(request, hash),
+            OldOffchainRequest::LoadIncoming(request) => OffchainRequest::LoadIncoming(request),
+            OldOffchainRequest::Incoming(request, hash) => {
+                OffchainRequest::Incoming(request.into(), hash)
+            }
+        }
+    }
+}
+
+fn decode_exact<D: Decode>(raw: &[u8]) -> Result<D, codec::Error> {
+    let mut input = raw;
+    let decoded = D::decode(&mut input)?;
+    if input.is_empty() {
+        Ok(decoded)
+    } else {
+        Err(codec::Error::from("unexpected trailing bytes"))
+    }
+}
+
+fn decode_offchain_request_compat<T: Config>(
+    raw: &[u8],
+) -> Result<DecodedOffchainRequest<T>, (codec::Error, codec::Error)> {
+    match decode_exact::<OffchainRequest<T>>(raw) {
+        Ok(request) => Ok(DecodedOffchainRequest::Current(request)),
+        Err(current_error) => decode_exact::<OldOffchainRequest<T>>(raw)
+            .map(Into::into)
+            .map(DecodedOffchainRequest::Legacy)
+            .map_err(|legacy_error| (current_error, legacy_error)),
+    }
+}
+
+fn migrate_legacy_incoming_change_peers_requests<T: Config>() -> (u64, u64) {
+    let mut reads = 0u64;
+    let mut writes = 0u64;
+
+    for (network_id, hash) in Requests::<T>::iter_keys() {
+        reads = reads.saturating_add(1);
+        let key = Requests::<T>::hashed_key_for(network_id, hash);
+        let Some(raw) = frame_support::storage::unhashed::get_raw(&key) else {
+            continue;
+        };
+        reads = reads.saturating_add(1);
+
+        match decode_offchain_request_compat::<T>(&raw) {
+            Ok(DecodedOffchainRequest::Current(_)) => {}
+            Ok(DecodedOffchainRequest::Legacy(request)) => {
+                frame_support::storage::unhashed::put_raw(&key, &request.encode());
+                writes = writes.saturating_add(1);
+            }
+            Err((current_error, legacy_error)) => {
+                frame_support::__private::log::warn!(
+                    "Failed to decode eth-bridge request {:?} on network {:?} as current ({:?}) or legacy ({:?}) format",
+                    hash,
+                    network_id,
+                    current_error,
+                    legacy_error
+                );
+            }
+        }
+    }
+
+    (reads, writes)
 }
 
 pub fn decommission_legacy_ethereum_xor<T: Config>() -> Weight {
@@ -93,51 +261,70 @@ fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, Dispatc
 
     reads = reads.saturating_add(1);
     if LegacyEthereumXorDecommissioned::<T>::get() {
-        return Ok(T::DbWeight::get().reads(reads));
+        reads = reads.saturating_add(1);
+        if LegacyEthereumXorDecommissionedAt::<T>::get().is_none() {
+            LegacyEthereumXorDecommissionedAt::<T>::put(
+                frame_system::Pallet::<T>::current_block_number(),
+            );
+            writes = writes.saturating_add(1);
+        }
+        return Ok(T::DbWeight::get().reads_writes(reads, writes));
     }
 
     let network_id = T::GetEthNetworkId::get();
     let xor_asset_id = common::XOR.into();
     let reason: DispatchError = Error::<T>::DeprecatedLegacyXor.into();
-    reads = reads.saturating_add(1);
-    let queue = RequestsQueue::<T>::get(network_id);
-    let (blockers, blocker_reads) =
-        legacy_ethereum_xor_decommission_blocker_count_with_queue::<T>(network_id, &queue);
-    reads = reads.saturating_add(blocker_reads);
+    let (legacy_requests, legacy_reads) = legacy_ethereum_xor_requests::<T>(network_id);
+    reads = reads.saturating_add(legacy_reads);
+    let blockers =
+        legacy_ethereum_xor_decommission_blocker_count_with_requests::<T>(&legacy_requests);
     if blockers != 0 {
-        frame_support::__private::log::error!(
-            "Refusing to decommission legacy Ethereum XOR: {blockers} unsafe outgoing transfer requests remain"
+        frame_support::__private::log::warn!(
+            "Quarantining {blockers} unsafe legacy Ethereum XOR outgoing transfer requests during decommission"
         );
-        return Err(DispatchError::Other(
-            "legacy Ethereum XOR decommission blocked",
-        ));
     }
 
     DeprecatedSidechainTokens::<T>::insert(network_id, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS, true);
     writes = writes.saturating_add(1);
 
+    reads = reads.saturating_add(1);
+    let queue = RequestsQueue::<T>::get(network_id);
+    let legacy_hashes = legacy_requests
+        .iter()
+        .map(|(hash, _, _)| *hash)
+        .collect::<Vec<_>>();
+    let mut queued_legacy_hashes = Vec::new();
     let mut retained_queue = Vec::with_capacity(queue.len());
     let mut queue_changed = false;
     for hash in queue {
-        reads = reads.saturating_add(1);
-        let Some(request) = Requests::<T>::get(network_id, hash) else {
-            retained_queue.push(hash);
-            continue;
-        };
-        if !is_legacy_xor_request::<T>(network_id, &request) {
+        if !legacy_hashes.contains(&hash) {
             retained_queue.push(hash);
             continue;
         }
-
+        queued_legacy_hashes.push(hash);
         queue_changed = true;
-        reads = reads.saturating_add(1);
-        match RequestStatuses::<T>::get(network_id, hash) {
+    }
+
+    for (hash, request, status) in legacy_requests {
+        let was_queued = queued_legacy_hashes.contains(&hash);
+        let should_scrub = was_queued
+            || !matches!(
+                &status,
+                Some(RequestStatus::Failed(_) | RequestStatus::Done)
+            );
+        if !should_scrub {
+            continue;
+        }
+        match status {
             Some(RequestStatus::Pending) => {
-                let new_status = match request.cancel() {
-                    Ok(()) => RequestStatus::Failed(reason),
-                    Err(cancel_error) => RequestStatus::Broken(reason, cancel_error),
-                };
-                RequestStatuses::<T>::insert(network_id, hash, new_status);
+                if let Err(cancel_error) = request.cancel() {
+                    frame_support::__private::log::warn!(
+                        "Failed to cancel legacy Ethereum XOR request {:?} during decommission; forcing deprecated failure: {:?}",
+                        hash,
+                        cancel_error
+                    );
+                }
+                RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(reason));
                 writes = writes.saturating_add(1);
             }
             Some(
@@ -195,8 +382,9 @@ fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, Dispatc
         }
     }
 
+    LegacyEthereumXorDecommissionedAt::<T>::put(frame_system::Pallet::<T>::current_block_number());
     LegacyEthereumXorDecommissioned::<T>::put(true);
-    writes = writes.saturating_add(1);
+    writes = writes.saturating_add(2);
 
     Ok(T::DbWeight::get().reads_writes(reads, writes))
 }
@@ -207,6 +395,11 @@ pub fn legacy_ethereum_xor_decommission_blockers<T: Config>() -> u32 {
 
 pub fn is_legacy_ethereum_xor_decommissioned<T: Config>() -> bool {
     LegacyEthereumXorDecommissioned::<T>::get()
+}
+
+pub fn legacy_ethereum_xor_decommissioned_at<T: Config>(
+) -> Option<frame_system::pallet_prelude::BlockNumberFor<T>> {
+    LegacyEthereumXorDecommissionedAt::<T>::get()
 }
 
 pub fn queue_ethereum_xor_thischain_add_asset_unchecked_capacity<T: Config>(
@@ -289,54 +482,77 @@ fn add_request_unchecked_capacity<T: Config>(
 
 fn legacy_ethereum_xor_decommission_blocker_count<T: Config>() -> (u32, u64) {
     let network_id = T::GetEthNetworkId::get();
-    let queue = RequestsQueue::<T>::get(network_id);
-    let (blockers, reads) =
-        legacy_ethereum_xor_decommission_blocker_count_with_queue::<T>(network_id, &queue);
-    (blockers, reads.saturating_add(1))
+    let (legacy_requests, reads) = legacy_ethereum_xor_requests::<T>(network_id);
+    (
+        legacy_ethereum_xor_decommission_blocker_count_with_requests::<T>(&legacy_requests),
+        reads,
+    )
 }
 
-fn legacy_ethereum_xor_decommission_blocker_count_with_queue<T: Config>(
+fn legacy_ethereum_xor_requests<T: Config>(
     network_id: T::NetworkId,
-    queue: &[sp_core::H256],
-) -> (u32, u64) {
-    let mut blockers = 0u32;
+) -> (
+    Vec<(sp_core::H256, OffchainRequest<T>, Option<RequestStatus>)>,
+    u64,
+) {
+    let mut requests = Vec::new();
     let mut reads = 0u64;
 
-    for hash in queue {
+    for hash in Requests::<T>::iter_key_prefix(network_id) {
         reads = reads.saturating_add(1);
-        let Some(request) = Requests::<T>::get(network_id, hash) else {
+        let key = Requests::<T>::hashed_key_for(network_id, hash);
+        let Some(raw) = frame_support::storage::unhashed::get_raw(&key) else {
             continue;
         };
-        if !is_legacy_xor_outgoing_transfer::<T>(network_id, &request) {
-            continue;
-        }
         reads = reads.saturating_add(1);
-        if is_unsafe_legacy_xor_outgoing_transfer_status::<T>(network_id, *hash) {
+        let request = match decode_offchain_request_compat::<T>(&raw) {
+            Ok(decoded) => decoded.into_request(),
+            Err((current_error, legacy_error)) => {
+                frame_support::__private::log::warn!(
+                    "Skipping undecodable eth-bridge request {:?} on network {:?}: current={:?}, legacy={:?}",
+                    hash,
+                    network_id,
+                    current_error,
+                    legacy_error
+                );
+                continue;
+            }
+        };
+        if is_legacy_xor_request::<T>(network_id, &request) {
+            let status = RequestStatuses::<T>::get(network_id, hash);
+            reads = reads.saturating_add(1);
+            requests.push((hash, request, status));
+        }
+    }
+
+    (requests, reads)
+}
+
+fn legacy_ethereum_xor_decommission_blocker_count_with_requests<T: Config>(
+    requests: &[(sp_core::H256, OffchainRequest<T>, Option<RequestStatus>)],
+) -> u32 {
+    let mut blockers = 0u32;
+
+    for (_, request, status) in requests {
+        if is_legacy_xor_outgoing_transfer::<T>(request)
+            && is_unsafe_legacy_xor_outgoing_transfer_status(status)
+        {
             blockers = blockers.saturating_add(1);
         }
     }
 
-    (blockers, reads)
+    blockers
 }
 
-fn is_unsafe_legacy_xor_outgoing_transfer_status<T: Config>(
-    network_id: T::NetworkId,
-    hash: sp_core::H256,
-) -> bool {
+fn is_unsafe_legacy_xor_outgoing_transfer_status(status: &Option<RequestStatus>) -> bool {
     matches!(
-        RequestStatuses::<T>::get(network_id, hash),
+        status,
         Some(RequestStatus::ApprovalsReady | RequestStatus::Frozen | RequestStatus::Broken(_, _))
             | None
     )
 }
 
-fn is_legacy_xor_outgoing_transfer<T: Config>(
-    network_id: T::NetworkId,
-    request: &OffchainRequest<T>,
-) -> bool {
-    if network_id != T::GetEthNetworkId::get() {
-        return false;
-    }
+fn is_legacy_xor_outgoing_transfer<T: Config>(request: &OffchainRequest<T>) -> bool {
     matches!(
         request,
         OffchainRequest::Outgoing(OutgoingRequest::Transfer(request), _)
@@ -368,6 +584,9 @@ fn is_legacy_xor_request<T: Config>(
         OffchainRequest::Incoming(IncomingRequest::AddToken(request), _) => {
             request.token_address == LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS
         }
+        OffchainRequest::LoadIncoming(LoadIncomingRequest::Transaction(request)) => {
+            request.kind == IncomingTransactionRequestKind::TransferXOR
+        }
         _ => false,
     }
 }
@@ -393,17 +612,18 @@ pub fn migrate_error(err: OldDispatchError) -> DispatchError {
 #[cfg(test)]
 mod tests {
     use crate::migration::OldRequestStatus;
-    use crate::requests::RequestStatus;
+    use crate::requests::{IncomingRequest, OffchainRequest, RequestStatus};
     use crate::tests::mock::ExtBuilder;
     use crate::tests::mock::Runtime;
     use crate::Pallet;
     use crate::RequestStatuses;
     use bridge_types::H256;
+    use codec::Encode;
     use frame_support::sp_runtime::legacy::byte_sized_error::DispatchError as OldDispatchError;
     use frame_support::sp_runtime::legacy::byte_sized_error::ModuleError as OldModuleError;
     use frame_support::sp_runtime::DispatchError;
     use frame_support::sp_runtime::ModuleError;
-    use frame_support::traits::GetStorageVersion;
+    use frame_support::traits::{GetStorageVersion, StorageVersion};
 
     #[test]
     fn request_statuses_migration_works() {
@@ -440,7 +660,7 @@ mod tests {
                 ),
             );
             super::migrate::<Runtime>();
-            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 2);
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 3);
             assert_eq!(
                 RequestStatuses::<Runtime>::get(0, H256::from_low_u64_be(1)),
                 Some(RequestStatus::Done)
@@ -471,6 +691,176 @@ mod tests {
                         message: Some("test3"),
                     }),
                 )),
+            );
+        });
+    }
+
+    #[test]
+    fn legacy_incoming_change_peers_requests_are_reencoded() {
+        let (mut ext, _state) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            StorageVersion::new(2).put::<Pallet<Runtime>>();
+            let network_id = 0;
+            let stored_hash = H256::from_low_u64_be(42);
+            let peer_account_id = sp_runtime::AccountId32::new([7; 32]);
+            let author = sp_runtime::AccountId32::new([8; 32]);
+            let peer_address = sp_core::H160::from([9; 20]);
+            let tx_hash = H256::from_low_u64_be(43);
+            let old_request = super::OldOffchainRequest::Incoming(
+                super::OldIncomingRequest::ChangePeers(super::OldIncomingChangePeers::<Runtime> {
+                    peer_account_id: peer_account_id.clone(),
+                    peer_address,
+                    removed: false,
+                    author: author.clone(),
+                    tx_hash,
+                    at_height: 11,
+                    timepoint: Default::default(),
+                    network_id,
+                }),
+                stored_hash,
+            );
+            let key = crate::Requests::<Runtime>::hashed_key_for(network_id, stored_hash);
+            frame_support::storage::unhashed::put_raw(&key, &old_request.encode());
+
+            let raw = frame_support::storage::unhashed::get_raw(&key).unwrap();
+            assert!(super::decode_exact::<OffchainRequest<Runtime>>(&raw).is_err());
+            assert!(super::decode_exact::<super::OldOffchainRequest<Runtime>>(&raw).is_ok());
+
+            super::migrate::<Runtime>();
+
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 3);
+            let decoded = crate::Requests::<Runtime>::get(network_id, stored_hash).unwrap();
+            assert!(super::decode_exact::<OffchainRequest<Runtime>>(
+                &frame_support::storage::unhashed::get_raw(&key).unwrap()
+            )
+            .is_ok());
+            match decoded {
+                OffchainRequest::Incoming(IncomingRequest::ChangePeers(request), hash) => {
+                    assert_eq!(hash, stored_hash);
+                    assert_eq!(request.peer_account_id, Some(peer_account_id));
+                    assert_eq!(request.peer_address, peer_address);
+                    assert!(!request.removed);
+                    assert_eq!(request.author, author);
+                    assert_eq!(request.tx_hash, tx_hash);
+                    assert_eq!(request.at_height, 11);
+                    assert_eq!(request.network_id, network_id);
+                }
+                other => panic!("unexpected request after migration: {:?}", other),
+            }
+        });
+    }
+
+    #[test]
+    fn request_reencoding_tolerates_current_legacy_and_corrupt_values() {
+        let (mut ext, _state) = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            StorageVersion::new(2).put::<Pallet<Runtime>>();
+            let network_id = 0;
+            let current_hash = H256::from_low_u64_be(101);
+            let legacy_hash = H256::from_low_u64_be(102);
+            let corrupt_hash = H256::from_low_u64_be(103);
+
+            let peer_address = sp_core::H160::from([9; 20]);
+            let current_peer = sp_runtime::AccountId32::new([1; 32]);
+            let legacy_peer = sp_runtime::AccountId32::new([7; 32]);
+            let author = sp_runtime::AccountId32::new([8; 32]);
+
+            let current_request = OffchainRequest::Incoming(
+                IncomingRequest::ChangePeers(crate::IncomingChangePeers::<Runtime> {
+                    peer_account_id: Some(current_peer.clone()),
+                    peer_address,
+                    removed: false,
+                    author: author.clone(),
+                    tx_hash: H256::from_low_u64_be(201),
+                    at_height: 11,
+                    timepoint: Default::default(),
+                    network_id,
+                }),
+                current_hash,
+            );
+            let legacy_request = super::OldOffchainRequest::Incoming(
+                super::OldIncomingRequest::ChangePeers(super::OldIncomingChangePeers::<Runtime> {
+                    peer_account_id: legacy_peer.clone(),
+                    peer_address,
+                    removed: true,
+                    author: author.clone(),
+                    tx_hash: H256::from_low_u64_be(202),
+                    at_height: 12,
+                    timepoint: Default::default(),
+                    network_id,
+                }),
+                legacy_hash,
+            );
+            let current_key = crate::Requests::<Runtime>::hashed_key_for(network_id, current_hash);
+            let legacy_key = crate::Requests::<Runtime>::hashed_key_for(network_id, legacy_hash);
+            let corrupt_key = crate::Requests::<Runtime>::hashed_key_for(network_id, corrupt_hash);
+            let current_raw = current_request.encode();
+            let legacy_raw = legacy_request.encode();
+            let corrupt_raw = vec![0xff, 0x00, 0x01, 0x02];
+
+            frame_support::storage::unhashed::put_raw(&current_key, &current_raw);
+            frame_support::storage::unhashed::put_raw(&legacy_key, &legacy_raw);
+            frame_support::storage::unhashed::put_raw(&corrupt_key, &corrupt_raw);
+
+            assert!(super::decode_exact::<OffchainRequest<Runtime>>(&current_raw).is_ok());
+            assert!(super::decode_exact::<OffchainRequest<Runtime>>(&legacy_raw).is_err());
+            assert!(super::decode_exact::<super::OldOffchainRequest<Runtime>>(&legacy_raw).is_ok());
+            assert!(super::decode_exact::<OffchainRequest<Runtime>>(&corrupt_raw).is_err());
+            assert!(
+                super::decode_exact::<super::OldOffchainRequest<Runtime>>(&corrupt_raw).is_err()
+            );
+
+            super::migrate::<Runtime>();
+
+            assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 3);
+            assert_eq!(
+                frame_support::storage::unhashed::get_raw(&current_key).unwrap(),
+                current_raw
+            );
+            assert_eq!(
+                frame_support::storage::unhashed::get_raw(&corrupt_key).unwrap(),
+                corrupt_raw
+            );
+
+            let rewritten_legacy_raw =
+                frame_support::storage::unhashed::get_raw(&legacy_key).unwrap();
+            assert_ne!(rewritten_legacy_raw, legacy_raw);
+            let decoded = super::decode_exact::<OffchainRequest<Runtime>>(&rewritten_legacy_raw)
+                .expect("legacy request should be reencoded into the current format");
+            match decoded {
+                OffchainRequest::Incoming(IncomingRequest::ChangePeers(request), hash) => {
+                    assert_eq!(hash, legacy_hash);
+                    assert_eq!(request.peer_account_id, Some(legacy_peer));
+                    assert_eq!(request.peer_address, peer_address);
+                    assert!(request.removed);
+                    assert_eq!(request.author, author);
+                    assert_eq!(request.tx_hash, H256::from_low_u64_be(202));
+                    assert_eq!(request.at_height, 12);
+                    assert_eq!(request.network_id, network_id);
+                }
+                other => panic!("unexpected request after migration: {:?}", other),
+            }
+
+            let migrated_current_raw =
+                frame_support::storage::unhashed::get_raw(&current_key).unwrap();
+            let migrated_legacy_raw =
+                frame_support::storage::unhashed::get_raw(&legacy_key).unwrap();
+            let migrated_corrupt_raw =
+                frame_support::storage::unhashed::get_raw(&corrupt_key).unwrap();
+
+            super::migrate::<Runtime>();
+
+            assert_eq!(
+                frame_support::storage::unhashed::get_raw(&current_key).unwrap(),
+                migrated_current_raw
+            );
+            assert_eq!(
+                frame_support::storage::unhashed::get_raw(&legacy_key).unwrap(),
+                migrated_legacy_raw
+            );
+            assert_eq!(
+                frame_support::storage::unhashed::get_raw(&corrupt_key).unwrap(),
+                migrated_corrupt_raw
             );
         });
     }

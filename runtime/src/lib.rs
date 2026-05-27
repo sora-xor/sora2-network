@@ -90,6 +90,16 @@ fn runtime_upgrade_version_only_migrations_bump_zero_to_one() {
 }
 #[cfg(test)]
 #[test]
+fn denomination_rejects_zero_factor_without_mutating_state() {
+    tests::denomination_rejects_zero_factor_without_mutating_state();
+}
+#[cfg(test)]
+#[test]
+fn denomination_rolls_back_base_storage_when_hook_fails() {
+    tests::denomination_rolls_back_base_storage_when_hook_fails();
+}
+#[cfg(test)]
+#[test]
 fn band_migrate_to_v2_if_needed_handles_expected_versions() {
     tests::band_migrate_to_v2_if_needed_handles_expected_versions();
 }
@@ -102,6 +112,11 @@ fn staking_storage_version_bridge_reaches_v16() {
 #[test]
 fn demeter_storage_version_bridge_reaches_v3() {
     tests::demeter_storage_version_bridge_reaches_v3();
+}
+#[cfg(test)]
+#[test]
+fn xor_tbcd_reward_denomination_repair_migration_scales_once() {
+    tests::xor_tbcd_reward_denomination_repair_migration_scales_once();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
@@ -3097,7 +3112,10 @@ impl denomination::Config for Runtime {
         order_book::DenominateXor<Runtime>,
         multicollateral_bonding_curve_pool::DenominateTbcd<Runtime>,
         kensetsu::DenominateXorAndTbcd<Runtime>,
-        demeter_farming_platform::DenominateXorAndTbcd<Runtime>,
+        (
+            demeter_farming_platform::DenominateXorAndTbcd<Runtime>,
+            apollo_platform::DenominateXorAndTbcd<Runtime>,
+        ),
         ceres_token_locker::DenominateXorAndTbcd<Runtime>,
         ceres_liquidity_locker::DenominateXorAndTbcd<Runtime>,
         pool_xyk::DenominateXor<Runtime>,
