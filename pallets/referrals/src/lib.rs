@@ -46,6 +46,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
+use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
 

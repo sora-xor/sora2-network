@@ -78,6 +78,7 @@ pub mod pallet {
     use hex_literal::hex;
     use sp_runtime::traits::{Saturating, UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
+    use sp_std::vec::Vec;
 
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
 
