@@ -163,7 +163,7 @@ benchmarks! {
         let mut accounts = BTreeMap::new();
         Pallet::<T>::prepare_accounts_for_vesting(T::VESTING_FREQUENCY, &mut accounts);
     }: {
-        Pallet::<T>::vest_account_rewards(accounts);
+        assert_ok!(Pallet::<T>::vest_account_rewards(accounts));
     }
 
     set_lp_min_xor_for_bonus_reward{

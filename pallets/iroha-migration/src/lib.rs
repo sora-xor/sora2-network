@@ -58,12 +58,12 @@ use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
-use frame_support::__private::log::error;
 use frame_support::dispatch::Pays;
 use frame_support::ensure;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::sp_runtime::DispatchError;
 use frame_support::sp_runtime::RuntimeDebug;
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -78,6 +78,7 @@ pub use weights::WeightInfo;
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+const MIGRATION_SIGNING_PAYLOAD_PREFIX: &str = "SORA2-IROHA-MIGRATION-V2";
 
 fn blocks_till_migration<T>() -> BlockNumberFor<T>
 where
@@ -116,18 +117,20 @@ impl<T: Config> Pallet<T> {
             && !MigratedAccounts::<T>::contains_key(iroha_address)
     }
 
-    fn migrate_weight(
-        iroha_address: &String,
-        iroha_public_key: &String,
-        iroha_signature: &String,
-    ) -> (Weight, Pays) {
-        let pays = if Self::check_migrate(iroha_address, iroha_public_key, iroha_signature).is_ok()
-        {
-            Pays::No
-        } else {
-            Pays::Yes
-        };
-        (WeightInfoOf::<T>::migrate(), pays)
+    pub(crate) fn migration_signing_message(
+        iroha_address: &str,
+        iroha_public_key: &str,
+        account: &T::AccountId,
+    ) -> String {
+        let genesis_hash = T::MigrationGenesisHash::get();
+        format!(
+            "{}\ngenesis_hash=0x{}\niroha_address={}\niroha_public_key={}\nsubstrate_account=0x{}",
+            MIGRATION_SIGNING_PAYLOAD_PREFIX,
+            hex::encode(genesis_hash.encode()),
+            iroha_address,
+            iroha_public_key,
+            hex::encode(account.encode())
+        )
     }
 
     /// Checks if migration would succeed if the parameters were passed to migrate extrinsic.
@@ -135,6 +138,7 @@ impl<T: Config> Pallet<T> {
         iroha_address: &String,
         iroha_public_key: &String,
         iroha_signature: &String,
+        account: &T::AccountId,
     ) -> Result<(), DispatchError> {
         let iroha_public_key = iroha_public_key.to_lowercase();
         let iroha_signature = iroha_signature.to_lowercase();
@@ -142,11 +146,8 @@ impl<T: Config> Pallet<T> {
             !MigratedAccounts::<T>::contains_key(&iroha_address),
             Error::<T>::AccountAlreadyMigrated
         );
-        // This account isn't migrated so the abusers couldn't copy signature from the blockchain for single-signature accounts.
-        Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
-        // However, for multi-signature accounts, their signatures can be abused so we continue checking.
         let public_keys =
-            PublicKeys::<T>::try_get(&iroha_address).map_err(|_| Error::<T>::PublicKeyNotFound)?;
+            PublicKeys::<T>::try_get(&iroha_address).map_err(|_| Error::<T>::AccountNotFound)?;
         let already_migrated = public_keys
             .iter()
             .find_map(|(already_migrated, key)| {
@@ -158,7 +159,21 @@ impl<T: Config> Pallet<T> {
             })
             .ok_or(Error::<T>::AccountNotFound)?;
         ensure!(!already_migrated, Error::<T>::PublicKeyAlreadyUsed);
+        Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature, account)?;
         Ok(())
+    }
+
+    pub(crate) fn can_migrate_feeless(
+        origin: &frame_system::pallet_prelude::OriginFor<T>,
+        iroha_address: &String,
+        iroha_public_key: &String,
+        iroha_signature: &String,
+    ) -> bool {
+        let Ok(who) = ensure_signed(origin.clone()) else {
+            return false;
+        };
+
+        Self::check_migrate(iroha_address, iroha_public_key, iroha_signature, &who).is_ok()
     }
 
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
@@ -183,19 +198,13 @@ impl<T: Config> Pallet<T> {
         iroha_address: &str,
         iroha_public_key: &str,
         iroha_signature: &str,
+        account: &T::AccountId,
     ) -> Result<(), DispatchError> {
         let public_key = Self::parse_public_key(iroha_public_key)?;
         let signature = Self::parse_signature(iroha_signature)?;
-        let message = format!("{}{}", iroha_address, iroha_public_key);
-        error!("faucet: message: {}", message);
+        let message = Self::migration_signing_message(iroha_address, iroha_public_key, account);
         let mut prehashed_message = Sha3_256::default();
         prehashed_message.update(&message[..]);
-        {
-            let mut prehashed_message = Sha3_256::default();
-            prehashed_message.update(&message[..]);
-            let hashed_message = prehashed_message.finalize();
-            error!("faucet: hashed_message: {}", hex::encode(hashed_message));
-        }
         public_key
             .verify_prehashed(prehashed_message, None, &signature)
             .map_err(|_| Error::<T>::SignatureVerificationFailed)?;
@@ -333,6 +342,7 @@ pub mod pallet {
     {
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type MigrationGenesisHash: Get<Self::Hash>;
         type WeightInfo: WeightInfo;
     }
 
@@ -373,7 +383,15 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(Pallet::<T>::migrate_weight(iroha_address, iroha_public_key, iroha_signature))]
+        #[pallet::feeless_if(|origin: &OriginFor<T>, iroha_address: &String, iroha_public_key: &String, iroha_signature: &String| -> bool {
+            Pallet::<T>::can_migrate_feeless(
+                origin,
+                iroha_address,
+                iroha_public_key,
+                iroha_signature,
+            )
+        })]
+        #[pallet::weight((WeightInfoOf::<T>::migrate(), Pays::Yes))]
         pub fn migrate(
             origin: OriginFor<T>,
             iroha_address: String,
@@ -384,23 +402,7 @@ pub mod pallet {
                 let who = ensure_signed(origin)?;
                 let iroha_public_key = iroha_public_key.to_lowercase();
                 let iroha_signature = iroha_signature.to_lowercase();
-                frame_support::__private::log::error!(
-                    "faucet: iroha_public_key: {}",
-                    iroha_public_key
-                );
-                frame_support::__private::log::error!(
-                    "faucet: iroha_signature: {}",
-                    iroha_signature
-                );
-                Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature)?;
-                ensure!(
-                    !MigratedAccounts::<T>::contains_key(&iroha_address),
-                    Error::<T>::AccountAlreadyMigrated
-                );
-                ensure!(
-                    PublicKeys::<T>::contains_key(&iroha_address),
-                    Error::<T>::AccountNotFound
-                );
+                Self::check_migrate(&iroha_address, &iroha_public_key, &iroha_signature, &who)?;
                 let (approval_count, key_count) =
                     Self::approve_with_public_key(&iroha_address, &iroha_public_key)?;
                 if key_count == 1 {

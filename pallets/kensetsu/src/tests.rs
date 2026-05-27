@@ -39,7 +39,9 @@ use crate::test_utils::{
     set_kensetsu_gold_stablecoin, treasury_tech_account_id,
 };
 
-use common::{balance, AssetId32, Balance, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR};
+use common::{
+    balance, AssetId32, Balance, OnDenominate, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR,
+};
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
@@ -3314,6 +3316,113 @@ fn test_update_minimal_stability_fee_accrue_sunny_day() {
                 .stablecoin_parameters
                 .minimal_stability_fee_accrue,
             new_minimal_stability_fee_accrue
+        );
+    });
+}
+
+#[test]
+fn denominate_zero_factor_leaves_collateral_infos_unchanged() {
+    new_test_ext().execute_with(|| {
+        configure_kensetsu_dollar_for_xor(
+            balance!(100),
+            Perbill::default(),
+            FixedU128::default(),
+            balance!(1),
+        );
+        CollateralInfos::<TestRuntime>::mutate(
+            StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            },
+            |maybe_info| {
+                maybe_info.as_mut().unwrap().total_collateral = balance!(10);
+            },
+        );
+        let before = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .unwrap();
+
+        assert_noop!(
+            DenominateXorAndTbcd::<TestRuntime>::on_denominate(&0),
+            KensetsuError::ArithmeticError
+        );
+
+        assert_eq!(
+            CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            })
+            .unwrap(),
+            before
+        );
+    });
+}
+
+#[test]
+fn denominate_zero_factor_with_mixed_collateral_infos_rolls_back_all() {
+    new_test_ext().execute_with(|| {
+        configure_kensetsu_dollar_for_xor(
+            balance!(100),
+            Perbill::default(),
+            FixedU128::default(),
+            balance!(1),
+        );
+        CollateralInfos::<TestRuntime>::mutate(
+            StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            },
+            |maybe_info| {
+                maybe_info.as_mut().unwrap().total_collateral = balance!(10);
+            },
+        );
+        let mut non_target_info =
+            CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            })
+            .unwrap();
+        non_target_info.total_collateral = balance!(20);
+        CollateralInfos::<TestRuntime>::insert(
+            StablecoinCollateralIdentifier {
+                collateral_asset_id: KEN,
+                stablecoin_asset_id: KUSD,
+            },
+            non_target_info,
+        );
+        let before_xor = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .unwrap();
+        let before_ken = CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+            collateral_asset_id: KEN,
+            stablecoin_asset_id: KUSD,
+        })
+        .unwrap();
+
+        assert_noop!(
+            DenominateXorAndTbcd::<TestRuntime>::on_denominate(&0),
+            KensetsuError::ArithmeticError
+        );
+
+        assert_eq!(
+            CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            })
+            .unwrap(),
+            before_xor
+        );
+        assert_eq!(
+            CollateralInfos::<TestRuntime>::get(StablecoinCollateralIdentifier {
+                collateral_asset_id: KEN,
+                stablecoin_asset_id: KUSD,
+            })
+            .unwrap(),
+            before_ken
         );
     });
 }

@@ -37,6 +37,11 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
+#[cfg(all(feature = "main-net-coded", feature = "private-net"))]
+compile_error!(
+    "`main-net-coded` must not be built with `private-net`; private-net includes testnet-only pallets such as faucet."
+);
+
 use common::prelude::{Balance, DEXInfo, FixedWrapper};
 use common::{
     balance, fixed, hash, our_include, our_include_bytes, vec_push, BalancePrecision, DEXId, Fixed,

@@ -36,7 +36,10 @@ use crate::tests::{
     approve_last_request, last_event, last_outgoing_request, last_request, Assets, ETH_NETWORK_ID,
 };
 use crate::util::majority;
-use crate::{AssetConfig, EthAddress};
+use crate::{
+    AssetConfig, DeprecatedSidechainTokens, EthAddress, RegisteredSidechainToken,
+    LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS,
+};
 use common::{eth, AssetInfoProvider, DEFAULT_BALANCE_PRECISION, KSM, PSWAP, USDT, VAL, XOR};
 use ethereum_types::U256;
 use frame_support::sp_runtime::app_crypto::sp_core::{self, sr25519};
@@ -110,6 +113,123 @@ fn should_approve_outgoing_transfer() {
             99900u32.into()
         );
         approve_last_request(&state, net_id).expect("request wasn't approved");
+    });
+}
+
+#[test]
+fn should_reject_outgoing_transfer_when_xor_mapping_points_to_legacy_ethereum_token() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        RegisteredSidechainToken::<Runtime>::insert(net_id, XOR, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS);
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
+
+        assert_err!(
+            EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(alice.clone()),
+                XOR.into(),
+                EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                100_u32.into(),
+                net_id,
+            ),
+            Error::DeprecatedLegacyXor
+        );
+        assert_eq!(
+            Assets::total_balance(&XOR.into(), &alice).unwrap(),
+            100000u32.into()
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).is_empty());
+    });
+}
+
+#[test]
+fn should_reject_outgoing_transfer_when_any_asset_points_to_legacy_ethereum_xor_token() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        RegisteredSidechainToken::<Runtime>::insert(net_id, VAL, LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS);
+        Assets::mint_to(&VAL.into(), &alice, &alice, 100000u32.into()).unwrap();
+
+        assert_err!(
+            EthBridge::transfer_to_sidechain(
+                RuntimeOrigin::signed(alice.clone()),
+                VAL.into(),
+                EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+                100_u32.into(),
+                net_id,
+            ),
+            Error::DeprecatedLegacyXor
+        );
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice).unwrap(),
+            100000u32.into()
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).is_empty());
+    });
+}
+
+#[test]
+fn should_fail_queued_outgoing_transfer_if_mapping_becomes_deprecated_before_approval() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let val_token = RegisteredSidechainToken::<Runtime>::get(net_id, VAL).unwrap();
+        Assets::mint_to(&VAL.into(), &alice, &alice, 1000u32.into()).unwrap();
+
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            VAL.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100_u32.into(),
+            net_id,
+        ));
+        let (request, request_hash) = last_outgoing_request(net_id).unwrap();
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice).unwrap(),
+            900u32.into()
+        );
+
+        DeprecatedSidechainTokens::<Runtime>::insert(net_id, val_token, true);
+
+        let encoded = request.to_eth_abi(request_hash).unwrap();
+        let keypairs = &state.networks[&net_id].ocw_keypairs;
+        let additional = if EthBridge::is_additional_signature_needed(net_id, &request) {
+            1
+        } else {
+            0
+        };
+        let sigs_needed = majority(keypairs.len()) + additional;
+        for (_signer, account_id, seed) in keypairs.iter().take(sigs_needed) {
+            let secret = SecretKey::parse_slice(seed).unwrap();
+            let public = PublicKey::from_secret_key(&secret);
+            let msg = eth::prepare_message(encoded.as_raw());
+            let sig_pair = secp256k1::sign(&msg, &secret);
+            let signature_params = super::get_signature_params(&sig_pair);
+            assert_ok!(EthBridge::approve_request(
+                RuntimeOrigin::signed(account_id.clone()),
+                ecdsa::Public::from_raw(public.serialize_compressed()),
+                request_hash,
+                signature_params,
+                net_id,
+            ));
+        }
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Failed(_))
+        ));
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&request_hash));
+        assert!(crate::RequestApprovals::<Runtime>::get(net_id, request_hash).is_empty());
+        assert!(crate::RequestApprovers::<Runtime>::get(net_id, request_hash).is_empty());
+        assert_eq!(
+            Assets::total_balance(&VAL.into(), &alice).unwrap(),
+            1000u32.into()
+        );
     });
 }
 

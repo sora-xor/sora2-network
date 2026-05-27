@@ -563,6 +563,16 @@ macro_rules! mock_dispatch_config {
 }
 
 /// Mock of pallet `evm_fungible_app::Config`.
+pub struct NoDeprecatedEVMTokenAddress;
+
+impl frame_support::traits::Get<Option<(bridge_types::EVMChainId, bridge_types::H160)>>
+    for NoDeprecatedEVMTokenAddress
+{
+    fn get() -> Option<(bridge_types::EVMChainId, bridge_types::H160)> {
+        None
+    }
+}
+
 #[macro_export]
 macro_rules! mock_evm_fungible_app_config {
     ($runtime:ty) => {
@@ -577,6 +587,7 @@ macro_rules! mock_evm_fungible_app_config {
             type MessageStatusNotifier = BridgeProxy;
             type OutboundChannel = BridgeOutboundChannel;
             type PriorityFee = frame_support::traits::ConstU128<100>;
+            type DeprecatedTokenAddress = $crate::mock::NoDeprecatedEVMTokenAddress;
             type WeightInfo = ();
         }
     };

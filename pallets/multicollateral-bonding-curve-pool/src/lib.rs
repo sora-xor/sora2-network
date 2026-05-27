@@ -2051,23 +2051,35 @@ pub struct DenominateTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateTbcd<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> frame_support::dispatch::DispatchResult {
-        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
-        let reserves_account_id =
-            &Technical::<T>::tech_account_id_to_account_id(&Pallet::<T>::reserves_account_id())?;
-        Pallet::<T>::update_collateral_reserves(&TBCD.into(), reserves_account_id)?;
+        common::with_transaction(|| {
+            frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
+            let tbcd = AssetIdOf::<T>::from(TBCD);
+            let mut updates = Vec::new();
+            let mut block = frame_system::Pallet::<T>::block_number();
+            let max_block =
+                block + T::RETRY_DISTRIBUTION_FREQUENCY * T::SPLIT_FAILED_DISTRIBUTION_COUNT.into();
 
-        let mut block = frame_system::Pallet::<T>::block_number();
-        let max_block =
-            block + T::RETRY_DISTRIBUTION_FREQUENCY * T::SPLIT_FAILED_DISTRIBUTION_COUNT.into();
-
-        while block < max_block {
-            PendingFreeReserves::<T>::mutate(block, |reserves| {
-                if let Some(balance) = reserves.get_mut(&TBCD.into()) {
-                    *balance = balance.checked_div(*factor).unwrap_or(*balance);
+            while block < max_block {
+                let mut reserves = PendingFreeReserves::<T>::get(block);
+                if let Some(balance) = reserves.get_mut(&tbcd) {
+                    *balance = balance
+                        .checked_div(*factor)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    updates.push((block, reserves));
                 }
-            });
-            block += One::one();
-        }
-        Ok(())
+                block += One::one();
+            }
+
+            let reserves_account_id = &Technical::<T>::tech_account_id_to_account_id(
+                &Pallet::<T>::reserves_account_id(),
+            )?;
+            Pallet::<T>::update_collateral_reserves(&tbcd, reserves_account_id)?;
+
+            for (block, reserves) in updates {
+                PendingFreeReserves::<T>::insert(block, reserves);
+            }
+
+            Ok(())
+        })
     }
 }

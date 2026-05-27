@@ -10,5 +10,5 @@ edition = "2021"
 fixnum = { git = "https://github.com/sora-xor/fixnum", default-features = false, branch = "sora-v2.1.0", features = [
     "i128",
 ] }
-reqwest = { version = "0.11.2", features = ["blocking", "json"] }
-serde = { version = "1.0.125", features = ["derive"] }
+reqwest = { version = "0.13.4", features = ["blocking", "json"] }
+serde = { version = "1.0.228", features = ["derive"] }

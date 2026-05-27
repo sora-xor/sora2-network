@@ -59,7 +59,7 @@ use frame_system::EnsureRoot;
 use permissions::{Scope, BURN, MINT};
 use sp_arithmetic::FixedU128;
 use sp_core::H256;
-use sp_runtime::{AccountId32, BuildStorage, DispatchError, Percent};
+use sp_runtime::{AccountId32, BuildStorage, DispatchError, DispatchResult, Percent};
 use traits::MultiCurrency;
 
 pub use crate::{self as xor_fee, Config, Pallet};
@@ -89,12 +89,12 @@ parameter_types! {
     pub GetReferrerAccountId: AccountId = account_from_str("referrer");
     pub const BlockHashCount: u64 = 250;
     pub const FeeReferrerWeight: u32 = 10; // 10%
-    pub const FeeXorBurnedWeight: u32 = 20; // 20%
-    pub const FeeValBurnedWeight: u32 = 50; // 50%
-    pub const FeeKusdBurnedWeight: u32 = 20; // 20%
+    pub const FeeXorBurnedWeight: u32 = 35; // 35%
+    pub const FeeValBurnedWeight: u32 = 40; // 40%
+    pub const FeeKusdBurnedWeight: u32 = 0;
     pub const MinimalFeeInAsset: Balance = balance!(0.00000000000000001); // Minimal amount for proportions right calculations
-    pub const RemintXorBurnPercent: Percent = Percent::from_percent(1);
-    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(39);
+    pub const RemintXorBurnPercent: Percent = Percent::from_percent(40);
+    pub const RemintKusdBuyBackPercent: Percent = Percent::from_percent(0);
     pub const XorId: AssetId = XOR;
     pub const ValId: AssetId = VAL;
     pub const KusdId: AssetId = KUSD;
@@ -168,6 +168,7 @@ pub const FREE_CUSTOM_FEE_REMARK: &[u8] = b"free-custom-fee";
 pub const ASSET_NOT_FOUND_REMARK: &[u8] = b"asset-not-found";
 pub const FEE_CALC_FAILED_REMARK: &[u8] = b"fee-calc-failed";
 pub const OTHER_WITHDRAW_ERROR_REMARK: &[u8] = b"other-withdraw-error";
+pub const STAKING_VAL_PAYOUT_REMARK: &[u8] = b"staking-val-payout";
 
 fn is_remark(call: &RuntimeCall, expected: &[u8]) -> bool {
     matches!(
@@ -233,6 +234,41 @@ pub struct ValBurnedAggregator;
 impl OnValBurned for ValBurnedAggregator {
     fn on_val_burned(amount: Balance) {
         ValBurned::<Runtime>::mutate(|x| *x += amount);
+    }
+}
+
+#[storage_alias]
+pub type StakingValPayoutPreCalls<T: Config> = StorageValue<crate::Pallet<T>, u32, ValueQuery>;
+
+#[storage_alias]
+pub type StakingValPayoutPostCalls<T: Config> = StorageValue<crate::Pallet<T>, u32, ValueQuery>;
+
+#[storage_alias]
+pub type StakingValPayoutLastPre<T: Config> = StorageValue<crate::Pallet<T>, Balance, ValueQuery>;
+
+#[storage_alias]
+pub type StakingValPayoutLastResultOk<T: Config> = StorageValue<crate::Pallet<T>, bool, ValueQuery>;
+
+pub struct MockStakingValPayout;
+
+impl xor_fee::StakingValPayout<RuntimeCall, AccountId> for MockStakingValPayout {
+    type Pre = Balance;
+
+    fn pre_dispatch(call: &RuntimeCall) -> Option<Self::Pre> {
+        if !is_remark(call, STAKING_VAL_PAYOUT_REMARK) {
+            return None;
+        }
+
+        StakingValPayoutPreCalls::<Runtime>::mutate(|calls| *calls = calls.saturating_add(1));
+        Some(balance!(42))
+    }
+
+    fn post_dispatch(pre: Option<Self::Pre>, result: &DispatchResult) {
+        if let Some(pre) = pre {
+            StakingValPayoutPostCalls::<Runtime>::mutate(|calls| *calls = calls.saturating_add(1));
+            StakingValPayoutLastPre::<Runtime>::put(pre);
+            StakingValPayoutLastResultOk::<Runtime>::put(result.is_ok());
+        }
     }
 }
 
@@ -331,6 +367,7 @@ impl Config for Runtime {
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = MockLiquidityProxy;
     type OnValBurned = ValBurnedAggregator;
+    type StakingValPayout = MockStakingValPayout;
     type CustomFees = CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type WithdrawFee = WithdrawFee;

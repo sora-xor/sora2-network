@@ -209,7 +209,6 @@ impl<T: Config> Pallet<T> {
         let contracts = if network_id == T::GetEthNetworkId::get() {
             vec![
                 contract_address,
-                types::H160(Self::xor_master_contract_address().0),
                 types::H160(Self::val_master_contract_address().0),
             ]
         } else {

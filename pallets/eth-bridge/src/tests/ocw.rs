@@ -175,7 +175,7 @@ fn should_not_abort_request_with_failed_to_send_signed_tx_error() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -279,7 +279,7 @@ fn should_not_abort_request_when_peer_secret_key_is_missing() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -318,7 +318,7 @@ fn should_not_abort_request_when_peer_marker_does_not_match_local_key() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -362,7 +362,7 @@ fn should_not_treat_32_byte_peer_marker_value_as_legacy_secret_marker() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -711,7 +711,7 @@ fn ocw_should_retry_when_sidechain_node_params_are_missing() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -820,7 +820,7 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,
@@ -916,7 +916,7 @@ fn ocw_should_skip_log_with_overflowing_transaction_index() {
     builder.add_network(
         vec![AssetConfig::Sidechain {
             id: XOR.into(),
-            sidechain_id: sp_core::H160::from_str("40fd72257597aa14c7231a7b1aaa29fce868f677")
+            sidechain_id: sp_core::H160::from_str("41fd72257597aa14c7231a7b1aaa29fce868f677")
                 .unwrap(),
             owned: true,
             precision: DEFAULT_BALANCE_PRECISION,

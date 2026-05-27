@@ -2,7 +2,7 @@ use crate::mock::*;
 use common::prelude::FixedWrapper;
 use common::{
     balance, generate_storage_instance, AssetIdOf, AssetInfoProvider, AssetName, AssetSymbol,
-    Balance, DEXId, LiquiditySourceType, ToFeeAccount, TradingPairSourceManager,
+    Balance, DEXId, LiquiditySourceType, OnDenominate, ToFeeAccount, TradingPairSourceManager,
     DEFAULT_BALANCE_PRECISION, DOT, XOR,
 };
 use frame_support::{assert_err, assert_ok, Identity};
@@ -831,5 +831,96 @@ fn liquidity_locker_storage_migration_works() {
         for lockup in lockups_bob {
             assert_eq!(lockup.unlocking_timestamp, 9988000);
         }
+    });
+}
+
+#[test]
+fn denominate_zero_factor_leaves_locks_unchanged() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let locks: Vec<ceres_liquidity_locker::LockInfo<Balance, u64, AssetIdOf<Runtime>>> =
+            vec![ceres_liquidity_locker::LockInfo {
+                pool_tokens: balance!(10),
+                unlocking_timestamp: 1u64,
+                asset_a: DOT.into(),
+                asset_b: XOR.into(),
+            }];
+        ceres_liquidity_locker::LockerData::<Runtime>::insert(ALICE, locks);
+        let before = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE);
+
+        assert_err!(
+            ceres_liquidity_locker::DenominateXorAndTbcd::<Runtime>::on_denominate(&0),
+            sp_runtime::DispatchError::Arithmetic(sp_runtime::ArithmeticError::DivisionByZero)
+        );
+
+        assert_eq!(
+            ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE),
+            before
+        );
+    });
+}
+
+#[test]
+fn denominate_zero_factor_with_mixed_locks_rolls_back_all_accounts() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        ceres_liquidity_locker::LockerData::<Runtime>::insert(
+            ALICE,
+            vec![ceres_liquidity_locker::LockInfo {
+                pool_tokens: balance!(10),
+                unlocking_timestamp: 1u64,
+                asset_a: DOT.into(),
+                asset_b: CERES_ASSET_ID.into(),
+            }],
+        );
+        ceres_liquidity_locker::LockerData::<Runtime>::insert(
+            BOB,
+            vec![ceres_liquidity_locker::LockInfo {
+                pool_tokens: balance!(20),
+                unlocking_timestamp: 2u64,
+                asset_a: DOT.into(),
+                asset_b: XOR.into(),
+            }],
+        );
+        let before_alice = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE);
+        let before_bob = ceres_liquidity_locker::LockerData::<Runtime>::get(BOB);
+
+        assert_err!(
+            ceres_liquidity_locker::DenominateXorAndTbcd::<Runtime>::on_denominate(&0),
+            sp_runtime::DispatchError::Arithmetic(sp_runtime::ArithmeticError::DivisionByZero)
+        );
+
+        assert_eq!(
+            ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE),
+            before_alice
+        );
+        assert_eq!(
+            ceres_liquidity_locker::LockerData::<Runtime>::get(BOB),
+            before_bob
+        );
+    });
+}
+
+#[test]
+fn denominate_zero_factor_ignores_non_xor_tbcd_locks() {
+    let mut ext = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        ceres_liquidity_locker::LockerData::<Runtime>::insert(
+            ALICE,
+            vec![ceres_liquidity_locker::LockInfo {
+                pool_tokens: balance!(10),
+                unlocking_timestamp: 1u64,
+                asset_a: DOT.into(),
+                asset_b: CERES_ASSET_ID.into(),
+            }],
+        );
+        let before = ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE);
+
+        assert_ok!(ceres_liquidity_locker::DenominateXorAndTbcd::<Runtime>::on_denominate(&0));
+
+        assert_eq!(
+            ceres_liquidity_locker::LockerData::<Runtime>::get(ALICE),
+            before
+        );
     });
 }

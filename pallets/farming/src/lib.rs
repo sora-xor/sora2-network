@@ -56,9 +56,9 @@ use sp_runtime::DispatchError;
 use sp_std::collections::btree_map::{BTreeMap, Entry};
 use sp_std::vec::Vec;
 
-use common::prelude::{FixedWrapper, QuoteAmount};
+use common::prelude::QuoteAmount;
 use common::{
-    balance, AccountIdOf, Balance, DexIdOf, LiquiditySource, OnPoolCreated,
+    balance, AccountIdOf, Balance, DexIdOf, FixedWrapper256, LiquiditySource, OnPoolCreated,
     TradingPairSourceManager,
 };
 
@@ -96,10 +96,10 @@ impl<T: Config> Pallet<T> {
         total_weight
     }
 
-    fn get_multiplier(asset_id: &AssetIdOf<T>) -> Result<FixedWrapper, DispatchError> {
+    fn get_multiplier(asset_id: &AssetIdOf<T>) -> Result<FixedWrapper256, DispatchError> {
         let base_asset = GetBaseAssetIdOf::<T>::get();
         if asset_id == &base_asset {
-            Ok(balance!(1).into())
+            Ok(FixedWrapper256::from(balance!(1)))
         } else {
             let (outcome, _) = pool_xyk::Pallet::<T>::quote(
                 &common::DEXId::Polkaswap.into(),
@@ -109,17 +109,21 @@ impl<T: Config> Pallet<T> {
                 false,
             )?;
             frame_support::__private::log::debug!("{outcome:?}");
-            Ok(FixedWrapper::from(outcome.amount))
+            Ok(FixedWrapper256::from(outcome.amount))
         }
     }
 
     fn refresh_pool(pool: T::AccountId, now: BlockNumberFor<T>) -> u32 {
+        let old_farmers = PoolFarmers::<T>::get(&pool);
         let trading_pair = match pool_xyk::Pallet::<T>::get_pool_trading_pair(&pool) {
             Ok(trading_pair) => trading_pair,
             Err(err) => {
                 frame_support::__private::log::warn!(
                     "Failed to get trading pair for {pool:?} pool: {err:?}",
                 );
+                if !old_farmers.is_empty() {
+                    PoolFarmers::<T>::remove(&pool);
+                }
                 return 0;
             }
         };
@@ -130,18 +134,23 @@ impl<T: Config> Pallet<T> {
                     "Failed to get farming rewards multiplier for {:?} asset: {err:?}",
                     trading_pair.base_asset_id
                 );
+                if !old_farmers.is_empty() {
+                    PoolFarmers::<T>::remove(&pool);
+                }
                 return 0;
             }
         };
         frame_support::__private::log::debug!("Multiplier for TP {trading_pair:?}: {multiplier:?}");
         let mut read_count = 0;
-        let old_farmers = PoolFarmers::<T>::get(&pool);
         let mut new_farmers = Vec::new();
         let Some(pool_total_liquidity) = pool_xyk::TotalIssuances::<T>::get(&pool) else {
             frame_support::__private::log::warn!(
                 "Failed to get total issuance for pool {:?}",
                 pool
             );
+            if !old_farmers.is_empty() {
+                PoolFarmers::<T>::remove(&pool);
+            }
             return 0;
         };
         let Ok((pool_base_reserves, _, _)) = pool_xyk::Pallet::<T>::get_actual_reserves(
@@ -158,18 +167,32 @@ impl<T: Config> Pallet<T> {
             );
             e
         }) else {
+            if !old_farmers.is_empty() {
+                PoolFarmers::<T>::remove(&pool);
+            }
             return 0;
         };
         for (account, pool_tokens) in PoolProviders::<T>::iter_prefix(&pool) {
             read_count += 1;
 
-            let weight = Self::get_account_weight(
+            let weight = match Self::get_account_weight(
                 &trading_pair,
                 multiplier.clone(),
                 pool_base_reserves,
                 pool_total_liquidity,
                 pool_tokens,
-            );
+            ) {
+                Ok(weight) => weight,
+                Err(err) => {
+                    frame_support::__private::log::warn!(
+                        "Failed to calculate farming weight for pool {:?}, account {:?}: {:?}",
+                        pool,
+                        account,
+                        err
+                    );
+                    continue;
+                }
+            };
             if weight == 0 {
                 continue;
             }
@@ -200,32 +223,37 @@ impl<T: Config> Pallet<T> {
 
     fn get_account_weight(
         trading_pair: &TradingPair<AssetIdOf<T>>,
-        multiplier: FixedWrapper,
+        multiplier: FixedWrapper256,
         base_reserves: Balance,
         total_liquidity: Balance,
         pool_tokens: Balance,
-    ) -> Balance {
-        let base_asset_amt =
-            pool_xyk::Pallet::<T>::get_base_asset_part(base_reserves, total_liquidity, pool_tokens)
-                .unwrap_or(0);
+    ) -> Result<Balance, DispatchError> {
+        let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part(
+            base_reserves,
+            total_liquidity,
+            pool_tokens,
+        )?;
 
-        let base_asset_amt = (FixedWrapper::from(base_asset_amt) * multiplier)
+        let base_asset_amt = (FixedWrapper256::from(base_asset_amt) * multiplier)
             .try_into_balance()
-            .unwrap_or(0);
+            .map_err(|_| Error::<T>::ArithmeticError)?;
 
         if base_asset_amt < Self::lp_min_xor_for_bonus_reward() {
-            return 0;
+            return Ok(0);
         }
 
         let pool_doubles_reward = T::RewardDoublingAssets::get()
             .iter()
             .any(|asset_id| trading_pair.contains(asset_id));
 
-        if pool_doubles_reward {
-            base_asset_amt * 2
+        let weight = if pool_doubles_reward {
+            base_asset_amt
+                .checked_mul(2)
+                .ok_or(Error::<T>::ArithmeticError)?
         } else {
             base_asset_amt
-        }
+        };
+        Ok(weight)
     }
 
     fn vest(now: BlockNumberFor<T>) -> Weight {
@@ -234,13 +262,15 @@ impl<T: Config> Pallet<T> {
         let function_weight = function_weight.saturating_add(
             WeightInfoOf::<T>::vest_account_rewards(accounts.len() as u32),
         );
-        Self::vest_account_rewards(accounts);
+        if let Err(err) = Self::vest_account_rewards(accounts) {
+            frame_support::__private::log::warn!("Failed to vest farming rewards: {:?}", err);
+        }
         function_weight
     }
 
     fn prepare_accounts_for_vesting(
         now: BlockNumberFor<T>,
-        accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
+        accounts: &mut BTreeMap<T::AccountId, FixedWrapper256>,
     ) -> Weight {
         let mut pool_count = 0;
         let mut farmer_count = 0;
@@ -258,24 +288,24 @@ impl<T: Config> Pallet<T> {
         farmer_weight: u128,
         farmer_block: BlockNumberFor<T>,
         now: BlockNumberFor<T>,
-    ) -> FixedWrapper {
+    ) -> FixedWrapper256 {
         // Ti
         let farmer_farming_time: u32 = (now - farmer_block).unique_saturated_into();
-        let farmer_farming_time = FixedWrapper::from(balance!(farmer_farming_time));
+        let farmer_farming_time = FixedWrapper256::from(balance!(farmer_farming_time));
 
         // Vi(t)
         let now_u128: u128 = now.unique_saturated_into();
-        let coeff = (FixedWrapper::from(balance!(1))
-            + farmer_farming_time.clone() / FixedWrapper::from(balance!(now_u128)))
+        let coeff = (FixedWrapper256::from(balance!(1))
+            + farmer_farming_time.clone() / FixedWrapper256::from(balance!(now_u128)))
         .pow(T::VESTING_COEFF);
 
-        coeff * farmer_weight
+        coeff * FixedWrapper256::from(farmer_weight)
     }
 
     fn prepare_pool_accounts_for_vesting(
         farmers: Vec<PoolFarmer<T>>,
         now: BlockNumberFor<T>,
-        accounts: &mut BTreeMap<T::AccountId, FixedWrapper>,
+        accounts: &mut BTreeMap<T::AccountId, FixedWrapper256>,
     ) {
         if farmers.is_empty() {
             return;
@@ -297,18 +327,18 @@ impl<T: Config> Pallet<T> {
     }
 
     fn prepare_account_rewards(
-        accounts: BTreeMap<T::AccountId, FixedWrapper>,
-    ) -> BTreeMap<T::AccountId, u128> {
+        accounts: BTreeMap<T::AccountId, FixedWrapper256>,
+    ) -> Result<BTreeMap<T::AccountId, u128>, DispatchError> {
         let total_weight = accounts
             .values()
-            .fold(FixedWrapper::from(0), |a, b| a + b.clone());
+            .fold(FixedWrapper256::from(0), |a, b| a + b.clone());
 
         let reward = {
-            let reward_per_day = FixedWrapper::from(T::PSWAP_PER_DAY);
+            let reward_per_day = FixedWrapper256::from(T::PSWAP_PER_DAY);
             let freq: u128 = T::VESTING_FREQUENCY.unique_saturated_into();
             let blocks: u128 = <T as Config>::BLOCKS_PER_DAY.unique_saturated_into();
             let reward_vesting_part =
-                FixedWrapper::from(balance!(freq)) / FixedWrapper::from(balance!(blocks));
+                FixedWrapper256::from(balance!(freq)) / FixedWrapper256::from(balance!(blocks));
             reward_per_day * reward_vesting_part
         };
 
@@ -316,22 +346,27 @@ impl<T: Config> Pallet<T> {
             .into_iter()
             .map(|(account, weight)| {
                 let account_reward = reward.clone() * weight / total_weight.clone();
-                let account_reward = account_reward.try_into_balance().unwrap_or(0);
-                (account, account_reward)
+                let account_reward = account_reward
+                    .try_into_balance()
+                    .map_err(|_| Error::<T>::ArithmeticError)?;
+                Ok((account, account_reward))
             })
             .collect()
     }
 
-    fn vest_account_rewards(accounts: BTreeMap<T::AccountId, FixedWrapper>) {
-        let rewards = Self::prepare_account_rewards(accounts);
+    fn vest_account_rewards(accounts: BTreeMap<T::AccountId, FixedWrapper256>) -> DispatchResult {
+        let rewards = Self::prepare_account_rewards(accounts)?;
 
-        for (account, reward) in rewards {
-            let _ = vested_rewards::Pallet::<T>::add_pending_reward(
-                &account,
-                RewardReason::LiquidityProvisionFarming,
-                reward,
-            );
-        }
+        common::with_transaction(|| {
+            for (account, reward) in rewards {
+                vested_rewards::Pallet::<T>::add_pending_reward(
+                    &account,
+                    RewardReason::LiquidityProvisionFarming,
+                    reward,
+                )?;
+            }
+            Ok(())
+        })
     }
 }
 
@@ -406,6 +441,8 @@ pub mod pallet {
     pub enum Error<T> {
         /// Increment account reference error.
         IncRefError,
+        /// Something is wrong with arithmetic - overflow happened, for example.
+        ArithmeticError,
     }
 
     #[pallet::event]

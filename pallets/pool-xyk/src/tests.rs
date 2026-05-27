@@ -34,7 +34,8 @@ use common::alt::{DiscreteQuotation, SideAmount, SwapChunk, SwapLimits};
 use common::prelude::{FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome};
 use common::{
     balance, fixed, AssetInfoProvider, AssetName, AssetSymbol, Balance, LiquiditySource,
-    LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, DEFAULT_BALANCE_PRECISION,
+    LiquiditySourceType, Oracle, ToFeeAccount, TradingPairSourceManager, XykPool,
+    DEFAULT_BALANCE_PRECISION,
 };
 use frame_support::assert_ok;
 use frame_support::{assert_err, assert_noop};
@@ -3318,6 +3319,142 @@ fn mint() {
         assert_ok!(crate::Pallet::<Runtime>::mint(&ALICE(), &BOB(), 10));
         assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), Some(10));
         assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(10));
+    });
+}
+
+#[test]
+fn mint_rejects_overflow_without_mutating_state() {
+    ExtBuilder::default().build().execute_with(|| {
+        TotalIssuances::<Runtime>::insert(ALICE(), Balance::MAX);
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::mint(&ALICE(), &BOB(), 1),
+            crate::Error::<Runtime>::PoolTokenSupplyOverflow
+        );
+
+        assert_eq!(PoolProviders::<Runtime>::get(ALICE(), BOB()), None);
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(Balance::MAX));
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        PoolProviders::<Runtime>::insert(ALICE(), BOB(), Balance::MAX);
+        TotalIssuances::<Runtime>::insert(ALICE(), 0);
+
+        assert_noop!(
+            crate::Pallet::<Runtime>::mint(&ALICE(), &BOB(), 1),
+            crate::Error::<Runtime>::PoolTokenSupplyOverflow
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(ALICE(), BOB()),
+            Some(Balance::MAX)
+        );
+        assert_eq!(TotalIssuances::<Runtime>::get(ALICE()), Some(0));
+    });
+}
+
+#[test]
+fn transfer_lp_tokens_rejects_target_overflow_without_mutating_source() {
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let source = BOB();
+        let target = CHARLIE();
+        PoolProviders::<Runtime>::insert(&pool_account, &source, 10);
+        PoolProviders::<Runtime>::insert(&pool_account, &target, Balance::MAX);
+
+        assert_noop!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                source.clone(),
+                target.clone(),
+                1,
+            ),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &source),
+            Some(10)
+        );
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &target),
+            Some(Balance::MAX)
+        );
+    });
+}
+
+#[test]
+fn transfer_lp_tokens_self_transfer_is_noop() {
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let provider = BOB();
+        PoolProviders::<Runtime>::insert(&pool_account, &provider, 10);
+
+        assert_ok!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                provider.clone(),
+                provider.clone(),
+                3,
+            )
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &provider),
+            Some(10)
+        );
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let provider = BOB();
+        PoolProviders::<Runtime>::insert(&pool_account, &provider, Balance::MAX);
+
+        assert_ok!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                provider.clone(),
+                provider.clone(),
+                1,
+            )
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &provider),
+            Some(Balance::MAX)
+        );
+    });
+}
+
+#[test]
+fn transfer_lp_tokens_self_transfer_rejects_insufficient_balance() {
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let provider = BOB();
+        PoolProviders::<Runtime>::insert(&pool_account, &provider, 5);
+
+        assert_noop!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                provider.clone(),
+                provider.clone(),
+                6,
+            ),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &provider),
+            Some(5)
+        );
     });
 }
 

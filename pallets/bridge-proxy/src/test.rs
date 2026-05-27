@@ -38,9 +38,9 @@ use crate::{BridgeRequest, Transactions};
 use bridge_types::traits::MessageDispatch;
 use bridge_types::GenericTimepoint;
 use bridge_types::H160;
-use bridge_types::{GenericAccount, GenericNetworkId};
+use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId};
 use codec::Encode;
-use common::{balance, FixedInner, DAI, XOR};
+use common::{balance, FixedInner, OnDenominate, DAI, TBCD, XOR};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::traits::Hooks;
@@ -304,6 +304,87 @@ fn burn_no_enough_locked() {
         assert_eq!(
             crate::LockedAssets::<Test>::get(GenericNetworkId::EVM(BASE_EVM_NETWORK_ID), DAI),
             0
+        );
+    })
+}
+
+#[test]
+fn denominate_scales_only_legacy_bridge_xor_locked_assets() {
+    new_tester().execute_with(|| {
+        let legacy_evm = GenericNetworkId::EVMLegacy(0);
+        let kusama = GenericNetworkId::Sub(SubNetworkId::Kusama);
+        let polkadot = GenericNetworkId::Sub(SubNetworkId::Polkadot);
+        let current_evm = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+        let substrate_mainnet = GenericNetworkId::Sub(SubNetworkId::Mainnet);
+
+        crate::LockedAssets::<Test>::insert(legacy_evm, XOR, balance!(100));
+        crate::LockedAssets::<Test>::insert(kusama, XOR, balance!(200));
+        crate::LockedAssets::<Test>::insert(polkadot, XOR, balance!(300));
+        crate::LockedAssets::<Test>::insert(current_evm, XOR, balance!(400));
+        crate::LockedAssets::<Test>::insert(substrate_mainnet, XOR, balance!(500));
+        crate::LockedAssets::<Test>::insert(legacy_evm, TBCD, balance!(30));
+        crate::LockedAssets::<Test>::insert(legacy_evm, DAI, balance!(50));
+
+        assert_ok!(BridgeProxy::on_denominate(&10));
+
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(legacy_evm, XOR),
+            balance!(10)
+        );
+        assert_eq!(crate::LockedAssets::<Test>::get(kusama, XOR), balance!(20));
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(polkadot, XOR),
+            balance!(30)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(current_evm, XOR),
+            balance!(400)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(substrate_mainnet, XOR),
+            balance!(500)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(legacy_evm, TBCD),
+            balance!(30)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(legacy_evm, DAI),
+            balance!(50)
+        );
+    })
+}
+
+#[test]
+fn denominate_zero_factor_keeps_locked_assets_unchanged() {
+    new_tester().execute_with(|| {
+        let legacy_evm = GenericNetworkId::EVMLegacy(0);
+        let current_evm = GenericNetworkId::EVM(BASE_EVM_NETWORK_ID);
+        crate::LockedAssets::<Test>::insert(legacy_evm, XOR, balance!(100));
+        crate::LockedAssets::<Test>::insert(current_evm, XOR, balance!(200));
+        crate::LockedAssets::<Test>::insert(legacy_evm, TBCD, balance!(30));
+        crate::LockedAssets::<Test>::insert(legacy_evm, DAI, balance!(50));
+
+        assert_noop!(
+            BridgeProxy::on_denominate(&0),
+            sp_runtime::DispatchError::Arithmetic(sp_runtime::ArithmeticError::DivisionByZero)
+        );
+
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(legacy_evm, XOR),
+            balance!(100)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(current_evm, XOR),
+            balance!(200)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(legacy_evm, TBCD),
+            balance!(30)
+        );
+        assert_eq!(
+            crate::LockedAssets::<Test>::get(legacy_evm, DAI),
+            balance!(50)
         );
     })
 }

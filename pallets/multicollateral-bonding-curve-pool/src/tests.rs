@@ -40,8 +40,8 @@ mod tests {
         fixnum::ops::One as _,
         prelude::{Balance, FixedWrapper, OutcomeFee, QuoteAmount, SwapAmount, SwapOutcome},
         AssetInfoProvider, AssetName, AssetSymbol, DEXId, Fixed, FixedWrapper256,
-        LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, PriceVariant, TechPurpose,
-        DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
+        LiquidityProxyTrait, LiquiditySource, LiquiditySourceFilter, OnDenominate, PriceVariant,
+        TechPurpose, DAI, DEFAULT_BALANCE_PRECISION, PSWAP, TBCD, USDT, VAL, XOR, XSTUSD,
     };
     use common::{assert_approx_eq_abs, KUSD};
     use frame_support::assert_err;
@@ -51,7 +51,7 @@ mod tests {
         GetStorageVersion, OnFinalize, OnInitialize, OnRuntimeUpgrade, StorageVersion,
     };
     use sp_runtime::DispatchError;
-    use sp_std::collections::vec_deque::VecDeque;
+    use sp_std::collections::{btree_map::BTreeMap, vec_deque::VecDeque};
 
     type MBCPool = Pallet<Runtime>;
 
@@ -5450,6 +5450,26 @@ mod tests {
                 vec![(DAI, balance!(100))].into_iter().collect()
             );
             assert_eq!(Pallet::<Runtime>::on_chain_storage_version(), 4);
+        });
+    }
+
+    #[test]
+    fn denominate_zero_factor_leaves_pending_free_reserves_unchanged() {
+        ExtBuilder::default().build().execute_with(|| {
+            let block = System::block_number();
+            let reserves: BTreeMap<AssetId, Balance> =
+                vec![(TBCD, balance!(10)), (DAI, balance!(20))]
+                    .into_iter()
+                    .collect();
+            crate::PendingFreeReserves::<Runtime>::insert(block, reserves);
+            let before = crate::PendingFreeReserves::<Runtime>::get(block);
+
+            assert_noop!(
+                crate::DenominateTbcd::<Runtime>::on_denominate(&0),
+                Error::<Runtime>::ArithmeticError
+            );
+
+            assert_eq!(crate::PendingFreeReserves::<Runtime>::get(block), before);
         });
     }
 }

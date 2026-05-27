@@ -2383,20 +2383,24 @@ pub mod pallet {
     impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
         fn on_denominate(factor: &BalanceOf<T>) -> Result<(), DispatchError> {
             frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
-            for asset_id in [XOR, TBCD] {
-                for (identifier, _) in CollateralInfos::<T>::iter() {
-                    if identifier.collateral_asset_id == asset_id.into() {
-                        CollateralInfos::<T>::mutate(identifier, |maybe_info| {
-                            if let Some(info) = maybe_info {
-                                info.total_collateral = info
-                                    .total_collateral
-                                    .checked_div(*factor)
-                                    .unwrap_or(info.total_collateral);
-                            }
-                        });
-                    }
+            let xor = AssetIdOf::<T>::from(XOR);
+            let tbcd = AssetIdOf::<T>::from(TBCD);
+            let mut updates = Vec::new();
+
+            for (identifier, mut info) in CollateralInfos::<T>::iter() {
+                if identifier.collateral_asset_id == xor || identifier.collateral_asset_id == tbcd {
+                    info.total_collateral = info
+                        .total_collateral
+                        .checked_div(*factor)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    updates.push((identifier, info));
                 }
             }
+
+            for (identifier, info) in updates {
+                CollateralInfos::<T>::insert(identifier, info);
+            }
+
             Ok(())
         }
     }

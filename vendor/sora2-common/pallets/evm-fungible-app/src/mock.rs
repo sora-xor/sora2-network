@@ -174,6 +174,8 @@ parameter_types! {
     pub const MaxMessagesPerCommit: u32 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
+    pub DeprecatedTokenAddress: Option<(EVMChainId, H160)> =
+        Some((BASE_NETWORK_ID, H160::repeat_byte(99)));
 }
 
 parameter_types! {
@@ -290,6 +292,7 @@ impl fungible_app::Config for Test {
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
     type BaseFeeLifetime = ConstU64<100>;
     type PriorityFee = ConstU128<5_000_000_000>;
+    type DeprecatedTokenAddress = DeprecatedTokenAddress;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

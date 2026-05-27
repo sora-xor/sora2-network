@@ -46,6 +46,7 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::sp_runtime::DispatchError;
 use sp_std::marker::PhantomData;
+use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
 
@@ -256,13 +257,20 @@ pub struct DenominateXor<T: Config>(PhantomData<T>);
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXor<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
         frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
-        ReferrerBalances::<T>::iter_keys().for_each(|account| {
-            ReferrerBalances::<T>::mutate(account, |maybe_balance| {
-                if let Some(balance) = maybe_balance {
-                    *balance = balance.checked_div(*factor).unwrap_or(*balance);
-                }
-            });
-        });
+        let mut updates = Vec::new();
+
+        for (account, balance) in ReferrerBalances::<T>::iter() {
+            let balance = balance
+                .checked_div(*factor)
+                .ok_or(DispatchError::Arithmetic(
+                    frame_support::sp_runtime::ArithmeticError::DivisionByZero,
+                ))?;
+            updates.push((account, balance));
+        }
+
+        for (account, balance) in updates {
+            ReferrerBalances::<T>::insert(account, balance);
+        }
 
         Ok(())
     }

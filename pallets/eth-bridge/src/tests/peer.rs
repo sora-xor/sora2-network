@@ -37,8 +37,8 @@ use crate::requests::{
 };
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{
-    approve_next_request, approve_request, assert_incoming_request_done, request_incoming,
-    ETH_NETWORK_ID,
+    approve_next_request, approve_request, assert_incoming_request_done,
+    assert_incoming_request_registration_failed, request_incoming, ETH_NETWORK_ID,
 };
 use crate::types::{Bytes, Transaction};
 use crate::{types, EthAddress};
@@ -113,28 +113,6 @@ fn should_add_peer_in_eth_network() {
         });
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
         assert!(!crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
-        // peer is added to XOR contract
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[2u8; 32]),
-            IncomingTransactionRequestKind::AddPeerCompat.into(),
-            net_id,
-        )
-        .unwrap();
-        let incoming_request =
-            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
-                peer_account_id: new_peer_id.clone(),
-                peer_address: new_peer_address,
-                added: true,
-                contract: ChangePeersContract::XOR,
-                author: alice.clone(),
-                tx_hash,
-                at_height: 2,
-                timepoint: Default::default(),
-                network_id: net_id,
-            });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&new_peer_id));
         // peer is added to VAL contract
         let tx_hash = request_incoming(
             alice.clone(),
@@ -163,6 +141,45 @@ fn should_add_peer_in_eth_network() {
         assert!(bridge_multisig::Accounts::<Runtime>::get(&bridge_acc_id)
             .unwrap()
             .is_signatory(&new_peer_id));
+    });
+}
+
+#[test]
+fn should_reject_direct_incoming_xor_peer_compat_request() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let peer_id = get_account_id_from_seed::<sr25519::Public>("Bob");
+        let peer_address = H160::repeat_byte(0x11);
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[9u8; 32]),
+            IncomingTransactionRequestKind::AddPeerCompat.into(),
+            net_id,
+        )
+        .unwrap();
+
+        let incoming_request =
+            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
+                peer_account_id: peer_id,
+                peer_address,
+                added: true,
+                contract: ChangePeersContract::XOR,
+                author: alice,
+                tx_hash,
+                at_height: 1,
+                timepoint: Default::default(),
+                network_id: net_id,
+            });
+
+        assert_incoming_request_registration_failed(
+            &state,
+            incoming_request,
+            Error::DeprecatedLegacyXor,
+        )
+        .unwrap();
     });
 }
 
@@ -354,28 +371,6 @@ fn should_remove_peer_in_eth_network() {
             timepoint: Default::default(),
             network_id: net_id,
         });
-        assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
-        assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
-        // peer is added to XOR contract
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[2u8; 32]),
-            IncomingTransactionRequestKind::AddPeerCompat.into(),
-            net_id,
-        )
-        .unwrap();
-        let incoming_request =
-            IncomingRequest::ChangePeersCompat(crate::IncomingChangePeersCompat {
-                peer_account_id: peer_id.clone(),
-                peer_address,
-                added: false,
-                contract: ChangePeersContract::XOR,
-                author: alice.clone(),
-                tx_hash,
-                at_height: 2,
-                timepoint: Default::default(),
-                network_id: net_id,
-            });
         assert_incoming_request_done(&state, incoming_request.clone()).unwrap();
         assert!(!crate::Peers::<Runtime>::get(net_id).contains(&peer_id));
         // peer is added to VAL contract
@@ -840,7 +835,7 @@ fn should_fail_remove_peer_without_corresponding_compat_request() {
 }
 
 #[test]
-fn should_parse_add_peer_on_old_contract() {
+fn should_reject_add_peer_on_old_xor_contract() {
     let (mut ext, state) = ExtBuilder::default().build();
     ext.execute_with(|| {
         let net_id = ETH_NETWORK_ID;
@@ -876,21 +871,9 @@ fn should_parse_add_peer_on_old_contract() {
             to: Some(types::H160(EthBridge::xor_master_contract_address().0)),
             ..Default::default()
         };
-        let inc_req =
-            EthBridge::parse_old_incoming_request_method_call(incoming_request, tx).unwrap();
-        assert_eq!(
-            inc_req,
-            IncomingRequest::ChangePeersCompat(IncomingChangePeersCompat {
-                peer_account_id: new_peer_id.clone(),
-                peer_address: new_peer_address,
-                added: true,
-                contract: ChangePeersContract::XOR,
-                author: alice.clone(),
-                tx_hash,
-                at_height: 1,
-                timepoint: Default::default(),
-                network_id: net_id
-            })
+        assert_err!(
+            EthBridge::parse_old_incoming_request_method_call(incoming_request, tx),
+            Error::UnknownContractAddress
         );
     });
 }

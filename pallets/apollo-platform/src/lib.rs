@@ -62,21 +62,23 @@ pub mod pallet {
     use crate::{BorrowingPosition, LendingPosition, PoolInfo, WeightInfo};
     use common::prelude::{Balance, FixedWrapper, SwapAmount};
     use common::{
-        balance, AssetIdOf, AssetManager, DEXId, LiquiditySourceFilter, PriceVariant,
-        CERES_ASSET_ID, DAI, KUSD,
+        balance, AssetIdOf, AssetManager, BalanceOf, DEXId, LiquiditySourceFilter, OnDenominate,
+        PriceVariant, CERES_ASSET_ID, DAI, KUSD, TBCD, XOR,
     };
     use common::{LiquidityProxyTrait, PriceToolsProvider, APOLLO_ASSET_ID};
     use frame_support::__private::log::{debug, warn};
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::sp_runtime::traits::AccountIdConversion;
     use frame_support::traits::StorageVersion;
+    use frame_support::transactional;
     use frame_support::PalletId;
     use frame_system::offchain::{CreateBare, SubmitTransaction};
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
-    use sp_runtime::traits::{UniqueSaturatedInto, Zero};
+    use sp_runtime::traits::{Saturating, UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
+    use sp_std::vec::Vec;
 
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
 
@@ -195,6 +197,11 @@ pub mod pallet {
     pub type LendingRewards<T: Config> =
         StorageValue<_, Balance, ValueQuery, FixedLendingRewards<T>>;
 
+    /// First block where lending rewards are exhausted.
+    #[pallet::storage]
+    #[pallet::getter(fn lending_rewards_finished_at)]
+    pub type LendingRewardsFinishedAt<T: Config> = StorageValue<_, BlockNumberFor<T>, OptionQuery>;
+
     #[pallet::type_value]
     pub fn FixedBorrowingRewards<T: Config>() -> Balance {
         balance!(100000)
@@ -205,6 +212,12 @@ pub mod pallet {
     #[pallet::getter(fn borrowing_rewards)]
     pub type BorrowingRewards<T: Config> =
         StorageValue<_, Balance, ValueQuery, FixedBorrowingRewards<T>>;
+
+    /// First block where borrowing rewards are exhausted.
+    #[pallet::storage]
+    #[pallet::getter(fn borrowing_rewards_finished_at)]
+    pub type BorrowingRewardsFinishedAt<T: Config> =
+        StorageValue<_, BlockNumberFor<T>, OptionQuery>;
 
     /// Default collateral factor
     #[pallet::type_value]
@@ -342,6 +355,8 @@ pub mod pallet {
         InvalidLoanToValue,
         /// Reward emitted per block exceeds the remaining reward bucket
         RewardRateExceedsRemaining,
+        /// Arithmetic error
+        ArithmeticError,
     }
 
     #[pallet::call]
@@ -462,6 +477,7 @@ pub mod pallet {
         }
 
         /// Lend token
+        #[transactional]
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::lend())]
         pub fn lend(
@@ -490,7 +506,7 @@ pub mod pallet {
             if let Some(mut user_info) = <UserLendingInfo<T>>::get(lending_asset, user.clone()) {
                 // Calculate interest in APOLLO token
                 let block_number = <frame_system::Pallet<T>>::block_number();
-                Self::accrue_lending_earnings(&mut user_info, &mut pool_info, block_number);
+                Self::accrue_lending_earnings(&mut user_info, &mut pool_info, block_number)?;
                 user_info.lending_amount = user_info.lending_amount.saturating_add(lending_amount);
                 <UserLendingInfo<T>>::insert(lending_asset, user.clone(), user_info);
             } else {
@@ -519,6 +535,7 @@ pub mod pallet {
         }
 
         /// Borrow token
+        #[transactional]
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::borrow())]
         pub fn borrow(
@@ -618,7 +635,7 @@ pub mod pallet {
                     user_info,
                     &borrow_pool_info,
                     block_number,
-                );
+                )?;
                 user_info.collateral_amount = user_info
                     .collateral_amount
                     .saturating_add(collateral_amount);
@@ -642,7 +659,7 @@ pub mod pallet {
                 &mut user_lending_info,
                 &mut collateral_pool_info,
                 block_number,
-            );
+            )?;
             user_lending_info.lending_amount = user_lending_info
                 .lending_amount
                 .saturating_sub(collateral_amount);
@@ -690,6 +707,7 @@ pub mod pallet {
         }
 
         /// Get rewards
+        #[transactional]
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::get_rewards())]
         pub fn get_rewards(
@@ -707,7 +725,7 @@ pub mod pallet {
                 let mut lend_user_info = <UserLendingInfo<T>>::get(asset_id, user.clone())
                     .ok_or(Error::<T>::NothingLent)?;
                 let mut pool_info = pool_info;
-                Self::accrue_lending_earnings(&mut lend_user_info, &mut pool_info, block_number);
+                Self::accrue_lending_earnings(&mut lend_user_info, &mut pool_info, block_number)?;
 
                 ensure!(
                     lend_user_info.lending_interest > 0,
@@ -739,9 +757,14 @@ pub mod pallet {
 
                 let mut borrowing_rewards: Balance = 0;
                 for (_, user_info) in user_infos.iter_mut() {
-                    Self::accrue_borrowing_interest_and_reward(user_info, &pool_info, block_number);
-                    borrowing_rewards =
-                        borrowing_rewards.saturating_add(user_info.borrowing_rewards);
+                    Self::accrue_borrowing_interest_and_reward(
+                        user_info,
+                        &pool_info,
+                        block_number,
+                    )?;
+                    borrowing_rewards = borrowing_rewards
+                        .checked_add(user_info.borrowing_rewards)
+                        .ok_or(Error::<T>::ArithmeticError)?;
                     user_info.borrowing_rewards = 0;
                 }
 
@@ -767,6 +790,7 @@ pub mod pallet {
         }
 
         /// Withdraw
+        #[transactional]
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::withdraw())]
         pub fn withdraw(
@@ -802,7 +826,7 @@ pub mod pallet {
             let previous_lending_amount = user_info.lending_amount;
 
             let block_number = <frame_system::Pallet<T>>::block_number();
-            Self::accrue_lending_earnings(&mut user_info, &mut pool_info, block_number);
+            Self::accrue_lending_earnings(&mut user_info, &mut pool_info, block_number)?;
             user_info.lending_amount = user_info.lending_amount.saturating_sub(withdrawn_amount);
 
             // Check if lending amount is less than user's lending amount
@@ -829,6 +853,7 @@ pub mod pallet {
         }
 
         /// Repay
+        #[transactional]
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::repay())]
         pub fn repay(
@@ -855,7 +880,7 @@ pub mod pallet {
                 &mut user_info,
                 &borrow_pool_info,
                 block_number,
-            );
+            )?;
 
             // Total repaid
             let mut total_repaid: Balance = amount_to_repay;
@@ -1011,12 +1036,18 @@ pub mod pallet {
                     Error::<T>::RewardRateExceedsRemaining
                 );
                 <LendingRewards<T>>::put(amount);
+                if !amount.is_zero() {
+                    LendingRewardsFinishedAt::<T>::kill();
+                }
             } else {
                 ensure!(
                     BorrowingRewardsPerBlock::<T>::get() <= amount,
                     Error::<T>::RewardRateExceedsRemaining
                 );
                 <BorrowingRewards<T>>::put(amount);
+                if !amount.is_zero() {
+                    BorrowingRewardsFinishedAt::<T>::kill();
+                }
             }
 
             Self::deposit_event(Event::ChangedRewardsAmount(user, is_lending, amount));
@@ -1057,6 +1088,9 @@ pub mod pallet {
                     <PoolData<T>>::insert(asset_id, pool_info);
                 }
                 <LendingRewardsPerBlock<T>>::put(amount);
+                if !amount.is_zero() {
+                    LendingRewardsFinishedAt::<T>::kill();
+                }
             } else {
                 ensure!(
                     amount <= BorrowingRewards::<T>::get(),
@@ -1076,6 +1110,9 @@ pub mod pallet {
                 }
 
                 <BorrowingRewardsPerBlock<T>>::put(amount);
+                if !amount.is_zero() {
+                    BorrowingRewardsFinishedAt::<T>::kill();
+                }
             }
 
             Self::deposit_event(Event::ChangedRewardsAmountPerBlock(
@@ -1085,6 +1122,7 @@ pub mod pallet {
         }
 
         /// Liquidate
+        #[transactional]
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(
@@ -1295,6 +1333,7 @@ pub mod pallet {
         }
 
         /// Add more collateral to borrowing position
+        #[transactional]
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::add_collateral())]
         pub fn add_collateral(
@@ -1360,7 +1399,7 @@ pub mod pallet {
                     user_info,
                     &borrow_pool_info,
                     block_number,
-                );
+                )?;
                 user_info.collateral_amount = user_info
                     .collateral_amount
                     .saturating_add(collateral_amount);
@@ -1375,7 +1414,7 @@ pub mod pallet {
                 &mut user_lending_info,
                 &mut collateral_pool_info,
                 block_number,
-            );
+            )?;
             user_lending_info.lending_amount = user_lending_info
                 .lending_amount
                 .saturating_sub(collateral_amount);
@@ -1457,17 +1496,40 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-        fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
-            <LendingRewards<T>>::put(
-                <LendingRewards<T>>::get().saturating_sub(<LendingRewardsPerBlock<T>>::get()),
-            );
-            <BorrowingRewards<T>>::put(
-                <BorrowingRewards<T>>::get().saturating_sub(<BorrowingRewardsPerBlock<T>>::get()),
-            );
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            let lending_rewards = <LendingRewards<T>>::get();
+            let lending_rewards_per_block = <LendingRewardsPerBlock<T>>::get();
+            if !lending_rewards.is_zero() && !lending_rewards_per_block.is_zero() {
+                if lending_rewards <= lending_rewards_per_block {
+                    <LendingRewards<T>>::put(0);
+                    LendingRewardsFinishedAt::<T>::mutate(|finished_at| {
+                        if finished_at.is_none() {
+                            *finished_at = Some(now);
+                        }
+                    });
+                } else {
+                    <LendingRewards<T>>::put(lending_rewards - lending_rewards_per_block);
+                }
+            }
+
+            let borrowing_rewards = <BorrowingRewards<T>>::get();
+            let borrowing_rewards_per_block = <BorrowingRewardsPerBlock<T>>::get();
+            if !borrowing_rewards.is_zero() && !borrowing_rewards_per_block.is_zero() {
+                if borrowing_rewards <= borrowing_rewards_per_block {
+                    <BorrowingRewards<T>>::put(0);
+                    BorrowingRewardsFinishedAt::<T>::mutate(|finished_at| {
+                        if finished_at.is_none() {
+                            *finished_at = Some(now);
+                        }
+                    });
+                } else {
+                    <BorrowingRewards<T>>::put(borrowing_rewards - borrowing_rewards_per_block);
+                }
+            }
 
             T::DbWeight::get()
-                .reads(4)
-                .saturating_add(T::DbWeight::get().writes(2))
+                .reads(6)
+                .saturating_add(T::DbWeight::get().writes(4))
         }
 
         /// Off-chain worker procedure - calls liquidations
@@ -1498,10 +1560,112 @@ pub mod pallet {
         }
     }
 
+    pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
+
+    impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
+        fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
+            common::with_transaction(|| {
+                frame_support::__private::log::info!(
+                    "{}::on_denominate({})",
+                    module_path!(),
+                    factor
+                );
+                Pallet::<T>::denominate_xor_and_tbcd_state(factor)
+            })
+        }
+    }
+
     impl<T: Config> Pallet<T> {
         /// The account ID of pallet
         fn account_id() -> T::AccountId {
             PALLET_ID.into_account_truncating()
+        }
+
+        fn denominate_value(
+            value: Balance,
+            factor: &BalanceOf<T>,
+        ) -> Result<Balance, sp_runtime::DispatchError> {
+            value
+                .checked_div(*factor)
+                .ok_or(sp_runtime::ArithmeticError::DivisionByZero.into())
+        }
+
+        pub fn denominate_xor_and_tbcd_state(factor: &BalanceOf<T>) -> DispatchResult {
+            let xor = AssetIdOf::<T>::from(XOR);
+            let tbcd = AssetIdOf::<T>::from(TBCD);
+            let should_denominate = |asset_id: &AssetIdOf<T>| asset_id == &xor || asset_id == &tbcd;
+
+            let mut pool_updates = Vec::new();
+            for (asset_id, mut pool_info) in PoolData::<T>::iter() {
+                if should_denominate(&asset_id) {
+                    pool_info.total_liquidity =
+                        Self::denominate_value(pool_info.total_liquidity, factor)?;
+                    pool_info.total_borrowed =
+                        Self::denominate_value(pool_info.total_borrowed, factor)?;
+                    pool_info.total_collateral =
+                        Self::denominate_value(pool_info.total_collateral, factor)?;
+                    Self::update_pool_rates(&mut pool_info);
+                    pool_updates.push((asset_id, pool_info));
+                }
+            }
+
+            let mut lending_updates = Vec::new();
+            for (asset_id, user, mut user_info) in UserLendingInfo::<T>::iter() {
+                if should_denominate(&asset_id) {
+                    user_info.lending_amount =
+                        Self::denominate_value(user_info.lending_amount, factor)?;
+                    lending_updates.push((asset_id, user, user_info));
+                }
+            }
+
+            let mut borrowing_updates = Vec::new();
+            for (borrowing_asset, user, mut user_infos) in UserBorrowingInfo::<T>::iter() {
+                let borrowing_asset_denominated = should_denominate(&borrowing_asset);
+                let mut updated = false;
+                for (collateral_asset, user_info) in user_infos.iter_mut() {
+                    if should_denominate(collateral_asset) {
+                        user_info.collateral_amount =
+                            Self::denominate_value(user_info.collateral_amount, factor)?;
+                        updated = true;
+                    }
+                    if borrowing_asset_denominated {
+                        user_info.borrowing_amount =
+                            Self::denominate_value(user_info.borrowing_amount, factor)?;
+                        user_info.borrowing_interest =
+                            Self::denominate_value(user_info.borrowing_interest, factor)?;
+                        updated = true;
+                    }
+                }
+                if updated {
+                    borrowing_updates.push((borrowing_asset, user, user_infos));
+                }
+            }
+
+            let mut total_collateral_updates = Vec::new();
+            for (user, collateral_asset, total_collateral) in UserTotalCollateral::<T>::iter() {
+                if should_denominate(&collateral_asset) {
+                    total_collateral_updates.push((
+                        user,
+                        collateral_asset,
+                        Self::denominate_value(total_collateral, factor)?,
+                    ));
+                }
+            }
+
+            for (asset_id, pool_info) in pool_updates {
+                PoolData::<T>::insert(asset_id, pool_info);
+            }
+            for (asset_id, user, user_info) in lending_updates {
+                UserLendingInfo::<T>::insert(asset_id, user, user_info);
+            }
+            for (borrowing_asset, user, user_infos) in borrowing_updates {
+                UserBorrowingInfo::<T>::insert(borrowing_asset, user, user_infos);
+            }
+            for (user, collateral_asset, total_collateral) in total_collateral_updates {
+                UserTotalCollateral::<T>::insert(user, collateral_asset, total_collateral);
+            }
+
+            Ok(())
         }
 
         pub fn get_price(asset_id: AssetIdOf<T>) -> Balance {
@@ -1563,12 +1727,25 @@ pub mod pallet {
             pool_info: &PoolInfo,
             block_number: BlockNumberFor<T>,
         ) -> (Balance, Balance) {
+            let total_lending_blocks =
+                Self::elapsed_blocks(user_info.last_lending_block, block_number);
+            Self::calculate_lending_earnings_for_blocks(
+                user_info,
+                pool_info,
+                total_lending_blocks,
+                total_lending_blocks,
+            )
+        }
+
+        fn calculate_lending_earnings_for_blocks(
+            user_info: &LendingPosition<BlockNumberFor<T>>,
+            pool_info: &PoolInfo,
+            basic_lending_blocks: u128,
+            profit_lending_blocks: u128,
+        ) -> (Balance, Balance) {
             if pool_info.total_liquidity.is_zero() {
                 return (0, 0);
             }
-
-            let total_lending_blocks: u128 =
-                (block_number - user_info.last_lending_block).unique_saturated_into();
 
             let share_in_pool = FixedWrapper::from(user_info.lending_amount)
                 / FixedWrapper::from(pool_info.total_liquidity);
@@ -1583,10 +1760,10 @@ pub mod pallet {
 
             // Return (basic_lending_interest, profit_lending_interest)
             (
-                (basic_reward_per_block * FixedWrapper::from(balance!(total_lending_blocks)))
+                (basic_reward_per_block * FixedWrapper::from(balance!(basic_lending_blocks)))
                     .try_into_balance()
                     .unwrap_or(0),
-                (profit_reward_per_block * FixedWrapper::from(balance!(total_lending_blocks)))
+                (profit_reward_per_block * FixedWrapper::from(balance!(profit_lending_blocks)))
                     .try_into_balance()
                     .unwrap_or(0),
             )
@@ -1597,12 +1774,25 @@ pub mod pallet {
             pool_info: &PoolInfo,
             block_number: BlockNumberFor<T>,
         ) -> (Balance, Balance) {
+            let total_borrowing_blocks =
+                Self::elapsed_blocks(user_info.last_borrowing_block, block_number);
+            Self::calculate_borrowing_interest_and_reward_for_blocks(
+                user_info,
+                pool_info,
+                total_borrowing_blocks,
+                total_borrowing_blocks,
+            )
+        }
+
+        fn calculate_borrowing_interest_and_reward_for_blocks(
+            user_info: &BorrowingPosition<BlockNumberFor<T>>,
+            pool_info: &PoolInfo,
+            borrowing_interest_blocks: u128,
+            borrowing_reward_blocks: u128,
+        ) -> (Balance, Balance) {
             if pool_info.total_borrowed.is_zero() {
                 return (0, 0);
             }
-
-            let total_borrowing_blocks: u128 =
-                (block_number - user_info.last_borrowing_block).unique_saturated_into();
 
             // Calculate borrowing interest
             let borrowing_interest_per_block = FixedWrapper::from(user_info.borrowing_amount)
@@ -1618,49 +1808,112 @@ pub mod pallet {
             // Return (borrowing_interest, borrowing_reward)
             (
                 (borrowing_interest_per_block
-                    * FixedWrapper::from(balance!(total_borrowing_blocks)))
+                    * FixedWrapper::from(balance!(borrowing_interest_blocks)))
                 .try_into_balance()
                 .unwrap_or(0),
-                (borrowing_reward_per_block * FixedWrapper::from(balance!(total_borrowing_blocks)))
-                    .try_into_balance()
-                    .unwrap_or(0),
+                (borrowing_reward_per_block
+                    * FixedWrapper::from(balance!(borrowing_reward_blocks)))
+                .try_into_balance()
+                .unwrap_or(0),
             )
+        }
+
+        fn elapsed_blocks(from: BlockNumberFor<T>, to: BlockNumberFor<T>) -> u128 {
+            to.saturating_sub(from).unique_saturated_into()
+        }
+
+        fn reward_blocks_until_finished(
+            from: BlockNumberFor<T>,
+            to: BlockNumberFor<T>,
+            finished_at: Option<BlockNumberFor<T>>,
+        ) -> u128 {
+            let reward_end = match finished_at {
+                Some(finished_at) if finished_at < to => finished_at,
+                _ => to,
+            };
+            Self::elapsed_blocks(from, reward_end)
         }
 
         fn accrue_lending_earnings(
             user_info: &mut LendingPosition<BlockNumberFor<T>>,
             pool_info: &mut PoolInfo,
             block_number: BlockNumberFor<T>,
-        ) -> (Balance, Balance) {
-            let (basic_interest, profit_interest) =
-                Self::calculate_lending_earnings(user_info, pool_info, block_number);
+        ) -> Result<(Balance, Balance), DispatchError> {
+            let lending_rewards_finished_at = LendingRewardsFinishedAt::<T>::get().or_else(|| {
+                if LendingRewards::<T>::get().is_zero() {
+                    Some(user_info.last_lending_block)
+                } else {
+                    None
+                }
+            });
+            let basic_lending_blocks = Self::reward_blocks_until_finished(
+                user_info.last_lending_block,
+                block_number,
+                lending_rewards_finished_at,
+            );
+            let profit_lending_blocks =
+                Self::elapsed_blocks(user_info.last_lending_block, block_number);
+            let (basic_interest, profit_interest) = Self::calculate_lending_earnings_for_blocks(
+                user_info,
+                pool_info,
+                basic_lending_blocks,
+                profit_lending_blocks,
+            );
+            let profit_interest = profit_interest.min(pool_info.rewards);
             user_info.lending_interest = user_info
                 .lending_interest
-                .saturating_add(basic_interest)
-                .saturating_add(profit_interest);
+                .checked_add(basic_interest)
+                .and_then(|interest| interest.checked_add(profit_interest))
+                .ok_or(Error::<T>::ArithmeticError)?;
             user_info.last_lending_block = block_number;
 
-            pool_info.rewards = pool_info.rewards.saturating_sub(profit_interest);
+            pool_info.rewards = pool_info
+                .rewards
+                .checked_sub(profit_interest)
+                .ok_or(Error::<T>::ArithmeticError)?;
             Self::update_pool_rates(pool_info);
 
-            (basic_interest, profit_interest)
+            Ok((basic_interest, profit_interest))
         }
 
         fn accrue_borrowing_interest_and_reward(
             user_info: &mut BorrowingPosition<BlockNumberFor<T>>,
             pool_info: &PoolInfo,
             block_number: BlockNumberFor<T>,
-        ) -> (Balance, Balance) {
+        ) -> Result<(Balance, Balance), DispatchError> {
+            let borrowing_interest_blocks =
+                Self::elapsed_blocks(user_info.last_borrowing_block, block_number);
+            let borrowing_rewards_finished_at =
+                BorrowingRewardsFinishedAt::<T>::get().or_else(|| {
+                    if BorrowingRewards::<T>::get().is_zero() {
+                        Some(user_info.last_borrowing_block)
+                    } else {
+                        None
+                    }
+                });
+            let borrowing_reward_blocks = Self::reward_blocks_until_finished(
+                user_info.last_borrowing_block,
+                block_number,
+                borrowing_rewards_finished_at,
+            );
             let (borrowing_interest, borrowing_reward) =
-                Self::calculate_borrowing_interest_and_reward(user_info, pool_info, block_number);
+                Self::calculate_borrowing_interest_and_reward_for_blocks(
+                    user_info,
+                    pool_info,
+                    borrowing_interest_blocks,
+                    borrowing_reward_blocks,
+                );
             user_info.borrowing_interest = user_info
                 .borrowing_interest
-                .saturating_add(borrowing_interest);
-            user_info.borrowing_rewards =
-                user_info.borrowing_rewards.saturating_add(borrowing_reward);
+                .checked_add(borrowing_interest)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            user_info.borrowing_rewards = user_info
+                .borrowing_rewards
+                .checked_add(borrowing_reward)
+                .ok_or(Error::<T>::ArithmeticError)?;
             user_info.last_borrowing_block = block_number;
 
-            (borrowing_interest, borrowing_reward)
+            Ok((borrowing_interest, borrowing_reward))
         }
 
         fn update_pool_rates(pool_info: &mut PoolInfo) {
@@ -1781,102 +2034,104 @@ pub mod pallet {
             amount: Balance,
             borrowing_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
-            let mut pool_info =
-                PoolData::<T>::get(borrowing_asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
-            let caller = Self::account_id();
+            common::with_transaction(|| {
+                let mut pool_info =
+                    PoolData::<T>::get(borrowing_asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
+                let caller = Self::account_id();
 
-            // Calculate rewards and reserves amounts based on Reserve Factor
-            let reserves_amount = (FixedWrapper::from(pool_info.reserve_factor)
-                * FixedWrapper::from(amount))
-            .try_into_balance()
-            .unwrap_or(0);
-            let rewards_amount = amount.saturating_sub(reserves_amount);
+                // Calculate rewards and reserves amounts based on Reserve Factor
+                let reserves_amount = (FixedWrapper::from(pool_info.reserve_factor)
+                    * FixedWrapper::from(amount))
+                .try_into_balance()
+                .unwrap_or(0);
+                let rewards_amount = amount.saturating_sub(reserves_amount);
 
-            if asset_id != APOLLO_ASSET_ID.into() {
+                if asset_id != APOLLO_ASSET_ID.into() {
+                    let outcome = T::LiquidityProxyPallet::exchange(
+                        DEXId::Polkaswap.into(),
+                        &caller,
+                        &caller,
+                        &asset_id,
+                        &APOLLO_ASSET_ID.into(),
+                        SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
+                        LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                    )?;
+                    let buyback_amount = outcome.amount;
+                    pool_info.rewards = pool_info.rewards.saturating_add(buyback_amount);
+                } else {
+                    pool_info.rewards = pool_info.rewards.saturating_add(rewards_amount);
+                }
+
+                Self::update_pool_rates(&mut pool_info);
+                <PoolData<T>>::insert(borrowing_asset_id, pool_info);
+
+                // Calculate 60% of reserves to transfer APOLLO to treasury
+                let apollo_amount = (FixedWrapper::from(reserves_amount)
+                    * FixedWrapper::from(balance!(0.6)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Calculate 20% of reserves to buyback CERES
+                let ceres_amount = (FixedWrapper::from(reserves_amount)
+                    * FixedWrapper::from(balance!(0.2)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Calculate 20% of reserves to go to developer fund
+                let developer_amount = (FixedWrapper::from(reserves_amount)
+                    * FixedWrapper::from(balance!(0.2)))
+                .try_into_balance()
+                .unwrap_or(0);
+
+                // Transfer amount to developer fund
+                T::AssetManager::transfer_from(
+                    &asset_id,
+                    &Self::account_id(),
+                    &AuthorityAccount::<T>::get(),
+                    developer_amount,
+                )
+                .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
+
+                // Transfer APOLLO to treasury
+                if asset_id != APOLLO_ASSET_ID.into() {
+                    T::LiquidityProxyPallet::exchange(
+                        DEXId::Polkaswap.into(),
+                        &caller,
+                        &TreasuryAccount::<T>::get(), // APOLLO Treasury
+                        &asset_id,
+                        &APOLLO_ASSET_ID.into(),
+                        SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
+                        LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                    )?;
+                } else {
+                    T::AssetManager::transfer_from(
+                        &asset_id,
+                        &caller,
+                        &TreasuryAccount::<T>::get(),
+                        apollo_amount,
+                    )
+                    .map_err(|_| Error::<T>::CanNotTransferAmountToTreasury)?;
+                }
+
+                // Buyback and burn CERES
                 let outcome = T::LiquidityProxyPallet::exchange(
                     DEXId::Polkaswap.into(),
                     &caller,
                     &caller,
                     &asset_id,
-                    &APOLLO_ASSET_ID.into(),
-                    SwapAmount::with_desired_input(rewards_amount, Balance::zero()),
+                    &CERES_ASSET_ID.into(),
+                    SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
                     LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
                 )?;
-                let buyback_amount = outcome.amount;
-                pool_info.rewards = pool_info.rewards.saturating_add(buyback_amount);
-            } else {
-                pool_info.rewards = pool_info.rewards.saturating_add(rewards_amount);
-            }
 
-            Self::update_pool_rates(&mut pool_info);
-            <PoolData<T>>::insert(borrowing_asset_id, pool_info);
-
-            // Calculate 60% of reserves to transfer APOLLO to treasury
-            let apollo_amount = (FixedWrapper::from(reserves_amount)
-                * FixedWrapper::from(balance!(0.6)))
-            .try_into_balance()
-            .unwrap_or(0);
-
-            // Calculate 20% of reserves to buyback CERES
-            let ceres_amount = (FixedWrapper::from(reserves_amount)
-                * FixedWrapper::from(balance!(0.2)))
-            .try_into_balance()
-            .unwrap_or(0);
-
-            // Calculate 20% of reserves to go to developer fund
-            let developer_amount = (FixedWrapper::from(reserves_amount)
-                * FixedWrapper::from(balance!(0.2)))
-            .try_into_balance()
-            .unwrap_or(0);
-
-            // Transfer amount to developer fund
-            T::AssetManager::transfer_from(
-                &asset_id,
-                &Self::account_id(),
-                &AuthorityAccount::<T>::get(),
-                developer_amount,
-            )
-            .map_err(|_| Error::<T>::CanNotTransferAmountToDevelopers)?;
-
-            // Transfer APOLLO to treasury
-            if asset_id != APOLLO_ASSET_ID.into() {
-                T::LiquidityProxyPallet::exchange(
-                    DEXId::Polkaswap.into(),
-                    &caller,
-                    &TreasuryAccount::<T>::get(), // APOLLO Treasury
-                    &asset_id,
-                    &APOLLO_ASSET_ID.into(),
-                    SwapAmount::with_desired_input(apollo_amount, Balance::zero()),
-                    LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
+                T::AssetManager::burn(
+                    RawOrigin::Signed(caller).into(),
+                    CERES_ASSET_ID.into(),
+                    outcome.amount,
                 )?;
-            } else {
-                T::AssetManager::transfer_from(
-                    &asset_id,
-                    &caller,
-                    &TreasuryAccount::<T>::get(),
-                    apollo_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferAmountToTreasury)?;
-            }
 
-            // Buyback and burn CERES
-            let outcome = T::LiquidityProxyPallet::exchange(
-                DEXId::Polkaswap.into(),
-                &caller,
-                &caller,
-                &asset_id,
-                &CERES_ASSET_ID.into(),
-                SwapAmount::with_desired_input(ceres_amount, Balance::zero()),
-                LiquiditySourceFilter::empty(DEXId::Polkaswap.into()),
-            )?;
-
-            T::AssetManager::burn(
-                RawOrigin::Signed(caller).into(),
-                CERES_ASSET_ID.into(),
-                outcome.amount,
-            )?;
-
-            Ok(().into())
+                Ok(().into())
+            })
         }
 
         fn calculate_max_allowed_collateral(

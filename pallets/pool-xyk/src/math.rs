@@ -28,11 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{to_balance, to_fixed_wrapper, to_fixed_wrapper_256};
+use crate::{to_balance, to_fixed_wrapper_256};
 use crate::{Config, Error, Pallet};
 use common::fixed::FixedU256;
 use common::fixed_wrapper_u256::FixedWrapper256;
-use common::prelude::{Balance, FixedWrapper};
+use common::prelude::Balance;
 use common::{fixed_wrapper_u256, AssetIdOf, TradingPair};
 use frame_support::ensure;
 use frame_support::traits::Get;
@@ -243,9 +243,9 @@ impl<T: Config> Pallet<T> {
         total_liquidity: Balance,
         liq_amount: Balance,
     ) -> Result<Balance, DispatchError> {
-        let fxw_liq_in_pool = to_fixed_wrapper!(total_liquidity);
-        let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper!(liq_amount);
-        let fxw_value = to_fixed_wrapper!(base_reserves) / fxw_piece;
+        let fxw_liq_in_pool = to_fixed_wrapper_256!(total_liquidity);
+        let fxw_piece = fxw_liq_in_pool / to_fixed_wrapper_256!(liq_amount);
+        let fxw_value = to_fixed_wrapper_256!(base_reserves) / fxw_piece;
         let value = to_balance!(fxw_value);
         Ok(value)
     }

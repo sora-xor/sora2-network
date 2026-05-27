@@ -88,6 +88,18 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use {crate as eth_bridge, frame_system};
 
+pub struct TestDenominator;
+
+impl common::Denominator<AssetId32<PredefinedAssetId>, Balance> for TestDenominator {
+    fn current_factor(asset_id: &AssetId32<PredefinedAssetId>) -> Balance {
+        if *asset_id == XOR.into() {
+            10
+        } else {
+            1
+        }
+    }
+}
+
 /// An index to a block.
 pub type BlockNumber = u64;
 
@@ -252,7 +264,7 @@ impl Config for Runtime {
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
-    type Denominator = ();
+    type Denominator = TestDenominator;
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
 }
 
@@ -555,7 +567,7 @@ impl Default for ExtBuilder {
                 AssetConfig::Sidechain {
                     id: XOR.into(),
                     sidechain_id: sp_core::H160::from_str(
-                        "40fd72257597aa14c7231a7b1aaa29fce868f677",
+                        "41fd72257597aa14c7231a7b1aaa29fce868f677",
                     )
                     .unwrap(),
                     owned: true,

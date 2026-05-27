@@ -25,6 +25,7 @@ pub type BlockNumber = u64;
 pub const ALICE: AccountId = 1;
 pub const BOB: AccountId = 2;
 pub const FEE_COLLECTOR: AccountId = 99;
+pub const LEGACY_BOND_ESCROW: AccountId = 98;
 pub const CANONICAL_ASSET: AssetId = 0;
 pub const BUYBACK_ASSET: AssetId = 2;
 pub const USDC_ASSET: AssetId = 100;
@@ -42,8 +43,10 @@ parameter_types! {
     pub const MinQuestionLengthConst: u32 = 4;
     pub const MinCreationFeeConst: Balance = 10;
     pub const TestPalletId: PalletId = PalletId(*b"pk/mktpl");
+    pub const LegacyCreatorBondEscrowConst: AccountId = LEGACY_BOND_ESCROW;
     pub const MinMarketDurationConst: BlockNumber = 5;
     pub const MaxMetadataLengthConst: u32 = 128;
+    pub const MaxBatchClaimsConst: u32 = 8;
     pub const TradeFeeBpsConst: u32 = 50;
     pub const BuyBackAssetConst: AssetId = BUYBACK_ASSET;
 }
@@ -97,6 +100,9 @@ impl crate::WeightInfo for TestWeightInfo {
     fn create_condition() -> Weight {
         Weight::zero()
     }
+    fn create_condition_with_details() -> Weight {
+        Weight::zero()
+    }
     fn create_market() -> Weight {
         Weight::zero()
     }
@@ -106,22 +112,40 @@ impl crate::WeightInfo for TestWeightInfo {
     fn sell() -> Weight {
         Weight::zero()
     }
+    fn flip_position() -> Weight {
+        Weight::zero()
+    }
+    fn add_liquidity() -> Weight {
+        Weight::zero()
+    }
     fn sync_market_status() -> Weight {
         Weight::zero()
     }
     fn resolve_market() -> Weight {
         Weight::zero()
     }
+    fn resolve_market_with_evidence() -> Weight {
+        Weight::zero()
+    }
     fn cancel_market() -> Weight {
         Weight::zero()
     }
+    fn emergency_cancel_market() -> Weight {
+        Weight::zero()
+    }
     fn claim_market() -> Weight {
+        Weight::zero()
+    }
+    fn claim_markets(_n: u32) -> Weight {
         Weight::zero()
     }
     fn claim_creator_fees() -> Weight {
         Weight::zero()
     }
     fn claim_creator_liquidity() -> Weight {
+        Weight::zero()
+    }
+    fn claim_liquidity() -> Weight {
         Weight::zero()
     }
     fn sweep_xor_buyback_and_burn() -> Weight {
@@ -175,10 +199,12 @@ impl pallet_polkamarkt::Config for Test {
     type MinQuestionLength = MinQuestionLengthConst;
     type MinCreationFee = MinCreationFeeConst;
     type PalletId = TestPalletId;
+    type LegacyCreatorBondEscrowAccount = LegacyCreatorBondEscrowConst;
     type BuyBackHandler = MockBuyBackHandler;
     type GetBuyBackAssetId = BuyBackAssetConst;
     type MinMarketDuration = MinMarketDurationConst;
     type MaxMetadataLength = MaxMetadataLengthConst;
+    type MaxBatchClaims = MaxBatchClaimsConst;
     type TradeFeeBps = TradeFeeBpsConst;
     type GovernanceOrigin = EnsureRoot<AccountId>;
 }

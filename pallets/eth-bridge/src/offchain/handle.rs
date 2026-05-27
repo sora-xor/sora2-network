@@ -411,10 +411,15 @@ impl<T: Config> Pallet<T> {
                         let tx_hash = request.hash;
                         let kind = request.kind;
                         debug!("Loading approved tx {}", tx_hash);
+                        ensure!(
+                            kind != IncomingTransactionRequestKind::TransferXOR
+                                || !crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
+                            Error::<T>::DeprecatedLegacyXor
+                        );
                         let tx = Self::load_tx_receipt(tx_hash, network_id)?;
                         let mut incoming_request = Self::parse_incoming_request(tx, request)?;
-                        // Legacy path kept for already queued requests. New `TransferXOR` pre-requests
-                        // are blocked in `request_from_sidechain`.
+                        // Legacy path kept for already queued requests before decommission. New
+                        // `TransferXOR` pre-requests are blocked in `request_from_sidechain`.
                         if kind == IncomingTransactionRequestKind::TransferXOR {
                             if let IncomingRequest::Transfer(transfer) = &mut incoming_request {
                                 ensure!(
@@ -477,7 +482,7 @@ impl<T: Config> Pallet<T> {
             }
             // We assume that all events issued by our contracts are valid and, therefore, ignore
             // the invalid ones.
-            let event = match Self::parse_deposit_event(&log) {
+            let event = match Self::parse_deposit_event_from_known_contract(network_id, &log) {
                 Ok(v) => v,
                 Err(e) => {
                     info!("Skipped {:?}, error: {:?}", log, e);

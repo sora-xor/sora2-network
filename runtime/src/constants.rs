@@ -95,7 +95,7 @@ pub const BABE_GENESIS_EPOCH_CONFIG: sp_consensus_babe::BabeEpochConfiguration =
 pub mod rewards {
     use sp_runtime::Percent;
 
-    pub const VAL_BURN_PERCENT: Percent = Percent::from_percent(3);
+    pub const VAL_BURN_PERCENT: Percent = Percent::from_percent(10);
     pub const PSWAP_BURN_PERCENT: Percent = Percent::from_percent(3);
 }
 

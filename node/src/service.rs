@@ -603,7 +603,7 @@ pub fn new_partial(
                 client: client.clone(),
                 pool: pool.clone(),
                 backend: backend.clone(),
-                deny_unsafe: sc_rpc::DenyUnsafe::No,
+                deny_unsafe: sc_rpc::DenyUnsafe::Yes,
                 beefy: crate::rpc::BeefyDeps {
                     beefy_finality_proof_stream: beefy_rpc_links.from_voter_justif_stream.clone(),
                     beefy_best_block_stream: beefy_rpc_links.from_voter_best_beefy_stream.clone(),

@@ -77,7 +77,9 @@ impl FixedWrapper256 {
     }
 
     pub fn pow(&self, x: u32) -> Self {
-        (0..x).fold(FixedWrapper256::from(1), |acc, _| acc * self.clone())
+        (0..x).fold(FixedWrapper256::from(crate::balance!(1)), |acc, _| {
+            acc * self.clone()
+        })
     }
 
     /// Calculates square root of underlying FixedU256 number.
@@ -316,6 +318,24 @@ mod wrapper {
                 .sqrt_accurate()
                 .get()
                 .is_err()
+        );
+    }
+
+    #[test]
+    fn fixed_wrapper_pow_uses_fixed_point_identity() {
+        assert_eq!(
+            FixedWrapper256::from(balance!(2))
+                .pow(0)
+                .try_into_balance()
+                .unwrap(),
+            balance!(1)
+        );
+        assert_eq!(
+            FixedWrapper256::from(balance!(2))
+                .pow(3)
+                .try_into_balance()
+                .unwrap(),
+            balance!(8)
         );
     }
 }
