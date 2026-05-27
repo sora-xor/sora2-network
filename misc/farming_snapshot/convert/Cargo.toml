@@ -3,6 +3,8 @@ name = "convert"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+
 [dependencies]
-parity-scale-codec = "2"
-sp-core = "3.0"
+parity-scale-codec = "3.7.5"
+sp-core = "41.0.0"

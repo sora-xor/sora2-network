@@ -36,7 +36,6 @@ use crate::{
 };
 use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::AssetInfoProvider;
-use common::Denominator;
 use ethabi::Token;
 use ethereum_types::U256;
 use frame_support::__private::log::warn;
@@ -374,7 +373,8 @@ impl<T: Config> IncomingRequest<T> {
                     network_id,
                 )?
                 .ok_or(Error::<T>::UnsupportedAssetId)?;
-                let denomination_factor = T::Denominator::current_factor(&asset_id);
+                let denomination_factor =
+                    Pallet::<T>::bridge_denomination_factor(network_id, &asset_id);
                 let amount = u128::try_from(
                     amount
                         .checked_div(denomination_factor.into())
@@ -489,13 +489,13 @@ impl<T: Config> IncomingRequest<T> {
     pub fn validate(&self) -> Result<(), DispatchError> {
         match self {
             IncomingRequest::Transfer(request) => request.validate(),
-            IncomingRequest::AddToken(_request) => Ok(()),
+            IncomingRequest::AddToken(request) => request.validate(),
             IncomingRequest::ChangePeers(_request) => Ok(()),
             IncomingRequest::CancelOutgoingRequest(_request) => Ok(()),
             IncomingRequest::MarkAsDone(request) => request.validate(),
             IncomingRequest::PrepareForMigration(_request) => Ok(()),
             IncomingRequest::Migrate(_request) => Ok(()),
-            IncomingRequest::ChangePeersCompat(_request) => Ok(()),
+            IncomingRequest::ChangePeersCompat(request) => request.validate(),
         }
     }
 
@@ -649,10 +649,24 @@ impl<T: Config> LoadIncomingRequest<T> {
     /// Checks that the request can be initiated.
     pub fn validate(&self) -> Result<(), DispatchError> {
         match self {
-            Self::Transaction(_request) => Ok(()),
+            Self::Transaction(request) => {
+                ensure!(
+                    request.kind != IncomingTransactionRequestKind::TransferXOR
+                        || !crate::migration::is_legacy_ethereum_xor_decommissioned::<T>(),
+                    Error::<T>::DeprecatedLegacyXor
+                );
+                Ok(())
+            }
             Self::Meta(request, _) => {
                 match request.kind {
                     IncomingMetaRequestKind::MarkAsDone => {
+                        ensure!(
+                            !Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                                request.network_id,
+                                &request.hash,
+                            ),
+                            Error::<T>::DeprecatedLegacyXor
+                        );
                         let request_status =
                             RequestStatuses::<T>::get(request.network_id, request.hash)
                                 .ok_or(Error::<T>::UnknownRequest)?;

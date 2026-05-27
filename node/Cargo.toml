@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "4.8.5"
+version = "4.8.6"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -35,6 +35,7 @@ liquidity-proxy-rpc = { path = "../pallets/liquidity-proxy/rpc" }
 eth-bridge-rpc = { path = "../pallets/eth-bridge/rpc" }
 farming-rpc = { path = "../pallets/farming/rpc" }
 pswap-distribution-rpc = { path = "../pallets/pswap-distribution/rpc" }
+polkamarkt-rpc = { path = "../pallets/polkamarkt/rpc" }
 vested-rewards-rpc = { path = "../pallets/vested-rewards/rpc" }
 beefy-light-client = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
 beefy-light-client-rpc = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", optional = true }
@@ -94,7 +95,7 @@ sc-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk.git", 
 sc-transaction-pool-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
 frame-remote-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2512-3" }
 finality-grandpa = "=0.16.3"
-substrate-bip39 = "=0.4.5"
+substrate-bip39 = "0.6.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Netlink-based watchers rely on Linux-specific libc types; keep them off macOS builds.
@@ -122,7 +123,7 @@ default = ["runtime-wasm"]
 
 include-real-files = []
 
-main-net-coded = []
+main-net-coded = ["framenode-chain-spec/main-net-coded"]
 
 runtime-wasm = [
     "framenode-chain-spec/runtime-wasm",

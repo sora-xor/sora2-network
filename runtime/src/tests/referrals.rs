@@ -30,7 +30,7 @@
 
 use common::mock::{alice, bob, charlie};
 use common::prelude::constants::SMALL_FEE;
-use common::{AssetInfoProvider, XOR};
+use common::{AssetInfoProvider, OnDenominate, XOR};
 use frame_support::{assert_err, assert_ok};
 use framenode_chain_spec::ext;
 use sp_runtime::FixedU128;
@@ -142,5 +142,48 @@ fn withdraw() {
         ));
 
         assert_ok!(Referrals::withdraw_fee(&alice(), SMALL_FEE));
+    })
+}
+
+#[test]
+fn denominate_zero_factor_leaves_referrer_balances_unchanged() {
+    ext().execute_with(|| {
+        referrals::ReferrerBalances::<Runtime>::insert(alice(), SMALL_FEE);
+        referrals::ReferrerBalances::<Runtime>::insert(bob(), SMALL_FEE * 2);
+        let before_alice = referrals::ReferrerBalances::<Runtime>::get(alice()).unwrap();
+        let before_bob = referrals::ReferrerBalances::<Runtime>::get(bob()).unwrap();
+
+        assert_err!(
+            referrals::DenominateXor::<Runtime>::on_denominate(&0),
+            sp_runtime::DispatchError::Arithmetic(sp_runtime::ArithmeticError::DivisionByZero)
+        );
+
+        assert_eq!(
+            referrals::ReferrerBalances::<Runtime>::get(alice()).unwrap(),
+            before_alice
+        );
+        assert_eq!(
+            referrals::ReferrerBalances::<Runtime>::get(bob()).unwrap(),
+            before_bob
+        );
+    })
+}
+
+#[test]
+fn denominate_scales_all_referrer_balances() {
+    ext().execute_with(|| {
+        referrals::ReferrerBalances::<Runtime>::insert(alice(), SMALL_FEE * 10);
+        referrals::ReferrerBalances::<Runtime>::insert(bob(), SMALL_FEE * 20);
+
+        assert_ok!(referrals::DenominateXor::<Runtime>::on_denominate(&10));
+
+        assert_eq!(
+            referrals::ReferrerBalances::<Runtime>::get(alice()).unwrap(),
+            SMALL_FEE
+        );
+        assert_eq!(
+            referrals::ReferrerBalances::<Runtime>::get(bob()).unwrap(),
+            SMALL_FEE * 2
+        );
     })
 }

@@ -10,19 +10,16 @@ services:
       context: ..
       dockerfile: bridge-docker/Dockerfile.sora
     ports:
-      - "9944:9944"
-      - "9954:9954"
+      - "127.0.0.1:9944:9944"
+      - "127.0.0.1:9954:9954"
     command: ["framenode", 
         "--pruning", "archive",
         "--enable-offchain-indexing", "true",
         "-d", "/data", 
         "--alice", 
         "--port", "10000", 
-        "--ws-port", "9944",
-        "--rpc-port", "9954", 
-        "--unsafe-ws-external",
-        "--unsafe-rpc-external",
-        "--rpc-cors", "all",
+        "--experimental-rpc-endpoint", "listen-addr=0.0.0.0:9944,methods=safe,cors=http://localhost:*,cors=http://127.0.0.1:*",
+        "--experimental-rpc-endpoint", "listen-addr=0.0.0.0:9954,methods=safe,cors=http://localhost:*,cors=http://127.0.0.1:*",
         "--chain", "docker-local", 
         "--execution", "wasm", 
         "--wasm-execution", "compiled"

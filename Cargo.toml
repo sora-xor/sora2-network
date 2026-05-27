@@ -178,6 +178,7 @@ members = [
     "pallets/bridge-proxy/runtime-api",
     "pallets/kensetsu",
     "pallets/band",
+    "pallets/polkamarkt/runtime-api",
     "pallets/qa-tools",
     "pallets/extended-assets",
     "pallets/denomination",

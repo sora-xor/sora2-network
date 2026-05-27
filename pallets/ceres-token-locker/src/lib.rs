@@ -337,17 +337,30 @@ pub mod pallet {
             frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
             let xor = AssetIdOf::<T>::from(XOR);
             let tbcd = AssetIdOf::<T>::from(TBCD);
+            let mut updates = Vec::new();
 
-            TokenLockerData::<T>::translate_values(
-                |mut locks: Vec<TokenLockInfo<BalanceOf<T>, _, AssetIdOf<T>>>| {
-                    for lock in &mut locks {
-                        if lock.asset_id == xor || lock.asset_id == tbcd {
-                            lock.tokens = lock.tokens.checked_div(*factor).unwrap_or(lock.tokens);
-                        }
+            for (account, mut locks) in TokenLockerData::<T>::iter() {
+                let mut updated = false;
+                for lock in &mut locks {
+                    if lock.asset_id == xor || lock.asset_id == tbcd {
+                        lock.tokens =
+                            lock.tokens
+                                .checked_div(*factor)
+                                .ok_or(DispatchError::Arithmetic(
+                                    sp_runtime::ArithmeticError::DivisionByZero,
+                                ))?;
+                        updated = true;
                     }
-                    Some(locks)
-                },
-            );
+                }
+                if updated {
+                    updates.push((account, locks));
+                }
+            }
+
+            for (account, locks) in updates {
+                TokenLockerData::<T>::insert(account, locks);
+            }
+
             Ok(())
         }
     }

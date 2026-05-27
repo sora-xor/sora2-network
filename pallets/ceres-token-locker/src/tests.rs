@@ -1,8 +1,9 @@
 mod tests {
     use crate::mock::*;
-    use crate::{pallet, AccountIdOf, Error};
+    use crate::{pallet, AccountIdOf, Error, TokenLockInfo};
     use common::{
-        balance, generate_storage_instance, AssetIdOf, AssetInfoProvider, Balance, CERES_ASSET_ID,
+        balance, generate_storage_instance, AssetIdOf, AssetInfoProvider, Balance, OnDenominate,
+        CERES_ASSET_ID, XOR,
     };
     use frame_support::pallet_prelude::StorageMap;
     use frame_support::storage::types::ValueQuery;
@@ -332,6 +333,80 @@ mod tests {
             for lockup in lockups_bob {
                 assert_eq!(lockup.unlocking_timestamp, 9988000);
             }
+        });
+    }
+
+    #[test]
+    fn denominate_zero_factor_leaves_locks_unchanged() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            let locks = vec![TokenLockInfo {
+                tokens: balance!(10),
+                unlocking_timestamp: 1,
+                asset_id: XOR,
+            }];
+            pallet::TokenLockerData::<Runtime>::insert(ALICE, locks);
+            let before = pallet::TokenLockerData::<Runtime>::get(ALICE);
+
+            assert_err!(
+                pallet::DenominateXorAndTbcd::<Runtime>::on_denominate(&0),
+                sp_runtime::DispatchError::Arithmetic(sp_runtime::ArithmeticError::DivisionByZero)
+            );
+
+            assert_eq!(pallet::TokenLockerData::<Runtime>::get(ALICE), before);
+        });
+    }
+
+    #[test]
+    fn denominate_zero_factor_with_mixed_locks_rolls_back_all_accounts() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            pallet::TokenLockerData::<Runtime>::insert(
+                ALICE,
+                vec![TokenLockInfo {
+                    tokens: balance!(10),
+                    unlocking_timestamp: 1,
+                    asset_id: CERES_ASSET_ID,
+                }],
+            );
+            pallet::TokenLockerData::<Runtime>::insert(
+                BOB,
+                vec![TokenLockInfo {
+                    tokens: balance!(20),
+                    unlocking_timestamp: 2,
+                    asset_id: XOR,
+                }],
+            );
+            let before_alice = pallet::TokenLockerData::<Runtime>::get(ALICE);
+            let before_bob = pallet::TokenLockerData::<Runtime>::get(BOB);
+
+            assert_err!(
+                pallet::DenominateXorAndTbcd::<Runtime>::on_denominate(&0),
+                sp_runtime::DispatchError::Arithmetic(sp_runtime::ArithmeticError::DivisionByZero)
+            );
+
+            assert_eq!(pallet::TokenLockerData::<Runtime>::get(ALICE), before_alice);
+            assert_eq!(pallet::TokenLockerData::<Runtime>::get(BOB), before_bob);
+        });
+    }
+
+    #[test]
+    fn denominate_zero_factor_ignores_non_xor_tbcd_locks() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            pallet::TokenLockerData::<Runtime>::insert(
+                ALICE,
+                vec![TokenLockInfo {
+                    tokens: balance!(10),
+                    unlocking_timestamp: 1,
+                    asset_id: CERES_ASSET_ID,
+                }],
+            );
+            let before = pallet::TokenLockerData::<Runtime>::get(ALICE);
+
+            assert_ok!(pallet::DenominateXorAndTbcd::<Runtime>::on_denominate(&0));
+
+            assert_eq!(pallet::TokenLockerData::<Runtime>::get(ALICE), before);
         });
     }
 }

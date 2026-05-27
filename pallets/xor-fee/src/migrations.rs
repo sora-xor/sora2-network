@@ -178,3 +178,51 @@ pub mod v2 {
         }
     }
 }
+
+pub mod v3 {
+    use crate::*;
+    use core::marker::PhantomData;
+    use frame_support::traits::OnRuntimeUpgrade;
+    use frame_support::weights::Weight;
+    use frame_support::{__private::log::info, traits::StorageVersion};
+
+    pub struct Migrate<T>(PhantomData<T>);
+
+    impl<T> OnRuntimeUpgrade for Migrate<T>
+    where
+        T: Config,
+    {
+        fn on_runtime_upgrade() -> Weight {
+            let current = StorageVersion::get::<Pallet<T>>();
+            if current < StorageVersion::new(3) {
+                XorToBuyBack::<T>::kill();
+                StorageVersion::new(3).put::<Pallet<T>>();
+                info!("xor-fee v3 applied successfully.");
+                return T::DbWeight::get().reads_writes(1, 2);
+            }
+            Weight::default()
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn pre_upgrade() -> Result<Vec<u8>, sp_runtime::DispatchError> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() < StorageVersion::new(3),
+                "Wrong storage version before xor-fee v3 upgrade"
+            );
+            Ok(Vec::new())
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn post_upgrade(_state: Vec<u8>) -> Result<(), sp_runtime::DispatchError> {
+            frame_support::ensure!(
+                StorageVersion::get::<Pallet<T>>() == StorageVersion::new(3),
+                "Wrong storage version after xor-fee v3 upgrade"
+            );
+            frame_support::ensure!(
+                XorToBuyBack::<T>::get().is_zero(),
+                "XorToBuyBack was not cleared"
+            );
+            Ok(())
+        }
+    }
+}

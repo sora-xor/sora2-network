@@ -45,7 +45,7 @@ use sp_runtime::{
     DispatchResult,
 };
 
-use crate::{BalanceOf, Config, CustomFeeDetailsOf, LiquidityInfo};
+use crate::{BalanceOf, Config, CustomFeeDetailsOf, LiquidityInfo, StakingValPayout};
 
 #[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -149,6 +149,8 @@ where
         LiquidityInfo<T>,
         // transaction fee kind
         Option<CustomFeeDetailsOf<T>>,
+        // staking VAL payout context, if this is a staking payout call
+        Option<<T::StakingValPayout as StakingValPayout<CallOf<T>, T::AccountId>>::Pre>,
     );
     fn additional_signed(&self) -> sp_std::result::Result<(), TransactionValidityError> {
         Ok(())
@@ -182,7 +184,14 @@ where
         len: usize,
     ) -> Result<Self::Pre, TransactionValidityError> {
         let (_, liquidity_info, fee_kind) = self.withdraw_fee(who, call, info, len)?;
-        Ok((self.tip, who.clone(), liquidity_info, fee_kind))
+        let staking_val_payout = T::StakingValPayout::pre_dispatch(call);
+        Ok((
+            self.tip,
+            who.clone(),
+            liquidity_info,
+            fee_kind,
+            staking_val_payout,
+        ))
     }
 
     fn post_dispatch(
@@ -192,7 +201,7 @@ where
         len: usize,
         result: &DispatchResult,
     ) -> Result<(), TransactionValidityError> {
-        if let Some((tip, who, imbalance, custom_fee_details)) = maybe_pre {
+        if let Some((tip, who, imbalance, custom_fee_details, staking_val_payout)) = maybe_pre {
             let actual_fee = crate::Pallet::<T>::compute_actual_fee(
                 len as u32,
                 info,
@@ -204,6 +213,7 @@ where
             T::OnChargeTransaction::correct_and_deposit_fee(
                 &who, info, post_info, actual_fee, tip, imbalance,
             )?;
+            T::StakingValPayout::post_dispatch(staking_val_payout, result);
             let event: <T as ptp::Config>::RuntimeEvent = ptp::Event::<T>::TransactionFeePaid {
                 who,
                 actual_fee,

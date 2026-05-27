@@ -38,6 +38,7 @@ extern crate alloc;
 use crate::vesting_currencies::{VestingSchedule, VestingScheduleVariant};
 use codec::{Decode, Encode};
 use common::prelude::{Balance, FixedWrapper};
+use common::FixedWrapper256;
 use common::{
     balance, AssetIdOf, AssetInfoProvider, AssetManager, BalanceOf, CrowdloanTag, FromGenericPair,
     OnDenominate, OnPswapBurned, PswapRemintInfo, RewardReason, Vesting, PSWAP, TBCD, XOR,
@@ -52,9 +53,11 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use serde::{Deserialize, Serialize};
 use sp_core::bounded::BoundedBTreeSet;
 use sp_runtime::traits::BlockNumberProvider;
-use sp_runtime::traits::{CheckedAdd, CheckedMul, CheckedSub, StaticLookup, Zero};
+use sp_runtime::traits::{
+    CheckedAdd, CheckedMul, CheckedSub, StaticLookup, UniqueSaturatedInto, Zero,
+};
 use sp_runtime::DispatchError;
-use sp_runtime::{Permill, Perquintill};
+use sp_runtime::Perquintill;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::collections::vec_deque::VecDeque;
@@ -507,18 +510,30 @@ impl<T: Config> Pallet<T> {
         reason: RewardReason,
         amount: Balance,
     ) -> DispatchResult {
-        if !Rewards::<T>::contains_key(account_id) {
+        let reward_exists = Rewards::<T>::contains_key(account_id);
+        let mut info = Rewards::<T>::get(account_id);
+        let reason_amount = info
+            .rewards
+            .get(&reason)
+            .copied()
+            .unwrap_or(0)
+            .checked_add(amount)
+            .ok_or(Error::<T>::ArithmeticError)?;
+        info.total_available = info
+            .total_available
+            .checked_add(amount)
+            .ok_or(Error::<T>::ArithmeticError)?;
+        info.rewards.insert(reason, reason_amount);
+        let total_rewards = TotalRewards::<T>::get()
+            .checked_add(amount)
+            .ok_or(Error::<T>::ArithmeticError)?;
+
+        if !reward_exists {
             frame_system::Pallet::<T>::inc_consumers(account_id)
                 .map_err(|_| Error::<T>::IncRefError)?;
         }
-        Rewards::<T>::mutate(account_id, |info| {
-            info.total_available = info.total_available.saturating_add(amount);
-            info.rewards
-                .entry(reason)
-                .and_modify(|e| *e = e.saturating_add(amount))
-                .or_insert(amount);
-        });
-        TotalRewards::<T>::mutate(|balance| *balance = balance.saturating_add(amount));
+        Rewards::<T>::insert(account_id, info);
+        TotalRewards::<T>::put(total_rewards);
         Ok(())
     }
 
@@ -542,8 +557,9 @@ impl<T: Config> Pallet<T> {
                 fail!(Error::<T>::ClaimLimitExceeded);
             } else {
                 let mut total_actual_claimed: Balance = 0;
+                let mut remaining_available = info.total_available;
                 for (&reward_reason, amount) in info.rewards.iter_mut() {
-                    let claimable = (*amount).min(info.limit);
+                    let claimable = (*amount).min(info.limit).min(remaining_available);
                     let actual_claimed = Self::claim_reward_by_reason(
                         account_id,
                         reward_reason,
@@ -551,8 +567,16 @@ impl<T: Config> Pallet<T> {
                         claimable,
                     )
                     .unwrap_or(balance!(0));
-                    info.limit = info.limit.saturating_sub(actual_claimed);
-                    total_actual_claimed = total_actual_claimed.saturating_add(actual_claimed);
+                    info.limit = info
+                        .limit
+                        .checked_sub(actual_claimed)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    remaining_available = remaining_available
+                        .checked_sub(actual_claimed)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    total_actual_claimed = total_actual_claimed
+                        .checked_add(actual_claimed)
+                        .ok_or(Error::<T>::ArithmeticError)?;
                     if claimable > actual_claimed {
                         Self::deposit_event(Event::<T>::ActualDoesntMatchAvailable(reward_reason));
                     }
@@ -569,7 +593,7 @@ impl<T: Config> Pallet<T> {
                 if total_actual_claimed.is_zero() {
                     fail!(Error::<T>::RewardsSupplyShortage);
                 }
-                info.total_available = info.total_available.saturating_sub(total_actual_claimed);
+                info.total_available = remaining_available;
                 TotalRewards::<T>::mutate(|total| {
                     *total = total.saturating_sub(total_actual_claimed)
                 });
@@ -629,19 +653,96 @@ impl<T: Config> Pallet<T> {
         // if there's no accounts to vest, then amount is not utilized nor stored
         if !total_rewards.is_zero() {
             Rewards::<T>::translate(|_key: T::AccountId, mut info: RewardInfo| {
-                let share_of_the_vested_amount = FixedWrapper::from(info.total_available)
-                    * FixedWrapper::from(vested_amount)
-                    / FixedWrapper::from(total_rewards);
+                let share_of_the_vested_amount = (FixedWrapper256::from(info.total_available)
+                    * FixedWrapper256::from(vested_amount)
+                    / FixedWrapper256::from(total_rewards))
+                .try_into_balance();
 
-                let new_limit = (share_of_the_vested_amount + FixedWrapper::from(info.limit))
-                    .try_into_balance()
-                    .unwrap_or(info.limit);
-
-                // don't vest more than available
-                info.limit = new_limit.min(info.total_available);
+                match share_of_the_vested_amount
+                    .ok()
+                    .and_then(|share| info.limit.checked_add(share))
+                {
+                    Some(new_limit) => {
+                        // don't vest more than available
+                        info.limit = new_limit.min(info.total_available);
+                    }
+                    None => {
+                        log::warn!("Failed to distribute vested reward limit");
+                    }
+                }
                 Some(info)
             })
         };
+    }
+
+    fn normalize_crowdloan_asset_balances(
+        balances: Vec<(AssetIdOf<T>, Balance)>,
+    ) -> Result<Vec<(AssetIdOf<T>, Balance)>, DispatchError> {
+        let mut normalized: Vec<(AssetIdOf<T>, Balance)> = Vec::new();
+        for (asset_id, balance) in balances {
+            if let Some((_, existing_balance)) = normalized
+                .iter_mut()
+                .find(|(existing_asset_id, _)| existing_asset_id == &asset_id)
+            {
+                *existing_balance = existing_balance
+                    .checked_add(balance)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+            } else {
+                normalized.push((asset_id, balance));
+            }
+        }
+        Ok(normalized)
+    }
+
+    fn crowdloan_asset_balance(
+        balances: &[(AssetIdOf<T>, Balance)],
+        asset_id: &AssetIdOf<T>,
+    ) -> Option<Balance> {
+        balances
+            .iter()
+            .find(|(stored_asset_id, _)| stored_asset_id == asset_id)
+            .map(|(_, balance)| *balance)
+    }
+
+    pub fn denominate_crowdloan_reward_storage(factor: &BalanceOf<T>) -> DispatchResult {
+        let xor = AssetIdOf::<T>::from(XOR);
+        let tbcd = AssetIdOf::<T>::from(TBCD);
+        let should_denominate = |asset_id: &AssetIdOf<T>| asset_id == &xor || asset_id == &tbcd;
+
+        let mut crowdloan_updates = Vec::new();
+        for (tag, mut info) in CrowdloanInfos::<T>::iter() {
+            info.rewards = Self::normalize_crowdloan_asset_balances(info.rewards)?;
+            for (asset_id, reward) in info.rewards.iter_mut() {
+                if should_denominate(asset_id) {
+                    *reward = reward
+                        .checked_div(*factor)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                }
+            }
+            crowdloan_updates.push((tag, info));
+        }
+
+        let mut user_updates = Vec::new();
+        for (user, tag, mut user_info) in CrowdloanUserInfos::<T>::iter() {
+            user_info.rewarded = Self::normalize_crowdloan_asset_balances(user_info.rewarded)?;
+            for (asset_id, rewarded) in user_info.rewarded.iter_mut() {
+                if should_denominate(asset_id) {
+                    *rewarded = rewarded
+                        .checked_div(*factor)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                }
+            }
+            user_updates.push((user, tag, user_info));
+        }
+
+        for (tag, info) in crowdloan_updates {
+            CrowdloanInfos::<T>::insert(tag, info);
+        }
+        for (user, tag, user_info) in user_updates {
+            CrowdloanUserInfos::<T>::insert(user, tag, user_info);
+        }
+
+        Ok(())
     }
 
     /// Helper function for runtime api
@@ -651,20 +752,11 @@ impl<T: Config> Pallet<T> {
         asset_id: &AssetIdOf<T>,
     ) -> Option<Balance> {
         let info = CrowdloanInfos::<T>::get(tag)?;
-        let total_rewards = info
-            .rewards
-            .iter()
-            .find(|(a, _)| a == asset_id)
-            .cloned()
-            .map(|(_, r)| r)?;
+        let rewards = Self::normalize_crowdloan_asset_balances(info.rewards.clone()).ok()?;
+        let total_rewards = Self::crowdloan_asset_balance(&rewards, asset_id)?;
         let user_info = CrowdloanUserInfos::<T>::get(user, tag)?;
-        let rewarded = info
-            .rewards
-            .iter()
-            .find(|(a, _)| a == asset_id)
-            .cloned()
-            .map(|(_, r)| r)
-            .unwrap_or_default();
+        let rewarded = Self::normalize_crowdloan_asset_balances(user_info.rewarded.clone()).ok()?;
+        let rewarded = Self::crowdloan_asset_balance(&rewarded, asset_id).unwrap_or_default();
         let now = frame_system::Pallet::<T>::block_number();
         let claimable = Self::calculate_claimable_crowdloan_reward(
             &now,
@@ -688,15 +780,19 @@ impl<T: Config> Pallet<T> {
         let elapsed = now
             .checked_sub(&info.start_block)
             .ok_or(Error::<T>::CrowdloanRewardsDistributionNotStarted)?;
+        ensure!(
+            !info.total_contribution.is_zero() && !info.length.is_zero(),
+            Error::<T>::ArithmeticError
+        );
         let rewards_part = Perquintill::from_rational(contribution, info.total_contribution);
         let user_reward = rewards_part.mul_floor(total_rewards);
 
         let user_reward_now = if elapsed >= info.length {
             user_reward
         } else {
-            let length_days = info.length / T::BLOCKS_PER_DAY;
-            let elapsed_days = elapsed / T::BLOCKS_PER_DAY;
-            let elapsed_percent = Permill::from_rational(elapsed_days, length_days);
+            let elapsed_blocks: u128 = elapsed.unique_saturated_into();
+            let length_blocks: u128 = info.length.unique_saturated_into();
+            let elapsed_percent = Perquintill::from_rational(elapsed_blocks, length_blocks);
             elapsed_percent.mul_floor(user_reward)
         };
 
@@ -746,34 +842,37 @@ impl<T: Config> Pallet<T> {
         user: &T::AccountId,
         crowdloan: CrowdloanTag,
     ) -> DispatchResult {
-        let now = frame_system::Pallet::<T>::block_number();
-        let info =
-            CrowdloanInfos::<T>::get(&crowdloan).ok_or(Error::<T>::CrowdloanDoesNotExists)?;
-        let mut user_info = CrowdloanUserInfos::<T>::get(user, &crowdloan)
-            .ok_or(Error::<T>::NotCrowdloanParticipant)?;
-        let user_rewarded = user_info
-            .rewarded
-            .iter()
-            .cloned()
-            .collect::<BTreeMap<_, _>>();
-        let mut user_rewards = vec![];
+        common::with_transaction(|| {
+            let now = frame_system::Pallet::<T>::block_number();
+            let mut info =
+                CrowdloanInfos::<T>::get(&crowdloan).ok_or(Error::<T>::CrowdloanDoesNotExists)?;
+            info.rewards = Self::normalize_crowdloan_asset_balances(info.rewards)?;
+            let mut user_info = CrowdloanUserInfos::<T>::get(user, &crowdloan)
+                .ok_or(Error::<T>::NotCrowdloanParticipant)?;
+            let user_rewarded = Self::normalize_crowdloan_asset_balances(user_info.rewarded)?;
+            let mut user_rewards = vec![];
 
-        for (asset_id, total_rewards) in info.rewards.iter() {
-            let mut rewarded = user_rewarded.get(asset_id).cloned().unwrap_or_default();
-            rewarded += Self::claim_crowdloan_reward_for_asset(
-                user,
-                &now,
-                &info,
-                asset_id,
-                *total_rewards,
-                user_info.contribution,
-                rewarded,
-            )?;
-            user_rewards.push((asset_id.clone(), rewarded));
-        }
-        user_info.rewarded = user_rewards;
-        CrowdloanUserInfos::<T>::insert(user, &crowdloan, user_info);
-        Ok(())
+            for (asset_id, total_rewards) in info.rewards.iter() {
+                let mut rewarded =
+                    Self::crowdloan_asset_balance(&user_rewarded, asset_id).unwrap_or_default();
+                let claimed = Self::claim_crowdloan_reward_for_asset(
+                    user,
+                    &now,
+                    &info,
+                    asset_id,
+                    *total_rewards,
+                    user_info.contribution,
+                    rewarded,
+                )?;
+                rewarded = rewarded
+                    .checked_add(claimed)
+                    .ok_or(Error::<T>::ArithmeticError)?;
+                user_rewards.push((asset_id.clone(), rewarded));
+            }
+            user_info.rewarded = user_rewards;
+            CrowdloanUserInfos::<T>::insert(user, &crowdloan, user_info);
+            Ok(())
+        })
     }
 
     pub fn register_crowdloan_unchecked(
@@ -791,6 +890,15 @@ impl<T: Config> Pallet<T> {
             !rewards.is_empty() && !contributions.is_empty(),
             Error::<T>::WrongCrowdloanInfo
         );
+        let mut total_contribution = 0u128;
+        for (_, contribution) in contributions.iter() {
+            total_contribution = total_contribution
+                .checked_add(*contribution)
+                .ok_or(Error::<T>::ArithmeticError)?;
+        }
+        ensure!(total_contribution != 0, Error::<T>::WrongCrowdloanInfo);
+        let rewards = Self::normalize_crowdloan_asset_balances(rewards)?;
+
         let tech_account = T::TechAccountId::from_generic_pair(
             TECH_ACCOUNT_PREFIX.to_vec(),
             tag.0.clone().to_vec(),
@@ -798,9 +906,7 @@ impl<T: Config> Pallet<T> {
         technical::Pallet::<T>::register_tech_account_id_if_not_exist(&tech_account)?;
         let account = technical::Pallet::<T>::tech_account_id_to_account_id(&tech_account)?;
 
-        let mut total_contribution = 0;
         for (user, contribution) in contributions {
-            total_contribution += contribution;
             CrowdloanUserInfos::<T>::insert(
                 &user,
                 &tag,
@@ -850,55 +956,86 @@ pub struct DenominateXorAndTbcd<T: Config>(PhantomData<T>);
 
 impl<T: Config> OnDenominate<BalanceOf<T>> for DenominateXorAndTbcd<T> {
     fn on_denominate(factor: &BalanceOf<T>) -> DispatchResult {
-        frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
-        let accounts: Vec<T::AccountId> = VestingSchedules::<T>::iter_keys().collect();
-        let block_number = <frame_system::Pallet<T>>::block_number();
-        for account in accounts {
-            VestingSchedules::<T>::mutate(account.clone(), |schedules| {
+        common::with_transaction(|| {
+            frame_support::__private::log::info!("{}::on_denominate({})", module_path!(), factor);
+            let accounts: Vec<T::AccountId> = VestingSchedules::<T>::iter_keys().collect();
+            let block_number = <frame_system::Pallet<T>>::block_number();
+            let mut updates = Vec::new();
+
+            for account in accounts {
+                let mut schedules = VestingSchedules::<T>::get(&account);
                 for schedule in schedules.iter_mut() {
                     match schedule {
                         VestingScheduleVariant::LinearVestingSchedule(s)
                             if s.asset_id == TBCD.into() || s.asset_id == XOR.into() =>
                         {
-                            let mut locked_amount =
-                                s.locked_amount(block_number).unwrap_or(Balance::zero());
-                            locked_amount =
-                                locked_amount.checked_div(*factor).unwrap_or(locked_amount);
-                            s.per_period =
-                                s.per_period.checked_div(*factor).unwrap_or(s.per_period);
+                            let old_locked_amount = s
+                                .locked_amount(block_number)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            let new_locked_amount = old_locked_amount
+                                .checked_div(*factor)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            s.per_period = s
+                                .per_period
+                                .checked_div(*factor)
+                                .ok_or(Error::<T>::ArithmeticError)?;
                             s.remainder_amount = s
                                 .remainder_amount
                                 .checked_div(*factor)
-                                .unwrap_or(s.remainder_amount);
-                            s.remainder_amount = s.remainder_amount.saturating_add(
-                                locked_amount
-                                    - s.locked_amount(block_number).unwrap_or(Balance::zero()),
-                            );
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            let adjusted_locked_amount = s
+                                .locked_amount(block_number)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            let rounding_delta = new_locked_amount
+                                .checked_sub(adjusted_locked_amount)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            s.remainder_amount = s
+                                .remainder_amount
+                                .checked_add(rounding_delta)
+                                .ok_or(Error::<T>::ArithmeticError)?;
                         }
                         VestingScheduleVariant::LinearPendingVestingSchedule(s)
                             if s.asset_id == TBCD.into() || s.asset_id == XOR.into() =>
                         {
-                            let mut locked_amount =
-                                s.locked_amount(block_number).unwrap_or(Balance::zero());
-                            locked_amount =
-                                locked_amount.checked_div(*factor).unwrap_or(locked_amount);
-                            s.per_period =
-                                s.per_period.checked_div(*factor).unwrap_or(s.per_period);
+                            let old_locked_amount = s
+                                .locked_amount(block_number)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            let new_locked_amount = old_locked_amount
+                                .checked_div(*factor)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            s.per_period = s
+                                .per_period
+                                .checked_div(*factor)
+                                .ok_or(Error::<T>::ArithmeticError)?;
                             s.remainder_amount = s
                                 .remainder_amount
                                 .checked_div(*factor)
-                                .unwrap_or(s.remainder_amount);
-                            s.remainder_amount = s.remainder_amount.saturating_add(
-                                locked_amount
-                                    - s.locked_amount(block_number).unwrap_or(Balance::zero()),
-                            );
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            let adjusted_locked_amount = s
+                                .locked_amount(block_number)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            let rounding_delta = new_locked_amount
+                                .checked_sub(adjusted_locked_amount)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            s.remainder_amount = s
+                                .remainder_amount
+                                .checked_add(rounding_delta)
+                                .ok_or(Error::<T>::ArithmeticError)?;
                         }
                         _ => {}
                     }
                 }
-            });
-        }
-        Ok(())
+                updates.push((account, schedules));
+            }
+
+            for (account, schedules) in updates {
+                VestingSchedules::<T>::insert(account, schedules);
+            }
+
+            Pallet::<T>::denominate_crowdloan_reward_storage(factor)?;
+
+            Ok(())
+        })
     }
 }
 
@@ -1004,28 +1141,59 @@ pub mod pallet {
             rewards: BTreeMap<T::AccountId, BTreeMap<RewardReason, Balance>>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            let mut total_rewards_diff = 0i128;
+            let mut total_rewards_increase = 0u128;
+            let mut total_rewards_decrease = 0u128;
+            let mut updates = Vec::new();
             for (account, reward) in rewards {
-                Rewards::<T>::mutate(&account, |value| {
-                    for (reason, amount) in reward {
-                        let v = value.rewards.entry(reason).or_insert(0);
-                        *v += amount;
-                    }
-                    let total: i128 = value
+                ensure!(
+                    Rewards::<T>::contains_key(&account),
+                    Error::<T>::NothingToClaim
+                );
+                let mut value = Rewards::<T>::get(&account);
+                for (reason, amount) in reward {
+                    let reason_amount = value
                         .rewards
-                        .iter_mut()
-                        .map(|(_, amount)| *amount as i128)
-                        .sum();
-                    total_rewards_diff += total - value.total_available as i128;
-                });
-            }
-            TotalRewards::<T>::mutate(|value| {
-                if total_rewards_diff < 0 {
-                    *value -= total_rewards_diff.abs() as Balance;
-                } else {
-                    *value += total_rewards_diff as Balance;
+                        .get(&reason)
+                        .copied()
+                        .unwrap_or(0)
+                        .checked_add(amount)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                    value.rewards.insert(reason, reason_amount);
                 }
-            });
+                let total = value.rewards.values().try_fold(0u128, |total, amount| {
+                    total
+                        .checked_add(*amount)
+                        .ok_or(Error::<T>::ArithmeticError)
+                })?;
+                if total >= value.total_available {
+                    total_rewards_increase = total_rewards_increase
+                        .checked_add(total - value.total_available)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                } else {
+                    total_rewards_decrease = total_rewards_decrease
+                        .checked_add(value.total_available - total)
+                        .ok_or(Error::<T>::ArithmeticError)?;
+                }
+                value.total_available = total;
+                value.limit = value.limit.min(total);
+                updates.push((account, value));
+            }
+
+            let total_rewards = TotalRewards::<T>::get();
+            let total_rewards = if total_rewards_increase >= total_rewards_decrease {
+                total_rewards
+                    .checked_add(total_rewards_increase - total_rewards_decrease)
+                    .ok_or(Error::<T>::ArithmeticError)?
+            } else {
+                total_rewards
+                    .checked_sub(total_rewards_decrease - total_rewards_increase)
+                    .ok_or(Error::<T>::ArithmeticError)?
+            };
+
+            for (account, value) in updates {
+                Rewards::<T>::insert(&account, value);
+            }
+            TotalRewards::<T>::put(total_rewards);
 
             Ok(().into())
         }

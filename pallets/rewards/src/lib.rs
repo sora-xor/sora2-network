@@ -43,14 +43,15 @@ use codec::{Decode, Encode};
 use frame_support::dispatch::PostDispatchInfo;
 use frame_support::storage::StorageMap as StorageMapTrait;
 use serde::{Deserialize, Serialize};
+use sp_core::U256;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_runtime::RuntimeDebug;
-use sp_runtime::{Perbill, Percent};
+use sp_runtime::{Perbill, Percent, Rounding};
 use sp_std::prelude::*;
 
+use common::arithmetic::helpers_256bit::multiply_by_rational_with_rounding;
 use common::balance;
 use common::eth::EthAddress;
-use common::prelude::FixedWrapper;
 use common::AssetIdOf;
 use common::{eth, AccountIdOf, Balance, OnValBurned, VAL};
 
@@ -239,10 +240,14 @@ impl<T: Config> Pallet<T> {
             *is_eligible = true;
             let mut updated_balances = rewards.clone();
             let nfts = UmiNfts::<T>::get();
+            let mut umi_claimed = false;
 
             for (n, balance) in rewards.iter().enumerate() {
                 if *balance > 0 {
-                    let asset_id = nfts[n];
+                    let asset_id = nfts
+                        .get(n)
+                        .cloned()
+                        .ok_or(Error::<T>::InvalidUmiNftStorage)?;
                     technical::Pallet::<T>::transfer_out(
                         &asset_id,
                         reserves_acc,
@@ -250,14 +255,15 @@ impl<T: Config> Pallet<T> {
                         *balance,
                     )?;
                     updated_balances[n] = 0;
-                    *claimed = true;
-                } else {
-                    *claimed = false;
+                    umi_claimed = true;
                 }
             }
 
-            UmiNftReceivers::<T>::insert(eth_address, updated_balances);
-            UmiNftClaimed::<T>::insert(eth_address, claimed);
+            if umi_claimed {
+                *claimed = true;
+                UmiNftReceivers::<T>::insert(eth_address, updated_balances);
+                UmiNftClaimed::<T>::insert(eth_address, true);
+            }
         }
         Ok(())
     }
@@ -361,22 +367,46 @@ pub mod pallet {
                 let batch_index: u32 =
                     ((now % T::BLOCKS_PER_DAY) / T::UPDATE_FREQUENCY).unique_saturated_into();
                 if let Ok(addresses) = EthAddresses::<T>::try_get(batch_index) {
-                    let wrapped_current_claimable = FixedWrapper::from(current_claimable);
-                    let wrapped_total_rewards = FixedWrapper::from(total_rewards);
-
-                    let coeff = wrapped_current_claimable / wrapped_total_rewards;
-
                     addresses.iter().for_each(|addr| {
                         let RewardInfo { claimable, total } = ValOwners::<T>::get(addr);
-                        let amount = (FixedWrapper::from(total) * coeff.clone())
-                            .try_into_balance()
-                            .unwrap_or(0);
-                        let new_claimable = total.min(claimable.saturating_add(amount));
+                        let amount = match multiply_by_rational_with_rounding(
+                            U256::from(total),
+                            U256::from(current_claimable),
+                            U256::from(total_rewards),
+                            Rounding::Down,
+                        )
+                        .and_then(|amount| amount.try_into().ok())
+                        {
+                            Some(amount) => amount,
+                            None => {
+                                frame_support::__private::log::warn!(
+                                    "Failed to calculate VAL reward for {:?}",
+                                    addr
+                                );
+                                return;
+                            }
+                        };
+                        let new_claimable =
+                            total.min(claimable.checked_add(amount).unwrap_or(total));
+                        if new_claimable <= claimable {
+                            return;
+                        }
                         let amount = new_claimable - claimable;
+                        let total_claimable =
+                            match TotalClaimableVal::<T>::get().checked_add(amount) {
+                                Some(total_claimable) => total_claimable,
+                                None => {
+                                    frame_support::__private::log::warn!(
+                                        "Failed to add total claimable VAL for {:?}",
+                                        addr
+                                    );
+                                    return;
+                                }
+                            };
                         ValOwners::<T>::mutate(addr, |v| {
                             *v = RewardInfo::new(new_claimable, total);
                         });
-                        TotalClaimableVal::<T>::mutate(|v| *v = v.saturating_add(amount));
+                        TotalClaimableVal::<T>::put(total_claimable);
                         consumed_weight += T::DbWeight::get().reads_writes(2, 1);
                     });
                 };
@@ -492,6 +522,8 @@ pub mod pallet {
         SignatureVerificationFailed,
         /// Occurs if an attempt to repeat the unclaimed VAL data update is made
         IllegalCall,
+        /// UMI NFT receiver storage references an NFT that is not configured
+        InvalidUmiNftStorage,
     }
 
     #[pallet::storage]

@@ -33,10 +33,13 @@ use crate::mock::{
     BASE_NETWORK_ID, ETH, XOR,
 };
 use crate::Error;
-use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
+use crate::{AppAddresses, AssetKinds, AssetsByAddresses, SidechainPrecision, TokenAddresses};
 use bridge_types::evm::AdditionalEVMInboundData;
-use bridge_types::types::{AssetKind, CallOriginOutput, GenericAdditionalInboundData};
-use bridge_types::{EVMChainId, GenericNetworkId, H160};
+use bridge_types::traits::BridgeApp;
+use bridge_types::types::{
+    AssetKind, BridgeAssetInfo, CallOriginOutput, GenericAdditionalInboundData,
+};
+use bridge_types::{EVMChainId, GenericNetworkId, H160, H256};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use sp_keyring::AccountKeyring as Keyring;
@@ -201,6 +204,209 @@ fn test_register_asset_internal() {
             BASE_NETWORK_ID,
             asset_id
         ));
+    })
+}
+
+#[test]
+fn deprecated_token_address_cannot_be_registered() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(99);
+        let network_id = BASE_NETWORK_ID;
+
+        assert_noop!(
+            FungibleApp::register_sidechain_asset(
+                RuntimeOrigin::root(),
+                network_id,
+                address,
+                "OLD".to_string().into(),
+                "OLD".to_string().into(),
+                18,
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+
+        assert_noop!(
+            FungibleApp::register_existing_sidechain_asset(
+                RuntimeOrigin::root(),
+                network_id,
+                address,
+                ETH,
+                18,
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+
+        let who = AppAddresses::<Test>::get(network_id).unwrap();
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {
+            network_id: GenericNetworkId::EVM(network_id),
+            additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData { source: who }),
+            ..Default::default()
+        });
+        assert_noop!(
+            FungibleApp::register_asset_internal(origin.into(), ETH, address),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+
+        assert_noop!(
+            FungibleApp::register_asset_inner(
+                network_id,
+                H256::repeat_byte(55),
+                address,
+                AssetKind::Thischain,
+                18,
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+
+        let other_network_id = EVMChainId::from_low_u64_be(77);
+        assert_noop!(
+            FungibleApp::register_network(
+                RuntimeOrigin::root(),
+                network_id,
+                address,
+                "OLD".to_string().into(),
+                "OLD".to_string().into(),
+                18,
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+        assert_noop!(
+            FungibleApp::register_network_with_existing_asset(
+                RuntimeOrigin::root(),
+                network_id,
+                address,
+                ETH,
+                18,
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+        assert_ok!(FungibleApp::register_network_with_existing_asset(
+            RuntimeOrigin::root(),
+            other_network_id,
+            address,
+            H256::repeat_byte(56),
+            18,
+        ));
+    })
+}
+
+#[test]
+fn deprecated_token_address_cannot_be_minted_or_burned() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(99);
+        let network_id = BASE_NETWORK_ID;
+        let asset_id = ETH;
+
+        TokenAddresses::<Test>::insert(network_id, asset_id, address);
+        AssetsByAddresses::<Test>::insert(network_id, address, asset_id);
+        AssetKinds::<Test>::insert(network_id, asset_id, AssetKind::Thischain);
+        SidechainPrecision::<Test>::insert(network_id, asset_id, 18);
+
+        let who = AppAddresses::<Test>::get(network_id).unwrap();
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {
+            network_id: GenericNetworkId::EVM(network_id),
+            additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData { source: who }),
+            ..Default::default()
+        });
+        let recipient: AccountId = Keyring::Charlie.into();
+        assert_noop!(
+            FungibleApp::mint(
+                origin.into(),
+                address,
+                H160::repeat_byte(1),
+                recipient.clone(),
+                10u32.into(),
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+        assert_eq!(Tokens::total_balance(asset_id, &recipient), 0);
+
+        let bob: AccountId = Keyring::Bob.into();
+        Tokens::deposit(asset_id, &bob, 500).unwrap();
+        assert_eq!(Tokens::total_balance(asset_id, &bob), 500);
+        assert_noop!(
+            FungibleApp::burn(
+                RuntimeOrigin::signed(bob.clone()),
+                network_id,
+                asset_id,
+                H160::repeat_byte(2),
+                10,
+            ),
+            Error::<Test>::DeprecatedTokenAddress
+        );
+        assert_eq!(Tokens::total_balance(asset_id, &bob), 500);
+    })
+}
+
+#[test]
+fn deprecated_token_address_is_not_reported_as_supported() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(99);
+        let network_id = BASE_NETWORK_ID;
+        let asset_id = ETH;
+
+        TokenAddresses::<Test>::insert(network_id, asset_id, address);
+        AssetsByAddresses::<Test>::insert(network_id, address, asset_id);
+        AssetKinds::<Test>::insert(network_id, asset_id, AssetKind::Thischain);
+        SidechainPrecision::<Test>::insert(network_id, asset_id, 18);
+
+        assert!(
+            !<FungibleApp as BridgeApp<AccountId, H160, H256, u128>>::is_asset_supported(
+                GenericNetworkId::EVM(network_id),
+                asset_id,
+            )
+        );
+        assert!(
+            <FungibleApp as BridgeApp<AccountId, H160, H256, u128>>::list_supported_assets(
+                GenericNetworkId::EVM(network_id)
+            )
+            .into_iter()
+            .all(|asset| !matches!(asset, BridgeAssetInfo::EVM(info) if info.asset_id == asset_id))
+        );
+    })
+}
+
+#[test]
+fn deprecated_token_address_rejection_is_network_scoped() {
+    new_tester().execute_with(|| {
+        let address = H160::repeat_byte(99);
+        let app_contract = H160::repeat_byte(100);
+        let network_id = EVMChainId::from_low_u64_be(77);
+
+        assert_ok!(FungibleApp::register_network(
+            RuntimeOrigin::root(),
+            network_id,
+            app_contract,
+            "NET".to_string().into(),
+            "Network Asset".to_string().into(),
+            18,
+        ));
+        assert_ok!(FungibleApp::register_sidechain_asset(
+            RuntimeOrigin::root(),
+            network_id,
+            address,
+            "OLD".to_string().into(),
+            "OLD".to_string().into(),
+            18,
+        ));
+        let asset_id = AssetsByAddresses::<Test>::get(network_id, address).unwrap();
+        let recipient: AccountId = Keyring::Charlie.into();
+
+        assert_ok!(FungibleApp::mint(
+            dispatch::RawOrigin::new(CallOriginOutput {
+                network_id: GenericNetworkId::EVM(network_id),
+                additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData {
+                    source: app_contract,
+                }),
+                ..Default::default()
+            })
+            .into(),
+            address,
+            H160::repeat_byte(1),
+            recipient.clone(),
+            10u32.into(),
+        ));
+        assert_eq!(Tokens::total_balance(asset_id, &recipient), 10);
     })
 }
 
