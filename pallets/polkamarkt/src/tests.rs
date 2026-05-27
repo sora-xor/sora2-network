@@ -1229,6 +1229,39 @@ fn runtime_claimable_reports_trader_and_creator_balances() {
 }
 
 #[test]
+fn runtime_claimable_excludes_liquidity_owned_by_other_lps() {
+    new_test_ext().execute_with(|| {
+        setup_market(1_000, 10);
+        assert_ok!(Polkamarkt::add_liquidity(
+            RuntimeOrigin::signed(BOB),
+            0,
+            500,
+            500,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        assert_ok!(Polkamarkt::claim_creator_liquidity(
+            RuntimeOrigin::signed(ALICE),
+            0,
+        ));
+
+        assert!(LiquidityPositions::<Test>::get(0, ALICE).is_none());
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 500);
+
+        let creator = Polkamarkt::claimable_info(ALICE, 0).expect("creator claimable");
+        assert_eq!(creator.creator_liquidity, 0);
+        assert_noop!(
+            Polkamarkt::claim_creator_liquidity(RuntimeOrigin::signed(ALICE), 0),
+            Error::<Test>::NothingToClaim
+        );
+    });
+}
+
+#[test]
 fn fee_and_volume_counters_saturate_on_buy() {
     new_test_ext().execute_with(|| {
         setup_market(100_000, 10);

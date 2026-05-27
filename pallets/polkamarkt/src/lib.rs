@@ -1831,11 +1831,15 @@ pub mod pallet {
                 ) {
                 let total_claimable = Self::creator_liquidity_claimable(market_id, &market)?;
                 let totals = LiquidityPositionTotals::<T>::get(market_id);
-                match LiquidityPositions::<T>::get(market_id, &who) {
-                    Some(position) if !totals.total_shares.is_zero() => {
-                        Self::pro_rata(total_claimable, position.shares, totals.total_shares)?
+                if totals.total_shares.is_zero() {
+                    total_claimable
+                } else {
+                    match LiquidityPositions::<T>::get(market_id, &who) {
+                        Some(position) => {
+                            Self::pro_rata(total_claimable, position.shares, totals.total_shares)?
+                        }
+                        None => T::Balance::zero(),
                     }
-                    _ => total_claimable,
                 }
             } else {
                 T::Balance::zero()
