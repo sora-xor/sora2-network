@@ -47,7 +47,15 @@ impl<T: Config> Pallet<T> {
 
     fn visible_request_status(network_id: T::NetworkId, hash: &H256) -> Option<RequestStatus> {
         let status = Self::request_status(network_id, hash)?;
-        if Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(network_id, hash) {
+        if matches!(
+            &status,
+            RequestStatus::Pending
+                | RequestStatus::Frozen
+                | RequestStatus::ApprovalsReady
+                | RequestStatus::Broken(_, _)
+        ) && Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+            network_id, hash,
+        ) {
             Some(RequestStatus::Failed(
                 Error::<T>::DeprecatedLegacyXor.into(),
             ))

@@ -3386,6 +3386,79 @@ fn transfer_lp_tokens_rejects_target_overflow_without_mutating_source() {
 }
 
 #[test]
+fn transfer_lp_tokens_self_transfer_is_noop() {
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let provider = BOB();
+        PoolProviders::<Runtime>::insert(&pool_account, &provider, 10);
+
+        assert_ok!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                provider.clone(),
+                provider.clone(),
+                3,
+            )
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &provider),
+            Some(10)
+        );
+    });
+
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let provider = BOB();
+        PoolProviders::<Runtime>::insert(&pool_account, &provider, Balance::MAX);
+
+        assert_ok!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                provider.clone(),
+                provider.clone(),
+                1,
+            )
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &provider),
+            Some(Balance::MAX)
+        );
+    });
+}
+
+#[test]
+fn transfer_lp_tokens_self_transfer_rejects_insufficient_balance() {
+    ExtBuilder::default().build().execute_with(|| {
+        let pool_account = ALICE();
+        let provider = BOB();
+        PoolProviders::<Runtime>::insert(&pool_account, &provider, 5);
+
+        assert_noop!(
+            <crate::Pallet<Runtime> as XykPool<AccountId, AssetId>>::transfer_lp_tokens(
+                pool_account.clone(),
+                GetBaseAssetId::get(),
+                GreenPromise.into(),
+                provider.clone(),
+                provider.clone(),
+                6,
+            ),
+            crate::Error::<Runtime>::AccountBalanceIsInvalid
+        );
+
+        assert_eq!(
+            PoolProviders::<Runtime>::get(&pool_account, &provider),
+            Some(5)
+        );
+    });
+}
+
+#[test]
 fn test_get_pair_info() {
     ExtBuilder::default().build().execute_with(|| {
         let asset_base = GetBaseAssetId::get();

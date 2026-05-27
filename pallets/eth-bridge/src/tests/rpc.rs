@@ -160,6 +160,74 @@ fn generic_request_rpcs_virtualize_legacy_xor_approvals_ready_after_decommission
 }
 
 #[test]
+fn generic_request_rpcs_preserve_finished_legacy_xor_statuses_after_decommission() {
+    let (mut ext, _) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        frame_system::Pallet::<Runtime>::set_block_number(2);
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+
+        let insert_legacy_xor_transfer = |nonce: u64, status: RequestStatus| {
+            let request =
+                OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer::<Runtime> {
+                    from: alice.clone(),
+                    to: EthAddress::from([nonce as u8; 20]),
+                    asset_id: XOR.into(),
+                    amount: 10u32.into(),
+                    nonce,
+                    network_id: ETH_NETWORK_ID,
+                    timepoint: Default::default(),
+                }));
+            let hash = request.hash();
+            crate::Requests::<Runtime>::insert(ETH_NETWORK_ID, hash, request);
+            crate::RequestStatuses::<Runtime>::insert(ETH_NETWORK_ID, hash, status);
+            crate::RequestSubmissionHeight::<Runtime>::insert(ETH_NETWORK_ID, hash, 1);
+            hash
+        };
+
+        let done_hash = insert_legacy_xor_transfer(1, RequestStatus::Done);
+        let failed_status = RequestStatus::Failed(crate::Error::<Runtime>::Other.into());
+        let failed_hash = insert_legacy_xor_transfer(2, failed_status.clone());
+        crate::AccountRequests::<Runtime>::insert(
+            &alice,
+            vec![(ETH_NETWORK_ID, done_hash), (ETH_NETWORK_ID, failed_hash)],
+        );
+
+        assert_eq!(
+            EthBridge::get_requests(&[done_hash], Some(ETH_NETWORK_ID), false)
+                .expect("rpc call succeeds")
+                .pop()
+                .map(|(_, status)| status),
+            Some(RequestStatus::Done)
+        );
+        assert_eq!(
+            EthBridge::get_requests(&[failed_hash], Some(ETH_NETWORK_ID), false)
+                .expect("rpc call succeeds")
+                .pop()
+                .map(|(_, status)| status),
+            Some(failed_status.clone())
+        );
+        assert_eq!(
+            EthBridge::get_requests(&[done_hash], None, false)
+                .expect("rpc call succeeds")
+                .pop()
+                .map(|(_, status)| status),
+            Some(RequestStatus::Done)
+        );
+        assert_eq!(
+            EthBridge::get_account_requests(&alice, Some(RequestStatus::Done))
+                .expect("rpc call succeeds"),
+            vec![(ETH_NETWORK_ID, done_hash)]
+        );
+        assert_eq!(
+            EthBridge::get_account_requests(&alice, Some(failed_status))
+                .expect("rpc call succeeds"),
+            vec![(ETH_NETWORK_ID, failed_hash)]
+        );
+    });
+}
+
+#[test]
 fn generic_request_rpcs_keep_new_xor_visible_at_decommission_height_boundary() {
     let (mut ext, _) = ExtBuilder::default().build();
     ext.execute_with(|| {

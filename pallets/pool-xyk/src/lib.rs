@@ -136,6 +136,9 @@ impl<T: Config> XykPool<T::AccountId, AssetIdOf<T>> for Pallet<T> {
         let new_base_balance = old_base_balance
             .checked_sub(pool_tokens)
             .ok_or(Error::<T>::AccountBalanceIsInvalid)?;
+        if base_account_id == target_account_id {
+            return Ok(());
+        }
         let old_target_balance = PoolProviders::<T>::get(&pool_account, &target_account_id);
         let new_target_balance = old_target_balance
             .unwrap_or(0)
