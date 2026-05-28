@@ -145,28 +145,13 @@ fn bridge_peer_isolation_audit_try_runtime_hooks() {
 }
 #[cfg(test)]
 #[test]
-fn queue_ethereum_xor_thischain_add_asset_migration_queues_once() {
-    tests::queue_ethereum_xor_thischain_add_asset_migration_queues_once();
-}
-#[cfg(test)]
-#[test]
-fn queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue() {
-    tests::queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue();
-}
-#[cfg(test)]
-#[test]
-fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states() {
-    tests::queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states();
+fn finalize_ethereum_xor_thischain_add_asset_migration_repairs_stuck_mark_as_done() {
+    tests::finalize_ethereum_xor_thischain_add_asset_migration_repairs_stuck_mark_as_done();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
 fn legacy_ethereum_xor_decommission_try_runtime_hooks() {
     tests::legacy_ethereum_xor_decommission_try_runtime_hooks();
-}
-#[cfg(all(test, feature = "try-runtime"))]
-#[test]
-fn queue_ethereum_xor_thischain_add_asset_try_runtime_hooks() {
-    tests::queue_ethereum_xor_thischain_add_asset_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[tokio::test]
@@ -397,10 +382,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 128,
+    spec_version: 129,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 128,
+    transaction_version: 129,
     system_version: 0,
 };
 

@@ -149,9 +149,8 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
         let xor_is_clean_thischain_registration =
             EthBridge::is_ethereum_xor_thischain_registration(eth_network_id, &xor_asset_id);
         assert!(
-            EthBridge::registered_asset(eth_network_id, xor_asset_id).is_none()
-                || xor_is_clean_thischain_registration,
-            "Ethereum XOR bridge asset mapping is neither removed nor a clean Thischain registration"
+            xor_is_clean_thischain_registration,
+            "Ethereum XOR bridge asset mapping is not a clean Thischain registration"
         );
         assert!(
             EthBridge::registered_sidechain_token(eth_network_id, xor_asset_id).is_none(),
@@ -166,13 +165,8 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
             "legacy Ethereum XOR sidechain asset mapping still exists"
         );
         assert!(
-            migrations::ethereum_xor_thischain_add_asset_queued(),
-            "Ethereum XOR Thischain add-asset migration marker was not written"
-        );
-        assert!(
-            xor_is_clean_thischain_registration
-                || EthBridge::is_add_asset_request_pending(eth_network_id, xor_asset_id),
-            "Ethereum XOR Thischain add-asset request is neither pending nor finalized"
+            migrations::ethereum_xor_thischain_add_asset_finalized(),
+            "Ethereum XOR Thischain add-asset finalization marker was not written"
         );
     });
 }

@@ -61,7 +61,7 @@ pub type Migrations = (
     SubstrateBridgeOutboundChannelStorageVersionV1,
     BridgePeerIsolationAudit,
     DecommissionLegacyEthereumXor,
-    QueueEthereumXorThischainAddAsset,
+    FinalizeEthereumXorThischainAddAsset,
     DemeterFarmingPlatformStorageVersionV3,
     RepairXorTbcdRewardDenomination,
     pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
@@ -155,28 +155,28 @@ fn audit_legacy_ethereum_xor_decommission_cleanup() -> Result<(), TryRuntimeErro
     }
 }
 
-const ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY: &[u8] =
-    b"runtime:migrations:ethereum_xor_thischain_add_asset_queued";
+const ETHEREUM_XOR_THISCHAIN_ADD_ASSET_FINALIZED_KEY: &[u8] =
+    b"runtime:migrations:ethereum_xor_thischain_add_asset_finalized";
+const ETHEREUM_XOR_THISCHAIN_ADD_ASSET_REQUEST_HASH: sp_core::H256 = sp_core::H256([
+    0xf4, 0x6f, 0xb9, 0x3b, 0x99, 0xc8, 0x75, 0x6b, 0xf3, 0x32, 0x4e, 0x18, 0xbb, 0x4c, 0x20, 0x43,
+    0x08, 0x8b, 0xc2, 0x62, 0xb7, 0x5b, 0xb9, 0x80, 0x7a, 0xc9, 0x6c, 0xf8, 0xf7, 0xbb, 0x07, 0xd2,
+]);
+const ETHEREUM_XOR_THISCHAIN_MARK_AS_DONE_LOAD_HASH: sp_core::H256 = sp_core::H256([
+    0xf3, 0x30, 0xa3, 0xca, 0xa7, 0x3b, 0x9f, 0xf4, 0x6f, 0x26, 0x21, 0x33, 0xd8, 0x7b, 0x90, 0x45,
+    0xc8, 0x75, 0xf5, 0xbe, 0x2b, 0x1e, 0x72, 0x07, 0xb1, 0xd6, 0x0e, 0xfb, 0xa5, 0x8b, 0xe8, 0xa8,
+]);
+const ETHEREUM_XOR_THISCHAIN_MARK_AS_DONE_RETRY_LOAD_HASH: sp_core::H256 = sp_core::H256([
+    0x63, 0x8b, 0x39, 0x43, 0x45, 0x81, 0x9d, 0xe4, 0x4f, 0x9c, 0xc7, 0x92, 0x51, 0xf7, 0x96, 0x2e,
+    0x8d, 0x48, 0x4c, 0xd8, 0xe9, 0x9f, 0xf8, 0xf0, 0x59, 0x32, 0x1f, 0x4b, 0xa1, 0xe6, 0xec, 0x94,
+]);
 
-pub fn ethereum_xor_thischain_add_asset_queued() -> bool {
-    frame_support::storage::unhashed::get(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY)
+pub fn ethereum_xor_thischain_add_asset_finalized() -> bool {
+    frame_support::storage::unhashed::get(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_FINALIZED_KEY)
         .unwrap_or(false)
 }
 
-fn mark_ethereum_xor_thischain_add_asset_queued() {
-    frame_support::storage::unhashed::put(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_QUEUED_KEY, &true);
-}
-
-fn ethereum_xor_has_sidechain_token_mapping() -> bool {
-    let network_id = crate::GetEthNetworkId::get();
-    let xor_asset_id: crate::AssetId = common::XOR.into();
-    eth_bridge::Pallet::<crate::Runtime>::registered_sidechain_token(network_id, &xor_asset_id)
-        .is_some()
-}
-
-fn ethereum_bridge_signature_version_is_v3() -> bool {
-    eth_bridge::Pallet::<crate::Runtime>::bridge_signature_version(crate::GetEthNetworkId::get())
-        == eth_bridge::BridgeSignatureVersion::V3
+fn mark_ethereum_xor_thischain_add_asset_finalized() {
+    frame_support::storage::unhashed::put(ETHEREUM_XOR_THISCHAIN_ADD_ASSET_FINALIZED_KEY, &true);
 }
 
 fn ethereum_xor_thischain_add_asset_is_registered() -> bool {
@@ -188,108 +188,60 @@ fn ethereum_xor_thischain_add_asset_is_registered() -> bool {
     )
 }
 
-fn ethereum_xor_thischain_add_asset_is_pending() -> bool {
-    let network_id = crate::GetEthNetworkId::get();
-    let xor_asset_id: crate::AssetId = common::XOR.into();
-    eth_bridge::Pallet::<crate::Runtime>::is_add_asset_request_pending(network_id, xor_asset_id)
-}
-
-fn ethereum_xor_thischain_add_asset_is_pending_or_registered() -> bool {
-    ethereum_xor_thischain_add_asset_is_registered()
-        || ethereum_xor_thischain_add_asset_is_pending()
-}
-
-fn ethereum_bridge_is_migrating() -> bool {
-    matches!(
-        eth_bridge::Pallet::<crate::Runtime>::bridge_contract_status(crate::GetEthNetworkId::get()),
-        Some(eth_bridge::BridgeStatus::Migrating)
-    )
-}
-
-fn assert_ethereum_xor_thischain_add_asset_queue_state() {
-    if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
-        panic!(
-            "Ethereum XOR Thischain add-asset marker is set before legacy Ethereum XOR decommission"
-        );
-    }
-    if !ethereum_bridge_signature_version_is_v3() {
-        panic!("Ethereum bridge signature version is not V3 after marking XOR Thischain add-asset request queued");
-    }
-    if ethereum_xor_has_sidechain_token_mapping() {
-        panic!("Ethereum XOR has a stale sidechain token mapping after marking XOR Thischain add-asset request queued");
-    }
-    if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
-        panic!("Ethereum XOR Thischain add-asset marker is set but pending request cannot finalize while bridge is migrating");
-    }
-    if !ethereum_xor_thischain_add_asset_is_pending_or_registered() {
-        panic!("Ethereum XOR Thischain add-asset marker is set but request is neither pending nor finalized");
-    }
-}
-
-fn queue_ethereum_xor_thischain_add_asset() -> Weight {
+fn finalize_ethereum_xor_thischain_add_asset() -> Weight {
     let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
     let mut weight = db_weight.reads(1);
 
-    if ethereum_xor_thischain_add_asset_queued() {
-        weight.saturating_accrue(db_weight.reads(7));
-        assert_ethereum_xor_thischain_add_asset_queue_state();
-        return weight;
-    }
-
-    weight.saturating_accrue(db_weight.reads(1));
-    if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
-        frame_support::__private::log::warn!(
-            "Skipping Ethereum XOR Thischain add-asset request: legacy Ethereum XOR is not decommissioned"
-        );
+    if ethereum_xor_thischain_add_asset_finalized() {
         return weight;
     }
 
     let network_id = crate::GetEthNetworkId::get();
-    let xor_asset_id: crate::AssetId = common::XOR.into();
-
-    weight.saturating_accrue(db_weight.reads(1));
-    if !ethereum_bridge_signature_version_is_v3() {
-        panic!("Ethereum bridge signature version must be V3 before queueing XOR Thischain add-asset request");
+    weight.saturating_accrue(db_weight.reads(4));
+    if !ethereum_xor_thischain_add_asset_is_registered() {
+        return weight;
     }
 
-    weight.saturating_accrue(db_weight.reads(1));
-    if ethereum_xor_has_sidechain_token_mapping() {
-        panic!("Ethereum XOR has a stale sidechain token mapping after legacy decommission");
-    }
-
-    weight.saturating_accrue(db_weight.reads(2));
-    if ethereum_xor_thischain_add_asset_is_pending_or_registered() {
-        weight.saturating_accrue(db_weight.reads(2));
-        if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
-            panic!("Ethereum XOR Thischain add-asset request is pending while bridge is migrating");
+    let load_hashes = [
+        ETHEREUM_XOR_THISCHAIN_MARK_AS_DONE_LOAD_HASH,
+        ETHEREUM_XOR_THISCHAIN_MARK_AS_DONE_RETRY_LOAD_HASH,
+    ];
+    let mut repaired_any = false;
+    for load_hash in load_hashes {
+        match eth_bridge::migration::finalize_stuck_mark_as_done_request::<crate::Runtime>(
+            network_id,
+            load_hash,
+            ETHEREUM_XOR_THISCHAIN_ADD_ASSET_REQUEST_HASH,
+        ) {
+            Ok(true) => {
+                repaired_any = true;
+                weight.saturating_accrue(db_weight.writes(6));
+            }
+            Ok(false) => {}
+            Err(error) => {
+                frame_support::__private::log::error!(
+                    "Failed to finalize Ethereum XOR Thischain add-asset request: {:?}",
+                    error
+                );
+                panic!(
+                    "Failed to finalize Ethereum XOR Thischain add-asset request: {:?}",
+                    error
+                );
+            }
         }
-        mark_ethereum_xor_thischain_add_asset_queued();
+    }
+
+    if repaired_any
+        || eth_bridge::RequestStatuses::<crate::Runtime>::get(
+            network_id,
+            ETHEREUM_XOR_THISCHAIN_ADD_ASSET_REQUEST_HASH,
+        ) == Some(eth_bridge::requests::RequestStatus::Done)
+    {
+        mark_ethereum_xor_thischain_add_asset_finalized();
         return weight.saturating_add(db_weight.writes(1));
     }
 
-    if eth_bridge::Pallet::<crate::Runtime>::registered_asset(network_id, &xor_asset_id).is_some() {
-        panic!("Ethereum XOR has a non-Thischain bridge registration after legacy decommission");
-    }
-
-    if let Err(error) =
-        eth_bridge::migration::queue_ethereum_xor_thischain_add_asset_unchecked_capacity::<
-            crate::Runtime,
-        >()
-    {
-        frame_support::__private::log::error!(
-            "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
-            error
-        );
-        panic!(
-            "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
-            error
-        );
-    }
-
-    mark_ethereum_xor_thischain_add_asset_queued();
     weight
-        .saturating_add(common::weights::constants::EXTRINSIC_FIXED_WEIGHT)
-        .saturating_add(db_weight.writes(1))
 }
 
 #[cfg(feature = "try-runtime")]
@@ -496,51 +448,38 @@ impl OnRuntimeUpgrade for DecommissionLegacyEthereumXor {
     }
 }
 
-pub struct QueueEthereumXorThischainAddAsset;
+pub struct FinalizeEthereumXorThischainAddAsset;
 
-impl OnRuntimeUpgrade for QueueEthereumXorThischainAddAsset {
+impl OnRuntimeUpgrade for FinalizeEthereumXorThischainAddAsset {
     fn on_runtime_upgrade() -> Weight {
-        queue_ethereum_xor_thischain_add_asset()
+        finalize_ethereum_xor_thischain_add_asset()
     }
 
     #[cfg(feature = "try-runtime")]
     fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
-        log_legacy_ethereum_xor_decommission_blockers();
-        Ok(Vec::new())
+        Ok(ethereum_xor_thischain_add_asset_finalized().encode())
     }
 
     #[cfg(feature = "try-runtime")]
-    fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
-        audit_legacy_ethereum_xor_decommission_cleanup()?;
-        if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
-            return Err(ethereum_xor_thischain_add_asset_error(
-                "legacy Ethereum XOR was not decommissioned before queueing the Thischain add-asset request",
-            ));
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let was_finalized = bool::decode(&mut &state[..]).map_err(|_| {
+            TryRuntimeError::Other("failed to decode Ethereum XOR add-asset finalization marker")
+        })?;
+        if was_finalized || ethereum_xor_thischain_add_asset_finalized() {
+            return Ok(());
         }
-        if !ethereum_bridge_signature_version_is_v3() {
-            return Err(ethereum_xor_thischain_add_asset_error(
-                "Ethereum bridge signature version is not V3",
-            ));
-        }
-        if ethereum_xor_has_sidechain_token_mapping() {
-            return Err(ethereum_xor_thischain_add_asset_error(
-                "Ethereum XOR has a stale sidechain token mapping after legacy decommission",
-            ));
-        }
-        if !ethereum_xor_thischain_add_asset_queued() {
-            return Err(ethereum_xor_thischain_add_asset_error(
-                "Ethereum XOR Thischain add-asset request was not marked as queued",
-            ));
-        }
-        if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
-            return Err(ethereum_xor_thischain_add_asset_error(
-                "Ethereum XOR Thischain add-asset request is pending while bridge is migrating",
-            ));
-        }
-        if !ethereum_xor_thischain_add_asset_is_pending_or_registered() {
-            return Err(ethereum_xor_thischain_add_asset_error(
-                "Ethereum XOR Thischain add-asset request is neither pending nor finalized",
-            ));
+        let network_id = crate::GetEthNetworkId::get();
+        for load_hash in [
+            ETHEREUM_XOR_THISCHAIN_MARK_AS_DONE_LOAD_HASH,
+            ETHEREUM_XOR_THISCHAIN_MARK_AS_DONE_RETRY_LOAD_HASH,
+        ] {
+            if eth_bridge::RequestStatuses::<crate::Runtime>::get(network_id, load_hash)
+                == Some(eth_bridge::requests::RequestStatus::Pending)
+            {
+                return Err(ethereum_xor_thischain_add_asset_error(
+                    "Ethereum XOR MarkAsDone load request is still pending",
+                ));
+            }
         }
         Ok(())
     }

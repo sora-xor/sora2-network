@@ -1,0 +1,10 @@
+🏋️  Runtime size:             13.002 MB (13,633,265 bytes) ⚠️ HEAVY
+🗜 Compressed:               No
+✨ Reserved meta:            OK - [6D, 65, 74, 61]
+🎁 Metadata version:         V14
+🔥 Core version:             sora-substrate-129 (sora-substrate-2.tx129.au1)
+🗳️  system.setCode hash:      0x68e94c7df6e30e1e59b58bc2e77abc022498b54d6027982ded995f77b2563cd1
+🗳️  authorizeUpgrade hash:    0xc012fb4224ee935b6f2bc2acae0afbeb1ff562d91325280c835a6670d0fef155
+🗳️  Blake2-256 hash:          0x970eb60ff163e01283924115c5b7a5bff685a0a7a861006de3cc649ca856a37f
+📦 IPFS:                     https://www.ipfs.io/ipfs/QmNayFx7HqkH6EbRh7osbsNBtc9cnjVe8osDxtzAQ6ffN6
+

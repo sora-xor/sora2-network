@@ -65,12 +65,22 @@ private-net = []
 std = [
     "codec/std",
     "scale-info/std",
+    "common/std",
+    "dex-manager/std",
     "frame-support/std",
     "frame-system/std",
+    "pallet-scheduler/std",
     "pallet-timestamp/std",
+    "permissions/std",
+    "pool-xyk/std",
+    "sp-arithmetic/std",
     "sp-core/std",
     "sp-runtime/std",
     "sp-std/std",
+    "technical/std",
+    "tokens/std",
+    "trading-pair/std",
+    "vested-rewards/std",
 ]
 
 runtime-benchmarks = [
