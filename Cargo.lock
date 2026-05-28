@@ -1324,6 +1324,7 @@ dependencies = [
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
+ "serde",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -5157,6 +5158,7 @@ dependencies = [
 name = "framenode-chain-spec"
 version = "4.8.6"
 dependencies = [
+ "band",
  "common",
  "faucet",
  "frame-support",
@@ -5181,6 +5183,7 @@ dependencies = [
  "sp-state-machine",
  "sp-version",
  "technical",
+ "vested-rewards",
  "xor-fee",
 ]
 

@@ -35,6 +35,7 @@ use common::prelude::FixedWrapper;
 use common::{fixed, fixed_wrapper, Balance, DataFeed, Fixed, OnNewSymbolsRelayed, Oracle, Rate};
 use fallible_iterator::FallibleIterator;
 use frame_support::pallet_prelude::*;
+use frame_support::sp_runtime::traits::MaybeSerializeDeserialize;
 use frame_support::traits::Time;
 use frame_system::pallet_prelude::*;
 use sp_std::collections::btree_set::BTreeSet;
@@ -98,7 +99,18 @@ impl FeeCalculationParameters {
 }
 
 /// Symbol rate
-#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
+#[derive(
+    RuntimeDebug,
+    Encode,
+    Decode,
+    TypeInfo,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct BandRate<BlockNumber> {
     /// Rate value in USD.
     pub value: Balance,
@@ -193,7 +205,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config<I: 'static = ()>: frame_system::Config {
         /// Type of the symbol to be relayed.
-        type Symbol: Parameter + Ord;
+        type Symbol: Parameter + Ord + MaybeSerializeDeserialize;
         /// Event type of this pallet.
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self, I>>
@@ -252,6 +264,43 @@ pub mod pallet {
     #[pallet::getter(fn dynamic_fee_parameters)]
     pub type DynamicFeeParameters<T: Config<I>, I: 'static = ()> =
         StorageValue<_, FeeCalculationParameters, ValueQuery, DefaultDynamicFeeParameters<T, I>>;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
+        pub trusted_relayers: BTreeSet<T::AccountId>,
+        pub symbol_rates: Vec<(T::Symbol, Option<BandRate<BlockNumberFor<T>>>)>,
+        pub _phantom: PhantomData<I>,
+    }
+
+    impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
+        fn default() -> Self {
+            Self {
+                trusted_relayers: Default::default(),
+                symbol_rates: Default::default(),
+                _phantom: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config<I>, I: 'static> BuildGenesisConfig for GenesisConfig<T, I> {
+        fn build(&self) {
+            TrustedRelayers::<T, I>::put(&self.trusted_relayers);
+
+            let mut new_symbols = BTreeSet::new();
+            for (symbol, rate) in &self.symbol_rates {
+                SymbolRates::<T, I>::insert(symbol, rate);
+                if rate.is_some() {
+                    new_symbols.insert(symbol.clone());
+                }
+            }
+
+            let _ = T::OnNewSymbolsRelayedHook::on_new_symbols_relayed(
+                Oracle::BandChainFeed,
+                new_symbols,
+            );
+        }
+    }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]

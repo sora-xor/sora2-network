@@ -59,12 +59,12 @@ use framenode_runtime::opaque::SessionKeys;
 use framenode_runtime::WASM_BINARY;
 use framenode_runtime::{
     assets, eth_bridge, frame_system, AccountId, AssetId, AssetName, AssetSymbol, AssetsConfig,
-    BabeConfig, BalancesConfig, BeefyConfig, BeefyId, BridgeMultisigConfig,
+    BabeConfig, BalancesConfig, BandConfig, BeefyConfig, BeefyId, BridgeMultisigConfig,
     BridgeOutboundChannelConfig, CouncilConfig, DEXAPIConfig, DEXManagerConfig, DemocracyConfig,
     EthBridgeConfig, ExtendedAssetsConfig, GetBaseAssetId, GetParliamentAccountId, GetPswapAssetId,
     GetSyntheticBaseAssetId, GetValAssetId, GetXorAssetId, GrandpaConfig, ImOnlineId,
     IrohaMigrationConfig, KensetsuConfig, LiquiditySourceType,
-    MulticollateralBondingCurvePoolConfig, PermissionsConfig, PolkamarktConfig,
+    MulticollateralBondingCurvePoolConfig, OracleProxyConfig, PermissionsConfig, PolkamarktConfig,
     PolkamarktFeeCollector, PswapDistributionConfig, RewardsConfig, Runtime, RuntimeGenesisConfig,
     SS58Prefix, SessionConfig, Signature, StakerStatus, StakingConfig, SystemConfig, TechAccountId,
     TechnicalCommitteeConfig, TechnicalConfig, TokensConfig, TradingPair, TradingPairConfig,
@@ -840,16 +840,150 @@ fn bonding_curve_distribution_accounts(
 
 #[cfg(feature = "private-net")]
 pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) -> ChainSpec {
+    local_testnet_config_with_id(
+        initial_authorities,
+        validator_count,
+        "SORA-local Testnet",
+        "sora-substrate-local",
+        IntegrationMockState::None,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::None,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_rewards_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-rewards-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-rewards-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialRewards,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_bridge_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-bridge-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-bridge-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialBridge,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_market_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-market-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-market-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialMarket,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_vesting_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-vesting-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-vesting-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialVesting,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_iroha_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-iroha-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-iroha-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialIroha,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_oracle_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-oracle-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-oracle-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialOracle,
+    )
+}
+
+#[cfg(feature = "private-net")]
+pub fn integration_mock_adversarial_testnet_config(initial_authorities: usize) -> ChainSpec {
+    let name = format!("SORA-integration-mock-adversarial-{initial_authorities} Testnet");
+    let id = format!("sora-substrate-integration-mock-adversarial-{initial_authorities}");
+    local_testnet_config_with_id(
+        initial_authorities,
+        initial_authorities as u32,
+        &name,
+        &id,
+        IntegrationMockState::AdversarialAll,
+    )
+}
+
+#[cfg(feature = "private-net")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum IntegrationMockState {
+    None,
+    AdversarialRewards,
+    AdversarialBridge,
+    AdversarialMarket,
+    AdversarialVesting,
+    AdversarialIroha,
+    AdversarialOracle,
+    AdversarialAll,
+}
+
+#[cfg(feature = "private-net")]
+fn local_testnet_config_with_id(
+    initial_authorities: usize,
+    validator_count: u32,
+    name: &str,
+    id: &str,
+    mock_state: IntegrationMockState,
+) -> ChainSpec {
     let mut properties = Properties::new();
     properties.insert("ss58Format".into(), SS58Prefix::get().into());
     properties.insert("tokenSymbol".into(), "XOR".into());
     properties.insert("tokenDecimals".into(), DEFAULT_BALANCE_PRECISION.into());
     chain_spec_from_genesis(
-        "SORA-local Testnet",
-        "sora-substrate-local",
+        name,
+        id,
         ChainType::Development,
         move || {
-            testnet_genesis(
+            let mut genesis = testnet_genesis(
                 get_account_id_from_seed::<sr25519::Public>("Alice"),
                 vec![
                     authority_keys_from_seed("Alice"),
@@ -916,7 +1050,9 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
                     hex!("d0d773018d19aab81052c4d038783ecfee77fb4b5fdc266b5a25568c0102640b").into(),
                 ],
                 validator_count,
-            )
+            );
+            apply_integration_mock_state(&mut genesis, mock_state);
+            genesis
         },
         vec![],
         None,
@@ -925,6 +1061,453 @@ pub fn local_testnet_config(initial_authorities: usize, validator_count: u32) ->
         Some(properties),
         None,
     )
+}
+
+#[cfg(feature = "private-net")]
+fn apply_integration_mock_state(
+    genesis: &mut RuntimeGenesisConfig,
+    mock_state: IntegrationMockState,
+) {
+    match mock_state {
+        IntegrationMockState::None => {}
+        IntegrationMockState::AdversarialRewards => {
+            seed_adversarial_reward_mock_state(genesis);
+        }
+        IntegrationMockState::AdversarialBridge => {
+            seed_adversarial_bridge_mock_state(genesis);
+        }
+        IntegrationMockState::AdversarialMarket => {
+            seed_adversarial_market_mock_state(genesis);
+        }
+        IntegrationMockState::AdversarialVesting => {
+            seed_adversarial_vesting_mock_state(genesis);
+        }
+        IntegrationMockState::AdversarialIroha => {
+            seed_adversarial_iroha_mock_state(genesis);
+        }
+        IntegrationMockState::AdversarialOracle => {
+            seed_adversarial_oracle_mock_state(genesis);
+        }
+        IntegrationMockState::AdversarialAll => {
+            seed_adversarial_reward_mock_state(genesis);
+            seed_adversarial_bridge_mock_state(genesis);
+            seed_adversarial_market_mock_state(genesis);
+            seed_adversarial_vesting_mock_state(genesis);
+            seed_adversarial_iroha_mock_state(genesis);
+            seed_adversarial_oracle_mock_state(genesis);
+        }
+    }
+}
+
+#[cfg(feature = "private-net")]
+fn seed_adversarial_reward_mock_state(genesis: &mut RuntimeGenesisConfig) {
+    // Sampled from live rewards storage on mof2.sora.org, with the final holder
+    // intentionally made inconsistent by setting total below claimable.
+    genesis.rewards.val_owners.extend([
+        (
+            hex!("2478332fe393ba40ddc9caf8353a333fa64fdd3f").into(),
+            rewards::RewardInfo::new(
+                68_708_909_536_239_484_066_990,
+                185_806_886_410_000_000_000_000,
+            ),
+        ),
+        (
+            hex!("890f1815a0935b10126bcfe6dd48ce37ed3064ed").into(),
+            rewards::RewardInfo::new(
+                10_530_506_339_846_422_493_486,
+                28_476_714_840_141_069_457_666,
+            ),
+        ),
+        (
+            hex!("02dc26bda75321d2eb8ea62c5b9dcd04f6c7b740").into(),
+            rewards::RewardInfo::new(1_132_321_182_306_036_013_583, 3_062_096_636_229_796_085_714),
+        ),
+        (
+            hex!("345b47bfa3d61b8826a1fb4ac6f4c18cd15a6079").into(),
+            rewards::RewardInfo::new(71_691_285_795_332_743_843, 193_871_428_571_428_571_429),
+        ),
+        (
+            hex!("179456bf16752fe5eb8789148e5c98eb39d87fe5").into(),
+            rewards::RewardInfo::new(41_364_451_495_963_165_621_569, 1),
+        ),
+    ]);
+    genesis.rewards.pswap_farm_owners.extend([
+        (
+            hex!("890f1815a0935b10126bcfe6dd48ce37ed3064ed").into(),
+            123_461_943_358_928_754_925_727_844,
+        ),
+        (
+            hex!("02dc26bda75321d2eb8ea62c5b9dcd04f6c7b740").into(),
+            25_924_337_340_061_185_386_730,
+        ),
+        (
+            hex!("39979745b166572c25b4c7e4e0939c9298efe79d").into(),
+            590_432_601_791_111_900,
+        ),
+    ]);
+    genesis.rewards.pswap_waifu_owners.extend([
+        (
+            hex!("726cdc837384a7deb8bbea64beba2e7b4d7346c0").into(),
+            6_936_000_000_000_000_000_000_000,
+        ),
+        (
+            hex!("345b47bfa3d61b8826a1fb4ac6f4c18cd15a6079").into(),
+            24_000_000_000_000_000_000_000,
+        ),
+        (
+            hex!("39979745b166572c25b4c7e4e0939c9298efe79d").into(),
+            24_000_000_000_000_000_000_000,
+        ),
+    ]);
+
+    let rewards_account_id =
+        Technical::tech_account_id_to_account_id(&genesis.rewards.reserves_account_id)
+            .expect("mock rewards reserves account should decode");
+    add_token_balance(
+        &mut genesis.tokens,
+        &rewards_account_id,
+        GetValAssetId::get(),
+        121_807_879_840_150_440_939_471,
+    );
+    add_token_balance(
+        &mut genesis.tokens,
+        &rewards_account_id,
+        GetPswapAssetId::get(),
+        130_471_868_286_701_417_902_226_474,
+    );
+}
+
+#[cfg(feature = "private-net")]
+fn seed_adversarial_bridge_mock_state(genesis: &mut RuntimeGenesisConfig) {
+    let bridge_peers = vec![
+        get_account_id_from_seed::<sr25519::Public>("Relayer//5"),
+        get_account_id_from_seed::<sr25519::Public>("Relayer//6"),
+    ];
+    let bridge_account_id = get_account_id_from_seed::<sr25519::Public>("BridgeMock");
+    let mock_assets = adversarial_bridge_assets();
+
+    if let Some(legacy_network) = genesis.eth_bridge.networks.get_mut(0) {
+        legacy_network.assets.extend(mock_assets.clone());
+        legacy_network
+            .reserves
+            .extend([(PSWAP.into(), balance!(1)), (KUSD.into(), balance!(2))]);
+    }
+
+    genesis
+        .balances
+        .balances
+        .push((bridge_account_id.clone(), balance!(1)));
+    genesis.eth_bridge.networks.push(NetworkConfig {
+        initial_peers: bridge_peers.iter().cloned().collect(),
+        bridge_account_id: bridge_account_id.clone(),
+        assets: mock_assets,
+        bridge_contract_address: hex!("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").into(),
+        reserves: vec![(PSWAP.into(), balance!(1)), (KUSD.into(), balance!(2))],
+    });
+    genesis.bridge_multisig.accounts.push((
+        bridge_account_id,
+        bridge_multisig::MultisigAccount::new(bridge_peers),
+    ));
+}
+
+#[cfg(feature = "private-net")]
+fn adversarial_bridge_assets() -> Vec<AssetConfig<AssetId>> {
+    let duplicate_sidechain_id: H160 = hex!("1111111111111111111111111111111111111111").into();
+    vec![
+        AssetConfig::Thischain { id: PSWAP.into() },
+        AssetConfig::Sidechain {
+            id: KUSD.into(),
+            sidechain_id: duplicate_sidechain_id,
+            owned: false,
+            precision: DEFAULT_BALANCE_PRECISION,
+        },
+        AssetConfig::Sidechain {
+            id: TBCD.into(),
+            sidechain_id: duplicate_sidechain_id,
+            owned: true,
+            precision: 0,
+        },
+        AssetConfig::Sidechain {
+            id: KARMA.into(),
+            sidechain_id: hex!("0000000000000000000000000000000000000000").into(),
+            owned: false,
+            precision: 36,
+        },
+    ]
+}
+
+#[cfg(feature = "private-net")]
+fn seed_adversarial_market_mock_state(genesis: &mut RuntimeGenesisConfig) {
+    let owner = get_account_id_from_seed::<sr25519::Public>("Alice");
+    let low_precision_asset_id = adversarial_market_low_precision_asset_id();
+    let high_precision_asset_id = adversarial_market_high_precision_asset_id();
+    let non_mintable_asset_id = adversarial_market_non_mintable_asset_id();
+
+    genesis.assets.endowed_assets.extend([
+        (
+            low_precision_asset_id,
+            owner.clone(),
+            AssetSymbol(b"EDGE1".to_vec()),
+            AssetName(b"Low precision integration mock".to_vec()),
+            1,
+            0,
+            true,
+            None,
+            None,
+        ),
+        (
+            high_precision_asset_id,
+            owner.clone(),
+            AssetSymbol(b"EDGE18".to_vec()),
+            AssetName(b"Max precision integration mock".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            123_456_789,
+            true,
+            None,
+            None,
+        ),
+        (
+            non_mintable_asset_id,
+            owner,
+            AssetSymbol(b"LOCKED".to_vec()),
+            AssetName(b"Non mintable integration mock".to_vec()),
+            DEFAULT_BALANCE_PRECISION,
+            42,
+            false,
+            None,
+            None,
+        ),
+    ]);
+
+    genesis.dex_manager.dex_list.push((
+        ADVERSARIAL_MARKET_DEX_ID,
+        DEXInfo {
+            base_asset_id: low_precision_asset_id,
+            synthetic_base_asset_id: GetSyntheticBaseAssetId::get(),
+            is_public: false,
+        },
+    ));
+    genesis.trading_pair.trading_pairs.extend([
+        (
+            ADVERSARIAL_MARKET_DEX_ID,
+            common::TradingPair {
+                base_asset_id: low_precision_asset_id,
+                target_asset_id: high_precision_asset_id,
+            },
+        ),
+        (
+            ADVERSARIAL_MARKET_DEX_ID,
+            common::TradingPair {
+                base_asset_id: high_precision_asset_id,
+                target_asset_id: low_precision_asset_id,
+            },
+        ),
+        (
+            ADVERSARIAL_MARKET_DEX_ID,
+            common::TradingPair {
+                base_asset_id: low_precision_asset_id,
+                target_asset_id: low_precision_asset_id,
+            },
+        ),
+    ]);
+}
+
+#[cfg(feature = "private-net")]
+fn seed_adversarial_vesting_mock_state(genesis: &mut RuntimeGenesisConfig) {
+    let crowdloan_account = get_account_id_from_seed::<sr25519::Public>("CrowdloanMock");
+    let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+    let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
+
+    genesis
+        .balances
+        .balances
+        .push((crowdloan_account.clone(), balance!(1)));
+    add_token_balance(
+        &mut genesis.tokens,
+        &crowdloan_account,
+        GetXorAssetId::get(),
+        balance!(1000),
+    );
+    add_token_balance(
+        &mut genesis.tokens,
+        &crowdloan_account,
+        GetPswapAssetId::get(),
+        balance!(500),
+    );
+
+    genesis
+        .vested_rewards
+        .crowdloans
+        .push(vested_rewards::GenesisCrowdloanConfig {
+            tag: b"mock-vesting".to_vec(),
+            start_block: 0,
+            length: 1,
+            rewards: vec![
+                (GetXorAssetId::get(), balance!(1000)),
+                (GetPswapAssetId::get(), balance!(400)),
+                (GetPswapAssetId::get(), balance!(100)),
+            ],
+            users: vec![
+                vested_rewards::GenesisCrowdloanUserConfig {
+                    account: alice,
+                    contribution: balance!(25),
+                    rewarded: vec![
+                        (GetXorAssetId::get(), balance!(30)),
+                        (GetXorAssetId::get(), balance!(20)),
+                    ],
+                },
+                vested_rewards::GenesisCrowdloanUserConfig {
+                    account: bob,
+                    contribution: balance!(75),
+                    rewarded: vec![(GetPswapAssetId::get(), balance!(100))],
+                },
+            ],
+            account: crowdloan_account,
+        });
+}
+
+#[cfg(feature = "private-net")]
+fn seed_adversarial_iroha_mock_state(genesis: &mut RuntimeGenesisConfig) {
+    genesis.iroha_migration.iroha_accounts.extend([
+        (
+            "did_sora_mock_balance@sora".to_string(),
+            balance!(777),
+            None,
+            1,
+            vec!["cba1c8c2eeaf287d734bd167b10d762e89c0ee8327a29e04f064ae94086ef1e9".to_string()],
+        ),
+        (
+            "did_sora_mock_zero@sora".to_string(),
+            0,
+            None,
+            1,
+            vec!["dd54e9efb95531154316cf3e28e2232abab349296dde94353febc9ebbb3ff283".to_string()],
+        ),
+        (
+            "did_sora_mock_referrer@sora".to_string(),
+            balance!(1),
+            None,
+            1,
+            vec!["f7d89d39d48a67e4741a612de10650234f9148e84fe9e8b2a9fad322b0d8e5bc".to_string()],
+        ),
+        (
+            "did_sora_mock_referral@sora".to_string(),
+            balance!(2),
+            Some("did_sora_mock_referrer@sora".to_string()),
+            1,
+            vec!["f56b4880ed91a25b257144acab749f615855c4b1b6a5d7891e1a6cdd9fd695e9".to_string()],
+        ),
+        (
+            "did_sora_mock_multisig@sora".to_string(),
+            balance!(3),
+            None,
+            2,
+            vec![
+                "57571ec82cff710143eba60c05d88de14a22799048137162d63c534a8b02dc20".to_string(),
+                "cba1c8c2eeaf287d734bd167b10d762e89c0ee8327a29e04f064ae94086ef1e9".to_string(),
+                "dd54e9efb95531154316cf3e28e2232abab349296dde94353febc9ebbb3ff283".to_string(),
+            ],
+        ),
+        (
+            "did_sora_mock_duplicate_key@sora".to_string(),
+            balance!(4),
+            None,
+            2,
+            vec![
+                "f7d89d39d48a67e4741a612de10650234f9148e84fe9e8b2a9fad322b0d8e5bc".to_string(),
+                "f7d89d39d48a67e4741a612de10650234f9148e84fe9e8b2a9fad322b0d8e5bc".to_string(),
+            ],
+        ),
+        (
+            "did_sora_mock_unicode_123@sora".to_string(),
+            1,
+            Some("did_sora_missing_referrer@sora".to_string()),
+            1,
+            vec!["1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string()],
+        ),
+    ]);
+}
+
+#[cfg(feature = "private-net")]
+fn seed_adversarial_oracle_mock_state(genesis: &mut RuntimeGenesisConfig) {
+    genesis
+        .oracle_proxy
+        .enabled_oracles
+        .insert(common::Oracle::BandChainFeed);
+    genesis.band.symbol_rates.extend([
+        (
+            SymbolName::usd(),
+            Some(band::BandRate {
+                value: balance!(1),
+                last_updated: 0,
+                last_updated_block: 0,
+                request_id: 1,
+                dynamic_fee: fixed!(0),
+            }),
+        ),
+        (
+            SymbolName::xau(),
+            Some(band::BandRate {
+                value: balance!(2345),
+                last_updated: 0,
+                last_updated_block: 0,
+                request_id: 2,
+                dynamic_fee: fixed!(0),
+            }),
+        ),
+        (
+            SymbolName::from_str("FUTURE").expect("static symbol is valid"),
+            Some(band::BandRate {
+                value: balance!(999999),
+                last_updated: 9_999_999_999,
+                last_updated_block: 0,
+                request_id: u64::MAX,
+                dynamic_fee: fixed!(0),
+            }),
+        ),
+    ]);
+}
+
+#[cfg(feature = "private-net")]
+const ADVERSARIAL_MARKET_DEX_ID: u32 = 99;
+
+#[cfg(feature = "private-net")]
+fn adversarial_market_low_precision_asset_id() -> AssetId {
+    common::AssetId32::<PredefinedAssetId>::from_bytes(hex!(
+        "a100000000000000000000000000000000000000000000000000000000000001"
+    ))
+}
+
+#[cfg(feature = "private-net")]
+fn adversarial_market_high_precision_asset_id() -> AssetId {
+    common::AssetId32::<PredefinedAssetId>::from_bytes(hex!(
+        "a100000000000000000000000000000000000000000000000000000000000002"
+    ))
+}
+
+#[cfg(feature = "private-net")]
+fn adversarial_market_non_mintable_asset_id() -> AssetId {
+    common::AssetId32::<PredefinedAssetId>::from_bytes(hex!(
+        "a100000000000000000000000000000000000000000000000000000000000003"
+    ))
+}
+
+#[cfg(feature = "private-net")]
+fn add_token_balance(
+    tokens: &mut TokensConfig,
+    account_id: &AccountId,
+    asset_id: AssetId,
+    amount: Balance,
+) {
+    if let Some((_, _, balance)) = tokens
+        .balances
+        .iter_mut()
+        .find(|(account, asset, _)| account == account_id && *asset == asset_id)
+    {
+        *balance = balance.saturating_add(amount);
+    } else {
+        tokens.balances.push((account_id.clone(), asset_id, amount));
+    }
 }
 
 // Some variables are only changed if faucet is enabled
@@ -1310,6 +1893,8 @@ fn testnet_genesis(
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         polkamarkt: polkamarkt_genesis_config(),
+        band: BandConfig::default(),
+        oracle_proxy: OracleProxyConfig::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -1885,6 +2470,7 @@ fn testnet_genesis(
             ],
         },
         rewards: rewards_config,
+        vested_rewards: Default::default(),
         council: CouncilConfig {
             members: council_accounts,
             phantom: Default::default(),
@@ -2522,6 +3108,8 @@ fn mainnet_genesis(
         evm_fungible_app: Default::default(),
         parachain_bridge_app: Default::default(),
         polkamarkt: polkamarkt_genesis_config(),
+        band: BandConfig::default(),
+        oracle_proxy: OracleProxyConfig::default(),
         substrate_bridge_outbound_channel: Default::default(),
 
         #[cfg(feature = "wip")] // Trustless substrate bridge
@@ -2901,6 +3489,7 @@ fn mainnet_genesis(
             ],
         },
         rewards: rewards_config,
+        vested_rewards: Default::default(),
         council: CouncilConfig {
             members: council_accounts,
             phantom: Default::default(),

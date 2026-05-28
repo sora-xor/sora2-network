@@ -23,6 +23,7 @@ sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "po
 
 bridge-multisig = { path = "../../vendor/pallet-multisig", package = "pallet-multisig" }
 
+band = { path = "../../pallets/band" }
 common = { path = "../../common" }
 faucet = { path = "../../pallets/faucet", optional = true }
 framenode-runtime = { path = "../../runtime" }
@@ -30,6 +31,7 @@ iroha-migration = { path = "../../pallets/iroha-migration" }
 permissions = { path = "../../pallets/permissions" }
 rewards = { path = "../../pallets/rewards" }
 technical = { path = "../../pallets/technical" }
+vested-rewards = { path = "../../pallets/vested-rewards" }
 xor-fee = { path = "../../pallets/xor-fee" }
 
 [dev-dependencies]
