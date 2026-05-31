@@ -90,6 +90,11 @@ fn runtime_upgrade_version_only_migrations_bump_zero_to_one() {
 }
 #[cfg(test)]
 #[test]
+fn eth_bridge_storage_version_migration_reaches_v3() {
+    tests::eth_bridge_storage_version_migration_reaches_v3();
+}
+#[cfg(test)]
+#[test]
 fn denomination_rejects_zero_factor_without_mutating_state() {
     tests::denomination_rejects_zero_factor_without_mutating_state();
 }
@@ -118,6 +123,11 @@ fn demeter_storage_version_bridge_reaches_v3() {
 fn xor_tbcd_reward_denomination_repair_migration_scales_once() {
     tests::xor_tbcd_reward_denomination_repair_migration_scales_once();
 }
+#[cfg(test)]
+#[test]
+fn xor_tbcd_reward_denomination_repair_rolls_back_on_error_without_panic() {
+    tests::xor_tbcd_reward_denomination_repair_rolls_back_on_error_without_panic();
+}
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
 fn band_migrate_to_v2_if_needed_try_runtime_hooks() {
@@ -135,6 +145,11 @@ fn runtime_upgrade_version_only_migrations_try_runtime_hooks() {
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
+fn eth_bridge_storage_version_migration_try_runtime_hooks() {
+    tests::eth_bridge_storage_version_migration_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
 fn staking_storage_version_bridge_try_runtime_hooks() {
     tests::staking_storage_version_bridge_try_runtime_hooks();
 }
@@ -145,13 +160,28 @@ fn bridge_peer_isolation_audit_try_runtime_hooks() {
 }
 #[cfg(test)]
 #[test]
-fn finalize_ethereum_xor_thischain_add_asset_migration_repairs_stuck_mark_as_done() {
-    tests::finalize_ethereum_xor_thischain_add_asset_migration_repairs_stuck_mark_as_done();
+fn queue_ethereum_xor_thischain_add_asset_migration_queues_once() {
+    tests::queue_ethereum_xor_thischain_add_asset_migration_queues_once();
+}
+#[cfg(test)]
+#[test]
+fn queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue() {
+    tests::queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue();
+}
+#[cfg(test)]
+#[test]
+fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states() {
+    tests::queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
 fn legacy_ethereum_xor_decommission_try_runtime_hooks() {
     tests::legacy_ethereum_xor_decommission_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn queue_ethereum_xor_thischain_add_asset_try_runtime_hooks() {
+    tests::queue_ethereum_xor_thischain_add_asset_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[tokio::test]
@@ -739,7 +769,7 @@ impl pallet_session::historical::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
     type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-    type EventHandler = (Staking, ImOnline);
+    type EventHandler = (impls::StakingRewardPoints, ImOnline);
 }
 
 /// A reasonable benchmarking config for staking pallet.

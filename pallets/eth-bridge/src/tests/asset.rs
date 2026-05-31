@@ -1809,6 +1809,71 @@ fn should_record_decommission_block_when_legacy_flag_already_set() {
 }
 
 #[test]
+fn should_scrub_legacy_ethereum_xor_blockers_when_legacy_flag_already_set() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
+        let request =
+            OffchainRequest::outgoing(OutgoingRequest::Transfer(OutgoingTransfer::<Runtime> {
+                from: alice,
+                to: EthAddress::from([7; 20]),
+                asset_id: XOR.into(),
+                amount: 100u32.into(),
+                nonce: 42,
+                network_id: net_id,
+                timepoint: Default::default(),
+            }));
+        let request_hash = request.hash();
+        let queue_before = crate::RequestsQueue::<Runtime>::get(net_id);
+
+        LegacyEthereumXorDecommissioned::<Runtime>::put(true);
+        LegacyEthereumXorDecommissionedAt::<Runtime>::put(7);
+        crate::Requests::<Runtime>::insert(net_id, request_hash, request);
+        crate::RequestStatuses::<Runtime>::insert(
+            net_id,
+            request_hash,
+            RequestStatus::ApprovalsReady,
+        );
+        crate::RequestSubmissionHeight::<Runtime>::insert(net_id, request_hash, 1);
+        let mut approvals = BTreeSet::new();
+        approvals.insert(SignatureParams {
+            r: [1; 32],
+            s: [2; 32],
+            v: 27,
+        });
+        crate::RequestApprovals::<Runtime>::insert(net_id, request_hash, approvals);
+        let mut approvers = BTreeSet::new();
+        approvers.insert(bob);
+        crate::RequestApprovers::<Runtime>::insert(net_id, request_hash, approvers);
+
+        assert_eq!(
+            crate::migration::legacy_ethereum_xor_decommission_blockers::<Runtime>(),
+            1
+        );
+
+        frame_system::Pallet::<Runtime>::set_block_number(42);
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
+
+        assert!(LegacyEthereumXorDecommissioned::<Runtime>::get());
+        assert_eq!(LegacyEthereumXorDecommissionedAt::<Runtime>::get(), Some(7));
+        assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id), queue_before);
+        assert_eq!(
+            crate::migration::legacy_ethereum_xor_decommission_blockers::<Runtime>(),
+            0
+        );
+        assert!(matches!(
+            crate::RequestStatuses::<Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Failed(_))
+        ));
+        assert!(crate::RequestApprovals::<Runtime>::get(net_id, request_hash).is_empty());
+        assert!(crate::RequestApprovers::<Runtime>::get(net_id, request_hash).is_empty());
+    });
+}
+
+#[test]
 fn should_decommission_pending_legacy_ethereum_xor_transfer_and_refund_sender() {
     let (mut ext, _state) = ExtBuilder::default().build();
 
@@ -1971,10 +2036,7 @@ fn should_roll_back_legacy_ethereum_xor_decommission_when_reserve_burn_fails() {
             account.data.frozen = 1;
         });
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
-        }));
-        assert!(result.is_err());
+        crate::migration::decommission_legacy_ethereum_xor::<Runtime>();
 
         assert!(!LegacyEthereumXorDecommissioned::<Runtime>::get());
         assert!(!DeprecatedSidechainTokens::<Runtime>::get(

@@ -9,34 +9,34 @@
   "wasm": {
     "source_path": "/Users/takemiyamakoto/dev/sora2-network/target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
     "release_path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.7/framenode-runtime-4.8.7.compact.compressed.wasm",
-    "bytes": 3001881,
-    "blake2_256": "0xa319a597463508de0be571bee0b7df12e0faff5c28558979f0a6285672a5843d",
-    "sha256": "0x57f0cf9548d1c1e73b375f561cc426e5226c5c91e56263046f18ff27ba0181b8"
+    "bytes": 3002787,
+    "blake2_256": "0x8287dfb031892936c5f2e5fbad37a173c7919851d1a278bdfa2580cfd2895419",
+    "sha256": "0x7cc28bad4bf772827fea28392e9f884626858c391af039d53358e6200f8952cf"
   },
   "proposal_preimage": {
     "call": "system.set_code",
     "bytes_to_note_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.7/set-code-call.hex",
-    "encoded_len": 3001887,
-    "hash": "0xdfe45f7bfc81789377a4f7d5250925243dd5c505df00304e627e35da7a3bfd5c"
+    "encoded_len": 3002793,
+    "hash": "0x13409c3bbeb440cf02088f9b458f728e8a9ca744585f88eff77cb5c38fd348c6"
   },
   "preimage_note": {
     "call": "preimage.note_preimage(bytes = system.set_code call bytes)",
     "call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.7/preimage-note-call.hex",
-    "encoded_len": 3001893
+    "encoded_len": 3002799
   },
   "council": {
     "inner_call": "democracy.external_propose_majority(Bounded::Lookup { hash, len })",
     "inner_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.7/democracy-external-propose-majority-call.hex",
-    "inner_call_hex": "0x1d0502dfe45f7bfc81789377a4f7d5250925243dd5c505df00304e627e35da7a3bfd5c7e38b700",
-    "inner_call_hash": "0xa0e79ef0067df451345380282f04072f12b33261792c44adafbd1caed2226446",
+    "inner_call_hex": "0x1d050213409c3bbeb440cf02088f9b458f728e8a9ca744585f88eff77cb5c38fd348c6a646b700",
+    "inner_call_hash": "0x9cbcb72beeb5ab51ca1623cfe91b1505671bd2642df66259a9028de2bc5032cd",
     "length_bound": 39,
     "threshold_rule": "Submit as council.propose with threshold >= ceil(current council members / 2). Threshold 1 is not enough because the dispatched origin must satisfy AtLeastHalfCouncil."
   },
   "technical_committee": {
     "inner_call": "democracy.fast_track(proposal_hash, voting_period, delay)",
     "inner_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.7/democracy-fast-track-call.hex",
-    "inner_call_hex": "0x1d07dfe45f7bfc81789377a4f7d5250925243dd5c505df00304e627e35da7a3bfd5c0807000000000000",
-    "inner_call_hash": "0x0697b51fa1c33b68a29f543130f54b74ecedc13492d4d8cb169390695a218d44",
+    "inner_call_hex": "0x1d0713409c3bbeb440cf02088f9b458f728e8a9ca744585f88eff77cb5c38fd348c60807000000000000",
+    "inner_call_hash": "0xfd09c0bf9c8c107b5ca01cbad2d4054f04e04193018728c57169dacf31904585",
     "length_bound": 42,
     "voting_period_blocks": 1800,
     "voting_period_note": "3 hours at 6 second blocks",

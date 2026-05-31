@@ -395,6 +395,9 @@ impl CustomFees {
             | RuntimeCall::MulticollateralBondingCurvePool(..)
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_condition { .. })
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market { .. })
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy { .. })
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell { .. })
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::flip_position { .. })
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)
             | RuntimeCall::TradingPair(..)
@@ -827,8 +830,9 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
 #[cfg(test)]
 mod tests {
     use frame_support::dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo};
-    use frame_support::traits::Currency;
+    use frame_support::traits::{Currency, OnRuntimeUpgrade};
     use frame_support::weights::Weight;
+    use pallet_authorship::EventHandler;
     use pallet_utility::Call as UtilityCall;
     use sp_core::H256;
     #[allow(deprecated)]
@@ -842,11 +846,11 @@ mod tests {
     use common::OrderBookId;
     use common::{balance, PriceVariant, VAL, XOR};
     use pallet_staking::{
-        EraRewardPoints, Exposure, IndividualExposure, RewardDestination, StakingLedger,
-        ValidatorPrefs,
+        ActiveEraInfo, EraRewardPoints, Exposure, IndividualExposure, RewardDestination,
+        StakingLedger, ValidatorPrefs,
     };
     use sp_runtime::{AccountId32, DispatchError, Perbill};
-    use sp_staking::{ExposurePage, PagedExposureMetadata};
+    use sp_staking::{ExposurePage, PagedExposureMetadata, StakingAccount};
     use xor_fee::{extension::ChargeTransactionPayment, ApplyCustomFees};
 
     #[test]
@@ -1046,6 +1050,286 @@ mod tests {
                     ),
                 ]
             );
+        });
+    }
+
+    #[test]
+    fn staking_payout_hook_uses_stash_reward_points_for_session_author() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            pallet_staking::ActiveEra::<Runtime>::put(ActiveEraInfo {
+                index: fixture.era,
+                start: None,
+            });
+            pallet_staking::ErasRewardPoints::<Runtime>::remove(fixture.era);
+
+            <Runtime as pallet_authorship::Config>::EventHandler::note_author(
+                fixture.controller.clone(),
+            );
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, 20);
+            assert_eq!(
+                reward_points.individual.get(&fixture.validator).copied(),
+                Some(20)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.controller));
+
+            let call = payout_stakers_call(&fixture);
+            let pre = staking_payout_pre(&call).expect("staking payout call should be recognized");
+            staking_payout_post(Some(pre), &Ok(()));
+
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.validator),
+                balance!(400)
+            );
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+        });
+    }
+
+    #[test]
+    fn staking_reward_points_use_stash_when_author_is_already_stash() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(None);
+            pallet_staking::ActiveEra::<Runtime>::put(ActiveEraInfo {
+                index: fixture.era,
+                start: None,
+            });
+            pallet_staking::ErasRewardPoints::<Runtime>::remove(fixture.era);
+
+            <Runtime as pallet_authorship::Config>::EventHandler::note_author(
+                fixture.validator.clone(),
+            );
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, 20);
+            assert_eq!(
+                reward_points.individual.get(&fixture.validator).copied(),
+                Some(20)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.controller));
+        });
+    }
+
+    #[test]
+    fn staking_reward_points_preserve_unbonded_author_without_panic() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(None);
+            let unknown_author = AccountId32::from([99; 32]);
+            pallet_staking::ActiveEra::<Runtime>::put(ActiveEraInfo {
+                index: fixture.era,
+                start: None,
+            });
+            pallet_staking::ErasRewardPoints::<Runtime>::remove(fixture.era);
+
+            <Runtime as pallet_authorship::Config>::EventHandler::note_author(
+                unknown_author.clone(),
+            );
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, 20);
+            assert_eq!(
+                reward_points.individual.get(&unknown_author).copied(),
+                Some(20)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.validator));
+        });
+    }
+
+    #[test]
+    fn staking_reward_points_follow_current_session_validator_set() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let active_era = pallet_staking::ActiveEra::<Runtime>::get()
+                .expect("staking genesis should have an active era")
+                .index;
+            let author = pallet_session::Validators::<Runtime>::get()
+                .into_iter()
+                .next()
+                .expect("staking genesis should have session validators");
+            let reward_stash = pallet_staking::Pallet::<Runtime>::ledger(
+                StakingAccount::Controller(author.clone()),
+            )
+            .or_else(|_| {
+                pallet_staking::Pallet::<Runtime>::ledger(StakingAccount::Stash(author.clone()))
+            })
+            .map(|ledger| ledger.stash)
+            .expect("session validator should resolve to a staking ledger");
+
+            assert!(pallet_staking::Validators::<Runtime>::contains_key(
+                &reward_stash
+            ));
+
+            pallet_staking::ErasRewardPoints::<Runtime>::remove(active_era);
+            <Runtime as pallet_authorship::Config>::EventHandler::note_author(author.clone());
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(active_era);
+            assert_eq!(reward_points.total, 20);
+            assert_eq!(
+                reward_points.individual.get(&reward_stash).copied(),
+                Some(20)
+            );
+            if author != reward_stash {
+                assert!(!reward_points.individual.contains_key(&author));
+            }
+        });
+    }
+
+    #[test]
+    fn staking_payout_hook_ignores_controller_keyed_reward_points() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            pallet_staking::ErasRewardPoints::<Runtime>::insert(
+                fixture.era,
+                EraRewardPoints {
+                    total: 20,
+                    individual: vec![(fixture.controller.clone(), 20)].into_iter().collect(),
+                },
+            );
+
+            let call = payout_stakers_call(&fixture);
+            let pre = staking_payout_pre(&call).expect("staking payout call should be recognized");
+            staking_payout_post(Some(pre), &Ok(()));
+
+            assert_no_val_rewards(&fixture);
+            assert!(val_staking_reward_paid_events().is_empty());
+        });
+    }
+
+    #[test]
+    fn staking_payout_reward_point_migration_remaps_session_author_points_to_stash() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            pallet_staking::ErasRewardPoints::<Runtime>::insert(
+                fixture.era,
+                EraRewardPoints {
+                    total: 20,
+                    individual: vec![(fixture.controller.clone(), 20)].into_iter().collect(),
+                },
+            );
+
+            crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, 20);
+            assert_eq!(
+                reward_points.individual.get(&fixture.validator).copied(),
+                Some(20)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.controller));
+            assert!(crate::migrations::staking_reward_points_stash_remapped());
+        });
+    }
+
+    #[test]
+    fn staking_payout_reward_point_migration_merges_controller_and_stash_points() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            pallet_staking::ErasRewardPoints::<Runtime>::insert(
+                fixture.era,
+                EraRewardPoints {
+                    total: 30,
+                    individual: vec![
+                        (fixture.validator.clone(), 10),
+                        (fixture.controller.clone(), 20),
+                    ]
+                    .into_iter()
+                    .collect(),
+                },
+            );
+
+            crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, 30);
+            assert_eq!(
+                reward_points.individual.get(&fixture.validator).copied(),
+                Some(30)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.controller));
+        });
+    }
+
+    #[test]
+    fn staking_payout_reward_point_migration_saturates_merged_points() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            pallet_staking::ErasRewardPoints::<Runtime>::insert(
+                fixture.era,
+                EraRewardPoints {
+                    total: u32::MAX,
+                    individual: vec![
+                        (fixture.validator.clone(), u32::MAX),
+                        (fixture.controller.clone(), 1),
+                    ]
+                    .into_iter()
+                    .collect(),
+                },
+            );
+
+            crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, u32::MAX);
+            assert_eq!(
+                reward_points.individual.get(&fixture.validator).copied(),
+                Some(u32::MAX)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.controller));
+        });
+    }
+
+    #[test]
+    fn staking_payout_reward_point_migration_preserves_unbonded_accounts() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let unknown_author = AccountId32::from([99; 32]);
+            pallet_staking::ErasRewardPoints::<Runtime>::insert(
+                fixture.era,
+                EraRewardPoints {
+                    total: 20,
+                    individual: vec![(unknown_author.clone(), 20)].into_iter().collect(),
+                },
+            );
+
+            crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(reward_points.total, 20);
+            assert_eq!(
+                reward_points.individual.get(&unknown_author).copied(),
+                Some(20)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.validator));
+            assert!(crate::migrations::staking_reward_points_stash_remapped());
+        });
+    }
+
+    #[test]
+    fn staking_payout_reward_point_migration_is_one_shot() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+
+            crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
+            assert!(crate::migrations::staking_reward_points_stash_remapped());
+
+            pallet_staking::ErasRewardPoints::<Runtime>::insert(
+                fixture.era,
+                EraRewardPoints {
+                    total: 20,
+                    individual: vec![(fixture.controller.clone(), 20)].into_iter().collect(),
+                },
+            );
+            crate::migrations::RemapStakingRewardPointsToStash::on_runtime_upgrade();
+
+            let reward_points = pallet_staking::ErasRewardPoints::<Runtime>::get(fixture.era);
+            assert_eq!(
+                reward_points.individual.get(&fixture.controller).copied(),
+                Some(20)
+            );
+            assert!(!reward_points.individual.contains_key(&fixture.validator));
         });
     }
 
@@ -2223,6 +2507,41 @@ mod tests {
             CustomFees::compute_fee(&xorless_call),
             Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
         );
+
+        for polkamarkt_call in [
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
+                market_id: 1,
+                outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+                collateral_in: balance!(10),
+                min_shares_out: 0,
+            }),
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell {
+                market_id: 1,
+                outcome: pallet_polkamarkt::BinaryOutcome::No,
+                shares_in: balance!(5),
+                min_collateral_out: 0,
+            }),
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::flip_position {
+                market_id: 1,
+                from_outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+                shares_in: balance!(5),
+                min_collateral_out: 0,
+                min_shares_out: 0,
+            }),
+        ] {
+            let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(polkamarkt_call.clone()),
+                asset_id: None,
+            });
+            assert_eq!(
+                CustomFees::compute_fee(&polkamarkt_call),
+                Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+            );
+            assert_eq!(
+                CustomFees::compute_fee(&xorless_call),
+                Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+            );
+        }
 
         // compute fee works fine for others
 
