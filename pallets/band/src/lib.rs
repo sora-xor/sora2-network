@@ -265,10 +265,17 @@ pub mod pallet {
     pub type DynamicFeeParameters<T: Config<I>, I: 'static = ()> =
         StorageValue<_, FeeCalculationParameters, ValueQuery, DefaultDynamicFeeParameters<T, I>>;
 
+    pub type GenesisSymbolRate<T, I = ()> = (
+        <T as Config<I>>::Symbol,
+        Option<BandRate<BlockNumberFor<T>>>,
+    );
+
+    pub type GenesisSymbolRates<T, I = ()> = Vec<GenesisSymbolRate<T, I>>;
+
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
         pub trusted_relayers: BTreeSet<T::AccountId>,
-        pub symbol_rates: Vec<(T::Symbol, Option<BandRate<BlockNumberFor<T>>>)>,
+        pub symbol_rates: GenesisSymbolRates<T, I>,
         pub _phantom: PhantomData<I>,
     }
 
