@@ -286,7 +286,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         pallet_polkamarkt::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(4)
+        StorageVersion::new(5)
     );
     assert_eq!(
         vested_rewards::Pallet::<crate::Runtime>::in_code_storage_version(),
@@ -342,6 +342,30 @@ pub(crate) fn runtime_upgrade_version_only_migrations_bump_zero_to_one() {
             substrate_bridge_channel::outbound::Pallet::<crate::Runtime>::on_chain_storage_version(
             ),
             StorageVersion::new(1)
+        );
+    });
+}
+
+pub(crate) fn eth_bridge_storage_version_migration_reaches_v3() {
+    ext().execute_with(|| {
+        StorageVersion::new(2).put::<eth_bridge::Pallet<crate::Runtime>>();
+
+        crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
+
+        assert_eq!(
+            eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version(),
+            StorageVersion::new(3)
+        );
+    });
+
+    ext().execute_with(|| {
+        StorageVersion::new(3).put::<eth_bridge::Pallet<crate::Runtime>>();
+
+        crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
+
+        assert_eq!(
+            eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version(),
+            StorageVersion::new(3)
         );
     });
 }
@@ -468,6 +492,46 @@ pub(crate) fn band_migrate_to_v2_if_needed_handles_expected_versions() {
 }
 
 pub(crate) fn staking_storage_version_bridge_reaches_v16() {
+    for legacy_marker in [None, Some(7u8)] {
+        ext().execute_with(|| {
+            StorageVersion::new(0).put::<pallet_staking::Pallet<crate::Runtime>>();
+            let legacy_key = storage_prefix(b"Staking", b"StorageVersion");
+            unhashed::kill(&legacy_key);
+            if let Some(marker) = legacy_marker {
+                unhashed::put_raw(&legacy_key, &[marker]);
+            }
+
+            crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
+
+            assert_eq!(
+                pallet_staking::Pallet::<crate::Runtime>::on_chain_storage_version(),
+                StorageVersion::new(16),
+                "staking bridge migration should finish at v16 from legacy v0"
+            );
+            assert!(
+                !unhashed::exists(&legacy_key),
+                "legacy staking release marker should be removed"
+            );
+        });
+    }
+
+    ext().execute_with(|| {
+        StorageVersion::new(0).put::<pallet_staking::Pallet<crate::Runtime>>();
+        let legacy_key = storage_prefix(b"Staking", b"StorageVersion");
+        unhashed::put_raw(&legacy_key, &[6]);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(
+            pallet_staking::Pallet::<crate::Runtime>::on_chain_storage_version(),
+            StorageVersion::new(0)
+        );
+        assert!(unhashed::exists(&legacy_key));
+    });
+
     for starting_version in [13, 14, 15] {
         ext().execute_with(|| {
             StorageVersion::new(starting_version).put::<pallet_staking::Pallet<crate::Runtime>>();
@@ -637,6 +701,55 @@ pub(crate) fn xor_tbcd_reward_denomination_repair_migration_scales_once() {
     });
 }
 
+pub(crate) fn xor_tbcd_reward_denomination_repair_rolls_back_on_error_without_panic() {
+    ext().execute_with(|| {
+        unhashed::put(&storage_prefix(b"Denomination", b"Denominator"), &10u128);
+
+        let crowdloan_tag = CrowdloanTag(b"bad-repair".to_vec().try_into().unwrap());
+        let original_crowdloan_rewards = vec![(XOR, u128::MAX), (XOR, 1)];
+        vested_rewards::CrowdloanInfos::<crate::Runtime>::insert(
+            &crowdloan_tag,
+            vested_rewards::CrowdloanInfo {
+                total_contribution: 1,
+                rewards: original_crowdloan_rewards.clone(),
+                start_block: 0,
+                length: 1,
+                account: alice(),
+            },
+        );
+
+        apollo_platform::PoolData::<crate::Runtime>::insert(
+            XOR,
+            apollo_platform::PoolInfo {
+                total_liquidity: 1_000,
+                total_borrowed: 200,
+                total_collateral: 100,
+                rewards: 77,
+                ..Default::default()
+            },
+        );
+        let original_total_liquidity = 1_000;
+        let original_total_borrowed = 200;
+        let original_total_collateral = 100;
+        let original_pool_rewards = 77;
+
+        crate::migrations::RepairXorTbcdRewardDenomination::on_runtime_upgrade();
+
+        assert!(!crate::migrations::xor_tbcd_reward_denomination_repaired());
+        assert_eq!(
+            vested_rewards::CrowdloanInfos::<crate::Runtime>::get(&crowdloan_tag)
+                .unwrap()
+                .rewards,
+            original_crowdloan_rewards
+        );
+        let pool_info = apollo_platform::PoolData::<crate::Runtime>::get(XOR).unwrap();
+        assert_eq!(pool_info.total_liquidity, original_total_liquidity);
+        assert_eq!(pool_info.total_borrowed, original_total_borrowed);
+        assert_eq!(pool_info.total_collateral, original_total_collateral);
+        assert_eq!(pool_info.rewards, original_pool_rewards);
+    });
+}
+
 #[cfg(feature = "try-runtime")]
 pub(crate) fn band_migrate_to_v2_if_needed_try_runtime_hooks() {
     use band::migrations::storages::{BandRateV1, SymbolRatesV1};
@@ -752,10 +865,28 @@ pub(crate) fn runtime_upgrade_version_only_migrations_try_runtime_hooks() {
 }
 
 #[cfg(feature = "try-runtime")]
+pub(crate) fn eth_bridge_storage_version_migration_try_runtime_hooks() {
+    ext().execute_with(|| {
+        StorageVersion::new(2).put::<eth_bridge::Pallet<crate::Runtime>>();
+        let state = crate::migrations::EthBridgeStorageVersionV3::pre_upgrade().unwrap();
+        crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
+        crate::migrations::EthBridgeStorageVersionV3::post_upgrade(state).unwrap();
+    });
+
+    ext().execute_with(|| {
+        StorageVersion::new(3).put::<eth_bridge::Pallet<crate::Runtime>>();
+        let state = crate::migrations::EthBridgeStorageVersionV3::pre_upgrade().unwrap();
+        crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
+        crate::migrations::EthBridgeStorageVersionV3::post_upgrade(state).unwrap();
+    });
+}
+
+#[cfg(feature = "try-runtime")]
 pub(crate) fn staking_storage_version_bridge_try_runtime_hooks() {
-    for starting_version in [13, 14, 15, 16] {
+    for starting_version in [0, 13, 14, 15, 16] {
         ext().execute_with(|| {
             StorageVersion::new(starting_version).put::<pallet_staking::Pallet<crate::Runtime>>();
+            unhashed::kill(&storage_prefix(b"Staking", b"StorageVersion"));
             let state = crate::migrations::StakingStorageVersionV16::pre_upgrade().unwrap();
             crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
             crate::migrations::StakingStorageVersionV16::post_upgrade(state).unwrap();
@@ -977,11 +1108,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
             &true,
         );
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert!(!eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>());
         assert_eq!(
@@ -993,27 +1121,34 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
     ext().execute_with(|| {
         let net_id = crate::GetEthNetworkId::get();
         let xor_asset_id: crate::AssetId = XOR.into();
-        let initial_queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
 
         crate::migrations::DecommissionLegacyEthereumXor::on_runtime_upgrade();
+        let queue_before = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
         unhashed::put(
             b"runtime:migrations:ethereum_xor_thischain_add_asset_queued",
             &true,
         );
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert!(
             eth_bridge::Pallet::<crate::Runtime>::registered_asset(net_id, &xor_asset_id).is_none()
         );
+        let queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
+        assert_eq!(queue.len(), queue_before.len() + 1);
+        let request_hash = *queue.last().unwrap();
         assert_eq!(
-            eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
-            initial_queue
+            eth_bridge::RequestStatuses::<crate::Runtime>::get(net_id, request_hash),
+            Some(RequestStatus::Pending)
         );
+        match eth_bridge::Requests::<crate::Runtime>::get(net_id, request_hash) {
+            Some(OffchainRequest::Outgoing(OutgoingRequest::AddAsset(req), _)) => {
+                assert_eq!(req.network_id, net_id);
+                assert_eq!(req.asset_id, xor_asset_id);
+            }
+            other => panic!("unexpected queued request: {:?}", other),
+        }
     });
 
     ext().execute_with(|| {
@@ -1112,11 +1247,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
             )
         );
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(!crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
@@ -1139,11 +1271,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
         .unwrap();
         let queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(!crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
@@ -1194,11 +1323,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
             &true,
         );
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),
@@ -1227,11 +1353,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
             &true,
         );
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::Pallet::<crate::Runtime>::registered_sidechain_token(net_id, &xor_asset_id),
@@ -1267,11 +1390,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
         .unwrap();
         let queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(!crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::Pallet::<crate::Runtime>::bridge_contract_status(net_id),
@@ -1311,11 +1431,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
             &true,
         );
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::Pallet::<crate::Runtime>::bridge_contract_status(net_id),
@@ -1345,11 +1462,8 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_migration_handles_adversari
         );
         let queue = eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id);
 
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
-        }));
+        crate::migrations::QueueEthereumXorThischainAddAsset::on_runtime_upgrade();
 
-        assert!(result.is_err());
         assert!(!crate::migrations::ethereum_xor_thischain_add_asset_queued());
         assert_eq!(
             eth_bridge::RequestsQueue::<crate::Runtime>::get(net_id),

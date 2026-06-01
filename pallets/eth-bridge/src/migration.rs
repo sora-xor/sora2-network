@@ -247,10 +247,7 @@ pub fn decommission_legacy_ethereum_xor<T: Config>() -> Weight {
                 "Legacy Ethereum XOR decommission failed and was rolled back: {:?}",
                 error
             );
-            panic!(
-                "Legacy Ethereum XOR decommission failed and was rolled back: {:?}",
-                error
-            );
+            <T as frame_system::Config>::BlockWeights::get().max_block
         }
     }
 }
@@ -260,16 +257,7 @@ fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, Dispatc
     let mut writes = 0u64;
 
     reads = reads.saturating_add(1);
-    if LegacyEthereumXorDecommissioned::<T>::get() {
-        reads = reads.saturating_add(1);
-        if LegacyEthereumXorDecommissionedAt::<T>::get().is_none() {
-            LegacyEthereumXorDecommissionedAt::<T>::put(
-                frame_system::Pallet::<T>::current_block_number(),
-            );
-            writes = writes.saturating_add(1);
-        }
-        return Ok(T::DbWeight::get().reads_writes(reads, writes));
-    }
+    let already_decommissioned = LegacyEthereumXorDecommissioned::<T>::get();
 
     let network_id = T::GetEthNetworkId::get();
     let xor_asset_id = common::XOR.into();
@@ -278,6 +266,19 @@ fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, Dispatc
     reads = reads.saturating_add(legacy_reads);
     let blockers =
         legacy_ethereum_xor_decommission_blocker_count_with_requests::<T>(&legacy_requests);
+
+    reads = reads.saturating_add(1);
+    let decommissioned_at = LegacyEthereumXorDecommissionedAt::<T>::get();
+    if already_decommissioned && blockers == 0 {
+        if decommissioned_at.is_none() {
+            LegacyEthereumXorDecommissionedAt::<T>::put(
+                frame_system::Pallet::<T>::current_block_number(),
+            );
+            writes = writes.saturating_add(1);
+        }
+        return Ok(T::DbWeight::get().reads_writes(reads, writes));
+    }
+
     if blockers != 0 {
         frame_support::__private::log::warn!(
             "Quarantining {blockers} unsafe legacy Ethereum XOR outgoing transfer requests during decommission"
@@ -382,9 +383,16 @@ fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, Dispatc
         }
     }
 
-    LegacyEthereumXorDecommissionedAt::<T>::put(frame_system::Pallet::<T>::current_block_number());
-    LegacyEthereumXorDecommissioned::<T>::put(true);
-    writes = writes.saturating_add(2);
+    if decommissioned_at.is_none() {
+        LegacyEthereumXorDecommissionedAt::<T>::put(
+            frame_system::Pallet::<T>::current_block_number(),
+        );
+        writes = writes.saturating_add(1);
+    }
+    if !already_decommissioned {
+        LegacyEthereumXorDecommissioned::<T>::put(true);
+        writes = writes.saturating_add(1);
+    }
 
     Ok(T::DbWeight::get().reads_writes(reads, writes))
 }

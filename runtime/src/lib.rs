@@ -90,6 +90,11 @@ fn runtime_upgrade_version_only_migrations_bump_zero_to_one() {
 }
 #[cfg(test)]
 #[test]
+fn eth_bridge_storage_version_migration_reaches_v3() {
+    tests::eth_bridge_storage_version_migration_reaches_v3();
+}
+#[cfg(test)]
+#[test]
 fn denomination_rejects_zero_factor_without_mutating_state() {
     tests::denomination_rejects_zero_factor_without_mutating_state();
 }
@@ -118,6 +123,11 @@ fn demeter_storage_version_bridge_reaches_v3() {
 fn xor_tbcd_reward_denomination_repair_migration_scales_once() {
     tests::xor_tbcd_reward_denomination_repair_migration_scales_once();
 }
+#[cfg(test)]
+#[test]
+fn xor_tbcd_reward_denomination_repair_rolls_back_on_error_without_panic() {
+    tests::xor_tbcd_reward_denomination_repair_rolls_back_on_error_without_panic();
+}
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
 fn band_migrate_to_v2_if_needed_try_runtime_hooks() {
@@ -132,6 +142,11 @@ fn demeter_storage_version_bridge_try_runtime_hooks() {
 #[test]
 fn runtime_upgrade_version_only_migrations_try_runtime_hooks() {
     tests::runtime_upgrade_version_only_migrations_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn eth_bridge_storage_version_migration_try_runtime_hooks() {
+    tests::eth_bridge_storage_version_migration_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
@@ -218,7 +233,7 @@ use pallet_grandpa::{
 };
 use pallet_polkamarkt::{
     AssetTransfer as PolkamarktAssetTransfer, BinaryOutcome as PolkamarktBinaryOutcome,
-    MarketStatus as PolkamarktMarketStatus,
+    MarketStatus as PolkamarktMarketStatus, OrderSide as PolkamarktOrderSide,
 };
 use pallet_session::historical as pallet_session_historical;
 use snowbridge_beacon_primitives::{Fork, ForkVersions};
@@ -397,10 +412,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 128,
+    spec_version: 129,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 128,
+    transaction_version: 129,
     system_version: 0,
 };
 
@@ -754,7 +769,7 @@ impl pallet_session::historical::Config for Runtime {
 
 impl pallet_authorship::Config for Runtime {
     type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Babe>;
-    type EventHandler = (Staking, ImOnline);
+    type EventHandler = (impls::StakingRewardPoints, ImOnline);
 }
 
 /// A reasonable benchmarking config for staking pallet.
@@ -1175,6 +1190,9 @@ parameter_types! {
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
     pub const PolkamarktMaxBatchClaims: u32 = 24;
+    pub const PolkamarktMaxFillsPerOrder: u32 = 24;
+    pub const PolkamarktMaxOrdersPerPrice: u32 = 128;
+    pub const PolkamarktMaxOpenOrdersPerAccountMarket: u32 = 128;
     pub const PolkamarktTradeFeeBps: u32 = 50;
 }
 
@@ -1381,6 +1399,9 @@ impl pallet_polkamarkt::Config for Runtime {
     type MinMarketDuration = PolkamarktMinMarketDuration;
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
     type MaxBatchClaims = PolkamarktMaxBatchClaims;
+    type MaxFillsPerOrder = PolkamarktMaxFillsPerOrder;
+    type MaxOrdersPerPrice = PolkamarktMaxOrdersPerPrice;
+    type MaxOpenOrdersPerAccountMarket = PolkamarktMaxOpenOrdersPerAccountMarket;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
     type GovernanceOrigin = EnsureRoot<AccountId>;
@@ -3183,7 +3204,7 @@ construct_runtime! {
         IrohaMigration: iroha_migration::{Pallet, Call, Storage, Config<T>, Event<T>} = 35,
         TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>} = 38,
         ElectionsPhragmen: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>} = 39,
-        VestedRewards: vested_rewards::{Pallet, Call, Storage, Event<T>} = 40,
+        VestedRewards: vested_rewards::{Pallet, Call, Storage, Config<T>, Event<T>} = 40,
         Identity: pallet_identity::{Pallet, Call, Storage, Event<T>} = 41,
         Farming: farming::{Pallet, Call, Storage, Event<T>} = 42,
         XSTPool: xst::{Pallet, Call, Storage, Config<T>, Event<T>} = 43,
@@ -3197,8 +3218,8 @@ construct_runtime! {
         // Provides a semi-sorted list of nominators for staking.
         BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>} = 51,
         ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned} = 52,
-        Band: band::{Pallet, Call, Storage, Event<T>} = 53,
-        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Event<T>} = 54,
+        Band: band::{Pallet, Call, Storage, Config<T>, Event<T>} = 53,
+        OracleProxy: oracle_proxy::{Pallet, Call, Storage, Config<T>, Event<T>} = 54,
         HermesGovernancePlatform: hermes_governance_platform::{Pallet, Call, Storage, Event<T>} = 55,
         Preimage: pallet_preimage::{Pallet, Call, Storage, Event<T>, HoldReason} = 56,
         OrderBook: order_book::{Pallet, Call, Storage, Event<T>} = 57,
@@ -3640,6 +3661,21 @@ fn polkamarkt_outcome_label(outcome: PolkamarktBinaryOutcome) -> String {
     }
 }
 
+fn polkamarkt_order_side_from_string(side: String) -> Option<PolkamarktOrderSide> {
+    match side.as_bytes() {
+        b"BUY" | b"Buy" | b"buy" => Some(PolkamarktOrderSide::Buy),
+        b"SELL" | b"Sell" | b"sell" => Some(PolkamarktOrderSide::Sell),
+        _ => None,
+    }
+}
+
+fn polkamarkt_order_side_label(side: PolkamarktOrderSide) -> String {
+    match side {
+        PolkamarktOrderSide::Buy => String::from("Buy"),
+        PolkamarktOrderSide::Sell => String::from("Sell"),
+    }
+}
+
 fn polkamarkt_status_label(status: &PolkamarktMarketStatus) -> String {
     match status {
         PolkamarktMarketStatus::Open => String::from("Open"),
@@ -3886,6 +3922,57 @@ impl_runtime_apis! {
             })
         }
 
+        fn quote_order(
+            market_id: u32,
+            outcome: String,
+            side: String,
+            price_cents: u8,
+            shares: Balance,
+        ) -> Option<polkamarkt_runtime_api::OrderQuote<Balance>> {
+            let outcome = polkamarkt_outcome_from_string(outcome)?;
+            let side = polkamarkt_order_side_from_string(side)?;
+            let quote = Polkamarkt::quote_order_market(market_id, outcome, side, price_cents, shares).ok()?;
+            Some(polkamarkt_runtime_api::OrderQuote {
+                market_id: quote.market_id,
+                outcome: polkamarkt_outcome_label(quote.outcome),
+                side: polkamarkt_order_side_label(quote.side),
+                price_cents: quote.price_cents,
+                shares: quote.shares,
+                filled_shares: quote.filled_shares,
+                posted_shares: quote.posted_shares,
+                collateral_in: quote.collateral_in,
+                collateral_out: quote.collateral_out,
+                fee_amount: quote.fee_amount,
+            })
+        }
+
+        fn order_book(
+            market_id: u32,
+            outcome: String,
+            depth: u32,
+        ) -> Option<polkamarkt_runtime_api::OrderBook<Balance>> {
+            let outcome = polkamarkt_outcome_from_string(outcome)?;
+            let book = Polkamarkt::order_book_depth(market_id, outcome, depth).ok()?;
+            Some(polkamarkt_runtime_api::OrderBook {
+                bids: book
+                    .bids
+                    .into_iter()
+                    .map(|level| polkamarkt_runtime_api::OrderBookLevel {
+                        price_cents: level.price_cents,
+                        shares: level.shares,
+                    })
+                    .collect(),
+                asks: book
+                    .asks
+                    .into_iter()
+                    .map(|level| polkamarkt_runtime_api::OrderBookLevel {
+                        price_cents: level.price_cents,
+                        shares: level.shares,
+                    })
+                    .collect(),
+            })
+        }
+
         fn claimable(
             account_id: AccountId,
             market_id: u32,
@@ -3900,6 +3987,10 @@ impl_runtime_apis! {
                 no_shares: info.no_shares,
                 net_collateral_paid: info.net_collateral_paid,
                 trader_payout: info.trader_payout,
+                claimable_payout: info.claimable_payout,
+                open_yes_shares: info.open_yes_shares,
+                open_no_shares: info.open_no_shares,
+                open_collateral: info.open_collateral,
                 creator_fees: info.creator_fees,
                 creator_liquidity: info.creator_liquidity,
                 is_creator: info.is_creator,

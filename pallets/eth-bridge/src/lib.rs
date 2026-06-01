@@ -1027,7 +1027,7 @@ pub mod pallet {
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
         #[pallet::call_index(12)]
-        #[pallet::weight(<T as Config>::WeightInfo::approve_request())]
+        #[pallet::weight(<T as Config>::WeightInfo::approve_request_finalize())]
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
@@ -2227,7 +2227,7 @@ impl<T: Config> Pallet<T> {
                 author, hash
             );
             RequestApprovers::<T>::insert(net_id, &hash, &approvers);
-            return Ok(None);
+            return Ok(Some(<T as Config>::WeightInfo::approve_request()));
         }
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
@@ -2247,7 +2247,7 @@ impl<T: Config> Pallet<T> {
             let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
             return Ok(Some(weight_info));
         }
-        Ok(None)
+        Ok(Some(<T as Config>::WeightInfo::approve_request()))
     }
 
     fn is_additional_signature_needed(net_id: T::NetworkId, request: &OutgoingRequest<T>) -> bool {

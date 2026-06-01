@@ -118,6 +118,44 @@ fn post_info_pays_no() -> PostDispatchInfo {
     }
 }
 
+fn polkamarkt_trade_calls() -> Vec<<Runtime as frame_system::Config>::RuntimeCall> {
+    vec![
+        RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
+            market_id: 0,
+            outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+            collateral_in: balance!(10),
+            min_shares_out: 0,
+        }),
+        RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell {
+            market_id: 0,
+            outcome: pallet_polkamarkt::BinaryOutcome::No,
+            shares_in: balance!(5),
+            min_collateral_out: 0,
+        }),
+        RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::flip_position {
+            market_id: 0,
+            from_outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+            shares_in: balance!(5),
+            min_collateral_out: 0,
+            min_shares_out: 0,
+        }),
+    ]
+}
+
+fn regular_polkaswap_call() -> <Runtime as frame_system::Config>::RuntimeCall {
+    RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
+        dex_id: 0,
+        input_asset_id: VAL,
+        output_asset_id: XOR,
+        swap_amount: SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(10),
+            min_amount_out: 0,
+        },
+        selected_source_types: vec![],
+        filter_mode: FilterMode::Disabled,
+    })
+}
+
 fn assert_val_staking_reward_recorded(
     active_era: Option<sp_staking::EraIndex>,
     val_burned: Balance,
@@ -1532,7 +1570,6 @@ fn polkamarkt_growth_calls_charge_small_fee() {
             RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market {
                 condition_id: 0,
                 close_block: 42,
-                seed_liquidity: balance!(100),
             }),
         ];
 
@@ -1558,52 +1595,214 @@ fn polkamarkt_growth_calls_charge_small_fee() {
 }
 
 #[test]
-fn polkamarkt_buy_uses_standard_weight_fee() {
+fn polkamarkt_trade_calls_charge_small_fee() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         give_xor_initial_balance(alice());
 
         let len: usize = 10;
+        let len_fee = length_fee(len);
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
+
+        let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
+        for call in polkamarkt_trade_calls() {
+            assert_eq!(
+                CustomFees::compute_fee(&call),
+                Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+            );
+            assert_eq!(
+                XorFee::compute_fee(len as u32, &call, &dispatch_info, 0).0,
+                SMALL_FEE + len_fee
+            );
+
+            let pre = ChargeTransactionPayment::<Runtime>::new()
+                .pre_dispatch(&alice(), &call, &dispatch_info, len)
+                .unwrap();
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - (SMALL_FEE + len_fee);
+            let result = balance_after_fee_withdrawal.clone().into_balance();
+            assert_eq!(Balances::free_balance(alice()), result);
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            assert_eq!(Balances::free_balance(alice()), result);
+        }
+    });
+}
+
+#[test]
+fn xorless_polkamarkt_trade_calls_charge_small_fee() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+        give_xor_initial_balance(alice());
+
+        let len: usize = 10;
+        let len_fee = length_fee(len);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+
+        let mut balance_after_fee_withdrawal = FixedWrapper::from(INITIAL_BALANCE);
+        for inner_call in polkamarkt_trade_calls() {
+            let call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(inner_call),
+                asset_id: None,
+            });
+
+            assert_eq!(
+                CustomFees::compute_fee(&call),
+                Some((SMALL_FEE, CustomFeeDetails::Regular(SMALL_FEE)))
+            );
+            assert_eq!(
+                XorFee::compute_fee(len as u32, &call, &dispatch_info, 0).0,
+                SMALL_FEE + len_fee
+            );
+
+            let pre = ChargeTransactionPayment::<Runtime>::new()
+                .pre_dispatch(&alice(), &call, &dispatch_info, len)
+                .unwrap();
+            balance_after_fee_withdrawal = balance_after_fee_withdrawal - (SMALL_FEE + len_fee);
+            let result = balance_after_fee_withdrawal.clone().into_balance();
+            assert_eq!(Balances::free_balance(alice()), result);
+            assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &dispatch_info,
+                &default_post_info(),
+                len,
+                &Ok(())
+            )
+            .is_ok());
+            assert_eq!(Balances::free_balance(alice()), result);
+        }
+    });
+}
+
+#[test]
+fn polkamarkt_trade_custom_fee_respects_multiplier_tip_and_length_fee() {
+    ext().execute_with(|| {
+        let multiplier = 4;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 123;
+        let len_fee = length_fee(len);
+        let tip = balance!(0.000003);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let multiplier = Balance::from(multiplier);
+
+        for call in polkamarkt_trade_calls() {
+            let (fee_details, custom_fee_details) =
+                XorFee::compute_fee_details(len as u32, &call, &dispatch_info, tip);
+            let inclusion_fee = fee_details.inclusion_fee.clone().unwrap();
+
+            assert_eq!(
+                custom_fee_details,
+                Some(CustomFeeDetails::Regular(SMALL_FEE))
+            );
+            assert_eq!(inclusion_fee.base_fee, 0);
+            assert_eq!(inclusion_fee.len_fee, len_fee);
+            assert_eq!(inclusion_fee.adjusted_weight_fee, multiplier * SMALL_FEE);
+            assert_eq!(fee_details.tip, multiplier * tip);
+            assert_eq!(
+                fee_details.final_fee(),
+                multiplier * (SMALL_FEE + tip) + len_fee
+            );
+        }
+    });
+}
+
+#[test]
+fn polkamarkt_buy_sell_tx_fees_match_regular_polkaswap_swap() {
+    ext().execute_with(|| {
+        let multiplier = 4;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 123;
+        let tip = balance!(0.000003);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let swap_call = regular_polkaswap_call();
+        let expected_fee = XorFee::compute_fee(len as u32, &swap_call, &dispatch_info, tip).0;
+        let expected_details =
+            XorFee::compute_fee_details(len as u32, &swap_call, &dispatch_info, tip);
+
+        for call in [
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
+                market_id: 0,
+                outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+                collateral_in: balance!(10),
+                min_shares_out: 0,
+            }),
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell {
+                market_id: 0,
+                outcome: pallet_polkamarkt::BinaryOutcome::No,
+                shares_in: balance!(5),
+                min_collateral_out: 0,
+            }),
+        ] {
+            assert_eq!(
+                CustomFees::compute_fee(&call),
+                CustomFees::compute_fee(&swap_call)
+            );
+            assert_eq!(
+                XorFee::compute_fee(len as u32, &call, &dispatch_info, tip).0,
+                expected_fee
+            );
+            assert_eq!(
+                XorFee::compute_fee_details(len as u32, &call, &dispatch_info, tip),
+                expected_details
+            );
+
+            let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(call),
+                asset_id: None,
+            });
+            let xorless_swap = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(swap_call.clone()),
+                asset_id: None,
+            });
+            assert_eq!(
+                CustomFees::compute_fee(&xorless_call),
+                CustomFees::compute_fee(&xorless_swap)
+            );
+            assert_eq!(
+                XorFee::compute_fee(len as u32, &xorless_call, &dispatch_info, tip).0,
+                XorFee::compute_fee(len as u32, &xorless_swap, &dispatch_info, tip).0
+            );
+        }
+    });
+}
+
+#[test]
+fn polkamarkt_non_trade_user_calls_do_not_get_trade_fee_override() {
+    ext().execute_with(|| {
+        set_weight_to_fee_multiplier(1);
+
+        let len = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let add_liquidity_call = RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::add_liquidity {
+            market_id: 0,
+            collateral_amount: balance!(10),
+            min_lp_shares: 0,
+        });
+        let claim_market_call =
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::claim_market { market_id: 0 });
+
+        assert_eq!(CustomFees::compute_fee(&add_liquidity_call), None);
+        assert_eq!(CustomFees::compute_fee(&claim_market_call), None);
+
         let base_fee = WeightToFee::weight_to_fee(
             &BlockWeights::get().get(dispatch_info.class).base_extrinsic,
         );
-        let len_fee = LengthToFee::weight_to_fee(&Weight::from_parts(len as u64, 0));
+        let len_fee = length_fee(len);
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
-        let call = RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
-            market_id: 0,
-            outcome: pallet_polkamarkt::BinaryOutcome::Yes,
-            collateral_in: balance!(10),
-            min_shares_out: 0,
-        });
-
-        assert_eq!(CustomFees::compute_fee(&call), None);
         assert_eq!(
-            XorFee::compute_fee(len as u32, &call, &dispatch_info, 0).0,
+            XorFee::compute_fee(len as u32, &add_liquidity_call, &dispatch_info, 0).0,
             base_fee + len_fee + weight_fee
         );
-
-        let pre = ChargeTransactionPayment::<Runtime>::new()
-            .pre_dispatch(&alice(), &call, &dispatch_info, len)
-            .unwrap();
-        let balance_after_fee_withdrawal =
-            FixedWrapper::from(INITIAL_BALANCE) - base_fee - len_fee - weight_fee;
-        let balance_after_fee_withdrawal = balance_after_fee_withdrawal.into_balance();
         assert_eq!(
-            Balances::free_balance(alice()),
-            balance_after_fee_withdrawal
-        );
-        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
-            Some(pre),
-            &dispatch_info,
-            &default_post_info(),
-            len,
-            &Ok(())
-        )
-        .is_ok());
-        assert_eq!(
-            Balances::free_balance(alice()),
-            balance_after_fee_withdrawal
+            XorFee::compute_fee(len as u32, &claim_market_call, &dispatch_info, 0).0,
+            base_fee + len_fee + weight_fee
         );
     });
 }

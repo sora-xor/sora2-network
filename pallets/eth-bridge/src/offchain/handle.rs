@@ -383,8 +383,8 @@ impl<T: Config> Pallet<T> {
         let at_height = Self::load_current_height(network_id)?;
         let timepoint = pre_request.timepoint;
         let request = IncomingRequest::MarkAsDone(IncomingMarkAsDoneRequest {
-            outgoing_request_hash: pre_request_hash,
-            initial_request_hash: pre_request.hash,
+            outgoing_request_hash: pre_request.hash,
+            initial_request_hash: pre_request_hash,
             author: pre_request.author,
             at_height,
             timepoint,

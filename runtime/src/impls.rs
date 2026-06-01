@@ -36,7 +36,7 @@ use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::weights::BlockWeights;
 use common::Denominator;
 use frame_support::dispatch::DispatchClass;
-use frame_support::traits::OnUnbalanced;
+use frame_support::traits::{OnUnbalanced, RewardsReporter};
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 use frame_support::{
@@ -48,6 +48,7 @@ use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::{Convert, Dispatchable};
 use sp_runtime::{DispatchError, DispatchErrorWithPostInfo, RuntimeDebug};
+use sp_staking::StakingAccount;
 
 pub type NegativeImbalanceOf<T> = pallet_balances::NegativeImbalance<T>;
 
@@ -56,6 +57,25 @@ pub struct CollectiveWeightInfo<T>(PhantomData<T>);
 pub struct DemocracyWeightInfo;
 
 pub struct PreimageWeightInfo;
+
+pub struct StakingRewardPoints;
+
+impl pallet_authorship::EventHandler<crate::AccountId, crate::BlockNumber> for StakingRewardPoints {
+    fn note_author(author: crate::AccountId) {
+        let reward_stash = pallet_staking::Pallet::<crate::Runtime>::ledger(
+            StakingAccount::Controller(author.clone()),
+        )
+        .or_else(|_| {
+            pallet_staking::Pallet::<crate::Runtime>::ledger(StakingAccount::Stash(author.clone()))
+        })
+        .map(|ledger| ledger.stash)
+        .unwrap_or(author);
+
+        <pallet_staking::Pallet<crate::Runtime> as RewardsReporter<crate::AccountId>>::reward_by_ids(
+            [(reward_stash, 20)],
+        );
+    }
+}
 
 pub struct OnUnbalancedDemocracySlash<T> {
     _marker: PhantomData<T>,

@@ -11,8 +11,8 @@ pub use pallet::*;
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::BuyBackHandler;
 use frame_support::{
-    dispatch::DispatchResult, storage::with_transaction, transactional, weights::Weight,
-    BoundedVec, PalletId,
+    dispatch::DispatchResult, storage::with_transaction, traits::ConstU32, transactional,
+    weights::Weight, BoundedBTreeMap, BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
@@ -32,10 +32,15 @@ pub mod benchmarking;
 
 pub type ConditionId = u32;
 pub type MarketId = u32;
+pub type OrderId = u64;
+pub type PriceCents = u8;
 
 const STORAGE_VERSION: frame_support::traits::StorageVersion =
-    frame_support::traits::StorageVersion::new(4);
+    frame_support::traits::StorageVersion::new(5);
 const CREATION_FEE_BUYBACK_BPS: u32 = 2_000;
+const PRICE_CENTS_DENOMINATOR: u128 = 100;
+const MIN_PRICE_CENTS: PriceCents = 1;
+const MAX_PRICE_CENTS: PriceCents = 99;
 
 fn with_storage_transaction<T>(
     f: impl FnOnce() -> Result<T, DispatchError>,
@@ -69,6 +74,10 @@ pub trait WeightInfo {
     fn claim_creator_liquidity() -> Weight;
     fn claim_liquidity() -> Weight;
     fn sweep_xor_buyback_and_burn() -> Weight;
+    fn place_order(f: u32) -> Weight;
+    fn cancel_order() -> Weight;
+    fn split_position() -> Weight;
+    fn merge_positions() -> Weight;
 }
 
 #[derive(
@@ -203,6 +212,57 @@ pub enum TradeSide {
     DecodeWithMemTracking,
     TypeInfo,
     Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub enum OrderSide {
+    Buy,
+    Sell,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub enum TimeInForce {
+    Gtc,
+    Ioc,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub enum MarketMechanism {
+    LegacyAmm,
+    OrderBook,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
     PartialEq,
     Eq,
     RuntimeDebug,
@@ -214,6 +274,7 @@ pub struct Market<ClassId, AccountId, BlockNumber, Balance> {
     pub close_block: BlockNumber,
     pub collateral_asset: ClassId,
     pub seed_liquidity: Balance,
+    pub mechanism: MarketMechanism,
     pub status: MarketStatus,
 }
 
@@ -321,6 +382,53 @@ pub struct MarketEvidence<BlockNumber, BoundedString> {
     pub at_block: BlockNumber,
 }
 
+#[derive(
+    Encode,
+    Decode,
+    DecodeWithMemTracking,
+    TypeInfo,
+    Clone,
+    PartialEq,
+    Eq,
+    sp_runtime::RuntimeDebug,
+    MaxEncodedLen,
+)]
+pub struct Order<AccountId, Balance> {
+    pub owner: AccountId,
+    pub market_id: MarketId,
+    pub outcome: BinaryOutcome,
+    pub side: OrderSide,
+    pub price_cents: PriceCents,
+    pub remaining_shares: Balance,
+    pub reserved_collateral: Balance,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug, Default)]
+pub struct OrderBookLevel<Balance> {
+    pub price_cents: PriceCents,
+    pub shares: Balance,
+}
+
+#[derive(Clone, PartialEq, Eq, RuntimeDebug, Default)]
+pub struct OrderBookDepth<Balance> {
+    pub bids: Vec<OrderBookLevel<Balance>>,
+    pub asks: Vec<OrderBookLevel<Balance>>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+pub struct OrderQuote<Balance> {
+    pub market_id: MarketId,
+    pub outcome: BinaryOutcome,
+    pub side: OrderSide,
+    pub price_cents: PriceCents,
+    pub shares: Balance,
+    pub filled_shares: Balance,
+    pub posted_shares: Balance,
+    pub collateral_in: Balance,
+    pub collateral_out: Balance,
+    pub fee_amount: Balance,
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
 pub struct BuyQuote<Balance> {
     pub market_id: MarketId,
@@ -374,6 +482,10 @@ pub struct ClaimableInfo<AccountId, Balance> {
     pub no_shares: Balance,
     pub net_collateral_paid: Balance,
     pub trader_payout: Balance,
+    pub claimable_payout: Balance,
+    pub open_yes_shares: Balance,
+    pub open_no_shares: Balance,
+    pub open_collateral: Balance,
     pub creator_fees: Balance,
     pub creator_liquidity: Balance,
     pub is_creator: bool,
@@ -384,6 +496,14 @@ struct TradeFeeSplit<Balance> {
     pool: Balance,
     creator: Balance,
     buyback: Balance,
+}
+
+#[derive(Clone, Copy, Default)]
+struct OrderExecutionTotals<Balance> {
+    filled_shares: Balance,
+    collateral_in: Balance,
+    collateral_out: Balance,
+    fee_amount: Balance,
 }
 
 pub type MetadataString<T> = BoundedVec<u8, <T as pallet::Config>::MaxMetadataLength>;
@@ -409,6 +529,10 @@ pub type LiquidityQuoteOf<T> = LiquidityQuote<<T as Config>::Balance>;
 pub type FlipQuoteOf<T> = FlipQuote<<T as Config>::Balance>;
 pub type ClaimableInfoOf<T> =
     ClaimableInfo<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
+pub type OrderOf<T> = Order<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
+pub type OrderBookLevelOf<T> = OrderBookLevel<<T as Config>::Balance>;
+pub type OrderBookDepthOf<T> = OrderBookDepth<<T as Config>::Balance>;
+pub type OrderQuoteOf<T> = OrderQuote<<T as Config>::Balance>;
 
 pub trait AssetTransfer<AccountId, AssetId, Balance> {
     fn transfer(
@@ -501,6 +625,18 @@ pub mod pallet {
         #[pallet::constant]
         type MaxBatchClaims: Get<u32>;
 
+        /// Maximum maker orders matched by one order placement.
+        #[pallet::constant]
+        type MaxFillsPerOrder: Get<u32>;
+
+        /// Maximum FIFO order ids stored at one market/outcome/side/price level.
+        #[pallet::constant]
+        type MaxOrdersPerPrice: Get<u32>;
+
+        /// Maximum open order ids tracked for one account in one market.
+        #[pallet::constant]
+        type MaxOpenOrdersPerAccountMarket: Get<u32>;
+
         /// Weight information for extrinsics.
         type WeightInfo: crate::WeightInfo;
 
@@ -524,6 +660,10 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn next_market_id)]
     pub type NextMarketId<T> = StorageValue<_, MarketId, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn next_order_id)]
+    pub type NextOrderId<T> = StorageValue<_, OrderId, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn conditions)]
@@ -554,6 +694,11 @@ pub mod pallet {
     #[pallet::getter(fn market_pool)]
     pub type MarketPools<T: Config> =
         StorageMap<_, Blake2_128Concat, MarketId, MarketPoolOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn market_order_book_collateral)]
+    pub type MarketOrderBookCollateral<T: Config> =
+        StorageMap<_, Blake2_128Concat, MarketId, T::Balance, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn market_volume)]
@@ -620,6 +765,46 @@ pub mod pallet {
 
     #[pallet::storage]
     pub type FeeCollectorOverride<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn orders)]
+    pub type Orders<T: Config> = StorageMap<_, Blake2_128Concat, OrderId, OrderOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn order_book_queues)]
+    pub type OrderBookQueues<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        MarketId,
+        Blake2_128Concat,
+        (BinaryOutcome, OrderSide, PriceCents),
+        BoundedVec<OrderId, T::MaxOrdersPerPrice>,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn order_book_price_levels)]
+    pub type OrderBookPriceLevels<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        MarketId,
+        Blake2_128Concat,
+        (BinaryOutcome, OrderSide),
+        BoundedBTreeMap<PriceCents, T::Balance, ConstU32<99>>,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn open_orders_by_account_market)]
+    pub type OpenOrdersByAccountMarket<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        MarketId,
+        BoundedVec<OrderId, T::MaxOpenOrdersPerAccountMarket>,
+        ValueQuery,
+    >;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -734,6 +919,43 @@ pub mod pallet {
             user: T::AccountId,
             amount: T::Balance,
         },
+        OrderPlaced {
+            order_id: OrderId,
+            market_id: MarketId,
+            owner: T::AccountId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+            time_in_force: TimeInForce,
+        },
+        OrderFilled {
+            maker_order_id: OrderId,
+            taker_order_id: OrderId,
+            market_id: MarketId,
+            maker: T::AccountId,
+            taker: T::AccountId,
+            outcome: BinaryOutcome,
+            price_cents: PriceCents,
+            shares: T::Balance,
+            collateral_amount: T::Balance,
+            fee_amount: T::Balance,
+        },
+        OrderCancelled {
+            order_id: OrderId,
+            market_id: MarketId,
+            owner: T::AccountId,
+        },
+        PositionSplit {
+            market_id: MarketId,
+            account: T::AccountId,
+            collateral_amount: T::Balance,
+        },
+        PositionMerged {
+            market_id: MarketId,
+            account: T::AccountId,
+            shares: T::Balance,
+        },
     }
 
     #[pallet::error]
@@ -763,6 +985,13 @@ pub mod pallet {
         NotMarketCreator,
         NothingToClaim,
         NothingToSweep,
+        UnsupportedMarketMechanism,
+        InvalidPrice,
+        TooManyOrdersAtPrice,
+        TooManyOpenOrders,
+        OrderUnknown,
+        NotOrderOwner,
+        InsufficientReservedCollateral,
     }
 
     #[pallet::call]
@@ -820,7 +1049,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Create a market for a registered condition and seed it with canonical stable collateral.
+        /// Create a market for a registered condition. New markets use the complete-set order book.
         #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::create_market())]
         #[transactional]
@@ -828,7 +1057,6 @@ pub mod pallet {
             origin: OriginFor<T>,
             condition_id: ConditionId,
             close_block: BlockNumberFor<T>,
-            seed_liquidity: T::Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(
@@ -842,7 +1070,6 @@ pub mod pallet {
                 !ConditionMarket::<T>::contains_key(condition_id),
                 Error::<T>::ConditionAlreadyUsed
             );
-            ensure!(!seed_liquidity.is_zero(), Error::<T>::ZeroSeedLiquidity);
             let now = <frame_system::Pallet<T>>::block_number();
             let min_close = now
                 .checked_add(&T::MinMarketDuration::get())
@@ -858,47 +1085,20 @@ pub mod pallet {
                     Ok(id)
                 })?;
 
-            let deposited = Self::escrow_seed_liquidity(&who, seed_liquidity)?;
             let data = Market {
                 creator: who.clone(),
                 condition_id,
                 close_block,
                 collateral_asset: T::CanonicalStableAssetId::get(),
-                seed_liquidity: deposited,
+                seed_liquidity: T::Balance::zero(),
+                mechanism: MarketMechanism::OrderBook,
                 status: MarketStatus::Open,
             };
             Markets::<T>::insert(market_id, data);
-            MarketPools::<T>::insert(
-                market_id,
-                MarketPool {
-                    collateral: deposited,
-                    yes: deposited,
-                    no: deposited,
-                },
-            );
-            LiquidityPositions::<T>::insert(
-                market_id,
-                &who,
-                LiquidityPosition {
-                    shares: deposited,
-                    collateral_contributed: deposited,
-                },
-            );
-            LiquidityPositionTotals::<T>::insert(
-                market_id,
-                LiquidityTotals {
-                    total_shares: deposited,
-                    total_collateral_contributed: deposited,
-                },
-            );
             ConditionMarket::<T>::insert(condition_id, market_id);
             Self::deposit_event(Event::MarketCreated {
                 market_id,
-                seed_liquidity: deposited,
-            });
-            Self::deposit_event(Event::CollateralSeeded {
-                market_id,
-                amount: deposited,
+                seed_liquidity: T::Balance::zero(),
             });
             Ok(())
         }
@@ -915,7 +1115,8 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(!collateral_in.is_zero(), Error::<T>::InvalidTradeAmount);
-            let _market = Self::ensure_market_tradable(market_id)?;
+            let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_legacy_amm_market(&market)?;
             with_storage_transaction(|| -> DispatchResult {
                 let total_fee = Self::trade_fee(collateral_in);
                 let pricing_input = collateral_in
@@ -984,6 +1185,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             ensure!(!shares_in.is_zero(), Error::<T>::InvalidTradeAmount);
             let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_legacy_amm_market(&market)?;
             Self::ensure_position_has_shares(market_id, &who, outcome, shares_in)?;
             with_storage_transaction(|| -> DispatchResult {
                 let pool = MarketPools::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
@@ -1053,7 +1255,8 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             ensure!(!shares_in.is_zero(), Error::<T>::InvalidTradeAmount);
-            let _market = Self::ensure_market_tradable(market_id)?;
+            let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_legacy_amm_market(&market)?;
             Self::ensure_position_has_shares(market_id, &who, from_outcome, shares_in)?;
 
             with_storage_transaction(|| -> DispatchResult {
@@ -1147,6 +1350,7 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
             ensure!(!collateral_amount.is_zero(), Error::<T>::InvalidTradeAmount);
             let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_legacy_amm_market(&market)?;
 
             with_storage_transaction(|| -> DispatchResult {
                 let pool = MarketPools::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
@@ -1376,6 +1580,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let (market, _) = Self::sync_market_status_if_needed(market_id)?;
+            Self::ensure_legacy_amm_market(&market)?;
             ensure!(market.creator == who, Error::<T>::NotMarketCreator);
             let amount = Self::claim_liquidity_for(&who, market_id, &market, T::Balance::zero())?;
             Self::deposit_event(Event::CreatorLiquidityClaimed {
@@ -1396,6 +1601,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let (market, _) = Self::sync_market_status_if_needed(market_id)?;
+            Self::ensure_legacy_amm_market(&market)?;
             Self::claim_liquidity_for(&who, market_id, &market, lp_shares).map(|_| ())
         }
 
@@ -1423,6 +1629,101 @@ pub mod pallet {
             });
             Ok(())
         }
+
+        /// Place a bounded on-chain limit order. GTC remainders post; IOC remainders refund.
+        #[pallet::call_index(34)]
+        #[pallet::weight(T::WeightInfo::place_order(T::MaxFillsPerOrder::get()))]
+        pub fn place_order(
+            origin: OriginFor<T>,
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+            time_in_force: TimeInForce,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::place_order_for(
+                &who,
+                market_id,
+                outcome,
+                side,
+                price_cents,
+                shares,
+                time_in_force,
+            )
+        }
+
+        /// Cancel an open order and refund its reserved collateral or shares.
+        #[pallet::call_index(35)]
+        #[pallet::weight(T::WeightInfo::cancel_order())]
+        pub fn cancel_order(origin: OriginFor<T>, order_id: OrderId) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let order = Orders::<T>::get(order_id).ok_or(Error::<T>::OrderUnknown)?;
+            ensure!(order.owner == who, Error::<T>::NotOrderOwner);
+            let market = Markets::<T>::get(order.market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_order_book_market(&market)?;
+            with_storage_transaction(|| -> DispatchResult {
+                Self::cancel_order_unchecked(order_id, order)?;
+                Ok(())
+            })
+        }
+
+        /// Lock collateral and mint a complete YES/NO set.
+        #[pallet::call_index(36)]
+        #[pallet::weight(T::WeightInfo::split_position())]
+        pub fn split_position(
+            origin: OriginFor<T>,
+            market_id: MarketId,
+            collateral_amount: T::Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            ensure!(!collateral_amount.is_zero(), Error::<T>::InvalidTradeAmount);
+            let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_order_book_market(&market)?;
+            with_storage_transaction(|| -> DispatchResult {
+                T::Assets::transfer(
+                    market.collateral_asset,
+                    &who,
+                    &Self::account_id(),
+                    collateral_amount,
+                )?;
+                Self::credit_complete_set(market_id, &who, collateral_amount)?;
+                Self::increase_order_book_collateral(market_id, collateral_amount)?;
+                Self::deposit_event(Event::PositionSplit {
+                    market_id,
+                    account: who.clone(),
+                    collateral_amount,
+                });
+                Ok(())
+            })
+        }
+
+        /// Burn a complete YES/NO set and unlock its backing collateral.
+        #[pallet::call_index(37)]
+        #[pallet::weight(T::WeightInfo::merge_positions())]
+        pub fn merge_positions(
+            origin: OriginFor<T>,
+            market_id: MarketId,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            ensure!(!shares.is_zero(), Error::<T>::InvalidTradeAmount);
+            let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_order_book_market(&market)?;
+            with_storage_transaction(|| -> DispatchResult {
+                Self::debit_outcome_shares(market_id, &who, BinaryOutcome::Yes, shares)?;
+                Self::debit_outcome_shares(market_id, &who, BinaryOutcome::No, shares)?;
+                Self::decrease_order_book_collateral(market_id, shares)?;
+                T::Assets::transfer(market.collateral_asset, &Self::account_id(), &who, shares)?;
+                Self::deposit_event(Event::PositionMerged {
+                    market_id,
+                    account: who.clone(),
+                    shares,
+                });
+                Ok(())
+            })
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -1449,13 +1750,6 @@ pub mod pallet {
                 });
             }
             Ok(())
-        }
-
-        fn escrow_seed_liquidity(
-            who: &T::AccountId,
-            amount: T::Balance,
-        ) -> Result<T::Balance, DispatchError> {
-            Self::deposit_canonical(who, &Self::account_id(), amount)
         }
 
         pub(crate) fn account_id() -> T::AccountId {
@@ -1526,11 +1820,1126 @@ pub mod pallet {
             Ok(market)
         }
 
+        fn ensure_legacy_amm_market(market: &MarketOf<T>) -> DispatchResult {
+            ensure!(
+                matches!(market.mechanism, MarketMechanism::LegacyAmm),
+                Error::<T>::UnsupportedMarketMechanism
+            );
+            Ok(())
+        }
+
+        fn ensure_order_book_market(market: &MarketOf<T>) -> DispatchResult {
+            ensure!(
+                matches!(market.mechanism, MarketMechanism::OrderBook),
+                Error::<T>::UnsupportedMarketMechanism
+            );
+            Ok(())
+        }
+
+        fn place_order_for(
+            who: &T::AccountId,
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+            time_in_force: TimeInForce,
+        ) -> DispatchResult {
+            ensure!(!shares.is_zero(), Error::<T>::InvalidTradeAmount);
+            Self::ensure_order_lot_size(shares)?;
+            Self::ensure_valid_price(price_cents)?;
+            let market = Self::ensure_market_tradable(market_id)?;
+            Self::ensure_order_book_market(&market)?;
+            if matches!(time_in_force, TimeInForce::Gtc)
+                && Self::posts_order_remainder_readonly(
+                    market_id,
+                    outcome,
+                    side,
+                    price_cents,
+                    shares,
+                )?
+            {
+                Self::ensure_open_order_slot(who, market_id)?;
+                Self::ensure_price_level_slot(market_id, outcome, side, price_cents)?;
+            }
+
+            let mut remaining_shares = shares;
+            let mut available_collateral = T::Balance::zero();
+            let mut execution = OrderExecutionTotals::<T::Balance>::default();
+
+            with_storage_transaction(|| -> DispatchResult {
+                let order_id = Self::next_order_id_checked()?;
+                match side {
+                    OrderSide::Buy => {
+                        let max_notional = Self::price_amount(price_cents, shares)?;
+                        ensure!(!max_notional.is_zero(), Error::<T>::TradeAmountTooSmall);
+                        let fee_budget = Self::orderbook_trade_fee(max_notional);
+                        available_collateral = max_notional
+                            .checked_add(&fee_budget)
+                            .ok_or(Error::<T>::Overflow)?;
+                        T::Assets::transfer(
+                            market.collateral_asset,
+                            who,
+                            &Self::account_id(),
+                            available_collateral,
+                        )?;
+                    }
+                    OrderSide::Sell => {
+                        Self::debit_outcome_shares(market_id, who, outcome, shares)?;
+                    }
+                }
+
+                Self::deposit_event(Event::OrderPlaced {
+                    order_id,
+                    market_id,
+                    owner: who.clone(),
+                    outcome,
+                    side,
+                    price_cents,
+                    shares,
+                    time_in_force,
+                });
+
+                Self::match_order(
+                    order_id,
+                    who,
+                    market_id,
+                    &market,
+                    outcome,
+                    side,
+                    price_cents,
+                    &mut remaining_shares,
+                    &mut available_collateral,
+                    &mut execution,
+                )?;
+
+                if remaining_shares.is_zero() {
+                    if !available_collateral.is_zero() {
+                        T::Assets::transfer(
+                            market.collateral_asset,
+                            &Self::account_id(),
+                            who,
+                            available_collateral,
+                        )?;
+                    }
+                    return Ok(());
+                }
+
+                match time_in_force {
+                    TimeInForce::Ioc => match side {
+                        OrderSide::Buy => {
+                            if !available_collateral.is_zero() {
+                                T::Assets::transfer(
+                                    market.collateral_asset,
+                                    &Self::account_id(),
+                                    who,
+                                    available_collateral,
+                                )?;
+                            }
+                        }
+                        OrderSide::Sell => {
+                            Self::credit_outcome_shares(market_id, who, outcome, remaining_shares)?;
+                        }
+                    },
+                    TimeInForce::Gtc => {
+                        Self::ensure_open_order_slot(who, market_id)?;
+                        Self::ensure_price_level_slot(market_id, outcome, side, price_cents)?;
+                        let reserved_collateral = match side {
+                            OrderSide::Buy => {
+                                let reserved = Self::price_amount(price_cents, remaining_shares)?;
+                                ensure!(
+                                    available_collateral >= reserved,
+                                    Error::<T>::InsufficientReservedCollateral
+                                );
+                                let refund = available_collateral.saturating_sub(reserved);
+                                if !refund.is_zero() {
+                                    T::Assets::transfer(
+                                        market.collateral_asset,
+                                        &Self::account_id(),
+                                        who,
+                                        refund,
+                                    )?;
+                                }
+                                reserved
+                            }
+                            OrderSide::Sell => T::Balance::zero(),
+                        };
+                        Self::insert_open_order(
+                            order_id,
+                            Order {
+                                owner: who.clone(),
+                                market_id,
+                                outcome,
+                                side,
+                                price_cents,
+                                remaining_shares,
+                                reserved_collateral,
+                            },
+                        )?;
+                    }
+                }
+
+                Ok(())
+            })
+        }
+
+        fn match_order(
+            taker_order_id: OrderId,
+            taker: &T::AccountId,
+            market_id: MarketId,
+            market: &MarketOf<T>,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            remaining_shares: &mut T::Balance,
+            available_collateral: &mut T::Balance,
+            totals: &mut OrderExecutionTotals<T::Balance>,
+        ) -> DispatchResult {
+            let max_fills = T::MaxFillsPerOrder::get();
+            let mut fills = 0u32;
+            while !remaining_shares.is_zero() && fills < max_fills {
+                let candidate = match side {
+                    OrderSide::Buy => Self::best_buy_match(market_id, outcome, price_cents),
+                    OrderSide::Sell => Self::best_same_outcome_buy(market_id, outcome, price_cents)
+                        .map(|id| (id, false)),
+                };
+
+                let Some((maker_order_id, complementary)) = candidate else {
+                    break;
+                };
+                let maker_order =
+                    Orders::<T>::get(maker_order_id).ok_or(Error::<T>::OrderUnknown)?;
+                let fill_shares = core::cmp::min(*remaining_shares, maker_order.remaining_shares);
+                ensure!(!fill_shares.is_zero(), Error::<T>::TradeAmountTooSmall);
+
+                if complementary {
+                    Self::fill_complementary_buy(
+                        taker_order_id,
+                        taker,
+                        market,
+                        outcome,
+                        maker_order_id,
+                        maker_order,
+                        fill_shares,
+                        remaining_shares,
+                        available_collateral,
+                        totals,
+                    )?;
+                } else {
+                    Self::fill_same_outcome(
+                        taker_order_id,
+                        taker,
+                        market,
+                        outcome,
+                        side,
+                        maker_order_id,
+                        maker_order,
+                        fill_shares,
+                        remaining_shares,
+                        available_collateral,
+                        totals,
+                    )?;
+                }
+                fills = fills.saturating_add(1);
+            }
+            Ok(())
+        }
+
+        fn posts_order_remainder_readonly(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> Result<bool, DispatchError> {
+            let mut remaining = shares;
+            let mut fills = 0u32;
+            let mut simulated_fills: Vec<(OrderId, T::Balance)> = Vec::new();
+
+            while !remaining.is_zero() && fills < T::MaxFillsPerOrder::get() {
+                let candidate = match side {
+                    OrderSide::Buy => Self::best_buy_match_readonly(
+                        market_id,
+                        outcome,
+                        price_cents,
+                        &simulated_fills,
+                    ),
+                    OrderSide::Sell => Self::best_same_outcome_buy_readonly(
+                        market_id,
+                        outcome,
+                        price_cents,
+                        &simulated_fills,
+                    )
+                    .map(|id| (id, false)),
+                };
+                let Some((order_id, _)) = candidate else {
+                    break;
+                };
+                let Some(order) = Orders::<T>::get(order_id) else {
+                    break;
+                };
+                let Some(simulated_remaining) =
+                    Self::simulated_remaining_shares(order_id, &order, &simulated_fills)
+                else {
+                    break;
+                };
+                let fill = core::cmp::min(remaining, simulated_remaining);
+                if fill.is_zero() {
+                    break;
+                }
+                remaining = remaining.saturating_sub(fill);
+                Self::record_simulated_fill(&mut simulated_fills, order_id, fill)?;
+                fills = fills.saturating_add(1);
+            }
+
+            Ok(!remaining.is_zero())
+        }
+
+        fn best_buy_match(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            price_cents: PriceCents,
+        ) -> Option<(OrderId, bool)> {
+            let same = Self::best_same_outcome_sell(market_id, outcome, price_cents);
+            let complementary =
+                Self::best_complementary_buy(market_id, outcome.opposite(), price_cents);
+
+            match (same, complementary) {
+                (Some((same_id, same_price)), Some((comp_id, comp_price))) => {
+                    let comp_taker_price = 100u8.saturating_sub(comp_price);
+                    if comp_taker_price < same_price {
+                        Some((comp_id, true))
+                    } else {
+                        Some((same_id, false))
+                    }
+                }
+                (Some((same_id, _)), None) => Some((same_id, false)),
+                (None, Some((comp_id, _))) => Some((comp_id, true)),
+                (None, None) => None,
+            }
+        }
+
+        fn best_same_outcome_sell(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            limit_price: PriceCents,
+        ) -> Option<(OrderId, PriceCents)> {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Sell));
+            for (price, _) in levels.iter() {
+                if *price > limit_price {
+                    break;
+                }
+                if let Some(order_id) =
+                    Self::front_order_id(market_id, outcome, OrderSide::Sell, *price)
+                {
+                    return Some((order_id, *price));
+                }
+            }
+            None
+        }
+
+        fn best_same_outcome_buy(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            limit_price: PriceCents,
+        ) -> Option<OrderId> {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < limit_price {
+                    break;
+                }
+                if let Some(order_id) =
+                    Self::front_order_id(market_id, outcome, OrderSide::Buy, *price)
+                {
+                    return Some(order_id);
+                }
+            }
+            None
+        }
+
+        fn best_complementary_buy(
+            market_id: MarketId,
+            maker_outcome: BinaryOutcome,
+            taker_price: PriceCents,
+        ) -> Option<(OrderId, PriceCents)> {
+            let min_maker_price = 100u8.saturating_sub(taker_price);
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (maker_outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < min_maker_price || *price < MIN_PRICE_CENTS {
+                    break;
+                }
+                if let Some(order_id) =
+                    Self::front_order_id(market_id, maker_outcome, OrderSide::Buy, *price)
+                {
+                    return Some((order_id, *price));
+                }
+            }
+            None
+        }
+
+        fn best_buy_match_readonly(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            price_cents: PriceCents,
+            simulated_fills: &[(OrderId, T::Balance)],
+        ) -> Option<(OrderId, bool)> {
+            let same = Self::best_same_outcome_sell_readonly(
+                market_id,
+                outcome,
+                price_cents,
+                simulated_fills,
+            );
+            let complementary = Self::best_complementary_buy_readonly(
+                market_id,
+                outcome.opposite(),
+                price_cents,
+                simulated_fills,
+            );
+
+            match (same, complementary) {
+                (Some((same_id, same_price)), Some((comp_id, comp_price))) => {
+                    let comp_taker_price = 100u8.saturating_sub(comp_price);
+                    if comp_taker_price < same_price {
+                        Some((comp_id, true))
+                    } else {
+                        Some((same_id, false))
+                    }
+                }
+                (Some((same_id, _)), None) => Some((same_id, false)),
+                (None, Some((comp_id, _))) => Some((comp_id, true)),
+                (None, None) => None,
+            }
+        }
+
+        fn best_same_outcome_sell_readonly(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            limit_price: PriceCents,
+            simulated_fills: &[(OrderId, T::Balance)],
+        ) -> Option<(OrderId, PriceCents)> {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Sell));
+            for (price, _) in levels.iter() {
+                if *price > limit_price {
+                    break;
+                }
+                if let Some(order_id) = Self::front_order_id_readonly(
+                    market_id,
+                    outcome,
+                    OrderSide::Sell,
+                    *price,
+                    simulated_fills,
+                ) {
+                    return Some((order_id, *price));
+                }
+            }
+            None
+        }
+
+        fn best_same_outcome_buy_readonly(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            limit_price: PriceCents,
+            simulated_fills: &[(OrderId, T::Balance)],
+        ) -> Option<OrderId> {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < limit_price {
+                    break;
+                }
+                if let Some(order_id) = Self::front_order_id_readonly(
+                    market_id,
+                    outcome,
+                    OrderSide::Buy,
+                    *price,
+                    simulated_fills,
+                ) {
+                    return Some(order_id);
+                }
+            }
+            None
+        }
+
+        fn best_complementary_buy_readonly(
+            market_id: MarketId,
+            maker_outcome: BinaryOutcome,
+            taker_price: PriceCents,
+            simulated_fills: &[(OrderId, T::Balance)],
+        ) -> Option<(OrderId, PriceCents)> {
+            let min_maker_price = 100u8.saturating_sub(taker_price);
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (maker_outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < min_maker_price || *price < MIN_PRICE_CENTS {
+                    break;
+                }
+                if let Some(order_id) = Self::front_order_id_readonly(
+                    market_id,
+                    maker_outcome,
+                    OrderSide::Buy,
+                    *price,
+                    simulated_fills,
+                ) {
+                    return Some((order_id, *price));
+                }
+            }
+            None
+        }
+
+        fn front_order_id_readonly(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            simulated_fills: &[(OrderId, T::Balance)],
+        ) -> Option<OrderId> {
+            let key = (outcome, side, price_cents);
+            OrderBookQueues::<T>::get(market_id, key)
+                .into_iter()
+                .find(|order_id| {
+                    Orders::<T>::get(order_id)
+                        .map(|order| {
+                            order.market_id == market_id
+                                && order.outcome == outcome
+                                && order.side == side
+                                && order.price_cents == price_cents
+                                && Self::simulated_remaining_shares(
+                                    *order_id,
+                                    &order,
+                                    simulated_fills,
+                                )
+                                .map(|remaining| !remaining.is_zero())
+                                .unwrap_or(false)
+                        })
+                        .unwrap_or(false)
+                })
+        }
+
+        fn simulated_remaining_shares(
+            order_id: OrderId,
+            order: &OrderOf<T>,
+            simulated_fills: &[(OrderId, T::Balance)],
+        ) -> Option<T::Balance> {
+            let consumed = simulated_fills
+                .iter()
+                .find_map(|(id, shares)| (*id == order_id).then_some(*shares))
+                .unwrap_or_default();
+            if consumed >= order.remaining_shares {
+                None
+            } else {
+                Some(order.remaining_shares.saturating_sub(consumed))
+            }
+        }
+
+        fn record_simulated_fill(
+            simulated_fills: &mut Vec<(OrderId, T::Balance)>,
+            order_id: OrderId,
+            fill_shares: T::Balance,
+        ) -> DispatchResult {
+            if let Some((_, shares)) = simulated_fills
+                .iter_mut()
+                .find(|(existing_id, _)| *existing_id == order_id)
+            {
+                *shares = shares
+                    .checked_add(&fill_shares)
+                    .ok_or(Error::<T>::Overflow)?;
+                return Ok(());
+            }
+            simulated_fills.push((order_id, fill_shares));
+            Ok(())
+        }
+
+        fn front_order_id(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+        ) -> Option<OrderId> {
+            let key = (outcome, side, price_cents);
+            loop {
+                let order_id = OrderBookQueues::<T>::get(market_id, key).first().copied()?;
+                let stale = Orders::<T>::get(order_id)
+                    .map(|order| {
+                        order.market_id != market_id
+                            || order.outcome != outcome
+                            || order.side != side
+                            || order.price_cents != price_cents
+                            || order.remaining_shares.is_zero()
+                    })
+                    .unwrap_or(true);
+                if !stale {
+                    return Some(order_id);
+                }
+                OrderBookQueues::<T>::mutate(market_id, key, |queue| {
+                    if !queue.is_empty() {
+                        queue.remove(0);
+                    }
+                });
+                if OrderBookQueues::<T>::get(market_id, key).is_empty() {
+                    OrderBookPriceLevels::<T>::mutate(market_id, (outcome, side), |levels| {
+                        levels.remove(&price_cents);
+                    });
+                }
+            }
+        }
+
+        fn fill_same_outcome(
+            taker_order_id: OrderId,
+            taker: &T::AccountId,
+            market: &MarketOf<T>,
+            outcome: BinaryOutcome,
+            taker_side: OrderSide,
+            maker_order_id: OrderId,
+            mut maker_order: OrderOf<T>,
+            fill_shares: T::Balance,
+            remaining_shares: &mut T::Balance,
+            available_collateral: &mut T::Balance,
+            totals: &mut OrderExecutionTotals<T::Balance>,
+        ) -> DispatchResult {
+            let notional = Self::price_amount(maker_order.price_cents, fill_shares)?;
+            ensure!(!notional.is_zero(), Error::<T>::TradeAmountTooSmall);
+            let fee = Self::orderbook_trade_fee(notional);
+
+            match taker_side {
+                OrderSide::Buy => {
+                    let debit = notional.checked_add(&fee).ok_or(Error::<T>::Overflow)?;
+                    ensure!(
+                        *available_collateral >= debit,
+                        Error::<T>::InsufficientReservedCollateral
+                    );
+                    *available_collateral = available_collateral.saturating_sub(debit);
+                    Self::credit_outcome_shares(
+                        maker_order.market_id,
+                        taker,
+                        outcome,
+                        fill_shares,
+                    )?;
+                    T::Assets::transfer(
+                        market.collateral_asset,
+                        &Self::account_id(),
+                        &maker_order.owner,
+                        notional,
+                    )?;
+                    totals.collateral_in = totals.collateral_in.saturating_add(debit);
+                }
+                OrderSide::Sell => {
+                    ensure!(
+                        maker_order.reserved_collateral >= notional,
+                        Error::<T>::InsufficientReservedCollateral
+                    );
+                    maker_order.reserved_collateral =
+                        maker_order.reserved_collateral.saturating_sub(notional);
+                    Self::credit_outcome_shares(
+                        maker_order.market_id,
+                        &maker_order.owner,
+                        outcome,
+                        fill_shares,
+                    )?;
+                    let payout = notional.checked_sub(&fee).ok_or(Error::<T>::Overflow)?;
+                    if !payout.is_zero() {
+                        T::Assets::transfer(
+                            market.collateral_asset,
+                            &Self::account_id(),
+                            taker,
+                            payout,
+                        )?;
+                    }
+                    totals.collateral_out = totals.collateral_out.saturating_add(payout);
+                }
+            }
+
+            *remaining_shares = remaining_shares.saturating_sub(fill_shares);
+            maker_order.remaining_shares = maker_order.remaining_shares.saturating_sub(fill_shares);
+            totals.filled_shares = totals.filled_shares.saturating_add(fill_shares);
+            totals.fee_amount = totals.fee_amount.saturating_add(fee);
+            Self::record_trade_fees(maker_order.market_id, Self::split_orderbook_trade_fee(fee));
+            Self::record_market_volume(maker_order.market_id, notional);
+            Self::deposit_event(Event::OrderFilled {
+                maker_order_id,
+                taker_order_id,
+                market_id: maker_order.market_id,
+                maker: maker_order.owner.clone(),
+                taker: taker.clone(),
+                outcome,
+                price_cents: maker_order.price_cents,
+                shares: fill_shares,
+                collateral_amount: notional,
+                fee_amount: fee,
+            });
+            Self::decrease_price_level_shares(
+                maker_order.market_id,
+                maker_order.outcome,
+                maker_order.side,
+                maker_order.price_cents,
+                fill_shares,
+            )?;
+            Self::update_or_remove_maker_order(maker_order_id, maker_order, market.collateral_asset)
+        }
+
+        fn fill_complementary_buy(
+            taker_order_id: OrderId,
+            taker: &T::AccountId,
+            market: &MarketOf<T>,
+            taker_outcome: BinaryOutcome,
+            maker_order_id: OrderId,
+            mut maker_order: OrderOf<T>,
+            fill_shares: T::Balance,
+            remaining_shares: &mut T::Balance,
+            available_collateral: &mut T::Balance,
+            totals: &mut OrderExecutionTotals<T::Balance>,
+        ) -> DispatchResult {
+            ensure!(
+                matches!(maker_order.side, OrderSide::Buy)
+                    && maker_order.outcome == taker_outcome.opposite(),
+                Error::<T>::OrderUnknown
+            );
+            let maker_notional = Self::price_amount(maker_order.price_cents, fill_shares)?;
+            ensure!(
+                fill_shares >= maker_notional,
+                Error::<T>::InsufficientReservedCollateral
+            );
+            let taker_notional = fill_shares.saturating_sub(maker_notional);
+            let fee = Self::orderbook_trade_fee(taker_notional);
+            let taker_debit = taker_notional
+                .checked_add(&fee)
+                .ok_or(Error::<T>::Overflow)?;
+            ensure!(
+                maker_order.reserved_collateral >= maker_notional,
+                Error::<T>::InsufficientReservedCollateral
+            );
+            ensure!(
+                *available_collateral >= taker_debit,
+                Error::<T>::InsufficientReservedCollateral
+            );
+
+            maker_order.reserved_collateral = maker_order
+                .reserved_collateral
+                .saturating_sub(maker_notional);
+            *available_collateral = available_collateral.saturating_sub(taker_debit);
+            Self::credit_outcome_shares(
+                maker_order.market_id,
+                &maker_order.owner,
+                maker_order.outcome,
+                fill_shares,
+            )?;
+            Self::credit_outcome_shares(maker_order.market_id, taker, taker_outcome, fill_shares)?;
+            Self::increase_order_book_collateral(maker_order.market_id, fill_shares)?;
+
+            *remaining_shares = remaining_shares.saturating_sub(fill_shares);
+            maker_order.remaining_shares = maker_order.remaining_shares.saturating_sub(fill_shares);
+            totals.filled_shares = totals.filled_shares.saturating_add(fill_shares);
+            totals.collateral_in = totals.collateral_in.saturating_add(taker_debit);
+            totals.fee_amount = totals.fee_amount.saturating_add(fee);
+            Self::record_trade_fees(maker_order.market_id, Self::split_orderbook_trade_fee(fee));
+            Self::record_market_volume(maker_order.market_id, fill_shares);
+            Self::deposit_event(Event::OrderFilled {
+                maker_order_id,
+                taker_order_id,
+                market_id: maker_order.market_id,
+                maker: maker_order.owner.clone(),
+                taker: taker.clone(),
+                outcome: taker_outcome,
+                price_cents: 100u8.saturating_sub(maker_order.price_cents),
+                shares: fill_shares,
+                collateral_amount: taker_notional,
+                fee_amount: fee,
+            });
+            Self::decrease_price_level_shares(
+                maker_order.market_id,
+                maker_order.outcome,
+                maker_order.side,
+                maker_order.price_cents,
+                fill_shares,
+            )?;
+            Self::update_or_remove_maker_order(maker_order_id, maker_order, market.collateral_asset)
+        }
+
+        fn update_or_remove_maker_order(
+            order_id: OrderId,
+            order: OrderOf<T>,
+            collateral_asset: T::AssetId,
+        ) -> DispatchResult {
+            if order.remaining_shares.is_zero() {
+                Self::remove_order_from_indexes(order_id, &order)?;
+                Orders::<T>::remove(order_id);
+                if matches!(order.side, OrderSide::Buy) && !order.reserved_collateral.is_zero() {
+                    T::Assets::transfer(
+                        collateral_asset,
+                        &Self::account_id(),
+                        &order.owner,
+                        order.reserved_collateral,
+                    )?;
+                }
+            } else {
+                Orders::<T>::insert(order_id, order);
+            }
+            Ok(())
+        }
+
+        fn next_order_id_checked() -> Result<OrderId, DispatchError> {
+            NextOrderId::<T>::try_mutate(|next_id| -> Result<OrderId, DispatchError> {
+                let id = *next_id;
+                *next_id = next_id.checked_add(1).ok_or(Error::<T>::Overflow)?;
+                Ok(id)
+            })
+        }
+
+        fn ensure_valid_price(price_cents: PriceCents) -> DispatchResult {
+            ensure!(
+                (MIN_PRICE_CENTS..=MAX_PRICE_CENTS).contains(&price_cents),
+                Error::<T>::InvalidPrice
+            );
+            Ok(())
+        }
+
+        fn ensure_order_lot_size(shares: T::Balance) -> DispatchResult {
+            let units = shares.saturated_into::<u128>();
+            ensure!(
+                units >= PRICE_CENTS_DENOMINATOR && units % PRICE_CENTS_DENOMINATOR == 0,
+                Error::<T>::TradeAmountTooSmall
+            );
+            Ok(())
+        }
+
+        fn price_amount(
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> Result<T::Balance, DispatchError> {
+            let value = U256::from(shares.saturated_into::<u128>())
+                .checked_mul(U256::from(price_cents as u128))
+                .ok_or(Error::<T>::Overflow)?
+                / U256::from(PRICE_CENTS_DENOMINATOR);
+            Self::u256_to_balance(value)
+        }
+
+        fn orderbook_trade_fee(amount: T::Balance) -> T::Balance {
+            Self::trade_fee(amount)
+        }
+
+        fn split_orderbook_trade_fee(amount: T::Balance) -> TradeFeeSplit<T::Balance> {
+            let fee = amount.saturated_into::<u128>();
+            let creator = fee.saturating_mul(80) / 100;
+            let buyback = fee.saturating_sub(creator);
+            TradeFeeSplit {
+                pool: T::Balance::zero(),
+                creator: creator.saturated_into::<T::Balance>(),
+                buyback: buyback.saturated_into::<T::Balance>(),
+            }
+        }
+
+        fn ensure_open_order_slot(who: &T::AccountId, market_id: MarketId) -> DispatchResult {
+            let open_orders = OpenOrdersByAccountMarket::<T>::get(who, market_id);
+            ensure!(
+                (open_orders.len() as u32) < T::MaxOpenOrdersPerAccountMarket::get(),
+                Error::<T>::TooManyOpenOrders
+            );
+            Ok(())
+        }
+
+        fn ensure_price_level_slot(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+        ) -> DispatchResult {
+            let orders = OrderBookQueues::<T>::get(market_id, (outcome, side, price_cents));
+            ensure!(
+                (orders.len() as u32) < T::MaxOrdersPerPrice::get(),
+                Error::<T>::TooManyOrdersAtPrice
+            );
+            Ok(())
+        }
+
+        fn insert_open_order(order_id: OrderId, order: OrderOf<T>) -> DispatchResult {
+            OrderBookQueues::<T>::try_mutate(
+                order.market_id,
+                (order.outcome, order.side, order.price_cents),
+                |queue| -> DispatchResult {
+                    queue
+                        .try_push(order_id)
+                        .map_err(|_| Error::<T>::TooManyOrdersAtPrice)?;
+                    Ok(())
+                },
+            )?;
+            Self::increase_price_level_shares(
+                order.market_id,
+                order.outcome,
+                order.side,
+                order.price_cents,
+                order.remaining_shares,
+            )?;
+            OpenOrdersByAccountMarket::<T>::try_mutate(
+                &order.owner,
+                order.market_id,
+                |orders| -> DispatchResult {
+                    orders
+                        .try_push(order_id)
+                        .map_err(|_| Error::<T>::TooManyOpenOrders)?;
+                    Ok(())
+                },
+            )?;
+            Orders::<T>::insert(order_id, order);
+            Ok(())
+        }
+
+        fn remove_order_from_indexes(order_id: OrderId, order: &OrderOf<T>) -> DispatchResult {
+            OrderBookQueues::<T>::mutate(
+                order.market_id,
+                (order.outcome, order.side, order.price_cents),
+                |queue| {
+                    if let Some(index) = queue.iter().position(|id| *id == order_id) {
+                        queue.remove(index);
+                    }
+                },
+            );
+            OpenOrdersByAccountMarket::<T>::mutate(&order.owner, order.market_id, |orders| {
+                if let Some(index) = orders.iter().position(|id| *id == order_id) {
+                    orders.remove(index);
+                }
+            });
+            Self::decrease_price_level_shares(
+                order.market_id,
+                order.outcome,
+                order.side,
+                order.price_cents,
+                order.remaining_shares,
+            )?;
+            Ok(())
+        }
+
+        fn increase_price_level_shares(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            if shares.is_zero() {
+                return Ok(());
+            }
+            OrderBookPriceLevels::<T>::try_mutate(
+                market_id,
+                (outcome, side),
+                |levels| -> DispatchResult {
+                    let updated = levels
+                        .get(&price_cents)
+                        .copied()
+                        .unwrap_or_default()
+                        .checked_add(&shares)
+                        .ok_or(Error::<T>::Overflow)?;
+                    levels
+                        .try_insert(price_cents, updated)
+                        .map_err(|_| Error::<T>::TooManyOrdersAtPrice)?;
+                    Ok(())
+                },
+            )
+        }
+
+        fn decrease_price_level_shares(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            if shares.is_zero() {
+                return Ok(());
+            }
+            OrderBookPriceLevels::<T>::try_mutate(
+                market_id,
+                (outcome, side),
+                |levels| -> DispatchResult {
+                    let current = levels
+                        .get(&price_cents)
+                        .copied()
+                        .ok_or(Error::<T>::Overflow)?;
+                    ensure!(current >= shares, Error::<T>::Overflow);
+                    let updated = current.saturating_sub(shares);
+                    if updated.is_zero() {
+                        levels.remove(&price_cents);
+                    } else {
+                        levels
+                            .try_insert(price_cents, updated)
+                            .map_err(|_| Error::<T>::TooManyOrdersAtPrice)?;
+                    }
+                    Ok(())
+                },
+            )
+        }
+
+        fn cancel_order_unchecked(order_id: OrderId, order: OrderOf<T>) -> DispatchResult {
+            Self::remove_order_from_indexes(order_id, &order)?;
+            Orders::<T>::remove(order_id);
+            match order.side {
+                OrderSide::Buy => {
+                    if !order.reserved_collateral.is_zero() {
+                        let market =
+                            Markets::<T>::get(order.market_id).ok_or(Error::<T>::MarketUnknown)?;
+                        T::Assets::transfer(
+                            market.collateral_asset,
+                            &Self::account_id(),
+                            &order.owner,
+                            order.reserved_collateral,
+                        )?;
+                    }
+                }
+                OrderSide::Sell => {
+                    Self::credit_outcome_shares(
+                        order.market_id,
+                        &order.owner,
+                        order.outcome,
+                        order.remaining_shares,
+                    )?;
+                }
+            }
+            Self::deposit_event(Event::OrderCancelled {
+                order_id,
+                market_id: order.market_id,
+                owner: order.owner,
+            });
+            Ok(())
+        }
+
+        fn credit_complete_set(
+            market_id: MarketId,
+            who: &T::AccountId,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            Self::credit_outcome_shares(market_id, who, BinaryOutcome::Yes, shares)?;
+            Self::credit_outcome_shares(market_id, who, BinaryOutcome::No, shares)
+        }
+
+        fn credit_outcome_shares(
+            market_id: MarketId,
+            who: &T::AccountId,
+            outcome: BinaryOutcome,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            if shares.is_zero() {
+                return Ok(());
+            }
+            MarketPositions::<T>::try_mutate(market_id, who, |position| -> DispatchResult {
+                let entry = position.get_or_insert_with(Default::default);
+                match outcome {
+                    BinaryOutcome::Yes => {
+                        entry.yes_shares = entry
+                            .yes_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
+                    }
+                    BinaryOutcome::No => {
+                        entry.no_shares = entry
+                            .no_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
+                    }
+                }
+                Ok(())
+            })?;
+            MarketPositionTotals::<T>::try_mutate(market_id, |totals| -> DispatchResult {
+                match outcome {
+                    BinaryOutcome::Yes => {
+                        totals.total_yes_shares = totals
+                            .total_yes_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
+                    }
+                    BinaryOutcome::No => {
+                        totals.total_no_shares = totals
+                            .total_no_shares
+                            .checked_add(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
+                    }
+                }
+                Ok(())
+            })
+        }
+
+        fn debit_outcome_shares(
+            market_id: MarketId,
+            who: &T::AccountId,
+            outcome: BinaryOutcome,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            if shares.is_zero() {
+                return Ok(());
+            }
+            MarketPositions::<T>::try_mutate_exists(
+                market_id,
+                who,
+                |position| -> DispatchResult {
+                    let entry = position.as_mut().ok_or(Error::<T>::InsufficientShares)?;
+                    match outcome {
+                        BinaryOutcome::Yes => {
+                            ensure!(entry.yes_shares >= shares, Error::<T>::InsufficientShares);
+                            entry.yes_shares = entry.yes_shares.saturating_sub(shares);
+                        }
+                        BinaryOutcome::No => {
+                            ensure!(entry.no_shares >= shares, Error::<T>::InsufficientShares);
+                            entry.no_shares = entry.no_shares.saturating_sub(shares);
+                        }
+                    }
+                    if entry.yes_shares.is_zero()
+                        && entry.no_shares.is_zero()
+                        && entry.net_collateral_paid.is_zero()
+                    {
+                        *position = None;
+                    }
+                    Ok(())
+                },
+            )?;
+            MarketPositionTotals::<T>::try_mutate(market_id, |totals| -> DispatchResult {
+                match outcome {
+                    BinaryOutcome::Yes => {
+                        totals.total_yes_shares = totals
+                            .total_yes_shares
+                            .checked_sub(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
+                    }
+                    BinaryOutcome::No => {
+                        totals.total_no_shares = totals
+                            .total_no_shares
+                            .checked_sub(&shares)
+                            .ok_or(Error::<T>::Overflow)?;
+                    }
+                }
+                Ok(())
+            })
+        }
+
+        fn increase_order_book_collateral(
+            market_id: MarketId,
+            amount: T::Balance,
+        ) -> DispatchResult {
+            if amount.is_zero() {
+                return Ok(());
+            }
+            MarketOrderBookCollateral::<T>::try_mutate(market_id, |total| -> DispatchResult {
+                *total = total.checked_add(&amount).ok_or(Error::<T>::Overflow)?;
+                Ok(())
+            })
+        }
+
+        fn decrease_order_book_collateral(
+            market_id: MarketId,
+            amount: T::Balance,
+        ) -> DispatchResult {
+            if amount.is_zero() {
+                return Ok(());
+            }
+            MarketOrderBookCollateral::<T>::try_mutate(market_id, |total| -> DispatchResult {
+                ensure!(*total >= amount, Error::<T>::Overflow);
+                *total = total.saturating_sub(amount);
+                Ok(())
+            })
+        }
+
         fn claim_market_for(
             who: &T::AccountId,
             market_id: MarketId,
         ) -> Result<T::Balance, DispatchError> {
             let (market, _) = Self::sync_market_status_if_needed(market_id)?;
+            if matches!(market.mechanism, MarketMechanism::OrderBook) {
+                return Self::claim_order_book_market_for(who, market_id, &market);
+            }
             let position =
                 MarketPositions::<T>::get(market_id, who).ok_or(Error::<T>::NothingToClaim)?;
             ensure!(
@@ -1554,6 +2963,51 @@ pub mod pallet {
                 MarketPositions::<T>::remove(market_id, who);
                 Self::debit_market_totals(market_id, &position)?;
                 Self::debit_market_collateral(market_id, payout)?;
+                if !payout.is_zero() {
+                    T::Assets::transfer(market.collateral_asset, &Self::account_id(), who, payout)?;
+                }
+                Self::deposit_event(Event::MarketClaimed {
+                    market_id,
+                    trader: who.clone(),
+                    payout,
+                });
+                Ok(payout)
+            })
+        }
+
+        fn claim_order_book_market_for(
+            who: &T::AccountId,
+            market_id: MarketId,
+            market: &MarketOf<T>,
+        ) -> Result<T::Balance, DispatchError> {
+            ensure!(
+                matches!(
+                    market.status,
+                    MarketStatus::Resolved | MarketStatus::Cancelled
+                ),
+                Error::<T>::MarketNotFinalized
+            );
+            let position =
+                MarketPositions::<T>::get(market_id, who).ok_or(Error::<T>::NothingToClaim)?;
+            ensure!(
+                !position.yes_shares.is_zero() || !position.no_shares.is_zero(),
+                Error::<T>::NothingToClaim
+            );
+
+            let payout = match market.status {
+                MarketStatus::Resolved => {
+                    let outcome = MarketResolution::<T>::get(market_id)
+                        .ok_or(Error::<T>::MarketNotResolved)?;
+                    Self::winning_shares(&position, outcome)
+                }
+                MarketStatus::Cancelled => Self::cancelled_order_book_payout(&position)?,
+                _ => return Err(Error::<T>::MarketNotFinalized.into()),
+            };
+
+            with_storage_transaction(|| -> Result<T::Balance, DispatchError> {
+                MarketPositions::<T>::remove(market_id, who);
+                Self::debit_market_totals(market_id, &position)?;
+                Self::decrease_order_book_collateral(market_id, payout)?;
                 if !payout.is_zero() {
                     T::Assets::transfer(market.collateral_asset, &Self::account_id(), who, payout)?;
                 }
@@ -1657,6 +3111,7 @@ pub mod pallet {
         ) -> Result<BuyQuoteOf<T>, DispatchError> {
             ensure!(!collateral_in.is_zero(), Error::<T>::InvalidTradeAmount);
             let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_legacy_amm_market(&market)?;
             ensure!(
                 matches!(Self::effective_market_status(&market), MarketStatus::Open),
                 Error::<T>::MarketNotOpen
@@ -1691,6 +3146,7 @@ pub mod pallet {
         ) -> Result<SellQuoteOf<T>, DispatchError> {
             ensure!(!shares_in.is_zero(), Error::<T>::InvalidTradeAmount);
             let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_legacy_amm_market(&market)?;
             ensure!(
                 matches!(Self::effective_market_status(&market), MarketStatus::Open),
                 Error::<T>::MarketNotOpen
@@ -1724,6 +3180,7 @@ pub mod pallet {
         ) -> Result<LiquidityQuoteOf<T>, DispatchError> {
             ensure!(!collateral_in.is_zero(), Error::<T>::InvalidTradeAmount);
             let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_legacy_amm_market(&market)?;
             ensure!(
                 matches!(Self::effective_market_status(&market), MarketStatus::Open),
                 Error::<T>::MarketNotOpen
@@ -1749,6 +3206,7 @@ pub mod pallet {
         ) -> Result<FlipQuoteOf<T>, DispatchError> {
             ensure!(!shares_in.is_zero(), Error::<T>::InvalidTradeAmount);
             let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_legacy_amm_market(&market)?;
             ensure!(
                 matches!(Self::effective_market_status(&market), MarketStatus::Open),
                 Error::<T>::MarketNotOpen
@@ -1803,6 +3261,151 @@ pub mod pallet {
             })
         }
 
+        pub fn quote_order_market(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> Result<OrderQuoteOf<T>, DispatchError> {
+            ensure!(!shares.is_zero(), Error::<T>::InvalidTradeAmount);
+            Self::ensure_order_lot_size(shares)?;
+            Self::ensure_valid_price(price_cents)?;
+            let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_order_book_market(&market)?;
+            ensure!(
+                matches!(Self::effective_market_status(&market), MarketStatus::Open),
+                Error::<T>::MarketNotOpen
+            );
+
+            let mut remaining = shares;
+            let mut filled = T::Balance::zero();
+            let mut collateral_in = T::Balance::zero();
+            let mut collateral_out = T::Balance::zero();
+            let mut fee_amount = T::Balance::zero();
+            let mut fills = 0u32;
+            let mut simulated_fills: Vec<(OrderId, T::Balance)> = Vec::new();
+
+            while !remaining.is_zero() && fills < T::MaxFillsPerOrder::get() {
+                let candidate = match side {
+                    OrderSide::Buy => Self::best_buy_match_readonly(
+                        market_id,
+                        outcome,
+                        price_cents,
+                        &simulated_fills,
+                    ),
+                    OrderSide::Sell => Self::best_same_outcome_buy_readonly(
+                        market_id,
+                        outcome,
+                        price_cents,
+                        &simulated_fills,
+                    )
+                    .map(|id| (id, false)),
+                };
+                let Some((order_id, complementary)) = candidate else {
+                    break;
+                };
+                let Some(order) = Orders::<T>::get(order_id) else {
+                    break;
+                };
+                let Some(simulated_remaining) =
+                    Self::simulated_remaining_shares(order_id, &order, &simulated_fills)
+                else {
+                    break;
+                };
+                let fill = core::cmp::min(remaining, simulated_remaining);
+                if fill.is_zero() {
+                    break;
+                }
+                if complementary {
+                    let maker_notional = Self::price_amount(order.price_cents, fill)?;
+                    let taker_notional = fill.saturating_sub(maker_notional);
+                    let fee = Self::orderbook_trade_fee(taker_notional);
+                    collateral_in = collateral_in
+                        .checked_add(
+                            &taker_notional
+                                .checked_add(&fee)
+                                .ok_or(Error::<T>::Overflow)?,
+                        )
+                        .ok_or(Error::<T>::Overflow)?;
+                    fee_amount = fee_amount.saturating_add(fee);
+                } else {
+                    let notional = Self::price_amount(order.price_cents, fill)?;
+                    let fee = Self::orderbook_trade_fee(notional);
+                    match side {
+                        OrderSide::Buy => {
+                            collateral_in = collateral_in
+                                .checked_add(
+                                    &notional.checked_add(&fee).ok_or(Error::<T>::Overflow)?,
+                                )
+                                .ok_or(Error::<T>::Overflow)?;
+                        }
+                        OrderSide::Sell => {
+                            collateral_out = collateral_out
+                                .checked_add(
+                                    &notional.checked_sub(&fee).ok_or(Error::<T>::Overflow)?,
+                                )
+                                .ok_or(Error::<T>::Overflow)?;
+                        }
+                    }
+                    fee_amount = fee_amount.saturating_add(fee);
+                }
+                filled = filled.saturating_add(fill);
+                remaining = remaining.saturating_sub(fill);
+                Self::record_simulated_fill(&mut simulated_fills, order_id, fill)?;
+                fills = fills.saturating_add(1);
+            }
+
+            Ok(OrderQuote {
+                market_id,
+                outcome,
+                side,
+                price_cents,
+                shares,
+                filled_shares: filled,
+                posted_shares: remaining,
+                collateral_in,
+                collateral_out,
+                fee_amount,
+            })
+        }
+
+        pub fn order_book_depth(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            depth: u32,
+        ) -> Result<OrderBookDepthOf<T>, DispatchError> {
+            let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            Self::ensure_order_book_market(&market)?;
+            let mut bids = Vec::new();
+            let mut asks = Vec::new();
+            let bid_levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Buy));
+            for (price, shares) in bid_levels.iter().rev() {
+                if bids.len() as u32 >= depth {
+                    break;
+                }
+                if !shares.is_zero() {
+                    bids.push(OrderBookLevel {
+                        price_cents: *price,
+                        shares: *shares,
+                    });
+                }
+            }
+            let ask_levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Sell));
+            for (price, shares) in ask_levels.iter() {
+                if asks.len() as u32 >= depth {
+                    break;
+                }
+                if !shares.is_zero() {
+                    asks.push(OrderBookLevel {
+                        price_cents: *price,
+                        shares: *shares,
+                    });
+                }
+            }
+            Ok(OrderBookDepth { bids, asks })
+        }
+
         pub fn claimable_info(
             who: T::AccountId,
             market_id: MarketId,
@@ -1811,13 +3414,22 @@ pub mod pallet {
             market.status = Self::effective_market_status(&market);
             let resolution_outcome = MarketResolution::<T>::get(market_id);
             let position = MarketPositions::<T>::get(market_id, &who).unwrap_or_default();
+            let (open_yes_shares, open_no_shares, open_collateral) =
+                Self::open_order_exposure(&who, market_id);
             let trader_payout = match market.status {
                 MarketStatus::Resolved => resolution_outcome
                     .map(|outcome| Self::winning_shares(&position, outcome))
                     .unwrap_or_default(),
-                MarketStatus::Cancelled => position.net_collateral_paid,
+                MarketStatus::Cancelled => {
+                    if matches!(market.mechanism, MarketMechanism::OrderBook) {
+                        Self::cancelled_order_book_payout(&position)?
+                    } else {
+                        position.net_collateral_paid
+                    }
+                }
                 _ => T::Balance::zero(),
             };
+            let claimable_payout = trader_payout;
             let is_creator = market.creator == who;
             let creator_fees = if is_creator {
                 MarketCreatorFees::<T>::get(market_id)
@@ -1829,17 +3441,23 @@ pub mod pallet {
                     market.status,
                     MarketStatus::Resolved | MarketStatus::Cancelled
                 ) {
-                let total_claimable = Self::creator_liquidity_claimable(market_id, &market)?;
-                let totals = LiquidityPositionTotals::<T>::get(market_id);
-                if totals.total_shares.is_zero() {
-                    total_claimable
-                } else {
-                    match LiquidityPositions::<T>::get(market_id, &who) {
-                        Some(position) => {
-                            Self::pro_rata(total_claimable, position.shares, totals.total_shares)?
+                if matches!(market.mechanism, MarketMechanism::LegacyAmm) {
+                    let total_claimable = Self::creator_liquidity_claimable(market_id, &market)?;
+                    let totals = LiquidityPositionTotals::<T>::get(market_id);
+                    if totals.total_shares.is_zero() {
+                        total_claimable
+                    } else {
+                        match LiquidityPositions::<T>::get(market_id, &who) {
+                            Some(position) => Self::pro_rata(
+                                total_claimable,
+                                position.shares,
+                                totals.total_shares,
+                            )?,
+                            None => T::Balance::zero(),
                         }
-                        None => T::Balance::zero(),
                     }
+                } else {
+                    T::Balance::zero()
                 }
             } else {
                 T::Balance::zero()
@@ -1854,6 +3472,10 @@ pub mod pallet {
                 no_shares: position.no_shares,
                 net_collateral_paid: position.net_collateral_paid,
                 trader_payout,
+                claimable_payout,
+                open_yes_shares,
+                open_no_shares,
+                open_collateral,
                 creator_fees,
                 creator_liquidity,
                 is_creator,
@@ -2326,6 +3948,44 @@ pub mod pallet {
             }
         }
 
+        fn cancelled_order_book_payout(
+            position: &MarketPositionOf<T>,
+        ) -> Result<T::Balance, DispatchError> {
+            let total_shares = position
+                .yes_shares
+                .checked_add(&position.no_shares)
+                .ok_or(Error::<T>::Overflow)?;
+            Self::pro_rata(total_shares, One::one(), 2u32.into())
+        }
+
+        fn open_order_exposure(
+            who: &T::AccountId,
+            market_id: MarketId,
+        ) -> (T::Balance, T::Balance, T::Balance) {
+            let mut open_yes = T::Balance::zero();
+            let mut open_no = T::Balance::zero();
+            let mut open_collateral = T::Balance::zero();
+            for order_id in OpenOrdersByAccountMarket::<T>::get(who, market_id).into_iter() {
+                let Some(order) = Orders::<T>::get(order_id) else {
+                    continue;
+                };
+                match order.side {
+                    OrderSide::Buy => {
+                        open_collateral = open_collateral.saturating_add(order.reserved_collateral);
+                    }
+                    OrderSide::Sell => match order.outcome {
+                        BinaryOutcome::Yes => {
+                            open_yes = open_yes.saturating_add(order.remaining_shares);
+                        }
+                        BinaryOutcome::No => {
+                            open_no = open_no.saturating_add(order.remaining_shares);
+                        }
+                    },
+                }
+            }
+            (open_yes, open_no, open_collateral)
+        }
+
         fn creator_liquidity_claimable(
             market_id: MarketId,
             market: &MarketOf<T>,
@@ -2441,12 +4101,34 @@ pub mod pallet {
 }
 
 pub mod migrations {
+    use super::*;
+
     pub(crate) const MAX_LEGACY_OPENGOV_CONDITIONS: u32 = 1024;
     pub(crate) const MAX_LEGACY_GOVERNANCE_BONDS: u32 = 16;
     pub(crate) const MAX_LEGACY_CREATOR_LOCKED_BONDS: u32 = 1024;
     pub(crate) const MAX_LEGACY_MARKET_BOND_LOCKS: u32 = 1024;
     pub(crate) const MAX_LEGACY_GOVERNANCE_BOND_CONFIGS: u32 = 16;
     pub(crate) const MAX_LEGACY_MARKETS: u32 = 1024;
+
+    #[derive(
+        Encode,
+        Decode,
+        DecodeWithMemTracking,
+        TypeInfo,
+        Clone,
+        PartialEq,
+        Eq,
+        RuntimeDebug,
+        MaxEncodedLen,
+    )]
+    pub struct LegacyMarket<ClassId, AccountId, BlockNumber, Balance> {
+        pub creator: AccountId,
+        pub condition_id: ConditionId,
+        pub close_block: BlockNumber,
+        pub collateral_asset: ClassId,
+        pub seed_liquidity: Balance,
+        pub status: MarketStatus,
+    }
 
     fn ensure_items_within_limit<I>(items: I, limit: u32, label: &str) -> u64
     where
@@ -2697,9 +4379,24 @@ pub mod migrations {
         use super::super::*;
         use frame_support::{
             __private::log,
+            pallet_prelude::{Blake2_128Concat, OptionQuery},
             traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion},
         };
         use sp_core::Get;
+
+        #[frame_support::storage_alias]
+        pub type Markets<T: Config> = StorageMap<
+            Pallet<T>,
+            Blake2_128Concat,
+            MarketId,
+            super::LegacyMarket<
+                <T as Config>::AssetId,
+                <T as frame_system::Config>::AccountId,
+                BlockNumberFor<T>,
+                <T as Config>::Balance,
+            >,
+            OptionQuery,
+        >;
 
         pub struct Migrate<T>(PhantomData<T>);
 
@@ -2717,14 +4414,14 @@ pub mod migrations {
                 }
 
                 let preflight_reads = super::ensure_items_within_limit(
-                    Markets::<T>::iter_keys(),
+                    self::Markets::<T>::iter_keys(),
                     super::MAX_LEGACY_MARKETS,
                     "Markets",
                 );
                 let mut scanned_markets = 0u64;
                 let mut totals_reads = 0u64;
                 let mut seeded_markets = 0u64;
-                for (market_id, market) in Markets::<T>::iter() {
+                for (market_id, market) in self::Markets::<T>::iter() {
                     scanned_markets = scanned_markets.saturating_add(1);
                     if market.seed_liquidity.is_zero() {
                         continue;
@@ -2767,6 +4464,153 @@ pub mod migrations {
                         .saturating_add(1),
                     seeded_markets.saturating_mul(2).saturating_add(1),
                 )
+            }
+        }
+    }
+
+    pub mod v5 {
+        use super::super::*;
+        #[cfg(feature = "try-runtime")]
+        use codec::{Decode, Encode};
+        use frame_support::{
+            __private::log,
+            pallet_prelude::{Blake2_128Concat, OptionQuery},
+            traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion},
+        };
+        use sp_core::Get;
+        #[cfg(feature = "try-runtime")]
+        use sp_runtime::TryRuntimeError;
+
+        #[frame_support::storage_alias]
+        pub type Markets<T: Config> = StorageMap<
+            Pallet<T>,
+            Blake2_128Concat,
+            MarketId,
+            super::LegacyMarket<
+                <T as Config>::AssetId,
+                <T as frame_system::Config>::AccountId,
+                BlockNumberFor<T>,
+                <T as Config>::Balance,
+            >,
+            OptionQuery,
+        >;
+
+        pub struct Migrate<T>(PhantomData<T>);
+
+        #[cfg(feature = "try-runtime")]
+        #[derive(Decode, Encode)]
+        struct V5PreUpgradeState {
+            previous_storage_version: StorageVersion,
+            market_count: u64,
+        }
+
+        #[cfg(feature = "try-runtime")]
+        fn v5_try_runtime_error(message: &'static str) -> TryRuntimeError {
+            TryRuntimeError::Other(message)
+        }
+
+        impl<T: Config> OnRuntimeUpgrade for Migrate<T> {
+            fn on_runtime_upgrade() -> Weight {
+                let db_weight = T::DbWeight::get();
+                let on_chain = Pallet::<T>::on_chain_storage_version();
+                if on_chain >= StorageVersion::new(5) {
+                    return db_weight.reads(1);
+                }
+                if on_chain != StorageVersion::new(4) {
+                    panic!(
+                        "Polkamarkt v5 migration requires storage version 4, found {on_chain:?}"
+                    );
+                }
+
+                let preflight_reads = super::ensure_items_within_limit(
+                    self::Markets::<T>::iter_keys(),
+                    super::MAX_LEGACY_MARKETS,
+                    "Markets",
+                );
+                let mut migrated = 0u64;
+                let legacy_markets = self::Markets::<T>::iter().collect::<Vec<_>>();
+                for (market_id, market) in legacy_markets {
+                    super::super::Markets::<T>::insert(
+                        market_id,
+                        Market {
+                            creator: market.creator,
+                            condition_id: market.condition_id,
+                            close_block: market.close_block,
+                            collateral_asset: market.collateral_asset,
+                            seed_liquidity: market.seed_liquidity,
+                            mechanism: MarketMechanism::LegacyAmm,
+                            status: market.status,
+                        },
+                    );
+                    migrated = migrated.saturating_add(1);
+                }
+
+                StorageVersion::new(5).put::<Pallet<T>>();
+                log::info!("Polkamarkt v5 migration marked {migrated} markets as LegacyAmm");
+                db_weight.reads_writes(
+                    preflight_reads.saturating_add(migrated).saturating_add(1),
+                    migrated.saturating_add(1),
+                )
+            }
+
+            #[cfg(feature = "try-runtime")]
+            fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+                let previous_storage_version = Pallet::<T>::on_chain_storage_version();
+                let market_count = if previous_storage_version == StorageVersion::new(4) {
+                    super::ensure_items_within_limit(
+                        self::Markets::<T>::iter_keys(),
+                        super::MAX_LEGACY_MARKETS,
+                        "Markets",
+                    )
+                } else {
+                    0
+                };
+
+                Ok(V5PreUpgradeState {
+                    previous_storage_version,
+                    market_count,
+                }
+                .encode())
+            }
+
+            #[cfg(feature = "try-runtime")]
+            fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+                let state = V5PreUpgradeState::decode(&mut &state[..]).map_err(|_| {
+                    v5_try_runtime_error("Polkamarkt v5 failed to decode pre-upgrade state")
+                })?;
+                let actual_storage_version = Pallet::<T>::on_chain_storage_version();
+
+                if state.previous_storage_version == StorageVersion::new(4) {
+                    if actual_storage_version != StorageVersion::new(5) {
+                        return Err(v5_try_runtime_error(
+                            "Polkamarkt v5 did not set storage version to 5",
+                        ));
+                    }
+
+                    let mut migrated = 0u64;
+                    for (_, market) in super::super::Markets::<T>::iter() {
+                        if market.mechanism != MarketMechanism::LegacyAmm {
+                            return Err(v5_try_runtime_error(
+                                "Polkamarkt v5 migrated a market without LegacyAmm mechanism",
+                            ));
+                        }
+                        migrated = migrated.saturating_add(1);
+                    }
+
+                    if migrated != state.market_count {
+                        return Err(v5_try_runtime_error(
+                            "Polkamarkt v5 migrated market count mismatch",
+                        ));
+                    }
+                } else if state.previous_storage_version >= StorageVersion::new(5)
+                    && actual_storage_version != state.previous_storage_version
+                {
+                    return Err(v5_try_runtime_error(
+                        "Polkamarkt v5 changed storage version for a no-op migration",
+                    ));
+                }
+
+                Ok(())
             }
         }
     }

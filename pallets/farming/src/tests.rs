@@ -89,6 +89,99 @@ fn get_account_weight_handles_large_base_asset_amount() {
 }
 
 #[test]
+fn get_account_weight_returns_zero_for_zero_pool_tokens() {
+    ExtBuilder::default().build().execute_with(|| {
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: XSTUSD,
+        };
+
+        let weight = Pallet::<Runtime>::get_account_weight(
+            &trading_pair,
+            FixedWrapper256::from(balance!(1)),
+            balance!(1),
+            balance!(1),
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(weight, 0);
+    });
+}
+
+#[test]
+fn get_account_weight_returns_zero_for_zero_total_liquidity() {
+    ExtBuilder::default().build().execute_with(|| {
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: XSTUSD,
+        };
+
+        let weight = Pallet::<Runtime>::get_account_weight(
+            &trading_pair,
+            FixedWrapper256::from(balance!(1)),
+            balance!(1),
+            0,
+            balance!(1),
+        )
+        .unwrap();
+
+        assert_eq!(weight, 0);
+    });
+}
+
+#[test]
+fn get_account_weight_returns_zero_when_pool_tokens_exceed_total_liquidity() {
+    ExtBuilder::default().build().execute_with(|| {
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: XSTUSD,
+        };
+
+        let weight = Pallet::<Runtime>::get_account_weight(
+            &trading_pair,
+            FixedWrapper256::from(balance!(1)),
+            balance!(1),
+            balance!(1),
+            balance!(2),
+        )
+        .unwrap();
+
+        assert_eq!(weight, 0);
+    });
+}
+
+#[test]
+fn get_account_weight_invalid_liquidity_short_circuits_overflowing_inputs() {
+    ExtBuilder::default().build().execute_with(|| {
+        let trading_pair = TradingPair {
+            base_asset_id: XOR,
+            target_asset_id: DOT,
+        };
+
+        let zero_total_weight = Pallet::<Runtime>::get_account_weight(
+            &trading_pair,
+            FixedWrapper256::from(Balance::MAX),
+            Balance::MAX,
+            0,
+            Balance::MAX,
+        )
+        .unwrap();
+        let over_issued_weight = Pallet::<Runtime>::get_account_weight(
+            &trading_pair,
+            FixedWrapper256::from(Balance::MAX),
+            Balance::MAX,
+            balance!(1),
+            Balance::MAX,
+        )
+        .unwrap();
+
+        assert_eq!(zero_total_weight, 0);
+        assert_eq!(over_issued_weight, 0);
+    });
+}
+
+#[test]
 fn get_account_weight_rejects_doubling_overflow() {
     ExtBuilder::default().build().execute_with(|| {
         let trading_pair = TradingPair {
@@ -207,7 +300,7 @@ fn refresh_pool_skips_bad_provider_and_updates_valid_provider() {
         assert_ok!(assets::Pallet::<Runtime>::mint_unchecked(
             &XOR,
             &pool,
-            Balance::MAX / 2 + 1
+            balance!(9000000)
         ));
         assert_ok!(assets::Pallet::<Runtime>::mint_unchecked(
             &DOT,
@@ -215,7 +308,7 @@ fn refresh_pool_skips_bad_provider_and_updates_valid_provider() {
             balance!(1)
         ));
         TotalIssuances::<Runtime>::insert(&pool, 3);
-        PoolProviders::<Runtime>::insert(&pool, ALICE(), 3);
+        PoolProviders::<Runtime>::insert(&pool, ALICE(), 4);
         PoolProviders::<Runtime>::insert(&pool, BOB(), 1);
         PoolFarmers::<Runtime>::insert(
             &pool,
@@ -229,11 +322,101 @@ fn refresh_pool_skips_bad_provider_and_updates_valid_provider() {
         let read_count = Pallet::<Runtime>::refresh_pool(pool.clone(), REFRESH_FREQUENCY);
 
         assert_eq!(read_count, 2);
-        let farmers = PoolFarmers::<Runtime>::get(pool);
+        let farmers = PoolFarmers::<Runtime>::get(&pool);
         assert_eq!(farmers.len(), 1);
         assert_eq!(farmers[0].account, BOB());
         assert_eq!(farmers[0].block, REFRESH_FREQUENCY);
         assert!(farmers[0].weight > 0);
+        assert_eq!(TotalIssuances::<Runtime>::get(&pool), Some(3));
+        assert_eq!(PoolProviders::<Runtime>::get(&pool, ALICE()), Some(4));
+        assert_eq!(PoolProviders::<Runtime>::get(&pool, BOB()), Some(1));
+    });
+}
+
+#[test]
+fn refresh_pool_skips_zero_pool_token_provider_and_updates_valid_provider() {
+    ExtBuilder::default().build().execute_with(|| {
+        init_pool(DEX_A_ID, XOR, DOT);
+        let pool = Properties::<Runtime>::get(XOR, DOT).unwrap().0;
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_unchecked(
+            &XOR,
+            &pool,
+            balance!(9000000)
+        ));
+        assert_ok!(assets::Pallet::<Runtime>::mint_unchecked(
+            &DOT,
+            &pool,
+            balance!(1)
+        ));
+        TotalIssuances::<Runtime>::insert(&pool, 2);
+        PoolProviders::<Runtime>::insert(&pool, ALICE(), 0);
+        PoolProviders::<Runtime>::insert(&pool, BOB(), 1);
+        PoolFarmers::<Runtime>::insert(
+            &pool,
+            vec![PoolFarmer {
+                account: ALICE(),
+                block: 1,
+                weight: 1,
+            }],
+        );
+
+        let read_count = Pallet::<Runtime>::refresh_pool(pool.clone(), REFRESH_FREQUENCY);
+
+        assert_eq!(read_count, 2);
+        let farmers = PoolFarmers::<Runtime>::get(&pool);
+        assert_eq!(farmers.len(), 1);
+        assert_eq!(farmers[0].account, BOB());
+        assert_eq!(farmers[0].block, REFRESH_FREQUENCY);
+        assert!(farmers[0].weight > 0);
+        assert_eq!(TotalIssuances::<Runtime>::get(&pool), Some(2));
+        assert_eq!(PoolProviders::<Runtime>::get(&pool, ALICE()), Some(0));
+        assert_eq!(PoolProviders::<Runtime>::get(&pool, BOB()), Some(1));
+    });
+}
+
+#[test]
+fn refresh_pool_skips_all_providers_when_total_liquidity_is_zero() {
+    ExtBuilder::default().build().execute_with(|| {
+        init_pool(DEX_A_ID, XOR, DOT);
+        let pool = Properties::<Runtime>::get(XOR, DOT).unwrap().0;
+
+        assert_ok!(assets::Pallet::<Runtime>::mint_unchecked(
+            &XOR,
+            &pool,
+            balance!(9000000)
+        ));
+        assert_ok!(assets::Pallet::<Runtime>::mint_unchecked(
+            &DOT,
+            &pool,
+            balance!(1)
+        ));
+        TotalIssuances::<Runtime>::insert(&pool, 0);
+        PoolProviders::<Runtime>::insert(&pool, ALICE(), 1);
+        PoolProviders::<Runtime>::insert(&pool, BOB(), 0);
+        PoolFarmers::<Runtime>::insert(
+            &pool,
+            vec![
+                PoolFarmer {
+                    account: ALICE(),
+                    block: 1,
+                    weight: 1,
+                },
+                PoolFarmer {
+                    account: BOB(),
+                    block: 1,
+                    weight: 1,
+                },
+            ],
+        );
+
+        let read_count = Pallet::<Runtime>::refresh_pool(pool.clone(), REFRESH_FREQUENCY);
+
+        assert_eq!(read_count, 2);
+        assert!(PoolFarmers::<Runtime>::get(&pool).is_empty());
+        assert_eq!(TotalIssuances::<Runtime>::get(&pool), Some(0));
+        assert_eq!(PoolProviders::<Runtime>::get(&pool, ALICE()), Some(1));
+        assert_eq!(PoolProviders::<Runtime>::get(&pool, BOB()), Some(0));
     });
 }
 

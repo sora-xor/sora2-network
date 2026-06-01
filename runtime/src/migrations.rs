@@ -28,52 +28,26 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "try-runtime")]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
+use frame_support::storage::storage_prefix;
 use frame_support::traits::{
     GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
 };
 use frame_support::weights::Weight;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
-#[cfg(feature = "try-runtime")]
 use sp_std::prelude::Vec;
 
-const IDENTITY_V1_KEY_LIMIT: u64 = 10_000;
-
+// Active upgrade path starts from the 4.8.6 runtime. Migrations already
+// scheduled in that tag are intentionally not kept here.
 pub type Migrations = (
-    order_book::migrations::burn_xor_in_tech_accounts::Migrate<crate::Runtime>,
-    kensetsu::migrations::v5_to_v6::PurgeXorCollateral<crate::Runtime>,
-    BandMigrateToV2IfNeeded,
-    pallet_offences::migration::v1::MigrateToV1<crate::Runtime>,
-    StakingStorageVersionV16,
-    pallet_session::migrations::v1::MigrateV0ToV1<
-        crate::Runtime,
-        pallet_staking::migrations::v17::MigrateDisabledToSession<crate::Runtime>,
-    >,
-    pallet_grandpa::migrations::MigrateV4ToV5<crate::Runtime>,
-    pallet_im_online::migration::v1::Migration<crate::Runtime>,
-    pallet_identity::migration::versioned::V0ToV1<crate::Runtime, IDENTITY_V1_KEY_LIMIT>,
-    OracleProxyStorageVersionV1,
-    BridgeInboundChannelStorageVersionV1,
-    SubstrateBridgeInboundChannelStorageVersionV1,
-    SubstrateBridgeOutboundChannelStorageVersionV1,
-    BridgePeerIsolationAudit,
-    DecommissionLegacyEthereumXor,
-    QueueEthereumXorThischainAddAsset,
-    DemeterFarmingPlatformStorageVersionV3,
-    RepairXorTbcdRewardDenomination,
-    pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
-    pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
-    pallet_polkamarkt::migrations::v4::Migrate<crate::Runtime>,
-    PrivateNetMigrations,
-    WipMigrations,
-    xor_fee::migrations::v3::Migrate<crate::Runtime>,
+    RemapStakingRewardPointsToStash,
+    EthBridgeStorageVersionV3,
+    pallet_polkamarkt::migrations::v5::Migrate<crate::Runtime>,
 );
 
-pub type MultiBlockMigrations =
-    (pallet_identity::migration::v2::LazyMigrationV1ToV2<crate::Runtime>,);
+pub type MultiBlockMigrations = ();
 
 #[cfg(feature = "try-runtime")]
 fn decode_storage_version(
@@ -206,34 +180,54 @@ fn ethereum_bridge_is_migrating() -> bool {
     )
 }
 
-fn assert_ethereum_xor_thischain_add_asset_queue_state() {
+fn ethereum_xor_thischain_add_asset_queue_state_error() -> Option<&'static str> {
     if !eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<crate::Runtime>() {
-        panic!(
-            "Ethereum XOR Thischain add-asset marker is set before legacy Ethereum XOR decommission"
+        return Some(
+            "Ethereum XOR Thischain add-asset marker is set before legacy Ethereum XOR decommission",
         );
     }
     if !ethereum_bridge_signature_version_is_v3() {
-        panic!("Ethereum bridge signature version is not V3 after marking XOR Thischain add-asset request queued");
+        return Some(
+            "Ethereum bridge signature version is not V3 after marking XOR Thischain add-asset request queued",
+        );
     }
     if ethereum_xor_has_sidechain_token_mapping() {
-        panic!("Ethereum XOR has a stale sidechain token mapping after marking XOR Thischain add-asset request queued");
+        return Some(
+            "Ethereum XOR has a stale sidechain token mapping after marking XOR Thischain add-asset request queued",
+        );
     }
     if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
-        panic!("Ethereum XOR Thischain add-asset marker is set but pending request cannot finalize while bridge is migrating");
+        return Some(
+            "Ethereum XOR Thischain add-asset marker is set but pending request cannot finalize while bridge is migrating",
+        );
     }
-    if !ethereum_xor_thischain_add_asset_is_pending_or_registered() {
-        panic!("Ethereum XOR Thischain add-asset marker is set but request is neither pending nor finalized");
+    None
+}
+
+fn ethereum_xor_thischain_add_asset_queue_state_is_complete() -> bool {
+    if ethereum_xor_thischain_add_asset_queue_state_error().is_some() {
+        return false;
     }
+    ethereum_xor_thischain_add_asset_is_pending_or_registered()
 }
 
 fn queue_ethereum_xor_thischain_add_asset() -> Weight {
     let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
     let mut weight = db_weight.reads(1);
+    let was_marked_queued = ethereum_xor_thischain_add_asset_queued();
 
-    if ethereum_xor_thischain_add_asset_queued() {
+    if was_marked_queued {
         weight.saturating_accrue(db_weight.reads(7));
-        assert_ethereum_xor_thischain_add_asset_queue_state();
-        return weight;
+        if let Some(error) = ethereum_xor_thischain_add_asset_queue_state_error() {
+            frame_support::__private::log::error!("{error}");
+            return weight;
+        }
+        if ethereum_xor_thischain_add_asset_queue_state_is_complete() {
+            return weight;
+        }
+        frame_support::__private::log::warn!(
+            "Repairing Ethereum XOR Thischain add-asset marker: request is neither pending nor finalized"
+        );
     }
 
     weight.saturating_accrue(db_weight.reads(1));
@@ -249,47 +243,68 @@ fn queue_ethereum_xor_thischain_add_asset() -> Weight {
 
     weight.saturating_accrue(db_weight.reads(1));
     if !ethereum_bridge_signature_version_is_v3() {
-        panic!("Ethereum bridge signature version must be V3 before queueing XOR Thischain add-asset request");
+        frame_support::__private::log::error!(
+            "Skipping Ethereum XOR Thischain add-asset request: Ethereum bridge signature version must be V3"
+        );
+        return weight;
     }
 
     weight.saturating_accrue(db_weight.reads(1));
     if ethereum_xor_has_sidechain_token_mapping() {
-        panic!("Ethereum XOR has a stale sidechain token mapping after legacy decommission");
+        frame_support::__private::log::error!(
+            "Skipping Ethereum XOR Thischain add-asset request: stale sidechain token mapping remains after legacy decommission"
+        );
+        return weight;
     }
 
     weight.saturating_accrue(db_weight.reads(2));
     if ethereum_xor_thischain_add_asset_is_pending_or_registered() {
         weight.saturating_accrue(db_weight.reads(2));
         if ethereum_xor_thischain_add_asset_is_pending() && ethereum_bridge_is_migrating() {
-            panic!("Ethereum XOR Thischain add-asset request is pending while bridge is migrating");
+            frame_support::__private::log::error!(
+                "Skipping Ethereum XOR Thischain add-asset marker write: pending request cannot finalize while bridge is migrating"
+            );
+            return weight;
         }
-        mark_ethereum_xor_thischain_add_asset_queued();
-        return weight.saturating_add(db_weight.writes(1));
+        if !was_marked_queued {
+            mark_ethereum_xor_thischain_add_asset_queued();
+            weight.saturating_accrue(db_weight.writes(1));
+        }
+        return weight;
     }
 
     if eth_bridge::Pallet::<crate::Runtime>::registered_asset(network_id, &xor_asset_id).is_some() {
-        panic!("Ethereum XOR has a non-Thischain bridge registration after legacy decommission");
+        frame_support::__private::log::error!(
+            "Skipping Ethereum XOR Thischain add-asset request: non-Thischain bridge registration remains after legacy decommission"
+        );
+        return weight;
     }
 
-    if let Err(error) =
+    if ethereum_bridge_is_migrating() {
+        frame_support::__private::log::error!(
+            "Skipping Ethereum XOR Thischain add-asset request: bridge is migrating"
+        );
+        return weight;
+    }
+
+    if let Err(error) = common::with_transaction(|| -> DispatchResult {
         eth_bridge::migration::queue_ethereum_xor_thischain_add_asset_unchecked_capacity::<
             crate::Runtime,
-        >()
-    {
+        >()?;
+        Ok(())
+    }) {
         frame_support::__private::log::error!(
-            "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
+            "Failed to queue Ethereum XOR Thischain add-asset request and rolled back: {:?}",
             error
         );
-        panic!(
-            "Failed to queue Ethereum XOR Thischain add-asset request: {:?}",
-            error
-        );
+        return <crate::Runtime as frame_system::Config>::BlockWeights::get().max_block;
     }
 
-    mark_ethereum_xor_thischain_add_asset_queued();
-    weight
-        .saturating_add(common::weights::constants::EXTRINSIC_FIXED_WEIGHT)
-        .saturating_add(db_weight.writes(1))
+    if !was_marked_queued {
+        mark_ethereum_xor_thischain_add_asset_queued();
+        weight.saturating_accrue(db_weight.writes(1));
+    }
+    weight.saturating_add(common::weights::constants::EXTRINSIC_FIXED_WEIGHT)
 }
 
 #[cfg(feature = "try-runtime")]
@@ -364,7 +379,99 @@ impl OnRuntimeUpgrade for BandMigrateToV2IfNeeded {
     }
 }
 
+pub struct EthBridgeStorageVersionV3;
+
+impl OnRuntimeUpgrade for EthBridgeStorageVersionV3 {
+    fn on_runtime_upgrade() -> Weight {
+        eth_bridge::migration::migrate::<crate::Runtime>()
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let previous = decode_storage_version(state, "EthBridge")?;
+        let expected = if previous < StorageVersion::new(3) {
+            StorageVersion::new(3)
+        } else {
+            previous
+        };
+        validate_storage_version_transition(
+            "EthBridge",
+            previous,
+            expected,
+            eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version(),
+        )
+    }
+}
+
 pub struct StakingStorageVersionV16;
+
+#[derive(Decode, Encode, Clone, Copy, PartialEq, Eq, Debug)]
+enum LegacyStakingRelease {
+    V5_0_0,
+    V6_0_0,
+    V7_0_0,
+    V8_0_0,
+    V9_0_0,
+    V10_0_0,
+    V11_0_0,
+    V12_0_0,
+}
+
+impl Default for LegacyStakingRelease {
+    fn default() -> Self {
+        Self::V12_0_0
+    }
+}
+
+fn legacy_staking_storage_version_key() -> Vec<u8> {
+    storage_prefix(b"Staking", b"StorageVersion").to_vec()
+}
+
+fn legacy_staking_release_marker() -> Option<LegacyStakingRelease> {
+    let key = legacy_staking_storage_version_key();
+    sp_io::storage::get(&key).map(|raw| {
+        LegacyStakingRelease::decode(&mut &raw[..])
+            .unwrap_or_else(|_| panic!("Staking legacy release marker is corrupt"))
+    })
+}
+
+fn prepare_legacy_staking_v0_state_for_v15(weight: &mut Weight) {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    weight.saturating_accrue(db_weight.reads(1));
+
+    let legacy_release = legacy_staking_release_marker().unwrap_or_default();
+    if legacy_release != LegacyStakingRelease::V12_0_0 {
+        panic!("Unsupported Staking legacy release marker {legacy_release:?}");
+    }
+
+    frame_support::storage::unhashed::kill(&legacy_staking_storage_version_key());
+    StorageVersion::new(14).put::<pallet_staking::Pallet<crate::Runtime>>();
+    weight.saturating_accrue(db_weight.writes(2));
+}
+
+fn run_staking_v16_migration(weight: &mut Weight) {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    weight.saturating_accrue(
+        pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<crate::Runtime>::on_runtime_upgrade(),
+    );
+    StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
+    weight.saturating_accrue(db_weight.writes(1));
+}
+
+fn run_staking_v15_and_v16_migrations(weight: &mut Weight) {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    weight.saturating_accrue(
+        pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<crate::Runtime>::on_runtime_upgrade(),
+    );
+    StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
+    weight.saturating_accrue(db_weight.writes(1));
+    run_staking_v16_migration(weight);
+}
 
 impl OnRuntimeUpgrade for StakingStorageVersionV16 {
     fn on_runtime_upgrade() -> Weight {
@@ -373,48 +480,20 @@ impl OnRuntimeUpgrade for StakingStorageVersionV16 {
         let mut weight = db_weight.reads(1);
 
         match on_chain {
+            v if v == StorageVersion::new(0) => {
+                prepare_legacy_staking_v0_state_for_v15(&mut weight);
+                run_staking_v15_and_v16_migrations(&mut weight);
+            }
             v if v == StorageVersion::new(13) => {
                 StorageVersion::new(14).put::<pallet_staking::Pallet<crate::Runtime>>();
                 weight.saturating_accrue(db_weight.writes(1));
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
+                run_staking_v15_and_v16_migrations(&mut weight);
             }
             v if v == StorageVersion::new(14) => {
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
+                run_staking_v15_and_v16_migrations(&mut weight);
             }
             v if v == StorageVersion::new(15) => {
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
+                run_staking_v16_migration(&mut weight);
             }
             _ => {}
         }
@@ -431,6 +510,7 @@ impl OnRuntimeUpgrade for StakingStorageVersionV16 {
     fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
         let previous = decode_storage_version(state, "Staking")?;
         let expected = match previous {
+            version if version == StorageVersion::new(0) => StorageVersion::new(16),
             version if version == StorageVersion::new(13) => StorageVersion::new(16),
             version if version == StorageVersion::new(14) => StorageVersion::new(16),
             version if version == StorageVersion::new(15) => StorageVersion::new(16),
@@ -442,6 +522,103 @@ impl OnRuntimeUpgrade for StakingStorageVersionV16 {
             expected,
             pallet_staking::Pallet::<crate::Runtime>::on_chain_storage_version(),
         )
+    }
+}
+
+const STAKING_REWARD_POINTS_STASH_REMAP_KEY: &[u8] =
+    b"runtime:migrations:staking_reward_points_stash_remapped";
+
+pub fn staking_reward_points_stash_remapped() -> bool {
+    frame_support::storage::unhashed::get(STAKING_REWARD_POINTS_STASH_REMAP_KEY).unwrap_or(false)
+}
+
+fn mark_staking_reward_points_stash_remapped() {
+    frame_support::storage::unhashed::put(STAKING_REWARD_POINTS_STASH_REMAP_KEY, &true);
+}
+
+fn staking_reward_points_stash_for(account: &crate::AccountId) -> crate::AccountId {
+    pallet_staking::Ledger::<crate::Runtime>::get(account)
+        .map(|ledger| ledger.stash)
+        .or_else(|| {
+            pallet_staking::Bonded::<crate::Runtime>::contains_key(account).then(|| account.clone())
+        })
+        .unwrap_or_else(|| account.clone())
+}
+
+fn remap_staking_reward_points_to_stash() -> Weight {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    let mut weight = db_weight.reads(1);
+
+    if staking_reward_points_stash_remapped() {
+        return weight;
+    }
+
+    let mut changed_eras = 0u64;
+    let era_reward_points: Vec<_> =
+        pallet_staking::ErasRewardPoints::<crate::Runtime>::iter().collect();
+    for (era, era_rewards) in era_reward_points {
+        weight.saturating_accrue(db_weight.reads(1));
+
+        let mut changed = false;
+        let mut remapped = pallet_staking::EraRewardPoints {
+            total: era_rewards.total,
+            individual: Default::default(),
+        };
+
+        for (account, points) in era_rewards.individual {
+            weight.saturating_accrue(db_weight.reads(2));
+            let stash = staking_reward_points_stash_for(&account);
+            changed |= stash != account;
+            remapped
+                .individual
+                .entry(stash)
+                .and_modify(|existing| *existing = existing.saturating_add(points))
+                .or_insert(points);
+        }
+
+        if changed {
+            pallet_staking::ErasRewardPoints::<crate::Runtime>::insert(era, remapped);
+            weight.saturating_accrue(db_weight.writes(1));
+            changed_eras = changed_eras.saturating_add(1);
+        }
+    }
+
+    mark_staking_reward_points_stash_remapped();
+    weight.saturating_accrue(db_weight.writes(1));
+
+    if changed_eras > 0 {
+        frame_support::__private::log::info!(
+            "remapped staking reward points from session accounts to stash accounts in {changed_eras} eras"
+        );
+    }
+
+    weight
+}
+
+pub struct RemapStakingRewardPointsToStash;
+
+impl OnRuntimeUpgrade for RemapStakingRewardPointsToStash {
+    fn on_runtime_upgrade() -> Weight {
+        remap_staking_reward_points_to_stash()
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(staking_reward_points_stash_remapped().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let was_remapped = bool::decode(&mut &state[..]).map_err(|_| {
+            TryRuntimeError::Other("failed to decode staking reward point remap marker")
+        })?;
+        if was_remapped || staking_reward_points_stash_remapped() {
+            Ok(())
+        } else {
+            Err(TryRuntimeError::Other(
+                "staking reward point remap marker was not written",
+            ))
+        }
     }
 }
 
@@ -588,10 +765,7 @@ fn repair_xor_tbcd_reward_denomination() -> Weight {
             "Failed to repair stale XOR/TBCD reward denomination state: {:?}",
             error
         );
-        panic!(
-            "Failed to repair stale XOR/TBCD reward denomination state: {:?}",
-            error
-        );
+        return <crate::Runtime as frame_system::Config>::BlockWeights::get().max_block;
     }
 
     mark_xor_tbcd_reward_denomination_repaired();
