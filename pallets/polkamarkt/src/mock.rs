@@ -154,7 +154,7 @@ impl crate::WeightInfo for TestWeightInfo {
     fn sweep_xor_buyback_and_burn() -> Weight {
         Weight::zero()
     }
-    fn place_order() -> Weight {
+    fn place_order(_f: u32) -> Weight {
         Weight::zero()
     }
     fn cancel_order() -> Weight {

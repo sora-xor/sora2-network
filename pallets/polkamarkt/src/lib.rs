@@ -11,8 +11,8 @@ pub use pallet::*;
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::BuyBackHandler;
 use frame_support::{
-    dispatch::DispatchResult, storage::with_transaction, transactional, weights::Weight,
-    BoundedVec, PalletId,
+    dispatch::DispatchResult, storage::with_transaction, traits::ConstU32, transactional,
+    weights::Weight, BoundedBTreeMap, BoundedVec, PalletId,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::TypeInfo;
@@ -74,7 +74,7 @@ pub trait WeightInfo {
     fn claim_creator_liquidity() -> Weight;
     fn claim_liquidity() -> Weight;
     fn sweep_xor_buyback_and_burn() -> Weight;
-    fn place_order() -> Weight;
+    fn place_order(f: u32) -> Weight;
     fn cancel_order() -> Weight;
     fn split_position() -> Weight;
     fn merge_positions() -> Weight;
@@ -779,6 +779,18 @@ pub mod pallet {
         Blake2_128Concat,
         (BinaryOutcome, OrderSide, PriceCents),
         BoundedVec<OrderId, T::MaxOrdersPerPrice>,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn order_book_price_levels)]
+    pub type OrderBookPriceLevels<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        MarketId,
+        Blake2_128Concat,
+        (BinaryOutcome, OrderSide),
+        BoundedBTreeMap<PriceCents, T::Balance, ConstU32<99>>,
         ValueQuery,
     >;
 
@@ -1620,7 +1632,7 @@ pub mod pallet {
 
         /// Place a bounded on-chain limit order. GTC remainders post; IOC remainders refund.
         #[pallet::call_index(34)]
-        #[pallet::weight(T::WeightInfo::place_order())]
+        #[pallet::weight(T::WeightInfo::place_order(T::MaxFillsPerOrder::get()))]
         pub fn place_order(
             origin: OriginFor<T>,
             market_id: MarketId,
@@ -1838,10 +1850,18 @@ pub mod pallet {
             Self::ensure_valid_price(price_cents)?;
             let market = Self::ensure_market_tradable(market_id)?;
             Self::ensure_order_book_market(&market)?;
-            let posts_remainder = matches!(time_in_force, TimeInForce::Gtc)
-                && !Self::quote_order_market(market_id, outcome, side, price_cents, shares)?
-                    .posted_shares
-                    .is_zero();
+            if matches!(time_in_force, TimeInForce::Gtc)
+                && Self::posts_order_remainder_readonly(
+                    market_id,
+                    outcome,
+                    side,
+                    price_cents,
+                    shares,
+                )?
+            {
+                Self::ensure_open_order_slot(who, market_id)?;
+                Self::ensure_price_level_slot(market_id, outcome, side, price_cents)?;
+            }
 
             let mut remaining_shares = shares;
             let mut available_collateral = T::Balance::zero();
@@ -1849,10 +1869,6 @@ pub mod pallet {
 
             with_storage_transaction(|| -> DispatchResult {
                 let order_id = Self::next_order_id_checked()?;
-                if posts_remainder {
-                    Self::ensure_open_order_slot(who, market_id)?;
-                    Self::ensure_price_level_slot(market_id, outcome, side, price_cents)?;
-                }
                 match side {
                     OrderSide::Buy => {
                         let max_notional = Self::price_amount(price_cents, shares)?;
@@ -1926,6 +1942,8 @@ pub mod pallet {
                         }
                     },
                     TimeInForce::Gtc => {
+                        Self::ensure_open_order_slot(who, market_id)?;
+                        Self::ensure_price_level_slot(market_id, outcome, side, price_cents)?;
                         let reserved_collateral = match side {
                             OrderSide::Buy => {
                                 let reserved = Self::price_amount(price_cents, remaining_shares)?;
@@ -2027,6 +2045,56 @@ pub mod pallet {
             Ok(())
         }
 
+        fn posts_order_remainder_readonly(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> Result<bool, DispatchError> {
+            let mut remaining = shares;
+            let mut fills = 0u32;
+            let mut simulated_fills: Vec<(OrderId, T::Balance)> = Vec::new();
+
+            while !remaining.is_zero() && fills < T::MaxFillsPerOrder::get() {
+                let candidate = match side {
+                    OrderSide::Buy => Self::best_buy_match_readonly(
+                        market_id,
+                        outcome,
+                        price_cents,
+                        &simulated_fills,
+                    ),
+                    OrderSide::Sell => Self::best_same_outcome_buy_readonly(
+                        market_id,
+                        outcome,
+                        price_cents,
+                        &simulated_fills,
+                    )
+                    .map(|id| (id, false)),
+                };
+                let Some((order_id, _)) = candidate else {
+                    break;
+                };
+                let Some(order) = Orders::<T>::get(order_id) else {
+                    break;
+                };
+                let Some(simulated_remaining) =
+                    Self::simulated_remaining_shares(order_id, &order, &simulated_fills)
+                else {
+                    break;
+                };
+                let fill = core::cmp::min(remaining, simulated_remaining);
+                if fill.is_zero() {
+                    break;
+                }
+                remaining = remaining.saturating_sub(fill);
+                Self::record_simulated_fill(&mut simulated_fills, order_id, fill)?;
+                fills = fills.saturating_add(1);
+            }
+
+            Ok(!remaining.is_zero())
+        }
+
         fn best_buy_match(
             market_id: MarketId,
             outcome: BinaryOutcome,
@@ -2056,11 +2124,15 @@ pub mod pallet {
             outcome: BinaryOutcome,
             limit_price: PriceCents,
         ) -> Option<(OrderId, PriceCents)> {
-            for price in MIN_PRICE_CENTS..=limit_price {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Sell));
+            for (price, _) in levels.iter() {
+                if *price > limit_price {
+                    break;
+                }
                 if let Some(order_id) =
-                    Self::front_order_id(market_id, outcome, OrderSide::Sell, price)
+                    Self::front_order_id(market_id, outcome, OrderSide::Sell, *price)
                 {
-                    return Some((order_id, price));
+                    return Some((order_id, *price));
                 }
             }
             None
@@ -2071,9 +2143,13 @@ pub mod pallet {
             outcome: BinaryOutcome,
             limit_price: PriceCents,
         ) -> Option<OrderId> {
-            for price in (limit_price..=MAX_PRICE_CENTS).rev() {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < limit_price {
+                    break;
+                }
                 if let Some(order_id) =
-                    Self::front_order_id(market_id, outcome, OrderSide::Buy, price)
+                    Self::front_order_id(market_id, outcome, OrderSide::Buy, *price)
                 {
                     return Some(order_id);
                 }
@@ -2087,14 +2163,15 @@ pub mod pallet {
             taker_price: PriceCents,
         ) -> Option<(OrderId, PriceCents)> {
             let min_maker_price = 100u8.saturating_sub(taker_price);
-            for price in (min_maker_price..=MAX_PRICE_CENTS).rev() {
-                if price < MIN_PRICE_CENTS {
-                    continue;
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (maker_outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < min_maker_price || *price < MIN_PRICE_CENTS {
+                    break;
                 }
                 if let Some(order_id) =
-                    Self::front_order_id(market_id, maker_outcome, OrderSide::Buy, price)
+                    Self::front_order_id(market_id, maker_outcome, OrderSide::Buy, *price)
                 {
-                    return Some((order_id, price));
+                    return Some((order_id, *price));
                 }
             }
             None
@@ -2140,15 +2217,19 @@ pub mod pallet {
             limit_price: PriceCents,
             simulated_fills: &[(OrderId, T::Balance)],
         ) -> Option<(OrderId, PriceCents)> {
-            for price in MIN_PRICE_CENTS..=limit_price {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Sell));
+            for (price, _) in levels.iter() {
+                if *price > limit_price {
+                    break;
+                }
                 if let Some(order_id) = Self::front_order_id_readonly(
                     market_id,
                     outcome,
                     OrderSide::Sell,
-                    price,
+                    *price,
                     simulated_fills,
                 ) {
-                    return Some((order_id, price));
+                    return Some((order_id, *price));
                 }
             }
             None
@@ -2160,12 +2241,16 @@ pub mod pallet {
             limit_price: PriceCents,
             simulated_fills: &[(OrderId, T::Balance)],
         ) -> Option<OrderId> {
-            for price in (limit_price..=MAX_PRICE_CENTS).rev() {
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < limit_price {
+                    break;
+                }
                 if let Some(order_id) = Self::front_order_id_readonly(
                     market_id,
                     outcome,
                     OrderSide::Buy,
-                    price,
+                    *price,
                     simulated_fills,
                 ) {
                     return Some(order_id);
@@ -2181,18 +2266,19 @@ pub mod pallet {
             simulated_fills: &[(OrderId, T::Balance)],
         ) -> Option<(OrderId, PriceCents)> {
             let min_maker_price = 100u8.saturating_sub(taker_price);
-            for price in (min_maker_price..=MAX_PRICE_CENTS).rev() {
-                if price < MIN_PRICE_CENTS {
-                    continue;
+            let levels = OrderBookPriceLevels::<T>::get(market_id, (maker_outcome, OrderSide::Buy));
+            for (price, _) in levels.iter().rev() {
+                if *price < min_maker_price || *price < MIN_PRICE_CENTS {
+                    break;
                 }
                 if let Some(order_id) = Self::front_order_id_readonly(
                     market_id,
                     maker_outcome,
                     OrderSide::Buy,
-                    price,
+                    *price,
                     simulated_fills,
                 ) {
-                    return Some((order_id, price));
+                    return Some((order_id, *price));
                 }
             }
             None
@@ -2287,27 +2373,12 @@ pub mod pallet {
                         queue.remove(0);
                     }
                 });
+                if OrderBookQueues::<T>::get(market_id, key).is_empty() {
+                    OrderBookPriceLevels::<T>::mutate(market_id, (outcome, side), |levels| {
+                        levels.remove(&price_cents);
+                    });
+                }
             }
-        }
-
-        fn level_shares(
-            market_id: MarketId,
-            outcome: BinaryOutcome,
-            side: OrderSide,
-            price_cents: PriceCents,
-        ) -> T::Balance {
-            OrderBookQueues::<T>::get(market_id, (outcome, side, price_cents))
-                .into_iter()
-                .filter_map(Orders::<T>::get)
-                .filter(|order| {
-                    order.market_id == market_id
-                        && order.outcome == outcome
-                        && order.side == side
-                        && order.price_cents == price_cents
-                })
-                .fold(T::Balance::zero(), |total, order| {
-                    total.saturating_add(order.remaining_shares)
-                })
         }
 
         fn fill_same_outcome(
@@ -2393,6 +2464,13 @@ pub mod pallet {
                 collateral_amount: notional,
                 fee_amount: fee,
             });
+            Self::decrease_price_level_shares(
+                maker_order.market_id,
+                maker_order.outcome,
+                maker_order.side,
+                maker_order.price_cents,
+                fill_shares,
+            )?;
             Self::update_or_remove_maker_order(maker_order_id, maker_order, market.collateral_asset)
         }
 
@@ -2464,6 +2542,13 @@ pub mod pallet {
                 collateral_amount: taker_notional,
                 fee_amount: fee,
             });
+            Self::decrease_price_level_shares(
+                maker_order.market_id,
+                maker_order.outcome,
+                maker_order.side,
+                maker_order.price_cents,
+                fill_shares,
+            )?;
             Self::update_or_remove_maker_order(maker_order_id, maker_order, market.collateral_asset)
         }
 
@@ -2473,7 +2558,7 @@ pub mod pallet {
             collateral_asset: T::AssetId,
         ) -> DispatchResult {
             if order.remaining_shares.is_zero() {
-                Self::remove_order_from_indexes(order_id, &order);
+                Self::remove_order_from_indexes(order_id, &order)?;
                 Orders::<T>::remove(order_id);
                 if matches!(order.side, OrderSide::Buy) && !order.reserved_collateral.is_zero() {
                     T::Assets::transfer(
@@ -2574,6 +2659,13 @@ pub mod pallet {
                     Ok(())
                 },
             )?;
+            Self::increase_price_level_shares(
+                order.market_id,
+                order.outcome,
+                order.side,
+                order.price_cents,
+                order.remaining_shares,
+            )?;
             OpenOrdersByAccountMarket::<T>::try_mutate(
                 &order.owner,
                 order.market_id,
@@ -2588,7 +2680,7 @@ pub mod pallet {
             Ok(())
         }
 
-        fn remove_order_from_indexes(order_id: OrderId, order: &OrderOf<T>) {
+        fn remove_order_from_indexes(order_id: OrderId, order: &OrderOf<T>) -> DispatchResult {
             OrderBookQueues::<T>::mutate(
                 order.market_id,
                 (order.outcome, order.side, order.price_cents),
@@ -2603,10 +2695,78 @@ pub mod pallet {
                     orders.remove(index);
                 }
             });
+            Self::decrease_price_level_shares(
+                order.market_id,
+                order.outcome,
+                order.side,
+                order.price_cents,
+                order.remaining_shares,
+            )?;
+            Ok(())
+        }
+
+        fn increase_price_level_shares(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            if shares.is_zero() {
+                return Ok(());
+            }
+            OrderBookPriceLevels::<T>::try_mutate(
+                market_id,
+                (outcome, side),
+                |levels| -> DispatchResult {
+                    let updated = levels
+                        .get(&price_cents)
+                        .copied()
+                        .unwrap_or_default()
+                        .checked_add(&shares)
+                        .ok_or(Error::<T>::Overflow)?;
+                    levels
+                        .try_insert(price_cents, updated)
+                        .map_err(|_| Error::<T>::TooManyOrdersAtPrice)?;
+                    Ok(())
+                },
+            )
+        }
+
+        fn decrease_price_level_shares(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            side: OrderSide,
+            price_cents: PriceCents,
+            shares: T::Balance,
+        ) -> DispatchResult {
+            if shares.is_zero() {
+                return Ok(());
+            }
+            OrderBookPriceLevels::<T>::try_mutate(
+                market_id,
+                (outcome, side),
+                |levels| -> DispatchResult {
+                    let current = levels
+                        .get(&price_cents)
+                        .copied()
+                        .ok_or(Error::<T>::Overflow)?;
+                    ensure!(current >= shares, Error::<T>::Overflow);
+                    let updated = current.saturating_sub(shares);
+                    if updated.is_zero() {
+                        levels.remove(&price_cents);
+                    } else {
+                        levels
+                            .try_insert(price_cents, updated)
+                            .map_err(|_| Error::<T>::TooManyOrdersAtPrice)?;
+                    }
+                    Ok(())
+                },
+            )
         }
 
         fn cancel_order_unchecked(order_id: OrderId, order: OrderOf<T>) -> DispatchResult {
-            Self::remove_order_from_indexes(order_id, &order);
+            Self::remove_order_from_indexes(order_id, &order)?;
             Orders::<T>::remove(order_id);
             match order.side {
                 OrderSide::Buy => {
@@ -3219,27 +3379,27 @@ pub mod pallet {
             Self::ensure_order_book_market(&market)?;
             let mut bids = Vec::new();
             let mut asks = Vec::new();
-            for price in (MIN_PRICE_CENTS..=MAX_PRICE_CENTS).rev() {
+            let bid_levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Buy));
+            for (price, shares) in bid_levels.iter().rev() {
                 if bids.len() as u32 >= depth {
                     break;
                 }
-                let shares = Self::level_shares(market_id, outcome, OrderSide::Buy, price);
                 if !shares.is_zero() {
                     bids.push(OrderBookLevel {
-                        price_cents: price,
-                        shares,
+                        price_cents: *price,
+                        shares: *shares,
                     });
                 }
             }
-            for price in MIN_PRICE_CENTS..=MAX_PRICE_CENTS {
+            let ask_levels = OrderBookPriceLevels::<T>::get(market_id, (outcome, OrderSide::Sell));
+            for (price, shares) in ask_levels.iter() {
                 if asks.len() as u32 >= depth {
                     break;
                 }
-                let shares = Self::level_shares(market_id, outcome, OrderSide::Sell, price);
                 if !shares.is_zero() {
                     asks.push(OrderBookLevel {
-                        price_cents: price,
-                        shares,
+                        price_cents: *price,
+                        shares: *shares,
                     });
                 }
             }

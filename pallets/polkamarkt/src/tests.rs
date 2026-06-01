@@ -4,13 +4,14 @@ use crate::{
     LiquidityPositions, LiquidityTotals, Market, MarketCancellationEvidence, MarketCreatorFees,
     MarketMechanism, MarketOrderBookCollateral, MarketPools, MarketPositionTotals, MarketPositions,
     MarketResolution, MarketResolutionEvidence, MarketStatus, Markets, NextOrderId,
-    OpenOrdersByAccountMarket, OrderBookQueues, OrderSide, Orders, PendingXorBuybackCollateral,
-    TimeInForce,
+    OpenOrdersByAccountMarket, OrderBookPriceLevels, OrderBookQueues, OrderSide, Orders,
+    PendingXorBuybackCollateral, TimeInForce,
 };
 use frame_support::{
     assert_noop, assert_ok,
     storage::{storage_prefix, unhashed},
     traits::{OnRuntimeUpgrade, StorageVersion},
+    BoundedVec,
 };
 use frame_system::Pallet as System;
 use sp_runtime::{DispatchError, Perbill};
@@ -169,6 +170,17 @@ fn fee_split(total_fee: Balance) -> (Balance, Balance, Balance) {
     let buyback = total_fee * 20 / 100;
     let pool = total_fee - creator - buyback;
     (pool, creator, buyback)
+}
+
+fn price_level_shares(
+    outcome: BinaryOutcome,
+    side: OrderSide,
+    price: crate::PriceCents,
+) -> Balance {
+    OrderBookPriceLevels::<Test>::get(0, (outcome, side))
+        .get(&price)
+        .copied()
+        .unwrap_or_default()
 }
 
 #[test]
@@ -1024,6 +1036,401 @@ fn orderbook_quote_simulates_consumed_front_orders() {
                 .expect("second order remains open")
                 .remaining_shares,
             700
+        );
+    });
+}
+
+#[test]
+fn orderbook_price_levels_track_posts_fills_and_cancels() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            45,
+            500,
+            TimeInForce::Gtc,
+        ));
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 45),
+            500
+        );
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            45,
+            200,
+            TimeInForce::Ioc,
+        ));
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 45),
+            300
+        );
+        assert_eq!(
+            Orders::<Test>::get(0)
+                .expect("partially filled order remains open")
+                .remaining_shares,
+            300
+        );
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            45,
+            300,
+            TimeInForce::Ioc,
+        ));
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 45),
+            0
+        );
+        assert!(Orders::<Test>::get(0).is_none());
+
+        let cancel_order_id = NextOrderId::<Test>::get();
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            60,
+            300,
+            TimeInForce::Gtc,
+        ));
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 60),
+            300
+        );
+        assert_ok!(Polkamarkt::cancel_order(
+            RuntimeOrigin::signed(BOB),
+            cancel_order_id
+        ));
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 60),
+            0
+        );
+    });
+}
+
+#[test]
+fn orderbook_indexed_matching_uses_best_sparse_prices() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            30_000,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            70,
+            10_000,
+            TimeInForce::Gtc,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            40,
+            10_000,
+            TimeInForce::Gtc,
+        ));
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            99,
+            10_000,
+            TimeInForce::Ioc,
+        ));
+        assert!(Orders::<Test>::get(1).is_none());
+        assert!(Orders::<Test>::get(0).is_some());
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 40),
+            0
+        );
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 70),
+            10_000
+        );
+
+        set_balance(3, CANONICAL_ASSET, 1_000_000);
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(3),
+            0,
+            BinaryOutcome::No,
+            OrderSide::Buy,
+            80,
+            10_000,
+            TimeInForce::Gtc,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            99,
+            10_000,
+            TimeInForce::Ioc,
+        ));
+
+        assert!(Orders::<Test>::get(3).is_none());
+        assert!(Orders::<Test>::get(0).is_some());
+        assert_eq!(price_level_shares(BinaryOutcome::No, OrderSide::Buy, 80), 0);
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 70),
+            10_000
+        );
+    });
+}
+
+#[test]
+fn orderbook_fully_filled_gtc_does_not_require_posting_capacity() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        for price in 1..=16 {
+            assert_ok!(Polkamarkt::place_order(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::No,
+                OrderSide::Buy,
+                price,
+                100,
+                TimeInForce::Gtc,
+            ));
+        }
+        assert_eq!(OpenOrdersByAccountMarket::<Test>::get(ALICE, 0).len(), 16);
+
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            100,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            100,
+            TimeInForce::Gtc,
+        ));
+        let maker_order_id = NextOrderId::<Test>::get() - 1;
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            50,
+            100,
+            TimeInForce::Gtc,
+        ));
+        assert!(Orders::<Test>::get(maker_order_id).is_none());
+        assert_eq!(OpenOrdersByAccountMarket::<Test>::get(ALICE, 0).len(), 16);
+    });
+}
+
+#[test]
+fn orderbook_partial_gtc_remainder_rejects_full_account_before_matching() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        for price in 1..=16 {
+            assert_ok!(Polkamarkt::place_order(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::No,
+                OrderSide::Buy,
+                price,
+                100,
+                TimeInForce::Gtc,
+            ));
+        }
+        assert_eq!(OpenOrdersByAccountMarket::<Test>::get(ALICE, 0).len(), 16);
+
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            100,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            100,
+            TimeInForce::Gtc,
+        ));
+        let maker_order_id = NextOrderId::<Test>::get() - 1;
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        let next_before = NextOrderId::<Test>::get();
+
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                50,
+                200,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::TooManyOpenOrders
+        );
+
+        assert_eq!(NextOrderId::<Test>::get(), next_before);
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
+        assert_eq!(
+            Orders::<Test>::get(maker_order_id)
+                .expect("maker order is not partially filled")
+                .remaining_shares,
+            100
+        );
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 50),
+            100
+        );
+    });
+}
+
+#[test]
+fn orderbook_partial_gtc_remainder_rejects_full_price_level_before_matching() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        let full_price_queue: BoundedVec<
+            crate::OrderId,
+            <Test as crate::Config>::MaxOrdersPerPrice,
+        > = (10_000..10_016)
+            .collect::<Vec<_>>()
+            .try_into()
+            .expect("bounded full price level");
+        OrderBookQueues::<Test>::insert(
+            0,
+            (BinaryOutcome::Yes, OrderSide::Buy, 60),
+            full_price_queue,
+        );
+        assert_eq!(
+            OrderBookQueues::<Test>::get(0, (BinaryOutcome::Yes, OrderSide::Buy, 60)).len(),
+            16
+        );
+
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            100,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            100,
+            TimeInForce::Gtc,
+        ));
+        let maker_order_id = NextOrderId::<Test>::get() - 1;
+        set_balance(26, CANONICAL_ASSET, 10_000);
+        let taker_before = balance_of(26, CANONICAL_ASSET);
+        let next_before = NextOrderId::<Test>::get();
+
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(26),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                60,
+                200,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::TooManyOrdersAtPrice
+        );
+
+        assert_eq!(NextOrderId::<Test>::get(), next_before);
+        assert_eq!(balance_of(26, CANONICAL_ASSET), taker_before);
+        assert_eq!(
+            Orders::<Test>::get(maker_order_id)
+                .expect("maker order is not partially filled")
+                .remaining_shares,
+            100
+        );
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 50),
+            100
+        );
+        assert_eq!(
+            OrderBookQueues::<Test>::get(0, (BinaryOutcome::Yes, OrderSide::Buy, 60)).len(),
+            16
+        );
+    });
+}
+
+#[test]
+fn orderbook_ioc_can_match_when_posting_limits_are_full() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        for price in 1..=16 {
+            assert_ok!(Polkamarkt::place_order(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::No,
+                OrderSide::Buy,
+                price,
+                100,
+                TimeInForce::Gtc,
+            ));
+        }
+        assert_eq!(OpenOrdersByAccountMarket::<Test>::get(ALICE, 0).len(), 16);
+
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            100,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            100,
+            TimeInForce::Gtc,
+        ));
+        let maker_order_id = NextOrderId::<Test>::get() - 1;
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            50,
+            200,
+            TimeInForce::Ioc,
+        ));
+
+        assert!(Orders::<Test>::get(maker_order_id).is_none());
+        assert_eq!(OpenOrdersByAccountMarket::<Test>::get(ALICE, 0).len(), 16);
+        assert_eq!(
+            price_level_shares(BinaryOutcome::Yes, OrderSide::Sell, 50),
+            0
         );
     });
 }

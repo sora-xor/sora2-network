@@ -142,6 +142,20 @@ fn polkamarkt_trade_calls() -> Vec<<Runtime as frame_system::Config>::RuntimeCal
     ]
 }
 
+fn regular_polkaswap_call() -> <Runtime as frame_system::Config>::RuntimeCall {
+    RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap {
+        dex_id: 0,
+        input_asset_id: VAL,
+        output_asset_id: XOR,
+        swap_amount: SwapAmount::WithDesiredInput {
+            desired_amount_in: balance!(10),
+            min_amount_out: 0,
+        },
+        selected_source_types: vec![],
+        filter_mode: FilterMode::Disabled,
+    })
+}
+
 fn assert_val_staking_reward_recorded(
     active_era: Option<sp_staking::EraIndex>,
     val_burned: Balance,
@@ -1693,6 +1707,67 @@ fn polkamarkt_trade_custom_fee_respects_multiplier_tip_and_length_fee() {
             assert_eq!(
                 fee_details.final_fee(),
                 multiplier * (SMALL_FEE + tip) + len_fee
+            );
+        }
+    });
+}
+
+#[test]
+fn polkamarkt_buy_sell_tx_fees_match_regular_polkaswap_swap() {
+    ext().execute_with(|| {
+        let multiplier = 4;
+        set_weight_to_fee_multiplier(multiplier);
+
+        let len = 123;
+        let tip = balance!(0.000003);
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let swap_call = regular_polkaswap_call();
+        let expected_fee = XorFee::compute_fee(len as u32, &swap_call, &dispatch_info, tip).0;
+        let expected_details =
+            XorFee::compute_fee_details(len as u32, &swap_call, &dispatch_info, tip);
+
+        for call in [
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
+                market_id: 0,
+                outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+                collateral_in: balance!(10),
+                min_shares_out: 0,
+            }),
+            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell {
+                market_id: 0,
+                outcome: pallet_polkamarkt::BinaryOutcome::No,
+                shares_in: balance!(5),
+                min_collateral_out: 0,
+            }),
+        ] {
+            assert_eq!(
+                CustomFees::compute_fee(&call),
+                CustomFees::compute_fee(&swap_call)
+            );
+            assert_eq!(
+                XorFee::compute_fee(len as u32, &call, &dispatch_info, tip).0,
+                expected_fee
+            );
+            assert_eq!(
+                XorFee::compute_fee_details(len as u32, &call, &dispatch_info, tip),
+                expected_details
+            );
+
+            let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(call),
+                asset_id: None,
+            });
+            let xorless_swap = RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(swap_call.clone()),
+                asset_id: None,
+            });
+            assert_eq!(
+                CustomFees::compute_fee(&xorless_call),
+                CustomFees::compute_fee(&xorless_swap)
+            );
+            assert_eq!(
+                XorFee::compute_fee(len as u32, &xorless_call, &dispatch_info, tip).0,
+                XorFee::compute_fee(len as u32, &xorless_swap, &dispatch_info, tip).0
             );
         }
     });

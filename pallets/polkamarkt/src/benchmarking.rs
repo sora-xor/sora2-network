@@ -592,26 +592,23 @@ mod benchmarks {
     }
 
     #[benchmark]
-    fn place_order() {
+    fn place_order(f: Linear<1, { T::MaxFillsPerOrder::get() }>) {
         let caller: T::AccountId = whitelisted_caller();
         setup_orderbook_market::<T>(&caller);
-        let maker: T::AccountId = account("maker", 0, 0);
         let taker: T::AccountId = account("taker", 0, 0);
-        let fills = T::MaxFillsPerOrder::get()
-            .min(T::MaxOrdersPerPrice::get())
-            .max(1);
-        let shares_per_order = bench_balance::<T>(100);
-        let total_shares = shares_per_order.saturating_mul(fills.into());
-        mint_canonical_balance::<T>(&maker, total_shares);
-        mint_canonical_balance::<T>(&taker, total_shares.saturating_mul(2u32.into()));
-        Pallet::<T>::split_position(RawOrigin::Signed(maker.clone()).into(), 0, total_shares)
-            .expect("maker split setup");
-        for _ in 0..fills {
+        let fills = f;
+        let shares_per_order = bench_balance::<T>(10_000);
+        let maker_shares = shares_per_order.saturating_mul(fills.into());
+        let taker_shares = maker_shares.saturating_add(shares_per_order);
+        mint_canonical_balance::<T>(&taker, taker_shares.saturating_mul(2u32.into()));
+        for maker_index in 0..fills {
+            let maker: T::AccountId = account("maker", maker_index, 0);
+            mint_canonical_balance::<T>(&maker, shares_per_order);
             Pallet::<T>::place_order(
-                RawOrigin::Signed(maker.clone()).into(),
+                RawOrigin::Signed(maker).into(),
                 0,
-                BinaryOutcome::Yes,
-                OrderSide::Sell,
+                BinaryOutcome::No,
+                OrderSide::Buy,
                 50,
                 shares_per_order,
                 TimeInForce::Gtc,
@@ -625,9 +622,9 @@ mod benchmarks {
             0,
             BinaryOutcome::Yes,
             OrderSide::Buy,
-            50,
-            total_shares,
-            TimeInForce::Ioc,
+            99,
+            taker_shares,
+            TimeInForce::Gtc,
         );
     }
 

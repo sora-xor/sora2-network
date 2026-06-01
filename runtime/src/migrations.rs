@@ -39,43 +39,15 @@ use frame_support::weights::Weight;
 use sp_runtime::TryRuntimeError;
 use sp_std::prelude::Vec;
 
-const IDENTITY_V1_KEY_LIMIT: u64 = 10_000;
-
+// Active upgrade path starts from the 4.8.6 runtime. Migrations already
+// scheduled in that tag are intentionally not kept here.
 pub type Migrations = (
-    order_book::migrations::burn_xor_in_tech_accounts::Migrate<crate::Runtime>,
-    kensetsu::migrations::v5_to_v6::PurgeXorCollateral<crate::Runtime>,
-    BandMigrateToV2IfNeeded,
-    pallet_offences::migration::v1::MigrateToV1<crate::Runtime>,
-    StakingStorageVersionV16,
-    pallet_session::migrations::v1::MigrateV0ToV1<
-        crate::Runtime,
-        pallet_staking::migrations::v17::MigrateDisabledToSession<crate::Runtime>,
-    >,
     RemapStakingRewardPointsToStash,
-    pallet_grandpa::migrations::MigrateV4ToV5<crate::Runtime>,
-    pallet_im_online::migration::v1::Migration<crate::Runtime>,
-    pallet_identity::migration::versioned::V0ToV1<crate::Runtime, IDENTITY_V1_KEY_LIMIT>,
-    OracleProxyStorageVersionV1,
-    BridgeInboundChannelStorageVersionV1,
-    SubstrateBridgeInboundChannelStorageVersionV1,
-    SubstrateBridgeOutboundChannelStorageVersionV1,
     EthBridgeStorageVersionV3,
-    BridgePeerIsolationAudit,
-    DecommissionLegacyEthereumXor,
-    QueueEthereumXorThischainAddAsset,
-    DemeterFarmingPlatformStorageVersionV3,
-    RepairXorTbcdRewardDenomination,
-    pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
-    pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
-    pallet_polkamarkt::migrations::v4::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v5::Migrate<crate::Runtime>,
-    PrivateNetMigrations,
-    WipMigrations,
-    xor_fee::migrations::v3::Migrate<crate::Runtime>,
 );
 
-pub type MultiBlockMigrations =
-    (pallet_identity::migration::v2::LazyMigrationV1ToV2<crate::Runtime>,);
+pub type MultiBlockMigrations = ();
 
 #[cfg(feature = "try-runtime")]
 fn decode_storage_version(
