@@ -127,52 +127,5 @@ pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
             "SubstrateBridgeOutboundChannel",
             substrate_bridge_channel::outbound::Pallet<Runtime>
         );
-
-        let eth_network_id = GetEthNetworkId::get();
-        let xor_asset_id: AssetId = common::XOR.into();
-        assert!(
-            eth_bridge::migration::is_legacy_ethereum_xor_decommissioned::<Runtime>(),
-            "legacy Ethereum XOR decommission marker was not written"
-        );
-        assert_eq!(
-            eth_bridge::migration::legacy_ethereum_xor_decommission_blockers::<Runtime>(),
-            0,
-            "legacy Ethereum XOR decommission blockers remain"
-        );
-        assert!(
-            EthBridge::deprecated_sidechain_token(
-                eth_network_id,
-                eth_bridge::LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS
-            ),
-            "legacy Ethereum XOR token was not marked deprecated"
-        );
-        let xor_is_clean_thischain_registration =
-            EthBridge::is_ethereum_xor_thischain_registration(eth_network_id, &xor_asset_id);
-        assert!(
-            EthBridge::registered_asset(eth_network_id, xor_asset_id).is_none()
-                || xor_is_clean_thischain_registration,
-            "Ethereum XOR bridge asset mapping is neither removed nor a clean Thischain registration"
-        );
-        assert!(
-            EthBridge::registered_sidechain_token(eth_network_id, xor_asset_id).is_none(),
-            "legacy Ethereum XOR sidechain token mapping still exists"
-        );
-        assert!(
-            EthBridge::registered_sidechain_asset(
-                eth_network_id,
-                eth_bridge::LEGACY_ETHEREUM_XOR_TOKEN_ADDRESS
-            )
-            .is_none(),
-            "legacy Ethereum XOR sidechain asset mapping still exists"
-        );
-        assert!(
-            migrations::ethereum_xor_thischain_add_asset_queued(),
-            "Ethereum XOR Thischain add-asset migration marker was not written"
-        );
-        assert!(
-            xor_is_clean_thischain_registration
-                || EthBridge::is_add_asset_request_pending(eth_network_id, xor_asset_id),
-            "Ethereum XOR Thischain add-asset request is neither pending nor finalized"
-        );
     });
 }

@@ -5,9 +5,9 @@
     "variant": "set_code"
   },
   "call_bytes_file": "runtime-upgrade-4.8.7/set-code-call.scale",
-  "proposal_hash": "0xa9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdb",
-  "proposal_len": 3018674,
-  "wasm_blake2_256": "0xe606d842d0b6f4eba35617c26ea21aefabc249a823c3ba05ad9c9f46fc687e80",
-  "wasm_len": 3018668,
+  "proposal_hash": "0x6777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec1",
+  "proposal_len": 3054442,
+  "wasm_blake2_256": "0x3afe694c60d21952900c4a823f85198140e2975a5657f33ed622d37e5c6cb3e6",
+  "wasm_len": 3054436,
   "wasm_path": "runtime-upgrade-4.8.7/framenode-runtime-4.8.7.compact.compressed.wasm"
 }

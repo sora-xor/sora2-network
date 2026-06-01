@@ -1,6 +1,7 @@
 # SORA Runtime Upgrade 4.8.7 Governance Parameters
 
-Generated/verified: 2026-06-01T11:12:39Z
+Generated/verified: 2026-06-01T18:08:20Z
+Checked against: `wss://ws.mof.sora.org` at block `26388052`
 
 ## Artifact
 
@@ -9,12 +10,12 @@ Generated/verified: 2026-06-01T11:12:39Z
 - Spec version: 129
 - Transaction version: 129
 - WASM file: `runtime-upgrade-4.8.7/framenode-runtime-4.8.7.compact.compressed.wasm`
-- WASM bytes: 3018668
-- WASM Blake2-256: `0xe606d842d0b6f4eba35617c26ea21aefabc249a823c3ba05ad9c9f46fc687e80`
-- WASM SHA-256: `0x908f6681a14d6a044df15b46c8015d9763b5fb8608bf3fdfc6a69b62722a437a`
+- WASM bytes: 3054436
+- WASM Blake2-256: `0x3afe694c60d21952900c4a823f85198140e2975a5657f33ed622d37e5c6cb3e6`
+- WASM SHA-256: `0x1a3ea901ae435f3c33c842f520828aff1909c0bfc2539077bf790368be8b433e`
 - `system.set_code` encoded call file: `runtime-upgrade-4.8.7/set-code-call.scale`
-- `system.set_code` encoded call bytes: 3018674
-- `system.set_code` proposal hash: `0xa9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdb`
+- `system.set_code` encoded call bytes: 3054442
+- `system.set_code` proposal hash: `0x6777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec1`
 
 ## Preimage
 
@@ -23,12 +24,12 @@ Submit:
 - Pallet/call: `Preimage.note_preimage`
 - Argument: bytes from `runtime-upgrade-4.8.7/set-code-call.scale`
 - Full encoded call hex file: `runtime-upgrade-4.8.7/preimage-note-call.hex`
-- Full encoded call len: 3018680
+- Full encoded call len: 3054448
 
 After inclusion, verify the preimage exists for:
 
-- Hash: `0xa9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdb`
-- Len: 3018674
+- Hash: `0x6777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec1`
+- Len: `3054442`
 
 ## Council Motion
 
@@ -43,14 +44,14 @@ Submit:
 - Conservative threshold: `5`
 - Proposal: `Democracy.external_propose_majority`
 - Proposal argument:
-  - `Lookup.hash`: `0xa9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdb`
-  - `Lookup.len`: `3018674`
+  - `Lookup.hash`: `0x6777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec1`
+  - `Lookup.len`: `3054442`
 - Full `Council.propose` call hex, threshold 4: `runtime-upgrade-4.8.7/council-propose-external-majority-threshold-4-call.hex`
 - Full `Council.propose` call hex, threshold 5: `runtime-upgrade-4.8.7/council-propose-external-majority-threshold-5-call.hex`
 - Full `Council.propose` call len: 43
 - Inner proposal hex file: `runtime-upgrade-4.8.7/democracy-external-propose-majority-call.hex`
-- Inner proposal hex: `0x1d0502a9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdbb20f2e00`
-- Inner proposal hash: `0xe2d6f49dbdbfd116337a7a08e087825317ee9f7d557c261bc1df9ec88fb91cf0`
+- Inner proposal hex: `0x1d05026777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec16a9b2e00`
+- Inner proposal hash: `0x52a0b7851c0857cd97ca0640cdf21ac5b1acbb37a68e979986cb3c0583cfed3c`
 - `length_bound`: `39`
 
 Wait for the council motion to execute before submitting technical committee fast-track.
@@ -67,15 +68,15 @@ Submit:
 - Threshold: `3`
 - Proposal: `Democracy.fast_track`
 - Proposal arguments:
-  - `proposal_hash`: `0xa9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdb`
+  - `proposal_hash`: `0x6777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec1`
   - `voting_period`: `1800`
   - `delay`: `0`
 - Voting period note: 1800 blocks, about 3 hours at 6 second blocks
 - Full `TechnicalCommittee.propose` call hex, threshold 3: `runtime-upgrade-4.8.7/technical-committee-fast-track-threshold-3-call.hex`
 - Full `TechnicalCommittee.propose` call len: 46
 - Inner proposal hex file: `runtime-upgrade-4.8.7/democracy-fast-track-call.hex`
-- Inner proposal hex: `0x1d07a9cc2ad7754274e18861caad35a8bdb980637843e6b90515a7e6f635db3b7cdb0807000000000000`
-- Inner proposal hash: `0xbd07743e7b71e79b5fcc28b7a9077658378554736d65fbb68690704a0eb84289`
+- Inner proposal hex: `0x1d076777170da23f4c55e0ac091542ff8f80e7d5febb0113ed36d395f2c64887bec10807000000000000`
+- Inner proposal hash: `0x14721b4cf07bca6b1b34b0a004f3c5fe2c4e8c9e8ad5c1aa1917088430e091d9`
 - `length_bound`: `42`
 
 ## Current Chain State Check
@@ -89,6 +90,16 @@ Checked against `wss://ws.mof.sora.org`:
 - `Democracy.NextExternal`: `None`
 
 If council or technical committee membership changes before submission, recompute the thresholds.
+
+## Remote Rehearsal
+
+Passed:
+
+```bash
+./misc/runtime_upgrade/run_remote_try_runtime.sh
+```
+
+The rehearsal scraped live state from `https://ws.mof.sora.org`, executed the runtime upgrade, and verified final storage versions.
 
 ## Helper Commands
 
