@@ -2,8 +2,10 @@ use crate::{
     BinaryOutcome, ConditionCreators, ConditionDetails, ConditionDetailsInput, ConditionInput,
     ConditionMarket, Error, Event, EvidenceInput, LiquidityPosition, LiquidityPositionTotals,
     LiquidityPositions, LiquidityTotals, Market, MarketCancellationEvidence, MarketCreatorFees,
-    MarketPools, MarketPositionTotals, MarketPositions, MarketResolution, MarketResolutionEvidence,
-    MarketStatus, Markets, PendingXorBuybackCollateral,
+    MarketMechanism, MarketOrderBookCollateral, MarketPools, MarketPositionTotals, MarketPositions,
+    MarketResolution, MarketResolutionEvidence, MarketStatus, Markets, NextOrderId,
+    OpenOrdersByAccountMarket, OrderBookQueues, OrderSide, Orders, PendingXorBuybackCollateral,
+    TimeInForce,
 };
 use frame_support::{
     assert_noop, assert_ok,
@@ -35,17 +37,127 @@ fn create_market(seed_liquidity: Balance, close_block: BlockNumber) {
         RuntimeOrigin::signed(ALICE),
         default_condition(),
     ));
-    assert_ok!(Polkamarkt::create_market(
-        RuntimeOrigin::signed(ALICE),
-        0,
-        close_block,
-        seed_liquidity,
-    ));
+    make_legacy_market(0, 0, ALICE, seed_liquidity, close_block);
+}
+
+fn make_legacy_market(
+    market_id: crate::MarketId,
+    condition_id: crate::ConditionId,
+    creator: AccountId,
+    seed_liquidity: Balance,
+    close_block: BlockNumber,
+) {
+    let creator_before = balance_of(creator, CANONICAL_ASSET);
+    let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
+    set_balance(
+        creator,
+        CANONICAL_ASSET,
+        creator_before.saturating_sub(seed_liquidity),
+    );
+    set_balance(
+        Polkamarkt::account_id(),
+        CANONICAL_ASSET,
+        pallet_before.saturating_add(seed_liquidity),
+    );
+    Markets::<Test>::insert(
+        market_id,
+        Market {
+            creator,
+            condition_id,
+            close_block,
+            collateral_asset: CANONICAL_ASSET,
+            seed_liquidity,
+            mechanism: MarketMechanism::LegacyAmm,
+            status: MarketStatus::Open,
+        },
+    );
+    MarketPools::<Test>::insert(
+        market_id,
+        crate::MarketPool {
+            collateral: seed_liquidity,
+            yes: seed_liquidity,
+            no: seed_liquidity,
+        },
+    );
+    LiquidityPositions::<Test>::insert(
+        market_id,
+        creator,
+        LiquidityPosition {
+            shares: seed_liquidity,
+            collateral_contributed: seed_liquidity,
+        },
+    );
+    LiquidityPositionTotals::<Test>::insert(
+        market_id,
+        LiquidityTotals {
+            total_shares: seed_liquidity,
+            total_collateral_contributed: seed_liquidity,
+        },
+    );
+    ConditionMarket::<Test>::insert(condition_id, market_id);
+    crate::NextMarketId::<Test>::mutate(|next_id| {
+        if *next_id <= market_id {
+            *next_id = market_id.saturating_add(1);
+        }
+    });
+}
+
+fn insert_v4_legacy_market(
+    market_id: crate::MarketId,
+    condition_id: crate::ConditionId,
+    seed_liquidity: Balance,
+) {
+    crate::migrations::v4::Markets::<Test>::insert(
+        market_id,
+        crate::migrations::LegacyMarket {
+            creator: ALICE,
+            condition_id,
+            close_block: 10,
+            collateral_asset: CANONICAL_ASSET,
+            seed_liquidity,
+            status: MarketStatus::Open,
+        },
+    );
+}
+
+fn insert_v5_legacy_market(
+    market_id: crate::MarketId,
+    condition_id: crate::ConditionId,
+    creator: AccountId,
+    close_block: BlockNumber,
+    collateral_asset: AssetId,
+    seed_liquidity: Balance,
+    status: MarketStatus,
+) {
+    crate::migrations::v5::Markets::<Test>::insert(
+        market_id,
+        crate::migrations::LegacyMarket {
+            creator,
+            condition_id,
+            close_block,
+            collateral_asset,
+            seed_liquidity,
+            status,
+        },
+    );
 }
 
 fn setup_market(seed_liquidity: Balance, close_block: BlockNumber) {
     run_to_block(1);
     create_market(seed_liquidity, close_block);
+}
+
+fn setup_orderbook_market(close_block: BlockNumber) {
+    run_to_block(1);
+    assert_ok!(Polkamarkt::create_condition(
+        RuntimeOrigin::signed(ALICE),
+        default_condition(),
+    ));
+    assert_ok!(Polkamarkt::create_market(
+        RuntimeOrigin::signed(ALICE),
+        0,
+        close_block
+    ));
 }
 
 fn trade_fee(amount: Balance) -> Balance {
@@ -314,11 +426,11 @@ fn create_market_rejects_bad_origins_without_consuming_condition() {
         let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::root(), 0, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::root(), 0, 10),
             DispatchError::BadOrigin
         );
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::none(), 0, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::none(), 0, 10),
             DispatchError::BadOrigin
         );
 
@@ -335,7 +447,7 @@ fn create_market_rejects_bad_origins_without_consuming_condition() {
 }
 
 #[test]
-fn create_market_seeds_pool_and_does_not_charge_condition_fee_again() {
+fn create_market_creates_orderbook_without_pool_or_second_fee() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
         assert_ok!(Polkamarkt::create_condition(
@@ -349,21 +461,22 @@ fn create_market_seeds_pool_and_does_not_charge_condition_fee_again() {
         assert_ok!(Polkamarkt::create_market(
             RuntimeOrigin::signed(ALICE),
             0,
-            10,
-            100_000,
+            10
         ));
 
-        let pool = MarketPools::<Test>::get(0).expect("market pool");
-        assert_eq!(pool.collateral, 100_000);
-        assert_eq!(pool.yes, 100_000);
-        assert_eq!(pool.no, 100_000);
+        let market = Markets::<Test>::get(0).expect("market");
+        assert_eq!(market.seed_liquidity, 0);
+        assert_eq!(market.mechanism, MarketMechanism::OrderBook);
+        assert!(MarketPools::<Test>::get(0).is_none());
+        assert!(LiquidityPositions::<Test>::get(0, ALICE).is_none());
+        assert_eq!(LiquidityPositionTotals::<Test>::get(0).total_shares, 0);
         assert_eq!(ConditionMarket::<Test>::get(0), Some(0));
         assert_eq!(PendingXorBuybackCollateral::<Test>::get(), pending_before);
         assert_eq!(
             balance_of(FEE_COLLECTOR, CANONICAL_ASSET),
             fee_collector_before
         );
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before - 100_000);
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
     });
 }
 
@@ -390,6 +503,734 @@ fn create_market_leaves_noncanonical_balances_untouched() {
 }
 
 #[test]
+fn orderbook_complementary_bids_mint_fully_backed_positions_and_taker_fee() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        let buyback_before = PendingXorBuybackCollateral::<Test>::get();
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            60,
+            1_000,
+            TimeInForce::Gtc,
+        ));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - 600);
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::No,
+            OrderSide::Buy,
+            40,
+            1_000,
+            TimeInForce::Ioc,
+        ));
+
+        let bob = MarketPositions::<Test>::get(0, BOB).expect("bob yes");
+        let alice = MarketPositions::<Test>::get(0, ALICE).expect("alice no");
+        assert_eq!(bob.yes_shares, 1_000);
+        assert_eq!(bob.no_shares, 0);
+        assert_eq!(alice.yes_shares, 0);
+        assert_eq!(alice.no_shares, 1_000);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 1_000);
+        assert!(Orders::<Test>::get(0).is_none());
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before - 402);
+        assert_eq!(MarketCreatorFees::<Test>::get(0), 1);
+        assert_eq!(
+            PendingXorBuybackCollateral::<Test>::get(),
+            buyback_before + 1
+        );
+    });
+}
+
+#[test]
+fn orderbook_same_outcome_bid_ask_transfers_shares_and_collateral() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        let bob_before_sell = balance_of(BOB, CANONICAL_ASSET);
+        let alice_before_buy = balance_of(ALICE, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            55,
+            1_000,
+            TimeInForce::Gtc,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            60,
+            1_000,
+            TimeInForce::Ioc,
+        ));
+
+        let bob = MarketPositions::<Test>::get(0, BOB).expect("bob remaining");
+        let alice = MarketPositions::<Test>::get(0, ALICE).expect("alice yes");
+        assert_eq!(bob.yes_shares, 0);
+        assert_eq!(bob.no_shares, 1_000);
+        assert_eq!(alice.yes_shares, 1_000);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before_sell + 550);
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before_buy - 553);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 1_000);
+        assert!(Orders::<Test>::get(0).is_none());
+    });
+}
+
+#[test]
+fn orderbook_partial_gtc_posts_remainder_and_ioc_refunds() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            500,
+            TimeInForce::Gtc,
+        ));
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            70,
+            800,
+            TimeInForce::Gtc,
+        ));
+        let posted = Orders::<Test>::get(1).expect("remainder bid");
+        assert_eq!(posted.remaining_shares, 300);
+        assert_eq!(posted.reserved_collateral, 210);
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before - 461);
+
+        let alice_before_ioc = balance_of(ALICE, CANONICAL_ASSET);
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::No,
+            OrderSide::Buy,
+            20,
+            100,
+            TimeInForce::Ioc,
+        ));
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before_ioc);
+    });
+}
+
+#[test]
+fn orderbook_cancel_refunds_buy_collateral_and_sell_shares_once() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            60,
+            1_000,
+            TimeInForce::Gtc,
+        ));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - 600);
+        assert_ok!(Polkamarkt::cancel_order(RuntimeOrigin::signed(BOB), 0));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert_noop!(
+            Polkamarkt::cancel_order(RuntimeOrigin::signed(BOB), 0),
+            Error::<Test>::OrderUnknown
+        );
+
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::No,
+            OrderSide::Sell,
+            45,
+            400,
+            TimeInForce::Gtc,
+        ));
+        assert_eq!(
+            MarketPositions::<Test>::get(0, BOB)
+                .expect("position")
+                .no_shares,
+            600
+        );
+        assert_ok!(Polkamarkt::cancel_order(RuntimeOrigin::signed(BOB), 1));
+        assert_eq!(
+            MarketPositions::<Test>::get(0, BOB)
+                .expect("position restored")
+                .no_shares,
+            1_000
+        );
+    });
+}
+
+#[test]
+fn orderbook_split_and_merge_preserve_complete_set_backing() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 1_000);
+        assert_ok!(Polkamarkt::merge_positions(
+            RuntimeOrigin::signed(BOB),
+            0,
+            400,
+        ));
+
+        let bob = MarketPositions::<Test>::get(0, BOB).expect("bob remaining");
+        assert_eq!(bob.yes_shares, 600);
+        assert_eq!(bob.no_shares, 600);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 600);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - 600);
+    });
+}
+
+#[test]
+fn orderbook_resolved_and_cancelled_claims_use_share_payouts() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            60,
+            1_000,
+            TimeInForce::Gtc,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::No,
+            OrderSide::Buy,
+            40,
+            1_000,
+            TimeInForce::Ioc,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let alice_before = balance_of(ALICE, CANONICAL_ASSET);
+        assert_ok!(Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0));
+        assert_ok!(Polkamarkt::claim_market(RuntimeOrigin::signed(ALICE), 0));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before + 1_000);
+        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), alice_before);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 0);
+    });
+
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::cancel_market(RuntimeOrigin::root(), 0));
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        assert_ok!(Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before + 1_000);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 0);
+    });
+}
+
+#[test]
+fn orderbook_markets_reject_legacy_amm_and_liquidity_calls() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+
+        assert_noop!(
+            Polkamarkt::buy(RuntimeOrigin::signed(BOB), 0, BinaryOutcome::Yes, 100, 1),
+            Error::<Test>::UnsupportedMarketMechanism
+        );
+        assert_noop!(
+            Polkamarkt::add_liquidity(RuntimeOrigin::signed(BOB), 0, 100, 1),
+            Error::<Test>::UnsupportedMarketMechanism
+        );
+        run_to_block(10);
+        assert_ok!(Polkamarkt::cancel_market(RuntimeOrigin::root(), 0));
+        assert_noop!(
+            Polkamarkt::claim_creator_liquidity(RuntimeOrigin::signed(ALICE), 0),
+            Error::<Test>::UnsupportedMarketMechanism
+        );
+    });
+}
+
+#[test]
+fn orderbook_rejected_placements_do_not_consume_ids_or_escrow_balances() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                50,
+                0,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::InvalidTradeAmount
+        );
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                0,
+                1_000,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::InvalidPrice
+        );
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                100,
+                1_000,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::InvalidPrice
+        );
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                50,
+                101,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::TradeAmountTooSmall
+        );
+        assert_eq!(
+            Polkamarkt::quote_order_market(0, BinaryOutcome::Yes, OrderSide::Buy, 50, 101)
+                .unwrap_err(),
+            Error::<Test>::TradeAmountTooSmall.into()
+        );
+
+        set_balance(BOB, CANONICAL_ASSET, 0);
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                50,
+                1_000,
+                TimeInForce::Gtc,
+            ),
+            DispatchError::Other("insufficient-balance")
+        );
+
+        assert_eq!(NextOrderId::<Test>::get(), 0);
+        assert!(Orders::<Test>::get(0).is_none());
+        assert!(OpenOrdersByAccountMarket::<Test>::get(BOB, 0).is_empty());
+        set_balance(BOB, CANONICAL_ASSET, bob_before);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+    });
+}
+
+#[test]
+fn orderbook_enforces_price_level_and_account_open_order_bounds_atomically() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+
+        for account in 10..26 {
+            set_balance(account, CANONICAL_ASSET, 10_000);
+            assert_ok!(Polkamarkt::place_order(
+                RuntimeOrigin::signed(account),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                55,
+                100,
+                TimeInForce::Gtc,
+            ));
+        }
+
+        set_balance(26, CANONICAL_ASSET, 10_000);
+        let account_before = balance_of(26, CANONICAL_ASSET);
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(26),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Buy,
+                55,
+                100,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::TooManyOrdersAtPrice
+        );
+        assert_eq!(NextOrderId::<Test>::get(), 16);
+        assert_eq!(balance_of(26, CANONICAL_ASSET), account_before);
+        assert_eq!(
+            OrderBookQueues::<Test>::get(0, (BinaryOutcome::Yes, OrderSide::Buy, 55)).len(),
+            16
+        );
+    });
+
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        for price in 1..=16 {
+            assert_ok!(Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::No,
+                OrderSide::Buy,
+                price,
+                100,
+                TimeInForce::Gtc,
+            ));
+        }
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        assert_noop!(
+            Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::No,
+                OrderSide::Buy,
+                17,
+                100,
+                TimeInForce::Gtc,
+            ),
+            Error::<Test>::TooManyOpenOrders
+        );
+        assert_eq!(NextOrderId::<Test>::get(), 16);
+        assert_eq!(OpenOrdersByAccountMarket::<Test>::get(BOB, 0).len(), 16);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+    });
+}
+
+#[test]
+fn orderbook_cancel_rejects_unknown_and_non_owner_without_refund() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            60,
+            1_000,
+            TimeInForce::Gtc,
+        ));
+
+        assert_noop!(
+            Polkamarkt::cancel_order(RuntimeOrigin::signed(ALICE), 0),
+            Error::<Test>::NotOrderOwner
+        );
+        assert_noop!(
+            Polkamarkt::cancel_order(RuntimeOrigin::signed(BOB), 99),
+            Error::<Test>::OrderUnknown
+        );
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - 600);
+        assert!(Orders::<Test>::get(0).is_some());
+
+        assert_ok!(Polkamarkt::cancel_order(RuntimeOrigin::signed(BOB), 0));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+    });
+}
+
+#[test]
+fn orderbook_quote_simulates_consumed_front_orders() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_200,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            45,
+            500,
+            TimeInForce::Gtc,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            700,
+            TimeInForce::Gtc,
+        ));
+
+        let quote =
+            Polkamarkt::quote_order_market(0, BinaryOutcome::Yes, OrderSide::Buy, 60, 1_500)
+                .expect("quote");
+        assert_eq!(quote.filled_shares, 1_200);
+        assert_eq!(quote.posted_shares, 300);
+        assert_eq!(quote.collateral_in, 578);
+        assert_eq!(quote.fee_amount, 3);
+
+        assert_eq!(
+            Orders::<Test>::get(0)
+                .expect("front order remains open")
+                .remaining_shares,
+            500
+        );
+        assert_eq!(
+            Orders::<Test>::get(1)
+                .expect("second order remains open")
+                .remaining_shares,
+            700
+        );
+    });
+}
+
+#[test]
+fn orderbook_depth_quote_and_claimable_exposure_are_readonly_and_sorted() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            20_000,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            45,
+            10_000,
+            TimeInForce::Gtc,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            40,
+            5_000,
+            TimeInForce::Gtc,
+        ));
+
+        let depth = Polkamarkt::order_book_depth(0, BinaryOutcome::Yes, 4).expect("depth");
+        assert_eq!(depth.bids.len(), 1);
+        assert_eq!(depth.asks.len(), 1);
+        assert_eq!(depth.bids[0].price_cents, 40);
+        assert_eq!(depth.bids[0].shares, 5_000);
+        assert_eq!(depth.asks[0].price_cents, 45);
+        assert_eq!(depth.asks[0].shares, 10_000);
+
+        let buy_quote =
+            Polkamarkt::quote_order_market(0, BinaryOutcome::Yes, OrderSide::Buy, 50, 6_000)
+                .expect("buy quote");
+        assert_eq!(buy_quote.filled_shares, 6_000);
+        assert_eq!(buy_quote.posted_shares, 0);
+        assert_eq!(buy_quote.collateral_in, 2_713);
+        assert_eq!(buy_quote.fee_amount, 13);
+
+        let sell_quote =
+            Polkamarkt::quote_order_market(0, BinaryOutcome::Yes, OrderSide::Sell, 40, 3_000)
+                .expect("sell quote");
+        assert_eq!(sell_quote.filled_shares, 3_000);
+        assert_eq!(sell_quote.collateral_out, 1_194);
+        assert_eq!(sell_quote.fee_amount, 6);
+
+        let bob = Polkamarkt::claimable_info(BOB, 0).expect("bob claimable");
+        assert_eq!(bob.yes_shares, 10_000);
+        assert_eq!(bob.open_yes_shares, 10_000);
+        assert_eq!(bob.open_no_shares, 0);
+        assert_eq!(bob.open_collateral, 0);
+        let alice = Polkamarkt::claimable_info(ALICE, 0).expect("alice claimable");
+        assert_eq!(alice.open_collateral, 2_000);
+
+        assert_eq!(
+            Orders::<Test>::get(0)
+                .expect("ask still open")
+                .remaining_shares,
+            10_000
+        );
+        assert_eq!(
+            Orders::<Test>::get(1)
+                .expect("bid still open")
+                .remaining_shares,
+            5_000
+        );
+    });
+}
+
+#[test]
+fn orderbook_ioc_sell_returns_unfilled_shares_without_posting() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::No,
+            OrderSide::Sell,
+            44,
+            600,
+            TimeInForce::Ioc,
+        ));
+
+        let bob = MarketPositions::<Test>::get(0, BOB).expect("position restored");
+        assert_eq!(bob.no_shares, 1_000);
+        assert!(Orders::<Test>::get(0).is_none());
+        assert!(OpenOrdersByAccountMarket::<Test>::get(BOB, 0).is_empty());
+    });
+}
+
+#[test]
+fn orderbook_matching_stops_at_max_fills_and_posts_gtc_remainder() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            10_000,
+        ));
+        for _ in 0..10 {
+            assert_ok!(Polkamarkt::place_order(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                OrderSide::Sell,
+                50,
+                1_000,
+                TimeInForce::Gtc,
+            ));
+        }
+
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            60,
+            10_000,
+            TimeInForce::Gtc,
+        ));
+
+        let alice = MarketPositions::<Test>::get(0, ALICE).expect("filled shares");
+        assert_eq!(alice.yes_shares, 8_000);
+        assert!(Orders::<Test>::get(0).is_none());
+        assert!(Orders::<Test>::get(7).is_none());
+        assert_eq!(
+            Orders::<Test>::get(8)
+                .expect("unfilled maker 8")
+                .remaining_shares,
+            1_000
+        );
+        assert_eq!(
+            Orders::<Test>::get(9)
+                .expect("unfilled maker 9")
+                .remaining_shares,
+            1_000
+        );
+        let taker_remainder = Orders::<Test>::get(10).expect("taker remainder posted");
+        assert_eq!(taker_remainder.side, OrderSide::Buy);
+        assert_eq!(taker_remainder.remaining_shares, 2_000);
+        assert_eq!(taker_remainder.reserved_collateral, 1_200);
+    });
+}
+
+#[test]
+fn orderbook_open_orders_remain_cancelable_after_finalization_before_later_claim() {
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+        assert_ok!(Polkamarkt::split_position(
+            RuntimeOrigin::signed(BOB),
+            0,
+            1_000,
+        ));
+        assert_ok!(Polkamarkt::place_order(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Sell,
+            50,
+            400,
+            TimeInForce::Gtc,
+        ));
+
+        run_to_block(10);
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+
+        let before_first_claim = balance_of(BOB, CANONICAL_ASSET);
+        let info = Polkamarkt::claimable_info(BOB, 0).expect("claimable");
+        assert_eq!(info.yes_shares, 600);
+        assert_eq!(info.open_yes_shares, 400);
+        assert_eq!(info.claimable_payout, 600);
+        assert_ok!(Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), before_first_claim + 600);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 400);
+
+        assert_ok!(Polkamarkt::cancel_order(RuntimeOrigin::signed(BOB), 0));
+        let before_second_claim = balance_of(BOB, CANONICAL_ASSET);
+        assert_ok!(Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), before_second_claim + 400);
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 0);
+        assert_noop!(
+            Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0),
+            Error::<Test>::NothingToClaim
+        );
+    });
+}
+
+#[test]
 fn non_creator_cannot_create_market_from_condition() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
@@ -399,7 +1240,7 @@ fn non_creator_cannot_create_market_from_condition() {
         ));
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(BOB), 0, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(BOB), 0, 10),
             Error::<Test>::NotConditionCreator
         );
     });
@@ -416,7 +1257,7 @@ fn legacy_condition_without_recorded_creator_is_not_marketable() {
         ConditionCreators::<Test>::remove(0);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10),
             Error::<Test>::NotConditionCreator
         );
 
@@ -440,7 +1281,7 @@ fn stale_condition_market_index_blocks_creation_without_side_effects() {
         let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10),
             Error::<Test>::ConditionAlreadyUsed
         );
 
@@ -462,7 +1303,7 @@ fn condition_cannot_be_reused_for_second_market() {
         setup_market(100_000, 10);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 11, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 11),
             Error::<Test>::ConditionAlreadyUsed
         );
     });
@@ -481,7 +1322,7 @@ fn finalized_condition_cannot_be_reused_for_new_market() {
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 20, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 20),
             Error::<Test>::ConditionAlreadyUsed
         );
 
@@ -503,11 +1344,7 @@ fn failed_market_preflight_does_not_consume_condition() {
         ));
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10, 0),
-            Error::<Test>::ZeroSeedLiquidity
-        );
-        assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 5, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 5),
             Error::<Test>::MarketDurationTooShort
         );
 
@@ -518,8 +1355,7 @@ fn failed_market_preflight_does_not_consume_condition() {
         assert_ok!(Polkamarkt::create_market(
             RuntimeOrigin::signed(ALICE),
             0,
-            10,
-            100_000,
+            10
         ));
         assert_eq!(ConditionMarket::<Test>::get(0), Some(0));
     });
@@ -536,7 +1372,7 @@ fn overflowing_market_close_window_does_not_consume_condition() {
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, BlockNumber::MAX, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, BlockNumber::MAX),
             Error::<Test>::Overflow
         );
 
@@ -561,7 +1397,7 @@ fn next_market_id_overflow_does_not_seed_or_consume_condition() {
         let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10),
             Error::<Test>::Overflow
         );
 
@@ -578,7 +1414,7 @@ fn next_market_id_overflow_does_not_seed_or_consume_condition() {
 }
 
 #[test]
-fn failed_seed_transfer_rolls_back_market_id_and_condition_use() {
+fn create_market_does_not_require_seed_balance() {
     new_test_ext().execute_with(|| {
         run_to_block(1);
         assert_ok!(Polkamarkt::create_condition(
@@ -587,23 +1423,10 @@ fn failed_seed_transfer_rolls_back_market_id_and_condition_use() {
         ));
         set_balance(ALICE, CANONICAL_ASSET, 99);
 
-        assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 0, 10, 100_000),
-            DispatchError::Other("insufficient-balance")
-        );
-
-        assert_eq!(crate::NextMarketId::<Test>::get(), 0);
-        assert!(ConditionMarket::<Test>::get(0).is_none());
-        assert!(crate::Markets::<Test>::get(0).is_none());
-        assert!(MarketPools::<Test>::get(0).is_none());
-        assert_eq!(balance_of(ALICE, CANONICAL_ASSET), 99);
-
-        set_balance(ALICE, CANONICAL_ASSET, 100_000);
         assert_ok!(Polkamarkt::create_market(
             RuntimeOrigin::signed(ALICE),
             0,
-            10,
-            100_000,
+            10
         ));
         assert_eq!(crate::NextMarketId::<Test>::get(), 1);
         assert_eq!(ConditionMarket::<Test>::get(0), Some(0));
@@ -617,7 +1440,7 @@ fn missing_condition_market_creation_does_not_touch_market_state() {
         let alice_before = balance_of(ALICE, CANONICAL_ASSET);
 
         assert_noop!(
-            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 42, 10, 100_000),
+            Polkamarkt::create_market(RuntimeOrigin::signed(ALICE), 42, 10),
             Error::<Test>::ConditionNotFound
         );
 
@@ -3138,7 +3961,7 @@ fn sync_market_status_is_permissionless_and_idempotent() {
 #[test]
 fn genesis_sets_current_storage_version() {
     new_test_ext().execute_with(|| {
-        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
     });
 }
 
@@ -3889,12 +4712,7 @@ fn batch_claims_available_markets_and_skips_unavailable() {
             RuntimeOrigin::signed(ALICE),
             default_condition(),
         ));
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            1,
-            20,
-            1_000,
-        ));
+        make_legacy_market(1, 1, ALICE, 1_000, 20);
 
         run_to_block(10);
         assert_ok!(Polkamarkt::resolve_market(
@@ -4000,12 +4818,7 @@ fn batch_claims_skip_unknown_unfinalized_and_duplicate_ids_while_claiming_valid_
             RuntimeOrigin::signed(ALICE),
             default_condition(),
         ));
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            1,
-            20,
-            1_000,
-        ));
+        make_legacy_market(1, 1, ALICE, 1_000, 20);
         assert_ok!(Polkamarkt::buy(
             RuntimeOrigin::signed(BOB),
             1,
@@ -4121,12 +4934,7 @@ fn batch_claims_mix_losing_and_winning_positions_without_overpaying() {
             RuntimeOrigin::signed(ALICE),
             default_condition(),
         ));
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            1,
-            20,
-            1_000,
-        ));
+        make_legacy_market(1, 1, ALICE, 1_000, 20);
         assert_ok!(Polkamarkt::buy(
             RuntimeOrigin::signed(BOB),
             1,
@@ -4196,12 +5004,7 @@ fn batch_claims_keep_successes_when_later_claim_transfer_fails() {
             RuntimeOrigin::signed(ALICE),
             default_condition(),
         ));
-        assert_ok!(Polkamarkt::create_market(
-            RuntimeOrigin::signed(ALICE),
-            1,
-            20,
-            1_000,
-        ));
+        make_legacy_market(1, 1, ALICE, 1_000, 20);
         assert_ok!(Polkamarkt::buy(
             RuntimeOrigin::signed(BOB),
             1,
@@ -4294,9 +5097,7 @@ fn batch_claims_reject_bad_origin_and_unknown_only_batches_without_mutation() {
 fn v4_migration_initializes_creator_lp_for_legacy_markets() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(3).put::<Polkamarkt>();
-        setup_market(1_000, 10);
-        LiquidityPositions::<Test>::remove(0, ALICE);
-        LiquidityPositionTotals::<Test>::remove(0);
+        insert_v4_legacy_market(0, 0, 1_000);
 
         let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
 
@@ -4315,17 +5116,7 @@ fn v4_migration_initializes_creator_lp_for_legacy_markets() {
 fn v4_migration_does_not_run_before_v3_completes() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(2).put::<Polkamarkt>();
-        Markets::<Test>::insert(
-            0,
-            Market {
-                creator: ALICE,
-                condition_id: 0,
-                close_block: 10,
-                collateral_asset: CANONICAL_ASSET,
-                seed_liquidity: 1_000,
-                status: MarketStatus::Open,
-            },
-        );
+        insert_v4_legacy_market(0, 0, 1_000);
 
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
@@ -4342,28 +5133,8 @@ fn v4_migration_does_not_run_before_v3_completes() {
 fn v4_migration_does_not_overwrite_zero_seed_or_existing_lp_state() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(3).put::<Polkamarkt>();
-        Markets::<Test>::insert(
-            0,
-            Market {
-                creator: ALICE,
-                condition_id: 0,
-                close_block: 10,
-                collateral_asset: CANONICAL_ASSET,
-                seed_liquidity: 0,
-                status: MarketStatus::Open,
-            },
-        );
-        Markets::<Test>::insert(
-            1,
-            Market {
-                creator: ALICE,
-                condition_id: 1,
-                close_block: 10,
-                collateral_asset: CANONICAL_ASSET,
-                seed_liquidity: 1_000,
-                status: MarketStatus::Open,
-            },
-        );
+        insert_v4_legacy_market(0, 0, 0);
+        insert_v4_legacy_market(1, 1, 1_000);
         LiquidityPositions::<Test>::insert(
             1,
             BOB,
@@ -4401,17 +5172,7 @@ fn v4_migration_accepts_exact_market_cap() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(3).put::<Polkamarkt>();
         for market_id in 0..crate::migrations::MAX_LEGACY_MARKETS {
-            Markets::<Test>::insert(
-                market_id,
-                Market {
-                    creator: ALICE,
-                    condition_id: market_id,
-                    close_block: 10,
-                    collateral_asset: CANONICAL_ASSET,
-                    seed_liquidity: 0,
-                    status: MarketStatus::Open,
-                },
-            );
+            insert_v4_legacy_market(market_id, market_id, 0);
         }
 
         let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
@@ -4428,19 +5189,133 @@ fn v4_migration_panics_when_markets_exceed_cap() {
     new_test_ext().execute_with(|| {
         StorageVersion::new(3).put::<Polkamarkt>();
         for market_id in 0..=crate::migrations::MAX_LEGACY_MARKETS {
-            Markets::<Test>::insert(
-                market_id,
-                Market {
-                    creator: ALICE,
-                    condition_id: 0,
-                    close_block: 10,
-                    collateral_asset: CANONICAL_ASSET,
-                    seed_liquidity: 0,
-                    status: MarketStatus::Open,
-                },
-            );
+            insert_v4_legacy_market(market_id, 0, 0);
         }
 
         let _ = crate::migrations::v4::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[test]
+fn v5_migration_marks_legacy_markets_and_preserves_fields() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(4).put::<Polkamarkt>();
+        insert_v5_legacy_market(7, 42, BOB, 99, USDC_ASSET, 123_456, MarketStatus::Locked);
+
+        let _ = crate::migrations::v5::Migrate::<Test>::on_runtime_upgrade();
+
+        let market = Markets::<Test>::get(7).expect("migrated market");
+        assert_eq!(market.creator, BOB);
+        assert_eq!(market.condition_id, 42);
+        assert_eq!(market.close_block, 99);
+        assert_eq!(market.collateral_asset, USDC_ASSET);
+        assert_eq!(market.seed_liquidity, 123_456);
+        assert_eq!(market.mechanism, MarketMechanism::LegacyAmm);
+        assert_eq!(market.status, MarketStatus::Locked);
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
+    });
+}
+
+#[test]
+fn v5_migration_noops_at_v5() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(5).put::<Polkamarkt>();
+        Markets::<Test>::insert(
+            1,
+            Market {
+                creator: ALICE,
+                condition_id: 1,
+                close_block: 20,
+                collateral_asset: CANONICAL_ASSET,
+                seed_liquidity: 0,
+                mechanism: MarketMechanism::OrderBook,
+                status: MarketStatus::Open,
+            },
+        );
+
+        let _ = crate::migrations::v5::Migrate::<Test>::on_runtime_upgrade();
+
+        let market = Markets::<Test>::get(1).expect("existing market");
+        assert_eq!(market.mechanism, MarketMechanism::OrderBook);
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
+    });
+}
+
+#[test]
+fn v5_migration_does_not_run_before_v4_completes() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(3).put::<Polkamarkt>();
+        insert_v5_legacy_market(0, 0, ALICE, 10, CANONICAL_ASSET, 1_000, MarketStatus::Open);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v5::Migrate::<Test>::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(3));
+        assert!(crate::migrations::v5::Markets::<Test>::get(0).is_some());
+    });
+}
+
+#[test]
+fn v5_migration_accepts_exact_market_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(4).put::<Polkamarkt>();
+        for market_id in 0..crate::migrations::MAX_LEGACY_MARKETS {
+            insert_v5_legacy_market(
+                market_id,
+                market_id,
+                ALICE,
+                10,
+                CANONICAL_ASSET,
+                0,
+                MarketStatus::Open,
+            );
+        }
+
+        let _ = crate::migrations::v5::Migrate::<Test>::on_runtime_upgrade();
+
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
+        assert_eq!(
+            Markets::<Test>::iter().count(),
+            crate::migrations::MAX_LEGACY_MARKETS as usize
+        );
+        assert!(Markets::<Test>::iter()
+            .all(|(_, market)| { market.mechanism == MarketMechanism::LegacyAmm }));
+    });
+}
+
+#[test]
+#[should_panic(expected = "Polkamarkt migration Markets exceeds limit 1024")]
+fn v5_migration_panics_when_markets_exceed_cap() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(4).put::<Polkamarkt>();
+        for market_id in 0..=crate::migrations::MAX_LEGACY_MARKETS {
+            insert_v5_legacy_market(
+                market_id,
+                0,
+                ALICE,
+                10,
+                CANONICAL_ASSET,
+                0,
+                MarketStatus::Open,
+            );
+        }
+
+        let _ = crate::migrations::v5::Migrate::<Test>::on_runtime_upgrade();
+    });
+}
+
+#[cfg(feature = "try-runtime")]
+#[test]
+fn v5_migration_try_runtime_hooks_validate_v4_upgrade() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(4).put::<Polkamarkt>();
+        insert_v5_legacy_market(0, 0, ALICE, 10, CANONICAL_ASSET, 1_000, MarketStatus::Open);
+        insert_v5_legacy_market(1, 1, BOB, 20, USDC_ASSET, 2_000, MarketStatus::Locked);
+
+        let state = crate::migrations::v5::Migrate::<Test>::pre_upgrade().unwrap();
+        crate::migrations::v5::Migrate::<Test>::on_runtime_upgrade();
+        crate::migrations::v5::Migrate::<Test>::post_upgrade(state).unwrap();
     });
 }

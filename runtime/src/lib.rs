@@ -233,7 +233,7 @@ use pallet_grandpa::{
 };
 use pallet_polkamarkt::{
     AssetTransfer as PolkamarktAssetTransfer, BinaryOutcome as PolkamarktBinaryOutcome,
-    MarketStatus as PolkamarktMarketStatus,
+    MarketStatus as PolkamarktMarketStatus, OrderSide as PolkamarktOrderSide,
 };
 use pallet_session::historical as pallet_session_historical;
 use snowbridge_beacon_primitives::{Fork, ForkVersions};
@@ -1190,6 +1190,9 @@ parameter_types! {
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
     pub const PolkamarktMaxMetadataLength: u32 = 512;
     pub const PolkamarktMaxBatchClaims: u32 = 24;
+    pub const PolkamarktMaxFillsPerOrder: u32 = 24;
+    pub const PolkamarktMaxOrdersPerPrice: u32 = 128;
+    pub const PolkamarktMaxOpenOrdersPerAccountMarket: u32 = 128;
     pub const PolkamarktTradeFeeBps: u32 = 50;
 }
 
@@ -1396,6 +1399,9 @@ impl pallet_polkamarkt::Config for Runtime {
     type MinMarketDuration = PolkamarktMinMarketDuration;
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
     type MaxBatchClaims = PolkamarktMaxBatchClaims;
+    type MaxFillsPerOrder = PolkamarktMaxFillsPerOrder;
+    type MaxOrdersPerPrice = PolkamarktMaxOrdersPerPrice;
+    type MaxOpenOrdersPerAccountMarket = PolkamarktMaxOpenOrdersPerAccountMarket;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
     type GovernanceOrigin = EnsureRoot<AccountId>;
@@ -3655,6 +3661,21 @@ fn polkamarkt_outcome_label(outcome: PolkamarktBinaryOutcome) -> String {
     }
 }
 
+fn polkamarkt_order_side_from_string(side: String) -> Option<PolkamarktOrderSide> {
+    match side.as_bytes() {
+        b"BUY" | b"Buy" | b"buy" => Some(PolkamarktOrderSide::Buy),
+        b"SELL" | b"Sell" | b"sell" => Some(PolkamarktOrderSide::Sell),
+        _ => None,
+    }
+}
+
+fn polkamarkt_order_side_label(side: PolkamarktOrderSide) -> String {
+    match side {
+        PolkamarktOrderSide::Buy => String::from("Buy"),
+        PolkamarktOrderSide::Sell => String::from("Sell"),
+    }
+}
+
 fn polkamarkt_status_label(status: &PolkamarktMarketStatus) -> String {
     match status {
         PolkamarktMarketStatus::Open => String::from("Open"),
@@ -3901,6 +3922,57 @@ impl_runtime_apis! {
             })
         }
 
+        fn quote_order(
+            market_id: u32,
+            outcome: String,
+            side: String,
+            price_cents: u8,
+            shares: Balance,
+        ) -> Option<polkamarkt_runtime_api::OrderQuote<Balance>> {
+            let outcome = polkamarkt_outcome_from_string(outcome)?;
+            let side = polkamarkt_order_side_from_string(side)?;
+            let quote = Polkamarkt::quote_order_market(market_id, outcome, side, price_cents, shares).ok()?;
+            Some(polkamarkt_runtime_api::OrderQuote {
+                market_id: quote.market_id,
+                outcome: polkamarkt_outcome_label(quote.outcome),
+                side: polkamarkt_order_side_label(quote.side),
+                price_cents: quote.price_cents,
+                shares: quote.shares,
+                filled_shares: quote.filled_shares,
+                posted_shares: quote.posted_shares,
+                collateral_in: quote.collateral_in,
+                collateral_out: quote.collateral_out,
+                fee_amount: quote.fee_amount,
+            })
+        }
+
+        fn order_book(
+            market_id: u32,
+            outcome: String,
+            depth: u32,
+        ) -> Option<polkamarkt_runtime_api::OrderBook<Balance>> {
+            let outcome = polkamarkt_outcome_from_string(outcome)?;
+            let book = Polkamarkt::order_book_depth(market_id, outcome, depth).ok()?;
+            Some(polkamarkt_runtime_api::OrderBook {
+                bids: book
+                    .bids
+                    .into_iter()
+                    .map(|level| polkamarkt_runtime_api::OrderBookLevel {
+                        price_cents: level.price_cents,
+                        shares: level.shares,
+                    })
+                    .collect(),
+                asks: book
+                    .asks
+                    .into_iter()
+                    .map(|level| polkamarkt_runtime_api::OrderBookLevel {
+                        price_cents: level.price_cents,
+                        shares: level.shares,
+                    })
+                    .collect(),
+            })
+        }
+
         fn claimable(
             account_id: AccountId,
             market_id: u32,
@@ -3915,6 +3987,10 @@ impl_runtime_apis! {
                 no_shares: info.no_shares,
                 net_collateral_paid: info.net_collateral_paid,
                 trader_payout: info.trader_payout,
+                claimable_payout: info.claimable_payout,
+                open_yes_shares: info.open_yes_shares,
+                open_no_shares: info.open_no_shares,
+                open_collateral: info.open_collateral,
                 creator_fees: info.creator_fees,
                 creator_liquidity: info.creator_liquidity,
                 is_creator: info.is_creator,

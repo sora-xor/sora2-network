@@ -467,6 +467,7 @@ try-runtime = [
     "multicollateral-bonding-curve-pool/try-runtime",
     "oracle-proxy/try-runtime",
     "order-book/try-runtime",
+    "pallet-polkamarkt/try-runtime",
     "pallet-authorship/try-runtime",
     "pallet-babe/try-runtime",
     "pallet-balances/try-runtime",

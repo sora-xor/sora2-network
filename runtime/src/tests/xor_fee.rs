@@ -1556,7 +1556,6 @@ fn polkamarkt_growth_calls_charge_small_fee() {
             RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market {
                 condition_id: 0,
                 close_block: 42,
-                seed_liquidity: balance!(100),
             }),
         ];
 

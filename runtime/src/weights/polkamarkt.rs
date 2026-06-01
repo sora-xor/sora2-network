@@ -80,6 +80,10 @@ pub trait WeightInfo {
 	fn claim_creator_liquidity() -> Weight;
 	fn claim_liquidity() -> Weight;
 	fn sweep_xor_buyback_and_burn() -> Weight;
+	fn place_order() -> Weight;
+	fn cancel_order() -> Weight;
+	fn split_position() -> Weight;
+	fn merge_positions() -> Weight;
 }
 
 /// Weights for pallet_polkamarkt using the Substrate node and recommended hardware.
@@ -527,6 +531,26 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(19_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
+	fn place_order() -> Weight {
+		Weight::from_parts(120_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(40_u64))
+			.saturating_add(T::DbWeight::get().writes(30_u64))
+	}
+	fn cancel_order() -> Weight {
+		Weight::from_parts(45_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+			.saturating_add(T::DbWeight::get().writes(8_u64))
+	}
+	fn split_position() -> Weight {
+		Weight::from_parts(55_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
+	}
+	fn merge_positions() -> Weight {
+		Weight::from_parts(55_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(8_u64))
+			.saturating_add(T::DbWeight::get().writes(6_u64))
+	}
 }
 
 /// Runtime-specific alias.
@@ -588,6 +612,18 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 	}
 	fn sweep_xor_buyback_and_burn() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::sweep_xor_buyback_and_burn()
+	}
+	fn place_order() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::place_order()
+	}
+	fn cancel_order() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::cancel_order()
+	}
+	fn split_position() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::split_position()
+	}
+	fn merge_positions() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::merge_positions()
 	}
 }
 
@@ -1034,5 +1070,25 @@ impl WeightInfo for () {
 		Weight::from_parts(276_000_000, 650122)
 			.saturating_add(RocksDbWeight::get().reads(19_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
+	}
+	fn place_order() -> Weight {
+		Weight::from_parts(120_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(40_u64))
+			.saturating_add(RocksDbWeight::get().writes(30_u64))
+	}
+	fn cancel_order() -> Weight {
+		Weight::from_parts(45_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+			.saturating_add(RocksDbWeight::get().writes(8_u64))
+	}
+	fn split_position() -> Weight {
+		Weight::from_parts(55_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
+	}
+	fn merge_positions() -> Weight {
+		Weight::from_parts(55_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(8_u64))
+			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
 }

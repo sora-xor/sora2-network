@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "try-runtime")]
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
+use frame_support::storage::storage_prefix;
 use frame_support::traits::{
     GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
 };
@@ -68,6 +68,7 @@ pub type Migrations = (
     pallet_polkamarkt::migrations::v2::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v3::Migrate<crate::Runtime>,
     pallet_polkamarkt::migrations::v4::Migrate<crate::Runtime>,
+    pallet_polkamarkt::migrations::v5::Migrate<crate::Runtime>,
     PrivateNetMigrations,
     WipMigrations,
     xor_fee::migrations::v3::Migrate<crate::Runtime>,
@@ -437,6 +438,69 @@ impl OnRuntimeUpgrade for EthBridgeStorageVersionV3 {
 
 pub struct StakingStorageVersionV16;
 
+#[derive(Decode, Encode, Clone, Copy, PartialEq, Eq, Debug)]
+enum LegacyStakingRelease {
+    V5_0_0,
+    V6_0_0,
+    V7_0_0,
+    V8_0_0,
+    V9_0_0,
+    V10_0_0,
+    V11_0_0,
+    V12_0_0,
+}
+
+impl Default for LegacyStakingRelease {
+    fn default() -> Self {
+        Self::V12_0_0
+    }
+}
+
+fn legacy_staking_storage_version_key() -> Vec<u8> {
+    storage_prefix(b"Staking", b"StorageVersion").to_vec()
+}
+
+fn legacy_staking_release_marker() -> Option<LegacyStakingRelease> {
+    let key = legacy_staking_storage_version_key();
+    sp_io::storage::get(&key).map(|raw| {
+        LegacyStakingRelease::decode(&mut &raw[..])
+            .unwrap_or_else(|_| panic!("Staking legacy release marker is corrupt"))
+    })
+}
+
+fn prepare_legacy_staking_v0_state_for_v15(weight: &mut Weight) {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    weight.saturating_accrue(db_weight.reads(1));
+
+    let legacy_release = legacy_staking_release_marker().unwrap_or_default();
+    if legacy_release != LegacyStakingRelease::V12_0_0 {
+        panic!("Unsupported Staking legacy release marker {legacy_release:?}");
+    }
+
+    frame_support::storage::unhashed::kill(&legacy_staking_storage_version_key());
+    StorageVersion::new(14).put::<pallet_staking::Pallet<crate::Runtime>>();
+    weight.saturating_accrue(db_weight.writes(2));
+}
+
+fn run_staking_v16_migration(weight: &mut Weight) {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    weight.saturating_accrue(
+        pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<crate::Runtime>::on_runtime_upgrade(),
+    );
+    StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
+    weight.saturating_accrue(db_weight.writes(1));
+}
+
+fn run_staking_v15_and_v16_migrations(weight: &mut Weight) {
+    let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+    weight.saturating_accrue(
+        pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<crate::Runtime>::on_runtime_upgrade(),
+    );
+    StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
+    weight.saturating_accrue(db_weight.writes(1));
+    run_staking_v16_migration(weight);
+}
+
 impl OnRuntimeUpgrade for StakingStorageVersionV16 {
     fn on_runtime_upgrade() -> Weight {
         let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
@@ -444,48 +508,20 @@ impl OnRuntimeUpgrade for StakingStorageVersionV16 {
         let mut weight = db_weight.reads(1);
 
         match on_chain {
+            v if v == StorageVersion::new(0) => {
+                prepare_legacy_staking_v0_state_for_v15(&mut weight);
+                run_staking_v15_and_v16_migrations(&mut weight);
+            }
             v if v == StorageVersion::new(13) => {
                 StorageVersion::new(14).put::<pallet_staking::Pallet<crate::Runtime>>();
                 weight.saturating_accrue(db_weight.writes(1));
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
+                run_staking_v15_and_v16_migrations(&mut weight);
             }
             v if v == StorageVersion::new(14) => {
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v15::VersionUncheckedMigrateV14ToV15::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(15).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
+                run_staking_v15_and_v16_migrations(&mut weight);
             }
             v if v == StorageVersion::new(15) => {
-                weight.saturating_accrue(
-                    pallet_staking::migrations::v16::VersionUncheckedMigrateV15ToV16::<
-                        crate::Runtime,
-                    >::on_runtime_upgrade(),
-                );
-                StorageVersion::new(16).put::<pallet_staking::Pallet<crate::Runtime>>();
-                weight.saturating_accrue(db_weight.writes(1));
+                run_staking_v16_migration(&mut weight);
             }
             _ => {}
         }
@@ -502,6 +538,7 @@ impl OnRuntimeUpgrade for StakingStorageVersionV16 {
     fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
         let previous = decode_storage_version(state, "Staking")?;
         let expected = match previous {
+            version if version == StorageVersion::new(0) => StorageVersion::new(16),
             version if version == StorageVersion::new(13) => StorageVersion::new(16),
             version if version == StorageVersion::new(14) => StorageVersion::new(16),
             version if version == StorageVersion::new(15) => StorageVersion::new(16),

@@ -286,7 +286,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         pallet_polkamarkt::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(4)
+        StorageVersion::new(5)
     );
     assert_eq!(
         vested_rewards::Pallet::<crate::Runtime>::in_code_storage_version(),
@@ -492,6 +492,46 @@ pub(crate) fn band_migrate_to_v2_if_needed_handles_expected_versions() {
 }
 
 pub(crate) fn staking_storage_version_bridge_reaches_v16() {
+    for legacy_marker in [None, Some(7u8)] {
+        ext().execute_with(|| {
+            StorageVersion::new(0).put::<pallet_staking::Pallet<crate::Runtime>>();
+            let legacy_key = storage_prefix(b"Staking", b"StorageVersion");
+            unhashed::kill(&legacy_key);
+            if let Some(marker) = legacy_marker {
+                unhashed::put_raw(&legacy_key, &[marker]);
+            }
+
+            crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
+
+            assert_eq!(
+                pallet_staking::Pallet::<crate::Runtime>::on_chain_storage_version(),
+                StorageVersion::new(16),
+                "staking bridge migration should finish at v16 from legacy v0"
+            );
+            assert!(
+                !unhashed::exists(&legacy_key),
+                "legacy staking release marker should be removed"
+            );
+        });
+    }
+
+    ext().execute_with(|| {
+        StorageVersion::new(0).put::<pallet_staking::Pallet<crate::Runtime>>();
+        let legacy_key = storage_prefix(b"Staking", b"StorageVersion");
+        unhashed::put_raw(&legacy_key, &[6]);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(
+            pallet_staking::Pallet::<crate::Runtime>::on_chain_storage_version(),
+            StorageVersion::new(0)
+        );
+        assert!(unhashed::exists(&legacy_key));
+    });
+
     for starting_version in [13, 14, 15] {
         ext().execute_with(|| {
             StorageVersion::new(starting_version).put::<pallet_staking::Pallet<crate::Runtime>>();
@@ -843,9 +883,10 @@ pub(crate) fn eth_bridge_storage_version_migration_try_runtime_hooks() {
 
 #[cfg(feature = "try-runtime")]
 pub(crate) fn staking_storage_version_bridge_try_runtime_hooks() {
-    for starting_version in [13, 14, 15, 16] {
+    for starting_version in [0, 13, 14, 15, 16] {
         ext().execute_with(|| {
             StorageVersion::new(starting_version).put::<pallet_staking::Pallet<crate::Runtime>>();
+            unhashed::kill(&storage_prefix(b"Staking", b"StorageVersion"));
             let state = crate::migrations::StakingStorageVersionV16::pre_upgrade().unwrap();
             crate::migrations::StakingStorageVersionV16::on_runtime_upgrade();
             crate::migrations::StakingStorageVersionV16::post_upgrade(state).unwrap();
