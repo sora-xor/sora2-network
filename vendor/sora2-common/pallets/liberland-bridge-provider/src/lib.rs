@@ -52,7 +52,7 @@ use sp_std::prelude::*;
 
 use frame_support::traits::tokens::{Fortitude, Precision, Preservation};
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct BridgeRequest<Balance> {
     source: GenericAccount,

@@ -61,7 +61,7 @@ pub const RATE_MULTIPLIER: i128 = 1_000_000_000;
 /// Multiplier to convert rate last_update timestamp to Moment
 pub const MILLISECS_MULTIPLIER: u64 = 1_000;
 
-#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Clone, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, TypeInfo, Clone, PartialEq, Eq)]
 pub struct FeeCalculationParameters {
     pub decay: Fixed,
     pub min_fee: Fixed,
@@ -100,7 +100,7 @@ impl FeeCalculationParameters {
 
 /// Symbol rate
 #[derive(
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     TypeInfo,

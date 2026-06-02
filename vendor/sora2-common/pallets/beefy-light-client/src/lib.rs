@@ -45,7 +45,7 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::H256;
-use sp_core::{Get, RuntimeDebug};
+use sp_core::{Get};
 use sp_io::hashing::keccak_256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
@@ -70,7 +70,7 @@ mod fixtures;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct SubstrateBridgeMessageProof {
     pub proof: Proof<H256>,
     pub leaf: BeefyMMRLeaf,

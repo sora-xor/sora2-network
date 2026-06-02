@@ -32,13 +32,12 @@ use crate::bitfield::BitField;
 use bridge_types::{H160, H256};
 use codec::{Decode, Encode};
 use scale_info::prelude::vec::Vec;
-use sp_runtime::RuntimeDebug;
 
 pub type EthAddress = H160;
 
 pub type Commitment = sp_consensus_beefy::Commitment<u32>;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ValidatorProof {
     pub validator_claims_bitfield: BitField,
     pub signatures: Vec<Vec<u8>>,
@@ -47,14 +46,14 @@ pub struct ValidatorProof {
     pub public_key_merkle_proofs: Vec<Vec<H256>>,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ValidatorSet {
     pub id: u64,
     pub len: u32,
     pub keyset_commitment: H256,
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct BeefyMMRLeaf {
     pub version: sp_consensus_beefy::mmr::MmrLeafVersion,
     pub parent_number_and_hash: (u32, H256),

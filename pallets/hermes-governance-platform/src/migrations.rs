@@ -8,9 +8,8 @@ use frame_support::__private::log;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_support::BoundedVec;
-use sp_runtime::RuntimeDebug;
 
-#[derive(Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, Clone, Copy)]
+#[derive(Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo, Clone, Copy)]
 pub enum VotingOption {
     Yes,
     No,

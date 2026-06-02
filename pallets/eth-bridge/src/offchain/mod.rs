@@ -68,7 +68,6 @@ use rustc_hex::ToHex;
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::ByteArray;
 use sp_core::{H160, H256};
-use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt;
 use sp_std::fmt::Formatter;
@@ -586,7 +585,7 @@ impl<T: Config> Pallet<T> {
     Clone,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

@@ -1,4 +1,4 @@
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, DebugNoBound};
 use sp_runtime::DispatchResult;
 use sp_std::fmt::Debug;
 use xcm::v3::prelude::*;
@@ -23,7 +23,7 @@ pub trait AssetProcessor<AssetId, Metadata> {
 }
 
 /// Data describing the asset properties.
-#[derive(TypeInfo, Encode, Decode, CloneNoBound, EqNoBound, PartialEqNoBound, RuntimeDebugNoBound, MaxEncodedLen)]
+#[derive(TypeInfo, Encode, Decode, CloneNoBound, EqNoBound, PartialEqNoBound, DebugNoBound, MaxEncodedLen)]
 #[codec(mel_bound(skip_type_params(StringLimit)))]
 #[scale_info(skip_type_params(StringLimit))]
 

@@ -36,7 +36,7 @@ use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{ecdsa, Get};
-use sp_runtime::{traits::Hash, BoundedVec, RuntimeDebug};
+use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
 
 use crate::types::MessageStatus;
@@ -65,7 +65,7 @@ pub trait SubstrateBridgeMessageEncode {
 }
 
 /// Message to ParachainApp pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum ParachainAppCall {
     Transfer {
         asset_id: MainnetAssetId,
@@ -82,7 +82,7 @@ pub enum ParachainAppCall {
         transfer_status: XCMAppTransferStatus,
     },
 }
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppTransferStatus {
     Success,
     XCMTransferError,
@@ -95,7 +95,7 @@ impl SubstrateBridgeMessageEncode for ParachainAppCall {
 }
 
 /// Message to SubstrateApp pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum SubstrateAppCall {
     Transfer {
         asset_id: GenericAssetId,
@@ -127,7 +127,7 @@ impl SubstrateBridgeMessageEncode for SubstrateAppCall {
 }
 
 /// Message to FAApp pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum FAAppCall {
     Transfer {
         token: EVMAssetId,
@@ -148,7 +148,7 @@ impl SubstrateBridgeMessageEncode for FAAppCall {
 }
 
 /// Message to FAApp pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum JettonAppCall {
     Transfer {
         token: TonAddressWithPrefix,
@@ -165,7 +165,7 @@ impl SubstrateBridgeMessageEncode for JettonAppCall {
 }
 
 /// Message to XCMApp pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppCall {
     Transfer {
         asset_id: MainnetAssetId,
@@ -192,7 +192,7 @@ impl SubstrateBridgeMessageEncode for XCMAppCall {
 }
 
 /// Message to DataSigner pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum DataSignerCall {
     AddPeer { peer: ecdsa::Public },
     RemovePeer { peer: ecdsa::Public },
@@ -205,7 +205,7 @@ impl SubstrateBridgeMessageEncode for DataSignerCall {
 }
 
 /// Message to MultisigVerifier pallet
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum MultisigVerifierCall {
     AddPeer { peer: ecdsa::Public },
     RemovePeer { peer: ecdsa::Public },
@@ -218,7 +218,7 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
 }
 
 /// Substrate bridge message payload
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
     ParachainApp(ParachainAppCall),
     XCMApp(XCMAppCall),
@@ -254,7 +254,7 @@ pub struct BridgeMessage<MaxPayload: Get<u32>> {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,

@@ -64,7 +64,7 @@ use parity_scale_codec::MaxEncodedLen;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{Bounded, CheckedAdd, CheckedSub, MaybeSerializeDeserialize, Member, Saturating, StaticLookup, Zero},
-	ArithmeticError, DispatchError, DispatchResult, RuntimeDebug, TokenError,
+	ArithmeticError, DispatchError, DispatchResult, TokenError,
 };
 use sp_std::{cmp, convert::Infallible, marker, prelude::*, vec::Vec};
 
@@ -123,7 +123,7 @@ impl<T: Config> OnDust<T::AccountId, T::CurrencyId, T::Balance> for BurnDust<T> 
 
 /// A single lock on a balance. There can be many of these on an account and
 /// they "overlap", so the same balance is frozen by multiple locks.
-#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, MaxEncodedLen, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, MaxEncodedLen, Debug, TypeInfo)]
 pub struct BalanceLock<Balance> {
 	/// An identifier for this lock. Only one lock may be in existence for
 	/// each identifier.
@@ -134,7 +134,7 @@ pub struct BalanceLock<Balance> {
 }
 
 /// Store named reserved balance.
-#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, Debug, MaxEncodedLen, TypeInfo)]
 pub struct ReserveData<ReserveIdentifier, Balance> {
 	/// The identifier for the named reserve.
 	pub id: ReserveIdentifier,
@@ -143,9 +143,7 @@ pub struct ReserveData<ReserveIdentifier, Balance> {
 }
 
 /// balance information for an account.
-#[derive(
-	Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, Default, MaxEncodedLen, RuntimeDebug, TypeInfo,
-)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, Default, MaxEncodedLen, Debug, TypeInfo)]
 pub struct AccountData<Balance> {
 	/// Non-reserved part of the balance. There may still be restrictions on
 	/// this, but it is the total pool what may in principle be transferred,

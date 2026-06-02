@@ -37,7 +37,7 @@ Run the remote upgrade rehearsal before submitting the upgrade:
 Environment variables:
 
 - `REMOTE_RPC_URL`
-  Default: `https://ws.mof.sora.org`
+  Default: `wss://ws.mof.sora.org`
   Target HTTP(S) endpoint for `frame-remote-externalities`.
   This rehearsal replays the runtime upgrade and multi-block migrations against remote state and
   then checks the final storage versions on the fully migrated state.

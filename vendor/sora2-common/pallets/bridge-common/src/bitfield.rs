@@ -36,7 +36,6 @@ use core::{
 use bitvec::{prelude::*, ptr::BitSpanError};
 use codec::{Decode, Encode};
 use scale_info::prelude::vec::Vec;
-use sp_runtime::RuntimeDebug;
 
 pub const SIZE: u128 = core::mem::size_of::<u128>() as u128;
 
@@ -44,7 +43,7 @@ pub const SIZE: u128 = core::mem::size_of::<u128>() as u128;
     Encode,
     Decode,
     Clone,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     PartialOrd,

@@ -21,7 +21,7 @@ use sp_runtime::traits::{
     AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, MaybeSerializeDeserialize,
     One, SaturatedConversion, Saturating, Zero,
 };
-use sp_runtime::{DispatchError, Perbill, RuntimeDebug, TransactionOutcome};
+use sp_runtime::{DispatchError, Perbill, TransactionOutcome};
 use sp_std::{marker::PhantomData, vec::Vec};
 
 mod weights;
@@ -81,15 +81,7 @@ pub trait WeightInfo {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
 pub struct ConditionMetadata<BoundedString> {
     pub question: BoundedString,
@@ -97,9 +89,7 @@ pub struct ConditionMetadata<BoundedString> {
     pub resolution_source: BoundedString,
 }
 
-#[derive(
-    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default,
-)]
+#[derive(Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, Default)]
 pub struct ConditionInput {
     pub question: Vec<u8>,
     pub oracle: Vec<u8>,
@@ -114,7 +104,7 @@ pub struct ConditionInput {
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     MaxEncodedLen,
     Default,
 )]
@@ -126,9 +116,7 @@ pub struct ConditionDetailsRecord<BoundedString> {
     pub rules_uri: Option<BoundedString>,
 }
 
-#[derive(
-    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default,
-)]
+#[derive(Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, Default)]
 pub struct ConditionDetailsInput {
     pub category: Vec<u8>,
     pub tags: Vec<u8>,
@@ -137,24 +125,14 @@ pub struct ConditionDetailsInput {
     pub rules_uri: Vec<u8>,
 }
 
-#[derive(
-    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, RuntimeDebug, Default,
-)]
+#[derive(Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, Default)]
 pub struct EvidenceInput {
     pub uri: Vec<u8>,
     pub hash: Option<[u8; 32]>,
 }
 
 #[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
 pub enum MarketStatus {
     Open,
@@ -172,7 +150,7 @@ pub enum MarketStatus {
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     MaxEncodedLen,
 )]
 pub enum BinaryOutcome {
@@ -198,7 +176,7 @@ impl BinaryOutcome {
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     MaxEncodedLen,
 )]
 pub enum TradeSide {
@@ -215,7 +193,7 @@ pub enum TradeSide {
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     MaxEncodedLen,
 )]
 pub enum OrderSide {
@@ -232,7 +210,7 @@ pub enum OrderSide {
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     MaxEncodedLen,
 )]
 pub enum TimeInForce {
@@ -249,7 +227,7 @@ pub enum TimeInForce {
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     MaxEncodedLen,
 )]
 pub enum MarketMechanism {
@@ -258,15 +236,7 @@ pub enum MarketMechanism {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
 pub struct Market<ClassId, AccountId, BlockNumber, Balance> {
     pub creator: AccountId,
@@ -279,15 +249,7 @@ pub struct Market<ClassId, AccountId, BlockNumber, Balance> {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    sp_runtime::RuntimeDebug,
-    MaxEncodedLen,
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
 pub struct MarketPool<Balance> {
     pub collateral: Balance,
@@ -303,7 +265,7 @@ pub struct MarketPool<Balance> {
     Clone,
     PartialEq,
     Eq,
-    sp_runtime::RuntimeDebug,
+    Debug,
     MaxEncodedLen,
     Default,
 )]
@@ -321,7 +283,7 @@ pub struct MarketPosition<Balance> {
     Clone,
     PartialEq,
     Eq,
-    sp_runtime::RuntimeDebug,
+    Debug,
     MaxEncodedLen,
     Default,
 )]
@@ -339,7 +301,7 @@ pub struct MarketTotals<Balance> {
     Clone,
     PartialEq,
     Eq,
-    sp_runtime::RuntimeDebug,
+    Debug,
     MaxEncodedLen,
     Default,
 )]
@@ -356,7 +318,7 @@ pub struct LiquidityPosition<Balance> {
     Clone,
     PartialEq,
     Eq,
-    sp_runtime::RuntimeDebug,
+    Debug,
     MaxEncodedLen,
     Default,
 )]
@@ -366,15 +328,7 @@ pub struct LiquidityTotals<Balance> {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    sp_runtime::RuntimeDebug,
-    MaxEncodedLen,
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
 pub struct MarketEvidence<BlockNumber, BoundedString> {
     pub uri: BoundedString,
@@ -383,15 +337,7 @@ pub struct MarketEvidence<BlockNumber, BoundedString> {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    TypeInfo,
-    Clone,
-    PartialEq,
-    Eq,
-    sp_runtime::RuntimeDebug,
-    MaxEncodedLen,
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
 pub struct Order<AccountId, Balance> {
     pub owner: AccountId,
@@ -403,19 +349,19 @@ pub struct Order<AccountId, Balance> {
     pub reserved_collateral: Balance,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct OrderBookLevel<Balance> {
     pub price_cents: PriceCents,
     pub shares: Balance,
 }
 
-#[derive(Clone, PartialEq, Eq, RuntimeDebug, Default)]
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct OrderBookDepth<Balance> {
     pub bids: Vec<OrderBookLevel<Balance>>,
     pub asks: Vec<OrderBookLevel<Balance>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct OrderQuote<Balance> {
     pub market_id: MarketId,
     pub outcome: BinaryOutcome,
@@ -429,7 +375,7 @@ pub struct OrderQuote<Balance> {
     pub fee_amount: Balance,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct BuyQuote<Balance> {
     pub market_id: MarketId,
     pub outcome: BinaryOutcome,
@@ -439,7 +385,7 @@ pub struct BuyQuote<Balance> {
     pub shares_out: Balance,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct SellQuote<Balance> {
     pub market_id: MarketId,
     pub outcome: BinaryOutcome,
@@ -449,7 +395,7 @@ pub struct SellQuote<Balance> {
     pub collateral_out: Balance,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct LiquidityQuote<Balance> {
     pub market_id: MarketId,
     pub collateral_in: Balance,
@@ -458,7 +404,7 @@ pub struct LiquidityQuote<Balance> {
     pub total_lp_shares: Balance,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct FlipQuote<Balance> {
     pub market_id: MarketId,
     pub from_outcome: BinaryOutcome,
@@ -472,7 +418,7 @@ pub struct FlipQuote<Balance> {
     pub shares_out: Balance,
 }
 
-#[derive(Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ClaimableInfo<AccountId, Balance> {
     pub market_id: MarketId,
     pub account: AccountId,
@@ -491,7 +437,7 @@ pub struct ClaimableInfo<AccountId, Balance> {
     pub is_creator: bool,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 struct TradeFeeSplit<Balance> {
     pool: Balance,
     creator: Balance,
@@ -1983,6 +1929,7 @@ pub mod pallet {
             })
         }
 
+        #[allow(clippy::too_many_arguments)]
         fn match_order(
             taker_order_id: OrderId,
             taker: &T::AccountId,
@@ -2381,6 +2328,7 @@ pub mod pallet {
             }
         }
 
+        #[allow(clippy::too_many_arguments)]
         fn fill_same_outcome(
             taker_order_id: OrderId,
             taker: &T::AccountId,
@@ -2474,6 +2422,7 @@ pub mod pallet {
             Self::update_or_remove_maker_order(maker_order_id, maker_order, market.collateral_asset)
         }
 
+        #[allow(clippy::too_many_arguments)]
         fn fill_complementary_buy(
             taker_order_id: OrderId,
             taker: &T::AccountId,
@@ -4111,15 +4060,7 @@ pub mod migrations {
     pub(crate) const MAX_LEGACY_MARKETS: u32 = 1024;
 
     #[derive(
-        Encode,
-        Decode,
-        DecodeWithMemTracking,
-        TypeInfo,
-        Clone,
-        PartialEq,
-        Eq,
-        RuntimeDebug,
-        MaxEncodedLen,
+        Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
     )]
     pub struct LegacyMarket<ClassId, AccountId, BlockNumber, Balance> {
         pub creator: AccountId,

@@ -44,6 +44,8 @@ use sp_std::prelude::Vec;
 pub type Migrations = (
     RemapStakingRewardPointsToStash,
     EthBridgeStorageVersionV3,
+    VestedRewardsStorageVersionV4,
+    KensetsuStorageVersionV6,
     pallet_polkamarkt::migrations::v5::Migrate<crate::Runtime>,
 );
 
@@ -404,6 +406,81 @@ impl OnRuntimeUpgrade for EthBridgeStorageVersionV3 {
             previous,
             expected,
             eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version(),
+        )
+    }
+}
+
+pub struct VestedRewardsStorageVersionV4;
+
+impl OnRuntimeUpgrade for VestedRewardsStorageVersionV4 {
+    fn on_runtime_upgrade() -> Weight {
+        let on_chain = vested_rewards::Pallet::<crate::Runtime>::on_chain_storage_version();
+        if on_chain == StorageVersion::new(0) {
+            StorageVersion::new(4).put::<vested_rewards::Pallet<crate::Runtime>>();
+            return <crate::Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1);
+        }
+        if on_chain == StorageVersion::new(3) {
+            return vested_rewards::migrations::v4::Migration::<crate::Runtime>::on_runtime_upgrade(
+            );
+        }
+        <crate::Runtime as frame_system::Config>::DbWeight::get().reads(1)
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(vested_rewards::Pallet::<crate::Runtime>::on_chain_storage_version().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let previous = decode_storage_version(state, "VestedRewards")?;
+        let expected = if previous == StorageVersion::new(0) || previous == StorageVersion::new(3) {
+            StorageVersion::new(4)
+        } else {
+            previous
+        };
+        validate_storage_version_transition(
+            "VestedRewards",
+            previous,
+            expected,
+            vested_rewards::Pallet::<crate::Runtime>::on_chain_storage_version(),
+        )
+    }
+}
+
+pub struct KensetsuStorageVersionV6;
+
+impl OnRuntimeUpgrade for KensetsuStorageVersionV6 {
+    fn on_runtime_upgrade() -> Weight {
+        let on_chain = kensetsu::Pallet::<crate::Runtime>::on_chain_storage_version();
+        if on_chain == StorageVersion::new(0) {
+            StorageVersion::new(6).put::<kensetsu::Pallet<crate::Runtime>>();
+            return <crate::Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1);
+        }
+        if on_chain == StorageVersion::new(5) {
+            return kensetsu::migrations::v5_to_v6::PurgeXorCollateral::<crate::Runtime>::on_runtime_upgrade();
+        }
+        <crate::Runtime as frame_system::Config>::DbWeight::get().reads(1)
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        Ok(kensetsu::Pallet::<crate::Runtime>::on_chain_storage_version().encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let previous = decode_storage_version(state, "Kensetsu")?;
+        let expected = if previous == StorageVersion::new(0) || previous == StorageVersion::new(5) {
+            StorageVersion::new(6)
+        } else {
+            previous
+        };
+        validate_storage_version_transition(
+            "Kensetsu",
+            previous,
+            expected,
+            kensetsu::Pallet::<crate::Runtime>::on_chain_storage_version(),
         )
     }
 }

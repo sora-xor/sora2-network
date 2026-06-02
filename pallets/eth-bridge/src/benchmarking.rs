@@ -219,14 +219,20 @@ benchmarks! {
         let account_id = <T as frame_system::pallet::Config>::AccountId::decode(&mut &MultiSigner::Ecdsa(public.clone()).into_account().encode()[..]).unwrap();
         Pallet::<T>::force_add_peer(RawOrigin::Root.into(), account_id.clone(), address, net_id).unwrap();
         let (signature, _) = Pallet::<T>::sign_message(encoded_request.as_raw(), &sk);
+        let existing_approvers = crate::Peers::<T>::get(net_id)
+            .into_iter()
+            .filter(|peer| peer != &account_id)
+            .take(majority(crate::Peers::<T>::get(net_id).len()) - 1)
+            .collect::<BTreeSet<_>>();
         RequestApprovals::<T>::mutate(net_id, &req_hash, |v| {
-            for i in 0..majority(crate::Peers::<T>::get(net_id).len()) - 1 {
+            for i in 0..existing_approvers.len() {
                 v.insert(SignatureParams {
                     v: i as u8,
                     ..Default::default()
                 });
             }
         });
+        RequestApprovers::<T>::insert(net_id, &req_hash, existing_approvers);
     }: approve_request(
         RawOrigin::Signed(account_id.clone()),
         public,

@@ -38,7 +38,6 @@ use fixnum::ops::RoundingMul;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{CheckedAdd, CheckedSub, UniqueSaturatedFrom, UniqueSaturatedInto};
-use sp_runtime::RuntimeDebug;
 use sp_std::mem;
 use sp_std::ops::{Add, Sub};
 
@@ -52,7 +51,7 @@ use crate::Fixed;
     DecodeWithMemTracking,
     Copy,
     Clone,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     PartialOrd,
@@ -301,7 +300,7 @@ impl TryFrom<QuoteAmount<Balance>> for QuoteAmount<Fixed> {
     DecodeWithMemTracking,
     Copy,
     Clone,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     PartialOrd,
@@ -322,7 +321,7 @@ pub enum SwapVariant {
     DecodeWithMemTracking,
     Copy,
     Clone,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     PartialOrd,
@@ -640,7 +639,7 @@ where
     Decode,
     DecodeWithMemTracking,
     Clone,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     PartialOrd,

@@ -30,7 +30,6 @@
 
 use codec::{Decode, Encode};
 use common::prelude::{OutcomeFee, SwapAmount, SwapVariant};
-use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
@@ -76,9 +75,7 @@ pub type SwapInfo<LiquiditySourceType, AmountType> =
     BTreeMap<LiquiditySourceType, (AmountType, AmountType)>;
 
 /// Output of the aggregated LiquidityProxy::quote() price.
-#[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
-)]
+#[derive(Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo)]
 pub struct AggregatedSwapOutcome<AssetId: Ord, LiquiditySourceType, AmountType> {
     /// A distribution of amounts each liquidity sources gets to swap in the entire trade
     pub distribution: Vec<(LiquiditySourceType, SwapAmount<AmountType>)>,

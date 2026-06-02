@@ -23,7 +23,7 @@ use core::fmt::Display;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_debug_derive::RuntimeDebug;
+use sp_debug_derive::Debug;
 
 use codec::{Decode, Encode};
 use ref_cast::RefCast;
@@ -33,7 +33,7 @@ use sp_std::{
 };
 
 /// Storage key.
-#[derive(PartialEq, Eq, RuntimeDebug)]
+#[derive(PartialEq, Eq, Debug)]
 #[cfg_attr(
 	feature = "std",
 	derive(Serialize, Deserialize, Hash, PartialOrd, Ord, Clone, Encode, Decode)
@@ -50,7 +50,7 @@ impl AsRef<[u8]> for StorageKey {
 
 /// Storage key with read/write tracking information.
 #[derive(
-	PartialEq, Eq, Ord, PartialOrd, sp_std::hash::Hash, RuntimeDebug, Clone, Encode, Decode,
+	PartialEq, Eq, Ord, PartialOrd, sp_std::hash::Hash, Debug, Clone, Encode, Decode,
 )]
 pub struct TrackedStorageKey {
 	pub key: Vec<u8>,
@@ -99,7 +99,7 @@ impl From<Vec<u8>> for TrackedStorageKey {
 }
 
 /// Storage key of a child trie, it contains the prefix to the key.
-#[derive(PartialEq, Eq, RuntimeDebug)]
+#[derive(PartialEq, Eq, Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash, PartialOrd, Ord, Clone))]
 #[repr(transparent)]
 #[derive(RefCast)]
@@ -140,7 +140,7 @@ impl PrefixedStorageKey {
 }
 
 /// Storage data associated to a [`StorageKey`].
-#[derive(PartialEq, Eq, RuntimeDebug)]
+#[derive(PartialEq, Eq, Debug)]
 #[cfg_attr(
 	feature = "std",
 	derive(Serialize, Deserialize, Hash, PartialOrd, Ord, Clone, Encode, Decode, Default)
@@ -177,7 +177,7 @@ pub struct Storage {
 }
 
 /// Storage change set
-#[derive(RuntimeDebug)]
+#[derive(Debug)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, PartialEq, Eq))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct StorageChangeSet<Hash> {

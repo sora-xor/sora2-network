@@ -40,7 +40,6 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_core::H256;
 use sp_runtime::traits::Get;
-use sp_runtime::RuntimeDebug;
 use sp_std::marker::PhantomData;
 use sp_std::vec::Vec;
 use static_assertions::_core::cmp::Ordering;
@@ -91,7 +90,7 @@ impl From<BalanceWrapper> for Balance {
 }
 
 /// Information about state of particular DEX.
-#[derive(Encode, Decode, RuntimeDebug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Debug, Clone, PartialEq, Eq, Default, scale_info::TypeInfo)]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct DEXInfo<AssetId> {
@@ -115,7 +114,7 @@ pub struct DEXInfo<AssetId> {
     Clone,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     Hash,
     scale_info::TypeInfo,
     MaxEncodedLen,
@@ -152,7 +151,6 @@ mod _allowed_deprecated {
     #![allow(deprecated)]
 
     use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
-    use sp_runtime::RuntimeDebug;
 
     use serde::{Deserialize, Serialize};
 
@@ -170,7 +168,7 @@ mod _allowed_deprecated {
         Clone,
         PartialOrd,
         Ord,
-        RuntimeDebug,
+        Debug,
         scale_info::TypeInfo,
         MaxEncodedLen,
     )]
@@ -285,7 +283,7 @@ impl Default for PredefinedAssetId {
     Clone,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
@@ -542,7 +540,7 @@ impl AssetId32<PredefinedSbtAssetId> {
     Clone,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     Default,
     scale_info::TypeInfo,
     MaxEncodedLen,
@@ -576,7 +574,7 @@ pub const DEFAULT_BALANCE_PRECISION: BalancePrecision = crate::FIXED_PRECISION a
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
 )]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
@@ -639,7 +637,7 @@ impl IsValid for AssetSymbol {
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
 )]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
@@ -710,7 +708,7 @@ impl MaxEncodedLen for AssetName {
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     Default,
     scale_info::TypeInfo,
 )]
@@ -757,7 +755,7 @@ impl MaxEncodedLen for ContentSource {
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     Default,
     scale_info::TypeInfo,
 )]
@@ -804,7 +802,7 @@ impl MaxEncodedLen for Description {
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     Default,
     scale_info::TypeInfo,
 )]
@@ -863,7 +861,7 @@ const CROWDLOAN_TAG_MAX_LENGTH: u32 = 128;
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     Default,
     scale_info::TypeInfo,
 )]
@@ -948,7 +946,7 @@ impl<AssetId> From<AssetId> for TechAssetId<AssetId> {
     Encode,
     Decode,
     DecodeWithMemTracking,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     Copy,
@@ -975,7 +973,7 @@ pub enum LiquiditySourceType {
 }
 
 #[derive(
-    PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, scale_info::TypeInfo,
+    PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, Debug, scale_info::TypeInfo,
 )]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -996,7 +994,7 @@ impl Default for FilterMode {
 }
 
 #[derive(
-    PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, scale_info::TypeInfo,
+    PartialEq, Eq, Clone, Encode, Decode, DecodeWithMemTracking, Debug, scale_info::TypeInfo,
 )]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -1020,7 +1018,7 @@ impl Default for ManagementMode {
     Decode,
     DecodeWithMemTracking,
     Clone,
-    RuntimeDebug,
+    Debug,
     PartialEq,
     Eq,
     PartialOrd,
@@ -1324,7 +1322,7 @@ impl Default for RewardReason {
     }
 }
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Debug, Default, scale_info::TypeInfo)]
 pub struct PswapRemintInfo {
     pub liquidity_providers: Balance,
     pub buy_back_amount: Balance,
@@ -1339,7 +1337,7 @@ pub struct PswapRemintInfo {
     Eq,
     Copy,
     Clone,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     MaxEncodedLen,
 )]
@@ -1359,7 +1357,7 @@ impl PriceVariant {
 
 /// List of available oracles
 #[derive(
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     DecodeWithMemTracking,
@@ -1378,7 +1376,7 @@ pub enum Oracle {
 }
 
 /// Information about received oracle symbol (price and last update time)
-#[derive(RuntimeDebug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Encode, Decode, TypeInfo, Copy, Clone, PartialEq, Eq)]
 pub struct Rate {
     pub value: Balance,
     pub last_updated: u64,

@@ -36,7 +36,6 @@ use scale_info::TypeInfo;
 use sp_core::Get;
 use sp_runtime::traits::{AtLeast32Bit, Zero};
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 
 pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
     /// Returns the end of all periods, `None` if calculation overflows.
@@ -59,15 +58,7 @@ pub trait VestingSchedule<BlockNumber, Balance, AssetId: Copy> {
 
 #[allow(unused)]
 #[derive(
-    Clone,
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
-    TypeInfo,
+    Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, Debug, MaxEncodedLen, TypeInfo,
 )]
 pub enum VestingScheduleVariant<BlockNumber, AssetId: Copy, AccountId> {
     LinearVestingSchedule(LinearVestingSchedule<BlockNumber, AssetId>),
@@ -146,15 +137,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy, AccountId>
 /// Benefits would be granted gradually, `per_period` amount every `period`
 /// of blocks after `start`.
 #[derive(
-    Clone,
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
-    TypeInfo,
+    Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, Debug, MaxEncodedLen, TypeInfo,
 )]
 pub struct LinearVestingSchedule<BlockNumber, AssetId: Copy> {
     /// Vesting asset id
@@ -279,15 +262,7 @@ impl<BlockNumber: AtLeast32Bit + Copy, AssetId: Copy> VestingSchedule<BlockNumbe
 /// Benefits would be granted gradually, `per_period` amount every `period`
 /// of blocks after `start`.
 #[derive(
-    Clone,
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    MaxEncodedLen,
-    TypeInfo,
+    Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, Debug, MaxEncodedLen, TypeInfo,
 )]
 pub struct LinearPendingVestingSchedule<BlockNumber, AssetId: Copy, AccountId> {
     /// Vesting asset id

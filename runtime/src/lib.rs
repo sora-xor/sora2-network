@@ -95,6 +95,16 @@ fn eth_bridge_storage_version_migration_reaches_v3() {
 }
 #[cfg(test)]
 #[test]
+fn vested_rewards_storage_version_bridge_reaches_v4() {
+    tests::vested_rewards_storage_version_bridge_reaches_v4();
+}
+#[cfg(test)]
+#[test]
+fn kensetsu_storage_version_bridge_reaches_v6() {
+    tests::kensetsu_storage_version_bridge_reaches_v6();
+}
+#[cfg(test)]
+#[test]
 fn denomination_rejects_zero_factor_without_mutating_state() {
     tests::denomination_rejects_zero_factor_without_mutating_state();
 }
@@ -147,6 +157,16 @@ fn runtime_upgrade_version_only_migrations_try_runtime_hooks() {
 #[test]
 fn eth_bridge_storage_version_migration_try_runtime_hooks() {
     tests::eth_bridge_storage_version_migration_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn vested_rewards_storage_version_bridge_try_runtime_hooks() {
+    tests::vested_rewards_storage_version_bridge_try_runtime_hooks();
+}
+#[cfg(all(test, feature = "try-runtime"))]
+#[test]
+fn kensetsu_storage_version_bridge_try_runtime_hooks() {
+    tests::kensetsu_storage_version_bridge_try_runtime_hooks();
 }
 #[cfg(all(test, feature = "try-runtime"))]
 #[test]
@@ -3766,8 +3786,11 @@ impl_runtime_apis! {
             opaque::SessionKeys::decode_into_raw_public_keys(&encoded)
         }
 
-        fn generate_session_keys(seed: Option<Vec<u8>>) -> Vec<u8> {
-            opaque::SessionKeys::generate(seed)
+        fn generate_session_keys(
+            owner: Vec<u8>,
+            seed: Option<Vec<u8>>,
+        ) -> sp_session::OpaqueGeneratedSessionKeys {
+            opaque::SessionKeys::generate(&owner, seed).into()
         }
     }
 

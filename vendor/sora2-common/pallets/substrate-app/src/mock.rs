@@ -50,7 +50,6 @@ use frame_support::Serialize;
 use frame_system as system;
 use frame_system::Origin;
 use scale_info::TypeInfo;
-use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::traits::Convert;
@@ -68,7 +67,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
     Decode,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     Clone,
     Copy,
     MaxEncodedLen,

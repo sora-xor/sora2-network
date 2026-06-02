@@ -15,8 +15,7 @@ use scale_info::TypeInfo;
 
 use sp_runtime::{
 	traits::{AccountIdConversion, BadOrigin, Dispatchable},
-	AccountId32,
-};
+	AccountId32};
 use xcm::{v3, v5::prelude::*, VersionedLocation};
 use xcm_simulator::TestExt;
 
@@ -597,7 +596,7 @@ fn test_decode_bounded_vec() {
 			OptionQuery,
 		>;
 
-		#[derive(TypeInfo, Encode, Decode, Clone, Eq, PartialEq, RuntimeDebug)]
+		#[derive(TypeInfo, Encode, Decode, Clone, Eq, PartialEq, Debug)]
 		pub struct AssetMetadata<Balance, CustomMetadata: Parameter + Member + TypeInfo> {
 			pub decimals: u32,
 			pub name: Vec<u8>,

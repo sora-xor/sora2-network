@@ -38,8 +38,7 @@ use parity_scale_codec::{HasCompact, MaxEncodedLen};
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32Bit, BlockNumberProvider, CheckedAdd, Saturating, StaticLookup, Zero},
-	ArithmeticError, DispatchResult, RuntimeDebug,
-};
+	ArithmeticError, DispatchResult};
 use sp_std::{
 	cmp::{Eq, PartialEq},
 	vec::Vec,
@@ -62,7 +61,7 @@ pub const VESTING_LOCK_ID: LockIdentifier = *b"ormlvest";
 ///
 /// Benefits would be granted gradually, `per_period` amount every `period`
 /// of blocks after `start`.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, MaxEncodedLen, TypeInfo, DecodeWithMemTracking)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, MaxEncodedLen, TypeInfo, DecodeWithMemTracking)]
 pub struct VestingSchedule<BlockNumber, Balance>
 where
 	Balance: MaxEncodedLen + HasCompact,

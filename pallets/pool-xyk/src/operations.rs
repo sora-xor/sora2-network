@@ -30,12 +30,11 @@
 
 use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::prelude::{Balance, OutcomeFee};
-use sp_runtime::RuntimeDebug;
 
 use crate::bounds::*;
 
 #[derive(
-    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+    Clone, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub struct Resource<AssetId, Balance> {
     // This is `AssetId` of `Resource`.
@@ -45,7 +44,7 @@ pub struct Resource<AssetId, Balance> {
 }
 
 #[derive(
-    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+    Clone, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub struct ResourcePair<AssetId, Balance>(
     pub Resource<AssetId, Balance>,
@@ -53,7 +52,7 @@ pub struct ResourcePair<AssetId, Balance>(
 );
 
 #[derive(
-    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+    Clone, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
@@ -70,7 +69,7 @@ pub struct PairSwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
 }
 
 #[derive(
-    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+    Clone, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
@@ -82,7 +81,7 @@ pub struct DepositLiquidityAction<AssetId, AccountId, TechAccountId> {
 }
 
 #[derive(
-    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+    Clone, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
     pub client_account: Option<AccountId>,
@@ -94,7 +93,7 @@ pub struct WithdrawLiquidityAction<AssetId, AccountId, TechAccountId> {
 }
 
 #[derive(
-    Clone, RuntimeDebug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
+    Clone, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub enum PolySwapAction<DEXId, AssetId: Ord, AccountId, TechAccountId> {
     PairSwap(PairSwapAction<DEXId, AssetId, AccountId, TechAccountId>),

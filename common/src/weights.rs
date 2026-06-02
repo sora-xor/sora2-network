@@ -83,8 +83,12 @@ parameter_types! {
     })
     .avg_block_initialization(ON_INITIALIZE_RATIO)
     .build_or_panic();
-    pub BlockLength: limits::BlockLength =
-        limits::BlockLength::max_with_normal_ratio(7 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+    pub BlockLength: limits::BlockLength = limits::BlockLength::builder()
+        .max_length(7 * 1024 * 1024)
+        .modify_max_length_for_class(DispatchClass::Normal, |max| {
+            *max = NORMAL_DISPATCH_RATIO * *max;
+        })
+        .build();
     pub const TransactionByteFee: Balance = crate::balance!(0.0000001);
 }
 

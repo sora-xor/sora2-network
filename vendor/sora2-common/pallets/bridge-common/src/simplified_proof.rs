@@ -30,10 +30,9 @@
 use bridge_types::H256;
 use codec::{Decode, Encode};
 use scale_info::prelude::{vec, vec::Vec};
-use sp_runtime::RuntimeDebug;
 
 #[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+    Encode, Decode, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
 pub struct Proof<T> {
     pub order: u64,

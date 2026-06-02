@@ -3,7 +3,7 @@ use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, FullCodec, MaxEn
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{AtLeast32Bit, Bounded, MaybeSerializeDeserialize},
-	DispatchError, DispatchResult, RuntimeDebug,
+	DispatchError, DispatchResult,
 };
 use sp_std::{
 	cmp::{Eq, PartialEq},
@@ -13,7 +13,7 @@ use sp_std::{
 
 /// Auction info.
 #[cfg_attr(feature = "std", derive(PartialEq, Eq))]
-#[derive(Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Debug, TypeInfo, MaxEncodedLen)]
 pub struct AuctionInfo<AccountId, Balance, BlockNumber> {
 	/// Current bidder and bid price.
 	pub bid: Option<(AccountId, Balance)>,

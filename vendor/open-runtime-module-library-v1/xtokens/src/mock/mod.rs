@@ -37,7 +37,7 @@ parameter_types! {
 	PartialEq,
 	Copy,
 	Clone,
-	RuntimeDebug,
+	Debug,
 	PartialOrd,
 	Ord,
 	parity_scale_codec::MaxEncodedLen,

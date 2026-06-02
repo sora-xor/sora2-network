@@ -36,7 +36,7 @@ pub mod storages {
 
     mod v0 {
         use super::*;
-        #[derive(Decode, Encode, Clone, RuntimeDebug, PartialEq, Eq)]
+        #[derive(Decode, Encode, Clone, Debug, PartialEq, Eq)]
         pub struct BandRate {
             pub value: Balance,
             pub last_updated: u64,
@@ -57,7 +57,7 @@ pub mod storages {
 
     mod v1 {
         use super::*;
-        #[derive(Decode, Encode, Clone, RuntimeDebug, PartialEq, Eq)]
+        #[derive(Decode, Encode, Clone, Debug, PartialEq, Eq)]
         pub struct BandRate {
             pub value: Balance,
             pub last_updated: u64,

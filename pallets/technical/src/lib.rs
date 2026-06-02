@@ -39,7 +39,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::{ensure, Parameter};
 use sp_runtime::traits::{MaybeSerializeDeserialize, Member};
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 
 use common::{AssetManager, TECH_ACCOUNT_MAGIC_PREFIX};
 use sp_core::H256;
@@ -56,7 +55,7 @@ type TechAssetIdOf<T> = <T as Config>::TechAssetId;
 type DEXIdOf<T> = <T as common::Config>::DEXId;
 
 /// Pending atomic swap operation.
-#[derive(Clone, Eq, PartialEq, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
+#[derive(Clone, Eq, PartialEq, Debug, Encode, Decode, scale_info::TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct PendingSwap<T: Config> {
     /// Source of the swap.

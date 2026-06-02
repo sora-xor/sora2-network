@@ -29,19 +29,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, DecodeWithMemTracking, Encode};
-use sp_runtime::RuntimeDebug;
 
 /// Values for resource amount
 #[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Eq,
-    PartialEq,
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    scale_info::TypeInfo,
+    Clone, Copy, Debug, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, scale_info::TypeInfo,
 )]
 pub enum Bounds<Balance> {
     /// A consequence of computations instead of a value set by a user.

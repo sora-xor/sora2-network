@@ -32,8 +32,6 @@ use super::*;
 use bridge_types::substrate::BridgeMessage;
 use bridge_types::types::GenericAdditionalInboundData;
 use codec::{Decode, Encode, MaxEncodedLen};
-
-use frame_support::pallet_prelude::RuntimeDebug;
 use frame_support::traits::{Everything, UnfilteredDispatchable};
 use frame_support::{assert_err, assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use scale_info::TypeInfo;
@@ -75,7 +73,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
     Decode,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     Clone,
     Copy,
     MaxEncodedLen,

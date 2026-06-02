@@ -35,7 +35,6 @@ use core::result::Result;
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::{CheckedAdd, CheckedSub, RoundingDiv, RoundingMul, RoundingSqrt};
 use fixnum::ArithmeticError;
-use sp_runtime::RuntimeDebug;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};
@@ -43,7 +42,7 @@ use crate::{fixed, pow, Balance, Fixed, FixedInner, FIXED_PRECISION};
 /// A convenient wrapper around `Fixed` type for safe math.
 ///
 /// Supported operations: `+`, `+=`, `-`, `-=`, `/`, `/=`, `*`, `*=`, `sqrt`.
-#[derive(Clone, RuntimeDebug)]
+#[derive(Clone, Debug)]
 pub struct FixedWrapper {
     inner: Result<Fixed, ArithmeticError>,
 }

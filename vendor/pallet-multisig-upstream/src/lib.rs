@@ -101,7 +101,7 @@ pub type BlockNumberFor<T> =
     Decode,
     DecodeWithMemTracking,
     Default,
-    RuntimeDebug,
+    Debug,
     TypeInfo,
     MaxEncodedLen,
 )]
@@ -120,7 +120,7 @@ pub struct Timepoint<BlockNumber> {
     Encode,
     Decode,
     Default,
-    RuntimeDebug,
+    Debug,
     TypeInfo,
     MaxEncodedLen,
     DecodeWithMemTracking,

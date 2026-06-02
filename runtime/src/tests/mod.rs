@@ -370,6 +370,38 @@ pub(crate) fn eth_bridge_storage_version_migration_reaches_v3() {
     });
 }
 
+pub(crate) fn vested_rewards_storage_version_bridge_reaches_v4() {
+    for starting_version in [0, 3, 4] {
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            StorageVersion::new(starting_version).put::<vested_rewards::Pallet<crate::Runtime>>();
+
+            crate::migrations::VestedRewardsStorageVersionV4::on_runtime_upgrade();
+
+            assert_eq!(
+                vested_rewards::Pallet::<crate::Runtime>::on_chain_storage_version(),
+                StorageVersion::new(4),
+                "VestedRewards bridge migration should finish at v4 from v{starting_version}"
+            );
+        });
+    }
+}
+
+pub(crate) fn kensetsu_storage_version_bridge_reaches_v6() {
+    for starting_version in [0, 6] {
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            StorageVersion::new(starting_version).put::<kensetsu::Pallet<crate::Runtime>>();
+
+            crate::migrations::KensetsuStorageVersionV6::on_runtime_upgrade();
+
+            assert_eq!(
+                kensetsu::Pallet::<crate::Runtime>::on_chain_storage_version(),
+                StorageVersion::new(6),
+                "Kensetsu bridge migration should finish at v6 from v{starting_version}"
+            );
+        });
+    }
+}
+
 pub(crate) fn denomination_rejects_zero_factor_without_mutating_state() {
     ext().execute_with(|| {
         assert_ok!(crate::Denomination::init(crate::RuntimeOrigin::root()));
@@ -879,6 +911,30 @@ pub(crate) fn eth_bridge_storage_version_migration_try_runtime_hooks() {
         crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
         crate::migrations::EthBridgeStorageVersionV3::post_upgrade(state).unwrap();
     });
+}
+
+#[cfg(feature = "try-runtime")]
+pub(crate) fn vested_rewards_storage_version_bridge_try_runtime_hooks() {
+    for starting_version in [0, 3, 4] {
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            StorageVersion::new(starting_version).put::<vested_rewards::Pallet<crate::Runtime>>();
+            let state = crate::migrations::VestedRewardsStorageVersionV4::pre_upgrade().unwrap();
+            crate::migrations::VestedRewardsStorageVersionV4::on_runtime_upgrade();
+            crate::migrations::VestedRewardsStorageVersionV4::post_upgrade(state).unwrap();
+        });
+    }
+}
+
+#[cfg(feature = "try-runtime")]
+pub(crate) fn kensetsu_storage_version_bridge_try_runtime_hooks() {
+    for starting_version in [0, 6] {
+        sp_io::TestExternalities::new_empty().execute_with(|| {
+            StorageVersion::new(starting_version).put::<kensetsu::Pallet<crate::Runtime>>();
+            let state = crate::migrations::KensetsuStorageVersionV6::pre_upgrade().unwrap();
+            crate::migrations::KensetsuStorageVersionV6::on_runtime_upgrade();
+            crate::migrations::KensetsuStorageVersionV6::post_upgrade(state).unwrap();
+        });
+    }
 }
 
 #[cfg(feature = "try-runtime")]

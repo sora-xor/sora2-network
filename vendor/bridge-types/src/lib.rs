@@ -45,7 +45,6 @@ pub use ethereum_types::{H128, H64};
 pub use sp_core::{H160, H256, H512, U256};
 pub type Address = H160;
 use frame_support::traits::Get;
-use sp_runtime::RuntimeDebug;
 
 use derivative::Derivative;
 #[cfg(feature = "std")]
@@ -83,7 +82,7 @@ pub type EVMChainId = H256;
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
@@ -109,7 +108,7 @@ impl codec::DecodeWithMemTracking for SubNetworkId {}
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
@@ -175,7 +174,7 @@ impl From<TonNetworkId> for GenericNetworkId {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
@@ -275,7 +274,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
@@ -299,7 +298,7 @@ impl TryInto<LiberlandAssetId> for GenericAssetId {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum GenericBalance {
     Substrate(MainnetBalance),
     /// EVM ABI uses big endian for integers, but scale codec uses little endian
@@ -333,7 +332,7 @@ pub type MainnetBalance = u128;
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]

@@ -12,12 +12,11 @@ use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::{
 	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize, Member, Saturating, UniqueSaturatedInto, Zero},
-	FixedPointOperand, RuntimeDebug, SaturatedConversion,
-};
+	FixedPointOperand, SaturatedConversion};
 use sp_std::{borrow::ToOwned, collections::btree_map::BTreeMap, fmt::Debug, prelude::*};
 
 /// The Reward Pool Info.
-#[derive(Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, Debug, TypeInfo)]
 pub struct PoolInfo<Share, Balance, CurrencyId>
 where
 	Share: HasCompact,

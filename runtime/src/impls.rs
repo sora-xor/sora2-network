@@ -47,7 +47,7 @@ use frame_support::{
 use scale_info::TypeInfo;
 use sp_core::U256;
 use sp_runtime::traits::{Convert, Dispatchable};
-use sp_runtime::{DispatchError, DispatchErrorWithPostInfo, RuntimeDebug};
+use sp_runtime::{DispatchError, DispatchErrorWithPostInfo};
 use sp_staking::StakingAccount;
 
 pub type NegativeImbalanceOf<T> = pallet_balances::NegativeImbalance<T>;
@@ -310,7 +310,7 @@ impl<T: frame_system::Config + pallet_staking::Config + pallet_balances::Config>
     fn on_nonzero_unbalanced(_amount: NegativeImbalanceOf<T>) {}
 }
 
-#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, RuntimeDebug, TypeInfo)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, PartialEq, Eq, Debug, TypeInfo)]
 pub struct DispatchableSubstrateBridgeCall(bridge_types::substrate::BridgeCall);
 
 impl Dispatchable for DispatchableSubstrateBridgeCall {

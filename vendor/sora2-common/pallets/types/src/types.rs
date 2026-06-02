@@ -39,20 +39,20 @@ use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
-use sp_core::{Get, RuntimeDebug};
+use sp_core::{Get};
 use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
 
 use crate::GenericNetworkId;
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum MessageDirection {
     Inbound,
     Outbound,
 }
 
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub struct MessageId {
     sender: GenericNetworkId,
     receiver: GenericNetworkId,
@@ -98,7 +98,7 @@ impl MessageId {
 pub type BatchNonce = u64;
 pub type MessageNonce = u64;
 
-#[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Default, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct AuxiliaryDigest {
@@ -118,7 +118,7 @@ impl From<Digest> for AuxiliaryDigest {
 }
 
 /// Auxiliary [`DigestItem`] to include in header digest.
-#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum AuxiliaryDigestItem {
@@ -170,7 +170,7 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
     Decode,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     serde::Serialize,
@@ -185,7 +185,7 @@ pub enum AssetKind {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -207,7 +207,7 @@ pub enum MessageStatus {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -226,7 +226,7 @@ pub struct LeafExtraData<Hash, RandomSeed> {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -253,7 +253,7 @@ pub enum BridgeAssetInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -273,7 +273,7 @@ pub enum BridgeAppInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     Default,
@@ -352,7 +352,7 @@ pub struct GenericCommitmentWithBlock<BlockNumber, MaxMessages: Get<u32>, MaxPay
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,

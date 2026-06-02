@@ -3,7 +3,7 @@
 
 use impl_trait_for_tuples::impl_for_tuples;
 use parity_scale_codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
-use sp_runtime::{DispatchResult, RuntimeDebug};
+use sp_runtime::DispatchResult;
 use sp_std::{
 	cmp::{Eq, PartialEq},
 	prelude::Vec,
@@ -61,7 +61,7 @@ pub trait CombineData<Key, TimestampedValue> {
 }
 
 /// Indicate if should change a value
-#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Clone, Eq, PartialEq, Debug, TypeInfo, MaxEncodedLen)]
 pub enum Change<Value> {
 	/// No change.
 	NoChange,
@@ -69,7 +69,7 @@ pub enum Change<Value> {
 	NewValue(Value),
 }
 
-#[derive(Encode, Decode, DecodeWithMemTracking, RuntimeDebug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Debug, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TimestampedValue<Value, Moment>
 where

@@ -45,7 +45,6 @@ use frame_support::storage::StorageMap as StorageMapTrait;
 use serde::{Deserialize, Serialize};
 use sp_core::U256;
 use sp_runtime::traits::UniqueSaturatedInto;
-use sp_runtime::RuntimeDebug;
 use sp_runtime::{Perbill, Percent, Rounding};
 use sp_std::prelude::*;
 
@@ -70,7 +69,7 @@ mod tests;
 type WeightInfoOf<T> = <T as Config>::WeightInfo;
 type DispatchErrorWithPostInfo = sp_runtime::DispatchErrorWithPostInfo<PostDispatchInfo>;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Default, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Debug, Default, PartialEq, Eq, scale_info::TypeInfo)]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct RewardInfo {

@@ -32,7 +32,6 @@
 
 use crate::H160;
 use ethabi::{ethereum_types::H160 as AbiH160, Function, Param, ParamType, StateMutability, Token};
-use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 fn abi_h160(address: H160) -> AbiH160 {
@@ -68,7 +67,7 @@ fn remove_app_function() -> Function {
 }
 
 // Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct RemoveAppPayload {
     pub app: H160,
 }
@@ -82,7 +81,7 @@ impl RemoveAppPayload {
 }
 
 // Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct RegisterAppPayload {
     pub app: H160,
 }

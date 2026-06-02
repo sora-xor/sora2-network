@@ -1,8 +1,8 @@
 use frame_support::Parameter;
 use parity_scale_codec::Encode;
-use sp_runtime::{traits::Member, RuntimeDebug};
+use sp_runtime::traits::Member;
 
-#[derive(PartialEq, Eq, RuntimeDebug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum RateLimiterError {
 	ExceedLimit,
 }

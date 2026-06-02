@@ -457,7 +457,7 @@ impl ExtBuilder {
 
         pallet_balances::GenesisConfig::<Runtime> {
             balances: vec![
-                (alice(), 0),
+                (alice(), ExistentialDeposit::get()),
                 (
                     if let DistributionAccount::TechAccount(account_id) =
                         &accounts.val_holders.account
@@ -466,11 +466,11 @@ impl ExtBuilder {
                     } else {
                         panic!("not a tech account")
                     },
-                    0,
+                    ExistentialDeposit::get(),
                 ),
-                (GetMbcReservesAccountId::get(), 0),
-                (GetMbcRewardsAccountId::get(), 0),
-                (GetLiquidityProxyAccountId::get(), 0),
+                (GetMbcReservesAccountId::get(), ExistentialDeposit::get()),
+                (GetMbcRewardsAccountId::get(), ExistentialDeposit::get()),
+                (GetLiquidityProxyAccountId::get(), ExistentialDeposit::get()),
             ],
             dev_accounts: None,
         }

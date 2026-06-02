@@ -14,7 +14,6 @@ use frame_support::traits::GetStorageVersion;
 use frame_support::traits::StorageVersion;
 use frame_support::weights::Weight;
 use sp_runtime::traits::BlockNumberProvider;
-use sp_runtime::RuntimeDebug;
 
 use crate::Config;
 use crate::Pallet;
@@ -38,7 +37,7 @@ use common::prelude::Balance;
 use common::AssetInfoProvider;
 use sp_std::vec::Vec;
 
-#[derive(PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub enum OldRequestStatus {
     Pending,
     Frozen,
