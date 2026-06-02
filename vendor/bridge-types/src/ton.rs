@@ -33,7 +33,6 @@ use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use frame_support::traits::Get;
-use sp_core::RuntimeDebug;
 use sp_runtime::{traits::Hash, BoundedVec};
 
 use crate::{H128, H256, MainnetAssetId, MainnetBalance};
@@ -45,7 +44,7 @@ use crate::{H128, H256, MainnetAssetId, MainnetBalance};
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
@@ -104,7 +103,7 @@ impl From<TonBalance> for u128 {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -131,7 +130,7 @@ impl TonAddress {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -149,7 +148,7 @@ pub struct TonTransactionId {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -186,7 +185,7 @@ impl From<TonAddress> for TonAddressWithPrefix {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -203,7 +202,7 @@ pub struct AdditionalTONInboundData {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -225,7 +224,7 @@ pub struct TonAssetInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,

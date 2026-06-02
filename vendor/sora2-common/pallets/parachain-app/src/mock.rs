@@ -49,12 +49,11 @@ use frame_support::construct_runtime;
 use frame_support::parameter_types;
 use frame_support::traits::Everything;
 use frame_support::Deserialize;
-// use frame_support::RuntimeDebug;
+// use frame_support::Debug;
 use frame_support::Serialize;
 use frame_system as system;
 use frame_system::Origin;
 use scale_info::TypeInfo;
-use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::traits::AccountIdConversion;
@@ -77,7 +76,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
     Decode,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     Clone,
     Copy,
     MaxEncodedLen,

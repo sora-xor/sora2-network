@@ -6,7 +6,6 @@ use codec::Decode;
 use frame_remote_externalities::{
     Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
 };
-use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use sp_core::H256;
 use sp_runtime::generic::Preamble;
 use sp_runtime::{traits::Block as BlockT, DeserializeOwned};
@@ -16,7 +15,7 @@ use sp_runtime::traits::Dispatchable;
 use std::path::PathBuf;
 
 async fn create_ext<B>(
-    client: HttpClient,
+    transport_uri: String,
     at: Option<H256>,
     snapshot_path: Option<PathBuf>,
 ) -> AnyResult<RemoteExternalities<B>>
@@ -35,7 +34,7 @@ where
                 state_snapshot: state_snapshot.clone(),
             },
             OnlineConfig {
-                transport: client.into(),
+                transport_uris: vec![transport_uri],
                 state_snapshot: Some(state_snapshot),
                 at,
                 ..Default::default()
@@ -67,10 +66,8 @@ struct Cli {
 async fn main() -> AnyResult<()> {
     env_logger::init();
     let cli = Cli::parse();
-    let client = HttpClientBuilder::default()
-        .max_request_size(u32::MAX)
-        .build(cli.uri)?;
-    let mut ext = create_ext::<framenode_runtime::Block>(client, cli.at, cli.snapshot_path).await?;
+    let mut ext =
+        create_ext::<framenode_runtime::Block>(cli.uri, cli.at, cli.snapshot_path).await?;
     let _res: AnyResult<()> = ext.execute_with(|| {
         let xt_encoded = hex::decode(&cli.xt).unwrap();
         let framenode_runtime::UncheckedExtrinsic {

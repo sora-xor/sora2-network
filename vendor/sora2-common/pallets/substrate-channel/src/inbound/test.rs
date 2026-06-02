@@ -35,7 +35,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{Everything, UnfilteredDispatchable};
 use frame_support::{assert_err, assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use scale_info::TypeInfo;
-use sp_core::{ConstU64, RuntimeDebug, H256};
+use sp_core::{ConstU64, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, ValidateUnsigned, Verify};
 use sp_runtime::transaction_validity::{
@@ -73,7 +73,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
     Decode,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     Clone,
     Copy,
     MaxEncodedLen,

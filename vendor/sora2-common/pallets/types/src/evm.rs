@@ -5,7 +5,7 @@ use derivative::Derivative;
 use ethabi::Token;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{Get, RuntimeDebug};
+use sp_core::{Get};
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
 
@@ -21,7 +21,7 @@ fn to_ethabi_u256(value: U256) -> ethabi::ethereum_types::U256 {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -48,7 +48,7 @@ pub enum EVMAppKind {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -65,7 +65,7 @@ pub struct EVMAppInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -83,7 +83,7 @@ pub struct AdditionalEVMOutboundData {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -100,7 +100,7 @@ pub struct AdditionalEVMInboundData {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -124,7 +124,7 @@ pub struct EVMAssetInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,

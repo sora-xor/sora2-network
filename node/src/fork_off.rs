@@ -31,7 +31,7 @@
 use std::io::Write;
 
 use frame_remote_externalities::{
-    Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig, Transport,
+    Builder, Mode, OfflineConfig, OnlineConfig, RemoteExternalities, SnapshotConfig,
 };
 use sc_cli::CliConfiguration;
 use sc_service::Configuration;
@@ -84,7 +84,6 @@ fn get_pallet_prefix(pallet: &str) -> Vec<u8> {
 
 impl ForkOffCmd {
     pub async fn run(&self, mut cfg: Configuration) -> Result<(), sc_cli::Error> {
-        let transport: Transport = self.url.clone().into();
         let maybe_state_snapshot: Option<SnapshotConfig> = self.snapshot.clone().map(|s| s.into());
         let mut ext: RemoteExternalities<framenode_runtime::Block> =
             Builder::<framenode_runtime::Block>::default()
@@ -94,14 +93,14 @@ impl ForkOffCmd {
                             state_snapshot: state_snapshot.clone(),
                         },
                         OnlineConfig {
-                            transport,
+                            transport_uris: vec![self.url.clone()],
                             state_snapshot: Some(state_snapshot),
                             ..Default::default()
                         },
                     )
                 } else {
                     Mode::Online(OnlineConfig {
-                        transport,
+                        transport_uris: vec![self.url.clone()],
                         ..Default::default()
                     })
                 })

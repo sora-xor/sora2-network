@@ -158,7 +158,7 @@ pub mod generic_account_v2 {
         }
     }
 
-    #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+    #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, TypeInfo)]
     #[scale_info(skip_type_params(T))]
     pub struct OldBridgeRequest<AssetId> {
         source: OldGenericAccount,
@@ -193,7 +193,7 @@ pub mod generic_account_v2 {
     }
 
     #[allow(clippy::large_enum_variant)]
-    #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+    #[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
     pub enum OldGenericAccount {
         EVM(H160),
         Sora(MainnetAccountId),

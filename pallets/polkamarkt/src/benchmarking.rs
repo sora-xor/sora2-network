@@ -84,8 +84,67 @@ where
     let close = <frame_system::Pallet<T>>::block_number()
         + T::MinMarketDuration::get()
         + BlockNumberFor::<T>::one();
-    Pallet::<T>::create_market(RawOrigin::Signed(caller.clone()).into(), 0, close, seed)
-        .expect("market setup");
+    T::Assets::transfer(
+        T::CanonicalStableAssetId::get(),
+        caller,
+        &Pallet::<T>::account_id(),
+        seed,
+    )
+    .expect("legacy seed transfer");
+    Markets::<T>::insert(
+        0,
+        Market {
+            creator: caller.clone(),
+            condition_id: 0,
+            close_block: close,
+            collateral_asset: T::CanonicalStableAssetId::get(),
+            seed_liquidity: seed,
+            mechanism: MarketMechanism::LegacyAmm,
+            status: MarketStatus::Open,
+        },
+    );
+    MarketPools::<T>::insert(
+        0,
+        MarketPool {
+            collateral: seed,
+            yes: seed,
+            no: seed,
+        },
+    );
+    LiquidityPositions::<T>::insert(
+        0,
+        caller,
+        LiquidityPosition {
+            shares: seed,
+            collateral_contributed: seed,
+        },
+    );
+    LiquidityPositionTotals::<T>::insert(
+        0,
+        LiquidityTotals {
+            total_shares: seed,
+            total_collateral_contributed: seed,
+        },
+    );
+    ConditionMarket::<T>::insert(0, 0);
+    NextMarketId::<T>::put(1);
+}
+
+fn setup_orderbook_market<T>(caller: &T::AccountId) -> BlockNumberFor<T>
+where
+    T: crate::Config + frame_system::Config,
+    T::AccountId: Clone,
+{
+    fund_canonical_fee::<T>(caller);
+    let metadata = default_condition_input::<T>();
+    Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
+        .expect("condition setup");
+    let close = <frame_system::Pallet<T>>::block_number()
+        + T::MinMarketDuration::get()
+        + BlockNumberFor::<T>::one();
+    Pallet::<T>::create_market(RawOrigin::Signed(caller.clone()).into(), 0, close)
+        .expect("order-book market setup");
+    close
 }
 
 fn market_close_block<T>() -> BlockNumberFor<T>
@@ -202,8 +261,6 @@ mod benchmarks {
     fn create_market() {
         let caller: T::AccountId = whitelisted_caller();
         fund_canonical_fee::<T>(&caller);
-        let seed = bench_balance::<T>(10_000);
-        mint_canonical_balance::<T>(&caller, seed);
         let metadata = default_condition_input::<T>();
         Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
             .expect("condition setup");
@@ -212,7 +269,7 @@ mod benchmarks {
             + BlockNumberFor::<T>::one();
 
         #[extrinsic_call]
-        create_market(RawOrigin::Signed(caller), 0, close, seed);
+        create_market(RawOrigin::Signed(caller), 0, close);
     }
 
     #[benchmark]
@@ -400,13 +457,43 @@ mod benchmarks {
             let close = <frame_system::Pallet<T>>::block_number()
                 + T::MinMarketDuration::get()
                 + BlockNumberFor::<T>::one();
-            Pallet::<T>::create_market(
-                RawOrigin::Signed(caller.clone()).into(),
-                market_id,
-                close,
+            Pallet::<T>::create_market(RawOrigin::Signed(caller.clone()).into(), market_id, close)
+                .expect("market setup");
+            T::Assets::transfer(
+                T::CanonicalStableAssetId::get(),
+                &caller,
+                &Pallet::<T>::account_id(),
                 seed,
             )
-            .expect("market setup");
+            .expect("legacy seed transfer");
+            Markets::<T>::mutate(market_id, |market| {
+                let market = market.as_mut().expect("created market");
+                market.seed_liquidity = seed;
+                market.mechanism = MarketMechanism::LegacyAmm;
+            });
+            MarketPools::<T>::insert(
+                market_id,
+                MarketPool {
+                    collateral: seed,
+                    yes: seed,
+                    no: seed,
+                },
+            );
+            LiquidityPositions::<T>::insert(
+                market_id,
+                &caller,
+                LiquidityPosition {
+                    shares: seed,
+                    collateral_contributed: seed,
+                },
+            );
+            LiquidityPositionTotals::<T>::insert(
+                market_id,
+                LiquidityTotals {
+                    total_shares: seed,
+                    total_collateral_contributed: seed,
+                },
+            );
             Pallet::<T>::buy(
                 RawOrigin::Signed(trader.clone()).into(),
                 market_id,
@@ -502,5 +589,86 @@ mod benchmarks {
 
         #[extrinsic_call]
         sweep_xor_buyback_and_burn(RawOrigin::Signed(caller));
+    }
+
+    #[benchmark]
+    fn place_order(f: Linear<1, { T::MaxFillsPerOrder::get() }>) {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_orderbook_market::<T>(&caller);
+        let taker: T::AccountId = account("taker", 0, 0);
+        let fills = f;
+        let shares_per_order = bench_balance::<T>(10_000);
+        let maker_shares = shares_per_order.saturating_mul(fills.into());
+        let taker_shares = maker_shares.saturating_add(shares_per_order);
+        mint_canonical_balance::<T>(&taker, taker_shares.saturating_mul(2u32.into()));
+        for maker_index in 0..fills {
+            let maker: T::AccountId = account("maker", maker_index, 0);
+            mint_canonical_balance::<T>(&maker, shares_per_order);
+            Pallet::<T>::place_order(
+                RawOrigin::Signed(maker).into(),
+                0,
+                BinaryOutcome::No,
+                OrderSide::Buy,
+                50,
+                shares_per_order,
+                TimeInForce::Gtc,
+            )
+            .expect("maker order setup");
+        }
+
+        #[extrinsic_call]
+        place_order(
+            RawOrigin::Signed(taker),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            99,
+            taker_shares,
+            TimeInForce::Gtc,
+        );
+    }
+
+    #[benchmark]
+    fn cancel_order() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_orderbook_market::<T>(&caller);
+        mint_canonical_balance::<T>(&caller, bench_balance::<T>(1_000));
+        Pallet::<T>::place_order(
+            RawOrigin::Signed(caller.clone()).into(),
+            0,
+            BinaryOutcome::Yes,
+            OrderSide::Buy,
+            50,
+            bench_balance::<T>(100),
+            TimeInForce::Gtc,
+        )
+        .expect("order setup");
+
+        #[extrinsic_call]
+        cancel_order(RawOrigin::Signed(caller), 0);
+    }
+
+    #[benchmark]
+    fn split_position() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_orderbook_market::<T>(&caller);
+        let shares = bench_balance::<T>(100);
+        mint_canonical_balance::<T>(&caller, shares);
+
+        #[extrinsic_call]
+        split_position(RawOrigin::Signed(caller), 0, shares);
+    }
+
+    #[benchmark]
+    fn merge_positions() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_orderbook_market::<T>(&caller);
+        let shares = bench_balance::<T>(100);
+        mint_canonical_balance::<T>(&caller, shares);
+        Pallet::<T>::split_position(RawOrigin::Signed(caller.clone()).into(), 0, shares)
+            .expect("split setup");
+
+        #[extrinsic_call]
+        merge_positions(RawOrigin::Signed(caller), 0, shares);
     }
 }

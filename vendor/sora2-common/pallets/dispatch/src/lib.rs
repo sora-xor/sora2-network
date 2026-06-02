@@ -46,8 +46,6 @@ use frame_support::dispatch::{DispatchResult, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};
 use sp_runtime::traits::Dispatchable;
 
-use sp_core::RuntimeDebug;
-
 use sp_std::prelude::*;
 
 use bridge_types::traits;
@@ -82,7 +80,7 @@ impl<T: pallet::Config<I>, I: 'static> BenchmarkHelper<T, I> for () {
     Eq,
     Encode,
     Decode,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]

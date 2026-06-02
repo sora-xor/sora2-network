@@ -184,7 +184,7 @@ impl<T: Config> Pallet<T> {
             ) {
                 Ok(weight) => weight,
                 Err(err) => {
-                    frame_support::__private::log::warn!(
+                    frame_support::__private::log::debug!(
                         "Failed to calculate farming weight for pool {:?}, account {:?}: {:?}",
                         pool,
                         account,
@@ -228,6 +228,10 @@ impl<T: Config> Pallet<T> {
         total_liquidity: Balance,
         pool_tokens: Balance,
     ) -> Result<Balance, DispatchError> {
+        if pool_tokens == 0 || total_liquidity == 0 || pool_tokens > total_liquidity {
+            return Ok(0);
+        }
+
         let base_asset_amt = pool_xyk::Pallet::<T>::get_base_asset_part(
             base_reserves,
             total_liquidity,

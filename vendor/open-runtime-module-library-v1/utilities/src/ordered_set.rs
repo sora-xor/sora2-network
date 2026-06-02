@@ -89,12 +89,11 @@ where
 mod tests {
 	use super::*;
 	use frame_support::parameter_types;
-	use sp_runtime::RuntimeDebug;
 
 	parameter_types! {
-		#[derive(PartialEq, Eq, RuntimeDebug)]
+		#[derive(PartialEq, Eq, Debug)]
 		pub const Eight: u32 = 8;
-		#[derive(PartialEq, Eq, RuntimeDebug)]
+		#[derive(PartialEq, Eq, Debug)]
 		pub const Five: u32 = 5;
 	}
 

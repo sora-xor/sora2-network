@@ -68,7 +68,6 @@ use frame_support::{ensure, fail};
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::vec;
 use sp_std::vec::Vec;
@@ -120,7 +119,7 @@ impl<DistributionAccount> DistributionAccountData<DistributionAccount> {
     }
 }
 
-#[derive(RuntimeDebug, Clone, Encode, Decode, scale_info::TypeInfo)]
+#[derive(Debug, Clone, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct SyntheticInfo<Symbol> {
     pub reference_symbol: Symbol,

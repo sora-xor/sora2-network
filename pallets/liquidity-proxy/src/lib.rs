@@ -72,7 +72,6 @@ use liquidity_aggregator::LiquidityAggregator;
 pub use pallet::*;
 use sp_runtime::traits::Zero;
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::prelude::*;
 use sp_std::{cmp::Ord, cmp::Ordering, vec};
@@ -1833,7 +1832,7 @@ impl<T: Config> LiquidityProxyTrait<T::DEXId, T::AccountId, AssetIdOf<T>> for Pa
     Eq,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
 )]
 #[scale_info(skip_type_params(T))]
@@ -1860,7 +1859,7 @@ impl<AccountId> BatchReceiverInfo<AccountId> {
     Eq,
     PartialOrd,
     Ord,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
 )]
 #[scale_info(skip_type_params(T))]

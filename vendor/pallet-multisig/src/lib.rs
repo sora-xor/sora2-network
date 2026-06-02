@@ -84,11 +84,11 @@ use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 use sp_io::hashing::blake2_256;
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 use sp_runtime::{
     traits::{Dispatchable, Zero},
     Percent,
 };
+use sp_std::fmt::Debug;
 use sp_std::prelude::*;
 
 type BalanceOf<T> =
@@ -679,9 +679,7 @@ pub mod pallet {
 }
 
 /// Represents height on either Thischain of Sidechain.
-#[derive(
-    Copy, Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo,
-)]
+#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Debug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum MultiChainHeight<BlockNumber> {
     Thischain(BlockNumber),
@@ -698,16 +696,7 @@ impl<BlockNumber: Default> Default for MultiChainHeight<BlockNumber> {
 /// block's height. This allows a transaction in which a multisig operation of a particular
 /// composite was created to be uniquely identified.
 #[derive(
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    Default,
-    RuntimeDebug,
-    TypeInfo,
+    Copy, Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Default, Debug, TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BridgeTimepoint<BlockNumber> {
@@ -718,9 +707,7 @@ pub struct BridgeTimepoint<BlockNumber> {
 }
 
 /// An open multisig operation.
-#[derive(
-    Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Default, RuntimeDebug, TypeInfo,
-)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, Default, Debug, TypeInfo)]
 pub struct Multisig<BlockNumber, Balance, AccountId> {
     /// The extrinsic when the multisig operation was opened.
     pub when: BridgeTimepoint<BlockNumber>,
@@ -740,7 +727,7 @@ pub struct Multisig<BlockNumber, Balance, AccountId> {
     Decode,
     DecodeWithMemTracking,
     Default,
-    RuntimeDebug,
+    Debug,
     TypeInfo,
     Serialize,
     Deserialize,

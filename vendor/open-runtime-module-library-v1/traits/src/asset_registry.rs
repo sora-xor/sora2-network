@@ -1,4 +1,4 @@
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, DebugNoBound};
 use sp_runtime::DispatchResult;
 use sp_std::fmt::Debug;
 use xcm::v5::prelude::*;
@@ -27,7 +27,7 @@ pub trait AssetProcessor<AssetId, Metadata> {
 	CloneNoBound,
 	EqNoBound,
 	PartialEqNoBound,
-	RuntimeDebugNoBound,
+	DebugNoBound,
 	MaxEncodedLen,
 	DecodeWithMemTracking,
 )]

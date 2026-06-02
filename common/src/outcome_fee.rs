@@ -36,7 +36,6 @@ use fixnum::ops::Zero as _;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_runtime::traits::{Saturating, Zero};
-use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_map::BTreeMap;
 
 #[derive(
@@ -48,7 +47,7 @@ use sp_std::collections::btree_map::BTreeMap;
     Clone,
     Ord,
     PartialOrd,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]

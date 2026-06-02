@@ -5,7 +5,7 @@ REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 cd "${REPO_ROOT}"
 
-: "${REMOTE_RPC_URL:=https://ws.mof.sora.org}"
+: "${REMOTE_RPC_URL:=wss://ws.mof.sora.org}"
 : "${REQUIRE_REMOTE:=1}"
 export REMOTE_RPC_URL REQUIRE_REMOTE
 

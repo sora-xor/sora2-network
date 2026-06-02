@@ -117,6 +117,7 @@ fn prepare_rewards_update<T: Config>(
     .collect();
     for i in 0..n {
         let user_account = create_account::<T>(b"user".to_vec(), i);
+        Rewards::<T>::insert(&user_account, RewardInfo::default());
         rewards.insert(user_account, reward.clone());
     }
     rewards
@@ -147,7 +148,7 @@ benchmarks! {
     }
 
     update_rewards {
-        let n in 0 .. 100;
+        let n in 1 .. 100;
         let rewards = prepare_rewards_update::<T>(n.into());
     }: {
         Pallet::<T>::update_rewards(RawOrigin::Root.into(), rewards).unwrap()

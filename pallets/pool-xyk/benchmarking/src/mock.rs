@@ -164,7 +164,7 @@ impl ExtBuilder {
         let mut t = SystemConfig::default().build_storage().unwrap();
 
         pallet_balances::GenesisConfig::<Runtime> {
-            balances: vec![(alice(), 0)],
+            balances: vec![(alice(), ExistentialDeposit::get())],
             dev_accounts: None,
         }
         .assimilate_storage(&mut t)

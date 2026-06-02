@@ -9,7 +9,7 @@ use ethabi::{
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use frame_support::traits::Get;
-use sp_core::{RuntimeDebug};
+
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
 
@@ -25,7 +25,7 @@ fn abi_u256(value: U256) -> AbiU256 {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -52,7 +52,7 @@ pub enum EVMAppKind {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -69,7 +69,7 @@ pub struct EVMAppInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -87,7 +87,7 @@ pub struct AdditionalEVMOutboundData {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -104,7 +104,7 @@ pub struct AdditionalEVMInboundData {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -128,7 +128,7 @@ pub struct EVMAssetInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,

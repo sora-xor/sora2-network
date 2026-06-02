@@ -34,7 +34,6 @@ use core::result::Result;
 
 use fixnum::ArithmeticError;
 use sp_core::U256;
-use sp_runtime::RuntimeDebug;
 use static_assertions::_core::cmp::Ordering;
 
 use crate::arithmetic::checked::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
@@ -46,7 +45,7 @@ use crate::{Balance, Fixed};
 /// A convenient wrapper around `FixedU256` type for safe math.
 ///
 /// Supported operations: `+`, `+=`, `-`, `-=`, `/`, `/=`, `*`, `*=`, `sqrt`.
-#[derive(Clone, RuntimeDebug)]
+#[derive(Clone, Debug)]
 pub struct FixedWrapper256 {
     inner: Result<FixedU256, ArithmeticError>,
 }

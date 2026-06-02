@@ -34,7 +34,6 @@
 use alloc::string::{String, ToString};
 
 use codec::Encode;
-use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 use sp_std::vec;
 
@@ -120,7 +119,7 @@ fn add_token_to_whitelist_function() -> Function {
 }
 
 // Message to Ethereum (ABI-encoded)
-#[derive(Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegisterNativeAssetPayload {
     pub asset_id: H256,
     pub name: Vec<u8>,
@@ -139,7 +138,7 @@ impl RegisterNativeAssetPayload {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EthAbiAssetKind {
     _Unregistered = 0,
     Evm = 1,
@@ -147,7 +146,7 @@ pub enum EthAbiAssetKind {
 }
 
 // Message to Ethereum (ABI-encoded)
-#[derive(Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AddTokenToWhitelistPayload {
     pub address: H160,
     pub asset_kind: EthAbiAssetKind,
@@ -165,7 +164,7 @@ impl AddTokenToWhitelistPayload {
 }
 
 // Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct MintPayload<AccountId: Encode> {
     pub token: H160,
     pub sender: AccountId,

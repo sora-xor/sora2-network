@@ -34,7 +34,6 @@ use hex_literal::hex;
 use parity_bytes::Bytes;
 use rlp::RlpStream;
 use sp_io::hashing::keccak_256;
-use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
@@ -45,7 +44,7 @@ use crate::{mpt, receipt, Address, H256, H64, U256};
 
 /// Complete block header id.
 #[derive(
-    Clone, Copy, Default, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+    Clone, Copy, Default, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo,
 )]
 pub struct HeaderId {
     /// Header number.
@@ -58,7 +57,7 @@ pub const EMPTY_OMMERS_HASH: [u8; 32] =
     hex!("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347");
 
 /// An Ethereum block header.
-#[derive(Clone, Default, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Default, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Header {
     /// Parent block hash.

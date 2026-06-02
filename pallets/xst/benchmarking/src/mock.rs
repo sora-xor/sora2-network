@@ -285,7 +285,10 @@ impl ExtBuilder {
                         None
                     }
                 })
-                .chain(vec![(bob(), 0), (assets_owner(), 0)])
+                .chain(vec![
+                    (bob(), ExistentialDeposit::get()),
+                    (assets_owner(), ExistentialDeposit::get()),
+                ])
                 .collect(),
             dev_accounts: None,
         }

@@ -53,6 +53,21 @@ or
 cargo test --release
 ```
 
+### Local integration network
+
+```bash
+./integration-tests/run-local-network.py --build-binary --peers 4
+```
+
+The harness starts at least four local validators, waits for peers, block production, and finality, then runs optional commands passed with `--test-command`.
+It runs all built-in suites by default; use `--suite smoke` or `--suite none` to narrow the run.
+Use `--mock-state adversarial-rewards` with `--suite rewards` to run against live-shaped mocked reward-claim edge cases, including an intentionally inconsistent claimable-greater-than-total holder.
+Use `--mock-state adversarial-bridge` with `--suite bridge` to run against mocked bridge asset edge cases.
+Use `--mock-state adversarial-market` with `--suite assets` to run against mocked asset, DEX, and trading-pair edge cases.
+Use `--mock-state adversarial-vesting` with `--suite rewards` to run against mocked vested reward/crowdloan edge cases.
+Use `--mock-state adversarial-iroha` with `--suite iroha-migration` to run against mocked Iroha migration edge cases.
+Use `--mock-state adversarial-oracle` with `--suite oracle` to run against mocked Band/oracle rate edge cases; `adversarial-all` includes all mock profiles.
+
 ### Docker
 
 ```bash

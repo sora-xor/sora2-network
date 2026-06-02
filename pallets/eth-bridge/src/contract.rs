@@ -32,8 +32,6 @@ use alloc::boxed::Box;
 use ethabi::Function;
 use once_cell::race::OnceBox;
 use sp_core::H256;
-#[cfg(feature = "std")]
-use sp_runtime::RuntimeDebug;
 use sp_std::collections::btree_map::BTreeMap;
 
 /// Avoid of Contract struct never used warning
@@ -178,7 +176,7 @@ pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
 
 /// Contract's deposit event, means that someone transferred some amount of the token/asset to the
 /// bridge contract.
-#[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
+#[cfg_attr(feature = "std", derive(PartialEq, Eq, Debug))]
 pub struct DepositEvent<EthAddress, AccountId, Balance> {
     pub(crate) destination: AccountId,
     pub(crate) amount: Balance,
@@ -203,7 +201,7 @@ impl<EthAddress, AccountId, Balance> DepositEvent<EthAddress, AccountId, Balance
 }
 
 /// Events that can be emitted by Sidechain smart-contract.
-#[cfg_attr(feature = "std", derive(PartialEq, Eq, RuntimeDebug))]
+#[cfg_attr(feature = "std", derive(PartialEq, Eq, Debug))]
 pub enum ContractEvent<EthAddress, AccountId, Balance> {
     Deposit(DepositEvent<EthAddress, AccountId, Balance>),
     ChangePeers(EthAddress, bool),

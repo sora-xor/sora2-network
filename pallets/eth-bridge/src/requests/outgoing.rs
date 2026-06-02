@@ -59,7 +59,6 @@ use frame_system::RawOrigin;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{H256, U256};
-use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryInto;
 use sp_std::prelude::*;
 
@@ -72,7 +71,7 @@ fn encode_network_id<T: Config>(network_id: BridgeNetworkId<T>) -> Result<H256, 
 }
 
 /// Outgoing request for transferring the given asset from Thischain to Sidechain.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingTransfer<T: Config> {
@@ -318,7 +317,7 @@ impl<T: Config> OutgoingTransfer<T> {
 }
 
 /// Thischain or Sidechain asset id.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum CurrencyIdEncoded {
     AssetId(H256),
@@ -335,7 +334,7 @@ impl CurrencyIdEncoded {
 }
 
 /// Sidechain-compatible version of `OutgoingTransfer`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingTransferEncoded {
     pub currency_id: CurrencyIdEncoded,
@@ -367,7 +366,7 @@ impl OutgoingTransferEncoded {
 }
 
 /// Outgoing request for adding a Thischain asset.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddAsset<T: Config> {
@@ -483,7 +482,7 @@ impl<T: Config> OutgoingAddAsset<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingAddAsset`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddAssetEncoded {
     pub symbol: String,
@@ -513,7 +512,7 @@ impl OutgoingAddAssetEncoded {
 }
 
 /// Outgoing request for adding a Sidechain token.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddToken<T: Config> {
@@ -677,7 +676,7 @@ impl<T: Config> OutgoingAddToken<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingAddToken`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddTokenEncoded {
     pub token_address: EthAddress,
@@ -707,7 +706,7 @@ impl OutgoingAddTokenEncoded {
 }
 
 /// Outgoing request for adding a peer.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeer<T: Config> {
@@ -810,7 +809,7 @@ impl<T: Config> OutgoingAddPeer<T> {
 }
 
 /// Old contracts-compatible `add peer` request. Will be removed in the future.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingAddPeerCompat<T: Config> {
@@ -902,7 +901,7 @@ impl<T: Config> OutgoingAddPeerCompat<T> {
 }
 
 /// Outgoing request for removing a peer.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeer<T: Config> {
@@ -1034,7 +1033,7 @@ impl<T: Config> OutgoingRemovePeer<T> {
 }
 
 /// Old contracts-compatible `remove peer` request. Will be removed in the future.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingRemovePeerCompat<T: Config> {
@@ -1111,7 +1110,7 @@ impl<T: Config> OutgoingRemovePeerCompat<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingAddPeer`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingAddPeerEncoded {
     pub peer_address: EthAddress,
@@ -1136,7 +1135,7 @@ impl OutgoingAddPeerEncoded {
 }
 
 /// Sidechain-compatible version of `OutgoingRemovePeer`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingRemovePeerEncoded {
     pub peer_address: EthAddress,
@@ -1169,7 +1168,7 @@ impl OutgoingRemovePeerEncoded {
 /// as possible.
 /// 2. Migrate the bridge. At this stage a new Sidechain contract should be deployed and Thischain
 /// should be switched to it, so the old contract can't be used anymore.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingPrepareForMigration<T: Config> {
@@ -1233,7 +1232,7 @@ impl<T: Config> OutgoingPrepareForMigration<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingPrepareForMigration`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingPrepareForMigrationEncoded {
     pub this_contract_address: EthAddress,
@@ -1259,7 +1258,7 @@ impl OutgoingPrepareForMigrationEncoded {
 
 /// Outgoing request for migrating the bridge. For the full migration process description see
 /// `OutgoingPrepareForMigration` request.
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 pub struct OutgoingMigrate<T: Config> {
@@ -1344,7 +1343,7 @@ impl<T: Config> OutgoingMigrate<T> {
 }
 
 /// Sidechain-compatible version of `OutgoingMigrate`.
-#[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct OutgoingMigrateEncoded {
     pub this_contract_address: EthAddress,
@@ -1371,7 +1370,7 @@ impl OutgoingMigrateEncoded {
 ///
 /// On Ethereum network, legacy peer compatibility still applies to the Main and VAL contracts.
 /// The old XOR contract is deprecated and no longer gates peer readiness.
-#[derive(Clone, Default, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Default, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct EthPeersSync {
     is_bridge_ready: bool,

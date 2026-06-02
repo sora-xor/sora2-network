@@ -33,7 +33,6 @@ use core::convert::TryFrom;
 use codec::{Decode, Encode};
 use fixnum::ops::RoundMode::*;
 use fixnum::ops::RoundingDiv;
-use sp_runtime::RuntimeDebug;
 use sp_std::iter::once;
 use sp_std::vec::Vec;
 
@@ -246,7 +245,7 @@ pub mod fee_serialization {
 }
 
 /// Generalized filtration mechanism for listing liquidity sources.
-#[derive(Encode, Decode, Clone, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Debug, scale_info::TypeInfo)]
 pub struct LiquiditySourceFilter<DEXId: PartialEq + Copy, LiquiditySourceIndex: PartialEq + Copy> {
     /// DEX Id to which listing is limited.
     pub dex_id: DEXId,

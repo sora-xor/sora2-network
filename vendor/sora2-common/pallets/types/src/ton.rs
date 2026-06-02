@@ -31,7 +31,7 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
-use sp_core::{Get, RuntimeDebug, H256};
+use sp_core::{Get, H256};
 use sp_runtime::{traits::Hash, BoundedVec};
 
 use crate::{H128, MainnetAssetId, MainnetBalance};
@@ -43,7 +43,7 @@ use crate::{H128, MainnetAssetId, MainnetBalance};
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
@@ -103,7 +103,7 @@ impl From<TonBalance> for u128 {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -131,7 +131,7 @@ impl TonAddress {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -149,7 +149,7 @@ pub struct TonTransactionId {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -186,7 +186,7 @@ impl From<TonAddress> for TonAddressWithPrefix {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -203,7 +203,7 @@ pub struct AdditionalTONInboundData {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,
@@ -225,7 +225,7 @@ pub struct TonAssetInfo {
 #[derive(
     Clone,
     Copy,
-    RuntimeDebug,
+    Debug,
     Encode,
     Decode,
     PartialEq,

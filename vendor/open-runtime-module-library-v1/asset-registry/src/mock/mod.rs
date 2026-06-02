@@ -28,7 +28,7 @@ pub const CHARLIE: AccountId32 = AccountId32::new([2u8; 32]);
 	PartialEq,
 	Copy,
 	Clone,
-	RuntimeDebug,
+	Debug,
 	PartialOrd,
 	Ord,
 	parity_scale_codec::MaxEncodedLen,

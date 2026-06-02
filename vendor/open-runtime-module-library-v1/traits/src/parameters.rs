@@ -143,7 +143,7 @@ macro_rules! define_parameters {
 				$crate::parameters::parity_scale_codec::Encode,
 				$crate::parameters::parity_scale_codec::Decode,
 				$crate::parameters::parity_scale_codec::MaxEncodedLen,
-				$crate::parameters::sp_runtime::RuntimeDebug,
+				Debug,
 				$crate::parameters::scale_info::TypeInfo,
 				$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 			)]
@@ -161,7 +161,7 @@ macro_rules! define_parameters {
 				$crate::parameters::parity_scale_codec::Encode,
 				$crate::parameters::parity_scale_codec::Decode,
 				$crate::parameters::parity_scale_codec::MaxEncodedLen,
-				$crate::parameters::sp_runtime::RuntimeDebug,
+				Debug,
 				$crate::parameters::scale_info::TypeInfo,
 				$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 			)]
@@ -179,7 +179,7 @@ macro_rules! define_parameters {
 				$crate::parameters::parity_scale_codec::Encode,
 				$crate::parameters::parity_scale_codec::Decode,
 				$crate::parameters::parity_scale_codec::MaxEncodedLen,
-				$crate::parameters::sp_runtime::RuntimeDebug,
+				Debug,
 				$crate::parameters::scale_info::TypeInfo,
 				$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 			)]
@@ -211,7 +211,7 @@ macro_rules! define_parameters {
 					$crate::parameters::parity_scale_codec::Encode,
 					$crate::parameters::parity_scale_codec::Decode,
 					$crate::parameters::parity_scale_codec::MaxEncodedLen,
-					$crate::parameters::sp_runtime::RuntimeDebug,
+					Debug,
 					$crate::parameters::scale_info::TypeInfo,
 					$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 				)]
@@ -243,7 +243,7 @@ macro_rules! define_parameters {
 					Clone,
 					PartialEq,
 					Eq,
-					$crate::parameters::sp_runtime::RuntimeDebug
+					Debug
 				)]
 				$vis struct [<$key_name Value>](pub $value_type);
 
@@ -337,7 +337,7 @@ macro_rules! define_aggregrated_parameters {
 				$crate::parameters::parity_scale_codec::Encode,
 				$crate::parameters::parity_scale_codec::Decode,
 				$crate::parameters::parity_scale_codec::MaxEncodedLen,
-				$crate::parameters::sp_runtime::RuntimeDebug,
+				Debug,
 				$crate::parameters::scale_info::TypeInfo,
 				$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 			)]
@@ -355,7 +355,7 @@ macro_rules! define_aggregrated_parameters {
 				$crate::parameters::parity_scale_codec::Encode,
 				$crate::parameters::parity_scale_codec::Decode,
 				$crate::parameters::parity_scale_codec::MaxEncodedLen,
-				$crate::parameters::sp_runtime::RuntimeDebug,
+				Debug,
 				$crate::parameters::scale_info::TypeInfo,
 				$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 			)]
@@ -373,7 +373,7 @@ macro_rules! define_aggregrated_parameters {
 				$crate::parameters::parity_scale_codec::Encode,
 				$crate::parameters::parity_scale_codec::Decode,
 				$crate::parameters::parity_scale_codec::MaxEncodedLen,
-				$crate::parameters::sp_runtime::RuntimeDebug,
+				Debug,
 				$crate::parameters::scale_info::TypeInfo,
 				$crate::parameters::parity_scale_codec::DecodeWithMemTracking
 			)]

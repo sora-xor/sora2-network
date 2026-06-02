@@ -62,7 +62,6 @@ use frame_support::dispatch::Pays;
 use frame_support::ensure;
 use frame_support::sp_runtime::traits::Zero;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::sp_runtime::RuntimeDebug;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
@@ -88,7 +87,7 @@ where
     446400u32.into()
 }
 
-#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, scale_info::TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Debug, Encode, Decode, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[scale_info(skip_type_params(T))]
 struct PendingMultisigAccount<T>

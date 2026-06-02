@@ -46,7 +46,7 @@ pub use ethereum_types::{H128, H64};
 pub use log::Log;
 use serde::{Deserialize, Serialize};
 pub use sp_core::{H160, H256, H512, U256};
-use sp_core::{Get, RuntimeDebug};
+use sp_core::{Get};
 use staging_xcm as xcm;
 use ton::{TonAddress, TonBalance, TonNetworkId, TonTransactionId};
 
@@ -88,7 +88,7 @@ pub fn h256_from_sp_core(hash: sp_core::H256) -> H256 {
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
@@ -113,7 +113,7 @@ pub enum SubNetworkId {
     Clone,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
@@ -177,7 +177,7 @@ impl From<TonNetworkId> for GenericNetworkId {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
@@ -268,7 +268,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
@@ -292,7 +292,7 @@ impl TryInto<LiberlandAssetId> for GenericAssetId {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum GenericBalance {
     Substrate(MainnetBalance),
     /// EVM ABI uses big endian for integers, but scale codec uses little endian
@@ -326,7 +326,7 @@ pub type MainnetBalance = u128;
     Copy,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]

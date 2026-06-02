@@ -131,6 +131,29 @@ pub struct CrowdloanUserInfo<AssetId> {
     rewarded: Vec<(AssetId, Balance)>,
 }
 
+/// Crowdloan fixture used by integration chain specs.
+#[derive(
+    Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
+)]
+pub struct GenesisCrowdloanConfig<AssetId, BlockNumber, AccountId> {
+    pub tag: Vec<u8>,
+    pub start_block: BlockNumber,
+    pub length: BlockNumber,
+    pub rewards: Vec<(AssetId, Balance)>,
+    pub users: Vec<GenesisCrowdloanUserConfig<AssetId, AccountId>>,
+    pub account: AccountId,
+}
+
+/// Crowdloan participant fixture used by integration chain specs.
+#[derive(
+    Encode, Decode, Deserialize, Serialize, Clone, Debug, Default, PartialEq, scale_info::TypeInfo,
+)]
+pub struct GenesisCrowdloanUserConfig<AssetId, AccountId> {
+    pub account: AccountId,
+    pub contribution: Balance,
+    pub rewarded: Vec<(AssetId, Balance)>,
+}
+
 #[derive(Encode, Decode, Deserialize, Serialize, Clone, Debug, PartialEq, scale_info::TypeInfo)]
 pub struct Claim<AssetId, AccountId> {
     account_id: AccountId,
@@ -1464,6 +1487,60 @@ pub mod pallet {
         CrowdloanUserInfo<AssetIdOf<T>>,
         OptionQuery,
     >;
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig<T: Config> {
+        pub crowdloans: Vec<GenesisCrowdloanConfig<AssetIdOf<T>, BlockNumberFor<T>, T::AccountId>>,
+    }
+
+    impl<T: Config> Default for GenesisConfig<T> {
+        fn default() -> Self {
+            Self {
+                crowdloans: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
+        fn build(&self) {
+            for crowdloan in &self.crowdloans {
+                let tag = CrowdloanTag(
+                    crowdloan
+                        .tag
+                        .clone()
+                        .try_into()
+                        .expect("crowdloan genesis tag length should be valid"),
+                );
+                let total_contribution = crowdloan
+                    .users
+                    .iter()
+                    .fold(0u128, |total, user| total.saturating_add(user.contribution));
+
+                CrowdloanInfos::<T>::insert(
+                    &tag,
+                    CrowdloanInfo {
+                        total_contribution,
+                        rewards: crowdloan.rewards.clone(),
+                        start_block: crowdloan.start_block.clone(),
+                        length: crowdloan.length.clone(),
+                        account: crowdloan.account.clone(),
+                    },
+                );
+
+                for user in &crowdloan.users {
+                    CrowdloanUserInfos::<T>::insert(
+                        &user.account,
+                        &tag,
+                        CrowdloanUserInfo {
+                            contribution: user.contribution,
+                            rewarded: user.rewarded.clone(),
+                        },
+                    );
+                }
+            }
+        }
+    }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {

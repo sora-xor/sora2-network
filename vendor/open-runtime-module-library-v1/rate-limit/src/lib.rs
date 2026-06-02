@@ -36,14 +36,14 @@ pub mod module {
 	use super::*;
 
 	/// Period type.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, DecodeWithMemTracking)]
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, TypeInfo, DecodeWithMemTracking)]
 	pub enum Period {
 		Blocks(u64),
 		Seconds(u64),
 	}
 
 	/// Limit rules type.
-	#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo, DecodeWithMemTracking)]
+	#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug, TypeInfo, DecodeWithMemTracking)]
 	pub enum RateLimitRule {
 		/// Each period to reset remainder quota to `quota` amount.
 		/// `can_consume` check return true when the remainder quota gte the
@@ -76,7 +76,7 @@ pub mod module {
 		Clone,
 		Encode,
 		Decode,
-		RuntimeDebug,
+		Debug,
 		TypeInfo,
 		MaxEncodedLen,
 		DecodeWithMemTracking,

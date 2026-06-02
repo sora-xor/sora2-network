@@ -27,7 +27,6 @@ use common::{AssetInfoProvider, AssetManager, ReferencePriceProvider};
 use frame_support::__private::log;
 use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
-use frame_support::sp_runtime::RuntimeDebug;
 use scale_info::TypeInfo;
 use sp_runtime::traits::Convert;
 use sp_runtime::DispatchError;
@@ -39,7 +38,7 @@ pub use weights::WeightInfo;
 pub const BRIDGE_TECH_ACC_PREFIX: &[u8] = b"bridge";
 pub const BRIDGE_FEE_TECH_ACC_PREFIX: &[u8] = b"bridge-fee";
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct BridgeRequest<AssetId> {
     source: GenericAccount,
@@ -52,7 +51,7 @@ pub struct BridgeRequest<AssetId> {
     direction: MessageDirection,
 }
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 pub struct TransferLimitSettings<BlockNumber> {
     max_amount: Balance,
     period_blocks: BlockNumber,

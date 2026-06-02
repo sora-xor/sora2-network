@@ -68,11 +68,9 @@ use scale_info::prelude::vec;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_256;
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 use sp_runtime::{
     traits::{Dispatchable, Zero},
-    Percent,
-};
+    Percent};
 use sp_runtime::{Deserialize, Serialize};
 use sp_std::prelude::*;
 
@@ -661,7 +659,7 @@ pub mod pallet {
 }
 
 /// Represents height on either Thischain of Sidechain.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, Debug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum MultiChainHeight<BlockNumber> {
     Thischain(BlockNumber),
@@ -677,7 +675,7 @@ impl<BlockNumber: Default> Default for MultiChainHeight<BlockNumber> {
 /// A global extrinsic index, formed as the extrinsic index within a block, together with that
 /// block's height. This allows a transaction in which a multisig operation of a particular
 /// composite was created to be uniquely identified.
-#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+#[derive(Copy, Clone, Eq, PartialEq, Encode, Decode, Default, Debug, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BridgeTimepoint<BlockNumber> {
     /// The height of the chain at the point in time.
@@ -687,7 +685,7 @@ pub struct BridgeTimepoint<BlockNumber> {
 }
 
 /// An open multisig operation.
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, Debug, TypeInfo)]
 pub struct Multisig<BlockNumber, Balance, AccountId> {
     /// The extrinsic when the multisig operation was opened.
     pub when: BridgeTimepoint<BlockNumber>,
@@ -700,7 +698,7 @@ pub struct Multisig<BlockNumber, Balance, AccountId> {
 }
 
 #[derive(
-    Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, Serialize, Deserialize,
+    Clone, Eq, PartialEq, Encode, Decode, Default, Debug, TypeInfo, Serialize, Deserialize,
 )]
 pub struct MultisigAccount<AccountId> {
     /// Parties of the account.

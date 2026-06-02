@@ -51,7 +51,7 @@ use codec::{Decode, Encode};
 use common::permissions::TRANSFER;
 use common::{hash, AssetRegulator};
 use frame_support::ensure;
-use frame_support::sp_runtime::{DispatchError, RuntimeDebug};
+use frame_support::sp_runtime::DispatchError;
 use serde::{Deserialize, Serialize};
 use sp_core::hash::H512;
 use sp_std::vec::Vec;
@@ -72,16 +72,7 @@ pub type HolderId<T> = <T as frame_system::Config>::AccountId;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[derive(
-    PartialEq,
-    Eq,
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    scale_info::TypeInfo,
-    Serialize,
-    Deserialize,
+    PartialEq, Eq, Clone, Copy, Debug, Encode, Decode, scale_info::TypeInfo, Serialize, Deserialize,
 )]
 pub enum Scope {
     Limited(H512),

@@ -36,11 +36,11 @@ use common::{AccountIdOf, Balance, BoundedString};
 use derivative::Derivative;
 use frame_support::ensure;
 use frame_support::traits::Time;
-use sp_core::RuntimeDebug;
+use frame_support::DebugNoBound;
 use sp_runtime::{DispatchError, DispatchResult};
 
 #[derive(
-    RuntimeDebug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+    DebugNoBound, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
 )]
 #[scale_info(skip_type_params(T))]
 pub enum RequestStatus<T: Config> {
@@ -57,7 +57,7 @@ pub enum RequestStatus<T: Config> {
 }
 
 #[derive(
-    RuntimeDebug, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
+    DebugNoBound, Clone, PartialEq, Eq, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen,
 )]
 #[scale_info(skip_type_params(T))]
 pub enum Request<T: Config> {
@@ -102,7 +102,7 @@ impl<T: Config> Request<T> {
     }
 }
 
-#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
+#[derive(DebugNoBound, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
 #[derivative(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct DepositRequest<T: Config> {
@@ -152,7 +152,7 @@ impl<T: Config> DepositRequest<T> {
     }
 }
 
-#[derive(RuntimeDebug, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
+#[derive(DebugNoBound, Encode, Decode, scale_info::TypeInfo, MaxEncodedLen, Derivative)]
 #[derivative(Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(T))]
 pub struct WithdrawRequest<T: Config> {

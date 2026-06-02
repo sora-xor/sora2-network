@@ -33,8 +33,7 @@ use parity_scale_codec::MaxEncodedLen;
 use scale_info::TypeInfo;
 use sp_runtime::{
 	traits::{SaturatedConversion, Saturating},
-	DispatchResult, RuntimeDebug,
-};
+	DispatchResult};
 
 mod default_weight;
 mod mock;
@@ -43,7 +42,7 @@ mod tests;
 /// Gradually update a value stored at `key` to `target_value`,
 /// change `per_block` * `T::UpdateFrequency` per `T::UpdateFrequency`
 /// blocks.
-#[derive(Encode, Decode, Clone, Eq, PartialEq, MaxEncodedLen, RuntimeDebug, TypeInfo, DecodeWithMemTracking)]
+#[derive(Encode, Decode, Clone, Eq, PartialEq, MaxEncodedLen, Debug, TypeInfo, DecodeWithMemTracking)]
 pub struct GraduallyUpdate<Key, Value> {
 	pub key: Key,
 	pub target_value: Value,

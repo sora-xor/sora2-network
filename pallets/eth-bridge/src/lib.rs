@@ -108,7 +108,6 @@ use requests::*;
 use serde::{Deserialize, Serialize};
 use sp_core::{H160, H256};
 use sp_runtime::DispatchError;
-use sp_runtime::RuntimeDebug;
 use sp_std::borrow::Cow;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::fmt::{self, Debug};
@@ -210,9 +209,7 @@ type BridgeTimepoint<T> = Timepoint<T>;
 type BridgeNetworkId<T> = <T as Config>::NetworkId;
 
 /// Ethereum node parameters (url, credentials).
-#[derive(
-    Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, RuntimeDebug, scale_info::TypeInfo,
-)]
+#[derive(Encode, Decode, Eq, PartialEq, Clone, PartialOrd, Ord, Debug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct NodeParams {
     url: String,
@@ -221,14 +218,14 @@ pub struct NodeParams {
 
 /// Local peer config. Contains a set of networks that the peer is responsible for.
 #[cfg(feature = "std")]
-#[derive(Clone, RuntimeDebug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PeerConfig<NetworkId: std::hash::Hash + Eq> {
     pub networks: HashMap<NetworkId, NodeParams>,
 }
 
 /// Network-specific parameters.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub struct NetworkParams<AccountId: Ord> {
     pub bridge_contract_address: EthAddress,
     pub initial_peers: BTreeSet<AccountId>,
@@ -251,7 +248,7 @@ pub struct NetworkParams<AccountId: Ord> {
         deserialize = "<T as frame_system::pallet::Config>::AccountId: Deserialize<'de>, <T as assets::Config>::AssetId: Deserialize<'de>"
     ))
 )]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct NetworkConfig<T: Config> {
     pub initial_peers: BTreeSet<<T as frame_system::pallet::Config>::AccountId>,
@@ -298,7 +295,7 @@ impl<T: Config> BridgeAssetData<T> {
 
 /// Bridge status.
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Copy, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo)]
 pub enum BridgeStatus {
     Initialized,
     Migrating,
@@ -313,7 +310,7 @@ impl Default for BridgeStatus {
 /// Bridge asset parameters.
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Encode, Decode, PartialEq, Eq, Debug, scale_info::TypeInfo)]
 pub enum AssetConfig<AssetId> {
     Thischain {
         id: AssetId,
@@ -359,15 +356,7 @@ impl<AssetId> AssetConfig<AssetId> {
 /// Bridge function signature version
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derive(
-    Clone,
-    Copy,
-    Encode,
-    Decode,
-    DecodeWithMemTracking,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    scale_info::TypeInfo,
+    Clone, Copy, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, Debug, scale_info::TypeInfo,
 )]
 pub enum BridgeSignatureVersion {
     V1,
@@ -1027,7 +1016,7 @@ pub mod pallet {
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
         #[pallet::call_index(12)]
-        #[pallet::weight(<T as Config>::WeightInfo::approve_request())]
+        #[pallet::weight(<T as Config>::WeightInfo::approve_request_finalize())]
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
@@ -2227,7 +2216,7 @@ impl<T: Config> Pallet<T> {
                 author, hash
             );
             RequestApprovers::<T>::insert(net_id, &hash, &approvers);
-            return Ok(None);
+            return Ok(Some(<T as Config>::WeightInfo::approve_request()));
         }
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
@@ -2247,7 +2236,7 @@ impl<T: Config> Pallet<T> {
             let weight_info = <T as Config>::WeightInfo::approve_request_finalize();
             return Ok(Some(weight_info));
         }
-        Ok(None)
+        Ok(Some(<T as Config>::WeightInfo::approve_request()))
     }
 
     fn is_additional_signature_needed(net_id: T::NetworkId, request: &OutgoingRequest<T>) -> bool {

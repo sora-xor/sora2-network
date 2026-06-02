@@ -43,7 +43,6 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::ecdsa;
-use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
@@ -62,7 +61,7 @@ mod benchmarking;
 pub mod weights;
 pub use weights::WeightInfo;
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct Proof {
     pub digest: AuxiliaryDigest,
     pub proof: Vec<ecdsa::Signature>,
@@ -411,7 +410,7 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
 
 pub struct MultiEVMVerifier<T>(PhantomData<T>);
 
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct MultiEVMProof {
     pub proof: Vec<ecdsa::Signature>,
 }

@@ -30,7 +30,10 @@
 
 use super::mock::*;
 use super::Error;
-use crate::requests::{IncomingRequestKind, IncomingTransactionRequestKind, RequestStatus};
+use crate::requests::{
+    IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
+    RequestStatus,
+};
 use crate::tests::mock::{get_account_id_from_seed, ExtBuilder};
 use crate::tests::{last_outgoing_request, last_request, Assets, ETH_NETWORK_ID};
 use crate::types::{Log, TransactionReceipt};
@@ -71,6 +74,63 @@ fn ocw_should_not_handle_non_finalized_outgoing_request() {
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, hash).len(),
             0
+        );
+    });
+}
+
+#[test]
+fn ocw_mark_as_done_targets_original_outgoing_hash() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Thischain { id: XOR.into() }],
+        None,
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let outgoing_hash = H256::repeat_byte(0x42);
+
+        crate::RequestStatuses::<Runtime>::insert(
+            net_id,
+            outgoing_hash,
+            RequestStatus::ApprovalsReady,
+        );
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            outgoing_hash,
+            IncomingRequestKind::Meta(IncomingMetaRequestKind::MarkAsDone),
+            net_id
+        ));
+        let load_hash = last_request(net_id).unwrap().hash();
+        assert_ne!(load_hash, outgoing_hash);
+
+        state.push_response(types::U64::from(777u64));
+        state.push_response(true);
+        state.run_next_offchain_and_dispatch_txs();
+
+        let incoming_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash);
+        assert_ne!(incoming_hash, H256::zero());
+        let incoming = crate::Requests::<Runtime>::get(net_id, incoming_hash)
+            .unwrap()
+            .into_incoming()
+            .unwrap()
+            .0;
+        let IncomingRequest::MarkAsDone(mark_as_done) = incoming else {
+            panic!("expected MarkAsDone incoming request");
+        };
+        assert_eq!(mark_as_done.outgoing_request_hash, outgoing_hash);
+        assert_eq!(mark_as_done.initial_request_hash, load_hash);
+        assert_eq!(mark_as_done.author, alice);
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, load_hash),
+            Some(RequestStatus::Done)
+        );
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, incoming_hash),
+            Some(RequestStatus::Pending)
         );
     });
 }
