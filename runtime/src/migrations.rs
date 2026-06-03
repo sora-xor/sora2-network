@@ -46,7 +46,7 @@ pub type Migrations = (
     EthBridgeStorageVersionV3,
     VestedRewardsStorageVersionV4,
     KensetsuStorageVersionV6,
-    pallet_polkamarkt::migrations::v5::Migrate<crate::Runtime>,
+    pallet_polkamarkt::migrations::v6::Migrate<crate::Runtime>,
 );
 
 pub type MultiBlockMigrations = ();

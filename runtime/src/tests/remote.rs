@@ -29,6 +29,16 @@ fn env_csv(name: &str) -> Vec<String> {
 pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     sp_tracing::try_init_simple();
     let require_remote = env_flag("REQUIRE_REMOTE", false);
+    let remote_requested = require_remote
+        || var("REMOTE_RPC_URL").is_ok()
+        || var("WS").is_ok()
+        || var("SNAP").is_ok()
+        || var("REMOTE_PALLETS").is_ok();
+
+    if !remote_requested {
+        eprintln!("Skipping remote migration test: set REQUIRE_REMOTE=1 to run it");
+        return;
+    }
 
     let transport_uri = var("REMOTE_RPC_URL")
         .or_else(|_| var("WS"))

@@ -120,143 +120,6 @@ pub struct SellQuote<Balance> {
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct LiquidityQuote<Balance> {
-    pub market_id: u32,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub collateral_in: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub lp_shares_out: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub pool_collateral: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub total_lp_shares: Balance,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct FlipQuote<Balance> {
-    pub market_id: u32,
-    pub from_outcome: String,
-    pub to_outcome: String,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub shares_in: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub gross_collateral_out: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub sell_fee_amount: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub collateral_reinvested: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub buy_fee_amount: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub pricing_collateral: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub shares_out: Balance,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct ClaimableInfo<AccountId, Balance> {
     pub market_id: u32,
     #[cfg_attr(
@@ -327,72 +190,16 @@ pub struct ClaimableInfo<AccountId, Balance> {
         )
     )]
     pub claimable_payout: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub open_yes_shares: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub open_no_shares: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub open_collateral: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
     pub creator_fees: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub creator_liquidity: Balance,
     pub is_creator: bool,
 }
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct OrderQuote<Balance> {
+pub struct MarketState<Balance> {
     pub market_id: u32,
-    pub outcome: String,
-    pub side: String,
-    pub price_cents: u8,
+    pub mechanism: String,
     #[cfg_attr(
         feature = "std",
         serde(
@@ -403,7 +210,7 @@ pub struct OrderQuote<Balance> {
             with = "string_serialization"
         )
     )]
-    pub shares: Balance,
+    pub virtual_depth: Balance,
     #[cfg_attr(
         feature = "std",
         serde(
@@ -414,7 +221,7 @@ pub struct OrderQuote<Balance> {
             with = "string_serialization"
         )
     )]
-    pub filled_shares: Balance,
+    pub real_yes_shares: Balance,
     #[cfg_attr(
         feature = "std",
         serde(
@@ -425,7 +232,7 @@ pub struct OrderQuote<Balance> {
             with = "string_serialization"
         )
     )]
-    pub posted_shares: Balance,
+    pub real_no_shares: Balance,
     #[cfg_attr(
         feature = "std",
         serde(
@@ -436,62 +243,11 @@ pub struct OrderQuote<Balance> {
             with = "string_serialization"
         )
     )]
-    pub collateral_in: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub collateral_out: Balance,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub fee_amount: Balance,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-pub struct OrderBookLevel<Balance> {
-    pub price_cents: u8,
-    #[cfg_attr(
-        feature = "std",
-        serde(
-            bound(
-                serialize = "Balance: std::fmt::Display",
-                deserialize = "Balance: std::str::FromStr"
-            ),
-            with = "string_serialization"
-        )
-    )]
-    pub shares: Balance,
-}
-
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, TypeInfo)]
-#[cfg_attr(feature = "std", derive(Debug, Serialize, Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
-#[cfg_attr(
-    feature = "std",
-    serde(bound(
-        serialize = "Balance: std::fmt::Display",
-        deserialize = "Balance: std::str::FromStr"
-    ))
-)]
-pub struct OrderBook<Balance> {
-    pub bids: alloc::vec::Vec<OrderBookLevel<Balance>>,
-    pub asks: alloc::vec::Vec<OrderBookLevel<Balance>>,
+    pub dpm_collateral: Balance,
+    pub marginal_yes_price_bps: u32,
+    pub marginal_no_price_bps: u32,
+    pub implied_yes_probability_bps: u32,
+    pub implied_no_probability_bps: u32,
 }
 
 sp_api::decl_runtime_apis! {
@@ -503,13 +259,7 @@ sp_api::decl_runtime_apis! {
 
         fn quote_sell(market_id: u32, outcome: String, shares_in: Balance) -> Option<SellQuote<Balance>>;
 
-        fn quote_add_liquidity(market_id: u32, collateral_in: Balance) -> Option<LiquidityQuote<Balance>>;
-
-        fn quote_flip_position(market_id: u32, from_outcome: String, shares_in: Balance) -> Option<FlipQuote<Balance>>;
-
-        fn quote_order(market_id: u32, outcome: String, side: String, price_cents: u8, shares: Balance) -> Option<OrderQuote<Balance>>;
-
-        fn order_book(market_id: u32, outcome: String, depth: u32) -> Option<OrderBook<Balance>>;
+        fn market_state(market_id: u32) -> Option<MarketState<Balance>>;
 
         fn claimable(account_id: AccountId, market_id: u32) -> Option<ClaimableInfo<AccountId, Balance>>;
     }

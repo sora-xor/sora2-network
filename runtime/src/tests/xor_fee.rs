@@ -132,13 +132,6 @@ fn polkamarkt_trade_calls() -> Vec<<Runtime as frame_system::Config>::RuntimeCal
             shares_in: balance!(5),
             min_collateral_out: 0,
         }),
-        RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::flip_position {
-            market_id: 0,
-            from_outcome: pallet_polkamarkt::BinaryOutcome::Yes,
-            shares_in: balance!(5),
-            min_collateral_out: 0,
-            min_shares_out: 0,
-        }),
     ]
 }
 
@@ -1780,15 +1773,9 @@ fn polkamarkt_non_trade_user_calls_do_not_get_trade_fee_override() {
 
         let len = 10;
         let dispatch_info = info_from_weight(MOCK_WEIGHT);
-        let add_liquidity_call = RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::add_liquidity {
-            market_id: 0,
-            collateral_amount: balance!(10),
-            min_lp_shares: 0,
-        });
         let claim_market_call =
             RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::claim_market { market_id: 0 });
 
-        assert_eq!(CustomFees::compute_fee(&add_liquidity_call), None);
         assert_eq!(CustomFees::compute_fee(&claim_market_call), None);
 
         let base_fee = WeightToFee::weight_to_fee(
@@ -1796,10 +1783,6 @@ fn polkamarkt_non_trade_user_calls_do_not_get_trade_fee_override() {
         );
         let len_fee = length_fee(len);
         let weight_fee = WeightToFee::weight_to_fee(&MOCK_WEIGHT);
-        assert_eq!(
-            XorFee::compute_fee(len as u32, &add_liquidity_call, &dispatch_info, 0).0,
-            base_fee + len_fee + weight_fee
-        );
         assert_eq!(
             XorFee::compute_fee(len as u32, &claim_market_call, &dispatch_info, 0).0,
             base_fee + len_fee + weight_fee

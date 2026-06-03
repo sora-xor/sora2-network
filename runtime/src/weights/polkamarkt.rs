@@ -67,8 +67,6 @@ pub trait WeightInfo {
 	fn create_market() -> Weight;
 	fn buy() -> Weight;
 	fn sell() -> Weight;
-	fn flip_position() -> Weight;
-	fn add_liquidity() -> Weight;
 	fn sync_market_status() -> Weight;
 	fn resolve_market() -> Weight;
 	fn resolve_market_with_evidence() -> Weight;
@@ -77,13 +75,7 @@ pub trait WeightInfo {
 	fn claim_market() -> Weight;
 	fn claim_markets(n: u32, ) -> Weight;
 	fn claim_creator_fees() -> Weight;
-	fn claim_creator_liquidity() -> Weight;
-	fn claim_liquidity() -> Weight;
 	fn sweep_xor_buyback_and_burn() -> Weight;
-	fn place_order(f: u32, ) -> Weight;
-	fn cancel_order() -> Weight;
-	fn split_position() -> Weight;
-	fn merge_positions() -> Weight;
 }
 
 /// Weights for pallet_polkamarkt using the Substrate node and recommended hardware.
@@ -157,12 +149,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `322`
-		//  Estimated: `3787`
-		// Minimum execution time: 18_000_000 picoseconds.
-		Weight::from_parts(19_000_000, 3787)
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
+		//  Measured:  `981`
+		//  Estimated: `325556`
+		// Minimum execution time: 99_000_000 picoseconds.
+		Weight::from_parts(105_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(12_u64))
+			.saturating_add(T::DbWeight::get().writes(13_u64))
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
@@ -225,54 +217,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(70_000_000, 325556)
 			.saturating_add(T::DbWeight::get().reads(12_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketCreatorFees` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketCreatorFees` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::PendingXorBuybackCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketVolume` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketVolume` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn flip_position() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `869`
-		//  Estimated: `4334`
-		// Minimum execution time: 52_000_000 picoseconds.
-		Weight::from_parts(53_000_000, 4334)
-			.saturating_add(T::DbWeight::get().reads(7_u64))
-			.saturating_add(T::DbWeight::get().writes(7_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	/// Storage: `Polkamarkt::LiquidityPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn add_liquidity() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1788`
-		//  Estimated: `325556`
-		// Minimum execution time: 58_000_000 picoseconds.
-		Weight::from_parts(59_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(9_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
@@ -422,64 +366,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(7_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketResolution` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn claim_creator_liquidity() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1833`
-		//  Estimated: `325556`
-		// Minimum execution time: 67_000_000 picoseconds.
-		Weight::from_parts(68_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(11_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketResolution` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn claim_liquidity() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1907`
-		//  Estimated: `325556`
-		// Minimum execution time: 64_000_000 picoseconds.
-		Weight::from_parts(65_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(11_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
-	}
 	/// Storage: `Polkamarkt::PendingXorBuybackCollateral` (r:1 w:1)
 	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `DEXManager::DEXInfos` (r:1 w:0)
@@ -519,128 +405,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(19_u64))
 			.saturating_add(T::DbWeight::get().writes(9_u64))
 	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookPriceLevels` (r:3 w:2)
-	/// Proof: `Polkamarkt::OrderBookPriceLevels` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookQueues` (r:2 w:2)
-	/// Proof: `Polkamarkt::OrderBookQueues` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::Orders` (r:24 w:25)
-	/// Proof: `Polkamarkt::Orders` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpenOrdersByAccountMarket` (r:25 w:25)
-	/// Proof: `Polkamarkt::OpenOrdersByAccountMarket` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::NextOrderId` (r:1 w:1)
-	/// Proof: `Polkamarkt::NextOrderId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:2 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:25 w:25)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketOrderBookCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketOrderBookCollateral` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketCreatorFees` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketCreatorFees` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::PendingXorBuybackCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketVolume` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketVolume` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// The range of component `f` is `[1, 24]`.
-	fn place_order(f: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1864 + f * (224 ±0)`
-		//  Estimated: `325556 + f * (2699 ±0)`
-		// Minimum execution time: 148_000_000 picoseconds.
-		Weight::from_parts(34_906_251, 325556)
-			// Standard Error: 236_700
-			.saturating_add(Weight::from_parts(64_695_153, 0).saturating_mul(f.into()))
-			.saturating_add(T::DbWeight::get().reads(20_u64))
-			.saturating_add(T::DbWeight::get().reads((3_u64).saturating_mul(f.into())))
-			.saturating_add(T::DbWeight::get().writes(16_u64))
-			.saturating_add(T::DbWeight::get().writes((3_u64).saturating_mul(f.into())))
-			.saturating_add(Weight::from_parts(0, 2699).saturating_mul(f.into()))
-	}
-	/// Storage: `Polkamarkt::Orders` (r:1 w:1)
-	/// Proof: `Polkamarkt::Orders` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::Markets` (r:1 w:0)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookQueues` (r:1 w:1)
-	/// Proof: `Polkamarkt::OrderBookQueues` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpenOrdersByAccountMarket` (r:1 w:1)
-	/// Proof: `Polkamarkt::OpenOrdersByAccountMarket` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookPriceLevels` (r:1 w:1)
-	/// Proof: `Polkamarkt::OrderBookPriceLevels` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn cancel_order() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1863`
-		//  Estimated: `325556`
-		// Minimum execution time: 57_000_000 picoseconds.
-		Weight::from_parts(63_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(10_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketOrderBookCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketOrderBookCollateral` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn split_position() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1353`
-		//  Estimated: `325556`
-		// Minimum execution time: 53_000_000 picoseconds.
-		Weight::from_parts(57_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(8_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketOrderBookCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketOrderBookCollateral` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn merge_positions() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1784`
-		//  Estimated: `325556`
-		// Minimum execution time: 57_000_000 picoseconds.
-		Weight::from_parts(58_000_000, 325556)
-			.saturating_add(T::DbWeight::get().reads(9_u64))
-			.saturating_add(T::DbWeight::get().writes(6_u64))
-	}
 }
 
 /// Runtime-specific alias.
@@ -663,12 +427,6 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 	}
 	fn sell() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::sell()
-	}
-	fn flip_position() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::flip_position()
-	}
-	fn add_liquidity() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::add_liquidity()
 	}
 	fn sync_market_status() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::sync_market_status()
@@ -694,26 +452,8 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 	fn claim_creator_fees() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::claim_creator_fees()
 	}
-	fn claim_creator_liquidity() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::claim_creator_liquidity()
-	}
-	fn claim_liquidity() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::claim_liquidity()
-	}
 	fn sweep_xor_buyback_and_burn() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::sweep_xor_buyback_and_burn()
-	}
-	fn place_order(f: u32, ) -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::place_order(f, )
-	}
-	fn cancel_order() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::cancel_order()
-	}
-	fn split_position() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::split_position()
-	}
-	fn merge_positions() -> Weight {
-		<SubstrateWeight<T> as WeightInfo>::merge_positions()
 	}
 }
 
@@ -787,12 +527,12 @@ impl WeightInfo for () {
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	fn create_market() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `322`
-		//  Estimated: `3787`
-		// Minimum execution time: 18_000_000 picoseconds.
-		Weight::from_parts(19_000_000, 3787)
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
+		//  Measured:  `981`
+		//  Estimated: `325556`
+		// Minimum execution time: 99_000_000 picoseconds.
+		Weight::from_parts(105_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(12_u64))
+			.saturating_add(RocksDbWeight::get().writes(13_u64))
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
@@ -855,54 +595,6 @@ impl WeightInfo for () {
 		Weight::from_parts(70_000_000, 325556)
 			.saturating_add(RocksDbWeight::get().reads(12_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketCreatorFees` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketCreatorFees` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::PendingXorBuybackCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketVolume` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketVolume` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn flip_position() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `869`
-		//  Estimated: `4334`
-		// Minimum execution time: 52_000_000 picoseconds.
-		Weight::from_parts(53_000_000, 4334)
-			.saturating_add(RocksDbWeight::get().reads(7_u64))
-			.saturating_add(RocksDbWeight::get().writes(7_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	/// Storage: `Polkamarkt::LiquidityPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn add_liquidity() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1788`
-		//  Estimated: `325556`
-		// Minimum execution time: 58_000_000 picoseconds.
-		Weight::from_parts(59_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(9_u64))
-			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
@@ -1052,64 +744,6 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(7_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketResolution` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn claim_creator_liquidity() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1833`
-		//  Estimated: `325556`
-		// Minimum execution time: 67_000_000 picoseconds.
-		Weight::from_parts(68_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(11_u64))
-			.saturating_add(RocksDbWeight::get().writes(6_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::LiquidityPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::LiquidityPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPools` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPools` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketResolution` (r:1 w:0)
-	/// Proof: `Polkamarkt::MarketResolution` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn claim_liquidity() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1907`
-		//  Estimated: `325556`
-		// Minimum execution time: 64_000_000 picoseconds.
-		Weight::from_parts(65_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(11_u64))
-			.saturating_add(RocksDbWeight::get().writes(6_u64))
-	}
 	/// Storage: `Polkamarkt::PendingXorBuybackCollateral` (r:1 w:1)
 	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `DEXManager::DEXInfos` (r:1 w:0)
@@ -1148,127 +782,5 @@ impl WeightInfo for () {
 		Weight::from_parts(268_000_000, 650122)
 			.saturating_add(RocksDbWeight::get().reads(19_u64))
 			.saturating_add(RocksDbWeight::get().writes(9_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookPriceLevels` (r:3 w:2)
-	/// Proof: `Polkamarkt::OrderBookPriceLevels` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookQueues` (r:2 w:2)
-	/// Proof: `Polkamarkt::OrderBookQueues` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::Orders` (r:24 w:25)
-	/// Proof: `Polkamarkt::Orders` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpenOrdersByAccountMarket` (r:25 w:25)
-	/// Proof: `Polkamarkt::OpenOrdersByAccountMarket` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::NextOrderId` (r:1 w:1)
-	/// Proof: `Polkamarkt::NextOrderId` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:2 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:25 w:25)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketOrderBookCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketOrderBookCollateral` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketCreatorFees` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketCreatorFees` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::PendingXorBuybackCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::PendingXorBuybackCollateral` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketVolume` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketVolume` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// The range of component `f` is `[1, 24]`.
-	fn place_order(f: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1864 + f * (224 ±0)`
-		//  Estimated: `325556 + f * (2699 ±0)`
-		// Minimum execution time: 148_000_000 picoseconds.
-		Weight::from_parts(34_906_251, 325556)
-			// Standard Error: 236_700
-			.saturating_add(Weight::from_parts(64_695_153, 0).saturating_mul(f.into()))
-			.saturating_add(RocksDbWeight::get().reads(20_u64))
-			.saturating_add(RocksDbWeight::get().reads((3_u64).saturating_mul(f.into())))
-			.saturating_add(RocksDbWeight::get().writes(16_u64))
-			.saturating_add(RocksDbWeight::get().writes((3_u64).saturating_mul(f.into())))
-			.saturating_add(Weight::from_parts(0, 2699).saturating_mul(f.into()))
-	}
-	/// Storage: `Polkamarkt::Orders` (r:1 w:1)
-	/// Proof: `Polkamarkt::Orders` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::Markets` (r:1 w:0)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookQueues` (r:1 w:1)
-	/// Proof: `Polkamarkt::OrderBookQueues` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OpenOrdersByAccountMarket` (r:1 w:1)
-	/// Proof: `Polkamarkt::OpenOrdersByAccountMarket` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::OrderBookPriceLevels` (r:1 w:1)
-	/// Proof: `Polkamarkt::OrderBookPriceLevels` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn cancel_order() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1863`
-		//  Estimated: `325556`
-		// Minimum execution time: 57_000_000 picoseconds.
-		Weight::from_parts(63_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(10_u64))
-			.saturating_add(RocksDbWeight::get().writes(6_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketOrderBookCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketOrderBookCollateral` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	fn split_position() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1353`
-		//  Estimated: `325556`
-		// Minimum execution time: 53_000_000 picoseconds.
-		Weight::from_parts(57_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(8_u64))
-			.saturating_add(RocksDbWeight::get().writes(6_u64))
-	}
-	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
-	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositions` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositions` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketPositionTotals` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketPositionTotals` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Polkamarkt::MarketOrderBookCollateral` (r:1 w:1)
-	/// Proof: `Polkamarkt::MarketOrderBookCollateral` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `ExtendedAssets::SoulboundAsset` (r:1 w:0)
-	/// Proof: `ExtendedAssets::SoulboundAsset` (`max_values`: None, `max_size`: Some(322091), added: 324566, mode: `MaxEncodedLen`)
-	/// Storage: `Assets::AssetInfosV2` (r:1 w:0)
-	/// Proof: `Assets::AssetInfosV2` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	/// Storage: `Tokens::Accounts` (r:2 w:2)
-	/// Proof: `Tokens::Accounts` (`max_values`: None, `max_size`: Some(136), added: 2611, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:0)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	fn merge_positions() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1784`
-		//  Estimated: `325556`
-		// Minimum execution time: 57_000_000 picoseconds.
-		Weight::from_parts(58_000_000, 325556)
-			.saturating_add(RocksDbWeight::get().reads(9_u64))
-			.saturating_add(RocksDbWeight::get().writes(6_u64))
 	}
 }
