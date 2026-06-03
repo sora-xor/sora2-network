@@ -2948,7 +2948,7 @@ pub mod migrations {
             })
         }
 
-        fn clear_storage<T: Config>(storage_item: &[u8], limit: u32, label: &str) -> u64 {
+        fn clear_storage(storage_item: &[u8], limit: u32, label: &str) -> u64 {
             let prefix = storage_prefix(b"Polkamarkt", storage_item);
             super::clear_raw_prefix_with_limit(&prefix, limit, label)
         }
@@ -3197,34 +3197,34 @@ pub mod migrations {
                         }
 
                         let cleared_orders = drained_orders;
-                        let cleared_queues = clear_storage::<T>(
+                        let cleared_queues = clear_storage(
                             b"OrderBookQueues",
                             MAX_LEGACY_ORDER_INDEXES,
                             "OrderBookQueues",
                         );
-                        let cleared_levels = clear_storage::<T>(
+                        let cleared_levels = clear_storage(
                             b"OrderBookPriceLevels",
                             MAX_LEGACY_ORDER_INDEXES,
                             "OrderBookPriceLevels",
                         );
-                        let cleared_open_orders = clear_storage::<T>(
+                        let cleared_open_orders = clear_storage(
                             b"OpenOrdersByAccountMarket",
                             MAX_LEGACY_ORDER_INDEXES,
                             "OpenOrdersByAccountMarket",
                         );
-                        let cleared_order_collateral = clear_storage::<T>(
+                        let cleared_order_collateral = clear_storage(
                             b"MarketOrderBookCollateral",
                             MAX_LEGACY_POOLS,
                             "MarketOrderBookCollateral",
                         );
                         let cleared_pools =
-                            clear_storage::<T>(b"MarketPools", MAX_LEGACY_POOLS, "MarketPools");
-                        let cleared_lp_positions = clear_storage::<T>(
+                            clear_storage(b"MarketPools", MAX_LEGACY_POOLS, "MarketPools");
+                        let cleared_lp_positions = clear_storage(
                             b"LiquidityPositions",
                             MAX_LEGACY_LIQUIDITY_POSITIONS,
                             "LiquidityPositions",
                         );
-                        let cleared_lp_totals = clear_storage::<T>(
+                        let cleared_lp_totals = clear_storage(
                             b"LiquidityPositionTotals",
                             MAX_LEGACY_POOLS,
                             "LiquidityPositionTotals",
