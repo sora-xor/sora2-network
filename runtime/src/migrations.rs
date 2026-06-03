@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#[cfg(feature = "try-runtime")]
+use alloc::{boxed::Box, format};
 use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::storage::storage_prefix;
@@ -46,7 +48,7 @@ pub type Migrations = (
     EthBridgeStorageVersionV3,
     VestedRewardsStorageVersionV4,
     KensetsuStorageVersionV6,
-    pallet_polkamarkt::migrations::v5::Migrate<crate::Runtime>,
+    pallet_polkamarkt::migrations::v6::Migrate<crate::Runtime>,
 );
 
 pub type MultiBlockMigrations = ();

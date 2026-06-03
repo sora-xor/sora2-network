@@ -4920,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.8.7"
+version = "4.8.8"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5009,7 +5009,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.8.7"
+version = "4.8.8"
 dependencies = [
  "band",
  "common",
@@ -5042,7 +5042,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.8.7"
+version = "4.8.8"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -10199,6 +10199,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "serde_json",
  "sp-api",
  "sp-runtime",
 ]
