@@ -1,0 +1,76 @@
+{
+  "generated_at_utc": "2026-06-03T15:39:11Z",
+  "checked_node_url": "wss://ws.mof.sora.org",
+  "checked_block": 26413341,
+  "runtime": {
+    "package_version": "4.8.8",
+    "spec_name": "sora-substrate",
+    "spec_version": 130,
+    "transaction_version": 130,
+    "impl_version": 2
+  },
+  "wasm": {
+    "source_path": "/Users/takemiyamakoto/dev/sora2-network/target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
+    "release_path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/framenode-runtime-4.8.8.compact.compressed.wasm",
+    "bytes": 3037102,
+    "blake2_256": "0x39f8609a748b13a0186e90023f709adf9d639bfa0777f6aaf3484a254e6b17b4",
+    "sha256": "0xf1ea5ced3a614003a7a4209b77a00e5f8bcd66a6ba312375d2d17e2154b5dfb5"
+  },
+  "proposal_preimage": {
+    "call": "system.set_code",
+    "bytes_to_note_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/set-code-call.hex",
+    "scale_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/set-code-call.scale",
+    "encoded_len": 3037108,
+    "hash": "0x6972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55b"
+  },
+  "preimage_note": {
+    "call": "preimage.note_preimage(bytes = system.set_code call bytes)",
+    "call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/preimage-note-call.hex",
+    "encoded_len": 3037114
+  },
+  "council": {
+    "live_member_count": 8,
+    "origin_required": "AtLeastHalfCouncil",
+    "inner_call": "democracy.external_propose_majority(Bounded::Lookup { hash, len })",
+    "inner_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/democracy-external-propose-majority-call.hex",
+    "inner_call_hex": "0x1d05026972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55bb4572e00",
+    "inner_call_hash": "0x06998b7a2fe740c9070c68d82c8dfffc6a5633fa2c39f6ba71fd3707d5c6fab1",
+    "length_bound": 39,
+    "minimum_threshold": 4,
+    "conservative_threshold": 5,
+    "full_call_minimum_threshold_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/council-propose-external-majority-threshold-4-call.hex",
+    "full_call_minimum_threshold_hex": "0x1b02101d05026972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55bb4572e009c",
+    "full_call_conservative_threshold_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/council-propose-external-majority-threshold-5-call.hex",
+    "full_call_conservative_threshold_hex": "0x1b02141d05026972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55bb4572e009c"
+  },
+  "technical_committee": {
+    "live_member_count": 4,
+    "origin_required": "MoreThanHalfTechnicalCommittee",
+    "inner_call": "democracy.fast_track(proposal_hash, voting_period, delay)",
+    "inner_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/democracy-fast-track-call.hex",
+    "inner_call_hex": "0x1d076972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55b0807000000000000",
+    "inner_call_hash": "0x2cbcf6daf34d9366a5ef557c2a255e10c027b195d60204d7fff597e67fb78b0b",
+    "length_bound": 42,
+    "threshold": 3,
+    "voting_period_blocks": 1800,
+    "voting_period_note": "3 hours at 6 second blocks",
+    "delay_blocks": 0,
+    "full_call_hex_file": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.8/technical-committee-fast-track-threshold-3-call.hex",
+    "full_call_hex": "0x1c020c1d076972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55b0807000000000000a8"
+  },
+  "current_chain_state": {
+    "Democracy.FastTrackVotingPeriod": 1800,
+    "Democracy.LaunchPeriod": 403200,
+    "Democracy.VotingPeriod": 201600,
+    "Democracy.EnactmentPeriod": 432000,
+    "Democracy.NextExternal": null
+  },
+  "remote_rehearsal": {
+    "status": "passed",
+    "command": "./misc/runtime_upgrade/run_remote_try_runtime.sh",
+    "node_url": "wss://ws.mof.sora.org",
+    "scraped_keys": 1182730,
+    "duration_seconds": 1838.69,
+    "test_result": "1 passed; 0 failed; 0 ignored; 0 measured; 152 filtered out"
+  }
+}

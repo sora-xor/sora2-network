@@ -37,7 +37,7 @@
 // TODO #167: fix clippy warnings
 #![allow(clippy::all)]
 
-#[cfg(all(feature = "main-net-coded", feature = "private-net"))]
+#[cfg(all(feature = "main-net-coded", feature = "private-net", not(clippy)))]
 compile_error!(
     "`main-net-coded` must not be built with `private-net`; private-net includes testnet-only pallets such as faucet."
 );

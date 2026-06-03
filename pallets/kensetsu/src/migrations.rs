@@ -767,6 +767,8 @@ pub mod v5_to_v6 {
         StablecoinCollateralIdentifier, StablecoinInfos,
     };
     #[cfg(feature = "try-runtime")]
+    use alloc::{boxed::Box, format, string::String};
+    #[cfg(feature = "try-runtime")]
     use codec::{Decode, Encode};
     use common::{AccountIdOf, AssetIdOf, AssetInfoProvider, AssetManager, Balance, XOR};
     use core::marker::PhantomData;

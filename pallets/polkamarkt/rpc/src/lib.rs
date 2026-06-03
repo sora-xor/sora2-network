@@ -12,9 +12,7 @@ fn runtime_error_into_rpc_error(error: impl core::fmt::Debug) -> ErrorObjectOwne
 }
 
 pub use polkamarkt_runtime_api::PolkamarktAPI as PolkamarktRuntimeAPI;
-use polkamarkt_runtime_api::{
-    BuyQuote, ClaimableInfo, FlipQuote, LiquidityQuote, OrderBook, OrderQuote, SellQuote,
-};
+use polkamarkt_runtime_api::{BuyQuote, ClaimableInfo, MarketState, SellQuote};
 
 #[rpc(server)]
 pub trait PolkamarktAPI<
@@ -23,10 +21,7 @@ pub trait PolkamarktAPI<
     Balance,
     OptionBuyQuote,
     OptionSellQuote,
-    OptionLiquidityQuote,
-    OptionFlipQuote,
-    OptionOrderQuote,
-    OptionOrderBook,
+    OptionMarketState,
     OptionClaimableInfo,
 >
 {
@@ -48,42 +43,8 @@ pub trait PolkamarktAPI<
         at: Option<BlockHash>,
     ) -> Result<OptionSellQuote>;
 
-    #[method(name = "polkamarkt_quoteAddLiquidity")]
-    fn quote_add_liquidity(
-        &self,
-        market_id: u32,
-        collateral_in: Balance,
-        at: Option<BlockHash>,
-    ) -> Result<OptionLiquidityQuote>;
-
-    #[method(name = "polkamarkt_quoteFlipPosition")]
-    fn quote_flip_position(
-        &self,
-        market_id: u32,
-        from_outcome: String,
-        shares_in: Balance,
-        at: Option<BlockHash>,
-    ) -> Result<OptionFlipQuote>;
-
-    #[method(name = "polkamarkt_quoteOrder")]
-    fn quote_order(
-        &self,
-        market_id: u32,
-        outcome: String,
-        side: String,
-        price_cents: u8,
-        shares: Balance,
-        at: Option<BlockHash>,
-    ) -> Result<OptionOrderQuote>;
-
-    #[method(name = "polkamarkt_orderBook")]
-    fn order_book(
-        &self,
-        market_id: u32,
-        outcome: String,
-        depth: u32,
-        at: Option<BlockHash>,
-    ) -> Result<OptionOrderBook>;
+    #[method(name = "polkamarkt_marketState")]
+    fn market_state(&self, market_id: u32, at: Option<BlockHash>) -> Result<OptionMarketState>;
 
     #[method(name = "polkamarkt_claimable")]
     fn claimable(
@@ -115,10 +76,7 @@ impl<C, Block, AccountId, Balance>
         Balance,
         Option<BuyQuote<Balance>>,
         Option<SellQuote<Balance>>,
-        Option<LiquidityQuote<Balance>>,
-        Option<FlipQuote<Balance>>,
-        Option<OrderQuote<Balance>>,
-        Option<OrderBook<Balance>>,
+        Option<MarketState<Balance>>,
         Option<ClaimableInfo<AccountId, Balance>>,
     > for PolkamarktClient<C, Block>
 where
@@ -155,56 +113,14 @@ where
             .map_err(runtime_error_into_rpc_error)
     }
 
-    fn quote_add_liquidity(
+    fn market_state(
         &self,
         market_id: u32,
-        collateral_in: Balance,
         at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<LiquidityQuote<Balance>>> {
+    ) -> Result<Option<MarketState<Balance>>> {
         let api = self.client.runtime_api();
         let at = at.unwrap_or(self.client.info().best_hash);
-        api.quote_add_liquidity(at, market_id, collateral_in)
-            .map_err(runtime_error_into_rpc_error)
-    }
-
-    fn quote_flip_position(
-        &self,
-        market_id: u32,
-        from_outcome: String,
-        shares_in: Balance,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<FlipQuote<Balance>>> {
-        let api = self.client.runtime_api();
-        let at = at.unwrap_or(self.client.info().best_hash);
-        api.quote_flip_position(at, market_id, from_outcome, shares_in)
-            .map_err(runtime_error_into_rpc_error)
-    }
-
-    fn quote_order(
-        &self,
-        market_id: u32,
-        outcome: String,
-        side: String,
-        price_cents: u8,
-        shares: Balance,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<OrderQuote<Balance>>> {
-        let api = self.client.runtime_api();
-        let at = at.unwrap_or(self.client.info().best_hash);
-        api.quote_order(at, market_id, outcome, side, price_cents, shares)
-            .map_err(runtime_error_into_rpc_error)
-    }
-
-    fn order_book(
-        &self,
-        market_id: u32,
-        outcome: String,
-        depth: u32,
-        at: Option<<Block as BlockT>::Hash>,
-    ) -> Result<Option<OrderBook<Balance>>> {
-        let api = self.client.runtime_api();
-        let at = at.unwrap_or(self.client.info().best_hash);
-        api.order_book(at, market_id, outcome, depth)
+        api.market_state(at, market_id)
             .map_err(runtime_error_into_rpc_error)
     }
 

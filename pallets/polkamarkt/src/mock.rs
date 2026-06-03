@@ -51,6 +51,7 @@ parameter_types! {
     pub const MaxOrdersPerPriceConst: u32 = 16;
     pub const MaxOpenOrdersPerAccountMarketConst: u32 = 16;
     pub const TradeFeeBpsConst: u32 = 50;
+    pub const DpmVirtualSharesConst: Balance = 100;
     pub const BuyBackAssetConst: AssetId = BUYBACK_ASSET;
 }
 
@@ -115,12 +116,6 @@ impl crate::WeightInfo for TestWeightInfo {
     fn sell() -> Weight {
         Weight::zero()
     }
-    fn flip_position() -> Weight {
-        Weight::zero()
-    }
-    fn add_liquidity() -> Weight {
-        Weight::zero()
-    }
     fn sync_market_status() -> Weight {
         Weight::zero()
     }
@@ -145,25 +140,7 @@ impl crate::WeightInfo for TestWeightInfo {
     fn claim_creator_fees() -> Weight {
         Weight::zero()
     }
-    fn claim_creator_liquidity() -> Weight {
-        Weight::zero()
-    }
-    fn claim_liquidity() -> Weight {
-        Weight::zero()
-    }
     fn sweep_xor_buyback_and_burn() -> Weight {
-        Weight::zero()
-    }
-    fn place_order(_f: u32) -> Weight {
-        Weight::zero()
-    }
-    fn cancel_order() -> Weight {
-        Weight::zero()
-    }
-    fn split_position() -> Weight {
-        Weight::zero()
-    }
-    fn merge_positions() -> Weight {
         Weight::zero()
     }
 }
@@ -224,6 +201,7 @@ impl pallet_polkamarkt::Config for Test {
     type MaxOrdersPerPrice = MaxOrdersPerPriceConst;
     type MaxOpenOrdersPerAccountMarket = MaxOpenOrdersPerAccountMarketConst;
     type TradeFeeBps = TradeFeeBpsConst;
+    type DpmVirtualShares = DpmVirtualSharesConst;
     type GovernanceOrigin = EnsureRoot<AccountId>;
 }
 
@@ -244,7 +222,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .expect("polkamarkt genesis build");
     let mut ext = sp_io::TestExternalities::new(t);
     ext.execute_with(|| {
-        frame_support::traits::StorageVersion::new(5).put::<crate::Pallet<Test>>();
+        frame_support::traits::StorageVersion::new(6).put::<crate::Pallet<Test>>();
     });
     ext
 }

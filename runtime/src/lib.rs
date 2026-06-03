@@ -253,7 +253,7 @@ use pallet_grandpa::{
 };
 use pallet_polkamarkt::{
     AssetTransfer as PolkamarktAssetTransfer, BinaryOutcome as PolkamarktBinaryOutcome,
-    MarketStatus as PolkamarktMarketStatus, OrderSide as PolkamarktOrderSide,
+    MarketMechanism as PolkamarktMarketMechanism, MarketStatus as PolkamarktMarketStatus,
 };
 use pallet_session::historical as pallet_session_historical;
 use snowbridge_beacon_primitives::{Fork, ForkVersions};
@@ -432,10 +432,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 129,
+    spec_version: 130,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 129,
+    transaction_version: 130,
     system_version: 0,
 };
 
@@ -1214,6 +1214,7 @@ parameter_types! {
     pub const PolkamarktMaxOrdersPerPrice: u32 = 128;
     pub const PolkamarktMaxOpenOrdersPerAccountMarket: u32 = 128;
     pub const PolkamarktTradeFeeBps: u32 = 50;
+    pub const PolkamarktDpmVirtualShares: Balance = balance!(100);
 }
 
 parameter_types! {
@@ -1424,6 +1425,7 @@ impl pallet_polkamarkt::Config for Runtime {
     type MaxOpenOrdersPerAccountMarket = PolkamarktMaxOpenOrdersPerAccountMarket;
     type WeightInfo = weights::polkamarkt::SoraWeight<Runtime>;
     type TradeFeeBps = PolkamarktTradeFeeBps;
+    type DpmVirtualShares = PolkamarktDpmVirtualShares;
     type GovernanceOrigin = EnsureRoot<AccountId>;
 }
 
@@ -3681,27 +3683,21 @@ fn polkamarkt_outcome_label(outcome: PolkamarktBinaryOutcome) -> String {
     }
 }
 
-fn polkamarkt_order_side_from_string(side: String) -> Option<PolkamarktOrderSide> {
-    match side.as_bytes() {
-        b"BUY" | b"Buy" | b"buy" => Some(PolkamarktOrderSide::Buy),
-        b"SELL" | b"Sell" | b"sell" => Some(PolkamarktOrderSide::Sell),
-        _ => None,
-    }
-}
-
-fn polkamarkt_order_side_label(side: PolkamarktOrderSide) -> String {
-    match side {
-        PolkamarktOrderSide::Buy => String::from("Buy"),
-        PolkamarktOrderSide::Sell => String::from("Sell"),
-    }
-}
-
 fn polkamarkt_status_label(status: &PolkamarktMarketStatus) -> String {
     match status {
         PolkamarktMarketStatus::Open => String::from("Open"),
         PolkamarktMarketStatus::Locked => String::from("Locked"),
         PolkamarktMarketStatus::Resolved => String::from("Resolved"),
         PolkamarktMarketStatus::Cancelled => String::from("Cancelled"),
+    }
+}
+
+fn polkamarkt_mechanism_label(mechanism: PolkamarktMarketMechanism) -> String {
+    match mechanism {
+        PolkamarktMarketMechanism::LegacyAmm => String::from("LegacyAmm"),
+        PolkamarktMarketMechanism::OrderBook => String::from("OrderBook"),
+        PolkamarktMarketMechanism::DynamicPariMutuel => String::from("DynamicPariMutuel"),
+        PolkamarktMarketMechanism::MigratedLegacy => String::from("MigratedLegacy"),
     }
 }
 
@@ -3910,89 +3906,21 @@ impl_runtime_apis! {
             })
         }
 
-        fn quote_add_liquidity(
+        fn market_state(
             market_id: u32,
-            collateral_in: Balance,
-        ) -> Option<polkamarkt_runtime_api::LiquidityQuote<Balance>> {
-            let quote = Polkamarkt::quote_add_liquidity_market(market_id, collateral_in).ok()?;
-            Some(polkamarkt_runtime_api::LiquidityQuote {
-                market_id: quote.market_id,
-                collateral_in: quote.collateral_in,
-                lp_shares_out: quote.lp_shares_out,
-                pool_collateral: quote.pool_collateral,
-                total_lp_shares: quote.total_lp_shares,
-            })
-        }
-
-        fn quote_flip_position(
-            market_id: u32,
-            from_outcome: String,
-            shares_in: Balance,
-        ) -> Option<polkamarkt_runtime_api::FlipQuote<Balance>> {
-            let from_outcome = polkamarkt_outcome_from_string(from_outcome)?;
-            let quote = Polkamarkt::quote_flip_position_market(market_id, from_outcome, shares_in).ok()?;
-            Some(polkamarkt_runtime_api::FlipQuote {
-                market_id: quote.market_id,
-                from_outcome: polkamarkt_outcome_label(quote.from_outcome),
-                to_outcome: polkamarkt_outcome_label(quote.to_outcome),
-                shares_in: quote.shares_in,
-                gross_collateral_out: quote.gross_collateral_out,
-                sell_fee_amount: quote.sell_fee_amount,
-                collateral_reinvested: quote.collateral_reinvested,
-                buy_fee_amount: quote.buy_fee_amount,
-                pricing_collateral: quote.pricing_collateral,
-                shares_out: quote.shares_out,
-            })
-        }
-
-        fn quote_order(
-            market_id: u32,
-            outcome: String,
-            side: String,
-            price_cents: u8,
-            shares: Balance,
-        ) -> Option<polkamarkt_runtime_api::OrderQuote<Balance>> {
-            let outcome = polkamarkt_outcome_from_string(outcome)?;
-            let side = polkamarkt_order_side_from_string(side)?;
-            let quote = Polkamarkt::quote_order_market(market_id, outcome, side, price_cents, shares).ok()?;
-            Some(polkamarkt_runtime_api::OrderQuote {
-                market_id: quote.market_id,
-                outcome: polkamarkt_outcome_label(quote.outcome),
-                side: polkamarkt_order_side_label(quote.side),
-                price_cents: quote.price_cents,
-                shares: quote.shares,
-                filled_shares: quote.filled_shares,
-                posted_shares: quote.posted_shares,
-                collateral_in: quote.collateral_in,
-                collateral_out: quote.collateral_out,
-                fee_amount: quote.fee_amount,
-            })
-        }
-
-        fn order_book(
-            market_id: u32,
-            outcome: String,
-            depth: u32,
-        ) -> Option<polkamarkt_runtime_api::OrderBook<Balance>> {
-            let outcome = polkamarkt_outcome_from_string(outcome)?;
-            let book = Polkamarkt::order_book_depth(market_id, outcome, depth).ok()?;
-            Some(polkamarkt_runtime_api::OrderBook {
-                bids: book
-                    .bids
-                    .into_iter()
-                    .map(|level| polkamarkt_runtime_api::OrderBookLevel {
-                        price_cents: level.price_cents,
-                        shares: level.shares,
-                    })
-                    .collect(),
-                asks: book
-                    .asks
-                    .into_iter()
-                    .map(|level| polkamarkt_runtime_api::OrderBookLevel {
-                        price_cents: level.price_cents,
-                        shares: level.shares,
-                    })
-                    .collect(),
+        ) -> Option<polkamarkt_runtime_api::MarketState<Balance>> {
+            let state = Polkamarkt::market_state(market_id).ok()?;
+            Some(polkamarkt_runtime_api::MarketState {
+                market_id: state.market_id,
+                mechanism: polkamarkt_mechanism_label(state.mechanism),
+                virtual_depth: state.virtual_depth,
+                real_yes_shares: state.real_yes_shares,
+                real_no_shares: state.real_no_shares,
+                dpm_collateral: state.dpm_collateral,
+                marginal_yes_price_bps: state.marginal_yes_price_bps,
+                marginal_no_price_bps: state.marginal_no_price_bps,
+                implied_yes_probability_bps: state.implied_yes_probability_bps,
+                implied_no_probability_bps: state.implied_no_probability_bps,
             })
         }
 
@@ -4011,11 +3939,7 @@ impl_runtime_apis! {
                 net_collateral_paid: info.net_collateral_paid,
                 trader_payout: info.trader_payout,
                 claimable_payout: info.claimable_payout,
-                open_yes_shares: info.open_yes_shares,
-                open_no_shares: info.open_no_shares,
-                open_collateral: info.open_collateral,
                 creator_fees: info.creator_fees,
-                creator_liquidity: info.creator_liquidity,
                 is_creator: info.is_creator,
             })
         }

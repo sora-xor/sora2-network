@@ -397,11 +397,6 @@ impl CustomFees {
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market { .. })
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy { .. })
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell { .. })
-            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::flip_position { .. })
-            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::place_order { .. })
-            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::cancel_order { .. })
-            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::split_position { .. })
-            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::merge_positions { .. })
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)
             | RuntimeCall::TradingPair(..)
@@ -2523,13 +2518,6 @@ mod tests {
                 outcome: pallet_polkamarkt::BinaryOutcome::No,
                 shares_in: balance!(5),
                 min_collateral_out: 0,
-            }),
-            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::flip_position {
-                market_id: 1,
-                from_outcome: pallet_polkamarkt::BinaryOutcome::Yes,
-                shares_in: balance!(5),
-                min_collateral_out: 0,
-                min_shares_out: 0,
             }),
         ] {
             let xorless_call = RuntimeCall::XorFee(xor_fee::Call::xorless_call {

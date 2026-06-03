@@ -42,6 +42,8 @@
 
 pub use pallet::*;
 
+extern crate alloc;
+
 use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use common::{balance, AssetIdOf, AssetManager, Balance, DataFeed, Rate, SymbolName};
 use frame_support::__private::log::{debug, warn};

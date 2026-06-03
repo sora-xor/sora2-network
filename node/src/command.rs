@@ -153,7 +153,7 @@ impl SubstrateCli for Cli {
             chain_spec = Some(framenode_chain_spec::main_net()?);
         }
 
-        #[cfg(feature = "main-net-coded")]
+        #[cfg(all(feature = "main-net-coded", not(feature = "private-net")))]
         if id == "main-coded" {
             chain_spec = Some(framenode_chain_spec::main_net_coded());
         }

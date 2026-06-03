@@ -28,7 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg(feature = "stage")] // presto
 
 use crate::crop_receipt::{crop_receipt_content_template, Country, Rating};

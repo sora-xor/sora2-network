@@ -34,7 +34,10 @@ mod referrals;
 mod remote;
 mod xor_fee;
 
-use crate::{genesis_config_presets, Currencies, Referrals, RuntimeOrigin};
+use crate::{
+    genesis_config_presets, Currencies, Polkamarkt, PolkamarktCanonicalStableAssetId, Referrals,
+    RuntimeOrigin,
+};
 use assets::GetTotalBalance;
 use codec::Encode;
 use common::mock::{alice, bob};
@@ -131,6 +134,95 @@ fn pswap_buy_back_fractions_split_kusd_10_xor_90() {
     assert!(!fractions
         .iter()
         .any(|(asset_id, _)| *asset_id == TBCD.into()));
+}
+
+#[test]
+fn polkamarkt_runtime_api_quotes_and_market_state_use_dpm_defaults() {
+    ext().execute_with(|| {
+        let unit = 1_000_000_000_000_000_000u128;
+        let ten_kusd = 10 * unit;
+        let hundred_kusd = 100 * unit;
+        let thousand_kusd = 1_000 * unit;
+        let stable = PolkamarktCanonicalStableAssetId::get();
+        assert_ok!(Currencies::update_balance(
+            RuntimeOrigin::root(),
+            alice(),
+            stable,
+            thousand_kusd as i128
+        ));
+        assert_ok!(Currencies::update_balance(
+            RuntimeOrigin::root(),
+            bob(),
+            stable,
+            thousand_kusd as i128
+        ));
+
+        assert_ok!(Polkamarkt::create_condition(
+            RuntimeOrigin::signed(alice()),
+            pallet_polkamarkt::ConditionInput {
+                question: b"Will SORA governance approve the benchmark proposal?".to_vec(),
+                oracle: b"SORA council".to_vec(),
+                resolution_source: b"council-minutes".to_vec(),
+            },
+        ));
+        assert_ok!(Polkamarkt::create_market(
+            RuntimeOrigin::signed(alice()),
+            0,
+            7_201,
+        ));
+
+        let initial_state = Polkamarkt::market_state(0).expect("state");
+        assert_eq!(
+            initial_state.mechanism,
+            pallet_polkamarkt::MarketMechanism::DynamicPariMutuel
+        );
+        assert_eq!(initial_state.virtual_depth, hundred_kusd);
+        assert_eq!(initial_state.real_yes_shares, 0);
+        assert_eq!(initial_state.real_no_shares, 0);
+        assert_eq!(initial_state.implied_yes_probability_bps, 5_000);
+        assert_eq!(initial_state.implied_no_probability_bps, 5_000);
+
+        let buy_quote =
+            Polkamarkt::quote_buy_market(0, pallet_polkamarkt::BinaryOutcome::Yes, ten_kusd)
+                .expect("buy quote");
+        assert_eq!(buy_quote.outcome, pallet_polkamarkt::BinaryOutcome::Yes);
+        assert_eq!(buy_quote.collateral_in, ten_kusd);
+        assert!(buy_quote.fee_amount > 0);
+        assert!(buy_quote.shares_out > 0);
+
+        assert_ok!(Polkamarkt::buy(
+            RuntimeOrigin::signed(bob()),
+            0,
+            pallet_polkamarkt::BinaryOutcome::Yes,
+            ten_kusd,
+            buy_quote.shares_out,
+        ));
+
+        let post_buy_state = Polkamarkt::market_state(0).expect("state");
+        assert_eq!(
+            post_buy_state.mechanism,
+            pallet_polkamarkt::MarketMechanism::DynamicPariMutuel
+        );
+        assert_eq!(post_buy_state.real_yes_shares, buy_quote.shares_out);
+        assert_eq!(post_buy_state.real_no_shares, 0);
+        assert!(post_buy_state.dpm_collateral > 0);
+        assert!(
+            post_buy_state.implied_yes_probability_bps > post_buy_state.implied_no_probability_bps
+        );
+
+        let sell_quote = Polkamarkt::quote_sell_market(
+            0,
+            pallet_polkamarkt::BinaryOutcome::Yes,
+            buy_quote.shares_out / 2,
+        )
+        .expect("sell quote");
+        assert_eq!(sell_quote.outcome, pallet_polkamarkt::BinaryOutcome::Yes);
+        assert!(sell_quote.gross_collateral_out > 0);
+        assert!(sell_quote.collateral_out > 0);
+        assert!(sell_quote.fee_amount > 0);
+
+        assert!(crate::polkamarkt_outcome_from_string("Maybe".into()).is_none());
+    });
 }
 
 fn value_for_key<'a>(
@@ -260,6 +352,8 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
+    assert_eq!(crate::VERSION.spec_version, 130);
+    assert_eq!(crate::VERSION.transaction_version, 130);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),
         StorageVersion::new(2)
@@ -286,7 +380,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         pallet_polkamarkt::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(5)
+        StorageVersion::new(6)
     );
     assert_eq!(
         vested_rewards::Pallet::<crate::Runtime>::in_code_storage_version(),
