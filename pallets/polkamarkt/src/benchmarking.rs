@@ -71,66 +71,7 @@ where
     mint_canonical_balance::<T>(who, amount);
 }
 
-fn setup_creator_market<T>(caller: &T::AccountId, seed: BenchBalanceOf<T>)
-where
-    T: crate::Config + frame_system::Config,
-    T::AccountId: Clone,
-{
-    fund_canonical_fee::<T>(caller);
-    mint_canonical_balance::<T>(caller, seed);
-    let metadata = default_condition_input::<T>();
-    Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
-        .expect("condition setup");
-    let close = <frame_system::Pallet<T>>::block_number()
-        + T::MinMarketDuration::get()
-        + BlockNumberFor::<T>::one();
-    T::Assets::transfer(
-        T::CanonicalStableAssetId::get(),
-        caller,
-        &Pallet::<T>::account_id(),
-        seed,
-    )
-    .expect("legacy seed transfer");
-    Markets::<T>::insert(
-        0,
-        Market {
-            creator: caller.clone(),
-            condition_id: 0,
-            close_block: close,
-            collateral_asset: T::CanonicalStableAssetId::get(),
-            seed_liquidity: seed,
-            mechanism: MarketMechanism::LegacyAmm,
-            status: MarketStatus::Open,
-        },
-    );
-    MarketPools::<T>::insert(
-        0,
-        MarketPool {
-            collateral: seed,
-            yes: seed,
-            no: seed,
-        },
-    );
-    LiquidityPositions::<T>::insert(
-        0,
-        caller,
-        LiquidityPosition {
-            shares: seed,
-            collateral_contributed: seed,
-        },
-    );
-    LiquidityPositionTotals::<T>::insert(
-        0,
-        LiquidityTotals {
-            total_shares: seed,
-            total_collateral_contributed: seed,
-        },
-    );
-    ConditionMarket::<T>::insert(0, 0);
-    NextMarketId::<T>::put(1);
-}
-
-fn setup_orderbook_market<T>(caller: &T::AccountId) -> BlockNumberFor<T>
+fn setup_creator_market<T>(caller: &T::AccountId, _seed: BenchBalanceOf<T>)
 where
     T: crate::Config + frame_system::Config,
     T::AccountId: Clone,
@@ -144,7 +85,6 @@ where
         + BlockNumberFor::<T>::one();
     Pallet::<T>::create_market(RawOrigin::Signed(caller.clone()).into(), 0, close)
         .expect("market setup");
-    close
 }
 
 fn market_close_block<T>() -> BlockNumberFor<T>
@@ -400,12 +340,10 @@ mod benchmarks {
         let caller: T::AccountId = whitelisted_caller();
         let trader: T::AccountId = account("trader", 0, 0);
         let batch = n;
-        let seed = bench_balance::<T>(10_000);
         let stake = bench_balance::<T>(1_000);
         let mut market_ids = Vec::new();
         for market_id in 0..batch {
             fund_canonical_fee::<T>(&caller);
-            mint_canonical_balance::<T>(&caller, seed);
             mint_canonical_balance::<T>(&trader, stake);
             let metadata = default_condition_input::<T>();
             Pallet::<T>::create_condition(RawOrigin::Signed(caller.clone()).into(), metadata)
@@ -415,41 +353,6 @@ mod benchmarks {
                 + BlockNumberFor::<T>::one();
             Pallet::<T>::create_market(RawOrigin::Signed(caller.clone()).into(), market_id, close)
                 .expect("market setup");
-            T::Assets::transfer(
-                T::CanonicalStableAssetId::get(),
-                &caller,
-                &Pallet::<T>::account_id(),
-                seed,
-            )
-            .expect("legacy seed transfer");
-            Markets::<T>::mutate(market_id, |market| {
-                let market = market.as_mut().expect("created market");
-                market.seed_liquidity = seed;
-                market.mechanism = MarketMechanism::LegacyAmm;
-            });
-            MarketPools::<T>::insert(
-                market_id,
-                MarketPool {
-                    collateral: seed,
-                    yes: seed,
-                    no: seed,
-                },
-            );
-            LiquidityPositions::<T>::insert(
-                market_id,
-                &caller,
-                LiquidityPosition {
-                    shares: seed,
-                    collateral_contributed: seed,
-                },
-            );
-            LiquidityPositionTotals::<T>::insert(
-                market_id,
-                LiquidityTotals {
-                    total_shares: seed,
-                    total_collateral_contributed: seed,
-                },
-            );
             Pallet::<T>::buy(
                 RawOrigin::Signed(trader.clone()).into(),
                 market_id,

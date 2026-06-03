@@ -125,6 +125,22 @@ fn make_orderbook_market(
     });
 }
 
+fn legacy_buy_order(
+    owner: AccountId,
+    market_id: crate::MarketId,
+    reserved: Balance,
+) -> Order<AccountId, Balance> {
+    Order {
+        owner,
+        market_id,
+        outcome: BinaryOutcome::Yes,
+        side: OrderSide::Buy,
+        price_cents: 50,
+        remaining_shares: 0,
+        reserved_collateral: reserved,
+    }
+}
+
 fn insert_v4_legacy_market(
     market_id: crate::MarketId,
     condition_id: crate::ConditionId,
@@ -2696,6 +2712,170 @@ fn v6_migration_cancels_orderbook_and_creates_lazy_refunds() {
             Polkamarkt::claim_market(RuntimeOrigin::signed(BOB), 0),
             Error::<Test>::NothingToClaim
         );
+    });
+}
+
+#[test]
+fn v6_migration_groups_orders_across_multiple_orderbook_markets() {
+    new_test_ext().execute_with(|| {
+        let charlie = 3;
+        StorageVersion::new(5).put::<Polkamarkt>();
+        run_to_block(1);
+        make_orderbook_market(0, 0, ALICE, 10);
+        make_orderbook_market(1, 1, BOB, 10);
+        set_balance(Polkamarkt::account_id(), CANONICAL_ASSET, 3_000);
+        MarketOrderBookCollateral::<Test>::insert(0, 1_000);
+        MarketOrderBookCollateral::<Test>::insert(1, 800);
+        MarketPositions::<Test>::insert(
+            0,
+            BOB,
+            crate::MarketPosition {
+                yes_shares: 100,
+                no_shares: 300,
+                net_collateral_paid: 0,
+            },
+        );
+        MarketPositionTotals::<Test>::insert(
+            0,
+            crate::MarketTotals {
+                total_yes_shares: 100,
+                total_no_shares: 300,
+                total_net_collateral_paid: 0,
+            },
+        );
+        MarketPositions::<Test>::insert(
+            1,
+            charlie,
+            crate::MarketPosition {
+                yes_shares: 50,
+                no_shares: 50,
+                net_collateral_paid: 0,
+            },
+        );
+        MarketPositionTotals::<Test>::insert(
+            1,
+            crate::MarketTotals {
+                total_yes_shares: 50,
+                total_no_shares: 50,
+                total_net_collateral_paid: 0,
+            },
+        );
+        Orders::<Test>::insert(
+            1,
+            Order {
+                owner: BOB,
+                market_id: 0,
+                outcome: BinaryOutcome::No,
+                side: OrderSide::Buy,
+                price_cents: 60,
+                remaining_shares: 500,
+                reserved_collateral: 300,
+            },
+        );
+        Orders::<Test>::insert(
+            2,
+            Order {
+                owner: ALICE,
+                market_id: 0,
+                outcome: BinaryOutcome::Yes,
+                side: OrderSide::Sell,
+                price_cents: 40,
+                remaining_shares: 200,
+                reserved_collateral: 0,
+            },
+        );
+        Orders::<Test>::insert(
+            3,
+            Order {
+                owner: ALICE,
+                market_id: 1,
+                outcome: BinaryOutcome::Yes,
+                side: OrderSide::Buy,
+                price_cents: 55,
+                remaining_shares: 250,
+                reserved_collateral: 120,
+            },
+        );
+        Orders::<Test>::insert(
+            4,
+            Order {
+                owner: BOB,
+                market_id: 1,
+                outcome: BinaryOutcome::No,
+                side: OrderSide::Sell,
+                price_cents: 45,
+                remaining_shares: 300,
+                reserved_collateral: 0,
+            },
+        );
+        PendingXorBuybackCollateral::<Test>::put(5);
+
+        let _ = crate::migrations::v6::Migrate::<Test>::on_runtime_upgrade();
+
+        for market_id in 0..=1 {
+            let market = Markets::<Test>::get(market_id).expect("market");
+            assert_eq!(market.mechanism, MarketMechanism::MigratedLegacy);
+            assert_eq!(market.status, MarketStatus::Cancelled);
+            assert_eq!(MarketResolution::<Test>::get(market_id), None);
+            assert!(MarketPositions::<Test>::iter_prefix(market_id)
+                .next()
+                .is_none());
+        }
+        assert_eq!(MigratedLegacyPayouts::<Test>::get(0, BOB), 500);
+        assert_eq!(MigratedLegacyPayouts::<Test>::get(0, ALICE), 100);
+        assert_eq!(MigratedLegacyPayouts::<Test>::get(1, ALICE), 120);
+        assert_eq!(MigratedLegacyPayouts::<Test>::get(1, BOB), 150);
+        assert_eq!(MigratedLegacyPayouts::<Test>::get(1, charlie), 50);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), 1_305);
+        assert!(Orders::<Test>::iter().next().is_none());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(6));
+    });
+}
+
+#[test]
+fn v6_migration_rejects_order_cap_before_draining_orders() {
+    new_test_ext().execute_with(|| {
+        const MAX_LEGACY_ORDERS: u64 = 16_384;
+        StorageVersion::new(5).put::<Polkamarkt>();
+        for order_id in 0..=MAX_LEGACY_ORDERS {
+            Orders::<Test>::insert(order_id, legacy_buy_order(BOB, 0, 1));
+        }
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v6::Migrate::<Test>::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
+        assert_eq!(
+            Orders::<Test>::iter().count(),
+            (MAX_LEGACY_ORDERS + 1) as usize
+        );
+    });
+}
+
+#[test]
+fn v6_migration_rolls_back_drained_orders_on_late_failure() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(5).put::<Polkamarkt>();
+        run_to_block(1);
+        make_orderbook_market(0, 0, ALICE, 10);
+        let market_before = Markets::<Test>::get(0).expect("market");
+        MarketOrderBookCollateral::<Test>::insert(0, 1);
+        Orders::<Test>::insert(1, legacy_buy_order(BOB, 0, 1));
+        PendingXorBuybackCollateral::<Test>::put(Balance::MAX);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _ = crate::migrations::v6::Migrate::<Test>::on_runtime_upgrade();
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(5));
+        assert_eq!(Markets::<Test>::get(0), Some(market_before));
+        assert!(Orders::<Test>::get(1).is_some());
+        assert_eq!(MarketOrderBookCollateral::<Test>::get(0), 1);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), Balance::MAX);
+        assert_eq!(MigratedLegacyPayouts::<Test>::get(0, BOB), 0);
     });
 }
 

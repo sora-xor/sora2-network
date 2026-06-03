@@ -15,6 +15,9 @@ sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkad
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
 common = { path = "../../../common", default-features = false }
 
+[dev-dependencies]
+serde_json = "1.0.41"
+
 [features]
 default = ["std"]
 std = [

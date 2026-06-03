@@ -2923,7 +2923,7 @@ pub mod migrations {
             traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion},
         };
         use sp_core::Get;
-        use sp_std::vec::Vec;
+        use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
         const MAX_LEGACY_ORDERS: u32 = 16_384;
         const MAX_LEGACY_ORDER_INDEXES: u32 = 65_536;
@@ -2932,6 +2932,7 @@ pub mod migrations {
         const MAX_LEGACY_POOLS: u32 = 1_024;
 
         pub struct Migrate<T>(PhantomData<T>);
+        type OrdersByMarket<T> = BTreeMap<MarketId, Vec<OrderOf<T>>>;
 
         fn add_payout<T: Config>(
             market_id: MarketId,
@@ -2952,30 +2953,41 @@ pub mod migrations {
             super::clear_raw_prefix_with_limit(&prefix, limit, label)
         }
 
+        fn drain_orders_by_market<T: Config>() -> (OrdersByMarket<T>, u64) {
+            let mut orders_by_market = OrdersByMarket::<T>::new();
+            let mut drained = 0u64;
+            for (_, order) in Orders::<T>::drain() {
+                drained = drained.saturating_add(1);
+                orders_by_market
+                    .entry(order.market_id)
+                    .or_default()
+                    .push(order);
+            }
+            (orders_by_market, drained)
+        }
+
         fn migrate_orderbook_market<T: Config>(
             market_id: MarketId,
             _market: &MarketOf<T>,
+            orders_by_market: &mut OrdersByMarket<T>,
         ) -> Result<T::Balance, DispatchError> {
             let mut position_payouts = T::Balance::zero();
-            let orders = Orders::<T>::iter().collect::<Vec<_>>();
-            for (order_id, order) in orders {
-                if order.market_id != market_id {
-                    continue;
-                }
-                match order.side {
-                    OrderSide::Buy => {
-                        add_payout::<T>(market_id, &order.owner, order.reserved_collateral)?;
-                    }
-                    OrderSide::Sell => {
-                        credit_outcome_shares::<T>(
-                            market_id,
-                            &order.owner,
-                            order.outcome,
-                            order.remaining_shares,
-                        )?;
+            if let Some(orders) = orders_by_market.remove(&market_id) {
+                for order in orders {
+                    match order.side {
+                        OrderSide::Buy => {
+                            add_payout::<T>(market_id, &order.owner, order.reserved_collateral)?;
+                        }
+                        OrderSide::Sell => {
+                            credit_outcome_shares::<T>(
+                                market_id,
+                                &order.owner,
+                                order.outcome,
+                                order.remaining_shares,
+                            )?;
+                        }
                     }
                 }
-                Orders::<T>::remove(order_id);
             }
 
             let positions = MarketPositions::<T>::iter_prefix(market_id).collect::<Vec<_>>();
@@ -3150,6 +3162,7 @@ pub mod migrations {
                         let mut migrated = 0u64;
                         let mut residual = T::Balance::zero();
                         let markets = Markets::<T>::iter().collect::<Vec<_>>();
+                        let (mut orders_by_market, drained_orders) = drain_orders_by_market::<T>();
 
                         for (market_id, mut market) in markets {
                             match market.mechanism {
@@ -3160,7 +3173,9 @@ pub mod migrations {
                                 MarketMechanism::OrderBook => {
                                     residual = residual
                                         .checked_add(&migrate_orderbook_market::<T>(
-                                            market_id, &market,
+                                            market_id,
+                                            &market,
+                                            &mut orders_by_market,
                                         )?)
                                         .ok_or(Error::<T>::Overflow)?;
                                     market.status = MarketStatus::Cancelled;
@@ -3181,8 +3196,7 @@ pub mod migrations {
                             migrated = migrated.saturating_add(1);
                         }
 
-                        let cleared_orders =
-                            clear_storage::<T>(b"Orders", MAX_LEGACY_ORDERS, "Orders");
+                        let cleared_orders = drained_orders;
                         let cleared_queues = clear_storage::<T>(
                             b"OrderBookQueues",
                             MAX_LEGACY_ORDER_INDEXES,

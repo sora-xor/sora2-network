@@ -190,6 +190,16 @@ pub struct ClaimableInfo<AccountId, Balance> {
         )
     )]
     pub claimable_payout: Balance,
+    #[cfg_attr(
+        feature = "std",
+        serde(
+            bound(
+                serialize = "Balance: std::fmt::Display",
+                deserialize = "Balance: std::str::FromStr"
+            ),
+            with = "string_serialization"
+        )
+    )]
     pub creator_fees: Balance,
     pub is_creator: bool,
 }
@@ -262,5 +272,58 @@ sp_api::decl_runtime_apis! {
         fn market_state(market_id: u32) -> Option<MarketState<Balance>>;
 
         fn claimable(account_id: AccountId, market_id: u32) -> Option<ClaimableInfo<AccountId, Balance>>;
+    }
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn claimable_info_serializes_creator_fees_as_string() {
+        let info = ClaimableInfo::<u64, u128> {
+            market_id: 7,
+            account: 42,
+            status: "Resolved".into(),
+            resolution_outcome: Some("Yes".into()),
+            yes_shares: 1,
+            no_shares: 2,
+            net_collateral_paid: 3,
+            trader_payout: 4,
+            claimable_payout: 5,
+            creator_fees: u128::MAX,
+            is_creator: true,
+        };
+
+        let value = serde_json::to_value(info).expect("claimable info serializes");
+        assert_eq!(value["yesShares"], "1");
+        assert_eq!(value["claimablePayout"], "5");
+        assert_eq!(value["creatorFees"], u128::MAX.to_string());
+    }
+
+    #[test]
+    fn claimable_info_deserializes_creator_fees_from_string_and_rejects_number() {
+        let value = serde_json::json!({
+            "marketId": 7,
+            "account": "42",
+            "status": "Resolved",
+            "resolutionOutcome": "Yes",
+            "yesShares": "1",
+            "noShares": "2",
+            "netCollateralPaid": "3",
+            "traderPayout": "4",
+            "claimablePayout": "5",
+            "creatorFees": u128::MAX.to_string(),
+            "isCreator": true
+        });
+
+        let decoded: ClaimableInfo<u64, u128> =
+            serde_json::from_value(value.clone()).expect("claimable info deserializes");
+        assert_eq!(decoded.account, 42);
+        assert_eq!(decoded.creator_fees, u128::MAX);
+
+        let mut invalid = value;
+        invalid["creatorFees"] = serde_json::json!(123);
+        assert!(serde_json::from_value::<ClaimableInfo<u64, u128>>(invalid).is_err());
     }
 }
