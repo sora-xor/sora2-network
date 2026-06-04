@@ -67,7 +67,7 @@
   },
   "remote_rehearsal": {
     "status": "filtered_release_scope_live_state_passed_full_all_pallet_scrape_not_completed",
-    "recorded_at_utc": "2026-06-04T11:00:35Z",
+    "recorded_at_utc": "2026-06-04T12:39:44Z",
     "passed": [
       {
         "scope": "System,Polkamarkt",
@@ -79,23 +79,23 @@
       },
       {
         "scope": "EthBridge migration-relevant live state",
-        "command": "REQUIRE_REMOTE=1 REMOTE_RPC_URL=ws://127.0.0.1:9946 SNAP=/tmp/sora-ethbridge-focused.snap cargo test -p framenode-runtime --features try-runtime remote_eth_bridge_migration_rehearsal -- --exact --nocapture",
-        "rpc_url": "https://ws.mof.sora.org via local ws-http JSON-RPC proxy",
-        "snapshot": "/tmp/sora-ethbridge-focused.snap",
+        "command": "SKIP_WASM_BUILD=1 REQUIRE_REMOTE=1 REMOTE_RPC_URL=wss://ws.mof.sora.org SNAP=/tmp/sora-ethbridge-focused-frame-key-pass-20260604.snap cargo test -p framenode-runtime --features try-runtime remote_eth_bridge_migration_rehearsal -- --exact --nocapture",
+        "rpc_url": "wss://ws.mof.sora.org",
+        "snapshot": "/tmp/sora-ethbridge-focused-frame-key-pass-20260604.snap",
         "snapshot_size": "119M",
-        "observed_state": "downloaded 228562 EthBridge::RequestStatuses keys, 228562 EthBridge::Requests keys, and EthBridge::StorageVersion from live RPC",
-        "result": "test remote_eth_bridge_migration_rehearsal ... ok; 1 passed; 0 failed; finished in 562.43s",
-        "snapshot_replay": "SNAP=/tmp/sora-ethbridge-focused.snap REQUIRE_REMOTE=1 cargo test -p framenode-runtime --features try-runtime remote_eth_bridge_migration_rehearsal -- --exact --nocapture; 1 passed; 0 failed; finished in 29.97s"
+        "observed_state": "downloaded 228562 EthBridge::RequestStatuses keys, 228562 EthBridge::Requests keys, and the FRAME storage-version key for EthBridge from live RPC",
+        "result": "test remote_eth_bridge_migration_rehearsal ... ok; 1 passed; 0 failed; finished in 591.26s",
+        "snapshot_replay": "SKIP_WASM_BUILD=1 REQUIRE_REMOTE=1 REMOTE_RPC_URL=ws://127.0.0.1:1 SNAP=/tmp/sora-ethbridge-focused-frame-key-pass-20260604.snap cargo test -p framenode-runtime --features try-runtime remote_eth_bridge_migration_rehearsal -- --exact --nocapture; 1 passed; 0 failed; finished in 16.05s"
       },
       {
         "scope": "filtered release-scope Executive rehearsal",
-        "command": "SNAP=/tmp/sora-selected-plus-ethbridge-focused.snap REQUIRE_REMOTE=1 REMOTE_RPC_URL=ws://127.0.0.1:9946 REMOTE_CHILD_TRIE=0 REMOTE_PALLETS=XorFee,Staking,Offences,Session,Grandpa,ImOnline,PoolXYK,PswapDistribution,VestedRewards,Identity,Farming,Kensetsu,Band,Polkamarkt,OracleProxy,BridgeInboundChannel,SubstrateBridgeInboundChannel,SubstrateBridgeOutboundChannel REMOTE_HASHED_PREFIXES=0x8e8f4d4777099074419cbb4597dac1d35c63ad4ba9b87d8a9938e57f2391a87b,0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34 REMOTE_HASHED_KEYS=0x8e8f4d4777099074419cbb4597dac1d3308ce9615de0775a82f8a94dc3d285a1 ./misc/runtime_upgrade/run_remote_try_runtime.sh",
-        "rpc_url": "https://ws.mof.sora.org via local ws-http JSON-RPC proxy",
-        "snapshot": "/tmp/sora-selected-plus-ethbridge-focused.snap",
+        "command": "SKIP_WASM_BUILD=1 SNAP=/tmp/sora-selected-plus-ethbridge-frame-key-20260604.snap REQUIRE_REMOTE=1 REMOTE_RPC_URL=wss://ws.mof.sora.org REMOTE_CHILD_TRIE=0 REMOTE_PALLETS=XorFee,Staking,Offences,Session,Grandpa,ImOnline,PoolXYK,PswapDistribution,VestedRewards,Identity,Farming,Kensetsu,Band,Polkamarkt,OracleProxy,BridgeInboundChannel,SubstrateBridgeInboundChannel,SubstrateBridgeOutboundChannel REMOTE_HASHED_PREFIXES=0x8e8f4d4777099074419cbb4597dac1d35c63ad4ba9b87d8a9938e57f2391a87b,0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34 REMOTE_HASHED_KEYS=0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429 ./misc/runtime_upgrade/run_remote_try_runtime.sh",
+        "rpc_url": "wss://ws.mof.sora.org",
+        "snapshot": "/tmp/sora-selected-plus-ethbridge-frame-key-20260604.snap",
         "snapshot_size": "155M",
-        "observed_state": "downloaded EthBridge::RequestStatuses 228562, EthBridge::Requests 228562, XorFee 30, Staking 22616, Offences 17313, Session 1982, Grandpa 171, ImOnline 27, PoolXYK 15959, PswapDistribution 8351, VestedRewards 9207, Identity 57, Farming 570, Kensetsu 424, Band 33, Polkamarkt 29, OracleProxy 32, BridgeInboundChannel 3, SubstrateBridgeInboundChannel 4, SubstrateBridgeOutboundChannel 7",
-        "result": "test remote_try_runtime_upgrade_rehearsal ... ok; 1 passed; 0 failed; finished in 675.82s",
-        "snapshot_replay": "SNAP=/tmp/sora-selected-plus-ethbridge-focused.snap REQUIRE_REMOTE=1 ./misc/runtime_upgrade/run_remote_try_runtime.sh; 1 passed; 0 failed; finished in 14.78s"
+        "observed_state": "downloaded EthBridge::RequestStatuses 228562, EthBridge::Requests 228562, the FRAME storage-version key for EthBridge, XorFee 30, Staking 22612, Offences 17333, Session 1982, Grandpa 171, ImOnline 26, PoolXYK 15959, PswapDistribution 8351, VestedRewards 9207, Identity 57, Farming 570, Kensetsu 424, Band 33, Polkamarkt 29, OracleProxy 32, BridgeInboundChannel 3, SubstrateBridgeInboundChannel 4, SubstrateBridgeOutboundChannel 7",
+        "result": "test remote_try_runtime_upgrade_rehearsal ... ok; 1 passed; 0 failed; finished in 633.84s",
+        "snapshot_replay": "SKIP_WASM_BUILD=1 SNAP=/tmp/sora-selected-plus-ethbridge-frame-key-20260604.snap REQUIRE_REMOTE=1 REMOTE_RPC_URL=ws://127.0.0.1:1 REMOTE_CHILD_TRIE=0 REMOTE_PALLETS=XorFee,Staking,Offences,Session,Grandpa,ImOnline,PoolXYK,PswapDistribution,VestedRewards,Identity,Farming,Kensetsu,Band,Polkamarkt,OracleProxy,BridgeInboundChannel,SubstrateBridgeInboundChannel,SubstrateBridgeOutboundChannel REMOTE_HASHED_PREFIXES=0x8e8f4d4777099074419cbb4597dac1d35c63ad4ba9b87d8a9938e57f2391a87b,0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34 REMOTE_HASHED_KEYS=0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429 ./misc/runtime_upgrade/run_remote_try_runtime.sh; 1 passed; 0 failed; finished in 1.12s"
       }
     ],
     "attempted": [
@@ -120,6 +120,6 @@
         "result": "stalled on the following large prefix, likely EthBridge, before migration assertions completed"
       }
     ],
-    "note": "The normal Executive migration path passed against filtered live state covering the 4.8.8 migration tuple and all storage-version pallets validated by the rehearsal. An unrestricted all-pallet state scrape was not completed. The HTTP-proxied all-80-prefix attempt proved the full EthBridge pallet prefix can be scraped, but the wider all-pallet snapshot still did not complete because later large prefixes, including BridgeProxy with 116912 live keys, make the full scrape impractical for this release gate. The passed run replaces the full EthBridge pallet prefix with the two maps touched by the v0-to-v3 migration plus the StorageVersion key."
+    "note": "The normal Executive migration path passed against filtered live state covering the 4.8.8 migration tuple and all storage-version pallets validated by the rehearsal. An unrestricted all-pallet state scrape was not completed. The HTTP-proxied all-80-prefix attempt proved the full EthBridge pallet prefix can be scraped, but the wider all-pallet snapshot still did not complete because later large prefixes, including BridgeProxy with 116912 live keys, make the full scrape impractical for this release gate. The passed run replaces the full EthBridge pallet prefix with the two maps touched by the v0-to-v3 migration plus the FRAME storage-version key."
   }
 }
