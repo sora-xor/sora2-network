@@ -41,14 +41,15 @@ use frame_support::weights::Weight;
 use sp_runtime::TryRuntimeError;
 use sp_std::prelude::Vec;
 
-// Active upgrade path starts from the 4.8.6 runtime. Migrations already
-// scheduled in that tag are intentionally not kept here.
+// 4.8.8 is expected to upgrade from 4.8.7. The Polkamarkt v6 bridge remains
+// in the tuple so nodes that have not completed it can still reach v7 safely.
 pub type Migrations = (
     RemapStakingRewardPointsToStash,
     EthBridgeStorageVersionV3,
     VestedRewardsStorageVersionV4,
     KensetsuStorageVersionV6,
     pallet_polkamarkt::migrations::v6::Migrate<crate::Runtime>,
+    pallet_polkamarkt::migrations::v7::Migrate<crate::Runtime>,
 );
 
 pub type MultiBlockMigrations = ();

@@ -208,6 +208,11 @@ fn queue_ethereum_xor_thischain_add_asset_try_runtime_hooks() {
 async fn remote_try_runtime_upgrade_rehearsal() {
     tests::remote_try_runtime_upgrade_rehearsal().await;
 }
+#[cfg(all(test, feature = "try-runtime"))]
+#[tokio::test]
+async fn remote_eth_bridge_migration_rehearsal() {
+    tests::remote_eth_bridge_migration_rehearsal().await;
+}
 pub mod weights;
 
 use crate::impls::PreimageWeightInfo;
@@ -1208,6 +1213,7 @@ parameter_types! {
     pub const PolkamarktMinQuestionLength: u32 = 32;
     pub const PolkamarktMinCreationFee: Balance = balance!(5);
     pub const PolkamarktMinMarketDuration: BlockNumber = 7_200;
+    pub const PolkamarktEarlyReportBond: Balance = balance!(100);
     pub const PolkamarktMaxMetadataLength: u32 = 512;
     pub const PolkamarktMaxBatchClaims: u32 = 24;
     pub const PolkamarktMaxFillsPerOrder: u32 = 24;
@@ -1418,6 +1424,7 @@ impl pallet_polkamarkt::Config for Runtime {
     type BuyBackHandler = liquidity_proxy::LiquidityProxyBuyBackHandler<Runtime, GetBuyBackDexId>;
     type GetBuyBackAssetId = GetXorAssetId;
     type MinMarketDuration = PolkamarktMinMarketDuration;
+    type EarlyReportBond = PolkamarktEarlyReportBond;
     type MaxMetadataLength = PolkamarktMaxMetadataLength;
     type MaxBatchClaims = PolkamarktMaxBatchClaims;
     type MaxFillsPerOrder = PolkamarktMaxFillsPerOrder;
