@@ -13328,6 +13328,74 @@
                     "index": 6
                   },
                   {
+                    "name": "EarlyResolutionReported",
+                    "fields": [
+                      {
+                        "name": "market_id",
+                        "type": 4,
+                        "typeName": "MarketId"
+                      },
+                      {
+                        "name": "reporter",
+                        "type": 0,
+                        "typeName": "T::AccountId"
+                      },
+                      {
+                        "name": "outcome",
+                        "type": 204,
+                        "typeName": "BinaryOutcome"
+                      },
+                      {
+                        "name": "bond",
+                        "type": 6,
+                        "typeName": "T::Balance"
+                      }
+                    ],
+                    "index": 7
+                  },
+                  {
+                    "name": "EarlyResolutionReportRejected",
+                    "fields": [
+                      {
+                        "name": "market_id",
+                        "type": 4,
+                        "typeName": "MarketId"
+                      },
+                      {
+                        "name": "reporter",
+                        "type": 0,
+                        "typeName": "T::AccountId"
+                      },
+                      {
+                        "name": "bond",
+                        "type": 6,
+                        "typeName": "T::Balance"
+                      }
+                    ],
+                    "index": 8
+                  },
+                  {
+                    "name": "EarlyResolutionBondReturned",
+                    "fields": [
+                      {
+                        "name": "market_id",
+                        "type": 4,
+                        "typeName": "MarketId"
+                      },
+                      {
+                        "name": "reporter",
+                        "type": 0,
+                        "typeName": "T::AccountId"
+                      },
+                      {
+                        "name": "bond",
+                        "type": 6,
+                        "typeName": "T::Balance"
+                      }
+                    ],
+                    "index": 9
+                  },
+                  {
                     "name": "MarketCancelled",
                     "fields": [
                       {
@@ -13336,7 +13404,7 @@
                         "typeName": "MarketId"
                       }
                     ],
-                    "index": 7
+                    "index": 10
                   },
                   {
                     "name": "MarketEmergencyCancelled",
@@ -13347,7 +13415,7 @@
                         "typeName": "MarketId"
                       }
                     ],
-                    "index": 8
+                    "index": 11
                   },
                   {
                     "name": "MarketClaimed",
@@ -13368,7 +13436,7 @@
                         "typeName": "T::Balance"
                       }
                     ],
-                    "index": 9
+                    "index": 12
                   },
                   {
                     "name": "MarketClaimsBatched",
@@ -13389,7 +13457,7 @@
                         "typeName": "u32"
                       }
                     ],
-                    "index": 10
+                    "index": 13
                   },
                   {
                     "name": "CreatorFeesClaimed",
@@ -13410,7 +13478,7 @@
                         "typeName": "T::Balance"
                       }
                     ],
-                    "index": 11
+                    "index": 14
                   },
                   {
                     "name": "XorBuybackSwept",
@@ -13426,7 +13494,7 @@
                         "typeName": "T::Balance"
                       }
                     ],
-                    "index": 12
+                    "index": 15
                   },
                   {
                     "name": "DpmResidualBurned",
@@ -13442,7 +13510,7 @@
                         "typeName": "T::Balance"
                       }
                     ],
-                    "index": 13
+                    "index": 16
                   },
                   {
                     "name": "LegacyMarketMigrated",
@@ -13458,7 +13526,7 @@
                         "typeName": "MarketStatus"
                       }
                     ],
-                    "index": 14
+                    "index": 17
                   },
                   {
                     "name": "LegacyMigrationResidualRouted",
@@ -13469,7 +13537,7 @@
                         "typeName": "T::Balance"
                       }
                     ],
-                    "index": 15
+                    "index": 18
                   },
                   {
                     "name": "HollarRouted",
@@ -13485,7 +13553,7 @@
                         "typeName": "T::Balance"
                       }
                     ],
-                    "index": 16
+                    "index": 19
                   }
                 ]
               }
@@ -34979,6 +35047,44 @@
                     ]
                   },
                   {
+                    "name": "report_early_resolution",
+                    "fields": [
+                      {
+                        "name": "market_id",
+                        "type": 4,
+                        "typeName": "MarketId"
+                      },
+                      {
+                        "name": "outcome",
+                        "type": 204,
+                        "typeName": "BinaryOutcome"
+                      },
+                      {
+                        "name": "evidence",
+                        "type": 614,
+                        "typeName": "EvidenceInput"
+                      }
+                    ],
+                    "index": 33,
+                    "docs": [
+                      "Permissionlessly report an early-known outcome and lock trading until governance acts."
+                    ]
+                  },
+                  {
+                    "name": "reject_early_resolution_report",
+                    "fields": [
+                      {
+                        "name": "market_id",
+                        "type": 4,
+                        "typeName": "MarketId"
+                      }
+                    ],
+                    "index": 34,
+                    "docs": [
+                      "Reject a permissionless early-resolution report and slash its bond."
+                    ]
+                  },
+                  {
                     "name": "cancel_market",
                     "fields": [
                       {
@@ -51644,6 +51750,59 @@
           "type": {
             "path": [
               "pallet_polkamarkt",
+              "EarlyResolutionReport"
+            ],
+            "params": [
+              {
+                "name": "AccountId",
+                "type": 0
+              },
+              {
+                "name": "BlockNumber",
+                "type": 4
+              },
+              {
+                "name": "Balance",
+                "type": 6
+              },
+              {
+                "name": "BoundedString",
+                "type": 946
+              }
+            ],
+            "def": {
+              "composite": {
+                "fields": [
+                  {
+                    "name": "reporter",
+                    "type": 0,
+                    "typeName": "AccountId"
+                  },
+                  {
+                    "name": "outcome",
+                    "type": 204,
+                    "typeName": "BinaryOutcome"
+                  },
+                  {
+                    "name": "bond",
+                    "type": 6,
+                    "typeName": "Balance"
+                  },
+                  {
+                    "name": "evidence",
+                    "type": 953,
+                    "typeName": "MarketEvidence<BlockNumber, BoundedString>"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 955,
+          "type": {
+            "path": [
+              "pallet_polkamarkt",
               "MarketPosition"
             ],
             "params": [
@@ -51676,7 +51835,7 @@
           }
         },
         {
-          "id": 955,
+          "id": 956,
           "type": {
             "path": [
               "pallet_polkamarkt",
@@ -51707,7 +51866,7 @@
           }
         },
         {
-          "id": 956,
+          "id": 957,
           "type": {
             "path": [
               "pallet_polkamarkt",
@@ -51738,7 +51897,7 @@
           }
         },
         {
-          "id": 957,
+          "id": 958,
           "type": {
             "path": [
               "pallet_polkamarkt",
@@ -51769,7 +51928,7 @@
           }
         },
         {
-          "id": 958,
+          "id": 959,
           "type": {
             "path": [
               "pallet_polkamarkt",
@@ -51805,7 +51964,7 @@
                   },
                   {
                     "name": "side",
-                    "type": 959,
+                    "type": 960,
                     "typeName": "OrderSide"
                   },
                   {
@@ -51829,7 +51988,7 @@
           }
         },
         {
-          "id": 959,
+          "id": 960,
           "type": {
             "path": [
               "pallet_polkamarkt",
@@ -51852,30 +52011,30 @@
           }
         },
         {
-          "id": 960,
-          "type": {
-            "def": {
-              "tuple": [
-                4,
-                961
-              ]
-            }
-          }
-        },
-        {
           "id": 961,
           "type": {
             "def": {
               "tuple": [
-                204,
-                959,
-                2
+                4,
+                962
               ]
             }
           }
         },
         {
           "id": 962,
+          "type": {
+            "def": {
+              "tuple": [
+                204,
+                960,
+                2
+              ]
+            }
+          }
+        },
+        {
+          "id": 963,
           "type": {
             "path": [
               "bounded_collections",
@@ -51905,29 +52064,29 @@
           }
         },
         {
-          "id": 963,
-          "type": {
-            "def": {
-              "tuple": [
-                4,
-                964
-              ]
-            }
-          }
-        },
-        {
           "id": 964,
           "type": {
             "def": {
               "tuple": [
-                204,
-                959
+                4,
+                965
               ]
             }
           }
         },
         {
           "id": 965,
+          "type": {
+            "def": {
+              "tuple": [
+                204,
+                960
+              ]
+            }
+          }
+        },
+        {
+          "id": 966,
           "type": {
             "path": [
               "bounded_collections",
@@ -51952,7 +52111,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 966,
+                    "type": 967,
                     "typeName": "BTreeMap<K, V>"
                   }
                 ]
@@ -51961,7 +52120,7 @@
           }
         },
         {
-          "id": 966,
+          "id": 967,
           "type": {
             "path": [
               "BTreeMap"
@@ -51980,7 +52139,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 967
+                    "type": 968
                   }
                 ]
               }
@@ -51988,17 +52147,17 @@
           }
         },
         {
-          "id": 967,
+          "id": 968,
           "type": {
             "def": {
               "sequence": {
-                "type": 968
+                "type": 969
               }
             }
           }
         },
         {
-          "id": 968,
+          "id": 969,
           "type": {
             "def": {
               "tuple": [
@@ -52009,7 +52168,7 @@
           }
         },
         {
-          "id": 969,
+          "id": 970,
           "type": {
             "path": [
               "bounded_collections",
@@ -52039,7 +52198,7 @@
           }
         },
         {
-          "id": 970,
+          "id": 971,
           "type": {
             "path": [
               "frame_support",
@@ -52058,7 +52217,7 @@
           }
         },
         {
-          "id": 971,
+          "id": 972,
           "type": {
             "path": [
               "pallet_polkamarkt",
@@ -52169,6 +52328,14 @@
                   {
                     "name": "UnsupportedMarketMechanism",
                     "index": 23
+                  },
+                  {
+                    "name": "EarlyResolutionReportAlreadyExists",
+                    "index": 24
+                  },
+                  {
+                    "name": "EarlyResolutionReportNotFound",
+                    "index": 25
                   }
                 ]
               }
@@ -52179,18 +52346,18 @@
           }
         },
         {
-          "id": 972,
+          "id": 973,
           "type": {
             "def": {
               "tuple": [
-                973,
+                974,
                 13
               ]
             }
           }
         },
         {
-          "id": 973,
+          "id": 974,
           "type": {
             "def": {
               "tuple": [
@@ -52201,7 +52368,7 @@
           }
         },
         {
-          "id": 974,
+          "id": 975,
           "type": {
             "path": [
               "bridge_proxy",
@@ -52253,7 +52420,7 @@
                   },
                   {
                     "name": "direction",
-                    "type": 975,
+                    "type": 976,
                     "typeName": "MessageDirection"
                   }
                 ]
@@ -52262,7 +52429,7 @@
           }
         },
         {
-          "id": 975,
+          "id": 976,
           "type": {
             "path": [
               "bridge_types",
@@ -52286,7 +52453,7 @@
           }
         },
         {
-          "id": 976,
+          "id": 977,
           "type": {
             "def": {
               "tuple": [
@@ -52297,7 +52464,7 @@
           }
         },
         {
-          "id": 977,
+          "id": 978,
           "type": {
             "def": {
               "tuple": [
@@ -52308,7 +52475,7 @@
           }
         },
         {
-          "id": 978,
+          "id": 979,
           "type": {
             "path": [
               "bridge_proxy",
@@ -52365,7 +52532,7 @@
           }
         },
         {
-          "id": 979,
+          "id": 980,
           "type": {
             "path": [
               "bridge_channel",
@@ -52447,7 +52614,7 @@
           }
         },
         {
-          "id": 980,
+          "id": 981,
           "type": {
             "path": [
               "bounded_collections",
@@ -52457,7 +52624,7 @@
             "params": [
               {
                 "name": "T",
-                "type": 981
+                "type": 982
               },
               {
                 "name": "S",
@@ -52468,7 +52635,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 982,
+                    "type": 983,
                     "typeName": "Vec<T>"
                   }
                 ]
@@ -52477,7 +52644,7 @@
           }
         },
         {
-          "id": 981,
+          "id": 982,
           "type": {
             "path": [
               "bridge_types",
@@ -52518,17 +52685,17 @@
           }
         },
         {
-          "id": 982,
+          "id": 983,
           "type": {
             "def": {
               "sequence": {
-                "type": 981
+                "type": 982
               }
             }
           }
         },
         {
-          "id": 983,
+          "id": 984,
           "type": {
             "path": [
               "bridge_types",
@@ -52568,7 +52735,7 @@
           }
         },
         {
-          "id": 984,
+          "id": 985,
           "type": {
             "path": [
               "bridge_channel",
@@ -52657,7 +52824,7 @@
           }
         },
         {
-          "id": 985,
+          "id": 986,
           "type": {
             "def": {
               "tuple": [
@@ -52668,7 +52835,7 @@
           }
         },
         {
-          "id": 986,
+          "id": 987,
           "type": {
             "path": [
               "jetton_app",
@@ -52753,7 +52920,7 @@
           }
         },
         {
-          "id": 987,
+          "id": 988,
           "type": {
             "path": [
               "substrate_bridge_channel",
@@ -52828,7 +52995,7 @@
           }
         },
         {
-          "id": 988,
+          "id": 989,
           "type": {
             "path": [
               "substrate_bridge_channel",
@@ -52903,7 +53070,7 @@
           }
         },
         {
-          "id": 989,
+          "id": 990,
           "type": {
             "def": {
               "tuple": [
@@ -52914,7 +53081,7 @@
           }
         },
         {
-          "id": 990,
+          "id": 991,
           "type": {
             "def": {
               "tuple": [
@@ -52925,7 +53092,7 @@
           }
         },
         {
-          "id": 991,
+          "id": 992,
           "type": {
             "path": [
               "parachain_bridge_app",
@@ -53020,7 +53187,7 @@
           }
         },
         {
-          "id": 992,
+          "id": 993,
           "type": {
             "path": [
               "bounded_collections",
@@ -53041,7 +53208,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 993,
+                    "type": 994,
                     "typeName": "BTreeSet<T>"
                   }
                 ]
@@ -53050,7 +53217,7 @@
           }
         },
         {
-          "id": 993,
+          "id": 994,
           "type": {
             "path": [
               "BTreeSet"
@@ -53073,7 +53240,7 @@
           }
         },
         {
-          "id": 994,
+          "id": 995,
           "type": {
             "path": [
               "bounded_collections",
@@ -53098,7 +53265,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 995,
+                    "type": 996,
                     "typeName": "BTreeMap<K, V>"
                   }
                 ]
@@ -53107,7 +53274,7 @@
           }
         },
         {
-          "id": 995,
+          "id": 996,
           "type": {
             "path": [
               "BTreeMap"
@@ -53126,7 +53293,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 996
+                    "type": 997
                   }
                 ]
               }
@@ -53134,17 +53301,17 @@
           }
         },
         {
-          "id": 996,
+          "id": 997,
           "type": {
             "def": {
               "sequence": {
-                "type": 997
+                "type": 998
               }
             }
           }
         },
         {
-          "id": 997,
+          "id": 998,
           "type": {
             "def": {
               "tuple": [
@@ -53155,7 +53322,7 @@
           }
         },
         {
-          "id": 998,
+          "id": 999,
           "type": {
             "path": [
               "bridge_data_signer",
@@ -53252,7 +53419,7 @@
           }
         },
         {
-          "id": 999,
+          "id": 1000,
           "type": {
             "path": [
               "multisig_verifier",
@@ -53329,7 +53496,7 @@
           }
         },
         {
-          "id": 1000,
+          "id": 1001,
           "type": {
             "def": {
               "tuple": [
@@ -53340,7 +53507,7 @@
           }
         },
         {
-          "id": 1001,
+          "id": 1002,
           "type": {
             "path": [
               "substrate_bridge_app",
@@ -53403,7 +53570,7 @@
           }
         },
         {
-          "id": 1002,
+          "id": 1003,
           "type": {
             "path": [
               "pallet_migrations",
@@ -53435,7 +53602,7 @@
           }
         },
         {
-          "id": 1003,
+          "id": 1004,
           "type": {
             "path": [
               "snowbridge_beacon_primitives",
@@ -53461,7 +53628,7 @@
           }
         },
         {
-          "id": 1004,
+          "id": 1005,
           "type": {
             "path": [
               "snowbridge_beacon_primitives",
@@ -53478,12 +53645,12 @@
                   },
                   {
                     "name": "pubkeys",
-                    "type": 1005,
+                    "type": 1006,
                     "typeName": "Box<[PublicKeyPrepared; COMMITTEE_SIZE]>"
                   },
                   {
                     "name": "aggregate_pubkey",
-                    "type": 1006,
+                    "type": 1007,
                     "typeName": "PublicKeyPrepared"
                   }
                 ]
@@ -53492,18 +53659,18 @@
           }
         },
         {
-          "id": 1005,
+          "id": 1006,
           "type": {
             "def": {
               "array": {
                 "len": 512,
-                "type": 1006
+                "type": 1007
               }
             }
           }
         },
         {
-          "id": 1006,
+          "id": 1007,
           "type": {
             "path": [
               "snowbridge_milagro_bls",
@@ -53515,40 +53682,8 @@
                 "fields": [
                   {
                     "name": "point",
-                    "type": 1007,
+                    "type": 1008,
                     "typeName": "GroupG1"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 1007,
-          "type": {
-            "path": [
-              "snowbridge_amcl",
-              "bls381",
-              "ecp",
-              "ECP"
-            ],
-            "def": {
-              "composite": {
-                "fields": [
-                  {
-                    "name": "x",
-                    "type": 1008,
-                    "typeName": "FP"
-                  },
-                  {
-                    "name": "y",
-                    "type": 1008,
-                    "typeName": "FP"
-                  },
-                  {
-                    "name": "z",
-                    "type": 1008,
-                    "typeName": "FP"
                   }
                 ]
               }
@@ -53561,6 +53696,38 @@
             "path": [
               "snowbridge_amcl",
               "bls381",
+              "ecp",
+              "ECP"
+            ],
+            "def": {
+              "composite": {
+                "fields": [
+                  {
+                    "name": "x",
+                    "type": 1009,
+                    "typeName": "FP"
+                  },
+                  {
+                    "name": "y",
+                    "type": 1009,
+                    "typeName": "FP"
+                  },
+                  {
+                    "name": "z",
+                    "type": 1009,
+                    "typeName": "FP"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 1009,
+          "type": {
+            "path": [
+              "snowbridge_amcl",
+              "bls381",
               "fp",
               "FP"
             ],
@@ -53569,7 +53736,7 @@
                 "fields": [
                   {
                     "name": "x",
-                    "type": 1009,
+                    "type": 1010,
                     "typeName": "Big"
                   },
                   {
@@ -53583,7 +53750,7 @@
           }
         },
         {
-          "id": 1009,
+          "id": 1010,
           "type": {
             "path": [
               "snowbridge_amcl",
@@ -53596,7 +53763,7 @@
                 "fields": [
                   {
                     "name": "w",
-                    "type": 1010,
+                    "type": 1011,
                     "typeName": "[Chunk; NLEN]"
                   }
                 ]
@@ -53605,7 +53772,7 @@
           }
         },
         {
-          "id": 1010,
+          "id": 1011,
           "type": {
             "def": {
               "array": {
@@ -53616,7 +53783,7 @@
           }
         },
         {
-          "id": 1011,
+          "id": 1012,
           "type": {
             "path": [
               "snowbridge_beacon_primitives",
@@ -53628,37 +53795,37 @@
                 "fields": [
                   {
                     "name": "genesis",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   },
                   {
                     "name": "altair",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   },
                   {
                     "name": "bellatrix",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   },
                   {
                     "name": "capella",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   },
                   {
                     "name": "deneb",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   },
                   {
                     "name": "electra",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   },
                   {
                     "name": "fulu",
-                    "type": 1012,
+                    "type": 1013,
                     "typeName": "Fork"
                   }
                 ]
@@ -53667,7 +53834,7 @@
           }
         },
         {
-          "id": 1012,
+          "id": 1013,
           "type": {
             "path": [
               "snowbridge_beacon_primitives",
@@ -53693,7 +53860,7 @@
           }
         },
         {
-          "id": 1013,
+          "id": 1014,
           "type": {
             "path": [
               "snowbridge_pallet_ethereum_client",
@@ -53797,7 +53964,7 @@
                     "name": "BLSVerificationFailed",
                     "fields": [
                       {
-                        "type": 1014,
+                        "type": 1015,
                         "typeName": "BlsError"
                       }
                     ],
@@ -53836,7 +54003,7 @@
           }
         },
         {
-          "id": 1014,
+          "id": 1015,
           "type": {
             "path": [
               "snowbridge_beacon_primitives",
@@ -53868,7 +54035,7 @@
           }
         },
         {
-          "id": 1015,
+          "id": 1016,
           "type": {
             "path": [
               "bounded_collections",
@@ -53889,7 +54056,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 1016,
+                    "type": 1017,
                     "typeName": "Vec<T>"
                   }
                 ]
@@ -53898,7 +54065,7 @@
           }
         },
         {
-          "id": 1016,
+          "id": 1017,
           "type": {
             "def": {
               "sequence": {
@@ -53908,7 +54075,7 @@
           }
         },
         {
-          "id": 1017,
+          "id": 1018,
           "type": {
             "path": [
               "pallet_beefy",
@@ -53989,7 +54156,7 @@
           }
         },
         {
-          "id": 1018,
+          "id": 1019,
           "type": {
             "path": [
               "apollo_platform",
@@ -54025,7 +54192,7 @@
           }
         },
         {
-          "id": 1019,
+          "id": 1020,
           "type": {
             "path": [
               "BTreeMap"
@@ -54037,14 +54204,14 @@
               },
               {
                 "name": "V",
-                "type": 1020
+                "type": 1021
               }
             ],
             "def": {
               "composite": {
                 "fields": [
                   {
-                    "type": 1021
+                    "type": 1022
                   }
                 ]
               }
@@ -54052,7 +54219,7 @@
           }
         },
         {
-          "id": 1020,
+          "id": 1021,
           "type": {
             "path": [
               "apollo_platform",
@@ -54098,28 +54265,28 @@
           }
         },
         {
-          "id": 1021,
+          "id": 1022,
           "type": {
             "def": {
               "sequence": {
-                "type": 1022
+                "type": 1023
               }
             }
           }
         },
         {
-          "id": 1022,
+          "id": 1023,
           "type": {
             "def": {
               "tuple": [
                 67,
-                1020
+                1021
               ]
             }
           }
         },
         {
-          "id": 1023,
+          "id": 1024,
           "type": {
             "path": [
               "apollo_platform",
@@ -54214,7 +54381,7 @@
           }
         },
         {
-          "id": 1024,
+          "id": 1025,
           "type": {
             "path": [
               "apollo_platform",
@@ -54484,7 +54651,7 @@
           }
         },
         {
-          "id": 1025,
+          "id": 1026,
           "type": {
             "path": [
               "extended_assets",
@@ -54519,7 +54686,7 @@
                   },
                   {
                     "name": "regulated_assets",
-                    "type": 1026,
+                    "type": 1027,
                     "typeName": "BoundedBTreeSet<AssetId, MaxRegulatedAssetsPerSBT>"
                   }
                 ]
@@ -54528,7 +54695,7 @@
           }
         },
         {
-          "id": 1026,
+          "id": 1027,
           "type": {
             "path": [
               "bounded_collections",
@@ -54558,7 +54725,7 @@
           }
         },
         {
-          "id": 1027,
+          "id": 1028,
           "type": {
             "path": [
               "extended_assets",
@@ -54667,7 +54834,7 @@
           }
         },
         {
-          "id": 1028,
+          "id": 1029,
           "type": {
             "path": [
               "soratopia",
@@ -54699,7 +54866,7 @@
           }
         },
         {
-          "id": 1029,
+          "id": 1030,
           "type": {
             "path": [
               "sp_runtime",
@@ -54722,7 +54889,7 @@
               },
               {
                 "name": "Extra",
-                "type": 1030
+                "type": 1031
               }
             ],
             "def": {
@@ -54737,23 +54904,23 @@
           }
         },
         {
-          "id": 1030,
+          "id": 1031,
           "type": {
             "def": {
               "tuple": [
-                1031,
                 1032,
                 1033,
                 1034,
-                1036,
+                1035,
                 1037,
-                1038
+                1038,
+                1039
               ]
             }
           }
         },
         {
-          "id": 1031,
+          "id": 1032,
           "type": {
             "path": [
               "frame_system",
@@ -54773,7 +54940,7 @@
           }
         },
         {
-          "id": 1032,
+          "id": 1033,
           "type": {
             "path": [
               "frame_system",
@@ -54793,7 +54960,7 @@
           }
         },
         {
-          "id": 1033,
+          "id": 1034,
           "type": {
             "path": [
               "frame_system",
@@ -54813,7 +54980,7 @@
           }
         },
         {
-          "id": 1034,
+          "id": 1035,
           "type": {
             "path": [
               "frame_system",
@@ -54831,7 +54998,7 @@
               "composite": {
                 "fields": [
                   {
-                    "type": 1035,
+                    "type": 1036,
                     "typeName": "Era"
                   }
                 ]
@@ -54840,7 +55007,7 @@
           }
         },
         {
-          "id": 1035,
+          "id": 1036,
           "type": {
             "path": [
               "sp_runtime",
@@ -57156,7 +57323,7 @@
           }
         },
         {
-          "id": 1036,
+          "id": 1037,
           "type": {
             "path": [
               "frame_system",
@@ -57183,7 +57350,7 @@
           }
         },
         {
-          "id": 1037,
+          "id": 1038,
           "type": {
             "path": [
               "frame_system",
@@ -57203,7 +57370,7 @@
           }
         },
         {
-          "id": 1038,
+          "id": 1039,
           "type": {
             "path": [
               "sp_runtime",
@@ -57215,14 +57382,14 @@
             "params": [
               {
                 "name": "SE",
-                "type": 1039
+                "type": 1040
               }
             ],
             "def": {
               "composite": {
                 "fields": [
                   {
-                    "type": 1039,
+                    "type": 1040,
                     "typeName": "SE"
                   }
                 ]
@@ -57231,7 +57398,7 @@
           }
         },
         {
-          "id": 1039,
+          "id": 1040,
           "type": {
             "path": [
               "xor_fee",
@@ -57258,7 +57425,7 @@
           }
         },
         {
-          "id": 1040,
+          "id": 1041,
           "type": {
             "path": [
               "framenode_runtime",
@@ -71443,6 +71610,23 @@
               "docs": []
             },
             {
+              "name": "EarlyResolutionReports",
+              "modifier": "Optional",
+              "ty": {
+                "Map": {
+                  "hashers": [
+                    "Blake2_128Concat"
+                  ],
+                  "key": 4,
+                  "value": 954
+                }
+              },
+              "default": [
+                0
+              ],
+              "docs": []
+            },
+            {
               "name": "PendingXorBuybackCollateral",
               "modifier": "Default",
               "ty": {
@@ -71478,7 +71662,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 700,
-                  "value": 954
+                  "value": 955
                 }
               },
               "default": [
@@ -71496,7 +71680,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 700,
-                  "value": 955
+                  "value": 956
                 }
               },
               "default": [
@@ -71513,7 +71697,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 4,
-                  "value": 955
+                  "value": 956
                 }
               },
               "default": [
@@ -71562,7 +71746,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 700,
-                  "value": 956
+                  "value": 957
                 }
               },
               "default": [
@@ -71579,7 +71763,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 4,
-                  "value": 957
+                  "value": 958
                 }
               },
               "default": [
@@ -71638,7 +71822,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 12,
-                  "value": 958
+                  "value": 959
                 }
               },
               "default": [
@@ -71655,8 +71839,8 @@
                     "Blake2_128Concat",
                     "Blake2_128Concat"
                   ],
-                  "key": 960,
-                  "value": 962
+                  "key": 961,
+                  "value": 963
                 }
               },
               "default": [
@@ -71673,8 +71857,8 @@
                     "Blake2_128Concat",
                     "Blake2_128Concat"
                   ],
-                  "key": 963,
-                  "value": 965
+                  "key": 964,
+                  "value": 966
                 }
               },
               "default": [
@@ -71692,7 +71876,7 @@
                     "Blake2_128Concat"
                   ],
                   "key": 707,
-                  "value": 969
+                  "value": 970
                 }
               },
               "default": [
@@ -71790,7 +71974,7 @@
           },
           {
             "name": "PalletId",
-            "ty": 970,
+            "ty": 971,
             "value": [
               112,
               107,
@@ -71857,6 +72041,31 @@
             ],
             "docs": [
               " Minimum number of blocks between market creation and close block."
+            ]
+          },
+          {
+            "name": "EarlyReportBond",
+            "ty": 6,
+            "value": [
+              0,
+              0,
+              16,
+              99,
+              45,
+              94,
+              199,
+              107,
+              5,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "docs": [
+              " Canonical stablecoin bond posted by permissionless early-resolution reporters."
             ]
           },
           {
@@ -71964,7 +72173,7 @@
           }
         ],
         "error": {
-          "ty": 971
+          "ty": 972
         },
         "index": 61
       },
@@ -72010,8 +72219,8 @@
                     "Blake2_128Concat",
                     "Blake2_128Concat"
                   ],
-                  "key": 972,
-                  "value": 974
+                  "key": 973,
+                  "value": 975
                 }
               },
               "default": [
@@ -72028,7 +72237,7 @@
                     "Twox64Concat",
                     "Blake2_128Concat"
                   ],
-                  "key": 976,
+                  "key": 977,
                   "value": 0
                 }
               },
@@ -72046,7 +72255,7 @@
                     "Blake2_128Concat",
                     "Blake2_128Concat"
                   ],
-                  "key": 977,
+                  "key": 978,
                   "value": 6
                 }
               },
@@ -72195,7 +72404,7 @@
         },
         "constants": [],
         "error": {
-          "ty": 978
+          "ty": 979
         },
         "index": 103
       },
@@ -72389,7 +72598,7 @@
           }
         ],
         "error": {
-          "ty": 979
+          "ty": 980
         },
         "index": 96
       },
@@ -72423,7 +72632,7 @@
                     "Identity"
                   ],
                   "key": 47,
-                  "value": 980
+                  "value": 981
                 }
               },
               "default": [
@@ -72515,7 +72724,7 @@
                     "Identity"
                   ],
                   "key": 47,
-                  "value": 983
+                  "value": 984
                 }
               },
               "default": [
@@ -72589,7 +72798,7 @@
           }
         ],
         "error": {
-          "ty": 984
+          "ty": 985
         },
         "index": 97
       },
@@ -72616,7 +72825,7 @@
               "name": "AppInfo",
               "modifier": "Optional",
               "ty": {
-                "Plain": 985
+                "Plain": 986
               },
               "default": [
                 0
@@ -72701,7 +72910,7 @@
         },
         "constants": [],
         "error": {
-          "ty": 986
+          "ty": 987
         },
         "index": 101
       },
@@ -72788,7 +72997,7 @@
           }
         ],
         "error": {
-          "ty": 987
+          "ty": 988
         },
         "index": 106
       },
@@ -72866,7 +73075,7 @@
                     "Identity"
                   ],
                   "key": 48,
-                  "value": 983
+                  "value": 984
                 }
               },
               "default": [
@@ -72894,7 +73103,7 @@
           }
         ],
         "error": {
-          "ty": 988
+          "ty": 989
         },
         "index": 107
       },
@@ -72926,7 +73135,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 989,
+                  "key": 990,
                   "value": 652
                 }
               },
@@ -72944,7 +73153,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 989,
+                  "key": 990,
                   "value": 2
                 }
               },
@@ -72962,7 +73171,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 990,
+                  "key": 991,
                   "value": 352
                 }
               },
@@ -72998,7 +73207,7 @@
         },
         "constants": [],
         "error": {
-          "ty": 991
+          "ty": 992
         },
         "index": 109
       },
@@ -73016,7 +73225,7 @@
                     "Identity"
                   ],
                   "key": 47,
-                  "value": 992
+                  "value": 993
                 }
               },
               "default": [
@@ -73054,7 +73263,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 976,
+                  "key": 977,
                   "value": 8
                 }
               },
@@ -73074,8 +73283,8 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 976,
-                  "value": 994
+                  "key": 977,
+                  "value": 995
                 }
               },
               "default": [
@@ -73152,7 +73361,7 @@
           }
         ],
         "error": {
-          "ty": 998
+          "ty": 999
         },
         "index": 110
       },
@@ -73170,7 +73379,7 @@
                     "Twox64Concat"
                   ],
                   "key": 47,
-                  "value": 992
+                  "value": 993
                 }
               },
               "default": [
@@ -73220,7 +73429,7 @@
           }
         ],
         "error": {
-          "ty": 999
+          "ty": 1000
         },
         "index": 111
       },
@@ -73238,7 +73447,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 989,
+                  "key": 990,
                   "value": 652
                 }
               },
@@ -73256,7 +73465,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 989,
+                  "key": 990,
                   "value": 2
                 }
               },
@@ -73274,7 +73483,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 989,
+                  "key": 990,
                   "value": 659
                 }
               },
@@ -73292,7 +73501,7 @@
                     "Identity",
                     "Identity"
                   ],
-                  "key": 1000,
+                  "key": 1001,
                   "value": 67
                 }
               },
@@ -73311,7 +73520,7 @@
         },
         "constants": [],
         "error": {
-          "ty": 1001
+          "ty": 1002
         },
         "index": 113
       },
@@ -73400,7 +73609,7 @@
           }
         ],
         "error": {
-          "ty": 1002
+          "ty": 1003
         },
         "index": 117
       },
@@ -73506,7 +73715,7 @@
                     "Identity"
                   ],
                   "key": 13,
-                  "value": 1003
+                  "value": 1004
                 }
               },
               "default": [
@@ -73628,7 +73837,7 @@
               "name": "CurrentSyncCommittee",
               "modifier": "Default",
               "ty": {
-                "Plain": 1004
+                "Plain": 1005
               },
               "default": [
                 0,
@@ -166012,7 +166221,7 @@
               "name": "NextSyncCommittee",
               "modifier": "Default",
               "ty": {
-                "Plain": 1004
+                "Plain": 1005
               },
               "default": [
                 0,
@@ -258436,7 +258645,7 @@
         "constants": [
           {
             "name": "ForkVersions",
-            "ty": 1011,
+            "ty": 1012,
             "value": [
               0,
               0,
@@ -258540,7 +258749,7 @@
           }
         ],
         "error": {
-          "ty": 1013
+          "ty": 1014
         },
         "index": 118
       },
@@ -258553,7 +258762,7 @@
               "name": "Authorities",
               "modifier": "Default",
               "ty": {
-                "Plain": 1015
+                "Plain": 1016
               },
               "default": [
                 0
@@ -258586,7 +258795,7 @@
               "name": "NextAuthorities",
               "modifier": "Default",
               "ty": {
-                "Plain": 1015
+                "Plain": 1016
               },
               "default": [
                 0
@@ -258693,7 +258902,7 @@
           }
         ],
         "error": {
-          "ty": 1017
+          "ty": 1018
         },
         "index": 91
       },
@@ -258712,7 +258921,7 @@
                     "Identity"
                   ],
                   "key": 874,
-                  "value": 1018
+                  "value": 1019
                 }
               },
               "default": [
@@ -258732,7 +258941,7 @@
                     "Identity"
                   ],
                   "key": 874,
-                  "value": 1019
+                  "value": 1020
                 }
               },
               "default": [
@@ -258771,7 +258980,7 @@
                     "Identity"
                   ],
                   "key": 67,
-                  "value": 1023
+                  "value": 1024
                 }
               },
               "default": [
@@ -259091,7 +259300,7 @@
           }
         ],
         "error": {
-          "ty": 1024
+          "ty": 1025
         },
         "index": 114
       },
@@ -259109,7 +259318,7 @@
                     "Identity"
                   ],
                   "key": 67,
-                  "value": 1025
+                  "value": 1026
                 }
               },
               "default": [
@@ -259213,7 +259422,7 @@
           }
         ],
         "error": {
-          "ty": 1027
+          "ty": 1028
         },
         "index": 115
       },
@@ -259286,52 +259495,52 @@
           }
         ],
         "error": {
-          "ty": 1028
+          "ty": 1029
         },
         "index": 116
       }
     ],
     "extrinsic": {
-      "ty": 1029,
+      "ty": 1030,
       "version": 4,
       "signed_extensions": [
         {
           "identifier": "CheckSpecVersion",
-          "ty": 1031,
-          "additional_signed": 4
-        },
-        {
-          "identifier": "CheckTxVersion",
           "ty": 1032,
           "additional_signed": 4
         },
         {
-          "identifier": "CheckGenesis",
+          "identifier": "CheckTxVersion",
           "ty": 1033,
-          "additional_signed": 13
+          "additional_signed": 4
         },
         {
-          "identifier": "CheckMortality",
+          "identifier": "CheckGenesis",
           "ty": 1034,
           "additional_signed": 13
         },
         {
-          "identifier": "CheckNonce",
-          "ty": 1036,
-          "additional_signed": 62
+          "identifier": "CheckMortality",
+          "ty": 1035,
+          "additional_signed": 13
         },
         {
-          "identifier": "CheckWeight",
+          "identifier": "CheckNonce",
           "ty": 1037,
           "additional_signed": 62
         },
         {
+          "identifier": "CheckWeight",
+          "ty": 1038,
+          "additional_signed": 62
+        },
+        {
           "identifier": "ChargeTransactionPayment",
-          "ty": 1039,
+          "ty": 1040,
           "additional_signed": 62
         }
       ]
     },
-    "ty": 1040
+    "ty": 1041
   }
 }

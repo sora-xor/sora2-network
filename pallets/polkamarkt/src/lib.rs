@@ -36,7 +36,7 @@ pub type OrderId = u64;
 pub type PriceCents = u8;
 
 const STORAGE_VERSION: frame_support::traits::StorageVersion =
-    frame_support::traits::StorageVersion::new(6);
+    frame_support::traits::StorageVersion::new(7);
 const CREATION_FEE_BUYBACK_BPS: u32 = 2_000;
 const BPS_DENOMINATOR: u128 = 10_000;
 
@@ -62,6 +62,8 @@ pub trait WeightInfo {
     fn sync_market_status() -> Weight;
     fn resolve_market() -> Weight;
     fn resolve_market_with_evidence() -> Weight;
+    fn report_early_resolution() -> Weight;
+    fn reject_early_resolution_report() -> Weight;
     fn cancel_market() -> Weight;
     fn emergency_cancel_market() -> Weight;
     fn claim_market() -> Weight;
@@ -331,6 +333,16 @@ pub struct MarketEvidence<BlockNumber, BoundedString> {
 #[derive(
     Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
 )]
+pub struct EarlyResolutionReport<AccountId, BlockNumber, Balance, BoundedString> {
+    pub reporter: AccountId,
+    pub outcome: BinaryOutcome,
+    pub bond: Balance,
+    pub evidence: MarketEvidence<BlockNumber, BoundedString>,
+}
+
+#[derive(
+    Encode, Decode, DecodeWithMemTracking, TypeInfo, Clone, PartialEq, Eq, Debug, MaxEncodedLen,
+)]
 pub struct Order<AccountId, Balance> {
     pub owner: AccountId,
     pub market_id: MarketId,
@@ -400,6 +412,12 @@ pub type MetadataString<T> = BoundedVec<u8, <T as pallet::Config>::MaxMetadataLe
 pub type ConditionMetadataOf<T> = ConditionMetadata<MetadataString<T>>;
 pub type ConditionDetailsOf<T> = ConditionDetailsRecord<MetadataString<T>>;
 pub type MarketEvidenceOf<T> = MarketEvidence<BlockNumberFor<T>, MetadataString<T>>;
+pub type EarlyResolutionReportOf<T> = EarlyResolutionReport<
+    <T as frame_system::Config>::AccountId,
+    BlockNumberFor<T>,
+    <T as Config>::Balance,
+    MetadataString<T>,
+>;
 
 pub type MarketOf<T> = Market<
     <T as Config>::AssetId,
@@ -503,6 +521,10 @@ pub mod pallet {
         /// Minimum number of blocks between market creation and close block.
         #[pallet::constant]
         type MinMarketDuration: Get<BlockNumberFor<Self>>;
+
+        /// Canonical stablecoin bond posted by permissionless early-resolution reporters.
+        #[pallet::constant]
+        type EarlyReportBond: Get<Self::Balance>;
 
         /// Maximum metadata length (question/oracle/source).
         #[pallet::constant]
@@ -637,6 +659,11 @@ pub mod pallet {
     #[pallet::getter(fn market_cancellation_evidence)]
     pub type MarketCancellationEvidence<T: Config> =
         StorageMap<_, Blake2_128Concat, MarketId, MarketEvidenceOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn early_resolution_reports)]
+    pub type EarlyResolutionReports<T: Config> =
+        StorageMap<_, Blake2_128Concat, MarketId, EarlyResolutionReportOf<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn pending_xor_buyback_collateral)]
@@ -785,6 +812,22 @@ pub mod pallet {
         ResolutionEvidenceStored {
             market_id: MarketId,
         },
+        EarlyResolutionReported {
+            market_id: MarketId,
+            reporter: T::AccountId,
+            outcome: BinaryOutcome,
+            bond: T::Balance,
+        },
+        EarlyResolutionReportRejected {
+            market_id: MarketId,
+            reporter: T::AccountId,
+            bond: T::Balance,
+        },
+        EarlyResolutionBondReturned {
+            market_id: MarketId,
+            reporter: T::AccountId,
+            bond: T::Balance,
+        },
         MarketCancelled {
             market_id: MarketId,
         },
@@ -853,6 +896,8 @@ pub mod pallet {
         NothingToClaim,
         NothingToSweep,
         UnsupportedMarketMechanism,
+        EarlyResolutionReportAlreadyExists,
+        EarlyResolutionReportNotFound,
     }
 
     #[pallet::call]
@@ -1010,6 +1055,7 @@ pub mod pallet {
                     Ok(())
                 })?;
                 MarketResolution::<T>::insert(market_id, outcome);
+                Self::settle_early_report_for_resolution(market_id, outcome, true)?;
                 Self::burn_dpm_residual_if_no_winners(market_id, outcome)?;
                 Self::deposit_event(Event::MarketResolved { market_id, outcome });
                 Ok(())
@@ -1036,11 +1082,110 @@ pub mod pallet {
                 })?;
                 MarketResolution::<T>::insert(market_id, outcome);
                 MarketResolutionEvidence::<T>::insert(market_id, evidence);
+                Self::settle_early_report_for_resolution(market_id, outcome, false)?;
                 Self::burn_dpm_residual_if_no_winners(market_id, outcome)?;
                 Self::deposit_event(Event::MarketResolved { market_id, outcome });
                 Self::deposit_event(Event::ResolutionEvidenceStored { market_id });
                 Ok(())
             })
+        }
+
+        /// Permissionlessly report an early-known outcome and lock trading until governance acts.
+        #[pallet::call_index(33)]
+        #[pallet::weight(T::WeightInfo::report_early_resolution())]
+        #[transactional]
+        pub fn report_early_resolution(
+            origin: OriginFor<T>,
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            evidence: EvidenceInput,
+        ) -> DispatchResult {
+            let reporter = ensure_signed(origin)?;
+            let evidence = Self::validate_evidence(evidence)?;
+            let market = Markets::<T>::get(market_id).ok_or(Error::<T>::MarketUnknown)?;
+            ensure!(
+                matches!(market.mechanism, MarketMechanism::DynamicPariMutuel),
+                Error::<T>::UnsupportedMarketMechanism
+            );
+            ensure!(
+                !EarlyResolutionReports::<T>::contains_key(market_id),
+                Error::<T>::EarlyResolutionReportAlreadyExists
+            );
+            ensure!(
+                matches!(market.status, MarketStatus::Open),
+                Error::<T>::MarketNotOpen
+            );
+            let now = <frame_system::Pallet<T>>::block_number();
+            ensure!(now < market.close_block, Error::<T>::MarketNotOpen);
+
+            let bond = T::EarlyReportBond::get();
+            ensure!(!bond.is_zero(), Error::<T>::InvalidTradeAmount);
+            T::Assets::transfer(
+                T::CanonicalStableAssetId::get(),
+                &reporter,
+                &Self::account_id(),
+                bond,
+            )?;
+
+            Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
+                let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
+                market.status = MarketStatus::Locked;
+                Ok(())
+            })?;
+            EarlyResolutionReports::<T>::insert(
+                market_id,
+                EarlyResolutionReport {
+                    reporter: reporter.clone(),
+                    outcome,
+                    bond,
+                    evidence,
+                },
+            );
+            Self::deposit_event(Event::MarketLocked { market_id });
+            Self::deposit_event(Event::EarlyResolutionReported {
+                market_id,
+                reporter,
+                outcome,
+                bond,
+            });
+            Ok(())
+        }
+
+        /// Reject a permissionless early-resolution report and slash its bond.
+        #[pallet::call_index(34)]
+        #[pallet::weight(T::WeightInfo::reject_early_resolution_report())]
+        #[transactional]
+        pub fn reject_early_resolution_report(
+            origin: OriginFor<T>,
+            market_id: MarketId,
+        ) -> DispatchResult {
+            T::GovernanceOrigin::ensure_origin(origin)?;
+            let report = EarlyResolutionReports::<T>::get(market_id)
+                .ok_or(Error::<T>::EarlyResolutionReportNotFound)?;
+            let now = <frame_system::Pallet<T>>::block_number();
+            Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
+                let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
+                ensure!(
+                    matches!(market.mechanism, MarketMechanism::DynamicPariMutuel),
+                    Error::<T>::UnsupportedMarketMechanism
+                );
+                ensure!(
+                    !matches!(
+                        market.status,
+                        MarketStatus::Resolved | MarketStatus::Cancelled
+                    ),
+                    Error::<T>::MarketAlreadyFinalized
+                );
+                market.status = if now < market.close_block {
+                    MarketStatus::Open
+                } else {
+                    MarketStatus::Locked
+                };
+                Ok(())
+            })?;
+            EarlyResolutionReports::<T>::remove(market_id);
+            Self::slash_early_report_bond(market_id, &report)?;
+            Ok(())
         }
 
         /// Cancel an expired market and unlock cancellation refunds.
@@ -1049,6 +1194,10 @@ pub mod pallet {
         pub fn cancel_market(origin: OriginFor<T>, market_id: MarketId) -> DispatchResult {
             T::GovernanceOrigin::ensure_origin(origin)?;
             let _ = Self::ensure_market_can_finalize(market_id)?;
+            ensure!(
+                !EarlyResolutionReports::<T>::contains_key(market_id),
+                Error::<T>::EarlyResolutionReportAlreadyExists
+            );
             with_storage_transaction(|| -> DispatchResult {
                 Markets::<T>::try_mutate(market_id, |market| -> DispatchResult {
                     let market = market.as_mut().ok_or(Error::<T>::MarketUnknown)?;
@@ -1081,6 +1230,10 @@ pub mod pallet {
                     MarketStatus::Resolved | MarketStatus::Cancelled
                 ),
                 Error::<T>::MarketAlreadyFinalized
+            );
+            ensure!(
+                !EarlyResolutionReports::<T>::contains_key(market_id),
+                Error::<T>::EarlyResolutionReportAlreadyExists
             );
             let evidence = Self::validate_evidence(evidence)?;
             with_storage_transaction(|| -> DispatchResult {
@@ -1257,6 +1410,58 @@ pub mod pallet {
                 hash: evidence.hash,
                 at_block: <frame_system::Pallet<T>>::block_number(),
             })
+        }
+
+        fn settle_early_report_for_resolution(
+            market_id: MarketId,
+            outcome: BinaryOutcome,
+            store_matching_report_evidence: bool,
+        ) -> DispatchResult {
+            let Some(report) = EarlyResolutionReports::<T>::take(market_id) else {
+                return Ok(());
+            };
+
+            if report.outcome == outcome {
+                if store_matching_report_evidence {
+                    MarketResolutionEvidence::<T>::insert(market_id, report.evidence.clone());
+                    Self::deposit_event(Event::ResolutionEvidenceStored { market_id });
+                }
+                T::Assets::transfer(
+                    T::CanonicalStableAssetId::get(),
+                    &Self::account_id(),
+                    &report.reporter,
+                    report.bond,
+                )?;
+                Self::deposit_event(Event::EarlyResolutionBondReturned {
+                    market_id,
+                    reporter: report.reporter,
+                    bond: report.bond,
+                });
+            } else {
+                Self::slash_early_report_bond(market_id, &report)?;
+            }
+
+            Ok(())
+        }
+
+        fn slash_early_report_bond(
+            market_id: MarketId,
+            report: &EarlyResolutionReportOf<T>,
+        ) -> DispatchResult {
+            if !report.bond.is_zero() {
+                PendingXorBuybackCollateral::<T>::try_mutate(|total| -> DispatchResult {
+                    *total = total
+                        .checked_add(&report.bond)
+                        .ok_or(Error::<T>::Overflow)?;
+                    Ok(())
+                })?;
+            }
+            Self::deposit_event(Event::EarlyResolutionReportRejected {
+                market_id,
+                reporter: report.reporter.clone(),
+                bond: report.bond,
+            });
+            Ok(())
         }
 
         fn ensure_market_tradable(market_id: MarketId) -> Result<MarketOf<T>, DispatchError> {
@@ -3264,6 +3469,31 @@ pub mod migrations {
                 }
 
                 <T as frame_system::Config>::BlockWeights::get().max_block
+            }
+        }
+    }
+
+    pub mod v7 {
+        use super::super::*;
+        use frame_support::traits::{GetStorageVersion as _, OnRuntimeUpgrade, StorageVersion};
+        use sp_core::Get;
+
+        pub struct Migrate<T>(PhantomData<T>);
+
+        impl<T: Config> OnRuntimeUpgrade for Migrate<T> {
+            fn on_runtime_upgrade() -> Weight {
+                let db_weight = T::DbWeight::get();
+                let on_chain = Pallet::<T>::on_chain_storage_version();
+                if on_chain >= StorageVersion::new(7) {
+                    return db_weight.reads(1);
+                }
+                if on_chain != StorageVersion::new(6) {
+                    panic!(
+                        "Polkamarkt v7 migration requires storage version 6, found {on_chain:?}"
+                    );
+                }
+                StorageVersion::new(7).put::<Pallet<T>>();
+                db_weight.reads_writes(1, 1)
             }
         }
     }

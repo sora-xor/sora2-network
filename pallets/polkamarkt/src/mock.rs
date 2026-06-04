@@ -45,6 +45,7 @@ parameter_types! {
     pub const TestPalletId: PalletId = PalletId(*b"pk/mktpl");
     pub const LegacyCreatorBondEscrowConst: AccountId = LEGACY_BOND_ESCROW;
     pub const MinMarketDurationConst: BlockNumber = 5;
+    pub const EarlyReportBondConst: Balance = 100;
     pub const MaxMetadataLengthConst: u32 = 128;
     pub const MaxBatchClaimsConst: u32 = 8;
     pub const MaxFillsPerOrderConst: u32 = 8;
@@ -125,6 +126,12 @@ impl crate::WeightInfo for TestWeightInfo {
     fn resolve_market_with_evidence() -> Weight {
         Weight::zero()
     }
+    fn report_early_resolution() -> Weight {
+        Weight::zero()
+    }
+    fn reject_early_resolution_report() -> Weight {
+        Weight::zero()
+    }
     fn cancel_market() -> Weight {
         Weight::zero()
     }
@@ -195,6 +202,7 @@ impl pallet_polkamarkt::Config for Test {
     type BuyBackHandler = MockBuyBackHandler;
     type GetBuyBackAssetId = BuyBackAssetConst;
     type MinMarketDuration = MinMarketDurationConst;
+    type EarlyReportBond = EarlyReportBondConst;
     type MaxMetadataLength = MaxMetadataLengthConst;
     type MaxBatchClaims = MaxBatchClaimsConst;
     type MaxFillsPerOrder = MaxFillsPerOrderConst;
@@ -222,7 +230,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .expect("polkamarkt genesis build");
     let mut ext = sp_io::TestExternalities::new(t);
     ext.execute_with(|| {
-        frame_support::traits::StorageVersion::new(6).put::<crate::Pallet<Test>>();
+        frame_support::traits::StorageVersion::new(7).put::<crate::Pallet<Test>>();
     });
     ext
 }

@@ -132,6 +132,14 @@ fn polkamarkt_trade_calls() -> Vec<<Runtime as frame_system::Config>::RuntimeCal
             shares_in: balance!(5),
             min_collateral_out: 0,
         }),
+        RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::report_early_resolution {
+            market_id: 0,
+            outcome: pallet_polkamarkt::BinaryOutcome::Yes,
+            evidence: pallet_polkamarkt::EvidenceInput {
+                uri: b"ipfs://early-resolution".to_vec(),
+                hash: None,
+            },
+        }),
     ]
 }
 
@@ -1719,20 +1727,7 @@ fn polkamarkt_buy_sell_tx_fees_match_regular_polkaswap_swap() {
         let expected_details =
             XorFee::compute_fee_details(len as u32, &swap_call, &dispatch_info, tip);
 
-        for call in [
-            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy {
-                market_id: 0,
-                outcome: pallet_polkamarkt::BinaryOutcome::Yes,
-                collateral_in: balance!(10),
-                min_shares_out: 0,
-            }),
-            RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell {
-                market_id: 0,
-                outcome: pallet_polkamarkt::BinaryOutcome::No,
-                shares_in: balance!(5),
-                min_collateral_out: 0,
-            }),
-        ] {
+        for call in polkamarkt_trade_calls() {
             assert_eq!(
                 CustomFees::compute_fee(&call),
                 CustomFees::compute_fee(&swap_call)

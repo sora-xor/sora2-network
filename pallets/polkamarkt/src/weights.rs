@@ -70,6 +70,8 @@ pub trait WeightInfo {
 	fn sync_market_status() -> Weight;
 	fn resolve_market() -> Weight;
 	fn resolve_market_with_evidence() -> Weight;
+	fn report_early_resolution() -> Weight;
+	fn reject_early_resolution_report() -> Weight;
 	fn cancel_market() -> Weight;
 	fn emergency_cancel_market() -> Weight;
 	fn claim_market() -> Weight;
@@ -270,6 +272,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `3873`
 		// Minimum execution time: 23_000_000 picoseconds.
 		Weight::from_parts(27_000_000, 3873)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
+	}
+	fn report_early_resolution() -> Weight {
+		Weight::from_parts(80_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
+	}
+	fn reject_early_resolution_report() -> Weight {
+		Weight::from_parts(30_000_000, 3873)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
@@ -624,6 +636,16 @@ impl WeightInfo for () {
 		//  Estimated: `3873`
 		// Minimum execution time: 23_000_000 picoseconds.
 		Weight::from_parts(27_000_000, 3873)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
+	}
+	fn report_early_resolution() -> Weight {
+		Weight::from_parts(80_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64))
+	}
+	fn reject_early_resolution_report() -> Weight {
+		Weight::from_parts(30_000_000, 3873)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}

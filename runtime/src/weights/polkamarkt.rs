@@ -70,6 +70,8 @@ pub trait WeightInfo {
 	fn sync_market_status() -> Weight;
 	fn resolve_market() -> Weight;
 	fn resolve_market_with_evidence() -> Weight;
+	fn report_early_resolution() -> Weight;
+	fn reject_early_resolution_report() -> Weight;
 	fn cancel_market() -> Weight;
 	fn emergency_cancel_market() -> Weight;
 	fn claim_market() -> Weight;
@@ -273,6 +275,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
+	fn report_early_resolution() -> Weight {
+		Weight::from_parts(82_000_000, 325556)
+			.saturating_add(T::DbWeight::get().reads(6_u64))
+			.saturating_add(T::DbWeight::get().writes(5_u64))
+	}
+	fn reject_early_resolution_report() -> Weight {
+		Weight::from_parts(31_000_000, 3873)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(3_u64))
+	}
 	/// Storage: `Polkamarkt::Markets` (r:1 w:1)
 	/// Proof: `Polkamarkt::Markets` (`max_values`: None, `max_size`: None, mode: `Measured`)
 	/// Storage: `Polkamarkt::MarketResolution` (r:0 w:1)
@@ -460,6 +472,12 @@ impl<T: frame_system::Config + pallet_polkamarkt::Config> pallet_polkamarkt::Wei
 	}
 	fn resolve_market_with_evidence() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::resolve_market_with_evidence()
+	}
+	fn report_early_resolution() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::report_early_resolution()
+	}
+	fn reject_early_resolution_report() -> Weight {
+		<SubstrateWeight<T> as WeightInfo>::reject_early_resolution_report()
 	}
 	fn cancel_market() -> Weight {
 		<SubstrateWeight<T> as WeightInfo>::cancel_market()
@@ -672,6 +690,16 @@ impl WeightInfo for () {
 		//  Estimated: `3873`
 		// Minimum execution time: 24_000_000 picoseconds.
 		Weight::from_parts(28_000_000, 3873)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(3_u64))
+	}
+	fn report_early_resolution() -> Weight {
+		Weight::from_parts(82_000_000, 325556)
+			.saturating_add(RocksDbWeight::get().reads(6_u64))
+			.saturating_add(RocksDbWeight::get().writes(5_u64))
+	}
+	fn reject_early_resolution_report() -> Weight {
+		Weight::from_parts(31_000_000, 3873)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}

@@ -380,7 +380,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         pallet_polkamarkt::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(6)
+        StorageVersion::new(7)
     );
     assert_eq!(
         vested_rewards::Pallet::<crate::Runtime>::in_code_storage_version(),
@@ -1897,4 +1897,9 @@ pub(crate) fn queue_ethereum_xor_thischain_add_asset_try_runtime_hooks() {
 #[cfg(feature = "try-runtime")]
 pub(crate) async fn remote_try_runtime_upgrade_rehearsal() {
     remote::remote_try_runtime_upgrade_rehearsal().await;
+}
+
+#[cfg(feature = "try-runtime")]
+pub(crate) async fn remote_eth_bridge_migration_rehearsal() {
+    remote::remote_eth_bridge_migration_rehearsal().await;
 }
