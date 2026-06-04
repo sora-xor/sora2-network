@@ -397,6 +397,9 @@ impl CustomFees {
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::create_market { .. })
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::buy { .. })
             | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::sell { .. })
+            | RuntimeCall::Polkamarkt(pallet_polkamarkt::Call::report_early_resolution {
+                ..
+            })
             | RuntimeCall::PoolXYK(..)
             | RuntimeCall::Rewards(..)
             | RuntimeCall::TradingPair(..)

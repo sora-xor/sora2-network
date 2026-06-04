@@ -293,6 +293,40 @@ mod benchmarks {
     }
 
     #[benchmark]
+    fn report_early_resolution() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+        let reporter: T::AccountId = account("reporter", 0, 0);
+        mint_canonical_balance::<T>(&reporter, T::EarlyReportBond::get());
+
+        #[extrinsic_call]
+        report_early_resolution(
+            RawOrigin::Signed(reporter),
+            0,
+            BinaryOutcome::Yes,
+            default_evidence::<T>(),
+        );
+    }
+
+    #[benchmark]
+    fn reject_early_resolution_report() {
+        let caller: T::AccountId = whitelisted_caller();
+        setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));
+        let reporter: T::AccountId = account("reporter", 0, 0);
+        mint_canonical_balance::<T>(&reporter, T::EarlyReportBond::get());
+        Pallet::<T>::report_early_resolution(
+            RawOrigin::Signed(reporter).into(),
+            0,
+            BinaryOutcome::Yes,
+            default_evidence::<T>(),
+        )
+        .expect("early report setup");
+
+        #[extrinsic_call]
+        reject_early_resolution_report(RawOrigin::Root, 0);
+    }
+
+    #[benchmark]
     fn cancel_market() {
         let caller: T::AccountId = whitelisted_caller();
         setup_creator_market::<T>(&caller, bench_balance::<T>(100_000));

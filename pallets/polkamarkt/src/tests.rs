@@ -1,9 +1,9 @@
 use crate::{
     BinaryOutcome, ConditionCreators, ConditionDetails, ConditionDetailsInput, ConditionInput,
-    ConditionMarket, DpmCostBasisByAccount, DpmCostBasisTotals, Error, Event, EvidenceInput,
-    LiquidityPosition, LiquidityPositionTotals, LiquidityPositions, LiquidityTotals, Market,
-    MarketCancellationEvidence, MarketCreatorFees, MarketDpmCollateral, MarketMechanism,
-    MarketOrderBookCollateral, MarketPools, MarketPositionTotals, MarketPositions,
+    ConditionMarket, DpmCostBasisByAccount, DpmCostBasisTotals, EarlyResolutionReports, Error,
+    Event, EvidenceInput, LiquidityPosition, LiquidityPositionTotals, LiquidityPositions,
+    LiquidityTotals, Market, MarketCancellationEvidence, MarketCreatorFees, MarketDpmCollateral,
+    MarketMechanism, MarketOrderBookCollateral, MarketPools, MarketPositionTotals, MarketPositions,
     MarketResolution, MarketResolutionEvidence, MarketStatus, Markets, MigratedLegacyPayouts,
     Order, OrderSide, Orders, PendingXorBuybackCollateral,
 };
@@ -19,8 +19,8 @@ use sp_runtime::{DispatchError, Perbill};
 use super::mock::*;
 use super::mock::{
     balance_of, last_buyback_call, new_test_ext, run_to_block, xor_burned, BlockNumber,
-    DpmVirtualSharesConst, MinCreationFeeConst, RuntimeEvent, RuntimeOrigin, TradeFeeBpsConst,
-    CANONICAL_ASSET, FEE_COLLECTOR, LEGACY_BOND_ESCROW, USDC_ASSET,
+    DpmVirtualSharesConst, EarlyReportBondConst, MinCreationFeeConst, RuntimeEvent, RuntimeOrigin,
+    TradeFeeBpsConst, CANONICAL_ASSET, FEE_COLLECTOR, LEGACY_BOND_ESCROW, USDC_ASSET,
 };
 
 type Polkamarkt = crate::Pallet<Test>;
@@ -1732,6 +1732,639 @@ fn finalization_bad_origin_after_close_does_not_mutate_market() {
 }
 
 #[test]
+fn early_resolution_report_locks_market_and_escrows_bond() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bond = EarlyReportBondConst::get();
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: Some([1; 32]),
+            },
+        ));
+
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+        assert_noop!(
+            Polkamarkt::buy(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::Yes,
+                10_000,
+                0
+            ),
+            Error::<Test>::MarketNotOpen
+        );
+        let report = EarlyResolutionReports::<Test>::get(0).expect("report");
+        assert_eq!(report.reporter, BOB);
+        assert_eq!(report.outcome, BinaryOutcome::Yes);
+        assert_eq!(report.bond, bond);
+        assert_eq!(report.evidence.uri.to_vec(), b"ipfs://early-yes");
+        assert_eq!(report.evidence.hash, Some([1; 32]));
+        assert_eq!(report.evidence.at_block, 1);
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - bond);
+        assert_eq!(
+            balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
+            pallet_before + bond
+        );
+        assert!(System::<Test>::events().iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::EarlyResolutionReported {
+                    market_id: 0,
+                    reporter: BOB,
+                    outcome: BinaryOutcome::Yes,
+                    bond: event_bond,
+                }) if event_bond == bond
+            )
+        }));
+    });
+}
+
+#[test]
+fn early_resolution_report_rejects_invalid_duplicate_closed_and_unsupported_markets() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: Vec::new(),
+                    hash: None,
+                },
+            ),
+            Error::<Test>::InvalidEvidence
+        );
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: None,
+            },
+        ));
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(ALICE),
+                0,
+                BinaryOutcome::No,
+                EvidenceInput {
+                    uri: b"ipfs://early-no".to_vec(),
+                    hash: None,
+                },
+            ),
+            Error::<Test>::EarlyResolutionReportAlreadyExists
+        );
+    });
+
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        run_to_block(10);
+
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: b"ipfs://late".to_vec(),
+                    hash: None,
+                },
+            ),
+            Error::<Test>::MarketNotOpen
+        );
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+    });
+
+    new_test_ext().execute_with(|| {
+        setup_orderbook_market(10);
+
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: b"ipfs://orderbook".to_vec(),
+                    hash: None,
+                },
+            ),
+            Error::<Test>::UnsupportedMarketMechanism
+        );
+    });
+}
+
+#[test]
+fn early_resolution_report_rejects_bad_origin_bad_utf8_oversized_evidence_and_low_bond_balance() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let pallet_before = balance_of(Polkamarkt::account_id(), CANONICAL_ASSET);
+
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::root(),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: b"ipfs://root-origin".to_vec(),
+                    hash: None,
+                },
+            ),
+            DispatchError::BadOrigin
+        );
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: vec![0xff, 0xfe],
+                    hash: None,
+                },
+            ),
+            Error::<Test>::InvalidEvidence
+        );
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: vec![b'x'; MaxMetadataLengthConst::get() as usize + 1],
+                    hash: None,
+                },
+            ),
+            Error::<Test>::MetadataTooLong
+        );
+
+        set_balance(BOB, CANONICAL_ASSET, EarlyReportBondConst::get() - 1);
+        assert_noop!(
+            Polkamarkt::report_early_resolution(
+                RuntimeOrigin::signed(BOB),
+                0,
+                BinaryOutcome::Yes,
+                EvidenceInput {
+                    uri: b"ipfs://low-bond".to_vec(),
+                    hash: None,
+                },
+            ),
+            DispatchError::Other("insufficient-balance")
+        );
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Open
+        );
+        assert_eq!(
+            balance_of(Polkamarkt::account_id(), CANONICAL_ASSET),
+            pallet_before
+        );
+        set_balance(BOB, CANONICAL_ASSET, bob_before);
+    });
+}
+
+#[test]
+fn rejecting_early_resolution_report_slashes_bond_and_reopens_before_close() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bond = EarlyReportBondConst::get();
+        let pending_before = PendingXorBuybackCollateral::<Test>::get();
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: None,
+            },
+        ));
+        assert_noop!(
+            Polkamarkt::reject_early_resolution_report(RuntimeOrigin::signed(ALICE), 0),
+            DispatchError::BadOrigin
+        );
+
+        assert_ok!(Polkamarkt::reject_early_resolution_report(
+            RuntimeOrigin::root(),
+            0
+        ));
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Open
+        );
+        assert_eq!(
+            PendingXorBuybackCollateral::<Test>::get(),
+            pending_before + bond
+        );
+        assert!(System::<Test>::events().iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::EarlyResolutionReportRejected {
+                    market_id: 0,
+                    reporter: BOB,
+                    bond: event_bond,
+                }) if event_bond == bond
+            )
+        }));
+    });
+}
+
+#[test]
+fn rejected_early_resolution_report_allows_new_report_before_close() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://bad-report".to_vec(),
+                hash: None,
+            },
+        ));
+        assert_ok!(Polkamarkt::reject_early_resolution_report(
+            RuntimeOrigin::root(),
+            0
+        ));
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(ALICE),
+            0,
+            BinaryOutcome::No,
+            EvidenceInput {
+                uri: b"ipfs://new-report".to_vec(),
+                hash: Some([9; 32]),
+            },
+        ));
+
+        let report = EarlyResolutionReports::<Test>::get(0).expect("new report");
+        assert_eq!(report.reporter, ALICE);
+        assert_eq!(report.outcome, BinaryOutcome::No);
+        assert_eq!(report.evidence.uri.to_vec(), b"ipfs://new-report");
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+    });
+}
+
+#[test]
+fn rejecting_early_resolution_report_after_close_keeps_market_locked() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::No,
+            EvidenceInput {
+                uri: b"ipfs://early-no".to_vec(),
+                hash: None,
+            },
+        ));
+        run_to_block(10);
+        assert_ok!(Polkamarkt::reject_early_resolution_report(
+            RuntimeOrigin::root(),
+            0
+        ));
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+    });
+}
+
+#[test]
+fn rejecting_early_resolution_report_rolls_back_if_buyback_pending_overflows() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://overflow".to_vec(),
+                hash: None,
+            },
+        ));
+        PendingXorBuybackCollateral::<Test>::put(Balance::MAX);
+
+        assert_noop!(
+            Polkamarkt::reject_early_resolution_report(RuntimeOrigin::root(), 0),
+            Error::<Test>::Overflow
+        );
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_some());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), Balance::MAX);
+    });
+}
+
+#[test]
+fn rejecting_early_resolution_report_keeps_corrupt_storage_intact_on_market_errors() {
+    new_test_ext().execute_with(|| {
+        let pending_before = PendingXorBuybackCollateral::<Test>::get();
+        let report: crate::EarlyResolutionReportOf<Test> = crate::EarlyResolutionReport {
+            reporter: BOB,
+            outcome: BinaryOutcome::Yes,
+            bond: EarlyReportBondConst::get(),
+            evidence: crate::MarketEvidence {
+                uri: BoundedVec::try_from(b"ipfs://orphan-report".to_vec()).expect("bounded uri"),
+                hash: None,
+                at_block: 1,
+            },
+        };
+        EarlyResolutionReports::<Test>::insert(99, report.clone());
+
+        assert_noop!(
+            Polkamarkt::reject_early_resolution_report(RuntimeOrigin::root(), 99),
+            Error::<Test>::MarketUnknown
+        );
+
+        assert_eq!(EarlyResolutionReports::<Test>::get(99), Some(report));
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), pending_before);
+    });
+
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let pending_before = PendingXorBuybackCollateral::<Test>::get();
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://finalized-report".to_vec(),
+                hash: None,
+            },
+        ));
+        Markets::<Test>::mutate(0, |market| {
+            market.as_mut().expect("market").status = MarketStatus::Resolved;
+        });
+
+        assert_noop!(
+            Polkamarkt::reject_early_resolution_report(RuntimeOrigin::root(), 0),
+            Error::<Test>::MarketAlreadyFinalized
+        );
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_some());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Resolved
+        );
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), pending_before);
+    });
+}
+
+#[test]
+fn resolving_matching_early_resolution_report_returns_bond_and_copies_evidence() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bond = EarlyReportBondConst::get();
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: Some([2; 32]),
+            },
+        ));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - bond);
+
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::Yes,
+        ));
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Resolved
+        );
+        assert_eq!(MarketResolution::<Test>::get(0), Some(BinaryOutcome::Yes));
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        let evidence = MarketResolutionEvidence::<Test>::get(0).expect("evidence");
+        assert_eq!(evidence.uri.to_vec(), b"ipfs://early-yes");
+        assert_eq!(evidence.hash, Some([2; 32]));
+        assert!(System::<Test>::events().iter().any(|record| {
+            matches!(
+                record.event,
+                RuntimeEvent::Polkamarkt(Event::EarlyResolutionBondReturned {
+                    market_id: 0,
+                    reporter: BOB,
+                    bond: event_bond,
+                }) if event_bond == bond
+            )
+        }));
+    });
+}
+
+#[test]
+fn resolving_matching_early_resolution_report_rolls_back_if_bond_refund_fails() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: Some([7; 32]),
+            },
+        ));
+        set_balance(Polkamarkt::account_id(), CANONICAL_ASSET, 0);
+
+        assert_noop!(
+            Polkamarkt::resolve_market(RuntimeOrigin::root(), 0, BinaryOutcome::Yes),
+            DispatchError::Other("insufficient-balance")
+        );
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_some());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+        assert_eq!(MarketResolution::<Test>::get(0), None);
+        assert!(MarketResolutionEvidence::<Test>::get(0).is_none());
+        assert_eq!(
+            balance_of(BOB, CANONICAL_ASSET),
+            bob_before - EarlyReportBondConst::get()
+        );
+    });
+}
+
+#[test]
+fn resolving_opposite_early_resolution_report_slashes_bond() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bond = EarlyReportBondConst::get();
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+        let pending_before = PendingXorBuybackCollateral::<Test>::get();
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: None,
+            },
+        ));
+
+        assert_ok!(Polkamarkt::resolve_market(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::No,
+        ));
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+        assert_eq!(MarketResolution::<Test>::get(0), Some(BinaryOutcome::No));
+        assert!(MarketResolutionEvidence::<Test>::get(0).is_none());
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before - bond);
+        assert_eq!(
+            PendingXorBuybackCollateral::<Test>::get(),
+            pending_before + bond
+        );
+    });
+}
+
+#[test]
+fn resolving_opposite_early_resolution_report_rolls_back_if_buyback_pending_overflows() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://overflow-slash".to_vec(),
+                hash: None,
+            },
+        ));
+        PendingXorBuybackCollateral::<Test>::put(Balance::MAX);
+
+        assert_noop!(
+            Polkamarkt::resolve_market(RuntimeOrigin::root(), 0, BinaryOutcome::No),
+            Error::<Test>::Overflow
+        );
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_some());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+        assert_eq!(MarketResolution::<Test>::get(0), None);
+        assert_eq!(PendingXorBuybackCollateral::<Test>::get(), Balance::MAX);
+    });
+}
+
+#[test]
+fn resolving_with_explicit_evidence_returns_matching_report_bond_without_copying_report_evidence() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+        let bob_before = balance_of(BOB, CANONICAL_ASSET);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::No,
+            EvidenceInput {
+                uri: b"ipfs://early-no".to_vec(),
+                hash: Some([3; 32]),
+            },
+        ));
+
+        assert_ok!(Polkamarkt::resolve_market_with_evidence(
+            RuntimeOrigin::root(),
+            0,
+            BinaryOutcome::No,
+            EvidenceInput {
+                uri: b"ipfs://governance-resolution".to_vec(),
+                hash: Some([4; 32]),
+            },
+        ));
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_none());
+        assert_eq!(balance_of(BOB, CANONICAL_ASSET), bob_before);
+        let evidence = MarketResolutionEvidence::<Test>::get(0).expect("evidence");
+        assert_eq!(evidence.uri.to_vec(), b"ipfs://governance-resolution");
+        assert_eq!(evidence.hash, Some([4; 32]));
+    });
+}
+
+#[test]
+fn early_resolution_report_blocks_cancel_and_emergency_cancel_until_rejected_or_resolved() {
+    new_test_ext().execute_with(|| {
+        setup_market(100_000, 10);
+
+        assert_ok!(Polkamarkt::report_early_resolution(
+            RuntimeOrigin::signed(BOB),
+            0,
+            BinaryOutcome::Yes,
+            EvidenceInput {
+                uri: b"ipfs://early-yes".to_vec(),
+                hash: None,
+            },
+        ));
+        run_to_block(10);
+
+        assert_noop!(
+            Polkamarkt::cancel_market(RuntimeOrigin::root(), 0),
+            Error::<Test>::EarlyResolutionReportAlreadyExists
+        );
+        assert_noop!(
+            Polkamarkt::emergency_cancel_market(
+                RuntimeOrigin::root(),
+                0,
+                EvidenceInput {
+                    uri: b"ipfs://emergency".to_vec(),
+                    hash: None,
+                },
+            ),
+            Error::<Test>::EarlyResolutionReportAlreadyExists
+        );
+
+        assert!(EarlyResolutionReports::<Test>::get(0).is_some());
+        assert_eq!(
+            Markets::<Test>::get(0).expect("market").status,
+            MarketStatus::Locked
+        );
+    });
+}
+
+#[test]
 fn sync_after_finalization_is_idempotent_and_emits_no_events() {
     new_test_ext().execute_with(|| {
         setup_market(100_000, 10);
@@ -1828,7 +2461,7 @@ fn sync_market_status_is_permissionless_and_idempotent() {
 #[test]
 fn genesis_sets_current_storage_version() {
     new_test_ext().execute_with(|| {
-        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(6));
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(7));
     });
 }
 
@@ -2946,6 +3579,20 @@ fn v6_migration_rejects_pre_v5_and_noops_at_v6() {
         StorageVersion::new(6).put::<Polkamarkt>();
         let _ = crate::migrations::v6::Migrate::<Test>::on_runtime_upgrade();
         assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(6));
+    });
+}
+
+#[test]
+fn v7_migration_sets_storage_version_after_v6() {
+    new_test_ext().execute_with(|| {
+        StorageVersion::new(6).put::<Polkamarkt>();
+
+        let _ = crate::migrations::v7::Migrate::<Test>::on_runtime_upgrade();
+
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(7));
+
+        let _ = crate::migrations::v7::Migrate::<Test>::on_runtime_upgrade();
+        assert_eq!(StorageVersion::get::<Polkamarkt>(), StorageVersion::new(7));
     });
 }
 

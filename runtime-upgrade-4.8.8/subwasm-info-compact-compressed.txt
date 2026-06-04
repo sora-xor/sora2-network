@@ -1,10 +1,10 @@
-🏋️  Runtime size:             2.896 MB (3,037,102 bytes) ⚠️ HEAVY
-🗜  Compressed:               Yes, 76.92%
+🏋️  Runtime size:             2.897 MB (3,037,507 bytes) ⚠️ HEAVY
+🗜  Compressed:               Yes, 76.95%
 ✨ Reserved meta:            OK - [6D, 65, 74, 61]
 🎁 Metadata version:         V14
 🔥 Core version:             sora-substrate-130 (sora-substrate-2.tx130.au1)
-🗳️  system.setCode hash:      0x6972400d4e5dc1c43566e5c9ca364207cabdf4125ff6fabce07d9f1417f2e55b
-🗳️  authorizeUpgrade hash:    0x74685f4d4ec98a4c6633629b495f1884fc7cddbb4c668cfaa72e24c1aeb4f7c0
-🗳️  Blake2-256 hash:          0x39f8609a748b13a0186e90023f709adf9d639bfa0777f6aaf3484a254e6b17b4
-📦 IPFS:                     https://www.ipfs.io/ipfs/QmQezi2kbk5t2iArJdYkgvQdsDtHdfeMwKGpUUxSs8kAAN
+🗳️  system.setCode hash:      0xd42473f3cbb896dc0b0bcc1c7d0929bdfe04303c53387b92b56937137dbb2c50
+🗳️  authorizeUpgrade hash:    0x0551c1e021682c89a7f98137429afbeddd142c06cd1838599ba0684f5a3fdb8a
+🗳️  Blake2-256 hash:          0x2b33b01ba3f9e58e269b0e9619d25bedf3f60cdd6ed0ec519dacc75259c85d1e
+📦 IPFS:                     https://www.ipfs.io/ipfs/QmNSMzAzpp5QLCVZgawxkeUHKervwSzsrHZ1xeiqVbeuV9
 
