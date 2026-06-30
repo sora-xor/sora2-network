@@ -55,6 +55,22 @@ use sp_core::{H160, H256};
 use sp_std::convert::TryInto;
 
 impl<T: Config> Pallet<T> {
+    fn decode_eth_call_bool(result: Bytes) -> Result<bool, Error<T>> {
+        const ABI_WORD_BYTES: usize = 32;
+
+        if result.0.len() != ABI_WORD_BYTES
+            || result.0[..ABI_WORD_BYTES - 1].iter().any(|byte| *byte != 0)
+        {
+            return Err(Error::<T>::FailedToLoadIsUsed);
+        }
+
+        match result.0[ABI_WORD_BYTES - 1] {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(Error::<T>::FailedToLoadIsUsed),
+        }
+    }
+
     /// Makes off-chain HTTP request.
     pub fn http_request(
         url: &str,
@@ -215,7 +231,7 @@ impl<T: Config> Pallet<T> {
             vec![contract_address]
         };
         for contract in contracts {
-            let is_used = Self::eth_json_rpc_request::<_, bool>(
+            let call_result = Self::eth_json_rpc_request::<_, Bytes>(
                 "eth_call",
                 &vec![
                     serialize(&CallRequest {
@@ -227,6 +243,7 @@ impl<T: Config> Pallet<T> {
                 ],
                 network_id,
             )?;
+            let is_used = Self::decode_eth_call_bool(call_result)?;
             if is_used {
                 return Ok(true);
             }

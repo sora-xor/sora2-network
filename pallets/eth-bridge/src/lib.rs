@@ -1408,6 +1408,7 @@ pub mod pallet {
                 | Self::NoLocalAccountForSigning
                 | Self::FailedToSignMessage
                 | Self::FailedToLoadSidechainNodeParams
+                | Self::FailedToLoadIsUsed
                 | Self::JsonDeserializationError => true,
                 _ => false,
             }

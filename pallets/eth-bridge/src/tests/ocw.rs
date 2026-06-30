@@ -55,6 +55,14 @@ use sp_core::{sr25519, H256};
 use sp_runtime::DispatchError;
 use std::str::FromStr;
 
+fn eth_call_bool(value: bool) -> types::Bytes {
+    types::Bytes(ethabi::encode(&[ethabi::Token::Bool(value)]))
+}
+
+fn raw_eth_call_result(bytes: &[u8]) -> types::Bytes {
+    types::Bytes(bytes.to_vec())
+}
+
 #[test]
 fn ocw_should_not_handle_non_finalized_outgoing_request() {
     let (mut ext, mut state) = ExtBuilder::default().build();
@@ -108,7 +116,7 @@ fn ocw_mark_as_done_targets_original_outgoing_hash() {
         assert_ne!(load_hash, outgoing_hash);
 
         state.push_response(types::U64::from(777u64));
-        state.push_response(true);
+        state.push_response(eth_call_bool(true));
         state.run_next_offchain_and_dispatch_txs();
 
         let incoming_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash);
@@ -131,6 +139,180 @@ fn ocw_mark_as_done_targets_original_outgoing_hash() {
         assert_eq!(
             crate::RequestStatuses::<Runtime>::get(net_id, incoming_hash),
             Some(RequestStatus::Pending)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_decodes_abi_true_result() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(eth_call_bool(true));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x41), ETH_NETWORK_ID),
+            Ok(true)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_returns_false_when_all_contracts_report_false() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(eth_call_bool(false));
+        push_global_json_rpc_response(eth_call_bool(false));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x42), ETH_NETWORK_ID),
+            Ok(false)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_queries_single_contract_for_non_ethereum_network() {
+    let mut builder = ExtBuilder::default();
+    let net_id = builder.add_network(
+        vec![AssetConfig::Thischain { id: XOR.into() }],
+        None,
+        Some(1),
+        sp_core::H160::repeat_byte(0x23),
+    );
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(eth_call_bool(false));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x48), net_id),
+            Ok(false)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_checks_val_master_after_bridge_contract_false() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(eth_call_bool(false));
+        push_global_json_rpc_response(eth_call_bool(true));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x43), ETH_NETWORK_ID),
+            Ok(true)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_rejects_empty_eth_call_result() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(raw_eth_call_result(&[]));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x44), ETH_NETWORK_ID),
+            Err(Error::FailedToLoadIsUsed)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_rejects_short_abi_result() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(raw_eth_call_result(&[0; 31]));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x45), ETH_NETWORK_ID),
+            Err(Error::FailedToLoadIsUsed)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_rejects_non_canonical_abi_bool() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let mut result = [0u8; 32];
+        result[31] = 2;
+        push_global_json_rpc_response(raw_eth_call_result(&result));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x46), ETH_NETWORK_ID),
+            Err(Error::FailedToLoadIsUsed)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_rejects_non_zero_abi_bool_padding() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let mut result = [0u8; 32];
+        result[30] = 1;
+        push_global_json_rpc_response(raw_eth_call_result(&result));
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x49), ETH_NETWORK_ID),
+            Err(Error::FailedToLoadIsUsed)
+        );
+    });
+}
+
+#[test]
+fn ocw_retries_mark_as_done_when_used_result_is_malformed() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Thischain { id: XOR.into() }],
+        None,
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let outgoing_hash = H256::repeat_byte(0x47);
+
+        crate::RequestStatuses::<Runtime>::insert(
+            net_id,
+            outgoing_hash,
+            RequestStatus::ApprovalsReady,
+        );
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            outgoing_hash,
+            IncomingRequestKind::Meta(IncomingMetaRequestKind::MarkAsDone),
+            net_id
+        ));
+        let load_hash = last_request(net_id).unwrap().hash();
+
+        state.push_response(types::U64::from(777u64));
+        state.push_response(raw_eth_call_result(&[0; 31]));
+        state.run_next_offchain_and_dispatch_txs();
+
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, load_hash),
+            Some(RequestStatus::Pending)
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&load_hash));
+        assert_eq!(
+            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash),
+            H256::zero()
+        );
+        let handled_key = format!("eth-bridge-ocw::handled-request-{:?}", load_hash);
+        assert_eq!(
+            state.storage_read::<BlockNumber>(handled_key.as_bytes()),
+            None
         );
     });
 }
@@ -766,6 +948,7 @@ fn ocw_should_retry_on_json_rpc_batch_response() {
 #[test]
 fn ocw_should_retry_when_sidechain_node_params_are_missing() {
     assert!(Error::FailedToLoadSidechainNodeParams.should_retry());
+    assert!(Error::FailedToLoadIsUsed.should_retry());
 
     let mut builder = ExtBuilder::new();
     builder.add_network(
