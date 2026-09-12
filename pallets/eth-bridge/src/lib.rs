@@ -153,7 +153,7 @@ pub const TECH_ACCOUNT_AUTHORITY: &[u8] = b"authority";
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ethb");
 /// A number of sidechain blocks needed to consider transaction as confirmed.
 pub const CONFIRMATION_INTERVAL: u64 = 30;
-/// Maximum number of `Log` items per `eth_getLogs` request.
+/// Maximum number of sidechain blocks per `eth_getLogs` request.
 pub const MAX_GET_LOGS_ITEMS: u64 = 50;
 
 // Off-chain worker storage paths.
@@ -443,10 +443,12 @@ pub mod pallet {
         type Denominator: common::Denominator<Self::AssetId, Balance>;
         /// Maximum number of requests that can be queued per network.
         type MaxRequestsPerQueue: Get<u32>;
+        /// Maximum number of recent requests retained in the per-account RPC index.
+        type MaxRequestsPerAccount: Get<u32>;
     }
 
     /// The current storage version.
-    const STORAGE_VERSION: StorageVersion = StorageVersion::new(3);
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
 
     #[pallet::pallet]
     #[pallet::storage_version(STORAGE_VERSION)]
@@ -555,6 +557,10 @@ pub mod pallet {
             ensure_root(origin)?;
             let net_id = NextNetworkId::<T>::get();
             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
+            ensure!(
+                initial_peers.len() <= MAX_PEERS,
+                Error::<T>::CantAddMorePeers
+            );
             let peers_account_id = bridge_multisig::Pallet::<T>::register_multisig_inner(
                 initial_peers[0].clone(),
                 initial_peers.clone(),
@@ -988,13 +994,13 @@ pub mod pallet {
         /// Can only be called by a bridge account.
         #[pallet::call_index(11)]
         #[pallet::weight({
-            <T as Config>::WeightInfo::register_incoming_request().saturating_add(
-                if incoming_request_result.is_ok() {
+            <T as Config>::WeightInfo::request_from_sidechain()
+                .saturating_add(<T as Config>::WeightInfo::register_incoming_request())
+                .saturating_add(if incoming_request_result.is_ok() {
                     <T as Config>::WeightInfo::finalize_incoming_request()
                 } else {
                     <T as Config>::WeightInfo::abort_request()
-                }
-            )
+                })
         })]
         pub fn import_incoming_request(
             origin: OriginFor<T>,
@@ -1016,7 +1022,10 @@ pub mod pallet {
         /// Verifies the peer signature of the given request and adds it to `RequestApprovals`.
         /// Once quorum is collected, the request gets finalized and removed from request queue.
         #[pallet::call_index(12)]
-        #[pallet::weight(<T as Config>::WeightInfo::approve_request_finalize())]
+        #[pallet::weight(
+            <T as Config>::WeightInfo::approve_request()
+                .max(<T as Config>::WeightInfo::approve_request_finalize())
+        )]
         pub fn approve_request(
             origin: OriginFor<T>,
             ocw_public: ecdsa::Public,
@@ -1076,7 +1085,13 @@ pub mod pallet {
             network_id: BridgeNetworkId<T>,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
-            if !Self::is_peer(&who, network_id) {
+            let mut peers = Peers::<T>::get(network_id);
+            if !peers.contains(&who) {
+                ensure!(
+                    !PendingPeer::<T>::contains_key(network_id),
+                    Error::<T>::TooManyPendingPeers
+                );
+                ensure!(peers.len() < MAX_PEERS, Error::<T>::CantAddMorePeers);
                 let bridge_account =
                     Self::bridge_account(network_id).ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(
@@ -1086,7 +1101,8 @@ pub mod pallet {
                 .map_err(|e| e.error)?;
                 PeerAddress::<T>::insert(network_id, &who, address);
                 PeerAccountId::<T>::insert(network_id, &address, who.clone());
-                <Peers<T>>::mutate(network_id, |l| l.insert(who));
+                peers.insert(who);
+                Peers::<T>::insert(network_id, peers);
             }
             Ok(().into())
         }
@@ -1399,12 +1415,19 @@ pub mod pallet {
         ActiveOutgoingTransferRequest,
         /// Legacy Ethereum XOR must not be bridged or registered again.
         DeprecatedLegacyXor,
+        /// HTTP response body exceeds the configured maximum size.
+        HttpResponseTooLarge,
+        /// The incoming request does not match its load request.
+        IncomingRequestHashMismatch,
+        /// The request has reached the maximum number of stored approvals.
+        TooManyApprovals,
     }
 
     impl<T: Config> Error<T> {
         pub fn should_retry(&self) -> bool {
             match self {
                 Self::HttpFetchingError
+                | Self::HttpResponseTooLarge
                 | Self::NoLocalAccountForSigning
                 | Self::FailedToSignMessage
                 | Self::FailedToLoadSidechainNodeParams
@@ -1462,7 +1485,7 @@ pub mod pallet {
     /// Outgoing requests approvals.
     #[pallet::storage]
     #[pallet::getter(fn approvals)]
-    pub(super) type RequestApprovals<T: Config> = StorageDoubleMap<
+    pub type RequestApprovals<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
         BridgeNetworkId<T>,
@@ -1474,7 +1497,7 @@ pub mod pallet {
 
     /// Outgoing request approval authors.
     #[pallet::storage]
-    pub(super) type RequestApprovers<T: Config> = StorageDoubleMap<
+    pub type RequestApprovers<T: Config> = StorageDoubleMap<
         _,
         Twox64Concat,
         BridgeNetworkId<T>,
@@ -1487,7 +1510,7 @@ pub mod pallet {
     /// Requests made by an account.
     #[pallet::storage]
     #[pallet::getter(fn account_requests)]
-    pub(super) type AccountRequests<T: Config> = StorageMap<
+    pub type AccountRequests<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
         <T as frame_system::pallet::Config>::AccountId,
@@ -1564,7 +1587,7 @@ pub mod pallet {
     /// Network peers set.
     #[pallet::storage]
     #[pallet::getter(fn peers)]
-    pub(super) type Peers<T: Config> = StorageMap<
+    pub type Peers<T: Config> = StorageMap<
         _,
         Twox64Concat,
         BridgeNetworkId<T>,
@@ -1721,6 +1744,10 @@ pub mod pallet {
             XorMasterContractAddress::<T>::put(&self.xor_master_contract_address);
             ValMasterContractAddress::<T>::put(&self.val_master_contract_address);
             for network in &self.networks {
+                assert!(
+                    network.initial_peers.len() <= MAX_PEERS,
+                    "EthBridge genesis network exceeds the maximum peer count"
+                );
                 let net_id = NextNetworkId::<T>::get();
                 let peers_account_id = &network.bridge_account_id;
                 frame_system::Pallet::<T>::inc_consumers(&peers_account_id).unwrap_or_else(|_| {
@@ -1850,7 +1877,7 @@ impl<T: Config> Pallet<T> {
         request.validate()?;
         request.prepare()?;
         Self::clear_request_signatures(net_id, &hash);
-        AccountRequests::<T>::mutate(&request.author(), |vec| vec.push((net_id, hash)));
+        Self::record_account_request(request.author(), net_id, hash);
         Requests::<T>::insert(net_id, &hash, request);
         RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
@@ -1866,13 +1893,17 @@ impl<T: Config> Pallet<T> {
         incoming_request: &OffchainRequest<T>,
         network_id: T::NetworkId,
     ) -> Result<H256, DispatchError> {
-        let sidechain_tx_hash = incoming_request
+        let replay_key = incoming_request
             .as_incoming()
             .ok_or(Error::<T>::ExpectedIncomingRequest)?
             .0
             .hash();
         let incoming_request_hash = incoming_request.hash();
         let request_author = incoming_request.author().clone();
+        ensure!(
+            !LoadToIncomingRequestHash::<T>::contains_key(network_id, replay_key),
+            Error::<T>::RequestIsAlreadyRegistered
+        );
         ensure!(
             !Requests::<T>::contains_key(network_id, incoming_request_hash),
             Error::<T>::RequestIsAlreadyRegistered
@@ -1898,17 +1929,36 @@ impl<T: Config> Pallet<T> {
         Requests::<T>::insert(network_id, &incoming_request_hash, incoming_request);
         RequestsQueue::<T>::mutate(network_id, |queue| queue.push(incoming_request_hash));
         RequestStatuses::<T>::insert(network_id, incoming_request_hash, RequestStatus::Pending);
-        AccountRequests::<T>::mutate(request_author, |v| {
-            v.push((network_id, incoming_request_hash))
-        });
-        Self::remove_request_from_queue(network_id, &sidechain_tx_hash);
-        RequestStatuses::<T>::insert(network_id, sidechain_tx_hash, RequestStatus::Done);
-        LoadToIncomingRequestHash::<T>::insert(
-            network_id,
-            sidechain_tx_hash,
-            incoming_request_hash,
-        );
+        Self::record_account_request(&request_author, network_id, incoming_request_hash);
+        Self::remove_request_from_queue(network_id, &replay_key);
+        RequestStatuses::<T>::insert(network_id, replay_key, RequestStatus::Done);
+        LoadToIncomingRequestHash::<T>::insert(network_id, replay_key, incoming_request_hash);
         Ok(incoming_request_hash)
+    }
+
+    pub(crate) fn record_account_request(
+        author: &<T as frame_system::Config>::AccountId,
+        network_id: T::NetworkId,
+        request_hash: H256,
+    ) {
+        let max_requests = T::MaxRequestsPerAccount::get() as usize;
+        AccountRequests::<T>::mutate(author, |requests| {
+            if max_requests == 0 {
+                requests.clear();
+                return;
+            }
+            requests.retain(|(stored_network_id, stored_hash)| {
+                *stored_network_id != network_id || *stored_hash != request_hash
+            });
+            let remove_count = requests
+                .len()
+                .saturating_add(1)
+                .saturating_sub(max_requests);
+            if remove_count != 0 {
+                requests.drain(..remove_count);
+            }
+            requests.push((network_id, request_hash));
+        });
     }
 
     /// At first, `finalize` is called on the request, if it fails, the `cancel` function
@@ -2125,7 +2175,7 @@ impl<T: Config> Pallet<T> {
         load_incoming_request: LoadIncomingRequest<T>,
         incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
     ) -> Result<(), DispatchError> {
-        let sidechain_tx_hash = load_incoming_request.hash();
+        let replay_key = load_incoming_request.hash();
         let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
         Self::add_request(&load_incoming)?;
         match incoming_request_result {
@@ -2133,8 +2183,17 @@ impl<T: Config> Pallet<T> {
                 if net_id != incoming_request.network_id() {
                     Self::inner_abort_request(
                         &load_incoming,
-                        sidechain_tx_hash,
+                        replay_key,
                         Error::<T>::UnknownNetwork.into(),
+                        net_id,
+                    )?;
+                    return Ok(());
+                }
+                if replay_key != incoming_request.hash() {
+                    Self::inner_abort_request(
+                        &load_incoming,
+                        replay_key,
+                        Error::<T>::IncomingRequestHashMismatch.into(),
                         net_id,
                     )?;
                     return Ok(());
@@ -2142,7 +2201,7 @@ impl<T: Config> Pallet<T> {
                 let incoming = OffchainRequest::incoming(incoming_request.clone());
                 let incoming_request_hash = incoming.hash();
                 if let Err(e) = Self::add_request(&incoming) {
-                    Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
+                    Self::inner_abort_request(&load_incoming, replay_key, e, net_id)?;
                     return Ok(());
                 }
                 match RequestStatuses::<T>::get(net_id, incoming_request_hash) {
@@ -2154,12 +2213,12 @@ impl<T: Config> Pallet<T> {
                         )?;
                     }
                     Some(RequestStatus::Failed(e)) => {
-                        Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
+                        Self::inner_abort_request(&load_incoming, replay_key, e, net_id)?;
                     }
                     _ => {
                         Self::inner_abort_request(
                             &load_incoming,
-                            sidechain_tx_hash,
+                            replay_key,
                             Error::<T>::ExpectedPendingRequest.into(),
                             net_id,
                         )?;
@@ -2167,7 +2226,7 @@ impl<T: Config> Pallet<T> {
                 }
             }
             Err(e) => {
-                Self::inner_abort_request(&load_incoming, sidechain_tx_hash, e, net_id)?;
+                Self::inner_abort_request(&load_incoming, replay_key, e, net_id)?;
             }
         }
         Ok(().into())
@@ -2183,6 +2242,15 @@ impl<T: Config> Pallet<T> {
         let request = Requests::<T>::get(net_id, hash)
             .and_then(|x| x.into_outgoing().map(|x| x.0))
             .ok_or(Error::<T>::UnknownRequest)?;
+        let current_status =
+            RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+        ensure!(
+            matches!(
+                current_status,
+                RequestStatus::Pending | RequestStatus::ApprovalsReady
+            ),
+            Error::<T>::RequestIsNotReady
+        );
         ensure!(
             !Self::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(net_id, &hash),
             Error::<T>::DeprecatedLegacyXor
@@ -2206,19 +2274,21 @@ impl<T: Config> Pallet<T> {
             0
         };
         let need_sigs = majority(Self::peers(net_id).len()) + pending_peers_len;
-        let current_status =
-            RequestStatuses::<T>::get(net_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
         if current_status == RequestStatus::Pending && request.should_be_skipped() {
             return Err(Error::<T>::RequestIsNotReady.into());
         }
-        if !approvers.insert(author.clone()) {
+        if approvers.contains(&author) {
             debug!(
                 "Peer {:?} attempted to resubmit approval for {:?}",
                 author, hash
             );
-            RequestApprovers::<T>::insert(net_id, &hash, &approvers);
             return Ok(Some(<T as Config>::WeightInfo::approve_request()));
         }
+        ensure!(
+            approvals.len() < MAX_PEERS && approvers.len() < MAX_PEERS,
+            Error::<T>::TooManyApprovals
+        );
+        approvers.insert(author);
         approvals.insert(signature_params);
         RequestApprovals::<T>::insert(net_id, &hash, &approvals);
         RequestApprovers::<T>::insert(net_id, &hash, &approvers);

@@ -1,0 +1,13 @@
+{
+  "call": {
+    "call_index": 2,
+    "pallet_index": 0,
+    "variant": "set_code"
+  },
+  "call_bytes_file": "runtime-upgrade-4.8.9/set-code-call.scale",
+  "proposal_hash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+  "proposal_len": 3055512,
+  "wasm_blake2_256": "0xf062ed07861255f5ec443930de9c5066d1e4133036126d48462c8e233a75f27e",
+  "wasm_len": 3055506,
+  "wasm_path": "runtime-upgrade-4.8.9/framenode-runtime-4.8.9.compact.compressed.wasm"
+}

@@ -1,0 +1,361 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,50 +1,47 @@
+ [package]
+ name = "pallet-staking"
+ version = "46.0.0"
+-authors.workspace = true
+-edition.workspace = true
++authors = ["Parity Technologies <admin@parity.io>"]
++edition = "2021"
+ license = "Apache-2.0"
+-homepage.workspace = true
+-repository.workspace = true
++homepage = "https://paritytech.github.io/polkadot-sdk/"
++repository = "https://github.com/paritytech/polkadot-sdk.git"
+ description = "FRAME pallet staking"
+ readme = "README.md"
+-
+-[lints]
+-workspace = true
+ 
+ [package.metadata.docs.rs]
+ targets = ["x86_64-unknown-linux-gnu"]
+ 
+ [dependencies]
+-codec = { features = ["derive"], workspace = true }
+-frame-benchmarking = { optional = true, workspace = true }
+-frame-election-provider-support = { workspace = true }
+-frame-support = { workspace = true }
+-frame-system = { workspace = true }
+-log = { workspace = true }
+-pallet-authorship = { workspace = true }
+-pallet-session = { features = ["historical"], workspace = true }
+-rand_chacha = { optional = true, workspace = true }
+-scale-info = { features = ["derive", "serde"], workspace = true }
+-serde = { features = ["alloc", "derive"], workspace = true }
+-sp-application-crypto = { features = ["serde"], workspace = true }
+-sp-io = { workspace = true }
+-sp-runtime = { features = ["serde"], workspace = true }
+-sp-staking = { features = ["serde"], workspace = true }
++codec = { features = ["derive"], version = "3.7.5", package = "parity-scale-codec", default-features = false }
++frame-benchmarking = { optional = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++frame-election-provider-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++log = { version = "0.4.22", default-features = false }
++pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++pallet-session = { features = ["historical"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++rand_chacha = { optional = true, version = "0.3.1", default-features = false }
++scale-info = { features = ["derive", "serde"], version = "2.11.6", default-features = false }
++serde = { features = ["alloc", "derive"], version = "1.0.214", default-features = false }
++sp-application-crypto = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++sp-runtime = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
++sp-staking = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+ 
+ [dev-dependencies]
+-frame-benchmarking = { default-features = true, workspace = true }
+-frame-election-provider-support = { default-features = true, workspace = true }
+-frame-support = { features = ["experimental"], default-features = true, workspace = true }
+-pallet-bags-list = { default-features = true, workspace = true }
+-pallet-balances = { default-features = true, workspace = true }
+-pallet-staking-reward-curve = { default-features = true, workspace = true }
+-pallet-timestamp = { default-features = true, workspace = true }
+-rand_chacha = { workspace = true, default-features = true }
+-sp-core = { default-features = true, workspace = true }
+-sp-npos-elections = { default-features = true, workspace = true }
+-sp-tracing = { default-features = true, workspace = true }
+-substrate-test-utils = { workspace = true }
++frame-benchmarking = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++frame-election-provider-support = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++frame-support = { features = ["experimental"], default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++pallet-bags-list = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++pallet-balances = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++pallet-staking-reward-curve = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++pallet-timestamp = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++rand_chacha = { version = "0.3.1", default-features = true }
++sp-core = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++sp-npos-elections = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++sp-tracing = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
++substrate-test-utils = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+ 
+ [features]
+ default = ["std"]
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -363,6 +363,28 @@
+ 
+ /// Counter for the number of "reward" points earned by a given validator.
+ pub type RewardPoint = u32;
++
++/// Additional rewards paid atomically with a staking exposure-page claim.
++///
++/// Implementations must not dispatch another staking payout or change staking exposure, reward
++/// points, preferences, or claim bookkeeping. An error rolls back the entire payout, including
++/// the claimed-page marker, so the page can be retried. `weight` must conservatively cover all
++/// work done by `payout` for a page with up to `nominators` nominators, including failure paths.
++pub trait AdditionalPayout<AccountId> {
++	fn payout(validator_stash: &AccountId, era: EraIndex, page: Page)
++		-> sp_runtime::DispatchResult;
++	fn weight(nominators: u32) -> Weight;
++}
++
++impl<AccountId> AdditionalPayout<AccountId> for () {
++	fn payout(_: &AccountId, _: EraIndex, _: Page) -> sp_runtime::DispatchResult {
++		Ok(())
++	}
++
++	fn weight(_: u32) -> Weight {
++		Weight::zero()
++	}
++}
+ 
+ /// The balance type of this pallet.
+ pub type BalanceOf<T> = <T as Config>::CurrencyBalance;
+--- a/src/pallet/mod.rs
++++ b/src/pallet/mod.rs
+@@ -50,10 +50,11 @@
+ pub use impls::*;
+ 
+ use crate::{
+-	asset, slashing, weights::WeightInfo, AccountIdLookupOf, ActiveEraInfo, BalanceOf, EraPayout,
+-	EraRewardPoints, Exposure, ExposurePage, Forcing, LedgerIntegrityState, MaxNominationsOf,
+-	NegativeImbalanceOf, Nominations, NominationsQuota, PositiveImbalanceOf, RewardDestination,
+-	SessionInterface, StakingLedger, UnappliedSlash, UnlockChunk, ValidatorPrefs,
++	asset, slashing, weights::WeightInfo, AccountIdLookupOf, ActiveEraInfo, AdditionalPayout,
++	BalanceOf, EraPayout, EraRewardPoints, Exposure, ExposurePage, Forcing, LedgerIntegrityState,
++	MaxNominationsOf, NegativeImbalanceOf, Nominations, NominationsQuota, PositiveImbalanceOf,
++	RewardDestination, SessionInterface, StakingLedger, UnappliedSlash, UnlockChunk,
++	ValidatorPrefs,
+ };
+ 
+ // The speculative number of spans are used as an input of the weight annotation of
+@@ -204,6 +205,10 @@
+ 		#[pallet::no_default_bounds]
+ 		type Reward: OnUnbalanced<PositiveImbalanceOf<Self>>;
+ 
++		/// Additional reward assets paid atomically with each successfully claimed exposure page.
++		#[pallet::no_default_bounds]
++		type AdditionalPayout: AdditionalPayout<Self::AccountId>;
++
+ 		/// Number of sessions per era.
+ 		#[pallet::constant]
+ 		type SessionsPerEra: Get<SessionIndex>;
+@@ -370,6 +375,7 @@
+ 			type RewardRemainder = ();
+ 			type Slash = ();
+ 			type Reward = ();
++			type AdditionalPayout = ();
+ 			type SessionsPerEra = SessionsPerEra;
+ 			type BondingDuration = BondingDuration;
+ 			type SlashDeferDuration = ();
+@@ -1727,7 +1733,10 @@
+ 		///
+ 		/// If all pages are claimed, it returns an error `InvalidPage`.
+ 		#[pallet::call_index(18)]
+-		#[pallet::weight(T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get()))]
++		#[pallet::weight(
++			T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get())
++				.saturating_add(T::AdditionalPayout::weight(T::MaxExposurePageSize::get()))
++		)]
+ 		pub fn payout_stakers(
+ 			origin: OriginFor<T>,
+ 			validator_stash: T::AccountId,
+@@ -2069,7 +2078,10 @@
+ 		/// and so it should not be assumed the highest staker would be on the topmost page and vice
+ 		/// versa. If rewards are not claimed in [`Config::HistoryDepth`] eras, they are lost.
+ 		#[pallet::call_index(26)]
+-		#[pallet::weight(T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get()))]
++		#[pallet::weight(
++			T::WeightInfo::payout_stakers_alive_staked(T::MaxExposurePageSize::get())
++				.saturating_add(T::AdditionalPayout::weight(T::MaxExposurePageSize::get()))
++		)]
+ 		pub fn payout_stakers_by_page(
+ 			origin: OriginFor<T>,
+ 			validator_stash: T::AccountId,
+--- a/src/pallet/impls.rs
++++ b/src/pallet/impls.rs
+@@ -51,9 +51,10 @@
+ 
+ use crate::{
+ 	asset, election_size_tracker::StaticTracker, log, slashing, weights::WeightInfo, ActiveEraInfo,
+-	BalanceOf, EraInfo, EraPayout, Exposure, Forcing, IndividualExposure, LedgerIntegrityState,
+-	MaxNominationsOf, MaxWinnersOf, Nominations, NominationsQuota, PositiveImbalanceOf,
+-	RewardDestination, SessionInterface, StakingLedger, UnlockChunk, ValidatorPrefs, STAKING_ID,
++	AdditionalPayout, BalanceOf, EraInfo, EraPayout, Exposure, Forcing, IndividualExposure,
++	LedgerIntegrityState, MaxNominationsOf, MaxWinnersOf, Nominations, NominationsQuota,
++	PositiveImbalanceOf, RewardDestination, SessionInterface, StakingLedger, UnlockChunk,
++	ValidatorPrefs, STAKING_ID,
+ };
+ use alloc::{boxed::Box, vec, vec::Vec};
+ 
+@@ -250,6 +251,7 @@
+ 		Self::do_payout_stakers_by_page(validator_stash, era, page)
+ 	}
+ 
++	#[frame_support::transactional]
+ 	pub(super) fn do_payout_stakers_by_page(
+ 		validator_stash: T::AccountId,
+ 		era: EraIndex,
+@@ -309,6 +311,17 @@
+ 				.with_weight(T::WeightInfo::payout_stakers_alive_staked(0))
+ 		})?;
+ 
++		// Pay additional reward assets inside the same transaction as the claim marker. Charge
++		// for the full exposure page even when the native era payout is zero.
++		let exposure_nominators = exposure.others().len() as u32;
++		let additional_payout_weight = T::AdditionalPayout::weight(exposure_nominators);
++		T::AdditionalPayout::payout(&stash, era, page).map_err(|error| {
++			error.with_weight(
++				T::WeightInfo::payout_stakers_alive_staked(exposure_nominators)
++					.saturating_add(additional_payout_weight),
++			)
++		})?;
++
+ 		// Input data seems good, no errors allowed after this point
+ 
+ 		// Get Era reward points. It has TOTAL and INDIVIDUAL
+@@ -325,7 +338,11 @@
+ 
+ 		// Nothing to do if they have no reward points.
+ 		if validator_reward_points.is_zero() {
+-			return Ok(Some(T::WeightInfo::payout_stakers_alive_staked(0)).into());
++			return Ok(Some(
++				T::WeightInfo::payout_stakers_alive_staked(0)
++					.saturating_add(additional_payout_weight),
++			)
++			.into());
+ 		}
+ 
+ 		// This is the fraction of the total reward that the validator and the
+@@ -394,7 +411,11 @@
+ 		T::Reward::on_unbalanced(total_imbalance);
+ 		debug_assert!(nominator_payout_count <= T::MaxExposurePageSize::get());
+ 
+-		Ok(Some(T::WeightInfo::payout_stakers_alive_staked(nominator_payout_count)).into())
++		Ok(Some(
++			T::WeightInfo::payout_stakers_alive_staked(nominator_payout_count)
++				.saturating_add(additional_payout_weight),
++		)
++		.into())
+ 	}
+ 
+ 	/// Chill a stash account.
+--- a/src/mock.rs
++++ b/src/mock.rs
+@@ -284,6 +284,32 @@
+ // `UpToLimitWithReEnablingDisablingStrategy``
+ pub(crate) const DISABLING_LIMIT_FACTOR: usize = 3;
+ 
++/// Disabled by default; enabled by the additional-payout regression tests only.
++pub(crate) const ADDITIONAL_PAYOUT_MODE: &[u8] = b":staking:test:additional-payout-mode";
++pub(crate) const ADDITIONAL_PAYOUT_RECORD: &[u8] = b":staking:test:additional-payout-record";
++
++pub struct MockAdditionalPayout;
++impl AdditionalPayout<AccountId> for MockAdditionalPayout {
++	fn payout(validator: &AccountId, era: EraIndex, page: Page) -> sp_runtime::DispatchResult {
++		let Some(mode) = sp_io::storage::get(ADDITIONAL_PAYOUT_MODE) else {
++			return Ok(());
++		};
++		sp_io::storage::set(ADDITIONAL_PAYOUT_RECORD, &(*validator, era, page).encode());
++		if mode.as_ref() == [2] {
++			return Err(sp_runtime::DispatchError::Other("additional reward failed"));
++		}
++		Ok(())
++	}
++
++	fn weight(nominators: u32) -> Weight {
++		if !sp_io::storage::exists(ADDITIONAL_PAYOUT_MODE) {
++			return Weight::zero();
++		}
++		Weight::from_parts(10_000, 100)
++			.saturating_add(Weight::from_parts(1_000, 10).saturating_mul(nominators.into()))
++	}
++}
++
+ #[derive_impl(crate::config_preludes::TestDefaultConfig)]
+ impl crate::pallet::pallet::Config for Test {
+ 	type OldCurrency = Balances;
+@@ -291,6 +317,7 @@
+ 	type UnixTime = Timestamp;
+ 	type RewardRemainder = RewardRemainderMock;
+ 	type Reward = MockReward;
++	type AdditionalPayout = MockAdditionalPayout;
+ 	type SessionsPerEra = SessionsPerEra;
+ 	type SlashDeferDuration = SlashDeferDuration;
+ 	type AdminOrigin = EnsureOneOrRoot;
+--- a/src/tests.rs
++++ b/src/tests.rs
+@@ -4168,6 +4168,71 @@
+ 			initial_balance + payout / 2,
+ 			1,
+ 		);
++	});
++}
++
++#[test]
++fn additional_payout_failure_rolls_back_claim_and_hook_writes() {
++	ExtBuilder::default().build_and_execute(|| {
++		Staking::reward_by_ids(vec![(11, 10)]);
++		start_active_era(1);
++		let exposure = EraInfo::<Test>::get_paged_exposure(0, &11, 0).unwrap();
++		sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[2]);
++		let weight = <Test as Config>::WeightInfo::payout_stakers_alive_staked(
++			exposure.others().len() as u32,
++		)
++		.saturating_add(MockAdditionalPayout::weight(exposure.others().len() as u32));
++
++		assert_noop!(
++			Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 0, 0),
++			sp_runtime::DispatchError::Other("additional reward failed").with_weight(weight),
++		);
++		assert!(ClaimedRewards::<Test>::get(0, 11).is_empty());
++		assert!(!sp_io::storage::exists(ADDITIONAL_PAYOUT_RECORD));
++
++		// The same claim remains payable after the additional asset recovers.
++		sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[1]);
++		assert_ok!(Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 0, 0));
++		assert_eq!(ClaimedRewards::<Test>::get(0, 11), vec![0]);
++		assert_eq!(
++			sp_io::storage::get(ADDITIONAL_PAYOUT_RECORD).unwrap().as_ref(),
++			&(11u64, 0u32, 0u32).encode()[..],
++		);
++		assert_noop!(
++			Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 0, 0),
++			Error::<Test>::AlreadyClaimed
++				.with_weight(<Test as Config>::WeightInfo::payout_stakers_alive_staked(0),),
++		);
++	});
++}
++
++#[test]
++fn additional_payout_weight_is_retained_when_native_reward_is_zero() {
++	ExtBuilder::default().build_and_execute(|| {
++		Staking::reward_by_ids(vec![(11, 10)]);
++		start_active_era(1);
++		ErasValidatorReward::<Test>::insert(0, 0);
++		sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[1]);
++		let exposure = EraInfo::<Test>::get_paged_exposure(0, &11, 0).unwrap();
++		assert!(!exposure.others().is_empty());
++		let expected = <Test as Config>::WeightInfo::payout_stakers_alive_staked(0)
++			.saturating_add(MockAdditionalPayout::weight(exposure.others().len() as u32));
++		let declared =
++			<Test as Config>::WeightInfo::payout_stakers_alive_staked(MaxExposurePageSize::get())
++				.saturating_add(MockAdditionalPayout::weight(MaxExposurePageSize::get()));
++		let call = TestCall::Staking(StakingCall::payout_stakers { validator_stash: 11, era: 0 });
++		let info = call.get_dispatch_info();
++		assert_eq!(info.call_weight, declared);
++		let by_page = TestCall::Staking(StakingCall::payout_stakers_by_page {
++			validator_stash: 11,
++			era: 0,
++			page: 0,
++		});
++		assert_eq!(by_page.get_dispatch_info().call_weight, declared);
++		let result = call.dispatch(RuntimeOrigin::signed(1337));
++		assert_ok!(result);
++		assert_eq!(extract_actual_weight(&result, &info), expected);
++		assert!(sp_io::storage::exists(ADDITIONAL_PAYOUT_RECORD));
+ 	});
+ }
+ 

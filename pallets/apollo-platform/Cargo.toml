@@ -53,7 +53,7 @@ trading-pair = { path = "../trading-pair" }
 price-tools = { path = "../price-tools" }
 liquidity-proxy = { path = "../liquidity-proxy" }
 dex-api = { path = "../dex-api" }
-vested-rewards = { path = "../vested-rewards", default-features = false }
+vested-rewards = { path = "../vested-rewards" }
 multicollateral-bonding-curve-pool = { path = "../multicollateral-bonding-curve-pool" }
 
 [features]

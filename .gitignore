@@ -60,3 +60,27 @@ docs/security*
 /framenode-*
 /framenode_runtime.compact*
 /subwasm_report.json
+
+# Local council delivery bundles and superseded runtime candidates
+# Keep canonical release Wasm, metadata, governance calls and documentation tracked.
+/runtime-upgrade-*-superseded*/
+/sora-runtime-*-council-*.zip
+/sora-runtime-*-council-*.zip.*
+
+# Rebuildable source bundles and local runtime-upgrade replay data
+/runtime-upgrade-*/source.tar.gz
+/runtime-upgrade-*/source-changes.bundle
+/runtime-upgrade-*/validation/*.log
+/runtime-upgrade-*/validation/*.snap
+/runtime-upgrade-*/validation/live-metadata.*
+/runtime-upgrade-*/validation/live-runtime-*.wasm
+/runtime-upgrade-*/validation/reference-runtime-*/
+/runtime-upgrade-*/validation/source-changes.patch
+
+# Investigation build outputs; retain scripts, regression tests and summary reports
+/misc/bridge-rpc-reliability/validation/*.log
+/misc/slash-investigation/*.log
+/misc/slash-investigation/*.wasm
+/misc/slash-investigation/*.tar.gz
+/misc/slash-investigation/lifecycle-release-metadata.json
+/misc/slash-investigation/candidate-source.patch

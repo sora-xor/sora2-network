@@ -41,7 +41,7 @@ use frame_support::weights::Weight;
 use sp_runtime::TryRuntimeError;
 use sp_std::prelude::Vec;
 
-// 4.8.8 is expected to upgrade from 4.8.7. The Polkamarkt v6 bridge remains
+// 4.8.9 is expected to upgrade from 4.8.8. The Polkamarkt v6 bridge remains
 // in the tuple so nodes that have not completed it can still reach v7 safely.
 pub type Migrations = (
     RemapStakingRewardPointsToStash,
@@ -52,7 +52,7 @@ pub type Migrations = (
     pallet_polkamarkt::migrations::v7::Migrate<crate::Runtime>,
 );
 
-pub type MultiBlockMigrations = ();
+pub type MultiBlockMigrations = (eth_bridge::migration::AccountRequestsV3ToV4<crate::Runtime>,);
 
 #[cfg(feature = "try-runtime")]
 fn decode_storage_version(

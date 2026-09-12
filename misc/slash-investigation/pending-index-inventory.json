@@ -1,0 +1,2685 @@
+{
+  "blockHash": "0x8a681332bb3c8133bb02ce08c00c23489625915211ab4d6a99d7e2f72f591702",
+  "blockNumber": 27622680,
+  "note": "Read-only index inventory for review. Indices are specific to this snapshot and must be re-queried before any governance cancellation. Inclusion does not establish that a penalty should be cancelled. Execution era is the raw UnappliedSlashes storage key. No calls encoded or submitted.",
+  "entries": [
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 0,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "528749987023601653",
+      "totalRaw": "539096160756662074",
+      "totalXor": "0.539096160756662074",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 1,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "381172269256828270",
+      "totalXor": "0.38117226925682827",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 2,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "430955137969662835",
+      "totalXor": "0.430955137969662835",
+      "nominators": [
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnWCJ1oCfsTQezRhv9f4RKezLiLDr2U4H6ugDYVV7p8qt4pCe",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+        "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 3,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "293312837436468530",
+      "totalRaw": "10076496488481241363",
+      "totalXor": "10.076496488481241363",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 4,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "344194580628751200",
+      "totalXor": "0.3441945806287512",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 5,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "388492250143665986",
+      "totalXor": "0.388492250143665986",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 6,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "448068653915950886",
+      "totalXor": "0.448068653915950886",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7638,
+      "inferredOffenceEra": 7610,
+      "indexAtSnapshot": 7,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "346206914794704889",
+      "totalXor": "0.346206914794704889",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 0,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "503437488261243982",
+      "totalRaw": "516617696567656844",
+      "totalXor": "0.516617696567656844",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 1,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "376672200010188165",
+      "totalXor": "0.376672200010188165",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 2,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "446800760203927157",
+      "totalXor": "0.446800760203927157",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 3,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "280113760045008231",
+      "totalRaw": "9624233998450777402",
+      "totalXor": "9.624233998450777402",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 4,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "339224312436714011",
+      "totalXor": "0.339224312436714011",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 5,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "383736146543511225",
+      "totalXor": "0.383736146543511225",
+      "nominators": [
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 6,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "457085336421258473",
+      "totalXor": "0.457085336421258473",
+      "nominators": [
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnTa8TVf5zMNJbvYmnHEkDUhNQBYcoKQ3eCwFryzWNUqBTVx1",
+        "cnXCcZXi9PebZHPV1863BybWmxjxQkkf2SCNa2FkPrVitXLCo",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR"
+      ]
+    },
+    {
+      "executionEra": 7639,
+      "inferredOffenceEra": 7611,
+      "indexAtSnapshot": 7,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "341225306744221422",
+      "totalXor": "0.341225306744221422",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 0,
+      "validator": "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+      "ownRaw": "837101697255346418",
+      "totalRaw": "11464267537669440172",
+      "totalXor": "11.464267537669440172",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 1,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "573749989948480033",
+      "totalRaw": "585466930306803017",
+      "totalXor": "0.585466930306803017",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 2,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "442026583250476112",
+      "totalXor": "0.442026583250476112",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 3,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "500626046733861530",
+      "totalXor": "0.50062604673386153",
+      "nominators": [
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 4,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "320297620608140271",
+      "totalRaw": "11007828003194317144",
+      "totalXor": "11.007828003194317144",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 5,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "398234525343365566",
+      "totalXor": "0.398234525343365566",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 6,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "449520396571455584",
+      "totalXor": "0.449520396571455584",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 7,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "523533505037332703",
+      "totalXor": "0.523533505037332703",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7640,
+      "inferredOffenceEra": 7612,
+      "indexAtSnapshot": 8,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "400653344285558606",
+      "totalXor": "0.400653344285558606",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 0,
+      "validator": "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+      "ownRaw": "795706559390552617",
+      "totalRaw": "10901358389455008918",
+      "totalXor": "10.901358389455008918",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 1,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "543374991299525873",
+      "totalRaw": "559016637161673236",
+      "totalXor": "0.559016637161673236",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 2,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "434123999271091507",
+      "totalXor": "0.434123999271091507",
+      "nominators": [
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 3,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "493796717774274929",
+      "totalXor": "0.493796717774274929",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 4,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "304458727667902057",
+      "totalRaw": "10465373376448107431",
+      "totalXor": "10.465373376448107431",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 5,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "391447031605722291",
+      "totalXor": "0.391447031605722291",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 6,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "442878542635785782",
+      "totalXor": "0.442878542635785782",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 7,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "516761362479648265",
+      "totalXor": "0.516761362479648265",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q"
+      ]
+    },
+    {
+      "executionEra": 7641,
+      "inferredOffenceEra": 7613,
+      "indexAtSnapshot": 8,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "393784501204882028",
+      "totalXor": "0.393784501204882028",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 0,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "431718741861977840",
+      "totalRaw": "447477753116557427",
+      "totalXor": "0.447477753116557427",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 1,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "356753023915619939",
+      "totalXor": "0.356753023915619939",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 2,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "407063841954501607",
+      "totalXor": "0.407063841954501607",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 3,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "242716374151556504",
+      "totalRaw": "8533213225487278559",
+      "totalXor": "8.533213225487278559",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 4,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "322054171902075267",
+      "totalXor": "0.322054171902075267",
+      "nominators": [
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 5,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "364817310746051198",
+      "totalXor": "0.364817310746051198",
+      "nominators": [
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 6,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "425964287486931029",
+      "totalXor": "0.425964287486931029",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnVAMi6oTr2s5Gmjx5oc81PgvVHTwvQt1WHtXWfgAQC5sXA7R",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7642,
+      "inferredOffenceEra": 7614,
+      "indexAtSnapshot": 7,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "324027282521762562",
+      "totalXor": "0.324027282521762562",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 0,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "410624992987180045",
+      "totalRaw": "429310793913567528",
+      "totalXor": "0.429310793913567528",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 1,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "352091095050797987",
+      "totalXor": "0.352091095050797987",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 2,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "402605099457153736",
+      "totalXor": "0.402605099457153736",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 3,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "231717143040035098",
+      "totalRaw": "8344483033722059603",
+      "totalXor": "8.344483033722059603",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 4,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "316894819896950807",
+      "totalXor": "0.316894819896950807",
+      "nominators": [
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 5,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "360228297825088624",
+      "totalXor": "0.360228297825088624",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 6,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "421482256188236001",
+      "totalXor": "0.421482256188236001",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7643,
+      "inferredOffenceEra": 7615,
+      "indexAtSnapshot": 7,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "318889743986629305",
+      "totalXor": "0.318889743986629305",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 0,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "389531244111576196",
+      "totalRaw": "410885357589507224",
+      "totalXor": "0.410885357589507224",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 1,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "337361997817100659",
+      "totalXor": "0.337361997817100659",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 2,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "392799620540635401",
+      "totalXor": "0.392799620540635401",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 3,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "220717911929874489",
+      "totalRaw": "8156470680021900500",
+      "totalXor": "8.1564706800219005",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 4,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "309298579104823459",
+      "totalXor": "0.309298579104823459",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 5,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "353541213609080874",
+      "totalXor": "0.353541213609080874",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 6,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "411785389679114740",
+      "totalXor": "0.41178538967911474",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3",
+        "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 7,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "311323102937262731",
+      "totalXor": "0.311323102937262731",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 8,
+      "validator": "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+      "ownRaw": "795706559391458034",
+      "totalRaw": "10226422964237731706",
+      "totalXor": "10.226422964237731706",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 9,
+      "validator": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+      "ownRaw": "77906250899815264",
+      "totalRaw": "82177073709290077",
+      "totalXor": "0.082177073709290077",
+      "nominators": [
+        "cnSDFBMKkioGnkFYxXrCQXfeXdBMpaBnqZqRm38nYvVYJnSBm"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 10,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "67472401362684169",
+      "totalXor": "0.067472401362684169",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 11,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "78559926203058444",
+      "totalXor": "0.078559926203058444",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnVcvh2CLacMx55X1bEbaxCpYq14N9vUZCFjRcqE8TXRVSgrh",
+        "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 12,
+      "validator": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "ownRaw": "44143583563137126",
+      "totalRaw": "1631294179505558220",
+      "totalXor": "1.63129417950555822",
+      "nominators": [
+        "cnVhh27kkYkfJ1mH4jyPWWV6Tq4vfWjrC7Avnf3Bq1ZawcTgQ",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 13,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "61859717470557156",
+      "totalXor": "0.061859717470557156",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnRbAwzJLnGEHg84Zcgj3uJS8GF39rxx1kKTdUMsP76fg2L1R",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 14,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "70708244607369366",
+      "totalXor": "0.070708244607369366",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 15,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "82357080132011751",
+      "totalXor": "0.082357080132011751",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnXAHuGhTmirurF878UggTrSGUEWzP11fQnhQXNjzvbU68BFk",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3",
+        "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv"
+      ]
+    },
+    {
+      "executionEra": 7644,
+      "inferredOffenceEra": 7616,
+      "indexAtSnapshot": 16,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "62264622247842472",
+      "totalXor": "0.062264622247842472",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7645,
+      "inferredOffenceEra": 7617,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "225645214760380720",
+      "totalXor": "0.22564521476038072",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7645,
+      "inferredOffenceEra": 7617,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "265994589395227304",
+      "totalXor": "0.265994589395227304",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7645,
+      "inferredOffenceEra": 7617,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "206692951721592338",
+      "totalXor": "0.206692951721592338",
+      "nominators": [
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7645,
+      "inferredOffenceEra": 7617,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "236412983166438685",
+      "totalXor": "0.236412983166438685",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7645,
+      "inferredOffenceEra": 7617,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "276168924820570886",
+      "totalXor": "0.276168924820570886",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnUcovoHeyNWt6x6Nxz7NWUswcnL9whPD1rcZxLW62CMQfUYW"
+      ]
+    },
+    {
+      "executionEra": 7645,
+      "inferredOffenceEra": 7617,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "207982129153359673",
+      "totalXor": "0.207982129153359673",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7646,
+      "inferredOffenceEra": 7618,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "222815579890094174",
+      "totalXor": "0.222815579890094174",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7646,
+      "inferredOffenceEra": 7618,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "263160307226808226",
+      "totalXor": "0.263160307226808226",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7646,
+      "inferredOffenceEra": 7618,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "203651820149961903",
+      "totalXor": "0.203651820149961903",
+      "nominators": [
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7646,
+      "inferredOffenceEra": 7618,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "233397298996237595",
+      "totalXor": "0.233397298996237595",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7646,
+      "inferredOffenceEra": 7618,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "273270795344016346",
+      "totalXor": "0.273270795344016346",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnUcovoHeyNWt6x6Nxz7NWUswcnL9whPD1rcZxLW62CMQfUYW"
+      ]
+    },
+    {
+      "executionEra": 7646,
+      "inferredOffenceEra": 7618,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "204987023375300408",
+      "totalXor": "0.204987023375300408",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7647,
+      "inferredOffenceEra": 7619,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "219940992433053284",
+      "totalXor": "0.219940992433053284",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7647,
+      "inferredOffenceEra": 7619,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "259970647350900502",
+      "totalXor": "0.259970647350900502",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q"
+      ]
+    },
+    {
+      "executionEra": 7647,
+      "inferredOffenceEra": 7619,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "200888040434426142",
+      "totalXor": "0.200888040434426142",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7647,
+      "inferredOffenceEra": 7619,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "230599702335412376",
+      "totalXor": "0.230599702335412376",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7647,
+      "inferredOffenceEra": 7619,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "269970372395248571",
+      "totalXor": "0.269970372395248571",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7647,
+      "inferredOffenceEra": 7619,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "202180806124533684",
+      "totalXor": "0.202180806124533684",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7648,
+      "inferredOffenceEra": 7620,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "217174769593405392",
+      "totalXor": "0.217174769593405392",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7648,
+      "inferredOffenceEra": 7620,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "257214226568957380",
+      "totalXor": "0.25721422656895738",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7648,
+      "inferredOffenceEra": 7620,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "197900685047453542",
+      "totalXor": "0.197900685047453542",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E"
+      ]
+    },
+    {
+      "executionEra": 7648,
+      "inferredOffenceEra": 7620,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "227723723606195629",
+      "totalXor": "0.227723723606195629",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7648,
+      "inferredOffenceEra": 7620,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "267147996006565988",
+      "totalXor": "0.267147996006565988",
+      "nominators": [
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnUcovoHeyNWt6x6Nxz7NWUswcnL9whPD1rcZxLW62CMQfUYW",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa"
+      ]
+    },
+    {
+      "executionEra": 7648,
+      "inferredOffenceEra": 7620,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "199212469727055545",
+      "totalXor": "0.199212469727055545",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7649,
+      "inferredOffenceEra": 7621,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "218242846790227769",
+      "totalXor": "0.218242846790227769",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7649,
+      "inferredOffenceEra": 7621,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "255180596308132488",
+      "totalXor": "0.255180596308132488",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7649,
+      "inferredOffenceEra": 7621,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "195134055194702382",
+      "totalXor": "0.195134055194702382",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa"
+      ]
+    },
+    {
+      "executionEra": 7649,
+      "inferredOffenceEra": 7621,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "224033552143538686",
+      "totalXor": "0.224033552143538686",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnWCinddL4KpiY6S7jcj7gQs3HpQ7cSUBk2rNY6WYZs3XwyZ3",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7649,
+      "inferredOffenceEra": 7621,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "264589739801286952",
+      "totalXor": "0.264589739801286952",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR"
+      ]
+    },
+    {
+      "executionEra": 7649,
+      "inferredOffenceEra": 7621,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "196340041683981378",
+      "totalXor": "0.196340041683981378",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ"
+      ]
+    },
+    {
+      "executionEra": 7650,
+      "inferredOffenceEra": 7622,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "215034171893378574",
+      "totalXor": "0.215034171893378574",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7650,
+      "inferredOffenceEra": 7622,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "252567019026349145",
+      "totalXor": "0.252567019026349145",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7650,
+      "inferredOffenceEra": 7622,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "192075659163628677",
+      "totalXor": "0.192075659163628677",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7650,
+      "inferredOffenceEra": 7622,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "221326026689660219",
+      "totalXor": "0.221326026689660219",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnWCinddL4KpiY6S7jcj7gQs3HpQ7cSUBk2rNY6WYZs3XwyZ3",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7650,
+      "inferredOffenceEra": 7622,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "261843472446734088",
+      "totalXor": "0.261843472446734088",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv"
+      ]
+    },
+    {
+      "executionEra": 7650,
+      "inferredOffenceEra": 7622,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "193290585940124113",
+      "totalXor": "0.193290585940124113",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7651,
+      "inferredOffenceEra": 7623,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "217703845288191867",
+      "totalXor": "0.217703845288191867",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7651,
+      "inferredOffenceEra": 7623,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "249713131997370138",
+      "totalXor": "0.249713131997370138",
+      "nominators": [
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7651,
+      "inferredOffenceEra": 7623,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "190416919748899298",
+      "totalXor": "0.190416919748899298",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa"
+      ]
+    },
+    {
+      "executionEra": 7651,
+      "inferredOffenceEra": 7623,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "219679267901760132",
+      "totalXor": "0.219679267901760132",
+      "nominators": [
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7651,
+      "inferredOffenceEra": 7623,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "258730794482304017",
+      "totalXor": "0.258730794482304017",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q"
+      ]
+    },
+    {
+      "executionEra": 7651,
+      "inferredOffenceEra": 7623,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "191618314209314066",
+      "totalXor": "0.191618314209314066",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ"
+      ]
+    },
+    {
+      "executionEra": 7652,
+      "inferredOffenceEra": 7624,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "221556819768977820",
+      "totalXor": "0.22155681976897782",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7652,
+      "inferredOffenceEra": 7624,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "246677447711838319",
+      "totalXor": "0.246677447711838319",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR"
+      ]
+    },
+    {
+      "executionEra": 7652,
+      "inferredOffenceEra": 7624,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "189317462655994841",
+      "totalXor": "0.189317462655994841",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa"
+      ]
+    },
+    {
+      "executionEra": 7652,
+      "inferredOffenceEra": 7624,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "224295963669381362",
+      "totalXor": "0.224295963669381362",
+      "nominators": [
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q"
+      ]
+    },
+    {
+      "executionEra": 7652,
+      "inferredOffenceEra": 7624,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "255187737685076089",
+      "totalXor": "0.255187737685076089",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7652,
+      "inferredOffenceEra": 7624,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "190032448731070970",
+      "totalXor": "0.19003244873107097",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7653,
+      "inferredOffenceEra": 7625,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "214289705840035666",
+      "totalXor": "0.214289705840035666",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7653,
+      "inferredOffenceEra": 7625,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "246651643513324124",
+      "totalXor": "0.246651643513324124",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q",
+        "cnUcovoHeyNWt6x6Nxz7NWUswcnL9whPD1rcZxLW62CMQfUYW"
+      ]
+    },
+    {
+      "executionEra": 7653,
+      "inferredOffenceEra": 7625,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "183713417095332811",
+      "totalXor": "0.183713417095332811",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E"
+      ]
+    },
+    {
+      "executionEra": 7653,
+      "inferredOffenceEra": 7625,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "212323071916708220",
+      "totalXor": "0.21232307191670822",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7653,
+      "inferredOffenceEra": 7625,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "254642501863601669",
+      "totalXor": "0.254642501863601669",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVAMi6oTr2s5Gmjx5oc81PgvVHTwvQt1WHtXWfgAQC5sXA7R",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf"
+      ]
+    },
+    {
+      "executionEra": 7653,
+      "inferredOffenceEra": 7625,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "184821138965296236",
+      "totalXor": "0.184821138965296236",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7654,
+      "inferredOffenceEra": 7626,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "210851863542657007",
+      "totalXor": "0.210851863542657007",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7654,
+      "inferredOffenceEra": 7626,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "244021844979175716",
+      "totalXor": "0.244021844979175716",
+      "nominators": [
+        "cnSzK3KQKuUaB1nLSirbM5FrPRPwKwyfHrzuurhkDNSi6Yw2z",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7654,
+      "inferredOffenceEra": 7626,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "180616998984863828",
+      "totalXor": "0.180616998984863828",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7654,
+      "inferredOffenceEra": 7626,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "209642891261758667",
+      "totalXor": "0.209642891261758667",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7654,
+      "inferredOffenceEra": 7626,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "251883926292730778",
+      "totalXor": "0.251883926292730778",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7654,
+      "inferredOffenceEra": 7626,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "181766762291638903",
+      "totalXor": "0.181766762291638903",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL"
+      ]
+    },
+    {
+      "executionEra": 7655,
+      "inferredOffenceEra": 7627,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "207398219791979202",
+      "totalXor": "0.207398219791979202",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7655,
+      "inferredOffenceEra": 7627,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "241353696242210710",
+      "totalXor": "0.24135369624221071",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7655,
+      "inferredOffenceEra": 7627,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "177506823204722954",
+      "totalXor": "0.177506823204722954",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7655,
+      "inferredOffenceEra": 7627,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "206971799661107489",
+      "totalXor": "0.206971799661107489",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7655,
+      "inferredOffenceEra": 7627,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "249095337942547313",
+      "totalXor": "0.249095337942547313",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf"
+      ]
+    },
+    {
+      "executionEra": 7655,
+      "inferredOffenceEra": 7627,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "178623401230004972",
+      "totalXor": "0.178623401230004972",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7656,
+      "inferredOffenceEra": 7628,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "203896753171574204",
+      "totalXor": "0.203896753171574204",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7656,
+      "inferredOffenceEra": 7628,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "238741186292211310",
+      "totalXor": "0.23874118629221131",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUcovoHeyNWt6x6Nxz7NWUswcnL9whPD1rcZxLW62CMQfUYW"
+      ]
+    },
+    {
+      "executionEra": 7656,
+      "inferredOffenceEra": 7628,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "174355316396218319",
+      "totalXor": "0.174355316396218319",
+      "nominators": [
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7656,
+      "inferredOffenceEra": 7628,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "204307112546441080",
+      "totalXor": "0.20430711254644108",
+      "nominators": [
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7656,
+      "inferredOffenceEra": 7628,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "246338922868693804",
+      "totalXor": "0.246338922868693804",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf"
+      ]
+    },
+    {
+      "executionEra": 7656,
+      "inferredOffenceEra": 7628,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "175494836632192539",
+      "totalXor": "0.175494836632192539",
+      "nominators": [
+        "cnTGr18DouWJ9Ek83ex6NtA8qBCdWpnwysz82xMFFDvejPNTZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7657,
+      "inferredOffenceEra": 7629,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "200371913371429760",
+      "totalXor": "0.20037191337142976",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7657,
+      "inferredOffenceEra": 7629,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "236094413745188302",
+      "totalXor": "0.236094413745188302",
+      "nominators": [
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q"
+      ]
+    },
+    {
+      "executionEra": 7657,
+      "inferredOffenceEra": 7629,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "171210643483420227",
+      "totalXor": "0.171210643483420227",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE"
+      ]
+    },
+    {
+      "executionEra": 7657,
+      "inferredOffenceEra": 7629,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "201648451843114512",
+      "totalXor": "0.201648451843114512",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56"
+      ]
+    },
+    {
+      "executionEra": 7657,
+      "inferredOffenceEra": 7629,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "243581672194190162",
+      "totalXor": "0.243581672194190162",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7657,
+      "inferredOffenceEra": 7629,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "172341955797930703",
+      "totalXor": "0.172341955797930703",
+      "nominators": [
+        "cnTkjtDe7T7RbTbG9DMfTwWu5QH9dRuWX7kCpFUxi8kvRVLiL",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7658,
+      "inferredOffenceEra": 7630,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "196857700958566416",
+      "totalXor": "0.196857700958566416",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7658,
+      "inferredOffenceEra": 7630,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "233477333327572089",
+      "totalXor": "0.233477333327572089",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR"
+      ]
+    },
+    {
+      "executionEra": 7658,
+      "inferredOffenceEra": 7630,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "168048459697284053",
+      "totalXor": "0.168048459697284053",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7658,
+      "inferredOffenceEra": 7630,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "198993413422639555",
+      "totalXor": "0.198993413422639555",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7658,
+      "inferredOffenceEra": 7630,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "240803171589801466",
+      "totalXor": "0.240803171589801466",
+      "nominators": [
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7658,
+      "inferredOffenceEra": 7630,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "169168461916791811",
+      "totalXor": "0.169168461916791811",
+      "nominators": [
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7659,
+      "inferredOffenceEra": 7631,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "193311223269235252",
+      "totalXor": "0.193311223269235252",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7659,
+      "inferredOffenceEra": 7631,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "230838891572560776",
+      "totalXor": "0.230838891572560776",
+      "nominators": [
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7659,
+      "inferredOffenceEra": 7631,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "164847886093664775",
+      "totalXor": "0.164847886093664775",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7659,
+      "inferredOffenceEra": 7631,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "196360297516085433",
+      "totalXor": "0.196360297516085433",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnSMPnA1v4R4uciDxgkzgYYraipNfNwwWSdMxjQ9JfbGmPe56",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7659,
+      "inferredOffenceEra": 7631,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "238049572399461698",
+      "totalXor": "0.238049572399461698",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv"
+      ]
+    },
+    {
+      "executionEra": 7659,
+      "inferredOffenceEra": 7631,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "165976084480292948",
+      "totalXor": "0.165976084480292948",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ"
+      ]
+    },
+    {
+      "executionEra": 7660,
+      "inferredOffenceEra": 7632,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "190615004489917696",
+      "totalXor": "0.190615004489917696",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7660,
+      "inferredOffenceEra": 7632,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "225030866907440293",
+      "totalXor": "0.225030866907440293",
+      "nominators": [
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnUcovoHeyNWt6x6Nxz7NWUswcnL9whPD1rcZxLW62CMQfUYW"
+      ]
+    },
+    {
+      "executionEra": 7660,
+      "inferredOffenceEra": 7632,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "162502484737686046",
+      "totalXor": "0.162502484737686046",
+      "nominators": [
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7660,
+      "inferredOffenceEra": 7632,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "195442399347938473",
+      "totalXor": "0.195442399347938473",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv"
+      ]
+    },
+    {
+      "executionEra": 7660,
+      "inferredOffenceEra": 7632,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "232795668165613112",
+      "totalXor": "0.232795668165613112",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q"
+      ]
+    },
+    {
+      "executionEra": 7660,
+      "inferredOffenceEra": 7632,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "163695374486177428",
+      "totalXor": "0.163695374486177428",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ"
+      ]
+    },
+    {
+      "executionEra": 7661,
+      "inferredOffenceEra": 7633,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "186996866256737636",
+      "totalXor": "0.186996866256737636",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7661,
+      "inferredOffenceEra": 7633,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "222429543171462413",
+      "totalXor": "0.222429543171462413",
+      "nominators": [
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnWCinddL4KpiY6S7jcj7gQs3HpQ7cSUBk2rNY6WYZs3XwyZ3"
+      ]
+    },
+    {
+      "executionEra": 7661,
+      "inferredOffenceEra": 7633,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "159246486632734872",
+      "totalXor": "0.159246486632734872",
+      "nominators": [
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7661,
+      "inferredOffenceEra": 7633,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "192824608600584483",
+      "totalXor": "0.192824608600584483",
+      "nominators": [
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7661,
+      "inferredOffenceEra": 7633,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "230068847420952719",
+      "totalXor": "0.230068847420952719",
+      "nominators": [
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3",
+        "cnWvaLQ5xnK3JHGMUekBgjVSmZnTsReWtB6Xq1Y5jKXjwayBR"
+      ]
+    },
+    {
+      "executionEra": 7661,
+      "inferredOffenceEra": 7633,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "160438011679259276",
+      "totalXor": "0.160438011679259276",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7662,
+      "inferredOffenceEra": 7634,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "182491454199101368",
+      "totalXor": "0.182491454199101368",
+      "nominators": [
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7662,
+      "inferredOffenceEra": 7634,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "222759464706020551",
+      "totalXor": "0.222759464706020551",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH"
+      ]
+    },
+    {
+      "executionEra": 7662,
+      "inferredOffenceEra": 7634,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "155095524406619201",
+      "totalXor": "0.155095524406619201",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7662,
+      "inferredOffenceEra": 7634,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "188371051683080734",
+      "totalXor": "0.188371051683080734",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb"
+      ]
+    },
+    {
+      "executionEra": 7662,
+      "inferredOffenceEra": 7634,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "229562130408783708",
+      "totalXor": "0.229562130408783708",
+      "nominators": [
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7662,
+      "inferredOffenceEra": 7634,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "156208403159747384",
+      "totalXor": "0.156208403159747384",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnSQUpv3zWLRc33C555wnVX7ySCzcc8DTBeoMF1LN4fkPdc5E"
+      ]
+    },
+    {
+      "executionEra": 7663,
+      "inferredOffenceEra": 7635,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "174207715017414227",
+      "totalXor": "0.174207715017414227",
+      "nominators": [
+        "cnWoQGTZU1WLoRkFxCYGiqB4CXp2NZSiFo6UnRKcRqdCMdY7X",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ"
+      ]
+    },
+    {
+      "executionEra": 7663,
+      "inferredOffenceEra": 7635,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "206389864557673309",
+      "totalXor": "0.206389864557673309",
+      "nominators": [
+        "cnWRM4HDtGpDfisC8QuvqEH2tejaVa2zLveF4NFUWT5g5NB5Q",
+        "cnUSn3ASmMVRkhMZdRQ94CRQzhMF6yqxA3wnjD5vRqPtu54g4"
+      ]
+    },
+    {
+      "executionEra": 7663,
+      "inferredOffenceEra": 7635,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "151152655715042732",
+      "totalXor": "0.151152655715042732",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7663,
+      "inferredOffenceEra": 7635,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "186221375768393360",
+      "totalXor": "0.18622137576839336",
+      "nominators": [
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSoXGXTT7q9zMymj7bgYvDGWP1xfJ9ioseov2McyRPaxnzg7",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7663,
+      "inferredOffenceEra": 7635,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "219027490645953070",
+      "totalXor": "0.21902749064595307",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf"
+      ]
+    },
+    {
+      "executionEra": 7663,
+      "inferredOffenceEra": 7635,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "152343172936892694",
+      "totalXor": "0.152343172936892694",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7664,
+      "inferredOffenceEra": 7636,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "170622470570102182",
+      "totalXor": "0.170622470570102182",
+      "nominators": [
+        "cnWoQGTZU1WLoRkFxCYGiqB4CXp2NZSiFo6UnRKcRqdCMdY7X",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7664,
+      "inferredOffenceEra": 7636,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "203819874377468053",
+      "totalXor": "0.203819874377468053",
+      "nominators": [
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7664,
+      "inferredOffenceEra": 7636,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "147818631249372458",
+      "totalXor": "0.147818631249372458",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7664,
+      "inferredOffenceEra": 7636,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "183607062394565255",
+      "totalXor": "0.183607062394565255",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv"
+      ]
+    },
+    {
+      "executionEra": 7664,
+      "inferredOffenceEra": 7636,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "216352310013038767",
+      "totalXor": "0.216352310013038767",
+      "nominators": [
+        "cnSMSLSMTxxT63G1uv9WrRDqswFikEUk433t42iyCp9AKL1YH",
+        "cnSi6bsAdtw2X1SsD9EMM6eu2VHQr1czJK8txYKtf8aKBwaXf",
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3",
+        "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv"
+      ]
+    },
+    {
+      "executionEra": 7664,
+      "inferredOffenceEra": 7636,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "149000257254551854",
+      "totalXor": "0.149000257254551854",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnVZzv6Sn9bXZYNGzuNmCeCCiHPscJGK2AKBfCPBPT9AMnoCZ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8",
+        "cnUiex6tD8qtAULEkx4oYRjw1PKhddPQEuxWpf293rmoKuzRy"
+      ]
+    },
+    {
+      "executionEra": 7665,
+      "inferredOffenceEra": 7637,
+      "indexAtSnapshot": 0,
+      "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+      "ownRaw": "0",
+      "totalRaw": "166289455756543168",
+      "totalXor": "0.166289455756543168",
+      "nominators": [
+        "cnWoQGTZU1WLoRkFxCYGiqB4CXp2NZSiFo6UnRKcRqdCMdY7X",
+        "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    },
+    {
+      "executionEra": 7665,
+      "inferredOffenceEra": 7637,
+      "indexAtSnapshot": 1,
+      "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+      "ownRaw": "0",
+      "totalRaw": "200760685578658027",
+      "totalXor": "0.200760685578658027",
+      "nominators": [
+        "cnXCcZXi9PebZHPV1863BybWmxjxQkkf2SCNa2FkPrVitXLCo",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7665,
+      "inferredOffenceEra": 7637,
+      "indexAtSnapshot": 2,
+      "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+      "ownRaw": "0",
+      "totalRaw": "143759046418918911",
+      "totalXor": "0.143759046418918911",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnTXu7yJuEcoTTVHB8z9hpikfLeHgQZERzENVz657UqGjTXpV",
+        "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+        "cnV7scshDJBN6EHTQqKj5P14qfrTiBd8stC6QarTUDZrb3R5R"
+      ]
+    },
+    {
+      "executionEra": 7665,
+      "inferredOffenceEra": 7637,
+      "indexAtSnapshot": 3,
+      "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+      "ownRaw": "0",
+      "totalRaw": "180500575668625702",
+      "totalXor": "0.180500575668625702",
+      "nominators": [
+        "cnUiLkBWABbbcL8iCBcQ5fwUMUbF3MquW7K2332ktuswhMg9M",
+        "cnSPv6XED4R3GY6w9UBgKc55NKa5WiJRt5QMbTiqBVTPnGuiW",
+        "cnTbAUWWPP8aXP5PVqW3c6TbS5WSASzpDbLHSvWpMXLXcuuRv",
+        "cnTMqmV2yD7bDj3Vh8dqZkyWVrTEERwKNPjCuohixd86Wp1RL"
+      ]
+    },
+    {
+      "executionEra": 7665,
+      "inferredOffenceEra": 7637,
+      "indexAtSnapshot": 4,
+      "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+      "ownRaw": "0",
+      "totalRaw": "213108440602308197",
+      "totalXor": "0.213108440602308197",
+      "nominators": [
+        "cnVRpXiJtnyJwwpK1XUjVdCPjEiT7ZS37P13VG5ko1CmjtfY3"
+      ]
+    },
+    {
+      "executionEra": 7665,
+      "inferredOffenceEra": 7637,
+      "indexAtSnapshot": 5,
+      "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+      "ownRaw": "0",
+      "totalRaw": "144926014535573496",
+      "totalXor": "0.144926014535573496",
+      "nominators": [
+        "cnTzX441rYuhr12XRnVTKjRR6kFTThQXSS9c5o1YNfzT4YEgE",
+        "cnXCWRD3jZCyHVoJK7k6Gfi1ohYBdRaBP9vy2xSFnKabZ5nE8"
+      ]
+    }
+  ]
+}

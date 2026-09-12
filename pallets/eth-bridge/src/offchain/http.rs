@@ -49,12 +49,72 @@ use frame_support::sp_runtime::offchain::storage::StorageValueRef;
 use frame_support::traits::Get;
 use frame_system::offchain::CreateSignedTransaction;
 use hex_literal::hex;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use sp_core::{H160, H256};
 use sp_std::convert::TryInto;
 
+const MAX_HTTP_RESPONSE_BYTES: usize = 1024 * 1024;
+// A 7 MiB Substrate block expands to almost 14 MiB when its extrinsics are JSON hex strings.
+// Ethereum blocks can likewise produce multi-megabyte transaction, receipt, and log responses.
+pub(crate) const MAX_LARGE_JSON_RPC_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
+
+#[derive(Deserialize)]
+#[serde(bound(deserialize = "O: Deserialize<'de>"))]
+struct TypedJsonRpcResponse<O> {
+    #[serde(rename = "id")]
+    _id: jsonrpc::Id,
+    #[serde(default)]
+    result: TypedJsonRpcResult<O>,
+    #[serde(default)]
+    error: Option<TypedJsonRpcError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TypedJsonRpcError {
+    code: i64,
+    message: String,
+}
+
+enum TypedJsonRpcResult<O> {
+    Missing,
+    Present(Option<O>),
+}
+
+impl<O> Default for TypedJsonRpcResult<O> {
+    fn default() -> Self {
+        Self::Missing
+    }
+}
+
+impl<'de, O: Deserialize<'de>> Deserialize<'de> for TypedJsonRpcResult<O> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Option::<O>::deserialize(deserializer).map(Self::Present)
+    }
+}
+
 impl<T: Config> Pallet<T> {
+    fn is_log_query_limit_error(error: &TypedJsonRpcError) -> bool {
+        // Providers also use -32005 for rate limits and exhausted account quotas.
+        // Only an explicit result-size or block-range message warrants smaller scans.
+        let message = error.message.to_ascii_lowercase();
+        let known_limit_message = [
+            "too many results",
+            "query returned more than",
+            "response size exceeded",
+            "response too large",
+            "block range is too wide",
+            "block range too wide",
+            "logs count exceeds the limit",
+            "block range limit exceeded",
+        ]
+        .iter()
+        .any(|fragment| message.contains(fragment));
+        known_limit_message
+            || (message.contains("limited to a")
+                && (message.contains("block") || message.contains("log")))
+    }
+
     fn decode_eth_call_bool(result: Bytes) -> Result<bool, Error<T>> {
         const ABI_WORD_BYTES: usize = 32;
 
@@ -76,8 +136,21 @@ impl<T: Config> Pallet<T> {
         url: &str,
         body: Vec<u8>,
         headers: &[(&'static str, String)],
+        max_response_bytes: usize,
     ) -> Result<Vec<u8>, Error<T>> {
-        trace!("Sending request to: {}", url);
+        Self::http_request_with_log_limits(url, body, headers, max_response_bytes, false)
+    }
+
+    fn http_request_with_log_limits(
+        url: &str,
+        body: Vec<u8>,
+        headers: &[(&'static str, String)],
+        max_response_bytes: usize,
+        reduce_log_range_on_413: bool,
+    ) -> Result<Vec<u8>, Error<T>> {
+        // Provider URLs can contain API keys in their path, query, or user info.
+        // Keep endpoint credentials out of logs even when trace logging is enabled.
+        trace!("Sending off-chain HTTP request");
         let mut request = rt_offchain::http::Request::post(url, vec![body.clone()]);
         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
             HTTP_REQUEST_TIMEOUT_SECS * 1000,
@@ -104,9 +177,31 @@ impl<T: Config> Pallet<T> {
             })?;
         if response.code != 200 {
             error!("Unexpected http request status code: {}", response.code);
+            // Some providers reject oversized eth_getLogs block ranges with HTTP 413.
+            // Let the existing scanner reduce that range without advancing its cursor.
+            // Other methods and statuses retain their normal HTTP retry behavior.
+            if response.code == 413 && reduce_log_range_on_413 {
+                return Err(<Error<T>>::HttpResponseTooLarge);
+            }
             return Err(<Error<T>>::HttpFetchingError);
         }
-        let resp = response.body().collect::<Vec<u8>>();
+        let mut body = response.body();
+        body.deadline(timeout);
+        let mut resp = Vec::new();
+        while let Some(byte) = body.next() {
+            if resp.len() >= max_response_bytes {
+                warn!(
+                    "HTTP response exceeded maximum size: {} bytes",
+                    max_response_bytes
+                );
+                return Err(<Error<T>>::HttpResponseTooLarge);
+            }
+            resp.push(byte);
+        }
+        if let Some(error) = body.error() {
+            error!("Failed to read response body: {:?}", error);
+            return Err(<Error<T>>::HttpFetchingError);
+        }
         Ok(resp)
     }
 
@@ -118,6 +213,7 @@ impl<T: Config> Pallet<T> {
         params: &I,
         headers: &[(&'static str, String)],
     ) -> Result<O, Error<T>> {
+        trace!("Sending JSON-RPC request: method={}, id={}", method, id);
         let params = match serialize(params) {
             Value::Null => Params::None,
             Value::Array(v) => Params::Array(v),
@@ -128,7 +224,15 @@ impl<T: Config> Pallet<T> {
             }
         };
 
-        let raw_response = Self::http_request(
+        let max_response_bytes = match method {
+            "chain_getBlock"
+            | "eth_getLogs"
+            | "eth_getTransactionByHash"
+            | "eth_getTransactionReceipt" => MAX_LARGE_JSON_RPC_RESPONSE_BYTES,
+            _ => MAX_HTTP_RESPONSE_BYTES,
+        };
+
+        let raw_response = Self::http_request_with_log_limits(
             url,
             serde_json::to_vec(&jsonrpc::Request::Single(jsonrpc::Call::MethodCall(
                 jsonrpc::MethodCall {
@@ -140,6 +244,8 @@ impl<T: Config> Pallet<T> {
             )))
             .map_err(|_| Error::<T>::JsonSerializationError)?,
             &headers,
+            max_response_bytes,
+            method == "eth_getLogs",
         )
         .and_then(|x| {
             String::from_utf8(x).map_err(|e| {
@@ -147,32 +253,28 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::HttpFetchingError
             })
         })?;
-        let response = jsonrpc::Response::from_json(&raw_response)
-            .map_err(|e| {
-                error!("json_rpc_request: from_json failed, {}", e);
-            })
-            .map_err(|_| Error::<T>::JsonDeserializationError)?;
-        let result = match response {
-            jsonrpc::Response::Batch(_xs) => {
-                error!("json_rpc_request: unexpected batch response");
-                fail!(Error::<T>::JsonDeserializationError);
-            }
-            jsonrpc::Response::Single(x) => x,
-        };
-        match result {
-            jsonrpc::Output::Success(s) => {
-                if s.result.is_null() {
-                    Err(Error::<T>::FailedToLoadTransaction)
+        let response =
+            serde_json::from_str::<TypedJsonRpcResponse<O>>(&raw_response).map_err(|e| {
+                error!("json_rpc_request: typed response decoding failed, {}", e);
+                Error::<T>::JsonDeserializationError
+            })?;
+        match (response.result, response.error) {
+            (TypedJsonRpcResult::Present(Some(result)), None) => Ok(result),
+            (TypedJsonRpcResult::Present(None), None) => Err(Error::<T>::FailedToLoadTransaction),
+            (TypedJsonRpcResult::Missing, Some(rpc_error)) => {
+                error!(
+                    "json_rpc_request: request failed: code={}, message={:?}",
+                    rpc_error.code, rpc_error.message
+                );
+                if method == "eth_getLogs" && Self::is_log_query_limit_error(&rpc_error) {
+                    Err(Error::<T>::HttpResponseTooLarge)
                 } else {
-                    serde_json::from_value(s.result).map_err(|e| {
-                        error!("json_rpc_request: from_value failed, {}", e);
-                        Error::<T>::JsonDeserializationError.into()
-                    })
+                    Err(Error::<T>::JsonDeserializationError)
                 }
             }
             _ => {
-                error!("json_rpc_request: request failed");
-                Err(Error::<T>::JsonDeserializationError.into())
+                error!("json_rpc_request: response must contain exactly one of result or error");
+                Err(Error::<T>::JsonDeserializationError)
             }
         }
     }
@@ -242,7 +344,15 @@ impl<T: Config> Pallet<T> {
                     Value::String("latest".into()),
                 ],
                 network_id,
-            )?;
+            )
+            // The generic helper reports a null result as a missing transaction. For this
+            // contract query, null and incompatible JSON are malformed `used` responses.
+            .map_err(|error| match error {
+                Error::<T>::FailedToLoadTransaction | Error::<T>::JsonDeserializationError => {
+                    Error::<T>::FailedToLoadIsUsed
+                }
+                error => error,
+            })?;
             let is_used = Self::decode_eth_call_bool(call_result)?;
             if is_used {
                 return Ok(true);

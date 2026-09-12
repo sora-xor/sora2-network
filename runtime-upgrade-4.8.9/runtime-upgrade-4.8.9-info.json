@@ -1,0 +1,252 @@
+{
+  "status": "complete-council-package-validated-unsigned",
+  "generatedAtUtc": "2026-09-12T12:20:32.414182+00:00",
+  "runtime": {
+    "packageVersion": "4.8.9",
+    "specName": "sora-substrate",
+    "specVersion": 131,
+    "transactionVersion": 131,
+    "implVersion": 2,
+    "authoringVersion": 1,
+    "stateVersion": 0
+  },
+  "source": {
+    "baseCommit": "7104c2ff6e8d5c2babfc7743e8e5851ba65e5a58",
+    "releaseCommit": "823a5b9fde8486dd73aeab856c76bbab5408bf0f",
+    "tree": "f27c23367f2838196b6d6a4675652c6485623f48",
+    "ref": "refs/heads/codex/runtime-4.8.9-council-823a5b9f",
+    "newSourceFiles": [
+      "pallets/eth-bridge/src/tests/http_status.rs",
+      "runtime/src/liveness.rs",
+      "runtime/src/tests/liveness.rs",
+      "runtime/src/tests/liveness/deferred_slashes.rs",
+      "runtime/src/tests/liveness/equivocation_admission.rs",
+      "runtime/src/tests/liveness/session_boundaries.rs",
+      "vendor/polkadot-sdk/frame/staking/CHANGELOG.md",
+      "vendor/polkadot-sdk/frame/staking/Cargo.toml",
+      "vendor/polkadot-sdk/frame/staking/PATCHES.md",
+      "vendor/polkadot-sdk/frame/staking/README.md",
+      "vendor/polkadot-sdk/frame/staking/additional-payout.patch",
+      "vendor/polkadot-sdk/frame/staking/deferred-slashing.patch",
+      "vendor/polkadot-sdk/frame/staking/reward-curve/Cargo.toml",
+      "vendor/polkadot-sdk/frame/staking/reward-curve/src/lib.rs",
+      "vendor/polkadot-sdk/frame/staking/reward-curve/src/log.rs",
+      "vendor/polkadot-sdk/frame/staking/reward-curve/tests/test.rs",
+      "vendor/polkadot-sdk/frame/staking/reward-fn/Cargo.toml",
+      "vendor/polkadot-sdk/frame/staking/reward-fn/src/lib.rs",
+      "vendor/polkadot-sdk/frame/staking/reward-fn/tests/test.rs",
+      "vendor/polkadot-sdk/frame/staking/runtime-api/Cargo.toml",
+      "vendor/polkadot-sdk/frame/staking/runtime-api/README.md",
+      "vendor/polkadot-sdk/frame/staking/runtime-api/src/lib.rs",
+      "vendor/polkadot-sdk/frame/staking/src/asset.rs",
+      "vendor/polkadot-sdk/frame/staking/src/benchmarking.rs",
+      "vendor/polkadot-sdk/frame/staking/src/election_size_tracker.rs",
+      "vendor/polkadot-sdk/frame/staking/src/inflation.rs",
+      "vendor/polkadot-sdk/frame/staking/src/ledger.rs",
+      "vendor/polkadot-sdk/frame/staking/src/lib.rs",
+      "vendor/polkadot-sdk/frame/staking/src/migrations.rs",
+      "vendor/polkadot-sdk/frame/staking/src/mock.rs",
+      "vendor/polkadot-sdk/frame/staking/src/pallet/impls.rs",
+      "vendor/polkadot-sdk/frame/staking/src/pallet/mod.rs",
+      "vendor/polkadot-sdk/frame/staking/src/slashing.rs",
+      "vendor/polkadot-sdk/frame/staking/src/testing_utils.rs",
+      "vendor/polkadot-sdk/frame/staking/src/tests.rs",
+      "vendor/polkadot-sdk/frame/staking/src/weights.rs"
+    ],
+    "workingTreeIndexChanged": false,
+    "includesLatestLivenessAndDeferredSlashing": true,
+    "excludesLaterSourceChanges": false,
+    "sourceArchive": "source.tar.gz",
+    "gitBundle": "source-changes.bundle",
+    "fullFileHashes": "validation/source-sha256.json",
+    "workingTreePreserved": true,
+    "commitPublishedToRemote": false
+  },
+  "build": {
+    "command": "env -u SKIP_WASM_BUILD CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --locked -p framenode-runtime --features build-wasm-binary",
+    "toolchain": "nightly-2025-05-08",
+    "rustc": "1.88.0-nightly (e9f8103f9 2025-05-07)",
+    "wasmTarget": "wasm32v1-none, selected by SDK WasmBuilder",
+    "log": "validation/build.log",
+    "features": [
+      "default mainnet",
+      "build-wasm-binary"
+    ],
+    "disabledFeatures": [
+      "wip",
+      "private-net",
+      "stage",
+      "runtime-benchmarks",
+      "try-runtime"
+    ]
+  },
+  "wasm": {
+    "file": "framenode-runtime-4.8.9.compact.compressed.wasm",
+    "bytes": 3055506,
+    "sha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+    "blake2_256": "0xf062ed07861255f5ec443930de9c5066d1e4133036126d48462c8e233a75f27e"
+  },
+  "proposal": {
+    "call": "system.set_code",
+    "hash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+    "bytes": 3055512,
+    "scaleFile": "set-code-call.scale",
+    "hexFile": "set-code-call.hex",
+    "maxPreimageBytes": 4194304
+  },
+  "governance": {
+    "callsManifest": "governance-calls.json",
+    "councilProposal": "COUNCIL-PROPOSAL.md",
+    "runbook": "GOVERNANCE-RUNBOOK.md",
+    "councilThreshold": 4,
+    "councilThresholdAlternative": 5,
+    "technicalThreshold": 3,
+    "votingPeriodBlocks": 1800,
+    "delayBlocks": 0,
+    "callsAreUnsigned": true,
+    "proposerMustExplicitlyVote": true
+  },
+  "chainReference": {
+    "endpoint": "wss://ws.mof.sora.org",
+    "archiveEndpoint": "https://mof2.sora.org",
+    "block": 27624441,
+    "hash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+    "checkedAt": "2026-09-12T12:12:21.973Z",
+    "specVersion": 130,
+    "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+    "codeSha256": "0ac7b85d845d56d450df99ab7166014897be57a7a1f66437d92e6949b56f49c0",
+    "councilMembers": 8,
+    "technicalMembers": 4
+  },
+  "validation": {
+    "runtimeTests": {
+      "passed": 209,
+      "failed": 0,
+      "ignored": 4,
+      "log": "validation/runtime-tests.log"
+    },
+    "stakingTests": {
+      "passed": 217,
+      "failed": 0,
+      "sourceHashesVerified": true,
+      "log": "validation/staking-tests.log"
+    },
+    "bridgeTests": {
+      "passed": 288,
+      "failed": 0,
+      "sourceHashesVerified": true,
+      "log": "validation/bridge-tests.log"
+    },
+    "focusedLivenessTests": {
+      "passed": 37,
+      "failed": 0,
+      "log": "validation/liveness-focused-tests.log"
+    },
+    "metadata": {
+      "existingEncodingCompatible": true,
+      "existingPallets": 80,
+      "candidatePallets": 81,
+      "existingCalls": 405,
+      "existingStorageEntries": 481,
+      "signedExtensions": 7,
+      "newLivenessIndex": 120,
+      "report": "validation/metadata-compatibility.json"
+    },
+    "nativeMigrationRehearsals": {
+      "executive": "passed",
+      "focusedBridge": "passed",
+      "block": 27620167,
+      "hash": "0xedc2506edcb75c79c12d26a8c89a2473677a8aff67b3e05eb310573bdbf2a049",
+      "snapshot": "validation/mainnet-27620167.snap",
+      "log": "validation/native-migration-rehearsal.log",
+      "observations": [
+        "Runtime upgrade rehearsal replay: source_block=27620167, final_block=27620169, migration_steps=2, upgrade_weight=Weight { ref_time: 89399542000, proof_size: 67035 }",
+        "EthBridge v3->v4 migration: steps=2, total_weight=Weight { ref_time: 1924909750000, proof_size: 8379625 }, per_block_limit=Weight { ref_time: 1000000000000, proof_size: 9223372036854775807 }, elapsed=847.610208ms, truncated_accounts=6"
+      ]
+    },
+    "freshWasmPayoutReplay": {
+      "passed": true,
+      "block": 27624441,
+      "hash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+      "report": "validation/wasm-current-state-rehearsal.json",
+      "log": "validation/wasm-current-state-rehearsal.log",
+      "migrationBlocks": [
+        {
+          "blockNumber": 27624442,
+          "blockHash": "0xed4f0e2f7eb2f6d216d8a273cd639eec03ed6182f6c08118df3c2bc1086dc765",
+          "cursor": {
+            "active": {
+              "index": 0,
+              "innerCursor": "0x41018e8f4d4777099074419cbb4597dac1d32455672c652ba1a1af2a4ce9614f541b86f5b074cf84fad98d6adcf4b3a88af2eeac62ae23eb0ac97ba964efc3b08e9968fb11c6cf0e31b85830712b2df5bd12",
+              "startedAt": 27624441
+            }
+          },
+          "ethBridgeStorageVersion": 3
+        },
+        {
+          "blockNumber": 27624443,
+          "blockHash": "0x4ddbcc51257493831e3a896c267c455c09f2d496a99f23baee1062ba5e6c5cf2",
+          "cursor": null,
+          "ethBridgeStorageVersion": 4
+        }
+      ],
+      "routes": [
+        {
+          "label": "staking.payoutStakersByPage",
+          "passed": true,
+          "totalValPaid": "1193586644401646408"
+        },
+        {
+          "label": "staking.payoutStakers",
+          "passed": true,
+          "totalValPaid": "1193586644401646408"
+        },
+        {
+          "label": "utility.batchAll(payoutStakersByPage)",
+          "passed": true,
+          "totalValPaid": "1193586644401646408"
+        }
+      ],
+      "duplicateClaimRejected": true
+    },
+    "freshWasmLivenessReplay": {
+      "passed": true,
+      "block": 27624441,
+      "hash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+      "report": "validation/wasm-current-liveness.json",
+      "log": "validation/wasm-current-liveness.log",
+      "checks": {
+        "runtimeUpgradeExecuted": true,
+        "exposureCacheSeeded": true,
+        "cacheContextFresh": true,
+        "exposureCountsMatchIndependentScan": true,
+        "incompleteSessionGracePreserved": true
+      },
+      "exposureOverviewRows": 774,
+      "maxNominationEdges": 113,
+      "maxValidators": 28
+    },
+    "packageChecks": "validation/package-check.json",
+    "collectiveActionHelper": {
+      "offlineTestsPassed": 6,
+      "offlineTestsFailed": 0,
+      "liveReport": "validation/collective-actions-check.json",
+      "script": "validation/prepare-collective-actions.cjs",
+      "signedOrSubmitted": false
+    }
+  },
+  "limitations": [
+    "Native snapshot is filtered to configured migrations and audited storage versions; child tries and unrelated pallet prefixes are not included.",
+    "Wasm rehearsal uses a local code overlay, mocked signatures and allows unresolved host imports; offchain workers are disabled. It does not constitute a validator-consensus or signed-governance rehearsal.",
+    "Weights use conservative compositions; this task did not run new hardware benchmarks.",
+    "Oversized synchronous equivocation cohorts remain non-admissible. Missing, stale, legacy or oversized exposure history uses a conservative fallback.",
+    "No cancellation or historical draining of slash queues, retroactive relocking, historical claim repair or issuance adjustment.",
+    "Mainnet build excludes wip token-fee support. Polkadot.js Apps publication is a separate release."
+  ],
+  "supersedesProposalHash": "0xcf83851e197e1597ded8ac24f7b9e5141c3db641ba8a7f61b602b3767e4c1420",
+  "submittedTransactions": 0,
+  "frontend": {
+    "patch": "polkadotjs-val-payouts.patch",
+    "published": false
+  }
+}

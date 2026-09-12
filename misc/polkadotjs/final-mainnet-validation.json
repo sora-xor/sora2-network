@@ -1,0 +1,55 @@
+{
+  "checkedAt": "2026-09-12T01:24:47.308Z",
+  "endpoint": "wss://ws.mof.sora.org",
+  "blockHash": "0xe994c10c47f8295bc0ed657ae270fdd4c5577bf039f62e64e8546a11e60253d6",
+  "chain": "SORA",
+  "specVersion": 130,
+  "apiVersion": "16.5.6",
+  "activeEra": 7636,
+  "payoutStakers": true,
+  "payoutStakersByPage": true,
+  "eras": [
+    {
+      "era": 7635,
+      "standardReward": "0",
+      "valReward": "227512080796917644514",
+      "patchedDerivedReward": "227512080796917644514"
+    },
+    {
+      "era": 7634,
+      "standardReward": "0",
+      "valReward": "57813980591259333097",
+      "patchedDerivedReward": "57813980591259333097"
+    },
+    {
+      "era": 7633,
+      "standardReward": "0",
+      "valReward": "116375190947648151922",
+      "patchedDerivedReward": "116375190947648151922"
+    },
+    {
+      "era": 7632,
+      "standardReward": "0",
+      "valReward": "1794569444133736716351",
+      "patchedDerivedReward": "1794569444133736716351"
+    },
+    {
+      "era": 7631,
+      "standardReward": "0",
+      "valReward": "751318138310764234275",
+      "patchedDerivedReward": "751318138310764234275"
+    }
+  ],
+  "directPayoutCall": {
+    "section": "staking",
+    "method": "payoutStakers",
+    "encodedCallBytes": 38
+  },
+  "stakingAccountDerived": true,
+  "sampleValidatorPayoutCount": 1,
+  "sampleStakerRewardCount": 1,
+  "sampleStakerEraRewards": [
+    "227512080796917644514"
+  ],
+  "submittedTransactions": 0
+}
