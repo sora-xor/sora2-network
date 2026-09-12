@@ -1,0 +1,1387 @@
+diff --git a/packages/apps-config/src/api/derives.ts b/packages/apps-config/src/api/derives.ts
+index 735ae76..b76de7b 100644
+--- a/packages/apps-config/src/api/derives.ts
++++ b/packages/apps-config/src/api/derives.ts
+@@ -8,12 +8,14 @@ import genshiro from './spec/genshiro.js';
+ import hyperbridge from './spec/hyperbridge.js';
+ import interbtc from './spec/interbtc.js';
+ import mangata from './spec/mangata.js';
++import soraSubstrate from './spec/soraSubstrate.js';
+ import subspace from './spec/subspace.js';
+ 
+ const mapping: [OverrideBundleDefinition, string[]][] = [
+   [equilibrium, ['Equilibrium', 'Equilibrium-parachain']],
+   [genshiro, ['Genshiro', 'Gens-parachain']],
+   [interbtc, ['interbtc-parachain', 'interbtc-standalone', 'interlay-parachain', 'kintsugi-parachain', 'testnet-kintsugi', 'testnet-interlay']],
++  [soraSubstrate, ['sora-substrate', 'sora_ksm']],
+   [subspace, ['subspace']],
+   [mangata, ['mangata', 'mangata-parachain']]
+ ];
+diff --git a/packages/apps-config/src/api/spec/soraSubstrate.ts b/packages/apps-config/src/api/spec/soraSubstrate.ts
+index 58322b3..3921110 100644
+--- a/packages/apps-config/src/api/spec/soraSubstrate.ts
++++ b/packages/apps-config/src/api/spec/soraSubstrate.ts
+@@ -5,4 +5,25 @@ import type { OverrideBundleDefinition } from '@polkadot/types/types';
+ 
+ import { fullOverrideBundle } from '@sora-substrate/type-definitions';
+ 
+-export default fullOverrideBundle.spec.sora as OverrideBundleDefinition;
++import * as staking from '@polkadot/api-derive/staking';
++
++import { erasRewards } from './soraSubstrate/derives.js';
++import { eraExposure, stakerRewards, validatorRewards } from './soraSubstrate/stakingRewards.js';
++
++const definitions = fullOverrideBundle.spec.sora as OverrideBundleDefinition;
++
++export default {
++  ...definitions,
++  derives: {
++    ...definitions.derives,
++    staking: {
++      // Custom derive sections replace the built-in section as a whole.
++      ...staking,
++      ...definitions.derives?.staking,
++      _eraExposure: eraExposure,
++      _erasRewards: erasRewards,
++      _stakerRewards: stakerRewards,
++      soraValidatorRewards: validatorRewards
++    }
++  }
++} as OverrideBundleDefinition;
+diff --git a/packages/apps-config/src/api/spec/soraSubstrate/derives.spec.ts b/packages/apps-config/src/api/spec/soraSubstrate/derives.spec.ts
+new file mode 100644
+index 0000000..c0de91a
+--- /dev/null
++++ b/packages/apps-config/src/api/spec/soraSubstrate/derives.spec.ts
+@@ -0,0 +1,118 @@
++// Copyright 2017-2026 @polkadot/apps-config authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++/// <reference types="@polkadot/dev-test/globals.d.ts" />
++
++import type { DeriveApi } from '@polkadot/api-derive/types';
++import type { EraIndex } from '@polkadot/types/interfaces';
++
++import { BehaviorSubject, firstValueFrom, of, skip } from 'rxjs';
++
++import { getAvailableDerives } from '@polkadot/api-derive';
++import { TypeRegistry } from '@polkadot/types';
++
++import definitions from '../soraSubstrate.js';
++import { erasRewards } from './derives.js';
++
++const registry = new TypeRegistry();
++const eras = [registry.createType<EraIndex>('EraIndex', 7), registry.createType<EraIndex>('EraIndex', 8)];
++
++describe('SORA staking era rewards', (): void => {
++  it('exposes VAL rewards even when standard staking rewards are zero', async (): Promise<void> => {
++    let requested: EraIndex[] = [];
++    const api = {
++      query: {
++        staking: { erasValidatorReward: { multi: () => {
++          throw new Error('must not read XOR rewards');
++        } } },
++        xorFee: {
++          valStakingEraReward: {
++            multi: (values: EraIndex[]) => {
++              requested = values;
++
++              return of([registry.createType('Balance', '57813980591259333097'), registry.createType('Balance', 0)]);
++            }
++          }
++        }
++      },
++      registry
++    } as unknown as DeriveApi;
++    const result = await firstValueFrom(erasRewards('sora-val-rewards', api)(eras, false));
++
++    expect(requested).toEqual(eras);
++    expect(result.map(({ era }) => era.toNumber())).toEqual([7, 8]);
++    expect(result.map(({ eraReward }) => eraReward.toString())).toEqual(['57813980591259333097', '0']);
++  });
++
++  it('keeps a zero VAL reward at zero instead of falling back to another currency', async (): Promise<void> => {
++    const api = {
++      query: {
++        staking: { erasValidatorReward: { multi: () => of([registry.createType('Option<Balance>', 1000)]) } },
++        xorFee: { valStakingEraReward: { multi: () => of([registry.createType('Balance', 0)]) } }
++      },
++      registry
++    } as unknown as DeriveApi;
++    const result = await firstValueFrom(erasRewards('sora-zero-val', api)(eras.slice(0, 1), false));
++
++    expect(result[0].eraReward.isZero()).toBe(true);
++  });
++
++  it('returns no rewards without issuing a query when no eras are requested', async (): Promise<void> => {
++    const api = {
++      query: { xorFee: { valStakingEraReward: { multi: () => {
++        throw new Error('unexpected query');
++      } } } },
++      registry
++    } as unknown as DeriveApi;
++
++    expect(await firstValueFrom(erasRewards('sora-empty-eras', api)([], false))).toEqual([]);
++  });
++
++  it('uses standard rewards for runtimes without the separate VAL storage', async (): Promise<void> => {
++    const api = {
++      query: {
++        staking: {
++          erasValidatorReward: {
++            multi: () => of([registry.createType('Option<Balance>', 123), registry.createType('Option<Balance>')])
++          }
++        }
++      },
++      registry
++    } as unknown as DeriveApi;
++    const result = await firstValueFrom(erasRewards('sora-legacy-rewards', api)(eras, true));
++
++    expect(result.map(({ eraReward }) => eraReward.toString())).toEqual(['123', '0']);
++  });
++
++  it('updates rewards while an active era accrues VAL', async (): Promise<void> => {
++    const rewards = new BehaviorSubject([registry.createType('Balance', 100)]);
++    const api = {
++      query: { xorFee: { valStakingEraReward: { multi: () => rewards } } },
++      registry
++    } as unknown as DeriveApi;
++    const stream = erasRewards('sora-active-rewards', api)(eras.slice(0, 1), true);
++    const updated = firstValueFrom(stream.pipe(skip(1)));
++
++    rewards.next([registry.createType('Balance', 200)]);
++    expect((await updated)[0].eraReward.toString()).toBe('200');
++  });
++
++  it('exports the reward derive through the SORA override bundle', (): void => {
++    expect(definitions.derives?.staking._erasRewards).toBe(erasRewards);
++    expect(!!definitions.types?.length).toBe(true);
++  });
++
++  it('preserves the staking account and reward APIs after custom derive injection', (): void => {
++    const api = {
++      query: { staking: { erasRewardPoints: () => undefined } },
++      registry,
++      runtimeVersion: { specName: 'sora-substrate' }
++    } as unknown as DeriveApi;
++    const available = getAvailableDerives('sora-injected-derives', api, definitions.derives);
++
++    expect(typeof available.staking.accounts).toBe('function');
++    expect(typeof available.staking.stakerRewardsMultiEras).toBe('function');
++    expect(typeof available.staking.erasHistoric).toBe('function');
++    expect(typeof available.staking._erasRewards).toBe('function');
++  });
++});
+diff --git a/packages/apps-config/src/api/spec/soraSubstrate/derives.ts b/packages/apps-config/src/api/spec/soraSubstrate/derives.ts
+new file mode 100644
+index 0000000..f5bad24
+--- /dev/null
++++ b/packages/apps-config/src/api/spec/soraSubstrate/derives.ts
+@@ -0,0 +1,39 @@
++// Copyright 2017-2026 @polkadot/apps-config authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++import type { Observable } from 'rxjs';
++import type { DeriveApi, DeriveEraRewards } from '@polkadot/api-derive/types';
++import type { EraIndex } from '@polkadot/types/interfaces';
++
++import { map, of } from 'rxjs';
++
++import { _erasRewards } from '@polkadot/api-derive/staking';
++import { memo } from '@polkadot/api-derive/util';
++
++// SORA stakes XOR and records VAL rewards separately. The upstream staking
++// reward is deliberately zero to prevent an additional native XOR mint.
++export function erasRewards (instanceId: string, api: DeriveApi): (eras: EraIndex[], withActive: boolean) => Observable<DeriveEraRewards[]> {
++  const standardRewards = _erasRewards(instanceId, api);
++
++  return memo(instanceId, (eras: EraIndex[], withActive: boolean): Observable<DeriveEraRewards[]> => {
++    const valRewards = api.query.xorFee?.valStakingEraReward;
++
++    // Older SORA runtimes paid VAL from the staking pallet itself.
++    if (!valRewards) {
++      return standardRewards(eras, withActive);
++    }
++
++    if (!eras.length) {
++      return of([]);
++    }
++
++    // Keep this separate from the standard era-reward cache: it may contain
++    // zero XOR rewards cached before the VAL-aware derive was installed.
++    return valRewards.multi(eras).pipe(
++      map((rewards): DeriveEraRewards[] => eras.map((era, index) => ({
++        era,
++        eraReward: api.registry.createType('Balance', rewards[index])
++      })))
++    );
++  });
++}
+diff --git a/packages/apps-config/src/api/spec/soraSubstrate/stakingRewards.spec.ts b/packages/apps-config/src/api/spec/soraSubstrate/stakingRewards.spec.ts
+new file mode 100644
+index 0000000..7a85f95
+--- /dev/null
++++ b/packages/apps-config/src/api/spec/soraSubstrate/stakingRewards.spec.ts
+@@ -0,0 +1,179 @@
++// Copyright 2017-2026 @polkadot/apps-config authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++/// <reference types="@polkadot/dev-test/globals.d.ts" />
++
++import type { DeriveApi, DeriveStakerReward } from '@polkadot/api-derive/types';
++import type { AccountId, Balance, EraIndex } from '@polkadot/types/interfaces';
++
++import { BehaviorSubject, combineLatest, firstValueFrom, of, skip } from 'rxjs';
++
++import { _stakerExposures } from '@polkadot/api-derive/staking';
++import { TypeRegistry } from '@polkadot/types';
++import { BN } from '@polkadot/util';
++
++import definitions from '../soraSubstrate.js';
++import { eraExposure, stakerRewards, validatorRewards } from './stakingRewards.js';
++
++const registry = new TypeRegistry();
++
++registry.register({
++  // eslint-disable-next-line sort-keys -- codec field order matches the runtime
++  SoraTestOverview: { total: 'Balance', own: 'Balance', nominatorCount: 'u32', pageCount: 'u32' },
++  // eslint-disable-next-line sort-keys -- codec field order matches the runtime
++  SoraTestPage: { pageTotal: 'Compact<Balance>', others: 'Vec<IndividualExposure>' }
++});
++
++const era = registry.createType<EraIndex>('EraIndex', 989);
++const account = (digit: string): AccountId => registry.createType<AccountId>('AccountId', `0x${digit.repeat(64)}`);
++const validatorA = account('1');
++const validatorB = account('2');
++const alice = account('3');
++const bob = account('4');
++const balance = (value: number): Balance => registry.createType<Balance>('Balance', value);
++let fixtureId = 0;
++
++interface ValidatorFixture {
++  claimed?: number[];
++  commission?: number;
++  id: AccountId;
++  legacy?: boolean;
++  legacyClaimed?: boolean;
++  own: number;
++  pages: [AccountId, number][][];
++}
++
++function fixture (validators: ValidatorFixture[], reversePages = false) {
++  const id = `sora-paged-${fixtureId++}`;
++  const claimed = new BehaviorSubject(validators.map(({ claimed = [] }) => registry.createType('Vec<u32>', claimed)));
++  const total = ({ own, pages }: ValidatorFixture): number => own + pages.flat().reduce((sum, [, stake]) => sum + stake, 0);
++  const pageEntries = validators.flatMap(({ id, legacy, pages }) => legacy
++    ? []
++    : pages.map((stakers, page) => [
++      { args: [era, id, registry.createType('u32', page)] },
++      registry.createType('Option<SoraTestPage>', { others: stakers.map(([who, value]) => ({ value, who })), pageTotal: stakers.reduce((sum, [, stake]) => sum + stake, 0) })
++    ]));
++  const api = {
++    derive: { staking: {} },
++    query: {
++      staking: {
++        claimedRewards: { multi: () => claimed },
++        erasStakersClipped: { entries: () => of(validators.filter(({ legacy }) => legacy).map((val) => [{ args: [era, val.id] }, registry.createType('Exposure', { others: val.pages.flat().map(([who, value]) => ({ value, who })), own: val.own, total: total(val) })])) },
++        erasStakersOverview: { entries: () => of(validators.filter(({ legacy }) => !legacy).map((val) => [{ args: [era, val.id] }, registry.createType('Option<SoraTestOverview>', { nominatorCount: val.pages.flat().length, own: val.own, pageCount: val.pages.length, total: total(val) })])) },
++        erasStakersPaged: { entries: () => of(reversePages ? pageEntries.reverse() : pageEntries) }
++      },
++      xorFee: { valStakingEraReward: {} }
++    },
++    registry
++  } as unknown as DeriveApi;
++
++  api.derive.staking._eraExposure = eraExposure(id, api);
++  Object.assign(api.derive.staking, { _erasExposure: (eras: EraIndex[]) => combineLatest(eras.map((era) => api.derive.staking._eraExposure(era))) });
++  api.derive.staking._stakerExposures = _stakerExposures(id, api);
++  api.derive.staking._stakerRewardsEras = () => of([
++    [{ era, eraPoints: balance(validators.length), validators: Object.fromEntries(validators.map(({ id }) => [id.toString(), balance(1)])) }],
++    [{ era, validators: Object.fromEntries(validators.map(({ commission = 0, id }) => [id.toString(), { commission: registry.createType('Compact<Perbill>', commission) }])) }],
++    [{ era, eraReward: balance(1000) }]
++  ]) as ReturnType<DeriveApi['derive']['staking']['_stakerRewardsEras']>;
++  api.derive.staking.queryMulti = () => of(validators.map(({ id, legacyClaimed }) => ({ accountId: id, stakingLedger: { legacyClaimedRewards: registry.createType('Vec<u32>', legacyClaimed ? [era] : []) } }))) as ReturnType<DeriveApi['derive']['staking']['queryMulti']>;
++
++  return { api, claimed, rewards: stakerRewards(id, api), validatorPayouts: validatorRewards(id, api) };
++}
++
++function values (rewards: DeriveStakerReward[][]): string[] {
++  return rewards.map((eras) => eras.reduce((sum, { validators }) => Object.values(validators).reduce((sum, { value }) => sum.add(value), sum), new BN(0)).toString());
++}
++
++describe('SORA paged staking rewards', (): void => {
++  for (const reversed of [false, true]) {
++    it(`retains every page and validator own stake (reversed storage order: ${String(reversed)})`, async (): Promise<void> => {
++      const { rewards } = fixture([{ id: validatorA, own: 10, pages: [[[alice, 30]], [[bob, 60]]] }], reversed);
++      const result = await firstValueFrom(rewards([validatorA.toString(), alice.toString(), bob.toString()], [era]));
++
++      expect(values(result)).toEqual(['100', '300', '600']);
++      expect(result.every((eras) => eras[0].isClaimed === false)).toBe(true);
++    });
++  }
++
++  it('supports a validator with own stake but no nominator page entry', async (): Promise<void> => {
++    const { rewards } = fixture([{ id: validatorA, own: 100, pages: [] }]);
++
++    expect(values(await firstValueFrom(rewards([validatorA.toString()], [era])))).toEqual(['1000']);
++  });
++
++  it('updates pending page rewards and pays own stake only on page zero', async (): Promise<void> => {
++    const { claimed, rewards } = fixture([{ commission: 250_000_000, id: validatorA, own: 10, pages: [[[alice, 30]], [[bob, 60]]] }]);
++    const stream = rewards([validatorA.toString(), alice.toString(), bob.toString()], [era]);
++
++    expect(values(await firstValueFrom(stream))).toEqual(['325', '225', '450']);
++
++    const next = firstValueFrom(stream.pipe(skip(1)));
++
++    claimed.next([registry.createType('Vec<u32>', [0])]);
++    expect(values(await next)).toEqual(['150', '0', '450']);
++
++    const complete = firstValueFrom(stream.pipe(skip(1)));
++
++    claimed.next([registry.createType('Vec<u32>', [0, 1])]);
++    expect(values(await complete)).toEqual(['0', '0', '0']);
++  });
++
++  it('keeps the unpaid validator when another validator in the same era is fully claimed', async (): Promise<void> => {
++    const { rewards } = fixture([
++      { claimed: [0], id: validatorA, own: 10, pages: [[[alice, 90]]] },
++      { id: validatorB, own: 10, pages: [[[alice, 90]]] }
++    ]);
++    const result = await firstValueFrom(rewards([alice.toString()], [era]));
++
++    expect(values(result)).toEqual(['450']);
++    expect(Object.keys(result[0][0].validators)).toEqual([validatorB.toString()]);
++    expect(result[0][0].isClaimed).toBe(false);
++  });
++
++  it('retains legacy clipped exposure when paged storage also exists', async (): Promise<void> => {
++    const { rewards } = fixture([{ id: validatorA, legacy: true, own: 10, pages: [[[alice, 90]]] }]);
++
++    expect(values(await firstValueFrom(rewards([validatorA.toString(), alice.toString()], [era])))).toEqual(['100', '900']);
++  });
++
++  it('removes legacy claims using the validator ledger', async (): Promise<void> => {
++    const { rewards } = fixture([{ id: validatorA, legacy: true, legacyClaimed: true, own: 10, pages: [[[alice, 90]]] }]);
++
++    expect(values(await firstValueFrom(rewards([alice.toString()], [era])))).toEqual(['0']);
++  });
++
++  it('includes historical paid pages when active/historical reward information is requested', async (): Promise<void> => {
++    const { rewards } = fixture([{ claimed: [0], id: validatorA, own: 10, pages: [[[alice, 90]]] }]);
++
++    expect(values(await firstValueFrom(rewards([alice.toString()], [era], true)))).toEqual(['900']);
++  });
++
++  it('updates Own validators immediately while account snapshots remain unchanged', async (): Promise<void> => {
++    const { claimed, validatorPayouts } = fixture([{ commission: 250_000_000, id: validatorA, own: 10, pages: [[[alice, 30]], [[bob, 60]]] }]);
++    const stream = validatorPayouts([validatorA.toString()], [era]);
++
++    expect(values(await firstValueFrom(stream))).toEqual(['1000']);
++
++    const partial = firstValueFrom(stream.pipe(skip(1)));
++
++    claimed.next([registry.createType('Vec<u32>', [0])]);
++    expect(values(await partial)).toEqual(['600']);
++
++    const complete = firstValueFrom(stream.pipe(skip(1)));
++
++    claimed.next([registry.createType('Vec<u32>', [0, 1])]);
++    expect(await complete).toEqual([[]]);
++  });
++
++  it('offers nominator-only validator payouts when validator own stake and commission are zero', async (): Promise<void> => {
++    const { validatorPayouts } = fixture([{ id: validatorA, own: 0, pages: [[[alice, 100]]] }]);
++
++    expect(values(await firstValueFrom(validatorPayouts([validatorA.toString()], [era])))).toEqual(['1000']);
++  });
++
++  it('registers both corrected derives in the SORA bundle', (): void => {
++    expect(definitions.derives?.staking._eraExposure).toBe(eraExposure);
++    expect(definitions.derives?.staking._stakerRewards).toBe(stakerRewards);
++    expect(definitions.derives?.staking.soraValidatorRewards).toBe(validatorRewards);
++  });
++});
+diff --git a/packages/apps-config/src/api/spec/soraSubstrate/stakingRewards.ts b/packages/apps-config/src/api/spec/soraSubstrate/stakingRewards.ts
+new file mode 100644
+index 0000000..098256c
+--- /dev/null
++++ b/packages/apps-config/src/api/spec/soraSubstrate/stakingRewards.ts
+@@ -0,0 +1,207 @@
++// Copyright 2017-2026 @polkadot/apps-config authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++import type { Observable } from 'rxjs';
++import type { DeriveApi, DeriveEraExposurePaged, DeriveStakerReward } from '@polkadot/api-derive/types';
++import type { Compact, Option, StorageKey, Struct, u32, Vec } from '@polkadot/types';
++import type { Balance, EraIndex, Exposure, IndividualExposure } from '@polkadot/types/interfaces';
++
++import { combineLatest, map, of, switchMap } from 'rxjs';
++
++import { _eraExposure, _stakerRewards } from '@polkadot/api-derive/staking';
++import { memo } from '@polkadot/api-derive/util';
++import { BN, BN_BILLION, BN_ZERO } from '@polkadot/util';
++
++// Keep the SORA override independent of a globally selected chain's lookup
++// augmentation: Apps builds this package before loading chain-specific types.
++interface ExposureOverview extends Struct {
++  own: Compact<Balance>;
++  pageCount: u32;
++  total: Compact<Balance>;
++}
++
++interface ExposurePage extends Struct {
++  others: Vec<IndividualExposure>;
++  pageTotal: Compact<Balance>;
++}
++
++interface RewardPage {
++  others: IndividualExposure[];
++  own: BN;
++  page: number;
++  total: BN;
++}
++
++interface RewardExposure extends Exposure {
++  rewardPages: RewardPage[];
++}
++
++type OverviewEntries = [StorageKey, Option<ExposureOverview>][];
++type PageEntries = [StorageKey, Option<ExposurePage>][];
++type LegacyEntries = [StorageKey, Exposure][];
++
++function hasPagedValRewards (api: DeriveApi): boolean {
++  return !!(api.query.xorFee?.valStakingEraReward && api.query.staking.erasStakersPaged && api.query.staking.erasStakersOverview);
++}
++
++function mergeExposure (api: DeriveApi, era: EraIndex, overviews: OverviewEntries, pages: PageEntries, legacy: LegacyEntries): DeriveEraExposurePaged {
++  const validators: Record<string, RewardExposure> = {};
++  const nominators: DeriveEraExposurePaged['nominators'] = {};
++
++  legacy.forEach(([key, exposure]): void => {
++    validators[key.args[1].toString()] = Object.assign(exposure, {
++      rewardPages: [{ others: exposure.others.toArray(), own: exposure.own.unwrap(), page: 0, total: exposure.total.unwrap() }]
++    });
++  });
++
++  overviews.forEach(([key, option]): void => {
++    if (option.isSome) {
++      const validatorId = key.args[1].toString();
++      const overview = option.unwrap();
++      const own = new BN(overview.own.toString());
++      const rewardPages = Array.from({ length: Math.max(1, overview.pageCount.toNumber()) }, (_, page): RewardPage => {
++        const exposure = pages.find(([key]) => key.args[1].toString() === validatorId && key.args[2].toString() === page.toString())?.[1].unwrapOr(null);
++        const pageOwn = page === 0 ? own : BN_ZERO;
++
++        return {
++          others: exposure?.others.toArray() || [],
++          own: pageOwn,
++          page,
++          total: new BN(exposure?.pageTotal.toString() || '0').add(pageOwn)
++        };
++      });
++
++      validators[validatorId] = Object.assign(api.registry.createType<Exposure>('Exposure', {
++        others: rewardPages.flatMap(({ others }) => others),
++        own,
++        total: overview.total
++      }), { rewardPages });
++    }
++  });
++
++  Object.entries(validators).forEach(([validatorId, exposure]): void => {
++    exposure.others.forEach(({ who }, validatorIndex): void => {
++      const stashId = who.toString();
++
++      (nominators[stashId] ||= []).push({ validatorId, validatorIndex });
++    });
++  });
++
++  return { era, nominators, validators };
++}
++
++// Retain every page and the overview's own/total stake. Do not reuse the
++// upstream exposure cache, which may already contain only the last page.
++export function eraExposure (instanceId: string, api: DeriveApi): (era: EraIndex, withActive?: boolean) => Observable<DeriveEraExposurePaged> {
++  const standardExposure = _eraExposure(instanceId, api);
++
++  return memo(instanceId, (era: EraIndex, withActive = false): Observable<DeriveEraExposurePaged> => hasPagedValRewards(api)
++    ? combineLatest([
++      api.query.staking.erasStakersOverview.entries(era),
++      api.query.staking.erasStakersPaged.entries(era),
++      api.query.staking.erasStakersClipped?.entries(era) || of([])
++    ]).pipe(map(([overviews, pages, legacy]) => mergeExposure(api, era, overviews as OverviewEntries, pages as PageEntries, legacy as LegacyEntries)))
++    : standardExposure(era, withActive)
++  );
++}
++
++// Match Perbill::from_rational (floor) and Perbill * Balance (nearest, ties
++// down), including the separate rounding for each page paid by the runtime.
++function multiplyPerbill (parts: BN, value: BN): BN {
++  return parts.mul(value).add(BN_BILLION.divn(2).subn(1)).div(BN_BILLION);
++}
++
++function fraction (numerator: BN, denominator: BN): BN {
++  return numerator.gte(denominator) ? BN_BILLION : numerator.mul(BN_BILLION).div(denominator);
++}
++
++function createRewards (instanceId: string, api: DeriveApi, validatorPayout = false): (accountIds: (Uint8Array | string)[], eras: EraIndex[], withActive?: boolean) => Observable<DeriveStakerReward[][]> {
++  const standardRewards = _stakerRewards(instanceId, api);
++
++  return memo(instanceId, (accountIds: (Uint8Array | string)[], eras: EraIndex[], withActive = false): Observable<DeriveStakerReward[][]> => {
++    if (!hasPagedValRewards(api)) {
++      return standardRewards(accountIds, eras, withActive);
++    }
++
++    if (!accountIds.length || !eras.length) {
++      return of(accountIds.map(() => []));
++    }
++
++    const stashIds = accountIds.map((id) => api.registry.createType('AccountId', id).toString());
++
++    return combineLatest([
++      api.derive.staking._stakerExposures(accountIds, eras, withActive),
++      api.derive.staking._stakerRewardsEras(eras, withActive)
++    ]).pipe(switchMap(([exposures, [points, prefs, rewards]]) => {
++      const keys = [...new Map(exposures.flatMap((stashes) => stashes.flatMap(({ era, validators }) => Object.keys(validators).map((id): [string, [EraIndex, string]] => [`${era.toString()}:${id}`, [era, id]])))).values()];
++      const validatorIds = [...new Set(keys.map(([, id]) => id))];
++
++      return combineLatest([
++        !withActive && keys.length && api.query.staking.claimedRewards
++          ? api.query.staking.claimedRewards.multi(keys)
++          : of(keys.map(() => api.registry.createType('Vec<u32>'))),
++        !withActive && validatorIds.length
++          ? api.derive.staking.queryMulti(validatorIds, { withLedger: true })
++          : of([])
++      ]).pipe(map(([claimed, validators]) => exposures.map((stashes, index) => stashes.flatMap((exposure): DeriveStakerReward[] => {
++        const eraPoints = points.find(({ era }) => era.eq(exposure.era));
++        const eraReward = rewards.find(({ era }) => era.eq(exposure.era))?.eraReward || api.registry.createType<Balance>('Balance');
++        const eraPrefs = prefs.find(({ era }) => era.eq(exposure.era));
++        const pending: DeriveStakerReward['validators'] = {};
++
++        Object.entries(exposure.validators).forEach(([validatorId, value]): void => {
++          const { rewardPages, total } = value as RewardExposure;
++          const valPoints = eraPoints?.validators[validatorId];
++          const ledger = validators.find(({ accountId }) => accountId.toString() === validatorId)?.stakingLedger;
++          const legacyClaims: readonly EraIndex[] = ledger?.legacyClaimedRewards || (ledger as unknown as { claimedRewards?: EraIndex[] })?.claimedRewards || [];
++
++          if (!rewardPages || total.unwrap().isZero() || !valPoints || !eraPoints || eraPoints.eraPoints.isZero() || (!withActive && legacyClaims.some((era) => era.eq(exposure.era)))) {
++            return;
++          }
++
++          // The standalone apps-config build has generic storage Codec types.
++          // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
++          const claimedPages = claimed[keys.findIndex(([era, id]) => era.eq(exposure.era) && id === validatorId)] as Vec<u32>;
++          const unpaid = rewardPages.filter(({ page }) => !claimedPages.some((claimed) => claimed.eqn(page)));
++
++          if (!unpaid.length) {
++            return;
++          }
++
++          const validatorReward = multiplyPerbill(fraction(valPoints, eraPoints.eraPoints), eraReward);
++          const commission = multiplyPerbill(eraPrefs?.validators[validatorId]?.commission.unwrap() || BN_ZERO, validatorReward);
++          const leftover = validatorReward.sub(commission);
++          const isValidator = validatorId === stashIds[index];
++          const reward = unpaid.reduce((sum, page) => {
++            const stakes = isValidator
++              ? validatorPayout ? [page.own, ...page.others.map(({ value }) => value.unwrap())] : [page.own]
++              : [page.others.find(({ who }) => who.toString() === stashIds[index])?.value.unwrap() || BN_ZERO];
++            const stakingReward = stakes.reduce((sum, stake) => sum.add(multiplyPerbill(fraction(stake, total.unwrap()), leftover)), new BN(0));
++
++            return sum.add(stakingReward).add(isValidator ? multiplyPerbill(fraction(page.total, total.unwrap()), commission) : BN_ZERO);
++          }, new BN(0));
++
++          // A nominator whose own page is paid has no pending contribution,
++          // even if other pages for the same validator remain unpaid.
++          if (!reward.isZero()) {
++            pending[validatorId] = { total: api.registry.createType('Balance', validatorReward), value: api.registry.createType('Balance', reward) };
++          }
++        });
++
++        return Object.keys(pending).length
++          ? [{ ...exposure, eraReward, isClaimed: false, isEmpty: false, nominating: exposure.nominating.filter(({ validatorId }) => !!pending[validatorId]), validators: pending }]
++          : [];
++      }))));
++    }));
++  });
++}
++
++export function stakerRewards (instanceId: string, api: DeriveApi): ReturnType<typeof createRewards> {
++  return createRewards(instanceId, api);
++}
++
++// The Own validators screen requests the whole pending page, including every
++// nominator. Keep its claim subscription and rounding identical to stash mode.
++export function validatorRewards (instanceId: string, api: DeriveApi): ReturnType<typeof createRewards> {
++  return createRewards(`${instanceId}-validator-payout`, api, true);
++}
+diff --git a/packages/page-staking/src/Payouts/PayButton.tsx b/packages/page-staking/src/Payouts/PayButton.tsx
+index bece165..2353c83 100644
+--- a/packages/page-staking/src/Payouts/PayButton.tsx
++++ b/packages/page-staking/src/Payouts/PayButton.tsx
+@@ -1,19 +1,17 @@
+ // Copyright 2017-2026 @polkadot/app-staking authors & contributors
+ // SPDX-License-Identifier: Apache-2.0
+ 
+-import type { ApiPromise } from '@polkadot/api';
+-import type { SubmittableExtrinsic } from '@polkadot/api/types';
+ import type { BatchOptions } from '@polkadot/react-hooks/types';
+ import type { u32 } from '@polkadot/types';
+-import type { EraIndex } from '@polkadot/types/interfaces';
+ import type { PayoutValidator } from './types.js';
+ 
+-import React, { useEffect, useMemo, useState } from 'react';
++import React, { useMemo, useState } from 'react';
+ 
+ import { AddressMini, Button, InputAddress, Modal, Static, styled, TxButton } from '@polkadot/react-components';
+ import { useApi, useToggle, useTxBatch } from '@polkadot/react-hooks';
+ 
+ import { useTranslation } from '../translate.js';
++import { createPayoutExtrinsics, getPendingPayouts } from './transactions.js';
+ 
+ interface Props {
+   className?: string;
+@@ -22,59 +20,24 @@ interface Props {
+   payout?: PayoutValidator | PayoutValidator[];
+ }
+ 
+-interface SinglePayout {
+-  era: EraIndex;
+-  validatorId: string;
+-}
+-
+-function createStream (api: ApiPromise, payouts: SinglePayout[]): SubmittableExtrinsic<'promise'>[] {
+-  return payouts
+-    .sort((a, b) => a.era.cmp(b.era))
+-    .map(({ era, validatorId }) =>
+-      api.tx.staking.payoutStakers(validatorId, era)
+-    );
+-}
+-
+-function createExtrinsics (api: ApiPromise, payout: PayoutValidator | PayoutValidator[]): SubmittableExtrinsic<'promise'>[] | null {
+-  if (!Array.isArray(payout)) {
+-    const { eras, validatorId } = payout;
+-
+-    if (eras.every((e) => e.isClaimed)) {
+-      return null;
+-    }
+-
+-    return eras.length === 1
+-      ? [api.tx.staking.payoutStakers(validatorId, eras[0].era)]
+-      : createStream(api, eras.filter((era) => !era.isClaimed).map((era): SinglePayout => ({ era: era.era, validatorId })));
+-  } else if (payout.length === 1) {
+-    if (payout[0].eras.every((e) => e.isClaimed)) {
+-      return null;
+-    }
+-
+-    return createExtrinsics(api, payout[0]);
+-  }
+-
+-  if (!payout.some((p) => p.eras.some((e) => !e.isClaimed))) {
+-    return null;
+-  }
+-
+-  return createStream(api, payout.reduce((payouts: SinglePayout[], { eras, validatorId }): SinglePayout[] => {
+-    eras.forEach(({ era, isClaimed }): void => {
+-      if (!isClaimed) {
+-        payouts.push({ era, validatorId });
+-      }
+-    });
+-
+-    return payouts;
+-  }, []));
+-}
+-
+ function PayButton ({ className, isAll, isDisabled, payout }: Props): React.ReactElement<Props> {
+   const { t } = useTranslation();
+   const { api } = useApi();
+   const [isVisible, togglePayout] = useToggle();
+   const [accountId, setAccount] = useState<string | null>(null);
+-  const [txs, setTxs] = useState<SubmittableExtrinsic<'promise'>[] | null>(null);
++  const isValPayout = !!api.query.xorFee?.valStakingEraReward;
++  const pending = useMemo(
++    () => payout ? getPendingPayouts(payout, isValPayout) : [],
++    [isValPayout, payout]
++  );
++  const txs = useMemo(
++    () => createPayoutExtrinsics(api, pending),
++    [api, pending]
++  );
++  const validatorIds = useMemo(
++    () => [...new Set(pending.map(({ validatorId }) => validatorId))],
++    [pending]
++  );
+   const batchOpts = useMemo<BatchOptions>(
+     () => ({
+       max: 36 * 64 / ((api.consts.staking.maxNominatorRewardedPerValidator as u32)?.toNumber() || 64),
+@@ -82,15 +45,11 @@ function PayButton ({ className, isAll, isDisabled, payout }: Props): React.Reac
+     }),
+     [api]
+   );
+-  const extrinsics = useTxBatch(txs, batchOpts);
+-
+-  useEffect((): void => {
+-    payout && setTxs(
+-      () => createExtrinsics(api, payout)
+-    );
+-  }, [api, payout]);
+-
+-  const isPayoutEmpty = !payout || (!Array.isArray(payout) && !payout.eras.some((e) => !e.isClaimed)) || (Array.isArray(payout) && payout.some((p) => !p.eras.some((e) => !e.isClaimed))) || (Array.isArray(payout) && payout.length === 0);
++  // Do not rely on the batch size option: useTxBatch recalculates it from
++  // paymentInfo. TxButton queues each array element as a separate extrinsic.
++  const batches = useTxBatch(isValPayout ? null : txs, batchOpts);
++  const extrinsics = isValPayout ? txs : batches;
++  const isPayoutEmpty = pending.length === 0;
+ 
+   return (
+     <>
+@@ -113,8 +72,20 @@ function PayButton ({ className, isAll, isDisabled, payout }: Props): React.Reac
+             <Modal.Columns
+               hint={
+                 <>
+-                  <p>{t('All the listed validators and all their nominators will receive their rewards.')}</p>
+-                  <p>{t('The UI puts a limit of 40 payouts at a time, where each payout is a single validator for a single era.')}</p>
++                  {isValPayout
++                    ? (
++                      <>
++                        <p>{t('VAL rewards require separate transactions. Each transaction claims the next unpaid group of stakers for one validator and era.')}</p>
++                        <p>{t('Up to 40 transactions are queued at a time. Approve each transaction separately, then return to claim any remaining rewards.')}</p>
++                      </>
++                    )
++                    : (
++                      <>
++                        <p>{t('All the listed validators and all their nominators will receive their rewards.')}</p>
++                        <p>{t('The UI puts a limit of 40 payouts at a time, where each payout is a single validator for a single era.')}</p>
++                      </>
++                    )
++                  }
+                 </>
+               }
+             >
+@@ -123,7 +94,7 @@ function PayButton ({ className, isAll, isDisabled, payout }: Props): React.Reac
+                   <Static
+                     label={t('payout stakers for (multiple)')}
+                     value={
+-                      payout.map(({ validatorId }) => (
++                      validatorIds.map((validatorId) => (
+                         <AddressMini
+                           className='addressStatic'
+                           key={validatorId}
+@@ -151,6 +122,7 @@ function PayButton ({ className, isAll, isDisabled, payout }: Props): React.Reac
+               isDisabled={!extrinsics?.length || !accountId}
+               label={t('Payout')}
+               onStart={togglePayout}
++              requiresDirectCall={isValPayout}
+             />
+           </Modal.Actions>
+         </StyledModal>
+diff --git a/packages/page-staking/src/Payouts/RewardBalance.tsx b/packages/page-staking/src/Payouts/RewardBalance.tsx
+new file mode 100644
+index 0000000..7915b20
+--- /dev/null
++++ b/packages/page-staking/src/Payouts/RewardBalance.tsx
+@@ -0,0 +1,37 @@
++// Copyright 2017-2026 @polkadot/app-staking authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++import type { BN } from '@polkadot/util';
++
++import React from 'react';
++
++import { Table } from '@polkadot/react-components';
++import { useApi } from '@polkadot/react-hooks';
++import { FormatBalance } from '@polkadot/react-query';
++
++interface Props {
++  value?: BN | null;
++}
++
++const VAL_FORMAT: [number, string] = [18, 'VAL'];
++
++function RewardBalance ({ value }: Props): React.ReactElement<Props> {
++  const { api } = useApi();
++
++  return (
++    <FormatBalance
++      format={api.query.xorFee?.valStakingEraReward ? VAL_FORMAT : undefined}
++      value={value}
++    />
++  );
++}
++
++export function RewardBalanceColumn ({ value }: Props): React.ReactElement<Props> {
++  return (
++    <Table.Column.Balance>
++      <RewardBalance value={value} />
++    </Table.Column.Balance>
++  );
++}
++
++export default React.memo(RewardBalance);
+diff --git a/packages/page-staking/src/Payouts/Stash.tsx b/packages/page-staking/src/Payouts/Stash.tsx
+index 168145c..2e3fcfc 100644
+--- a/packages/page-staking/src/Payouts/Stash.tsx
++++ b/packages/page-staking/src/Payouts/Stash.tsx
+@@ -6,10 +6,11 @@ import type { PayoutStash } from './types.js';
+ 
+ import React, { useEffect, useState } from 'react';
+ 
+-import { AddressSmall, Table } from '@polkadot/react-components';
++import { AddressSmall } from '@polkadot/react-components';
+ import { BlockToTime } from '@polkadot/react-query';
+ import { BN_MILLION } from '@polkadot/util';
+ 
++import { RewardBalanceColumn } from './RewardBalance.js';
+ import useEraBlocks from './useEraBlocks.js';
+ import { createErasString } from './util.js';
+ 
+@@ -46,7 +47,7 @@ function Stash ({ className = '', historyDepth, payout: { available, rewards, st
+       <td className='start'>
+         <span className='payout-eras'>{eraStr}</span>
+       </td>
+-      <Table.Column.Balance value={available} />
++      <RewardBalanceColumn value={available} />
+       <td className='number'>
+         <BlockToTime
+           className={eraBlocks ? '' : '--tmp'}
+diff --git a/packages/page-staking/src/Payouts/Validator.tsx b/packages/page-staking/src/Payouts/Validator.tsx
+index e616c48..cabe5c5 100644
+--- a/packages/page-staking/src/Payouts/Validator.tsx
++++ b/packages/page-staking/src/Payouts/Validator.tsx
+@@ -6,11 +6,13 @@ import type { PayoutValidator } from './types.js';
+ 
+ import React, { useMemo } from 'react';
+ 
+-import { AddressMini, AddressSmall, Expander, Table } from '@polkadot/react-components';
++import { AddressMini, AddressSmall, Expander } from '@polkadot/react-components';
++import { useApi } from '@polkadot/react-hooks';
+ import { BlockToTime } from '@polkadot/react-query';
+ 
+ import { useTranslation } from '../translate.js';
+ import PayButton from './PayButton.js';
++import RewardBalance, { RewardBalanceColumn } from './RewardBalance.js';
+ import useEraBlocks from './useEraBlocks.js';
+ import { createErasString } from './util.js';
+ 
+@@ -47,6 +49,8 @@ function extractState (payout: PayoutValidator): State {
+ 
+ function Validator ({ className = '', historyDepth, isDisabled, payout }: Props): React.ReactElement<Props> {
+   const { t } = useTranslation();
++  const { api } = useApi();
++  const isValPayout = !!api.query.xorFee?.valStakingEraReward;
+ 
+   const { eraStr, nominators, numNominators, oldestEra } = useMemo(
+     () => extractState(payout),
+@@ -66,7 +70,7 @@ function Validator ({ className = '', historyDepth, isDisabled, payout }: Props)
+       <td className='start'>
+         <span className='payout-eras'>{eraStr}</span>
+       </td>
+-      <Table.Column.Balance value={payout.available} />
++      <RewardBalanceColumn value={payout.available} />
+       <td className='number'>{eraBlocks && <BlockToTime value={eraBlocks} />}</td>
+       <td
+         className='expand'
+@@ -77,8 +81,9 @@ function Validator ({ className = '', historyDepth, isDisabled, payout }: Props)
+             <AddressMini
+               balance={balance}
+               key={stashId}
++              summary={isValPayout ? <RewardBalance value={balance} /> : undefined}
+               value={stashId}
+-              withBalance
++              withBalance={!isValPayout}
+             />
+           )}
+         </Expander>
+diff --git a/packages/page-staking/src/Payouts/index.tsx b/packages/page-staking/src/Payouts/index.tsx
+index f35a605..51d9eaf 100644
+--- a/packages/page-staking/src/Payouts/index.tsx
++++ b/packages/page-staking/src/Payouts/index.tsx
+@@ -15,6 +15,7 @@ import { BN, BN_THREE } from '@polkadot/util';
+ import ElectionBanner from '../ElectionBanner.js';
+ import { useTranslation } from '../translate.js';
+ import PayButton from './PayButton.js';
++import { RewardBalanceColumn } from './RewardBalance.js';
+ import Stash from './Stash.js';
+ import Validator from './Validator.js';
+ 
+@@ -217,7 +218,7 @@ function Payouts ({ className = '', historyDepth, isInElection, ownPools, ownVal
+   const footerStash = useMemo(() => (
+     <tr>
+       <td colSpan={3} />
+-      <Table.Column.Balance value={stashAvail} />
++      <RewardBalanceColumn value={stashAvail} />
+       <td colSpan={4} />
+     </tr>
+   ), [stashAvail]);
+@@ -225,7 +226,7 @@ function Payouts ({ className = '', historyDepth, isInElection, ownPools, ownVal
+   const footerVal = useMemo(() => (
+     <tr>
+       <td colSpan={3} />
+-      <Table.Column.Balance value={valAvail} />
++      <RewardBalanceColumn value={valAvail} />
+       <td colSpan={4} />
+     </tr>
+   ), [valAvail]);
+diff --git a/packages/page-staking/src/Payouts/transactions.spec.ts b/packages/page-staking/src/Payouts/transactions.spec.ts
+new file mode 100644
+index 0000000..6b24fc9
+--- /dev/null
++++ b/packages/page-staking/src/Payouts/transactions.spec.ts
+@@ -0,0 +1,67 @@
++// Copyright 2017-2026 @polkadot/app-staking authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++/// <reference types="@polkadot/dev-test/globals.d.ts" />
++
++import type { ApiPromise } from '@polkadot/api';
++import type { EraIndex } from '@polkadot/types/interfaces';
++import type { PayoutValidator } from './types.js';
++
++import { BN } from '@polkadot/util';
++
++import { createPayoutExtrinsics, getPendingPayouts, MAX_DIRECT_PAYOUTS } from './transactions.js';
++
++function payout (validatorId: string, eras: [number, boolean][]): PayoutValidator {
++  return {
++    available: new BN(1),
++    eras: eras.map(([era, isClaimed]) => ({ era: new BN(era) as EraIndex, isClaimed, stashes: {} })),
++    total: new BN(1),
++    validatorId
++  };
++}
++
++describe('staking payout transactions', (): void => {
++  it('keeps payable eras when another validator has already claimed and sorts oldest first', (): void => {
++    const payouts = [payout('Alice', [[12, false], [8, true]]), payout('Bob', [[6, true]]), payout('Charlie', [[7, false]])];
++
++    expect(getPendingPayouts(payouts, true).map(({ era, validatorId }) => [era.toNumber(), validatorId])).toEqual([
++      [7, 'Charlie'],
++      [12, 'Alice']
++    ]);
++    expect(payouts[0].eras.map(({ era }) => era.toNumber())).toEqual([12, 8]);
++  });
++
++  it('bounds VAL payouts and constructs only direct staking calls', (): void => {
++    const payouts = payout('Alice', Array.from({ length: MAX_DIRECT_PAYOUTS + 5 }, (_, i) => [MAX_DIRECT_PAYOUTS + 4 - i, false]));
++
++    const unexpectedBatch = (): never => {
++      throw new Error('VAL payouts must not be wrapped in utility calls');
++    };
++
++    const api = {
++      tx: {
++        staking: {
++          payoutStakers: (validatorId: string, era: EraIndex) => ({ method: { args: [validatorId, era], method: 'payoutStakers', section: 'staking' } })
++        },
++        utility: { batch: unexpectedBatch, batchAll: unexpectedBatch, forceBatch: unexpectedBatch }
++      }
++    } as unknown as ApiPromise;
++    const txs = createPayoutExtrinsics(api, getPendingPayouts(payouts, true));
++
++    expect(txs).toHaveLength(MAX_DIRECT_PAYOUTS);
++    expect(txs.map(({ method }) => [method.section, method.method, method.args[0].toString(), method.args[1].toString()])).toEqual(
++      Array.from({ length: MAX_DIRECT_PAYOUTS }, (_, era) => ['staking', 'payoutStakers', 'Alice', era.toString()])
++    );
++  });
++
++  it('leaves the normal staking batch input uncapped', (): void => {
++    const payouts = payout('Alice', Array.from({ length: MAX_DIRECT_PAYOUTS + 5 }, (_, era) => [era, false]));
++
++    expect(getPendingPayouts(payouts, false)).toHaveLength(MAX_DIRECT_PAYOUTS + 5);
++  });
++
++  it('does not create transactions for empty or fully claimed rewards', (): void => {
++    expect(getPendingPayouts([], true)).toEqual([]);
++    expect(getPendingPayouts(payout('Alice', [[7, true]]), true)).toEqual([]);
++  });
++});
+diff --git a/packages/page-staking/src/Payouts/transactions.ts b/packages/page-staking/src/Payouts/transactions.ts
+new file mode 100644
+index 0000000..206890a
+--- /dev/null
++++ b/packages/page-staking/src/Payouts/transactions.ts
+@@ -0,0 +1,33 @@
++// Copyright 2017-2026 @polkadot/app-staking authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++import type { ApiPromise } from '@polkadot/api';
++import type { SubmittableExtrinsic } from '@polkadot/api/types';
++import type { EraIndex } from '@polkadot/types/interfaces';
++import type { PayoutValidator } from './types.js';
++
++export const MAX_DIRECT_PAYOUTS = 40;
++
++export interface SinglePayout {
++  era: EraIndex;
++  validatorId: string;
++}
++
++export function getPendingPayouts (payout: PayoutValidator | PayoutValidator[], isValPayout: boolean): SinglePayout[] {
++  const pending = (Array.isArray(payout) ? payout : [payout])
++    .flatMap(({ eras, validatorId }) => eras
++      .filter(({ isClaimed }) => !isClaimed)
++      .map(({ era }) => ({ era, validatorId }))
++    )
++    .sort((a, b) => a.era.cmp(b.era));
++
++  return isValPayout
++    ? pending.slice(0, MAX_DIRECT_PAYOUTS)
++    : pending;
++}
++
++export function createPayoutExtrinsics (api: ApiPromise, payouts: SinglePayout[]): SubmittableExtrinsic<'promise'>[] {
++  // Deployed SORA runtimes use an outer-call VAL hook. Keep direct claims
++  // compatible with those runtimes until wrapped payouts are supported there.
++  return payouts.map(({ era, validatorId }) => api.tx.staking.payoutStakers(validatorId, era));
++}
+diff --git a/packages/page-staking/src/Query/ChartRewards.tsx b/packages/page-staking/src/Query/ChartRewards.tsx
+index 560651d..2d909c0 100644
+--- a/packages/page-staking/src/Query/ChartRewards.tsx
++++ b/packages/page-staking/src/Query/ChartRewards.tsx
+@@ -15,14 +15,14 @@ import { balanceToNumber } from './util.js';
+ 
+ const COLORS_REWARD = ['#8c2200', '#008c22', '#acacac'];
+ 
+-function extractRewards (labels: string[], erasRewards: DeriveEraRewards[], ownSlashes: DeriveOwnSlashes[], allPoints: DeriveStakerPoints[], divisor: BN): LineData {
++function extractRewards (labels: string[], erasRewards: DeriveEraRewards[], ownSlashes: DeriveOwnSlashes[], allPoints: DeriveStakerPoints[], rewardDivisor: BN, slashDivisor: BN): LineData {
+   const slashSet = new Array<number>(labels.length);
+   const rewardSet = new Array<number>(labels.length);
+   const avgSet = new Array<number>(labels.length);
+   const [total, avgCount] = erasRewards.reduce(([total, avgCount], { era, eraReward }) => {
+     const points = allPoints.find((points) => points.era.eq(era));
+     const reward = points?.eraPoints.gtn(0)
+-      ? balanceToNumber(points.points.mul(eraReward).div(points.eraPoints), divisor)
++      ? balanceToNumber(points.points.mul(eraReward).div(points.eraPoints), rewardDivisor)
+       : 0;
+ 
+     if (reward > 0) {
+@@ -37,10 +37,10 @@ function extractRewards (labels: string[], erasRewards: DeriveEraRewards[], ownS
+     const points = allPoints.find((points) => points.era.eq(era));
+     const slashed = ownSlashes.find((slash) => slash.era.eq(era));
+     const reward = points?.eraPoints.gtn(0)
+-      ? balanceToNumber(points.points.mul(eraReward).div(points.eraPoints), divisor)
++      ? balanceToNumber(points.points.mul(eraReward).div(points.eraPoints), rewardDivisor)
+       : 0;
+     const slash = slashed
+-      ? balanceToNumber(slashed.total, divisor)
++      ? balanceToNumber(slashed.total, slashDivisor)
+       : 0;
+     const avg = avgCount > 0
+       ? Math.ceil(total * 100 / avgCount) / 100
+@@ -66,12 +66,20 @@ function ChartRewards ({ labels, validatorId }: Props): React.ReactElement<Props
+   const stakerPoints = useCall<DeriveStakerPoints[]>(api.derive.staking.stakerPoints, params);
+   const [values, setValues] = useState<LineData>([]);
+ 
+-  const { currency, divisor } = useMemo(
+-    () => ({
+-      currency: formatBalance.getDefaults().unit,
+-      divisor: new BN('1'.padEnd(formatBalance.getDefaults().decimals + 1, '0'))
+-    }),
+-    []
++  const { rewardCurrency, rewardDivisor, slashCurrency, slashDivisor } = useMemo(
++    () => {
++      const { decimals, unit } = formatBalance.getDefaults();
++      const slashDivisor = new BN('1'.padEnd(decimals + 1, '0'));
++      const hasValRewards = !!api.query.xorFee?.valStakingEraReward;
++
++      return {
++        rewardCurrency: hasValRewards ? 'VAL' : unit,
++        rewardDivisor: hasValRewards ? new BN('1000000000000000000') : slashDivisor,
++        slashCurrency: unit,
++        slashDivisor
++      };
++    },
++    [api]
+   );
+ 
+   useEffect(
+@@ -80,15 +88,15 @@ function ChartRewards ({ labels, validatorId }: Props): React.ReactElement<Props
+   );
+ 
+   useEffect(
+-    () => erasRewards && ownSlashes && stakerPoints && setValues(extractRewards(labels, erasRewards, ownSlashes, stakerPoints, divisor)),
+-    [labels, divisor, erasRewards, ownSlashes, stakerPoints]
++    () => erasRewards && ownSlashes && stakerPoints && setValues(extractRewards(labels, erasRewards, ownSlashes, stakerPoints, rewardDivisor, slashDivisor)),
++    [labels, rewardDivisor, slashDivisor, erasRewards, ownSlashes, stakerPoints]
+   );
+ 
+   const legends = useMemo(() => [
+-    t('{{currency}} slashed', { replace: { currency } }),
+-    t('{{currency}} rewards', { replace: { currency } }),
+-    t('{{currency}} average', { replace: { currency } })
+-  ], [currency, t]);
++    t('{{currency}} slashed', { replace: { currency: slashCurrency } }),
++    t('{{currency}} rewards', { replace: { currency: rewardCurrency } }),
++    t('{{currency}} average', { replace: { currency: rewardCurrency } })
++  ], [rewardCurrency, slashCurrency, t]);
+ 
+   return (
+     <Chart
+diff --git a/packages/react-components/src/Status/types.ts b/packages/react-components/src/Status/types.ts
+index 721512f..c78b22f 100644
+--- a/packages/react-components/src/Status/types.ts
++++ b/packages/react-components/src/Status/types.ts
+@@ -41,6 +41,7 @@ export interface QueueTx extends AccountInfo {
+   id: number;
+   isUnsigned?: boolean;
+   payload?: SignerPayloadJSON;
++  requiresDirectCall?: boolean;
+   result?: any;
+   removeItem: () => void;
+   rpc: DefinitionRpcExt;
+@@ -67,6 +68,7 @@ export interface QueueTxResult {
+ 
+ export interface QueueTxExtrinsic extends AccountInfo {
+   extrinsic?: SubmittableExtrinsic;
++  requiresDirectCall?: boolean;
+ }
+ 
+ export interface QueueTxRpc extends AccountInfo {
+@@ -81,6 +83,7 @@ export interface PartialAccountInfo {
+ export interface PartialQueueTxExtrinsic extends PartialAccountInfo {
+   extrinsic?: SubmittableExtrinsic;
+   payload?: SignerPayloadJSON;
++  requiresDirectCall?: boolean;
+   signerCb?: SignerCallback;
+   txFailedCb?: TxFailedCallback;
+   txSuccessCb?: TxCallback;
+diff --git a/packages/react-components/src/TxButton.tsx b/packages/react-components/src/TxButton.tsx
+index 9925d52..70b578c 100644
+--- a/packages/react-components/src/TxButton.tsx
++++ b/packages/react-components/src/TxButton.tsx
+@@ -13,7 +13,7 @@ import { assert, isFunction } from '@polkadot/util';
+ import Button from './Button/index.js';
+ import { useTranslation } from './translate.js';
+ 
+-function TxButton ({ accountId, className = '', extrinsic: propsExtrinsic, icon, isBasic, isBusy, isDisabled, isIcon, isToplevel, isUnsigned, label, onClick, onFailed, onSendRef, onStart, onSuccess, onUpdate, params, tooltip, tx, withSpinner, withoutLink }: Props): React.ReactElement<Props> {
++function TxButton ({ accountId, className = '', extrinsic: propsExtrinsic, icon, isBasic, isBusy, isDisabled, isIcon, isToplevel, isUnsigned, label, onClick, onFailed, onSendRef, onStart, onSuccess, onUpdate, params, requiresDirectCall, tooltip, tx, withSpinner, withoutLink }: Props): React.ReactElement<Props> {
+   const { t } = useTranslation();
+   const mountedRef = useIsMountedRef();
+   const { queueExtrinsic } = useQueue();
+@@ -76,6 +76,7 @@ function TxButton ({ accountId, className = '', extrinsic: propsExtrinsic, icon,
+           accountId: accountId?.toString(),
+           extrinsic,
+           isUnsigned,
++          requiresDirectCall,
+           txFailedCb: withSpinner ? _onFailed : onFailed,
+           txStartCb: _onStart,
+           txSuccessCb: withSpinner ? _onSuccess : onSuccess,
+@@ -85,7 +86,7 @@ function TxButton ({ accountId, className = '', extrinsic: propsExtrinsic, icon,
+ 
+       onClick && onClick();
+     },
+-    [_onFailed, _onStart, _onSuccess, accountId, isUnsigned, mountedRef, onClick, onFailed, onSuccess, onUpdate, params, propsExtrinsic, queueExtrinsic, tx, withSpinner]
++    [_onFailed, _onStart, _onSuccess, accountId, isUnsigned, mountedRef, onClick, onFailed, onSuccess, onUpdate, params, propsExtrinsic, queueExtrinsic, requiresDirectCall, tx, withSpinner]
+   );
+ 
+   if (onSendRef) {
+diff --git a/packages/react-components/src/types.ts b/packages/react-components/src/types.ts
+index 4543e1f..2cbc3f8 100644
+--- a/packages/react-components/src/types.ts
++++ b/packages/react-components/src/types.ts
+@@ -51,6 +51,7 @@ export interface TxButtonProps {
+   onSuccess?: TxCallback;
+   onUpdate?: TxCallback;
+   params?: unknown[] | (() => unknown[]) | null;
++  requiresDirectCall?: boolean;
+   tooltip?: string;
+   tx?: ((...args: any[]) => SubmittableExtrinsic<'promise'>) | null;
+   withoutLink?: boolean;
+diff --git a/packages/react-hooks/src/useOwnEraRewards.ts b/packages/react-hooks/src/useOwnEraRewards.ts
+index 02bf477..d53547d 100644
+--- a/packages/react-hooks/src/useOwnEraRewards.ts
++++ b/packages/react-hooks/src/useOwnEraRewards.ts
+@@ -9,7 +9,7 @@ import type { EraIndex } from '@polkadot/types/interfaces';
+ import type { PalletStakingStakingLedger } from '@polkadot/types/lookup';
+ import type { StakerState } from './types.js';
+ 
+-import { useCallback, useEffect, useState } from 'react';
++import { useCallback, useEffect, useMemo, useState } from 'react';
+ 
+ import { BN_ZERO } from '@polkadot/util';
+ 
+@@ -149,6 +149,11 @@ function useOwnEraRewardsImpl (maxEras?: number, ownValidators?: StakerState[],
+   const [state, setState] = useState<State>(EMPTY_STATE);
+ 
+   const stakerRewards = useStakerRewards(filteredEras, setState, ownValidators, additional);
++  const validatorIds = useMemo(() => ownValidators?.map(({ stashId }) => stashId) || [], [ownValidators]);
++  const soraValidatorRewards = api.query.xorFee?.valStakingEraReward && (api.derive.staking as unknown as {
++    soraValidatorRewards?: ApiPromise['derive']['staking']['_stakerRewards'];
++  }).soraValidatorRewards;
++  const pendingValidatorRewards = useCall<DeriveStakerReward[][]>(!!validatorIds.length && !!filteredEras.length && soraValidatorRewards, [validatorIds, filteredEras, false]);
+   const erasPoints = useCall<DeriveEraPoints[]>(!!validatorEras.length && !!filteredEras.length && api.derive.staking._erasPoints, [filteredEras, false]);
+   const erasRewards = useCall<DeriveEraRewards[]>(!!validatorEras.length && !!filteredEras.length && api.derive.staking._erasRewards, [filteredEras, false]);
+ 
+@@ -200,10 +205,16 @@ function useOwnEraRewardsImpl (maxEras?: number, ownValidators?: StakerState[],
+   }, [mountedRef, ownValidators, stakerRewards]);
+ 
+   useEffect((): void => {
+-    mountedRef && erasPoints && erasRewards && ownValidators && setState(
++    !soraValidatorRewards && mountedRef.current && erasPoints && erasRewards && ownValidators && setState(
+       getValRewards(api, validatorEras, erasPoints, erasRewards)
+     );
+-  }, [api, erasPoints, erasRewards, mountedRef, ownValidators, validatorEras]);
++  }, [api, erasPoints, erasRewards, mountedRef, ownValidators, soraValidatorRewards, validatorEras]);
++
++  useEffect((): void => {
++    mountedRef.current && soraValidatorRewards && ownValidators && pendingValidatorRewards && setState(
++      getRewards([[validatorIds, filteredEras], pendingValidatorRewards])
++    );
++  }, [filteredEras, mountedRef, ownValidators, pendingValidatorRewards, soraValidatorRewards, validatorIds]);
+ 
+   return state;
+ }
+diff --git a/packages/react-signer/src/TxSigned.tsx b/packages/react-signer/src/TxSigned.tsx
+index c4e8a30..dffe504 100644
+--- a/packages/react-signer/src/TxSigned.tsx
++++ b/packages/react-signer/src/TxSigned.tsx
+@@ -20,7 +20,7 @@ import type { AddressFlags, AddressProxy, ExtendedSignerOptions, QrState } from
+ import React, { useCallback, useEffect, useMemo, useState } from 'react';
+ 
+ import { web3FromSource } from '@polkadot/extension-dapp';
+-import { Button, ErrorBoundary, Modal, Output, styled, Toggle } from '@polkadot/react-components';
++import { Button, ErrorBoundary, MarkError, Modal, Output, styled, Toggle } from '@polkadot/react-components';
+ import { useApi, useLedger, useQueue, useToggle } from '@polkadot/react-hooks';
+ import { keyring } from '@polkadot/ui-keyring';
+ import { settings } from '@polkadot/ui-settings';
+@@ -29,6 +29,7 @@ import { addressEq } from '@polkadot/util-crypto';
+ 
+ import { AccountSigner, LedgerSigner, QrSigner } from './signers/index.js';
+ import Address from './Address.js';
++import { assertDirectCall, DIRECT_CALL_ERROR, isDirectCallBlocked } from './directCall.js';
+ import PayWithAsset from './PayWithAsset.js';
+ import Qr from './Qr.js';
+ import SignFields from './SignFields.js';
+@@ -149,6 +150,8 @@ async function signAsync (queueSetTxStatus: QueueTxMessageSetStatus, { id, txFai
+ }
+ 
+ async function wrapTx (api: ApiPromise, currentItem: QueueTx, { isMultiCall, multiRoot, proxyRoot, signAddress }: AddressProxy): Promise<SubmittableExtrinsic<'promise'>> {
++  assertDirectCall(currentItem.requiresDirectCall, { multiRoot, proxyRoot });
++
+   let tx = currentItem.extrinsic as SubmittableExtrinsic<'promise'>;
+ 
+   if (proxyRoot) {
+@@ -253,6 +256,7 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
+   const [{ innerHash, innerTx }, setCallInfo] = useState<InnerTx>(EMPTY_INNER);
+   const [tip, setTip] = useState<BN | undefined>();
+   const [initialIsQueueSubmit] = useState(isQueueSubmit);
++  const isDirectCallError = isDirectCallBlocked(currentItem.requiresDirectCall, senderInfo);
+ 
+   useEffect((): void => {
+     setFlags(tryExtract(senderInfo.signAddress));
+@@ -371,6 +375,10 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
+ 
+   const _doStart = useCallback(
+     (): void => {
++      if (isDirectCallError) {
++        return;
++      }
++
+       setBusy(true);
+ 
+       nextTick((): void => {
+@@ -398,7 +406,7 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
+           });
+       });
+     },
+-    [_onSend, _onSendPayload, _onSign, _unlock, currentItem, isSubmit, queueSetTxStatus, senderInfo]
++    [_onSend, _onSendPayload, _onSign, _unlock, currentItem, isDirectCallError, isSubmit, queueSetTxStatus, senderInfo]
+   );
+ 
+   const signLabel = useMemo(() => {
+@@ -419,7 +427,7 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
+     }
+   }, [flags.isQr, flags.isLocal, isSubmit, t]);
+ 
+-  const isAutoCapable = senderInfo.signAddress && (queueSize > 1) && isSubmit && !(flags.isHardware || flags.isMultisig || flags.isProxied || flags.isQr || flags.isUnlockable) && !isRenderError;
++  const isAutoCapable = senderInfo.signAddress && (queueSize > 1) && isSubmit && !(flags.isHardware || flags.isMultisig || flags.isProxied || flags.isQr || flags.isUnlockable) && !isRenderError && !isDirectCallError;
+ 
+   if (!isBusy && isAutoCapable && initialIsQueueSubmit) {
+     setBusy(true);
+@@ -460,6 +468,11 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
+                   passwordError={passwordError}
+                   requestAddress={requestAddress}
+                 />
++                {isDirectCallError && (
++                  <Modal.Columns>
++                    <MarkError content={t(DIRECT_CALL_ERROR)} />
++                  </Modal.Columns>
++                )}
+                 {!currentItem.payload && (
+                   <>
+                     <PayWithAsset onChangeFeeAsset={setSignedOptions} />
+@@ -508,7 +521,7 @@ function TxSigned ({ className, currentItem, isQueueSubmit, queueSize, requestAd
+               : 'sign-in-alt'
+           }
+           isBusy={isBusy}
+-          isDisabled={!senderInfo.signAddress || isRenderError}
++          isDisabled={!senderInfo.signAddress || isRenderError || isDirectCallError}
+           label={signLabel}
+           onClick={_doStart}
+           tabIndex={2}
+diff --git a/packages/react-signer/src/directCall.spec.ts b/packages/react-signer/src/directCall.spec.ts
+new file mode 100644
+index 0000000..70fd39b
+--- /dev/null
++++ b/packages/react-signer/src/directCall.spec.ts
+@@ -0,0 +1,35 @@
++// Copyright 2017-2026 @polkadot/react-signer authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++/// <reference types="@polkadot/dev-test/globals.d.ts" />
++
++import { assertDirectCall, DIRECT_CALL_ERROR, isDirectCallBlocked } from './directCall.js';
++
++describe('transactions requiring a direct signature', (): void => {
++  it('allows a direct signer', (): void => {
++    const wrapping = { multiRoot: null, proxyRoot: null };
++
++    expect(isDirectCallBlocked(true, wrapping)).toBe(false);
++    expect(() => assertDirectCall(true, wrapping)).not.toThrow();
++  });
++
++  for (const wrapping of [
++    { multiRoot: null, proxyRoot: 'proxy' },
++    { multiRoot: 'multisig', proxyRoot: null },
++    { multiRoot: 'multisig', proxyRoot: 'proxy' }
++  ]) {
++    it(`rejects wrapping before signing: ${JSON.stringify(wrapping)}`, (): void => {
++      expect(isDirectCallBlocked(true, wrapping)).toBe(true);
++      expect(() => assertDirectCall(true, wrapping)).toThrow(DIRECT_CALL_ERROR);
++    });
++  }
++
++  for (const requiresDirectCall of [false, undefined]) {
++    it(`preserves ordinary transaction wrapping when the requirement is ${String(requiresDirectCall)}`, (): void => {
++      const wrapping = { multiRoot: 'multisig', proxyRoot: 'proxy' };
++
++      expect(isDirectCallBlocked(requiresDirectCall, wrapping)).toBe(false);
++      expect(() => assertDirectCall(requiresDirectCall, wrapping)).not.toThrow();
++    });
++  }
++});
+diff --git a/packages/react-signer/src/directCall.ts b/packages/react-signer/src/directCall.ts
+new file mode 100644
+index 0000000..b7b0dad
+--- /dev/null
++++ b/packages/react-signer/src/directCall.ts
+@@ -0,0 +1,19 @@
++// Copyright 2017-2026 @polkadot/react-signer authors & contributors
++// SPDX-License-Identifier: Apache-2.0
++
++interface CallWrapping {
++  multiRoot: string | null;
++  proxyRoot: string | null;
++}
++
++export const DIRECT_CALL_ERROR = 'This transaction must be signed directly. Disable proxy signing or select a non-multisig account to pay the transaction fee.';
++
++export function isDirectCallBlocked (requiresDirectCall: boolean | undefined, { multiRoot, proxyRoot }: CallWrapping): boolean {
++  return !!requiresDirectCall && !!(multiRoot || proxyRoot);
++}
++
++export function assertDirectCall (requiresDirectCall: boolean | undefined, wrapping: CallWrapping): void {
++  if (isDirectCallBlocked(requiresDirectCall, wrapping)) {
++    throw new Error(DIRECT_CALL_ERROR);
++  }
++}

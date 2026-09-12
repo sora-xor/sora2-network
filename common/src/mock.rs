@@ -221,6 +221,7 @@ macro_rules! mock_apollo_platform_config {
             type RuntimeEvent = RuntimeEvent;
             type UnsignedLongevity = frame_support::traits::ConstU64<100>;
             type UnsignedPriority = frame_support::traits::ConstU64<100>;
+            type MaxLiquidationsPerBlock = frame_support::traits::ConstU32<1>;
             type WeightInfo = ();
         }
     };
@@ -676,6 +677,7 @@ macro_rules! mock_kensetsu_config {
             type KenIncentiveRemintPercent = GetKenIncentiveRemintPercent;
             type LiquidityProxy = MockLiquidityProxy;
             type MaxCdpsPerOwner = frame_support::traits::ConstU32<10000>;
+            type MaxAccruesPerBlock = frame_support::traits::ConstU32<2>;
             type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
             type Oracle = MockOracle;
             type PriceTools = MockPriceTools;

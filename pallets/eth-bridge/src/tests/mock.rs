@@ -72,7 +72,10 @@ use hex_literal::hex;
 use parking_lot::RwLock;
 use permissions::{Scope, BURN, MINT};
 use rustc_hex::ToHex;
-use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
+use sp_core::offchain::{
+    Externalities as OffchainExternalities, HttpError, HttpRequestId, HttpRequestStatus,
+    OffchainStorage, OffchainWorkerExt, OpaqueNetworkState, Timestamp,
+};
 use sp_core::{H160, H256};
 use sp_io::TestExternalities;
 use sp_keystore::testing::MemoryKeystore;
@@ -129,6 +132,7 @@ parameter_types! {
     pub const RemovePendingOutgoingRequestsAfter: BlockNumber = 100;
     pub const TrackPendingIncomingRequestsAfter: (BlockNumber, u64) = (0, 0);
     pub const MaxRequestsPerQueueConst: u32 = 64;
+    pub const MaxRequestsPerAccountConst: u32 = 3;
     pub const ReservedBridgeQueueSlotsConst: u32 = 4;
     pub const MaxPendingLoadIncomingRequestsPerAccountConst: u32 = 16;
 }
@@ -266,6 +270,7 @@ impl Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = TestDenominator;
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
+    type MaxRequestsPerAccount = MaxRequestsPerAccountConst;
 }
 
 construct_runtime!(
@@ -294,15 +299,113 @@ pub trait Mock {
 }
 
 thread_local! {
-    pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
+    pub static RESPONSES: RefCell<Vec<Option<(u16, Vec<u8>)>>> = RefCell::new(Vec::new());
     pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
     pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
+    static HTTP_REQUEST_BODIES: RefCell<Vec<String>> = RefCell::new(Vec::new());
+    static HTTP_RESPONSE_STATUSES: RefCell<BTreeMap<HttpRequestId, u16>> = RefCell::new(BTreeMap::new());
 }
 
 fn push_response(data: Vec<u8>) {
+    push_global_http_response(200, data);
+}
+
+pub(crate) fn push_global_http_response(status: u16, body: Vec<u8>) {
     RESPONSES.with(|ref_cell| {
-        ref_cell.borrow_mut().push(data);
+        ref_cell.borrow_mut().push(Some((status, body)));
     });
+}
+
+/// Preserve the SDK's HTTP test behavior while allowing real non-200 responses.
+/// `TestOffchainExt` otherwise hardcodes every completed response to HTTP 200.
+struct HttpStatusOffchainExt(TestOffchainExt);
+
+impl OffchainExternalities for HttpStatusOffchainExt {
+    fn is_validator(&self) -> bool {
+        self.0.is_validator()
+    }
+
+    fn network_state(&self) -> Result<OpaqueNetworkState, ()> {
+        self.0.network_state()
+    }
+
+    fn timestamp(&mut self) -> Timestamp {
+        self.0.timestamp()
+    }
+
+    fn sleep_until(&mut self, deadline: Timestamp) {
+        self.0.sleep_until(deadline)
+    }
+
+    fn random_seed(&mut self) -> [u8; 32] {
+        self.0.random_seed()
+    }
+
+    fn http_request_start(
+        &mut self,
+        method: &str,
+        uri: &str,
+        meta: &[u8],
+    ) -> Result<HttpRequestId, ()> {
+        let request_id = self.0.http_request_start(method, uri, meta)?;
+        HTTP_RESPONSE_STATUSES.with(|statuses| statuses.borrow_mut().remove(&request_id));
+        Ok(request_id)
+    }
+
+    fn http_request_add_header(
+        &mut self,
+        request_id: HttpRequestId,
+        name: &str,
+        value: &str,
+    ) -> Result<(), ()> {
+        self.0.http_request_add_header(request_id, name, value)
+    }
+
+    fn http_request_write_body(
+        &mut self,
+        request_id: HttpRequestId,
+        chunk: &[u8],
+        deadline: Option<Timestamp>,
+    ) -> Result<(), HttpError> {
+        self.0.http_request_write_body(request_id, chunk, deadline)
+    }
+
+    fn http_response_wait(
+        &mut self,
+        ids: &[HttpRequestId],
+        deadline: Option<Timestamp>,
+    ) -> Vec<HttpRequestStatus> {
+        let results = self.0.http_response_wait(ids, deadline);
+        HTTP_RESPONSE_STATUSES.with(|statuses| {
+            let statuses = statuses.borrow();
+            ids.iter()
+                .zip(results)
+                .map(|(id, result)| match result {
+                    HttpRequestStatus::Finished(code) => {
+                        HttpRequestStatus::Finished(statuses.get(id).copied().unwrap_or(code))
+                    }
+                    result => result,
+                })
+                .collect()
+        })
+    }
+
+    fn http_response_headers(&mut self, request_id: HttpRequestId) -> Vec<(Vec<u8>, Vec<u8>)> {
+        self.0.http_response_headers(request_id)
+    }
+
+    fn http_response_read_body(
+        &mut self,
+        request_id: HttpRequestId,
+        buffer: &mut [u8],
+        deadline: Option<Timestamp>,
+    ) -> Result<usize, HttpError> {
+        self.0.http_response_read_body(request_id, buffer, deadline)
+    }
+
+    fn set_authorized_nodes(&mut self, nodes: Vec<sp_core::OpaquePeerId>, authorized_only: bool) {
+        self.0.set_authorized_nodes(nodes, authorized_only)
+    }
 }
 
 fn json_rpc_response<T: Serialize>(value: T) -> jsonrpc_core::Response {
@@ -323,16 +426,25 @@ pub(crate) fn push_global_json_rpc_response<T: Serialize>(value: T) {
     push_json_rpc_response(value);
 }
 
+pub(crate) fn push_global_raw_response(value: &[u8]) {
+    push_response(value.to_vec());
+}
+
+pub(crate) fn push_global_http_failure() {
+    RESPONSES.with(|responses| responses.borrow_mut().push(None));
+}
+
 pub struct State {
     pub networks: HashMap<u32, ExtendedNetworkConfig>,
     pub authority_account_id: AccountId32,
     pub pool_state: Arc<RwLock<PoolState>>,
     pub offchain_state: Arc<RwLock<OffchainState>>,
-    responses: Vec<Vec<u8>>,
+    responses: Vec<Option<(u16, Vec<u8>)>>,
 }
 
 impl Mock for State {
     fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>) {
+        HTTP_REQUEST_BODIES.with(|requests| requests.borrow_mut().push(body.to_string()));
         OFFCHAIN_STATE.with(|oc_state_ref_cell| {
             RESPONSES.with(|ref_cell| {
                 let oc_state_opt = oc_state_ref_cell.borrow();
@@ -345,11 +457,20 @@ impl Mock for State {
                     body
                 );
                 let response = responses.remove(0);
-                offchain_state
-                    .requests
-                    .get_mut(&pending_request.id)
-                    .unwrap()
-                    .response = Some(response);
+                if let Some((status, response)) = response {
+                    HTTP_RESPONSE_STATUSES.with(|statuses| {
+                        statuses.borrow_mut().insert(pending_request.id, status);
+                    });
+                    offchain_state
+                        .requests
+                        .get_mut(&pending_request.id)
+                        .unwrap()
+                        .response = Some(response);
+                } else {
+                    // TestOffchainExt returns RequestStatus::Invalid when a pending request
+                    // disappears, exercising the real HTTP wait -> HttpFetchingError path.
+                    offchain_state.requests.remove(&pending_request.id);
+                }
             });
         });
     }
@@ -361,7 +482,25 @@ impl Mock for State {
 
 impl State {
     pub fn push_response_raw(&mut self, data: Vec<u8>) {
-        self.responses.push(data);
+        self.push_http_response(200, data);
+    }
+
+    pub fn push_http_response(&mut self, status: u16, body: Vec<u8>) {
+        self.responses.push(Some((status, body)));
+    }
+
+    pub fn push_http_failure(&mut self) {
+        self.responses.push(None);
+    }
+
+    pub fn http_requests(&self) -> Vec<serde_json::Value> {
+        HTTP_REQUEST_BODIES.with(|requests| {
+            requests
+                .borrow()
+                .iter()
+                .map(|body| serde_json::from_str(body).expect("valid JSON-RPC request"))
+                .collect()
+        })
     }
 
     pub fn push_response<T: Serialize>(&mut self, value: T) {
@@ -420,7 +559,7 @@ impl State {
         let mut responses = Vec::new();
         std::mem::swap(&mut self.responses, &mut responses);
         for resp in responses {
-            push_response(resp);
+            RESPONSES.with(|queued| queued.borrow_mut().push(resp));
         }
         let current_block_number = frame_system::Pallet::<Runtime>::block_number();
         if via_hook {
@@ -669,6 +808,9 @@ impl ExtBuilder {
     }
 
     pub fn build(self) -> (TestExternalities, State) {
+        RESPONSES.with(|responses| responses.borrow_mut().clear());
+        HTTP_REQUEST_BODIES.with(|requests| requests.borrow_mut().clear());
+        HTTP_RESPONSE_STATUSES.with(|statuses| statuses.borrow_mut().clear());
         let (offchain, offchain_state) = TestOffchainExt::new();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         let default_authority_account_id =
@@ -877,7 +1019,7 @@ impl ExtBuilder {
         .unwrap();
         let mut t = TestExternalities::from(storage);
         t.register_extension(OffchainDbExt::new(offchain.clone()));
-        t.register_extension(OffchainWorkerExt::new(offchain));
+        t.register_extension(OffchainWorkerExt::new(HttpStatusOffchainExt(offchain)));
         t.register_extension(TransactionPoolExt::new(pool));
         t.register_extension(KeystoreExt::new(key_store));
         t.execute_with(|| {

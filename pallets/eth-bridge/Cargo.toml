@@ -81,6 +81,7 @@ std = [
     'codec/std',
     "scale-info/std",
     'ethereum-types/std',
+    'frame-benchmarking?/std',
     'frame-support/std',
     'frame-system/std',
     'jsonrpc-core/std',
@@ -93,6 +94,7 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'pallet-scheduler/std',
+    'tokens/std',
     'common/std',
     'bridge-types/std',
 ]
@@ -100,6 +102,7 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
+    "tokens/runtime-benchmarks",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

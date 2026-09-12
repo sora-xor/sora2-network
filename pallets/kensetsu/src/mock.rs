@@ -72,7 +72,7 @@ pub struct MockRandomness;
 
 impl Randomness<Hash, BlockNumber> for MockRandomness {
     fn random(_subject: &[u8]) -> (Hash, BlockNumber) {
-        unimplemented!()
+        (H256([0; 32]), 0)
     }
 }
 

@@ -49,7 +49,7 @@ use crate::{
 use codec::Encode;
 use common::{
     balance, AssetId32, AssetInfoProvider, Balance, PredefinedAssetId, DEFAULT_BALANCE_PRECISION,
-    PSWAP, VAL, XOR,
+    PSWAP, USDT, VAL, XOR,
 };
 use ethereum_types::U256;
 use frame_support::assert_noop;
@@ -1023,6 +1023,38 @@ fn request_from_sidechain_enforces_queue_limit() {
 }
 
 #[test]
+fn request_from_sidechain_retains_only_the_latest_account_requests() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let max = <Runtime as crate::Config>::MaxRequestsPerAccount::get() as usize;
+        let existing = (0..(max + 3))
+            .map(|index| (net_id, H256::from_low_u64_be(index as u64 + 1)))
+            .collect::<Vec<_>>();
+        crate::AccountRequests::<Runtime>::insert(&alice, &existing);
+
+        let sidechain_tx_hash = H256::from_low_u64_be(10_000);
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice.clone()),
+            sidechain_tx_hash,
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        ));
+
+        let account_requests = crate::AccountRequests::<Runtime>::get(&alice);
+        let request_hash = *crate::RequestsQueue::<Runtime>::get(net_id)
+            .last()
+            .expect("the load request was queued");
+        let mut expected = existing[4..].to_vec();
+        expected.push((net_id, request_hash));
+        assert_eq!(account_requests.len(), max);
+        assert_eq!(account_requests, expected);
+    });
+}
+
+#[test]
 fn should_import_incoming_request() {
     let (mut ext, state) = ExtBuilder::default().build();
 
@@ -1167,6 +1199,69 @@ fn should_abort_load_request_when_imported_incoming_network_mismatches() {
             crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash),
             H256::zero()
         );
+    });
+}
+
+#[test]
+fn should_abort_load_request_when_imported_incoming_hash_mismatches() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let load_hash = H256([9; 32]);
+        let incoming_hash = H256([10; 32]);
+        let load_incoming_request =
+            LoadIncomingRequest::Transaction(LoadIncomingTransactionRequest::new(
+                alice.clone(),
+                load_hash,
+                Default::default(),
+                IncomingTransactionRequestKind::Transfer,
+                net_id,
+            ));
+        let incoming_request = IncomingRequest::try_from_contract_event(
+            ContractEvent::Deposit(DepositEvent::new(
+                alice.clone(),
+                U256::one(),
+                crate::RegisteredSidechainToken::<Runtime>::get(net_id, AssetId32::from(XOR))
+                    .unwrap(),
+                H256::zero(),
+            )),
+            LoadIncomingTransactionRequest::new(
+                alice.clone(),
+                incoming_hash,
+                Default::default(),
+                IncomingTransactionRequestKind::Transfer,
+                net_id,
+            ),
+            1,
+        )
+        .expect("incoming request should decode");
+        let incoming_request_hash = OffchainRequest::incoming(incoming_request.clone()).hash();
+
+        let bridge_account_id = &state.networks[&net_id].config.bridge_account_id;
+        assert_ok!(EthBridge::import_incoming_request(
+            RuntimeOrigin::signed(bridge_account_id.clone()),
+            load_incoming_request,
+            Ok(incoming_request),
+        ));
+
+        let expected_error: DispatchError = Error::IncomingRequestHashMismatch.into();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, load_hash),
+            Some(RequestStatus::Failed(expected_error))
+        );
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&load_hash));
+        assert!(crate::RequestStatuses::<Runtime>::get(net_id, incoming_request_hash).is_none());
+        assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
+            net_id, load_hash
+        ));
+        assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
+            net_id,
+            incoming_hash
+        ));
+        assert_eq!(Assets::total_balance(&XOR.into(), &alice).unwrap(), 0);
+        assert_last_event::<Runtime>(crate::Event::RequestAborted(load_hash).into());
     });
 }
 
@@ -1557,33 +1652,55 @@ fn ocw_should_not_import_pending_incoming_request() {
 }
 
 #[test]
-fn should_not_register_and_finalize_incoming_request_twice() {
-    let (mut ext, state) = ExtBuilder::default().build();
+fn should_not_register_same_replay_key_for_different_recipient() {
+    let net_id = ETH_NETWORK_ID;
+    let mut builder = ExtBuilder::default();
+    builder.add_currency(
+        net_id,
+        AssetConfig::Sidechain {
+            id: USDT.into(),
+            sidechain_id: sp_core::H160::from_slice(&[0x44; 20]),
+            owned: false,
+            precision: DEFAULT_BALANCE_PRECISION,
+        },
+    );
+    let (mut ext, state) = builder.build();
     ext.execute_with(|| {
-        let net_id = ETH_NETWORK_ID;
         let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
         let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
-        Assets::mint_to(&XOR.into(), &alice, &alice, 100000u32.into()).unwrap();
-        let tx_hash = request_incoming(
-            alice.clone(),
-            H256::from_slice(&[1u8; 32]),
-            IncomingTransactionRequestKind::Transfer.into(),
-            net_id,
-        )
-        .unwrap();
+        let bob = get_account_id_from_seed::<sr25519::Public>("Bob");
+        let tx_hash = H256::from_slice(&[1u8; 32]);
         let incoming_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: EthAddress::from([1; 20]),
             to: alice.clone(),
-            asset_id: XOR.into(),
-            asset_kind: AssetKind::Thischain,
+            asset_id: USDT.into(),
+            asset_kind: AssetKind::Sidechain,
             amount: 100u32.into(),
             author: alice.clone(),
             tx_hash,
             at_height: 1,
             timepoint: Default::default(),
-            network_id: ETH_NETWORK_ID,
+            network_id: net_id,
             should_take_fee: false,
         });
+        let replayed_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: bob.clone(),
+            asset_id: USDT.into(),
+            asset_kind: AssetKind::Sidechain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+            should_take_fee: false,
+        });
+        let incoming_request_hash = OffchainRequest::incoming(incoming_transfer.clone()).hash();
+        let replayed_request_hash = OffchainRequest::incoming(replayed_transfer.clone()).hash();
+        assert_ne!(incoming_request_hash, replayed_request_hash);
+        let issuance_before = Assets::total_issuance(&USDT.into()).unwrap();
+
         assert_ok!(EthBridge::register_incoming_request(
             RuntimeOrigin::signed(bridge_acc_id.clone()),
             incoming_transfer.clone(),
@@ -1591,7 +1708,7 @@ fn should_not_register_and_finalize_incoming_request_twice() {
         assert_noop!(
             EthBridge::register_incoming_request(
                 RuntimeOrigin::signed(bridge_acc_id.clone()),
-                incoming_transfer.clone(),
+                replayed_transfer,
             ),
             DispatchErrorWithPostInfo {
                 post_info: Pays::No.into(),
@@ -1599,10 +1716,137 @@ fn should_not_register_and_finalize_incoming_request_twice() {
             }
         );
         let req_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash);
+        assert_eq!(req_hash, incoming_request_hash);
+        assert!(crate::Requests::<Runtime>::get(net_id, replayed_request_hash).is_none());
+        assert!(crate::RequestStatuses::<Runtime>::get(net_id, replayed_request_hash).is_none());
         assert_ok!(EthBridge::finalize_incoming_request(
             RuntimeOrigin::signed(bridge_acc_id.clone()),
             req_hash,
             net_id,
         ));
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &alice).unwrap(),
+            100u32.into()
+        );
+        assert_eq!(Assets::total_balance(&USDT.into(), &bob).unwrap(), 0);
+        assert_eq!(
+            Assets::total_issuance(&USDT.into()).unwrap(),
+            issuance_before + Balance::from(100u32)
+        );
+    });
+}
+
+#[test]
+fn failed_incoming_registration_does_not_consume_replay_key() {
+    let net_id = ETH_NETWORK_ID;
+    let mut builder = ExtBuilder::default();
+    builder.add_currency(
+        net_id,
+        AssetConfig::Sidechain {
+            id: USDT.into(),
+            sidechain_id: sp_core::H160::from_slice(&[0x45; 20]),
+            owned: false,
+            precision: DEFAULT_BALANCE_PRECISION,
+        },
+    );
+    let (mut ext, state) = builder.build();
+    ext.execute_with(|| {
+        let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = request_incoming(
+            alice.clone(),
+            H256::from_slice(&[2u8; 32]),
+            IncomingTransactionRequestKind::Transfer.into(),
+            net_id,
+        )
+        .unwrap();
+        let invalid_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: alice.clone(),
+            asset_id: USDT.into(),
+            asset_kind: AssetKind::Sidechain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+            should_take_fee: true,
+        });
+        let invalid_request_hash = OffchainRequest::incoming(invalid_transfer.clone()).hash();
+        assert_ok!(EthBridge::register_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
+            invalid_transfer,
+        ));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, invalid_request_hash),
+            Some(RequestStatus::Failed(Error::UnableToPayFees.into()))
+        );
+        assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
+            net_id, tx_hash
+        ));
+
+        let corrected_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
+            from: EthAddress::from([1; 20]),
+            to: alice.clone(),
+            asset_id: USDT.into(),
+            asset_kind: AssetKind::Sidechain,
+            amount: 100u32.into(),
+            author: alice.clone(),
+            tx_hash,
+            at_height: 1,
+            timepoint: Default::default(),
+            network_id: net_id,
+            should_take_fee: false,
+        });
+        let corrected_request_hash = OffchainRequest::incoming(corrected_transfer.clone()).hash();
+        assert_ok!(EthBridge::register_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id.clone()),
+            corrected_transfer,
+        ));
+        assert_eq!(
+            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash),
+            corrected_request_hash
+        );
+        assert_ok!(EthBridge::finalize_incoming_request(
+            RuntimeOrigin::signed(bridge_acc_id),
+            corrected_request_hash,
+            net_id,
+        ));
+        assert_eq!(
+            Assets::total_balance(&USDT.into(), &alice).unwrap(),
+            100u32.into()
+        );
+    });
+}
+
+#[test]
+fn replay_keys_are_scoped_by_network() {
+    let mut builder = ExtBuilder::default();
+    let other_net_id =
+        builder.add_network(Vec::new(), None, Some(4), sp_core::H160::repeat_byte(1));
+    let (mut ext, state) = builder.build();
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256::from_slice(&[3u8; 32]);
+
+        for net_id in [ETH_NETWORK_ID, other_net_id] {
+            let request =
+                IncomingRequest::PrepareForMigration(crate::IncomingPrepareForMigration {
+                    author: alice.clone(),
+                    tx_hash,
+                    at_height: 1,
+                    timepoint: Default::default(),
+                    network_id: net_id,
+                });
+            let bridge_acc_id = state.networks[&net_id].config.bridge_account_id.clone();
+            assert_ok!(EthBridge::register_incoming_request(
+                RuntimeOrigin::signed(bridge_acc_id),
+                request,
+            ));
+            assert!(crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
+                net_id, tx_hash
+            ));
+        }
     });
 }

@@ -30,6 +30,7 @@
 
 use super::mock::*;
 use super::Error;
+use crate::offchain::MAX_LARGE_JSON_RPC_RESPONSE_BYTES;
 use crate::requests::{
     IncomingMetaRequestKind, IncomingRequest, IncomingRequestKind, IncomingTransactionRequestKind,
     RequestStatus,
@@ -39,19 +40,21 @@ use crate::tests::{last_outgoing_request, last_request, Assets, ETH_NETWORK_ID};
 use crate::types::{Log, TransactionReceipt};
 use crate::{
     types, AssetConfig, EthAddress, CONFIRMATION_INTERVAL, MAX_FAILED_SEND_SIGNED_TX_RETRIES,
-    MAX_PENDING_TX_BLOCKS_PERIOD, OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX,
-    RE_HANDLE_TXS_PERIOD, STORAGE_ETH_NODE_PARAMS, STORAGE_LOCAL_PEER_READY_KEY,
-    STORAGE_OUTGOING_APPROVAL_FAILURES_KEY, STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY,
-    STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY, STORAGE_PENDING_TRANSACTIONS_KEY,
-    SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK, SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION,
-    ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
+    MAX_GET_LOGS_ITEMS, MAX_PENDING_TX_BLOCKS_PERIOD,
+    OUTGOING_APPROVAL_FAILURE_FAILED_SEND_SIGNED_TX, RE_HANDLE_TXS_PERIOD, STORAGE_ETH_NODE_PARAMS,
+    STORAGE_LOCAL_PEER_READY_KEY, STORAGE_OUTGOING_APPROVAL_FAILURES_KEY,
+    STORAGE_OUTGOING_ZERO_APPROVAL_REQUESTS_KEY, STORAGE_PEER_MARKER_KEY, STORAGE_PEER_SECRET_KEY,
+    STORAGE_PENDING_TRANSACTIONS_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
+    SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION, ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
 use codec::Encode;
 use common::{DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
+use rustc_hex::ToHex;
 use sp_core::offchain::OffchainStorage;
 use sp_core::{sr25519, H256};
+use sp_runtime::offchain::storage::StorageValueRef;
 use sp_runtime::DispatchError;
 use std::str::FromStr;
 
@@ -61,6 +64,88 @@ fn eth_call_bool(value: bool) -> types::Bytes {
 
 fn raw_eth_call_result(bytes: &[u8]) -> types::Bytes {
     types::Bytes(bytes.to_vec())
+}
+
+const ETH_CALL_TRUE_JSON_RPC_RESPONSE: &str = r#"{"jsonrpc":"2.0","result":"0x0000000000000000000000000000000000000000000000000000000000000001","id":0}"#;
+
+fn insert_pending_sidechain_multisig(
+    multisig_account: &AccountId,
+    call_hash_byte: u8,
+    sidechain_height: u64,
+    timepoint_index: u32,
+) {
+    bridge_multisig::Multisigs::<Runtime>::insert(
+        multisig_account,
+        [call_hash_byte; 32],
+        bridge_multisig::Multisig {
+            when: bridge_multisig::BridgeTimepoint {
+                height: bridge_multisig::MultiChainHeight::Sidechain(sidechain_height),
+                index: timepoint_index,
+            },
+            deposit: 0,
+            depositor: multisig_account.clone(),
+            approvals: vec![multisig_account.clone()],
+        },
+    );
+}
+
+fn pending_multisig_rehandle_key(
+    prefix: &str,
+    call_hash_byte: u8,
+    sidechain_height: u64,
+    timepoint_index: u32,
+) -> String {
+    format!(
+        "{}-v2-{:?}-{}-{}-{}",
+        prefix,
+        ETH_NETWORK_ID,
+        [call_hash_byte; 32].to_hex::<String>(),
+        sidechain_height,
+        timepoint_index,
+    )
+}
+
+fn insert_failed_incoming_import(network_id: u32, tx_hash: H256) {
+    let timepoint = bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(0, 0);
+    let load_incoming_request = crate::requests::LoadIncomingRequest::Transaction(
+        crate::requests::LoadIncomingTransactionRequest::new(
+            get_account_id_from_seed::<sr25519::Public>("Alice"),
+            tx_hash,
+            timepoint,
+            IncomingTransactionRequestKind::Transfer,
+            network_id,
+        ),
+    );
+    let import_call: RuntimeCall = crate::Call::<Runtime>::import_incoming_request {
+        load_incoming_request,
+        incoming_request_result: Err(Error::EthTransactionIsFailed.into()),
+    }
+    .into();
+    let call = bridge_multisig::Call::<Runtime>::as_multi_threshold_1 {
+        id: crate::BridgeAccount::<Runtime>::get(network_id).unwrap(),
+        call: Box::new(import_call),
+        timepoint,
+    };
+    let failed = std::collections::BTreeMap::from([(
+        tx_hash,
+        crate::offchain::SignedTransactionData::<Runtime>::new(tx_hash, None, call),
+    )]);
+    StorageValueRef::persistent(crate::STORAGE_FAILED_PENDING_TRANSACTIONS_KEY).set(&failed);
+}
+
+fn handle_substrate_at_finalized_height(height: BlockNumber) {
+    // Isolate secondary-queue recovery from primary-queue retries: these finalized blocks
+    // have already been scanned, so this worker only observes the finalized tip.
+    StorageValueRef::persistent(crate::STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY).set(&(height + 1));
+    push_global_json_rpc_response(H256::zero());
+    push_global_json_rpc_response(types::SubstrateHeaderLimited {
+        parent_hash: Default::default(),
+        number: height.into(),
+        state_root: Default::default(),
+        extrinsics_root: Default::default(),
+        digest: (),
+    });
+    assert_ok!(EthBridge::handle_substrate(), height);
 }
 
 #[test]
@@ -116,7 +201,8 @@ fn ocw_mark_as_done_targets_original_outgoing_hash() {
         assert_ne!(load_hash, outgoing_hash);
 
         state.push_response(types::U64::from(777u64));
-        state.push_response(eth_call_bool(true));
+        // Match the wire response returned by an Ethereum node for an ABI-encoded `bool true`.
+        state.push_response_raw(ETH_CALL_TRUE_JSON_RPC_RESPONSE.as_bytes().to_vec());
         state.run_next_offchain_and_dispatch_txs();
 
         let incoming_hash = crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, load_hash);
@@ -153,6 +239,34 @@ fn load_is_used_decodes_abi_true_result() {
         assert_eq!(
             EthBridge::load_is_used(H256::repeat_byte(0x41), ETH_NETWORK_ID),
             Ok(true)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_rejects_json_boolean_result() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(true);
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x4a), ETH_NETWORK_ID),
+            Err(Error::FailedToLoadIsUsed)
+        );
+    });
+}
+
+#[test]
+fn load_is_used_rejects_null_result() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_json_rpc_response(Option::<types::Bytes>::None);
+
+        assert_eq!(
+            EthBridge::load_is_used(H256::repeat_byte(0x4b), ETH_NETWORK_ID),
+            Err(Error::FailedToLoadIsUsed)
         );
     });
 }
@@ -905,6 +1019,42 @@ fn ocw_should_retry_on_malformed_json_rpc_response() {
 }
 
 #[test]
+fn ocw_should_retry_on_oversized_json_rpc_response() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(
+        vec![AssetConfig::Sidechain {
+            id: VAL.into(),
+            sidechain_id: sp_core::H160::from_str("0x725c6b8cd3621eba4e0ccc40d532e7025b925a65")
+                .unwrap(),
+            owned: true,
+            precision: DEFAULT_BALANCE_PRECISION,
+        }],
+        Some(vec![(VAL.into(), common::balance!(350000))]),
+        Some(1),
+        Default::default(),
+    );
+    let (mut ext, mut state) = builder.build();
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        let tx_hash = H256([9; 32]);
+        assert_ok!(EthBridge::request_from_sidechain(
+            RuntimeOrigin::signed(alice),
+            tx_hash,
+            IncomingRequestKind::Transaction(IncomingTransactionRequestKind::Transfer),
+            net_id
+        ));
+        state.push_response_raw(vec![b' '; MAX_LARGE_JSON_RPC_RESPONSE_BYTES + 1]);
+        state.run_next_offchain_and_dispatch_txs();
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            Some(RequestStatus::Pending)
+        );
+        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+    });
+}
+
+#[test]
 fn ocw_should_retry_on_json_rpc_batch_response() {
     let mut builder = ExtBuilder::new();
     builder.add_network(
@@ -949,6 +1099,7 @@ fn ocw_should_retry_on_json_rpc_batch_response() {
 fn ocw_should_retry_when_sidechain_node_params_are_missing() {
     assert!(Error::FailedToLoadSidechainNodeParams.should_retry());
     assert!(Error::FailedToLoadIsUsed.should_retry());
+    assert!(Error::HttpResponseTooLarge.should_retry());
 
     let mut builder = ExtBuilder::new();
     builder.add_network(
@@ -984,6 +1135,575 @@ fn ocw_should_retry_when_sidechain_node_params_are_missing() {
             Some(RequestStatus::Pending)
         );
         assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+    });
+}
+
+#[test]
+fn large_block_rpc_response_uses_the_block_specific_limit() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let large_result = "x".repeat(2 * 1024 * 1024);
+        push_global_json_rpc_response(large_result.clone());
+
+        let decoded = EthBridge::substrate_json_rpc_request::<_, String>("chain_getBlock", &())
+            .expect("valid block-sized response should not use the small RPC limit");
+        assert_eq!(decoded, large_result);
+
+        push_global_json_rpc_response("x".repeat(2 * 1024 * 1024));
+        assert_eq!(
+            EthBridge::substrate_json_rpc_request::<_, String>("chain_getHeader", &()),
+            Err(Error::HttpResponseTooLarge)
+        );
+    });
+}
+
+#[test]
+fn incomplete_json_rpc_response_is_retriable() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_raw_response(br#"{"jsonrpc":"2.0","id":0}"#);
+
+        let error = EthBridge::substrate_json_rpc_request::<_, String>("chain_getHeader", &())
+            .expect_err("an incomplete response must not be accepted as a null result");
+        assert_eq!(error, Error::JsonDeserializationError);
+        assert!(error.should_retry());
+    });
+}
+
+#[test]
+fn log_http_failure_is_retryable() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        push_global_http_failure();
+        let error = EthBridge::load_transfers_logs(ETH_NETWORK_ID, 100, 106)
+            .expect_err("invalidated pending HTTP request must fail");
+        assert_eq!(error, Error::HttpFetchingError);
+        assert!(error.should_retry());
+    });
+}
+
+#[test]
+fn log_http_failure_preserves_cursor_and_retries_the_same_range() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            ETH_NETWORK_ID
+        );
+        let range_key = format!("eth-bridge-ocw::eth-log-range-size-{:?}", ETH_NETWORK_ID);
+        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
+        StorageValueRef::persistent(range_key.as_bytes()).set(&7u64);
+
+        state.push_http_failure();
+        state.run_next_offchain_with_params(
+            200,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
+        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(7));
+
+        state.push_response::<[Log; 0]>([]);
+        state.run_next_offchain_with_params(
+            201,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(107));
+        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(14));
+
+        let requests: Vec<_> = state
+            .http_requests()
+            .into_iter()
+            .filter(|request| request["method"] == "eth_getLogs")
+            .collect();
+        assert_eq!(requests.len(), 2);
+        assert_eq!(requests[0]["params"][0]["fromBlock"], "0x64");
+        assert_eq!(requests[0]["params"][0]["toBlock"], "0x6a");
+        assert_eq!(
+            requests[0], requests[1],
+            "retry must preserve the full filter"
+        );
+    });
+}
+
+#[test]
+fn log_http_failure_does_not_block_outgoing_approvals() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
+        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
+        assert_ok!(EthBridge::transfer_to_sidechain(
+            RuntimeOrigin::signed(alice),
+            XOR.into(),
+            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
+            100,
+            ETH_NETWORK_ID,
+        ));
+        let request_hash = last_request(ETH_NETWORK_ID).unwrap().hash();
+        let height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            ETH_NETWORK_ID
+        );
+        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
+
+        state.push_http_failure();
+        state.run_next_offchain_with_params(
+            200,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            true,
+        );
+
+        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
+        assert_eq!(
+            crate::RequestApprovals::<Runtime>::get(ETH_NETWORK_ID, request_hash).len(),
+            1
+        );
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, request_hash),
+            Some(RequestStatus::Pending)
+        );
+    });
+}
+
+#[test]
+fn log_http_failure_does_not_block_another_network() {
+    let mut builder = ExtBuilder::default();
+    let second_network =
+        builder.add_network(vec![], None, Some(1), sp_core::H160::repeat_byte(0x23));
+    // The same local signing key must be eligible for both networks in this worker.
+    let peers = builder.networks[&ETH_NETWORK_ID]
+        .config
+        .initial_peers
+        .clone();
+    let keypairs = builder.networks[&ETH_NETWORK_ID].ocw_keypairs.clone();
+    let second_config = builder.networks.get_mut(&second_network).unwrap();
+    second_config.config.initial_peers = peers;
+    second_config.ocw_keypairs = keypairs;
+    let (mut ext, mut state) = builder.build();
+
+    ext.execute_with(|| {
+        let first_height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            ETH_NETWORK_ID
+        );
+        let second_height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            second_network
+        );
+        StorageValueRef::persistent(first_height_key.as_bytes()).set(&100u64);
+        StorageValueRef::persistent(second_height_key.as_bytes()).set(&300u64);
+
+        // The helper supplies the first network's blockNumber response. These responses then
+        // cover its failing log scan and the second network's successful height and log scan.
+        state.push_http_failure();
+        state.push_response(types::U64::from(400u64));
+        state.push_response::<[Log; 0]>([]);
+        state.run_next_offchain_with_params(
+            200,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        assert_eq!(
+            state.storage_read::<u64>(first_height_key.as_bytes()),
+            Some(100)
+        );
+        assert_eq!(
+            state.storage_read::<u64>(second_height_key.as_bytes()),
+            Some(350)
+        );
+        let requests: Vec<_> = state
+            .http_requests()
+            .into_iter()
+            .filter(|request| request["method"] == "eth_getLogs")
+            .collect();
+        assert_eq!(requests.len(), 2);
+        assert_eq!(requests[0]["params"][0]["fromBlock"], "0x64");
+        assert_eq!(requests[1]["params"][0]["fromBlock"], "0x12c");
+        assert_eq!(requests[1]["params"][0]["toBlock"], "0x15d");
+    });
+}
+
+#[test]
+fn oversized_log_range_is_reduced_for_the_next_worker() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        state.push_response_raw(vec![b' '; MAX_LARGE_JSON_RPC_RESPONSE_BYTES + 1]);
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL + MAX_GET_LOGS_ITEMS,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        let height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            ETH_NETWORK_ID
+        );
+        let range_key = format!("eth-bridge-ocw::eth-log-range-size-{:?}", ETH_NETWORK_ID);
+        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(0));
+        assert_eq!(
+            state.storage_read::<u64>(range_key.as_bytes()),
+            Some(MAX_GET_LOGS_ITEMS / 2)
+        );
+
+        state.push_response::<[Log; 0]>([]);
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL + MAX_GET_LOGS_ITEMS,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+        assert_eq!(
+            state.storage_read::<u64>(height_key.as_bytes()),
+            Some(MAX_GET_LOGS_ITEMS / 2)
+        );
+    });
+}
+
+#[test]
+fn provider_log_limit_error_reduces_the_next_query_range() {
+    let (mut ext, mut state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        state.run_next_offchain_with_params(
+            0,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        state.push_response_raw(
+            br#"{"jsonrpc":"2.0","error":{"code":-32005,"message":"query returned more than 10000 results"},"id":0}"#
+                .to_vec(),
+        );
+        state.run_next_offchain_with_params(
+            CONFIRMATION_INTERVAL + MAX_GET_LOGS_ITEMS,
+            frame_system::Pallet::<Runtime>::block_number() + 1,
+            false,
+        );
+
+        let range_key = format!(
+            "eth-bridge-ocw::eth-log-range-size-{:?}",
+            ETH_NETWORK_ID
+        );
+        assert_eq!(
+            state.storage_read::<u64>(range_key.as_bytes()),
+            Some(MAX_GET_LOGS_ITEMS / 2)
+        );
+    });
+}
+
+#[test]
+fn failed_pending_multisig_rehandle_is_retried_without_skipping_blocks() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let sidechain_height = 0u64;
+        let timepoint_index = 7u32;
+        let bridge_account = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        insert_pending_sidechain_multisig(
+            &bridge_account,
+            0x42,
+            sidechain_height,
+            timepoint_index,
+        );
+        let handled_key = pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-handled",
+            0x42,
+            sidechain_height,
+            timepoint_index,
+        );
+        let progress_key = pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-progress",
+            0x42,
+            sidechain_height,
+            timepoint_index,
+        );
+
+        push_global_raw_response(
+            br#"{"jsonrpc":"2.0","error":{"code":-32005,"message":"query returned more than 10000 results"},"id":0}"#,
+        );
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64,
+        ));
+        assert_eq!(state.storage_read::<bool>(handled_key.as_bytes()), None);
+
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64,
+        ));
+        assert_eq!(state.storage_read::<bool>(handled_key.as_bytes()), None);
+        assert_eq!(
+            state.storage_read::<u64>(progress_key.as_bytes()),
+            Some(sidechain_height + 1)
+        );
+
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64,
+        ));
+        assert_eq!(
+            state.storage_read::<bool>(handled_key.as_bytes()),
+            Some(true)
+        );
+    });
+}
+
+#[test]
+fn pending_multisig_rehandle_due_survives_main_log_scan() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let sidechain_height = 0u64;
+        let timepoint_index = 8u32;
+        let bridge_account = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        insert_pending_sidechain_multisig(&bridge_account, 0x43, sidechain_height, timepoint_index);
+
+        let scan_height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            ETH_NETWORK_ID
+        );
+        StorageValueRef::persistent(scan_height_key.as_bytes()).set(&50u64);
+        let due_key = format!("eth-bridge-ocw::eth-re-handle-due-{:?}", ETH_NETWORK_ID);
+        let handled_key = pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-handled",
+            0x43,
+            sidechain_height,
+            timepoint_index,
+        );
+
+        // The main scan consumes this worker's log-request budget at the periodic boundary.
+        push_global_json_rpc_response(types::U64::from(200u64));
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        EthBridge::handle_network(ETH_NETWORK_ID, RE_HANDLE_TXS_PERIOD.into());
+        assert_eq!(state.storage_read::<bool>(due_key.as_bytes()), Some(true));
+        assert_eq!(state.storage_read::<bool>(handled_key.as_bytes()), None);
+        assert_eq!(
+            state.storage_read::<u64>(scan_height_key.as_bytes()),
+            Some(100)
+        );
+
+        // The main cursor remains backlogged, but the persisted due flag gives the re-handle
+        // priority on the first worker after the periodic boundary.
+        push_global_json_rpc_response(types::U64::from(200u64));
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        EthBridge::handle_network(ETH_NETWORK_ID, (RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(state.storage_read::<bool>(due_key.as_bytes()), Some(false));
+        assert_eq!(
+            state.storage_read::<bool>(handled_key.as_bytes()),
+            Some(true)
+        );
+        assert_eq!(
+            state.storage_read::<u64>(scan_height_key.as_bytes()),
+            Some(100),
+            "the pending re-handle should reserve this worker's log request"
+        );
+    });
+}
+
+#[test]
+fn pending_multisig_rehandle_generation_handles_boundary_jump_once() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let bridge_account = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        let scan_height_key = format!(
+            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
+            ETH_NETWORK_ID
+        );
+        StorageValueRef::persistent(scan_height_key.as_bytes()).set(&u64::MAX);
+        let generation_key = format!(
+            "eth-bridge-ocw::eth-re-handle-generation-v2-{:?}",
+            ETH_NETWORK_ID
+        );
+        let due_key = format!("eth-bridge-ocw::eth-re-handle-due-{:?}", ETH_NETWORK_ID);
+
+        insert_pending_sidechain_multisig(&bridge_account, 0x47, 0, 12);
+        let first_handled_key =
+            pending_multisig_rehandle_key("eth-bridge-ocw::eth-re-handle-handled", 0x47, 0, 12);
+
+        // Observe the generation immediately before the boundary.
+        push_global_json_rpc_response(types::U64::from(100u64));
+        EthBridge::handle_network(ETH_NETWORK_ID, (RE_HANDLE_TXS_PERIOD - 1).into());
+        assert_eq!(
+            state.storage_read::<u64>(generation_key.as_bytes()),
+            Some(0)
+        );
+        assert_eq!(state.storage_read::<bool>(due_key.as_bytes()), None);
+
+        // Jump over the exact boundary. Advancing the generation still schedules one attempt.
+        push_global_json_rpc_response(types::U64::from(100u64));
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        EthBridge::handle_network(ETH_NETWORK_ID, (RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(
+            state.storage_read::<bool>(first_handled_key.as_bytes()),
+            Some(true)
+        );
+        assert_eq!(
+            state.storage_read::<u64>(generation_key.as_bytes()),
+            Some(1)
+        );
+        assert_eq!(state.storage_read::<bool>(due_key.as_bytes()), Some(false));
+
+        // Re-observing the same finalized height must not re-arm the generation.
+        insert_pending_sidechain_multisig(&bridge_account, 0x48, 0, 13);
+        let second_handled_key =
+            pending_multisig_rehandle_key("eth-bridge-ocw::eth-re-handle-handled", 0x48, 0, 13);
+        push_global_json_rpc_response(types::U64::from(100u64));
+        EthBridge::handle_network(ETH_NETWORK_ID, (RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(
+            state.storage_read::<bool>(second_handled_key.as_bytes()),
+            None
+        );
+        assert_eq!(state.storage_read::<bool>(due_key.as_bytes()), Some(false));
+    });
+}
+
+#[test]
+fn pending_multisig_rehandle_round_robin_distinguishes_shared_timepoint_calls() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let bridge_account = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        // Distinct calls can legitimately share a sidechain timepoint. Their retry state must be
+        // keyed by call hash rather than `(height, index)`.
+        let candidates = [(0u64, 9u32, 0x44u8), (0u64, 9u32, 0x45u8)];
+        for (height, index, hash_byte) in candidates {
+            insert_pending_sidechain_multisig(&bridge_account, hash_byte, height, index);
+        }
+
+        push_global_raw_response(
+            br#"{"jsonrpc":"2.0","error":{"code":-32005,"message":"query returned more than 10000 results"},"id":0}"#,
+        );
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64 + 2,
+        ));
+
+        let range_keys = candidates.map(|(height, index, hash_byte)| {
+            pending_multisig_rehandle_key(
+                "eth-bridge-ocw::eth-re-handle-range-size",
+                hash_byte,
+                height,
+                index,
+            )
+        });
+        let handled_keys = candidates.map(|(height, index, hash_byte)| {
+            pending_multisig_rehandle_key(
+                "eth-bridge-ocw::eth-re-handle-handled",
+                hash_byte,
+                height,
+                index,
+            )
+        });
+        let first_failed = if state.storage_read::<u64>(range_keys[0].as_bytes()) == Some(1) {
+            0
+        } else {
+            assert_eq!(
+                state.storage_read::<u64>(range_keys[1].as_bytes()),
+                Some(1)
+            );
+            1
+        };
+
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64 + 2,
+        ));
+        assert_eq!(
+            state.storage_read::<bool>(handled_keys[first_failed].as_bytes()),
+            None
+        );
+        assert_eq!(
+            state.storage_read::<bool>(handled_keys[1 - first_failed].as_bytes()),
+            Some(true)
+        );
+        let cursor_key = format!(
+            "eth-bridge-ocw::eth-re-handle-cursor-{:?}",
+            ETH_NETWORK_ID
+        );
+        assert_eq!(state.storage_read::<u64>(cursor_key.as_bytes()), Some(2));
+    });
+}
+
+#[test]
+fn pending_multisig_rehandle_treats_reused_call_hash_at_new_timepoint_as_new() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let bridge_account = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        let call_hash_byte = 0x49;
+        insert_pending_sidechain_multisig(&bridge_account, call_hash_byte, 0, 14);
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64 + 2,
+        ));
+        let first_handled_key = pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-handled",
+            call_hash_byte,
+            0,
+            14,
+        );
+        assert_eq!(
+            state.storage_read::<bool>(first_handled_key.as_bytes()),
+            Some(true)
+        );
+
+        bridge_multisig::Multisigs::<Runtime>::remove(&bridge_account, [call_hash_byte; 32]);
+        insert_pending_sidechain_multisig(&bridge_account, call_hash_byte, 2, 15);
+        push_global_json_rpc_response::<[Log; 0]>([]);
+        assert!(EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64 + 2,
+        ));
+        let second_handled_key = pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-handled",
+            call_hash_byte,
+            2,
+            15,
+        );
+        assert_eq!(
+            state.storage_read::<bool>(second_handled_key.as_bytes()),
+            Some(true)
+        );
+    });
+}
+
+#[test]
+fn pending_multisig_rehandle_ignores_other_multisig_accounts() {
+    let (mut ext, state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let unrelated_account = get_account_id_from_seed::<sr25519::Public>("Alice");
+        assert_ne!(
+            unrelated_account,
+            crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap()
+        );
+        insert_pending_sidechain_multisig(&unrelated_account, 0x46, 0, 11);
+
+        // No RPC response is queued: selecting the unrelated operation would make the mock panic.
+        assert!(!EthBridge::handle_pending_multisig_calls(
+            ETH_NETWORK_ID,
+            MAX_PENDING_TX_BLOCKS_PERIOD as u64,
+        ));
+        let cursor_key = format!("eth-bridge-ocw::eth-re-handle-cursor-{:?}", ETH_NETWORK_ID);
+        assert_eq!(state.storage_read::<u64>(cursor_key.as_bytes()), None);
     });
 }
 
@@ -1150,6 +1870,81 @@ fn should_resend_incoming_requests_from_failed_offchain_queue() {
         assert_eq!(state.pending_txs().len(), 1);
         assert_eq!(state.failed_pending_txs().len(), 0);
         assert_eq!(state.pool_state.read().transactions.len(), 0);
+    });
+}
+
+#[test]
+fn failed_import_recovery_removes_completed_request_on_its_own_network() {
+    let mut builder = ExtBuilder::default();
+    let network_id = builder.add_network(vec![], None, Some(1), Default::default());
+    let (mut ext, state) = builder.build();
+    ext.execute_with(|| {
+        let tx_hash = H256::repeat_byte(0x71);
+        insert_failed_incoming_import(network_id, tx_hash);
+        crate::RequestStatuses::<Runtime>::insert(network_id, tx_hash, RequestStatus::Done);
+
+        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
+
+        assert!(state.failed_pending_txs().is_empty());
+        assert!(state.pending_txs().is_empty());
+        assert!(state.pool_state.read().transactions.is_empty());
+    });
+}
+
+#[test]
+fn failed_import_recovery_ignores_status_from_another_network() {
+    let mut builder = ExtBuilder::default();
+    let network_id = builder.add_network(vec![], None, Some(1), Default::default());
+    let (mut ext, state) = builder.build();
+    ext.execute_with(|| {
+        let tx_hash = H256::repeat_byte(0x72);
+        insert_failed_incoming_import(network_id, tx_hash);
+        crate::RequestStatuses::<Runtime>::insert(ETH_NETWORK_ID, tx_hash, RequestStatus::Done);
+
+        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
+
+        assert_eq!(state.failed_pending_txs().len(), 1);
+        assert_eq!(state.pending_txs().len(), 1);
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+    });
+}
+
+#[test]
+fn failed_import_recovery_runs_after_skipped_finalized_boundary() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        insert_failed_incoming_import(ETH_NETWORK_ID, H256::repeat_byte(0x73));
+
+        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD - 1).into());
+        assert!(state.pool_state.read().transactions.is_empty());
+
+        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+
+        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+
+        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD - 1).into());
+        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+
+        handle_substrate_at_finalized_height((2 * RE_HANDLE_TXS_PERIOD + 1).into());
+        assert_eq!(state.pool_state.read().transactions.len(), 2);
+    });
+}
+
+#[test]
+fn failed_import_recovery_runs_once_for_repeated_finalized_boundary() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        insert_failed_incoming_import(ETH_NETWORK_ID, H256::repeat_byte(0x74));
+
+        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+
+        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+        assert_eq!(state.failed_pending_txs().len(), 1);
     });
 }
 

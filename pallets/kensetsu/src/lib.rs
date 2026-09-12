@@ -76,6 +76,8 @@ const VALIDATION_ERROR_CHECK_SAFE: u8 = 3;
 const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
 /// Liquidation limit reached
 const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
+/// Accrue limit reached
+const VALIDATION_ERROR_ACCRUE_LIMIT: u8 = 6;
 
 /// Staiblecoin may be pegged either to Oracle (like XAU, BTC) or Price tools AssetId (like XOR,
 /// DAI).
@@ -224,8 +226,7 @@ pub mod pallet {
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, Saturating};
     use sp_core::bounded::BoundedVec;
-    use sp_runtime::traits::{CheckedConversion, One, Zero};
-    use sp_std::collections::vec_deque::VecDeque;
+    use sp_runtime::traits::{CheckedConversion, One, UniqueSaturatedInto, Zero};
     use sp_std::vec::Vec;
 
     /// CDP id type
@@ -243,7 +244,8 @@ pub mod pallet {
         /// Resets liquidation flag.
         fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
             LiquidatedThisBlock::<T>::put(false);
-            T::DbWeight::get().writes(1)
+            AccruesThisBlock::<T>::put(0);
+            T::DbWeight::get().writes(2)
         }
 
         /// Main off-chain worker procedure.
@@ -254,18 +256,12 @@ pub mod pallet {
                 "Entering off-chain worker, block number is {:?}",
                 block_number
             );
-            let mut unsafe_cdp_ids = VecDeque::<CdpId>::new();
+            let mut unsafe_cdp_count = 0usize;
+            let max_accrues = T::MaxAccruesPerBlock::get();
+            let mut accruable_cdp_count = 0usize;
             for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
                 if let Ok(true) = Self::is_accruable(&cdp_id) {
-                    debug!("Accrue for CDP {:?}", cdp_id);
-                    let call = Call::<T>::accrue { cdp_id };
-                    let tx = T::create_bare(call.into());
-                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                        debug!(
-                            "Failed in offchain_worker send accrue(cdp_id: {:?}): {:?}",
-                            cdp_id, err
-                        );
-                    }
+                    accruable_cdp_count = accruable_cdp_count.saturating_add(1);
                 }
 
                 // Liquidation
@@ -273,7 +269,7 @@ pub mod pallet {
                     Ok(true) => {}
                     Ok(false) => {
                         debug!("CDP {:?} unsafe", cdp_id);
-                        unsafe_cdp_ids.push_back(cdp_id);
+                        unsafe_cdp_count = unsafe_cdp_count.saturating_add(1);
                     }
                     Err(err) => {
                         debug!(
@@ -283,7 +279,49 @@ pub mod pallet {
                     }
                 }
             }
-            if !unsafe_cdp_ids.is_empty() {
+            if max_accrues != 0 && accruable_cdp_count != 0 {
+                let block_number: u64 = block_number.unique_saturated_into();
+                let start = block_number
+                    .saturating_mul(u64::from(max_accrues))
+                    .wrapping_rem(accruable_cdp_count as u64) as usize;
+                let submission_count = core::cmp::min(max_accrues as usize, accruable_cdp_count);
+                let first_submission_count =
+                    core::cmp::min(submission_count, accruable_cdp_count - start);
+                let submit_accrue = |cdp_id: CdpId| {
+                    debug!("Accrue for CDP {:?}", cdp_id);
+                    let call = Call::<T>::accrue { cdp_id };
+                    let tx = T::create_bare(call.into());
+                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
+                        debug!(
+                            "Failed in offchain_worker send accrue(cdp_id: {:?}): {:?}",
+                            cdp_id, err
+                        );
+                    }
+                };
+
+                for cdp_id in CDPDepository::<T>::iter()
+                    .filter_map(|(cdp_id, _)| {
+                        matches!(Self::is_accruable(&cdp_id), Ok(true)).then_some(cdp_id)
+                    })
+                    .skip(start)
+                    .take(first_submission_count)
+                {
+                    submit_accrue(cdp_id);
+                }
+
+                let wrapped_submission_count = submission_count - first_submission_count;
+                if wrapped_submission_count != 0 {
+                    for cdp_id in CDPDepository::<T>::iter()
+                        .filter_map(|(cdp_id, _)| {
+                            matches!(Self::is_accruable(&cdp_id), Ok(true)).then_some(cdp_id)
+                        })
+                        .take(wrapped_submission_count)
+                    {
+                        submit_accrue(cdp_id);
+                    }
+                }
+            }
+            if unsafe_cdp_count != 0 {
                 // Randomly choose one of CDPs to liquidate.
                 // This CDP id can be predicted and manipulated in front-running attack. It is a
                 // known problem. The purpose of the code is not to protect from the attack but to
@@ -292,24 +330,29 @@ pub mod pallet {
                 match u32::decode(&mut randomness.as_ref()) {
                     Ok(random_number) => {
                         // Random bias by modulus operation is acceptable here
-                        let random_id = random_number as usize % unsafe_cdp_ids.len();
-                        unsafe_cdp_ids
-                                    .get(random_id)
-                                    .map_or_else(
-                                        || {
-                                            warn!("Failed to get random cdp_id {}.", random_id);
-                                        },
-                                        |cdp_id| {
-                                        debug!("Liquidation of CDP {:?}", cdp_id);
-                                        let call = Call::<T>::liquidate { cdp_id: *cdp_id };
-                                        let tx = T::create_bare(call.into());
-                                        if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                                            warn!(
-                                                "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
-                                                cdp_id, err
-                                            );
-                                        }
-                                    });
+                        let random_id = random_number as usize % unsafe_cdp_count;
+                        CDPDepository::<T>::iter()
+                            .filter_map(|(cdp_id, cdp)| {
+                                matches!(Self::check_cdp_is_safe(&cdp), Ok(false))
+                                    .then_some(cdp_id)
+                            })
+                            .nth(random_id)
+                            .map_or_else(
+                                || {
+                                    warn!("Failed to get random cdp_id {}.", random_id);
+                                },
+                                |cdp_id| {
+                                    debug!("Liquidation of CDP {:?}", cdp_id);
+                                    let call = Call::<T>::liquidate { cdp_id };
+                                    let tx = T::create_bare(call.into());
+                                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
+                                        warn!(
+                                            "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
+                                            cdp_id, err
+                                        );
+                                    }
+                                },
+                            );
                     }
                     Err(error) => {
                         warn!("Failed to get randomness during liquidation: {}", error);
@@ -361,6 +404,10 @@ pub mod pallet {
         #[pallet::constant]
         type MinimalStabilityFeeAccrue: Get<Balance>;
 
+        /// Maximum number of accrue calls admitted per block.
+        #[pallet::constant]
+        type MaxAccruesPerBlock: Get<u32>;
+
         /// A configuration for base priority of unsigned transactions.
         #[pallet::constant]
         type UnsignedPriority: Get<TransactionPriority>;
@@ -386,6 +433,10 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn liquidated_this_block)]
     pub type LiquidatedThisBlock<T> = StorageValue<_, bool, ValueQuery, DefaultLiquidatedThisBlock>;
+
+    /// Number of accrues already executed in the current block.
+    #[pallet::storage]
+    pub type AccruesThisBlock<T> = StorageValue<_, u32, ValueQuery>;
 
     /// Stablecoin parameters
     #[pallet::storage]
@@ -633,6 +684,8 @@ pub mod pallet {
 
         /// Collateral must be registered in PriceTools.
         CollateralNotRegisteredInPriceTools,
+        /// Accrue limit reached
+        AccrueLimit,
     }
 
     #[pallet::call]
@@ -828,10 +881,15 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             ensure!(
+                AccruesThisBlock::<T>::get() < T::MaxAccruesPerBlock::get(),
+                Error::<T>::AccrueLimit
+            );
+            ensure!(
                 Self::is_accruable(&cdp_id)?,
                 Error::<T>::UncollectedStabilityFeeTooSmall
             );
             Self::get_cdp_updated(cdp_id)?;
+            AccruesThisBlock::<T>::mutate(|count| *count = count.saturating_add(1));
             Ok(())
         }
 
@@ -1247,12 +1305,15 @@ pub mod pallet {
         type Call = Call<T>;
 
         /// It is allowed to call accrue() and liquidate() only if it fulfills conditions.
-        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            if !Self::check_liquidation_available() {
-                return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT).into();
-            }
+        fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
                 Call::accrue { cdp_id } => {
+                    if matches!(source, TransactionSource::InBlock)
+                        && AccruesThisBlock::<T>::get() >= T::MaxAccruesPerBlock::get()
+                    {
+                        return InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE_LIMIT).into();
+                    }
+
                     if Self::is_accruable(cdp_id)
                         .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE))?
                     {
@@ -1267,6 +1328,13 @@ pub mod pallet {
                     }
                 }
                 Call::liquidate { cdp_id } => {
+                    if matches!(source, TransactionSource::InBlock)
+                        && !Self::check_liquidation_available()
+                    {
+                        return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT)
+                            .into();
+                    }
+
                     let cdp = Self::get_cdp_updated(*cdp_id)
                         .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
                     if !Self::check_cdp_is_safe(&cdp)

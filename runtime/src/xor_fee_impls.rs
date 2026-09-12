@@ -45,7 +45,7 @@ use sp_runtime::traits::Zero;
 #[cfg(feature = "wip")] // Dynamic fee
 use sp_runtime::FixedU128;
 use sp_runtime::Perbill;
-use sp_staking::{EraIndex, Page, StakingAccount};
+use sp_staking::{EraIndex, Page};
 use vested_rewards::vesting_currencies::VestingSchedule;
 
 #[derive(Debug, PartialEq)]
@@ -202,74 +202,29 @@ pub struct StakingValPayoutPre {
 
 pub struct StakingValPayout;
 
-impl xor_fee::StakingValPayout<RuntimeCall, AccountId> for StakingValPayout {
-    type Pre = StakingValPayoutPre;
-
-    fn pre_dispatch(call: &RuntimeCall) -> Option<Self::Pre> {
-        match call {
-            RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
-                validator_stash,
-                era,
-            }) => {
-                let page = next_claimable_staking_page(*era, validator_stash)?;
-                Some(StakingValPayoutPre {
-                    validator_stash: validator_stash.clone(),
-                    era: *era,
-                    page,
-                })
-            }
-            RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page {
-                validator_stash,
-                era,
-                page,
-            }) => Some(StakingValPayoutPre {
-                validator_stash: validator_stash.clone(),
-                era: *era,
-                page: *page,
-            }),
-            _ => None,
-        }
-    }
-
-    fn post_dispatch(pre: Option<Self::Pre>, result: &DispatchResult) {
-        if result.is_err() {
-            return;
-        }
-
-        if let Some(pre) = pre {
-            if let Err(e) = pay_val_staking_reward(pre) {
-                frame_support::__private::log::error!(
-                    "failed to pay VAL staking reward after staking payout: {e:?}"
-                );
-            }
-        }
-    }
-}
-
-fn next_claimable_staking_page(era: EraIndex, validator: &AccountId) -> Option<Page> {
-    let controller = pallet_staking::Pallet::<Runtime>::bonded(validator)?;
-    let ledger =
-        pallet_staking::Pallet::<Runtime>::ledger(StakingAccount::Controller(controller)).ok()?;
-
-    if pallet_staking::ErasStakersClipped::<Runtime>::contains_key(era, validator) {
-        return ledger
-            .legacy_claimed_rewards
-            .binary_search(&era)
-            .is_err()
-            .then_some(0);
-    }
-
-    let page_count = pallet_staking::ErasStakersOverview::<Runtime>::get(era, validator)
-        .map(|overview| {
-            if overview.page_count == 0 && !overview.own.is_zero() {
-                1
-            } else {
-                overview.page_count
-            }
+impl pallet_staking::AdditionalPayout<AccountId> for StakingValPayout {
+    fn payout(validator_stash: &AccountId, era: EraIndex, page: Page) -> DispatchResult {
+        pay_val_staking_reward(StakingValPayoutPre {
+            validator_stash: validator_stash.clone(),
+            era,
+            page,
         })
-        .unwrap_or(1);
-    let claimed_pages = pallet_staking::ClaimedRewards::<Runtime>::get(era, validator);
-    (0..page_count).find(|page| !claimed_pages.contains(page))
+    }
+
+    fn weight(nominators: u32) -> Weight {
+        // Reserve the native staking calculation bound again for the VAL split and
+        // exposure/reward reads. Each VAL recipient additionally executes the same
+        // token deposit as force_mint, plus payee/controller reads and an event.
+        // Count every exposure, including zero rewards and skipped destinations,
+        // so native zero-reward refunds cannot discard the VAL work.
+        <<Runtime as pallet_staking::Config>::WeightInfo as pallet_staking::WeightInfo>::payout_stakers_alive_staked(nominators)
+            .saturating_add(
+                <<Runtime as assets::Config>::WeightInfo as assets::weights::WeightInfo>::force_mint()
+                    .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(2))
+                    .saturating_add(Weight::from_parts(10_000_000, 6_000))
+                    .saturating_mul(u64::from(nominators).saturating_add(1)),
+            )
+    }
 }
 
 fn pay_val_staking_reward(pre: StakingValPayoutPre) -> DispatchResult {
@@ -727,6 +682,52 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
         Ok(())
     }
 
+    #[cfg(feature = "wip")]
+    fn withdraw_fee_with_liquidity_info(
+        who: &AccountId,
+        fee_source: &AccountId,
+        call: &RuntimeCall,
+        fee: Balance,
+    ) -> Result<xor_fee::LiquidityInfo<Runtime>, DispatchError> {
+        if let RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+            call: inner_call,
+            asset_id: Some(asset_id),
+        }) = call
+        {
+            let referral_pays_native = matches!(
+                inner_call.as_ref(),
+                RuntimeCall::Referrals(referrals::Call::set_referrer { .. })
+                    if Referrals::can_set_referrer(who)
+            );
+            if !referral_pays_native {
+                if !XorFee::whitelist_tokens().contains(asset_id) {
+                    return Err(xor_fee::Error::<Runtime>::AssetNotFound.into());
+                }
+                let asset_fee = (FixedWrapper::from(PriceTools::get_average_price(
+                    &GetXorAssetId::get(),
+                    asset_id,
+                    PriceVariant::Buy,
+                )?) * fee)
+                    .into_balance();
+                if asset_fee < MinimalFeeInAsset::get() {
+                    return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into());
+                }
+                Tokens::withdraw(
+                    *asset_id,
+                    fee_source,
+                    asset_fee,
+                    ExistenceRequirement::KeepAlive,
+                )?;
+                return Ok(xor_fee::LiquidityInfo::PaidInAsset(
+                    fee_source.clone(),
+                    *asset_id,
+                    asset_fee,
+                ));
+            }
+        }
+        Self::withdraw_fee(who, fee_source, call, fee).map(Into::into)
+    }
+
     fn withdraw_fee(
         who: &AccountId,
         fee_source: &AccountId,
@@ -762,30 +763,8 @@ impl xor_fee::WithdrawFee<Runtime> for WithdrawFee {
                     _ => {
                         match *asset_id {
                             None => {},
-                            Some(asset_id) if XorFee::whitelist_tokens().contains(&asset_id) => {
-                                let asset_fee = FixedWrapper::from(
-                                    PriceTools::get_average_price(
-                                        &GetXorAssetId::get(),
-                                        &asset_id,
-                                        PriceVariant::Buy)?
-                                ) * fee;
-                                let asset_fee = asset_fee.into_balance();
-                                if asset_fee.lt(&MinimalFeeInAsset::get()) {
-                                    return Err(xor_fee::Error::<Runtime>::FeeCalculationFailed.into())
-                                };
-                                return Ok((
-                                    fee_source.clone(),
-                                    Some(Tokens::withdraw(
-                                        asset_id,
-                                        fee_source,
-                                        asset_fee,
-                                        ExistenceRequirement::KeepAlive,
-                                    ).map(|_| {
-                                        NegativeImbalanceOf::<Runtime>::new(asset_fee)
-                                    })?),
-                                    Some(asset_id),
-                                ))
-                            }
+                            // Asset fees use withdraw_fee_with_liquidity_info so a native
+                            // imbalance can never carry an amount in another currency.
                             _ => { return Err(xor_fee::Error::<Runtime>::AssetNotFound.into()) }
                         }
                     }
@@ -831,6 +810,7 @@ impl xor_fee::CalculateMultiplier<common::AssetIdOf<Runtime>, DispatchError> for
 
 #[cfg(test)]
 mod tests {
+    use frame_support::assert_ok;
     use frame_support::dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo};
     use frame_support::traits::{Currency, OnRuntimeUpgrade};
     use frame_support::weights::Weight;
@@ -900,6 +880,9 @@ mod tests {
         let controller = AccountId32::from([42; 32]);
         let nominator = AccountId32::from([43; 32]);
         let era = 7;
+        drop(Balances::deposit_creating(&validator, 100));
+        pallet_staking::CurrentEra::<Runtime>::put(era + 1);
+        pallet_staking::ErasValidatorReward::<Runtime>::insert(era, 0);
 
         pallet_staking::Bonded::<Runtime>::insert(&validator, &controller);
         pallet_staking::Ledger::<Runtime>::insert(
@@ -959,15 +942,66 @@ mod tests {
     }
 
     fn staking_payout_pre(call: &RuntimeCall) -> Option<super::StakingValPayoutPre> {
-        <super::StakingValPayout as xor_fee::StakingValPayout<RuntimeCall, AccountId>>::pre_dispatch(
-            call,
-        )
+        let (validator_stash, era, page) = match call {
+            RuntimeCall::Staking(pallet_staking::Call::payout_stakers {
+                validator_stash,
+                era,
+            }) => {
+                let ledger = pallet_staking::Pallet::<Runtime>::ledger(StakingAccount::Stash(
+                    validator_stash.clone(),
+                ))
+                .ok()?;
+                let page = if pallet_staking::ErasStakersClipped::<Runtime>::contains_key(
+                    era,
+                    validator_stash,
+                ) {
+                    ledger
+                        .legacy_claimed_rewards
+                        .binary_search(era)
+                        .is_err()
+                        .then_some(0)
+                } else {
+                    let count =
+                        pallet_staking::ErasStakersOverview::<Runtime>::get(era, validator_stash)
+                            .map(|overview| {
+                                if overview.page_count == 0 && overview.own > 0 {
+                                    1
+                                } else {
+                                    overview.page_count
+                                }
+                            })
+                            .unwrap_or(1);
+                    let claimed =
+                        pallet_staking::ClaimedRewards::<Runtime>::get(era, validator_stash);
+                    (0..count).find(|page| !claimed.contains(page))
+                }?;
+                (validator_stash.clone(), *era, page)
+            }
+            RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page {
+                validator_stash,
+                era,
+                page,
+            }) => (validator_stash.clone(), *era, *page),
+            _ => return None,
+        };
+        Some(super::StakingValPayoutPre {
+            validator_stash,
+            era,
+            page,
+        })
     }
 
     fn staking_payout_post(pre: Option<super::StakingValPayoutPre>, result: &DispatchResult) {
-        <super::StakingValPayout as xor_fee::StakingValPayout<RuntimeCall, AccountId>>::post_dispatch(
-            pre, result,
-        );
+        if result.is_ok() {
+            if let Some(pre) = pre {
+                <super::StakingValPayout as pallet_staking::AdditionalPayout<AccountId>>::payout(
+                    &pre.validator_stash,
+                    pre.era,
+                    pre.page,
+                )
+                .expect("fixture VAL payout succeeds");
+            }
+        }
     }
 
     fn assert_no_val_rewards(fixture: &StakingPayoutFixture) {
@@ -1014,6 +1048,302 @@ mod tests {
                 _ => None,
             })
             .collect()
+    }
+
+    fn dispatch_staking_payout(
+        fixture: &StakingPayoutFixture,
+    ) -> frame_support::dispatch::DispatchResultWithPostInfo {
+        use sp_runtime::traits::Dispatchable;
+        payout_stakers_call(fixture)
+            .dispatch(crate::RuntimeOrigin::signed(fixture.controller.clone()))
+    }
+
+    #[test]
+    fn staking_payout_dispatch_pays_once_and_preserves_xor_issuance() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let xor_before = Balances::total_issuance();
+            let val_before = Currencies::total_issuance(VAL.into());
+            assert_ok!(dispatch_staking_payout(&fixture));
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.validator),
+                balance!(400)
+            );
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+            assert_eq!(Balances::total_issuance(), xor_before);
+            assert_eq!(
+                Currencies::total_issuance(VAL.into()),
+                val_before + balance!(1000)
+            );
+            assert!(dispatch_staking_payout(&fixture).is_err());
+            assert_eq!(
+                Currencies::total_issuance(VAL.into()),
+                val_before + balance!(1000)
+            );
+            assert_eq!(val_staking_reward_paid_events().len(), 2);
+        });
+    }
+
+    #[test]
+    fn staking_payout_dispatch_paged_rewards_pay_each_page_once() {
+        use sp_runtime::traits::Dispatchable;
+        for explicit_page in [false, true] {
+            framenode_chain_spec::ext().execute_with(|| {
+                let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+                let second_nominator = AccountId32::from([61; 32]);
+                pallet_staking::Payee::<Runtime>::insert(
+                    &second_nominator,
+                    RewardDestination::Stash,
+                );
+                pallet_staking::ErasStakersClipped::<Runtime>::remove(
+                    fixture.era,
+                    &fixture.validator,
+                );
+                pallet_staking::ErasStakersOverview::<Runtime>::insert(
+                    fixture.era,
+                    &fixture.validator,
+                    PagedExposureMetadata {
+                        total: 100,
+                        own: 40,
+                        nominator_count: 2,
+                        page_count: 2,
+                    },
+                );
+                for (page, who) in [
+                    (0, fixture.nominator.clone()),
+                    (1, second_nominator.clone()),
+                ] {
+                    pallet_staking::ErasStakersPaged::<Runtime>::insert(
+                        (fixture.era, &fixture.validator, page),
+                        ExposurePage {
+                            page_total: 30,
+                            others: vec![IndividualExposure { who, value: 30 }],
+                        },
+                    );
+                }
+                pallet_staking::ErasValidatorPrefs::<Runtime>::insert(
+                    fixture.era,
+                    &fixture.validator,
+                    ValidatorPrefs {
+                        commission: Perbill::from_percent(10),
+                        ..Default::default()
+                    },
+                );
+                for page in 0..2 {
+                    if explicit_page {
+                        assert_ok!(RuntimeCall::Staking(
+                            pallet_staking::Call::payout_stakers_by_page {
+                                validator_stash: fixture.validator.clone(),
+                                era: fixture.era,
+                                page,
+                            }
+                        )
+                        .dispatch(crate::RuntimeOrigin::signed(fixture.controller.clone())));
+                    } else {
+                        assert_ok!(dispatch_staking_payout(&fixture));
+                    }
+                }
+                assert_eq!(
+                    Currencies::free_balance(VAL.into(), &fixture.validator),
+                    balance!(460)
+                );
+                assert_eq!(
+                    Currencies::free_balance(VAL.into(), &fixture.nominator),
+                    balance!(270)
+                );
+                assert_eq!(
+                    Currencies::free_balance(VAL.into(), &second_nominator),
+                    balance!(270)
+                );
+                assert_eq!(
+                    pallet_staking::ClaimedRewards::<Runtime>::get(fixture.era, &fixture.validator),
+                    vec![0, 1]
+                );
+                assert!(dispatch_staking_payout(&fixture).is_err());
+                assert_eq!(val_staking_reward_paid_events().len(), 4);
+            });
+        }
+    }
+
+    #[test]
+    fn staking_payout_dispatch_self_only_zero_page_count_is_claimable_once() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            pallet_staking::ErasStakersClipped::<Runtime>::remove(fixture.era, &fixture.validator);
+            pallet_staking::ErasStakersOverview::<Runtime>::insert(
+                fixture.era,
+                &fixture.validator,
+                PagedExposureMetadata {
+                    total: 100,
+                    own: 100,
+                    nominator_count: 0,
+                    page_count: 0,
+                },
+            );
+            assert_ok!(dispatch_staking_payout(&fixture));
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.validator),
+                balance!(1000)
+            );
+            assert!(dispatch_staking_payout(&fixture).is_err());
+            assert_eq!(val_staking_reward_paid_events().len(), 1);
+        });
+    }
+
+    #[test]
+    fn staking_payout_dispatch_retains_val_weight_with_zero_native_reward() {
+        use frame_support::dispatch::GetDispatchInfo;
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let declared = payout_stakers_call(&fixture).get_dispatch_info().call_weight;
+            let actual = dispatch_staking_payout(&fixture).unwrap().actual_weight.unwrap();
+            let native = <<Runtime as pallet_staking::Config>::WeightInfo as pallet_staking::WeightInfo>::payout_stakers_alive_staked(0);
+            let val = <super::StakingValPayout as pallet_staking::AdditionalPayout<AccountId>>::weight(1);
+            assert_eq!(actual, native.saturating_add(val));
+            assert!(actual.ref_time() > native.ref_time());
+            assert!(actual.proof_size() > native.proof_size());
+            assert!(declared.all_gte(actual));
+        });
+    }
+
+    #[test]
+    fn staking_payout_dispatch_utility_batches_pay_val() {
+        use sp_runtime::traits::Dispatchable;
+        for kind in 0..3 {
+            framenode_chain_spec::ext().execute_with(|| {
+                let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+                let calls = vec![payout_stakers_call(&fixture)];
+                let batch = match kind {
+                    0 => UtilityCall::batch { calls },
+                    1 => UtilityCall::batch_all { calls },
+                    _ => UtilityCall::force_batch { calls },
+                };
+                assert_ok!(RuntimeCall::Utility(batch)
+                    .dispatch(crate::RuntimeOrigin::signed(fixture.controller.clone())));
+                assert_eq!(
+                    Currencies::free_balance(VAL.into(), &fixture.validator),
+                    balance!(400)
+                );
+                assert_eq!(
+                    Currencies::free_balance(VAL.into(), &fixture.nominator),
+                    balance!(600)
+                );
+                assert_eq!(val_staking_reward_paid_events().len(), 2);
+            });
+        }
+    }
+
+    #[test]
+    fn staking_payout_dispatch_batch_all_failure_rolls_back_claim_and_val() {
+        use sp_runtime::traits::Dispatchable;
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let issuance = Currencies::total_issuance(VAL.into());
+            let calls = vec![payout_stakers_call(&fixture), payout_stakers_call(&fixture)];
+            assert!(RuntimeCall::Utility(UtilityCall::batch_all { calls })
+                .dispatch(crate::RuntimeOrigin::signed(fixture.controller.clone()))
+                .is_err());
+            assert_no_val_rewards(&fixture);
+            assert_eq!(Currencies::total_issuance(VAL.into()), issuance);
+            assert!(val_staking_reward_paid_events().is_empty());
+            assert_ok!(dispatch_staking_payout(&fixture));
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+        });
+    }
+
+    #[test]
+    fn staking_payout_dispatch_partial_batch_preserves_only_successful_claim() {
+        use sp_runtime::traits::Dispatchable;
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let calls = vec![payout_stakers_call(&fixture), payout_stakers_call(&fixture)];
+            assert_ok!(RuntimeCall::Utility(UtilityCall::batch { calls })
+                .dispatch(crate::RuntimeOrigin::signed(fixture.controller.clone())));
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+            assert_eq!(val_staking_reward_paid_events().len(), 2);
+            assert!(dispatch_staking_payout(&fixture).is_err());
+        });
+    }
+
+    #[test]
+    fn staking_payout_dispatch_multisig_pays_val() {
+        use sp_runtime::traits::Dispatchable;
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let call = RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
+                other_signatories: vec![AccountId32::from([60; 32])],
+                call: Box::new(payout_stakers_call(&fixture)),
+            });
+            assert_ok!(call.dispatch(crate::RuntimeOrigin::signed(fixture.controller.clone())));
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+            assert_eq!(val_staking_reward_paid_events().len(), 2);
+        });
+    }
+
+    #[test]
+    fn staking_payout_dispatch_mint_failure_rolls_back_earlier_payments_and_claim() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            // Fault injection: validator mint fits, the following nominator mint
+            // overflows. A failed deposit must leave the page retryable.
+            let val = AssetId::from(VAL);
+            let issuance = tokens::TotalIssuance::<Runtime>::get(val);
+            tokens::TotalIssuance::<Runtime>::insert(val, u128::MAX - balance!(500));
+            assert!(dispatch_staking_payout(&fixture).is_err());
+            assert_no_val_rewards(&fixture);
+            assert!(val_staking_reward_paid_events().is_empty());
+            assert_eq!(
+                tokens::TotalIssuance::<Runtime>::get(val),
+                u128::MAX - balance!(500)
+            );
+            tokens::TotalIssuance::<Runtime>::insert(val, issuance);
+            assert_ok!(dispatch_staking_payout(&fixture));
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+        });
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn staking_payout_dispatch_fee_settlement_does_not_pay_twice() {
+        framenode_chain_spec::ext().execute_with(|| {
+            let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
+            let caller = AccountId32::from([49; 32]);
+            fund_fee_payer(&caller);
+            let call = payout_stakers_call(&fixture);
+            let info = frame_support::dispatch::GetDispatchInfo::get_dispatch_info(&call);
+            let pre = ChargeTransactionPayment::<Runtime>::new()
+                .pre_dispatch(&caller, &call, &info, 10)
+                .unwrap();
+            let post = dispatch_staking_payout(&fixture).unwrap();
+            ChargeTransactionPayment::<Runtime>::post_dispatch(
+                Some(pre),
+                &info,
+                &post,
+                10,
+                &Ok(()),
+            )
+            .unwrap();
+            assert_eq!(
+                Currencies::free_balance(VAL.into(), &fixture.nominator),
+                balance!(600)
+            );
+            assert_eq!(val_staking_reward_paid_events().len(), 2);
+        });
     }
 
     #[test]
@@ -1351,7 +1681,7 @@ mod tests {
 
     #[test]
     #[allow(deprecated)]
-    fn signed_extension_post_dispatch_triggers_staking_val_payout() {
+    fn signed_extension_post_dispatch_does_not_mint_without_staking_dispatch() {
         framenode_chain_spec::ext().execute_with(|| {
             let fixture = setup_staking_payout_fixture(Some(balance!(1000)));
             let caller = AccountId32::from([49; 32]);
@@ -1372,33 +1702,8 @@ mod tests {
             )
             .expect("post dispatch should settle the fee");
 
-            assert_eq!(
-                Currencies::free_balance(VAL.into(), &fixture.validator),
-                balance!(400)
-            );
-            assert_eq!(
-                Currencies::free_balance(VAL.into(), &fixture.nominator),
-                balance!(600)
-            );
-            assert_eq!(
-                val_staking_reward_paid_events(),
-                vec![
-                    (
-                        fixture.validator.clone(),
-                        fixture.validator.clone(),
-                        fixture.era,
-                        0,
-                        balance!(400)
-                    ),
-                    (
-                        fixture.nominator.clone(),
-                        fixture.nominator.clone(),
-                        fixture.era,
-                        0,
-                        balance!(600)
-                    ),
-                ]
-            );
+            assert_no_val_rewards(&fixture);
+            assert!(val_staking_reward_paid_events().is_empty());
         });
     }
 

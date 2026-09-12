@@ -331,8 +331,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `1234006`
 		// Minimum execution time: 1_368_697_000 picoseconds.
 		Weight::from_parts(1_405_425_000, 1234006)
-			.saturating_add(T::DbWeight::get().reads(37_u64))
-			.saturating_add(T::DbWeight::get().writes(12_u64))
+				.saturating_add(T::DbWeight::get().reads(39_u64))
+				.saturating_add(T::DbWeight::get().writes(13_u64))
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)
@@ -638,8 +638,8 @@ impl WeightInfo for () {
 		//  Estimated: `1234006`
 		// Minimum execution time: 1_368_697_000 picoseconds.
 		Weight::from_parts(1_405_425_000, 1234006)
-			.saturating_add(RocksDbWeight::get().reads(37_u64))
-			.saturating_add(RocksDbWeight::get().writes(12_u64))
+				.saturating_add(RocksDbWeight::get().reads(39_u64))
+				.saturating_add(RocksDbWeight::get().writes(13_u64))
 	}
 	/// Storage: ApolloPlatform AuthorityAccount (r:1 w:0)
 	/// Proof Skipped: ApolloPlatform AuthorityAccount (max_values: Some(1), max_size: None, mode: Measured)

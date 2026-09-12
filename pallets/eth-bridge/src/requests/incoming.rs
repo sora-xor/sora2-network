@@ -165,6 +165,10 @@ impl<T: Config> IncomingChangePeers<T> {
                     frame_system::Pallet::<T>::dec_consumers(peer);
                 }
             } else {
+                ensure!(
+                    crate::Peers::<T>::get(self.network_id).len() < MAX_PEERS,
+                    Error::<T>::CantAddMorePeers
+                );
                 let account_id = self
                     .peer_account_id
                     .as_ref()
@@ -256,6 +260,10 @@ impl<T: Config> IncomingChangePeersCompat<T> {
         if is_ready {
             let account_id = self.peer_account_id.clone();
             if self.added {
+                ensure!(
+                    crate::Peers::<T>::get(self.network_id).len() < MAX_PEERS,
+                    Error::<T>::CantAddMorePeers
+                );
                 let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
                     .ok_or(Error::<T>::UnknownNetwork)?;
                 bridge_multisig::Pallet::<T>::add_signatory(

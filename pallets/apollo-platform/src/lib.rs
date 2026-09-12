@@ -79,8 +79,9 @@ pub mod pallet {
     use sp_runtime::traits::{Saturating, UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
-
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
+    /// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
+    const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 1;
 
     #[pallet::config]
     pub trait Config:
@@ -107,6 +108,10 @@ pub mod pallet {
         /// A configuration for longevity of unsigned transactions.
         #[pallet::constant]
         type UnsignedLongevity: Get<u64>;
+
+        /// Maximum number of liquidation calls admitted per block.
+        #[pallet::constant]
+        type MaxLiquidationsPerBlock: Get<u32>;
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
@@ -147,6 +152,10 @@ pub mod pallet {
         BTreeMap<AssetIdOf<T>, BorrowingPosition<BlockNumberFor<T>>>,
         OptionQuery,
     >;
+
+    /// Number of liquidations already executed in the current block.
+    #[pallet::storage]
+    pub type LiquidationsThisBlock<T: Config> = StorageValue<_, u32, ValueQuery>;
 
     /// User AccountId -> Collateral Asset -> Total Collateral Amount
     #[pallet::storage]
@@ -357,6 +366,8 @@ pub mod pallet {
         RewardRateExceedsRemaining,
         /// Arithmetic error
         ArithmeticError,
+        /// Liquidation limit reached
+        LiquidationLimit,
     }
 
     #[pallet::call]
@@ -1130,6 +1141,11 @@ pub mod pallet {
             user: AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
+            ensure!(
+                LiquidationsThisBlock::<T>::get() < T::MaxLiquidationsPerBlock::get(),
+                Error::<T>::LiquidationLimit
+            );
+
             let user_infos =
                 UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap_or_default();
             ensure!(!user_infos.is_empty(), Error::<T>::InvalidLiquidation);
@@ -1224,6 +1240,7 @@ pub mod pallet {
             <UserBorrowingInfo<T>>::remove(asset_id, user.clone());
 
             Self::deposit_event(Event::Liquidated(user, asset_id));
+            LiquidationsThisBlock::<T>::mutate(|count| *count = count.saturating_add(1));
 
             Ok(())
         }
@@ -1470,9 +1487,16 @@ pub mod pallet {
         type Call = Call<T>;
 
         /// It is allowed to call only liquidate() and only if it fulfills conditions.
-        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+        fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             match call {
                 Call::liquidate { user, asset_id } => {
+                    if matches!(source, TransactionSource::InBlock)
+                        && LiquidationsThisBlock::<T>::get() >= T::MaxLiquidationsPerBlock::get()
+                    {
+                        return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT)
+                            .into();
+                    }
+
                     let user_infos =
                         UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap_or_default();
                     if Self::check_liquidation(&user_infos, *asset_id) {
@@ -1497,6 +1521,8 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            LiquidationsThisBlock::<T>::put(0);
+
             let lending_rewards = <LendingRewards<T>>::get();
             let lending_rewards_per_block = <LendingRewardsPerBlock<T>>::get();
             if !lending_rewards.is_zero() && !lending_rewards_per_block.is_zero() {
@@ -1529,7 +1555,7 @@ pub mod pallet {
 
             T::DbWeight::get()
                 .reads(6)
-                .saturating_add(T::DbWeight::get().writes(4))
+                .saturating_add(T::DbWeight::get().writes(5))
         }
 
         /// Off-chain worker procedure - calls liquidations
@@ -1539,22 +1565,58 @@ pub mod pallet {
                 block_number
             );
 
-            for (asset_id, user, user_infos) in UserBorrowingInfo::<T>::iter() {
-                // Check liquidation
-                if Self::check_liquidation(&user_infos, asset_id) {
-                    // Liquidate
-                    debug!("Liquidation of user {:?}", user);
-                    let call = Call::<T>::liquidate {
-                        user: user.clone(),
-                        asset_id,
-                    };
-                    let tx = T::create_bare(call.into());
-                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                        warn!(
-                            "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
-                            user, err
-                        );
-                    }
+            let max_liquidations = T::MaxLiquidationsPerBlock::get();
+            if max_liquidations == 0 {
+                return;
+            }
+
+            let candidate_count = UserBorrowingInfo::<T>::iter()
+                .filter(|(asset_id, _, user_infos)| Self::check_liquidation(user_infos, *asset_id))
+                .count();
+            if candidate_count == 0 {
+                return;
+            }
+
+            let block_number: u64 = block_number.unique_saturated_into();
+            let start = block_number
+                .saturating_mul(u64::from(max_liquidations))
+                .wrapping_rem(candidate_count as u64) as usize;
+            let submission_count = core::cmp::min(max_liquidations as usize, candidate_count);
+            let first_submission_count = core::cmp::min(submission_count, candidate_count - start);
+            let submit_candidate = |asset_id: AssetIdOf<T>, user: AccountIdOf<T>| {
+                debug!("Liquidation of user {:?}", user);
+                let call = Call::<T>::liquidate {
+                    user: user.clone(),
+                    asset_id,
+                };
+                let tx = T::create_bare(call.into());
+                if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
+                    warn!(
+                        "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
+                        user, err
+                    );
+                }
+            };
+
+            for (asset_id, user) in UserBorrowingInfo::<T>::iter()
+                .filter_map(|(asset_id, user, user_infos)| {
+                    Self::check_liquidation(&user_infos, asset_id).then_some((asset_id, user))
+                })
+                .skip(start)
+                .take(first_submission_count)
+            {
+                submit_candidate(asset_id, user);
+            }
+
+            let wrapped_submission_count = submission_count - first_submission_count;
+            if wrapped_submission_count != 0 {
+                for (asset_id, user) in UserBorrowingInfo::<T>::iter()
+                    .filter_map(|(asset_id, user, user_infos)| {
+                        Self::check_liquidation(&user_infos, asset_id).then_some((asset_id, user))
+                    })
+                    .take(wrapped_submission_count)
+                {
+                    submit_candidate(asset_id, user);
                 }
             }
         }
@@ -1688,38 +1750,64 @@ pub mod pallet {
             user_infos: &BTreeMap<AssetIdOf<T>, BorrowingPosition<BlockNumberFor<T>>>,
             borrowing_asset: AssetIdOf<T>,
         ) -> bool {
+            Self::checked_liquidation_health_factor(user_infos, borrowing_asset)
+                .map(|health_factor| health_factor < balance!(1))
+                .unwrap_or(false)
+        }
+
+        fn checked_liquidation_health_factor(
+            user_infos: &BTreeMap<AssetIdOf<T>, BorrowingPosition<BlockNumberFor<T>>>,
+            borrowing_asset: AssetIdOf<T>,
+        ) -> Option<Balance> {
+            if user_infos.is_empty() {
+                return None;
+            }
+            PoolData::<T>::get(borrowing_asset)?;
+
             let mut sum_of_thresholds: Balance = 0;
             let mut total_borrowed: Balance = 0;
 
             for (collateral_asset, user_info) in user_infos.iter() {
-                let collateral_pool_info = PoolData::<T>::get(collateral_asset).unwrap_or_default();
+                let collateral_pool_info = PoolData::<T>::get(collateral_asset)?;
+
                 let collateral_asset_price = Self::get_price(*collateral_asset);
+                if collateral_asset_price.is_zero() {
+                    return None;
+                }
 
                 // Multiply collateral value and liquidation threshold and then add it to the sum
                 let collateral_in_dollars = FixedWrapper::from(user_info.collateral_amount)
                     * FixedWrapper::from(collateral_asset_price);
 
-                sum_of_thresholds += (collateral_in_dollars
+                let threshold = (collateral_in_dollars
                     * FixedWrapper::from(collateral_pool_info.liquidation_threshold))
                 .try_into_balance()
-                .unwrap_or(0);
+                .ok()?;
+                sum_of_thresholds = sum_of_thresholds.checked_add(threshold)?;
 
                 // Add borrowing amount to total borrowed
-                total_borrowed += user_info.borrowing_amount;
+                total_borrowed = total_borrowed.checked_add(user_info.borrowing_amount)?;
+            }
+            if total_borrowed.is_zero() {
+                return None;
             }
 
             let borrowing_asset_price = Self::get_price(borrowing_asset);
+            if borrowing_asset_price.is_zero() {
+                return None;
+            }
+
             let total_borrowed_in_dollars: u128 = (FixedWrapper::from(total_borrowed)
                 * FixedWrapper::from(borrowing_asset_price))
             .try_into_balance()
-            .unwrap_or(0);
+            .ok()?;
+            if total_borrowed_in_dollars.is_zero() {
+                return None;
+            }
 
-            let health_factor = (FixedWrapper::from(sum_of_thresholds)
-                / FixedWrapper::from(total_borrowed_in_dollars))
-            .try_into_balance()
-            .unwrap_or(0);
-
-            health_factor < balance!(1)
+            (FixedWrapper::from(sum_of_thresholds) / FixedWrapper::from(total_borrowed_in_dollars))
+                .try_into_balance()
+                .ok()
         }
 
         pub fn calculate_lending_earnings(

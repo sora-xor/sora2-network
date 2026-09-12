@@ -1,0 +1,65 @@
+{
+  "metadataBlock": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+  "proposalHash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+  "proposalLength": 3055512,
+  "wasmBlake2": "0xf062ed07861255f5ec443930de9c5066d1e4133036126d48462c8e233a75f27e",
+  "councilCount": 8,
+  "minimumCouncilThreshold": 4,
+  "conservativeCouncilThreshold": 5,
+  "technicalCommitteeCount": 4,
+  "technicalCommitteeThreshold": 3,
+  "votingPeriodBlocks": 1800,
+  "delayBlocks": 0,
+  "calls": {
+    "set-code-call": {
+      "file": "set-code-call.hex",
+      "length": 3055512,
+      "hash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+      "section": "system",
+      "method": "setCode"
+    },
+    "preimage-note-call": {
+      "file": "preimage-note-call.hex",
+      "length": 3055518,
+      "hash": "0x891eea5e8437c51f50604d50d52058fb600159e0bf139a5547d14a63d5374685",
+      "section": "preimage",
+      "method": "notePreimage"
+    },
+    "democracy-external-propose-majority-call": {
+      "file": "democracy-external-propose-majority-call.hex",
+      "length": 39,
+      "hash": "0xe3638e19ffec13e8924640beab8fd3cc1afd62285d79235fd5d4c939c402e015",
+      "section": "democracy",
+      "method": "externalProposeMajority"
+    },
+    "council-propose-external-majority-threshold-4-call": {
+      "file": "council-propose-external-majority-threshold-4-call.hex",
+      "length": 43,
+      "hash": "0x856a82d113bb691378dc7141bbaa272320c3f33cee80eefcfe0978d6f981aed4",
+      "section": "council",
+      "method": "propose"
+    },
+    "council-propose-external-majority-threshold-5-call": {
+      "file": "council-propose-external-majority-threshold-5-call.hex",
+      "length": 43,
+      "hash": "0x44d7a5c8a8c706aad9972ca77b8365c1de0a74f337e9b702d8249752b463ab2c",
+      "section": "council",
+      "method": "propose"
+    },
+    "democracy-fast-track-call": {
+      "file": "democracy-fast-track-call.hex",
+      "length": 42,
+      "hash": "0xf11807988a87d489a1832a50ad9e2dbc3d81556424e6672638eda237d6ff9c31",
+      "section": "democracy",
+      "method": "fastTrack"
+    },
+    "technical-committee-fast-track-threshold-3-call": {
+      "file": "technical-committee-fast-track-threshold-3-call.hex",
+      "length": 46,
+      "hash": "0x8d022e5790a8b415297d65f4c21bcc6ce7dd89a65f8fc42bb59178cdadbef6da",
+      "section": "technicalCommittee",
+      "method": "propose"
+    }
+  },
+  "submittedTransactions": 0
+}

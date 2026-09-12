@@ -79,7 +79,7 @@ beefy-gadget-rpc = { package = "sc-consensus-beefy-rpc", git = "https://github.c
 pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 
-pallet-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+pallet-staking = { path = "vendor/polkadot-sdk/frame/staking" }
 
 #jsonrpc-core = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
 #jsonrpc-ws-server = { git = "https://github.com/soramitsu/jsonrpc.git", branch = "new_fragment_capacity" }
@@ -185,6 +185,7 @@ members = [
     "utils/parse",
     "utils/generate-bags",
     "utils/remote-ext",
+    "vendor/polkadot-sdk/frame/staking",
 ]
 
 resolver = "2"
@@ -244,6 +245,7 @@ frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag 
 [patch."https://github.com/paritytech/polkadot-sdk.git"]
 frame-storage-access-test-runtime = { path = "vendor/frame-storage-access-test-runtime" }
 pallet-identity = { path = "vendor/polkadot-sdk/frame/identity" }
+pallet-staking = { path = "vendor/polkadot-sdk/frame/staking" }
 
 [patch."https://github.com/sora-xor/polkadot-sdk.git"]
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
@@ -344,4 +346,4 @@ beefy-gadget-rpc = { package = "sc-consensus-beefy-rpc", git = "https://github.c
 pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 
-pallet-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+pallet-staking = { path = "vendor/polkadot-sdk/frame/staking" }

@@ -1,0 +1,87 @@
+[package]
+name = "pallet-staking"
+version = "46.0.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://paritytech.github.io/polkadot-sdk/"
+repository = "https://github.com/paritytech/polkadot-sdk.git"
+description = "FRAME pallet staking"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { features = ["derive"], version = "3.7.5", package = "parity-scale-codec", default-features = false }
+frame-benchmarking = { optional = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+frame-election-provider-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+log = { version = "0.4.22", default-features = false }
+pallet-authorship = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+pallet-session = { features = ["historical"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+rand_chacha = { optional = true, version = "0.3.1", default-features = false }
+scale-info = { features = ["derive", "serde"], version = "2.11.6", default-features = false }
+serde = { features = ["alloc", "derive"], version = "1.0.214", default-features = false }
+sp-application-crypto = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+sp-runtime = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+sp-staking = { features = ["serde"], git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+
+[dev-dependencies]
+frame-benchmarking = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+frame-election-provider-support = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+frame-support = { features = ["experimental"], default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+pallet-bags-list = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+pallet-balances = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+pallet-staking-reward-curve = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+pallet-timestamp = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+rand_chacha = { version = "0.3.1", default-features = true }
+sp-core = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+sp-npos-elections = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+sp-tracing = { default-features = true, git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+substrate-test-utils = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"frame-benchmarking?/std",
+	"frame-election-provider-support/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"pallet-authorship/std",
+	"pallet-session/std",
+	"scale-info/std",
+	"serde/std",
+	"sp-application-crypto/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-staking/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-election-provider-support/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-bags-list/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-session/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"rand_chacha",
+	"sp-runtime/runtime-benchmarks",
+	"sp-staking/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-election-provider-support/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-authorship/try-runtime",
+	"pallet-bags-list/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-session/try-runtime",
+	"pallet-timestamp/try-runtime",
+	"sp-runtime/try-runtime",
+]

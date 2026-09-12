@@ -1,0 +1,73 @@
+{
+  "checkedAt": "2026-09-12T12:18:30.445Z",
+  "endpoint": "wss://ws.mof.sora.org",
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "blockHash": "0xb791403dfb0b0f7a9ed8cbd08e8f494f6d40c0994f5b3123e32363d6f5152fdf",
+  "blockNumber": 27624494,
+  "specVersion": 130,
+  "setCodeProposalHash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+  "nextExternal": null,
+  "motions": [
+    {
+      "collective": "council",
+      "proposalHash": "0xe3638e19ffec13e8924640beab8fd3cc1afd62285d79235fd5d4c939c402e015",
+      "proposalCall": {
+        "args": {
+          "proposal": {
+            "Lookup": {
+              "hash_": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+              "len": "3,055,512"
+            }
+          }
+        },
+        "method": "externalProposeMajority",
+        "section": "democracy"
+      },
+      "proposalCallLength": 39,
+      "memberCount": 8,
+      "minimumOriginAyes": 4,
+      "weightSource": "TransactionPaymentApi.query_info of unsigned inner proposal at finalized block",
+      "proposalWeightBound": {
+        "refTime": "102198000",
+        "proofSize": "0"
+      },
+      "status": "not-proposed-or-already-closed",
+      "unsignedCalls": null
+    },
+    {
+      "collective": "technicalCommittee",
+      "proposalHash": "0xf11807988a87d489a1832a50ad9e2dbc3d81556424e6672638eda237d6ff9c31",
+      "proposalCall": {
+        "args": {
+          "proposal_hash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+          "voting_period": "1,800",
+          "delay": "0"
+        },
+        "method": "fastTrack",
+        "section": "democracy"
+      },
+      "proposalCallLength": 42,
+      "memberCount": 4,
+      "minimumOriginAyes": 3,
+      "weightSource": "TransactionPaymentApi.query_info of unsigned inner proposal at finalized block",
+      "proposalWeightBound": {
+        "refTime": "595041000",
+        "proofSize": "3518"
+      },
+      "status": "not-proposed-or-already-closed",
+      "unsignedCalls": null
+    }
+  ],
+  "submittedTransactions": 0,
+  "instructions": [
+    "Hashes above identify the collective inner calls; they are distinct from the setCode preimage hash.",
+    "A proposed motion starts with no aye votes. The proposer must vote explicitly too.",
+    "Only collective members can submit aye votes; any signed account can close a motion.",
+    "Submit close only after enough explicit ayes; otherwise it may fail TooEarly or reject after expiry.",
+    "Check collective Executed.result is Ok; outer extrinsic success alone does not prove inner success.",
+    "Close council successfully and verify Democracy.NextExternal before executing technical fastTrack.",
+    "After successful technical close, use Democracy.Started to obtain the referendum index and vote in the referendum.",
+    "Regenerate from fresh finalized state before use; this script neither signs nor submits."
+  ],
+  "outputDirectory": "/tmp/sora-council-actions-check/collective-actions-27624494-YgUJ2E"
+}

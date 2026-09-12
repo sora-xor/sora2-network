@@ -30,7 +30,7 @@
 
 use super::*;
 
-use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeOrigin, TestRuntime};
+use crate::mock::{new_test_ext, MockLiquidityProxy, RuntimeCall, RuntimeOrigin, TestRuntime};
 use crate::test_utils::{
     add_balance, alice, alice_account_id, assert_bad_debt, assert_balance, bob, bob_account_id,
     configure_kensetsu_dollar_for_xor, configure_kxor_for_xor, create_cdp_for_xor,
@@ -39,19 +39,67 @@ use crate::test_utils::{
     set_kensetsu_gold_stablecoin, treasury_tech_account_id,
 };
 
+use codec::{Decode, Encode};
 use common::{
     balance, AssetId32, Balance, OnDenominate, PredefinedAssetId, KARMA, KEN, KUSD, KXOR, TBCD, XOR,
 };
+use frame_support::traits::Hooks;
 use frame_support::{assert_noop, assert_ok};
 use hex_literal::hex;
 use sp_arithmetic::{ArithmeticError, Percent};
 use sp_core::bounded::BoundedVec;
-use sp_runtime::traits::{One, Zero};
+use sp_core::offchain::TransactionPoolExt;
 use sp_runtime::DispatchError::BadOrigin;
+use sp_runtime::{
+    offchain::testing::TestTransactionPoolExt,
+    traits::{One, Zero},
+    transaction_validity::TransactionSource,
+};
 
 type KensetsuError = Error<TestRuntime>;
 type KensetsuPallet = Pallet<TestRuntime>;
 type System = frame_system::Pallet<TestRuntime>;
+
+#[test]
+fn error_indices_are_append_only() {
+    assert_eq!(KensetsuError::ArithmeticError.encode()[0], 0);
+    assert_eq!(KensetsuError::LiquidationLimit.encode()[0], 13);
+    assert_eq!(
+        KensetsuError::CollateralNotRegisteredInPriceTools.encode()[0],
+        17
+    );
+    assert_eq!(KensetsuError::AccrueLimit.encode()[0], 18);
+}
+
+fn setup_accruable_cdps(count: usize) -> Vec<CdpId> {
+    configure_kensetsu_dollar_for_xor(
+        Balance::MAX,
+        Perbill::from_percent(50),
+        FixedU128::from_float(0.1),
+        balance!(0),
+    );
+
+    let mut cdp_ids = Vec::new();
+    for _ in 0..count {
+        cdp_ids.push(create_cdp_for_xor(alice(), balance!(100), balance!(10)));
+    }
+    pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
+    cdp_ids
+}
+
+fn make_xor_cdps_unsafe_without_disabling_accrue() {
+    CollateralInfos::<TestRuntime>::mutate(
+        StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        },
+        |info| {
+            if let Some(info) = info.as_mut() {
+                info.risk_parameters.liquidation_ratio = Perbill::from_percent(1);
+            }
+        },
+    );
+}
 
 /// CDP might be created only by Signed Origin account.
 #[test]
@@ -2093,6 +2141,137 @@ fn test_accrue_no_debt() {
             KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
             KensetsuError::UncollectedStabilityFeeTooSmall
         );
+    });
+}
+
+#[test]
+fn test_accrue_limit_resets_on_initialize() {
+    new_test_ext().execute_with(|| {
+        AccruesThisBlock::<TestRuntime>::put(2);
+
+        KensetsuPallet::on_initialize(1);
+
+        assert_eq!(AccruesThisBlock::<TestRuntime>::get(), 0);
+    });
+}
+
+#[test]
+fn test_accrue_block_limit() {
+    new_test_ext().execute_with(|| {
+        let cdp_ids = setup_accruable_cdps(3);
+
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_ids[0]));
+        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_ids[1]));
+        assert_noop!(
+            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_ids[2]),
+            KensetsuError::AccrueLimit
+        );
+    });
+}
+
+#[test]
+fn accrue_quota_does_not_reject_next_block_pool_admission() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = setup_accruable_cdps(1)[0];
+        AccruesThisBlock::<TestRuntime>::put(2);
+        let call = Call::<TestRuntime>::accrue { cdp_id };
+
+        assert!(
+            <KensetsuPallet as frame_support::unsigned::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::Local,
+                &call,
+            )
+            .is_ok()
+        );
+        assert!(
+            <KensetsuPallet as frame_support::unsigned::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::InBlock,
+                &call,
+            )
+            .is_err()
+        );
+    });
+}
+
+#[test]
+fn offchain_worker_limits_accrue_submissions() {
+    let mut ext = new_test_ext();
+    let (pool, pool_state) = TestTransactionPoolExt::new();
+    ext.register_extension(TransactionPoolExt::new(pool));
+
+    ext.execute_with(|| {
+        setup_accruable_cdps(3);
+
+        KensetsuPallet::offchain_worker(1);
+
+        assert_eq!(pool_state.read().transactions.len(), 2);
+    });
+}
+
+#[test]
+fn offchain_worker_rotates_accrue_candidates() {
+    let mut ext = new_test_ext();
+    let (pool, pool_state) = TestTransactionPoolExt::new();
+    ext.register_extension(TransactionPoolExt::new(pool));
+
+    ext.execute_with(|| {
+        let cdp_ids = setup_accruable_cdps(3);
+
+        KensetsuPallet::offchain_worker(0);
+        KensetsuPallet::offchain_worker(1);
+
+        let submitted_ids = pool_state
+            .read()
+            .transactions
+            .iter()
+            .map(|encoded| {
+                let extrinsic =
+                    frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime>::decode(
+                        &mut &encoded[..],
+                    )
+                    .expect("submitted accrue should decode");
+                match extrinsic.function {
+                    RuntimeCall::Kensetsu(Call::accrue { cdp_id }) => cdp_id,
+                    call => panic!("unexpected offchain call: {call:?}"),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            submitted_ids,
+            vec![cdp_ids[0], cdp_ids[1], cdp_ids[2], cdp_ids[0]]
+        );
+    });
+}
+
+#[test]
+fn offchain_worker_accrue_limit_does_not_skip_liquidation() {
+    let mut ext = new_test_ext();
+    let (pool, pool_state) = TestTransactionPoolExt::new();
+    ext.register_extension(TransactionPoolExt::new(pool));
+
+    ext.execute_with(|| {
+        setup_accruable_cdps(3);
+        make_xor_cdps_unsafe_without_disabling_accrue();
+
+        KensetsuPallet::offchain_worker(1);
+
+        let (accrues, liquidations) = pool_state.read().transactions.iter().fold(
+            (0, 0),
+            |(accrues, liquidations), encoded| {
+                let extrinsic =
+                    frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime>::decode(
+                        &mut &encoded[..],
+                    )
+                    .expect("submitted offchain call should decode");
+                match extrinsic.function {
+                    RuntimeCall::Kensetsu(Call::accrue { .. }) => (accrues + 1, liquidations),
+                    RuntimeCall::Kensetsu(Call::liquidate { .. }) => (accrues, liquidations + 1),
+                    call => panic!("unexpected offchain call: {call:?}"),
+                }
+            },
+        );
+        assert_eq!((accrues, liquidations), (2, 1));
     });
 }
 

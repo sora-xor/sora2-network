@@ -45,6 +45,7 @@ mod bags_thresholds;
 /// Constant values used within the runtime.
 pub mod constants;
 mod impls;
+mod liveness;
 pub mod migrations;
 mod xor_fee_impls;
 
@@ -92,6 +93,11 @@ fn runtime_upgrade_version_only_migrations_bump_zero_to_one() {
 #[test]
 fn eth_bridge_storage_version_migration_reaches_v3() {
     tests::eth_bridge_storage_version_migration_reaches_v3();
+}
+#[cfg(test)]
+#[test]
+fn eth_bridge_account_request_multi_block_migration_reaches_v4() {
+    tests::eth_bridge_account_request_multi_block_migration_reaches_v4();
 }
 #[cfg(test)]
 #[test]
@@ -415,7 +421,7 @@ pub mod opaque {
         pub struct SessionKeys {
             pub babe: Babe,
             pub grandpa: Grandpa,
-            pub im_online: ImOnline,
+            pub im_online: liveness::LivenessImOnline,
             pub beefy: Beefy,
         }
     }
@@ -437,10 +443,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 130,
+    spec_version: 131,
     impl_version: 2,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 130,
+    transaction_version: 131,
     system_version: 0,
 };
 
@@ -621,13 +627,17 @@ impl pallet_babe::Config for Runtime {
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
     type DisabledValidators = Session;
-    type WeightInfo = ();
+    type WeightInfo = liveness::EquivocationWeights;
     type MaxAuthorities = MaxAuthorities;
     type MaxNominators = MaxNominators;
     type KeyOwnerProof =
         <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
-    type EquivocationReportSystem =
-        pallet_babe::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+    type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<
+        Self,
+        liveness::EquivocationReports,
+        Historical,
+        ReportLongevity,
+    >;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -750,13 +760,17 @@ parameter_types! {
 
 impl pallet_grandpa::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
+    type WeightInfo = liveness::EquivocationWeights;
     type MaxAuthorities = MaxAuthorities;
     type MaxNominators = MaxNominators;
     type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
     type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-    type EquivocationReportSystem =
-        pallet_grandpa::EquivocationReportSystem<Self, Offences, Historical, ReportLongevity>;
+    type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<
+        Self,
+        liveness::EquivocationReports,
+        Historical,
+        ReportLongevity,
+    >;
 }
 
 parameter_types! {
@@ -832,8 +846,9 @@ impl pallet_staking::Config for Runtime {
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
     type AdminOrigin = StakingAdminOrigin;
-    type SessionInterface = Self;
+    type SessionInterface = liveness::SlashOnlySessionInterface;
     type EraPayout = ();
+    type AdditionalPayout = xor_fee_impls::StakingValPayout;
     type NextNewSession = Session;
     type MaxValidatorSet = MaxActiveValidators;
     type VoterList = BagsList;
@@ -1538,7 +1553,9 @@ impl pallet_migrations::Config for Runtime {
     type CursorMaxLen = ConstU32<{ 1 << 16 }>;
     type IdentifierMaxLen = ConstU32<256>;
     type MigrationStatusHandler = ();
-    type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
+    // AccountRequests is a non-canonical RPC index. If its cleanup fails, resume the chain so
+    // governance can correct/retry the migration; freezing would also block that intervention.
+    type FailedMigrationHandler = frame_support::migrations::ForceUnstuckOnFailedMigration;
     type MaxServiceWeight = MigrationMaxServiceWeight;
     type WeightInfo = ();
 }
@@ -1693,8 +1710,42 @@ impl xor_fee::Config for Runtime {
     type RemintKusdBuyBackPercent = RemintKusdBuyBackPercent;
     type DEXIdValue = DEXIdValue;
     type LiquidityProxy = LiquidityProxy;
+    fn remint_val_swap(
+        weight: &mut Weight,
+        account: &AccountId,
+        amount: Balance,
+    ) -> Result<common::prelude::SwapOutcome<Balance, AssetId>, sp_runtime::DispatchError> {
+        let dex = DEXIdValue::get();
+        let xor = GetXorAssetId::get();
+        let val = GetValAssetId::get();
+        let filter = common::LiquiditySourceFilter::with_forbidden(
+            dex,
+            [common::LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+        );
+        // Retain the full routed estimate even on failure. Successful routes
+        // return their actual weight, which can exceed the estimate when more
+        // order-book entries or multiple liquidity sources are used.
+        let estimate = LiquidityProxy::inner_exchange_weight(&dex, &xor, &val, filter.clone());
+        weight.saturating_accrue(estimate);
+        let (outcome, _, actual) = LiquidityProxy::inner_exchange(
+            dex,
+            account,
+            account,
+            &xor,
+            &val,
+            common::prelude::SwapAmount::WithDesiredInput {
+                desired_amount_in: amount,
+                min_amount_out: 0,
+            },
+            filter,
+        )?;
+        weight.saturating_accrue(actual.saturating_sub(estimate));
+        Ok(outcome)
+    }
+
     type OnValBurned = ValBurnedAggregator;
-    type StakingValPayout = xor_fee_impls::StakingValPayout;
+    // VAL rewards execute atomically inside staking, including wrapped dispatch.
+    type StakingValPayout = ();
     type CustomFees = xor_fee_impls::CustomFees;
     type GetTechnicalAccountId = GetXorFeeAccountId;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
@@ -1885,6 +1936,10 @@ parameter_types! {
 
 pub type NetworkId = u32;
 
+parameter_types! {
+    pub const MaxEthBridgeRequestsPerAccount: u32 = 2048;
+}
+
 impl eth_bridge::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type RuntimeCall = RuntimeCall;
@@ -1898,6 +1953,7 @@ impl eth_bridge::Config for Runtime {
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
+    type MaxRequestsPerAccount = MaxEthBridgeRequestsPerAccount;
 }
 
 #[cfg(feature = "private-net")]
@@ -2184,11 +2240,18 @@ impl pallet_im_online::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type ValidatorSet = Historical;
     type NextSessionRotation = Babe;
-    type ReportUnresponsiveness = Offences;
+    // Only a strict same-session majority can trigger offline penalties. Already
+    // disabled validators cannot inflate that count or receive repeat offline penalties.
+    // BABE and GRANDPA equivocations continue to report directly to Offences.
+    type ReportUnresponsiveness = liveness::MajorityOfflineReports;
     type UnsignedPriority = ImOnlineUnsignedPriority;
     type WeightInfo = ();
     type MaxKeys = MaxKeys;
     type MaxPeerInHeartbeats = MaxPeerInHeartbeats;
+}
+
+impl liveness::Config for Runtime {
+    type MaxTrackedValidators = MaxKeys;
 }
 
 impl pallet_offences::Config for Runtime {
@@ -2481,6 +2544,7 @@ parameter_types! {
         Perbill::from_percent(10) * TransactionPriority::max_value();
     // 10 blocks, if tx spoils, worker will resend it
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
+    pub const KensetsuMaxAccruesPerBlock: u32 = 10;
 }
 
 impl kensetsu::Config for Runtime {
@@ -2500,6 +2564,7 @@ impl kensetsu::Config for Runtime {
     type KarmaIncentiveRemintPercent = GetKarmaIncentiveRemintPercent;
     type MaxCdpsPerOwner = ConstU32<10000>;
     type MinimalStabilityFeeAccrue = MinimalStabilityFeeAccrue;
+    type MaxAccruesPerBlock = KensetsuMaxAccruesPerBlock;
     type UnsignedPriority = KensetsuOffchainWorkerTxPriority;
     type UnsignedLongevity = KensetsuOffchainWorkerTxLongevity;
     type WeightInfo = kensetsu::weights::SubstrateWeight<Runtime>;
@@ -2508,7 +2573,8 @@ impl kensetsu::Config for Runtime {
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
         Perbill::from_percent(10) * TransactionPriority::max_value();
-    pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 5; // set 100 for release
+    pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 100;
+    pub const ApolloMaxLiquidationsPerBlock: u32 = 1;
 }
 
 impl apollo_platform::Config for Runtime {
@@ -2518,6 +2584,7 @@ impl apollo_platform::Config for Runtime {
     type LiquidityProxyPallet = LiquidityProxy;
     type UnsignedPriority = ApolloOffchainWorkerTxPriority;
     type UnsignedLongevity = ApolloOffchainWorkerTxLongevity;
+    type MaxLiquidationsPerBlock = ApolloMaxLiquidationsPerBlock;
     type WeightInfo = apollo_platform::weights::SubstrateWeight<Runtime>;
 }
 
@@ -3203,13 +3270,15 @@ construct_runtime! {
         Utility: pallet_utility::{Pallet, Call, Event} = 11,
 
         // Consensus and staking.
-        Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>, HoldReason} = 17,
         Offences: pallet_offences::{Pallet, Storage, Event} = 37,
         Historical: pallet_session_historical::{Pallet, Event<T>} = 13,
         Session: pallet_session::{Pallet, Call, Storage, Event<T>, Config<T>, HoldReason} = 12,
+        // Resolve the boundary block's author against the incoming session and era.
+        Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event} = 15,
         ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        Liveness: liveness::{Pallet, Storage} = 120,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -3380,6 +3449,32 @@ pub mod genesis_config_presets {
         AccountId32::from([seed; 32]).into()
     }
 
+    fn benchmark_eth_bridge_network() -> eth_bridge::NetworkConfig<Runtime> {
+        eth_bridge::NetworkConfig {
+            initial_peers: [benchmark_account(3)].into_iter().collect(),
+            bridge_account_id: benchmark_account(1),
+            assets: vec![
+                eth_bridge::AssetConfig::Sidechain {
+                    id: XOR.into(),
+                    sidechain_id: H160::repeat_byte(1),
+                    owned: true,
+                    precision: common::DEFAULT_BALANCE_PRECISION,
+                },
+                eth_bridge::AssetConfig::Thischain { id: KUSD.into() },
+            ],
+            bridge_contract_address: Default::default(),
+            reserves: vec![(XOR.into(), balance!(1))],
+        }
+    }
+
+    fn benchmark_bridge_multisig_accounts(
+    ) -> Vec<(AccountId, bridge_multisig::MultisigAccount<AccountId>)> {
+        vec![(
+            benchmark_account(1),
+            bridge_multisig::MultisigAccount::new(vec![benchmark_account(3)]),
+        )]
+    }
+
     #[cfg(feature = "private-net")]
     fn benchmark_private_net_sudo_account() -> AccountId {
         AccountId32::from(BENCHMARK_PRIVATE_NET_SUDO_ACCOUNT).into()
@@ -3539,7 +3634,14 @@ pub mod genesis_config_presets {
                     authority_account: Some(validator_account.clone()),
                     xor_master_contract_address: Default::default(),
                     val_master_contract_address: Default::default(),
-                    networks: vec![],
+                    networks: vec![benchmark_eth_bridge_network()],
+                },
+                bridge_multisig: BridgeMultisigConfig {
+                    accounts: benchmark_bridge_multisig_accounts(),
+                },
+                iroha_migration: IrohaMigrationConfig {
+                    account_id: Some(benchmark_account(2)),
+                    iroha_accounts: Vec::new(),
                 },
             })
         }
@@ -3601,7 +3703,14 @@ pub mod genesis_config_presets {
                     authority_account: Some(validator_account.clone()),
                     xor_master_contract_address: Default::default(),
                     val_master_contract_address: Default::default(),
-                    networks: vec![],
+                    networks: vec![benchmark_eth_bridge_network()],
+                },
+                bridge_multisig: BridgeMultisigConfig {
+                    accounts: benchmark_bridge_multisig_accounts(),
+                },
+                iroha_migration: IrohaMigrationConfig {
+                    account_id: Some(benchmark_account(2)),
+                    iroha_accounts: Vec::new(),
                 },
             })
         }
