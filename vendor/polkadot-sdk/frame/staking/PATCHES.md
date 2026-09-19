@@ -8,6 +8,9 @@ are retained in the source files.
 The repository root patches the SDK `pallet-staking` package to this directory.
 `Cargo.toml` expands upstream workspace package metadata and dependencies;
 all SDK dependencies retain the same pinned release tag and feature defaults.
+The manifest also expands the Rust and Clippy lint tables inherited from that
+SDK workspace, so vendoring preserves its lint policy without changing the
+SORA workspace policy.
 The complete local diff against that upstream directory is reproduced by applying
 [`additional-payout.patch`](additional-payout.patch), followed by
 [`deferred-slashing.patch`](deferred-slashing.patch). Both patches were replayed
