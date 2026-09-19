@@ -5,6 +5,9 @@ authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "framenode"
 path = "src/main.rs"

@@ -7,6 +7,9 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
+[lints]
+workspace = true
+
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",

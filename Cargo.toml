@@ -190,6 +190,17 @@ members = [
 
 resolver = "2"
 
+# First-party crates opt in with `[lints] workspace = true`.
+# Vendored crates retain the lint policy of their pinned upstream version.
+[workspace.lints.rust]
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+correctness = "deny"
+suspicious = "warn"
+perf = "warn"
+
 [workspace.dependencies]
 log = { version = "0.4.20", default-features = false }
 serde = { version = "1.0.189" }

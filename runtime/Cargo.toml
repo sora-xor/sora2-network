@@ -7,6 +7,9 @@ repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
 version = "4.8.9"
 
+[lints]
+workspace = true
+
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 

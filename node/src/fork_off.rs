@@ -117,17 +117,9 @@ impl ForkOffCmd {
             .map(|(p, s)| get_storage_prefix(p, s))
             .collect::<std::collections::BTreeSet<_>>();
         let mut storage = cfg.chain_spec.as_storage_builder().build_storage()?;
-        storage.top = storage
+        storage
             .top
-            .into_iter()
-            .filter(|(k, _)| {
-                if k.len() < 32 || skipped_prefixes.contains(&k[..16]) {
-                    true
-                } else {
-                    false
-                }
-            })
-            .collect();
+            .retain(|k, _| k.len() < 32 || skipped_prefixes.contains(&k[..16]));
         let backend = ext.as_backend();
         let mut kv = backend
             .raw_iter(IterArgs::default())

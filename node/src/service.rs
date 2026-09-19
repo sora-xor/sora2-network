@@ -90,6 +90,10 @@ type BridgePeerConfig = PeerConfig<<Runtime as eth_bridge::Config>::NetworkId>;
 const GRANDPA_JUSTIFICATION_PERIOD: u32 = 512;
 
 // If we're using prometheus, use a registry with a prefix of `polkadot`.
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceError> {
     if let Some(PrometheusConfig { registry, .. }) = config.prometheus_config.as_mut() {
         *registry = Registry::new_custom(Some("polkadot".into()), None)?;
@@ -98,6 +102,10 @@ fn set_prometheus_registry(config: &mut Configuration) -> Result<(), ServiceErro
     Ok(())
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 fn bridge_config_path(config: &Configuration) -> Result<PathBuf, ServiceError> {
     let path = config
         .network
@@ -189,6 +197,10 @@ fn resolve_libp2p_bootnodes(config: &mut Configuration) {
     }
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 fn load_bridge_peer_config(path: &Path) -> Result<BridgePeerConfig, ServiceError> {
     let file = File::open(path).map_err(|error| {
         ServiceError::Other(format!(
@@ -213,6 +225,10 @@ fn local_rpc_listen_addr(config: &Configuration) -> Option<std::net::SocketAddr>
         .and_then(|endpoints| endpoints.first().map(|endpoint| endpoint.listen_addr))
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 fn bridge_rpc_url(listen_addr: Option<std::net::SocketAddr>) -> Result<String, ServiceError> {
     listen_addr
         .map(|addr| {
@@ -249,6 +265,10 @@ fn set_offchain_network_metric<S: OffchainStorage, N: core::fmt::Debug>(
     storage.set(STORAGE_PREFIX, key.as_bytes(), &value.encode());
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 fn resolve_local_bridge_credentials<F>(
     public_keys: Vec<Vec<u8>>,
     mut local_seed_for_public: F,
@@ -301,6 +321,10 @@ where
     Ok(None)
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 fn resolve_local_bridge_bootstrap<F, G>(
     public_keys: Vec<Vec<u8>>,
     local_seed_for_public: F,
@@ -319,6 +343,10 @@ where
     Ok(Some((marker, legacy_secret, load_peer_config()?)))
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 pub fn new_partial(
     config: &mut Configuration,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
@@ -640,6 +668,10 @@ pub fn new_partial(
 ///
 /// This is an advanced feature and not recommended for general use. Generally, `build_full` is
 /// a better choice.
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
 pub fn new_full<FullNetwork>(
     mut config: Configuration,
     disable_beefy: bool,
