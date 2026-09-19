@@ -199,17 +199,17 @@ impl LivenessImOnline {
 impl OneSessionHandler<AccountId> for LivenessImOnline {
     type Key = ImOnlineId;
 
-    fn on_genesis_session<'a, I: 'a>(validators: I)
+    fn on_genesis_session<'a, I>(validators: I)
     where
-        I: Iterator<Item = (&'a AccountId, Self::Key)>,
+        I: Iterator<Item = (&'a AccountId, Self::Key)> + 'a,
     {
         <ImOnline as OneSessionHandler<AccountId>>::on_genesis_session(validators);
         Self::start_tracking_session();
     }
 
-    fn on_new_session<'a, I: 'a>(changed: bool, validators: I, queued_validators: I)
+    fn on_new_session<'a, I>(changed: bool, validators: I, queued_validators: I)
     where
-        I: Iterator<Item = (&'a AccountId, Self::Key)>,
+        I: Iterator<Item = (&'a AccountId, Self::Key)> + 'a,
     {
         // Session has already reported the outgoing session, rotated its index
         // and cleared obsolete disablements before invoking this hook.

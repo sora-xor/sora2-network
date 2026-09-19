@@ -299,11 +299,11 @@ pub trait Mock {
 }
 
 thread_local! {
-    pub static RESPONSES: RefCell<Vec<Option<(u16, Vec<u8>)>>> = RefCell::new(Vec::new());
-    pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
-    pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
-    static HTTP_REQUEST_BODIES: RefCell<Vec<String>> = RefCell::new(Vec::new());
-    static HTTP_RESPONSE_STATUSES: RefCell<BTreeMap<HttpRequestId, u16>> = RefCell::new(BTreeMap::new());
+    pub static RESPONSES: RefCell<Vec<Option<(u16, Vec<u8>)>>> = const { RefCell::new(Vec::new()) };
+    pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = const { RefCell::new(None) };
+    pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = const { RefCell::new(false) };
+    static HTTP_REQUEST_BODIES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+    static HTTP_RESPONSE_STATUSES: RefCell<BTreeMap<HttpRequestId, u16>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 fn push_response(data: Vec<u8>) {

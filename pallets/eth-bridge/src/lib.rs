@@ -65,8 +65,11 @@ Persists the same multi-sig account (+- 1 signatory) for validating all its inco
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+#![allow(
+    clippy::style,
+    clippy::complexity,
+    reason = "Defer legacy style and complexity cleanup while enforcing correctness, suspicious, and performance lints"
+)]
 
 #[macro_use]
 extern crate alloc;

@@ -17,6 +17,9 @@ jobs:
       # v4.1.1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+      - name: Check lint runner
+        run: ./housekeeping/test-clippy.sh
+
       - uses: arduino/setup-protoc@v3
 
       - name: Clean unused cache
@@ -33,6 +36,7 @@ jobs:
           cache-provider: "buildjet"
 
       - name: Export LLVM env
+        id: llvm-env
         shell: bash
         run: |
           set -euo pipefail
@@ -55,6 +59,7 @@ jobs:
       
       # latest v2
       - name: cargo install
+        id: clippy-tools
         uses: taiki-e/install-action@v2
         with:
           tool: clippy-sarif, sarif-fmt
@@ -68,21 +73,58 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Check first-party lint policy
+        run: python3 housekeeping/test_lint_policy.py
+
       - name: Enforce stable polkadot-sdk dependencies (no RC)
         run: |
           chmod +x .github/scripts/check_stable_deps_no_rc.sh
           .github/scripts/check_stable_deps_no_rc.sh
 
-      - name: cargo clippy
-        env:
-          SKIP_WASM_BUILD: 1
-        run: cargo clippy --all-targets --features private-net,stage,wip,runtime-benchmarks
-          --message-format=json -- -D warnings | clippy-sarif | tee results.sarif | sarif-fmt
+      - name: Clippy production mainnet
+        if: ${{ !cancelled() && steps.clippy-tools.outcome == 'success' && steps.llvm-env.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          ./housekeeping/clippy.sh mainnet --message-format=json \
+            | clippy-sarif | tee clippy-mainnet.sarif | sarif-fmt
         shell: bash
 
-      - name: Upload SARIF file
-        if: ${{ always() && hashFiles('results.sarif') != '' }}
+      - name: Clippy production try-runtime
+        if: ${{ !cancelled() && steps.clippy-tools.outcome == 'success' && steps.llvm-env.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          ./housekeeping/clippy.sh try-runtime --message-format=json \
+            | clippy-sarif | tee clippy-try-runtime.sarif | sarif-fmt
+        shell: bash
+
+      - name: Clippy extended features
+        if: ${{ !cancelled() && steps.clippy-tools.outcome == 'success' && steps.llvm-env.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          ./housekeeping/clippy.sh extended --message-format=json \
+            | clippy-sarif | tee clippy-extended.sarif | sarif-fmt
+        shell: bash
+
+      - name: Upload mainnet SARIF
+        if: ${{ !cancelled() && hashFiles('clippy-mainnet.sarif') != '' }}
         # v2.24.2
         uses: github/codeql-action/upload-sarif@49abf0ba24d0b7953cb586944e918a0b92074c80
         with:
-          sarif_file: results.sarif
+          sarif_file: clippy-mainnet.sarif
+          category: clippy/mainnet
+
+      - name: Upload try-runtime SARIF
+        if: ${{ !cancelled() && hashFiles('clippy-try-runtime.sarif') != '' }}
+        # v2.24.2
+        uses: github/codeql-action/upload-sarif@49abf0ba24d0b7953cb586944e918a0b92074c80
+        with:
+          sarif_file: clippy-try-runtime.sarif
+          category: clippy/try-runtime
+
+      - name: Upload extended SARIF
+        if: ${{ !cancelled() && hashFiles('clippy-extended.sarif') != '' }}
+        # v2.24.2
+        uses: github/codeql-action/upload-sarif@49abf0ba24d0b7953cb586944e918a0b92074c80
+        with:
+          sarif_file: clippy-extended.sarif
+          category: clippy/extended

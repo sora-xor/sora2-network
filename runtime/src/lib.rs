@@ -31,8 +31,13 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // `construct_runtime!` does a lot of recursion and requires a higher recursion limit.
 #![recursion_limit = "512"]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+// Enable correctness, suspicious-code and performance checks while legacy style
+// and simplification findings are migrated separately to narrow exceptions.
+#![allow(
+    clippy::style,
+    clippy::complexity,
+    reason = "incremental adoption of the shared first-party lint policy"
+)]
 
 extern crate alloc;
 use alloc::borrow::Cow;

@@ -219,6 +219,10 @@ mod default_chain_spec_tests {
 }
 
 /// Parse and run command line arguments
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK CLI result type at the command boundary"
+)]
 pub fn run() -> sc_cli::Result<()> {
     let cli = Cli::from_args();
 
@@ -299,6 +303,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         #[cfg(feature = "runtime-benchmarks")]
         Some(Subcommand::Benchmark(cmd)) => {
+            let cmd = cmd.as_ref();
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
 
