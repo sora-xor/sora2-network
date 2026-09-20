@@ -1,0 +1,91 @@
+{
+  "observationDate": "2026-09-12",
+  "endpoint": "wss://ws.mof.sora.org",
+  "apiVersion": "16.5.6",
+  "apiDeriveVersion": "16.5.6",
+  "appsBaseCommit": "05aa55e844c492d516dba3c4b0bd1b9311f9aeb2",
+  "scopeNote": "Read-only scope check, not a reproduction of the three offline failures. All sampled era overviews have one page; the sampled zero-commission validator has zero own stake, so its zero self-reward is expected.",
+  "blockHash": "0x837e68e9c1d7cb293c2140d141d292fe376ac94d4f9b97bfb4b2e5dec6bd80ff",
+  "era": 7635,
+  "validator": "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+  "overview": {
+    "total": "0x0000000000000000bb8e19d9e95a92f0",
+    "own": 0,
+    "nominatorCount": 7,
+    "pageCount": 1
+  },
+  "commission": "0",
+  "claimed": [],
+  "eraBudget": "227512080796917644514",
+  "totalPoints": "57920",
+  "allValidatorPageCounts": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "pages": [
+    {
+      "page": "0",
+      "pageTotal": "13514767955499062000",
+      "sample": [
+        {
+          "who": "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
+          "stake": "1919702540622580"
+        }
+      ]
+    }
+  ],
+  "rewards": [
+    {
+      "account": "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+      "rewards": [
+        {
+          "isClaimed": false,
+          "validators": {
+            "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq": {
+              "total": "13748140241526446060",
+              "value": "0"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "account": "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
+      "rewards": [
+        {
+          "isClaimed": false,
+          "validators": {
+            "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq": {
+              "total": "13748140241526446060",
+              "value": "1952851860823477"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "submittedTransactions": 0
+}

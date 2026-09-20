@@ -1,0 +1,176 @@
+--- a/src/pallet/impls.rs
++++ b/src/pallet/impls.rs
+@@ -197,8 +197,10 @@
+ 	) -> Result<Weight, DispatchError> {
+ 		let mut ledger = Self::ledger(Controller(controller.clone()))?;
+ 		let (stash, old_total) = (ledger.stash.clone(), ledger.total);
+-		if let Some(current_era) = CurrentEra::<T>::get() {
+-			ledger = ledger.consolidate_unlocked(current_era)
++		if let Some(active_era) = ActiveEra::<T>::get() {
++			// The planned era advances one session before deferred slashes are
++			// applied. Keep unlocking funds held until their era actually starts.
++			ledger = ledger.consolidate_unlocked(active_era.index)
+ 		}
+ 		let new_total = ledger.total;
+ 
+@@ -851,7 +853,11 @@
+ 			active_era,
+ 		);
+ 		for slash in era_slashes {
+-			let slash_era = active_era.saturating_sub(T::SlashDeferDuration::get());
++			// Queue keys are execution eras: offence era + defer duration + 1.
++			// Preserve the original offence era when choosing unlocking chunks.
++			let slash_era = active_era
++				.saturating_sub(T::SlashDeferDuration::get())
++				.saturating_sub(One::one());
+ 			slashing::apply_slash::<T>(slash, slash_era);
+ 		}
+ 	}
+@@ -1319,6 +1325,8 @@
+ 		add_db_reads_writes(1, 1);
+ 
+ 		let slash_defer_duration = T::SlashDeferDuration::get();
++		let slash_apply_era =
++			slash_era.saturating_add(slash_defer_duration).saturating_add(One::one());
+ 
+ 		let invulnerables = Invulnerables::<T>::get();
+ 		add_db_reads_writes(1, 0);
+@@ -1368,8 +1376,10 @@
+ 					add_db_reads_writes(rw, rw);
+ 				}
+ 				unapplied.reporters = details.reporters.clone();
+-				if slash_defer_duration == 0 {
+-					// Apply right away.
++				if slash_defer_duration == 0 || slash_apply_era <= active_era {
++					// A deferred execution era's queue is drained at its start.
++					// Apply late reports now, using their original offence era, rather
++					// than leaving them in a past queue that will never be processed.
+ 					slashing::apply_slash::<T>(unapplied, slash_era);
+ 					{
+ 						let slash_cost = (6, 5);
+@@ -1380,17 +1390,17 @@
+ 						);
+ 					}
+ 				} else {
+-					// Defer to end of some `slash_defer_duration` from now.
++					// Defer for `slash_defer_duration` full eras after the offence era.
+ 					log!(
+ 						debug,
+ 						"deferring slash of {:?} happened in {:?} (reported in {:?}) to {:?}",
+ 						slash_fraction,
+ 						slash_era,
+ 						active_era,
+-						slash_era + slash_defer_duration + 1,
++						slash_apply_era,
+ 					);
+ 					UnappliedSlashes::<T>::mutate(
+-						slash_era.saturating_add(slash_defer_duration).saturating_add(One::one()),
++						slash_apply_era,
+ 						move |for_later| for_later.push(unapplied),
+ 					);
+ 					add_db_reads_writes(1, 1);
+--- a/src/tests.rs
++++ b/src/tests.rs
+@@ -2908,6 +2908,102 @@
+ 			]
+ 		));
+ 	})
++}
++
++#[test]
++fn deferred_slash_late_first_report_is_applied_with_its_original_era() {
++	// Reports are still admissible in the last bonded era. Exercise both the
++	// execution era itself and a later era, after their queue keys were drained.
++	for defer in [1, 2] {
++		ExtBuilder::default().slash_defer_duration(defer).build_and_execute(|| {
++			mock::start_active_era(1);
++			assert_eq!(BondingDuration::get(), 3);
++			assert_ok!(Staking::chill(RuntimeOrigin::signed(11)));
++			assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 500));
++			mock::start_active_era(4);
++			assert!(BondedEras::<Test>::get().iter().any(|(era, _)| *era == 1));
++
++			on_offence_in_era(&[offence_from(11, None)], &[Perbill::from_percent(10)], 1);
++
++			assert_eq!(asset::stakeable_balance::<Test>(&11), 900);
++			let ledger = Staking::ledger(11.into()).unwrap();
++			assert_eq!(ledger.active, 450);
++			assert_eq!(
++				ledger.unlocking.as_slice(),
++				&[UnlockChunk { era: 4, value: 450 as Balance }],
++			);
++			assert!(UnappliedSlashes::<Test>::get(1 + defer + 1).is_empty());
++		});
++	}
++}
++
++#[test]
++fn deferred_slash_late_increment_only_collects_the_remaining_amount() {
++	ExtBuilder::default().slash_defer_duration(2).build_and_execute(|| {
++		mock::start_active_era(1);
++		on_offence_now(&[offence_from(11, None)], &[Perbill::from_percent(10)]);
++		mock::start_active_era(4);
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 900);
++
++		on_offence_in_era(&[offence_from(11, None)], &[Perbill::from_percent(20)], 1);
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 800);
++		assert!(UnappliedSlashes::<Test>::get(4).is_empty());
++
++		// Repeating the same severity must not collect the increment again.
++		on_offence_in_era(&[offence_from(11, None)], &[Perbill::from_percent(20)], 1);
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 800);
++	});
++}
++
++#[test]
++fn deferred_slash_retains_stake_until_the_execution_era_is_active() {
++	ExtBuilder::default().slash_defer_duration(2).build_and_execute(|| {
++		mock::start_active_era(1);
++		on_offence_now(&[offence_from(11, None)], &[Perbill::from_percent(10)]);
++		assert_ok!(Staking::chill(RuntimeOrigin::signed(11)));
++		assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 1000));
++		let spans = SlashingSpans::<Test>::get(11).unwrap().iter().count() as u32;
++
++		// Drive real session rotation to the last session before execution.
++		// Planning advances CurrentEra one session before ActiveEra advances.
++		mock::start_session(4 * SessionsPerEra::get() - 1);
++		assert_eq!(current_era(), 4);
++		assert_eq!(active_era(), 3);
++		assert_ok!(Staking::withdraw_unbonded(RuntimeOrigin::signed(11), spans));
++		assert_eq!(
++			Ledger::<Test>::get(11).map(|ledger| ledger.total),
++			Some(1000),
++			"stake must remain available for the already queued slash",
++		);
++		assert_eq!(UnappliedSlashes::<Test>::get(4).len(), 1);
++
++		mock::start_active_era(4);
++		assert_eq!(asset::stakeable_balance::<Test>(&11), 900);
++		assert_ok!(Staking::withdraw_unbonded(RuntimeOrigin::signed(11), spans));
++		assert!(!Ledger::<Test>::contains_key(11));
++	});
++}
++
++#[test]
++fn deferred_slash_uses_the_original_era_for_unlocking_proportions() {
++	ExtBuilder::default().slash_defer_duration(2).build_and_execute(|| {
++		mock::start_active_era(1);
++		on_offence_now(&[offence_from(11, None)], &[Perbill::from_percent(10)]);
++		// Existing queue encoding and execution-era keys remain unchanged.
++		assert_eq!(UnappliedSlashes::<Test>::get(4).len(), 1);
++		assert_ok!(Staking::chill(RuntimeOrigin::signed(11)));
++		assert_ok!(Staking::unbond(RuntimeOrigin::signed(11), 500));
++		mock::start_active_era(4);
++
++		let ledger = Staking::ledger(11.into()).unwrap();
++		assert_eq!(ledger.active, 450);
++		assert_eq!(
++			ledger.unlocking.as_slice(),
++			&[UnlockChunk { era: 4, value: 450 as Balance }],
++		);
++		assert_eq!(ledger.total, 900);
++		assert!(UnappliedSlashes::<Test>::get(4).is_empty());
++	});
+ }
+ 
+ #[test]

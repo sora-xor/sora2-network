@@ -1,0 +1,40 @@
+{
+  "blockHash": "0xedc2506edcb75c79c12d26a8c89a2473677a8aff67b3e05eb310573bdbf2a049",
+  "pallets": [
+    "System",
+    "MultiBlockMigrations",
+    "XorFee",
+    "Staking",
+    "Offences",
+    "Session",
+    "Grandpa",
+    "ImOnline",
+    "PoolXYK",
+    "PswapDistribution",
+    "VestedRewards",
+    "Identity",
+    "Farming",
+    "Kensetsu",
+    "Band",
+    "Polkamarkt",
+    "OracleProxy",
+    "BridgeInboundChannel",
+    "SubstrateBridgeInboundChannel",
+    "SubstrateBridgeOutboundChannel"
+  ],
+  "ethBridgeMaps": [
+    "LoadToIncomingRequestHash",
+    "AccountRequests",
+    "Peers",
+    "RequestApprovals",
+    "RequestApprovers",
+    "RequestsQueue",
+    "RequestStatuses",
+    "Requests"
+  ],
+  "hashedKeys": [
+    "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429",
+    "0x72756e74696d653a6d6967726174696f6e733a7374616b696e675f7265776172645f706f696e74735f73746173685f72656d6170706564"
+  ],
+  "childTries": false
+}

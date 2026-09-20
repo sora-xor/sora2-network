@@ -1,0 +1,1665 @@
+{
+  "startedAt": "2026-09-12T12:14:39.595Z",
+  "endpoint": "https://mof2.sora.org",
+  "pinnedBlockHash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+  "executor": "@acala-network/chopsticks-core@1.5.1",
+  "status": "passed",
+  "localOnly": true,
+  "submittedTransactions": 0,
+  "realSignatures": 0,
+  "mockSignatureHost": true,
+  "allowUnresolvedImports": true,
+  "offchainWorker": false,
+  "remoteRpcMethods": {
+    "state_getStorage": 127,
+    "state_getKeysPaged": 137,
+    "state_queryStorageAt": 177
+  },
+  "phases": [
+    {
+      "phase": "finalize",
+      "result": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8ea0f9606491d06d89b60611f08fa83f0bac105039437c7b58b52fa0883c97f34aa6c29a79f08c3480db4ccaf15588e41ee3672fab14807269e76dde540a95387ed31927a0406424142453402000000009735c61100000000",
+      "storageDiffEntries": 22,
+      "runtimeLogs": []
+    }
+  ],
+  "payoutChecks": [
+    {
+      "label": "staking.payoutStakersByPage",
+      "callHex": "0x111a1e2e843600b60003a385ae7c3cbbe03f576af2a4ff9cae733a59958a0375b321d41d000000000000",
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "outcomeHuman": {
+        "Ok": {
+          "Ok": []
+        }
+      },
+      "events": [
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 261973000,
+                "proofSize": 1493
+              },
+              "class": "Mandatory",
+              "paysFee": "Yes"
+            }
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Upgraded",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x00000000000000000023941e1e0cfe6c"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+            "0x00000000000000000c6c5a8c1bd63266"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+            7636,
+            0,
+            "0x00000000000000000c6c5a8c1bd63266"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            145508357511792
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            7636,
+            0,
+            145508357511792
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            "0x0000000000000000037346ea9354b368"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            7636,
+            0,
+            "0x0000000000000000037346ea9354b368"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            "0x000000000000000000afab5139421625"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            7636,
+            0,
+            "0x000000000000000000afab5139421625"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            184288286004453
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            7636,
+            0,
+            184288286004453
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "PayoutStarted",
+          "data": [
+            7636,
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            0,
+            null
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x00000000000000000023941e1e0cfe6c"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            4123609930164420
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000010be2c4a6077ba"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            1178174265761262
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x00000000000000000023941e1e0cfe6c",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 6731360540,
+                "proofSize": 101118
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "valRewardEventCount": 5,
+      "totalValPaid": "1193586644401646408",
+      "valIssuanceBefore": "88394449059653022984712622",
+      "valIssuanceAfter": "88394450253239667386359030",
+      "xorIssuanceBefore": "989987911052568180653380490",
+      "xorIssuanceAfter": "989987911042553699394409758",
+      "claimedPagesAfter": [
+        0
+      ],
+      "storageDiffEntries": 21,
+      "passed": true
+    },
+    {
+      "label": "staking.payoutStakers",
+      "callHex": "0x11121e2e843600b60003a385ae7c3cbbe03f576af2a4ff9cae733a59958a0375b321d41d0000",
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "outcomeHuman": {
+        "Ok": {
+          "Ok": []
+        }
+      },
+      "events": [
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 261973000,
+                "proofSize": 1493
+              },
+              "class": "Mandatory",
+              "paysFee": "Yes"
+            }
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Upgraded",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x0000000000000000002393c0fc315e6c"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+            "0x00000000000000000c6c5a8c1bd63266"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+            7636,
+            0,
+            "0x00000000000000000c6c5a8c1bd63266"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            145508357511792
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            7636,
+            0,
+            145508357511792
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            "0x0000000000000000037346ea9354b368"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            7636,
+            0,
+            "0x0000000000000000037346ea9354b368"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            "0x000000000000000000afab5139421625"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            7636,
+            0,
+            "0x000000000000000000afab5139421625"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            184288286004453
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            7636,
+            0,
+            184288286004453
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "PayoutStarted",
+          "data": [
+            7636,
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            0,
+            null
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x0000000000000000002393c0fc315e6c"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            4123445224282067
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000010be0076add214"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            1178127206937733
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x0000000000000000002393c0fc315e6c",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 6731360540,
+                "proofSize": 101118
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "valRewardEventCount": 5,
+      "totalValPaid": "1193586644401646408",
+      "valIssuanceBefore": "88394449059653022984712622",
+      "valIssuanceAfter": "88394450253239667386359030",
+      "xorIssuanceBefore": "989987911052568180653380490",
+      "xorIssuanceAfter": "989987911042554099394409758",
+      "claimedPagesAfter": [
+        0
+      ],
+      "storageDiffEntries": 21,
+      "passed": true
+    },
+    {
+      "label": "utility.batchAll(payoutStakersByPage)",
+      "callHex": "0x0b0204111a1e2e843600b60003a385ae7c3cbbe03f576af2a4ff9cae733a59958a0375b321d41d000000000000",
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "outcomeHuman": {
+        "Ok": {
+          "Ok": []
+        }
+      },
+      "events": [
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 261973000,
+                "proofSize": 1493
+              },
+              "class": "Mandatory",
+              "paysFee": "Yes"
+            }
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Upgraded",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x0000000000000015ad8cb2e8453c65b2"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+            "0x00000000000000000c6c5a8c1bd63266"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+            7636,
+            0,
+            "0x00000000000000000c6c5a8c1bd63266"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            145508357511792
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+            7636,
+            0,
+            145508357511792
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            "0x0000000000000000037346ea9354b368"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+            7636,
+            0,
+            "0x0000000000000000037346ea9354b368"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            "0x000000000000000000afab5139421625"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+            7636,
+            0,
+            "0x000000000000000000afab5139421625"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            184288286004453
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+            7636,
+            0,
+            184288286004453
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "PayoutStarted",
+          "data": [
+            7636,
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            0,
+            null
+          ]
+        },
+        {
+          "section": "utility",
+          "method": "ItemCompleted",
+          "data": []
+        },
+        {
+          "section": "utility",
+          "method": "BatchCompleted",
+          "data": []
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x0000000000000015ad8cb2e8453c65b2"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x0000000000000008ed1bd13276dca259"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000a338d815e3eb302ae"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000028ce360578facc0ab"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "0x0000000000000015ad8cb2e8453c65b2",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 6790562803,
+                "proofSize": 105115
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "valRewardEventCount": 5,
+      "totalValPaid": "1193586644401646408",
+      "valIssuanceBefore": "88394449059653022984712622",
+      "valIssuanceAfter": "88394450253239667386359030",
+      "xorIssuanceBefore": "989987911052568180653380490",
+      "xorIssuanceAfter": "989987511165375656788028888",
+      "claimedPagesAfter": [
+        0
+      ],
+      "storageDiffEntries": 21,
+      "passed": true
+    }
+  ],
+  "constraints": [
+    "This executes candidate Wasm in Chopsticks against pinned remote state; it is not a validator-consensus or governance-origin rehearsal.",
+    "Runtime replacement uses a local :code overlay. The next Core_initialize_block performs normal on_runtime_upgrade detection.",
+    "Signatures are faked only inside the local executor; no private key or live transaction submission is used.",
+    "The release Wasm does not include try-runtime pre/post assertions; normal migration execution and observed state are checked.",
+    "allowUnresolvedImports is enabled because deployed runtime130 imports offchain ecdsa_public_keys unsupported by this executor; offchain workers remain disabled.",
+    "Immutable upstream reads use a persistent cache keyed by block hash; key-page values are batch-prefetched. Local state transitions are never inserted into that cache."
+  ],
+  "stage": "Applying payout in one local block, then checking duplicate rejection",
+  "readCache": {
+    "path": "/tmp/sora-payout-runtime-hunt/council-current-read-cache.json.gz",
+    "existingValues": 0,
+    "storageHits": 20184,
+    "keyPageHits": 78,
+    "fetchedValues": 22745,
+    "fetchedKeyPages": 137,
+    "responseLimitSplits": 0
+  },
+  "before": {
+    "blockNumber": 27624441,
+    "blockHash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 130,
+      "implVersion": 2,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 130,
+      "stateVersion": 0
+    },
+    "lastRuntimeUpgrade": {
+      "specVersion": 130,
+      "specName": "sora-substrate"
+    },
+    "rewardPointsRemapMarker": "0x01",
+    "storageVersions": {
+      "Staking": {
+        "hex": "0x1000",
+        "version": 16
+      },
+      "EthBridge": {
+        "hex": "0x0300",
+        "version": 3
+      },
+      "VestedRewards": {
+        "hex": "0x0400",
+        "version": 4
+      },
+      "Kensetsu": {
+        "hex": "0x0600",
+        "version": 6
+      },
+      "Polkamarkt": {
+        "hex": "0x0700",
+        "version": 7
+      },
+      "XorFee": {
+        "hex": "0x0300",
+        "version": 3
+      }
+    }
+  },
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.9/framenode-runtime-4.8.9.compact.compressed.wasm",
+    "bytes": 3055506,
+    "sha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 131,
+      "implVersion": 2,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    }
+  },
+  "after": {
+    "blockNumber": 27624442,
+    "blockHash": "0xed4f0e2f7eb2f6d216d8a273cd639eec03ed6182f6c08118df3c2bc1086dc765",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 131,
+      "implVersion": 2,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    },
+    "lastRuntimeUpgrade": {
+      "specVersion": 131,
+      "specName": "sora-substrate"
+    },
+    "rewardPointsRemapMarker": "0x01",
+    "storageVersions": {
+      "Staking": {
+        "hex": "0x1000",
+        "version": 16
+      },
+      "EthBridge": {
+        "hex": "0x0300",
+        "version": 3
+      },
+      "VestedRewards": {
+        "hex": "0x0400",
+        "version": 4
+      },
+      "Kensetsu": {
+        "hex": "0x0600",
+        "version": 6
+      },
+      "Polkamarkt": {
+        "hex": "0x0700",
+        "version": 7
+      },
+      "XorFee": {
+        "hex": "0x0300",
+        "version": 3
+      }
+    }
+  },
+  "migrationBlocks": [
+    {
+      "blockNumber": 27624442,
+      "blockHash": "0xed4f0e2f7eb2f6d216d8a273cd639eec03ed6182f6c08118df3c2bc1086dc765",
+      "cursor": {
+        "active": {
+          "index": 0,
+          "innerCursor": "0x41018e8f4d4777099074419cbb4597dac1d32455672c652ba1a1af2a4ce9614f541b86f5b074cf84fad98d6adcf4b3a88af2eeac62ae23eb0ac97ba964efc3b08e9968fb11c6cf0e31b85830712b2df5bd12",
+          "startedAt": 27624441
+        }
+      },
+      "ethBridgeStorageVersion": 3
+    },
+    {
+      "blockNumber": 27624443,
+      "blockHash": "0x4ddbcc51257493831e3a896c267c455c09f2d496a99f23baee1062ba5e6c5cf2",
+      "cursor": null,
+      "ethBridgeStorageVersion": 4
+    }
+  ],
+  "afterMigrations": {
+    "blockNumber": 27624443,
+    "blockHash": "0x4ddbcc51257493831e3a896c267c455c09f2d496a99f23baee1062ba5e6c5cf2",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 131,
+      "implVersion": 2,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    },
+    "lastRuntimeUpgrade": {
+      "specVersion": 131,
+      "specName": "sora-substrate"
+    },
+    "rewardPointsRemapMarker": "0x01",
+    "storageVersions": {
+      "Staking": {
+        "hex": "0x1000",
+        "version": 16
+      },
+      "EthBridge": {
+        "hex": "0x0400",
+        "version": 4
+      },
+      "VestedRewards": {
+        "hex": "0x0400",
+        "version": 4
+      },
+      "Kensetsu": {
+        "hex": "0x0600",
+        "version": 6
+      },
+      "Polkamarkt": {
+        "hex": "0x0700",
+        "version": 7
+      },
+      "XorFee": {
+        "hex": "0x0300",
+        "version": 3
+      }
+    }
+  },
+  "upgradeEvents": [
+    {
+      "section": "system",
+      "method": "ExtrinsicSuccess",
+      "data": [
+        {
+          "weight": {
+            "refTime": 261973000,
+            "proofSize": 1493
+          },
+          "class": "Mandatory",
+          "paysFee": "Yes"
+        }
+      ]
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "MigrationCompleted",
+      "data": [
+        0,
+        2
+      ]
+    },
+    {
+      "section": "multiBlockMigrations",
+      "method": "UpgradeCompleted",
+      "data": []
+    }
+  ],
+  "payoutSample": {
+    "era": 7636,
+    "validator": "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+    "page": 0,
+    "pageCount": 1,
+    "nativeEraReward": "0",
+    "valEraReward": "21036060574987737155",
+    "claimedPagesBefore": [],
+    "overview": {
+      "total": "0x00000000000000007bfe124dd479fe24",
+      "own": 0,
+      "nominatorCount": 4,
+      "pageCount": 1
+    },
+    "rewardPoints": "3300",
+    "totalRewardPoints": "58160"
+  },
+  "signer": {
+    "address": "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+    "free": "1000000000000000000000000000000",
+    "nonce": "19",
+    "storageOverrides": [
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da974a67df2751d177a705b56e8fd9564bc1e2e843600b60003a385ae7c3cbbe03f576af2a4ff9cae733a59958a0375b321",
+        "previous": {
+          "nonce": 19,
+          "consumers": 3,
+          "providers": 2,
+          "sufficients": 0,
+          "data": {
+            "free": 4250930,
+            "reserved": 0,
+            "frozen": 0,
+            "flags": 0
+          }
+        },
+        "updated": {
+          "nonce": 19,
+          "consumers": 3,
+          "providers": 2,
+          "sufficients": 0,
+          "data": {
+            "free": "1000000000000000000000000000000",
+            "reserved": 0,
+            "frozen": 0,
+            "flags": 0
+          }
+        },
+        "reason": "local fee funding only"
+      }
+    ]
+  },
+  "duplicateCheck": {
+    "outcome": {
+      "ok": {
+        "err": {
+          "module": {
+            "index": 17,
+            "error": "0x0e000000"
+          }
+        }
+      }
+    },
+    "decodedError": {
+      "section": "staking",
+      "name": "AlreadyClaimed"
+    },
+    "paidBlockNumber": 27624444,
+    "paidBlockEvents": [
+      {
+        "section": "system",
+        "method": "ExtrinsicSuccess",
+        "data": [
+          {
+            "weight": {
+              "refTime": 261973000,
+              "proofSize": 1493
+            },
+            "class": "Mandatory",
+            "paysFee": "Yes"
+          }
+        ]
+      },
+      {
+        "section": "balances",
+        "method": "Upgraded",
+        "data": [
+          "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv"
+        ]
+      },
+      {
+        "section": "balances",
+        "method": "Withdraw",
+        "data": [
+          "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+          "0x00000000000000000023941e1e0cfe6c"
+        ]
+      },
+      {
+        "section": "tokens",
+        "method": "Deposited",
+        "data": [
+          {
+            "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+          },
+          "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+          "0x00000000000000000c6c5a8c1bd63266"
+        ]
+      },
+      {
+        "section": "xorFee",
+        "method": "ValStakingRewardPaid",
+        "data": [
+          "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+          "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+          7636,
+          0,
+          "0x00000000000000000c6c5a8c1bd63266"
+        ]
+      },
+      {
+        "section": "tokens",
+        "method": "Deposited",
+        "data": [
+          {
+            "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+          },
+          "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+          145508357511792
+        ]
+      },
+      {
+        "section": "xorFee",
+        "method": "ValStakingRewardPaid",
+        "data": [
+          "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+          "cnSs9CdyGRYoB63tQx7a5n85yVgtPbEJt4bDWS6qBQ5z7sEwL",
+          7636,
+          0,
+          145508357511792
+        ]
+      },
+      {
+        "section": "tokens",
+        "method": "Deposited",
+        "data": [
+          {
+            "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+          },
+          "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+          "0x0000000000000000037346ea9354b368"
+        ]
+      },
+      {
+        "section": "xorFee",
+        "method": "ValStakingRewardPaid",
+        "data": [
+          "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+          "cnRVZCBYkmL4mjgcEqKe3y8PKKPjrySkFrdEsA8fxn6PgVuPQ",
+          7636,
+          0,
+          "0x0000000000000000037346ea9354b368"
+        ]
+      },
+      {
+        "section": "tokens",
+        "method": "Deposited",
+        "data": [
+          {
+            "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+          },
+          "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+          "0x000000000000000000afab5139421625"
+        ]
+      },
+      {
+        "section": "xorFee",
+        "method": "ValStakingRewardPaid",
+        "data": [
+          "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+          "cnWHG4sz7dLfysXur8iDrXcKTd5tBbyFu1gXb47LuzmMd1YYR",
+          7636,
+          0,
+          "0x000000000000000000afab5139421625"
+        ]
+      },
+      {
+        "section": "tokens",
+        "method": "Deposited",
+        "data": [
+          {
+            "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+          },
+          "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+          184288286004453
+        ]
+      },
+      {
+        "section": "xorFee",
+        "method": "ValStakingRewardPaid",
+        "data": [
+          "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+          "cnUoxWquhUYcRefGMbD4oWc9AYx6fftAM9LUNYN2FFQLTy8hb",
+          7636,
+          0,
+          184288286004453
+        ]
+      },
+      {
+        "section": "staking",
+        "method": "PayoutStarted",
+        "data": [
+          7636,
+          "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+          0,
+          null
+        ]
+      },
+      {
+        "section": "xorFee",
+        "method": "FeeWithdrawn",
+        "data": [
+          "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+          "0x00000000000000000023941e1e0cfe6c"
+        ]
+      },
+      {
+        "section": "balances",
+        "method": "Rescinded",
+        "data": [
+          4123609930164420
+        ]
+      },
+      {
+        "section": "balances",
+        "method": "Rescinded",
+        "data": [
+          "0x00000000000000000010be2c4a6077ba"
+        ]
+      },
+      {
+        "section": "balances",
+        "method": "Rescinded",
+        "data": [
+          1178174265761262
+        ]
+      },
+      {
+        "section": "transactionPayment",
+        "method": "TransactionFeePaid",
+        "data": [
+          "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+          "0x00000000000000000023941e1e0cfe6c",
+          0
+        ]
+      },
+      {
+        "section": "system",
+        "method": "ExtrinsicSuccess",
+        "data": [
+          {
+            "weight": {
+              "refTime": 6731360540,
+              "proofSize": 101118
+            },
+            "class": "Normal",
+            "paysFee": "Yes"
+          }
+        ]
+      }
+    ],
+    "passed": true
+  },
+  "finishedAt": "2026-09-12T12:18:02.309Z"
+}

@@ -1,0 +1,1333 @@
+diff --git a/pallets/eth-bridge/src/offchain/http.rs b/pallets/eth-bridge/src/offchain/http.rs
+--- a/pallets/eth-bridge/src/offchain/http.rs
++++ b/pallets/eth-bridge/src/offchain/http.rs
+@@ -95,10 +95,8 @@
+ 
+ impl<T: Config> Pallet<T> {
+     fn is_log_query_limit_error(error: &TypedJsonRpcError) -> bool {
+-        if error.code == -32005 {
+-            return true;
+-        }
+-
++        // Providers also use -32005 for rate limits and exhausted account quotas.
++        // Only an explicit result-size or block-range message warrants smaller scans.
+         let message = error.message.to_ascii_lowercase();
+         let known_limit_message = [
+             "too many results",
+@@ -107,6 +105,8 @@
+             "response too large",
+             "block range is too wide",
+             "block range too wide",
++            "logs count exceeds the limit",
++            "block range limit exceeded",
+         ]
+         .iter()
+         .any(|fragment| message.contains(fragment));
+@@ -138,7 +138,19 @@
+         headers: &[(&'static str, String)],
+         max_response_bytes: usize,
+     ) -> Result<Vec<u8>, Error<T>> {
+-        trace!("Sending request to: {}", url);
++        Self::http_request_with_log_limits(url, body, headers, max_response_bytes, false)
++    }
++
++    fn http_request_with_log_limits(
++        url: &str,
++        body: Vec<u8>,
++        headers: &[(&'static str, String)],
++        max_response_bytes: usize,
++        reduce_log_range_on_413: bool,
++    ) -> Result<Vec<u8>, Error<T>> {
++        // Provider URLs can contain API keys in their path, query, or user info.
++        // Keep endpoint credentials out of logs even when trace logging is enabled.
++        trace!("Sending off-chain HTTP request");
+         let mut request = rt_offchain::http::Request::post(url, vec![body.clone()]);
+         let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(
+             HTTP_REQUEST_TIMEOUT_SECS * 1000,
+@@ -165,6 +177,12 @@
+             })?;
+         if response.code != 200 {
+             error!("Unexpected http request status code: {}", response.code);
++            // Some providers reject oversized eth_getLogs block ranges with HTTP 413.
++            // Let the existing scanner reduce that range without advancing its cursor.
++            // Other methods and statuses retain their normal HTTP retry behavior.
++            if response.code == 413 && reduce_log_range_on_413 {
++                return Err(<Error<T>>::HttpResponseTooLarge);
++            }
+             return Err(<Error<T>>::HttpFetchingError);
+         }
+         let mut body = response.body();
+@@ -195,6 +213,7 @@
+         params: &I,
+         headers: &[(&'static str, String)],
+     ) -> Result<O, Error<T>> {
++        trace!("Sending JSON-RPC request: method={}, id={}", method, id);
+         let params = match serialize(params) {
+             Value::Null => Params::None,
+             Value::Array(v) => Params::Array(v),
+@@ -213,7 +232,7 @@
+             _ => MAX_HTTP_RESPONSE_BYTES,
+         };
+ 
+-        let raw_response = Self::http_request(
++        let raw_response = Self::http_request_with_log_limits(
+             url,
+             serde_json::to_vec(&jsonrpc::Request::Single(jsonrpc::Call::MethodCall(
+                 jsonrpc::MethodCall {
+@@ -226,6 +245,7 @@
+             .map_err(|_| Error::<T>::JsonSerializationError)?,
+             &headers,
+             max_response_bytes,
++            method == "eth_getLogs",
+         )
+         .and_then(|x| {
+             String::from_utf8(x).map_err(|e| {
+@@ -242,7 +262,10 @@
+             (TypedJsonRpcResult::Present(Some(result)), None) => Ok(result),
+             (TypedJsonRpcResult::Present(None), None) => Err(Error::<T>::FailedToLoadTransaction),
+             (TypedJsonRpcResult::Missing, Some(rpc_error)) => {
+-                error!("json_rpc_request: request failed: {:?}", rpc_error);
++                error!(
++                    "json_rpc_request: request failed: code={}, message={:?}",
++                    rpc_error.code, rpc_error.message
++                );
+                 if method == "eth_getLogs" && Self::is_log_query_limit_error(&rpc_error) {
+                     Err(Error::<T>::HttpResponseTooLarge)
+                 } else {
+diff --git a/pallets/eth-bridge/src/offchain/handle.rs b/pallets/eth-bridge/src/offchain/handle.rs
+--- a/pallets/eth-bridge/src/offchain/handle.rs
++++ b/pallets/eth-bridge/src/offchain/handle.rs
+@@ -62,7 +62,6 @@
+     IdentifyAccount, One, Saturating, UniqueSaturatedInto, Zero,
+ };
+ use frame_support::sp_runtime::RuntimeAppPublic;
+-use frame_support::traits::Get;
+ use frame_support::{ensure, fail};
+ use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
+ use rustc_hex::ToHex;
+@@ -72,6 +71,9 @@
+ use sp_std::collections::btree_map::BTreeMap;
+ use sp_std::collections::btree_set::BTreeSet;
+ use sp_std::convert::TryInto;
++
++// Revisit learned provider/body limits without retrying a rejected range every other scan.
++const LOG_RANGE_LIMIT_RETRY_DELAY_MS: u64 = 30 * 60 * 1000;
+ 
+ impl<T: Config> Pallet<T> {
+     fn pending_multisig_rehandle_key(
+@@ -564,7 +566,6 @@
+     }
+ 
+     fn handle_failed_transactions_queue() {
+-        let network_id = T::GetEthNetworkId::get();
+         let mut s_failed_pending_txs =
+             StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
+         let mut failed_txs =
+@@ -591,6 +592,7 @@
+                         load_incoming_request,
+                         ..
+                     }) => {
++                        let network_id = load_incoming_request.network_id();
+                         let tx_hash = load_incoming_request.hash();
+ 
+                         if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
+@@ -628,8 +630,28 @@
+             }
+         };
+ 
+-        if substrate_finalized_block.number.as_u64() % (RE_HANDLE_TXS_PERIOD as u64) == 0 {
++        let recovery_generation =
++            substrate_finalized_block.number.as_u64() / u64::from(RE_HANDLE_TXS_PERIOD);
++        let mut s_recovery_generation = StorageValueRef::persistent(
++            b"eth-bridge-ocw::failed-transactions-re-handle-generation-v2",
++        );
++        let previous_generation = get_storage_value_or_clear::<u64>(
++            &mut s_recovery_generation,
++            "failed transaction recovery generation",
++        );
++        // Finalized heads can jump past an exact period boundary or be observed repeatedly.
++        // Retry once per new generation, retaining the high-water mark if a head regresses.
++        if previous_generation
++            .map(|previous| recovery_generation > previous)
++            .unwrap_or(recovery_generation > 0)
++        {
+             Self::handle_failed_transactions_queue();
++        }
++        if previous_generation
++            .map(|previous| recovery_generation > previous)
++            .unwrap_or(true)
++        {
++            s_recovery_generation.set(&recovery_generation);
+         }
+ 
+         let substrate_finalized_height: frame_system::pallet_prelude::BlockNumberFor<T> =
+@@ -682,8 +704,8 @@
+             Ok(v) => v,
+             Err(e) => {
+                 info!(
+-                    "Failed to load current ethereum height. Skipping off-chain procedure. {:?}",
+-                    e
++                    "Failed to load current ethereum height. Skipping off-chain procedure. {:?}; network={:?}, method=eth_blockNumber",
++                    e, network_id
+                 );
+                 return Err(e);
+             }
+@@ -714,6 +736,26 @@
+         if skip_log_request {
+             return Ok((current_eth_height, false));
+         }
++        let range_limit_key = format!("eth-bridge-ocw::eth-log-range-limit-v1-{:?}", network_id);
++        let mut s_log_range_limit = StorageValueRef::persistent(range_limit_key.as_bytes());
++        let learned_limit = s_log_range_limit
++            .get::<(u64, u64)>()
++            .ok()
++            .flatten()
++            .map(|(ceiling, retry_after)| (ceiling.clamp(1, MAX_GET_LOGS_ITEMS), retry_after));
++        let log_range_size = match learned_limit {
++            Some((ceiling, retry_after)) => {
++                let normal_range = log_range_size.min(ceiling);
++                if u64::from(sp_io::offchain::timestamp()) >= retry_after {
++                    // Probe through the usual one-request-per-worker path. A failed probe
++                    // retains the old ceiling; a successful larger response removes it.
++                    normal_range.saturating_mul(2).min(MAX_GET_LOGS_ITEMS)
++                } else {
++                    normal_range
++                }
++            }
++            None => log_range_size,
++        };
+         // The upper bound of range of blocks to download logs for. Limit the value to
+         // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many
+         // logs.
+@@ -728,34 +770,67 @@
+         if let Some(to_block) = to_block_opt {
+             if to_block >= from_block {
+                 log_request_attempted = true;
++                let queried_span = to_block - from_block + 1;
+                 let mut new_height = from_block;
+                 match Self::handle_logs(from_block, to_block, &mut new_height, network_id) {
+                     Ok(()) => {
++                        let growth_ceiling = match learned_limit {
++                            Some((ceiling, _)) if queried_span > ceiling => {
++                                // The entire HTTP response fitted even if import throttling
++                                // only processed part of it during this invocation.
++                                s_log_range_limit.clear();
++                                MAX_GET_LOGS_ITEMS
++                            }
++                            Some((ceiling, _)) => ceiling,
++                            None => MAX_GET_LOGS_ITEMS,
++                        };
+                         if new_height != from_block {
+                             s_eth_to_handle_from_height.set(&new_height);
+                         }
+                         if new_height > to_block && log_range_size < MAX_GET_LOGS_ITEMS {
+                             let increased_range =
+-                                log_range_size.saturating_mul(2).min(MAX_GET_LOGS_ITEMS);
++                                log_range_size.saturating_mul(2).min(growth_ceiling);
+                             s_log_range_size.set(&increased_range);
+                         }
+                     }
+-                    Err(Error::<T>::HttpResponseTooLarge) if log_range_size > 1 => {
+-                        let reduced_range = (log_range_size / 2).max(1);
++                    Err(Error::<T>::HttpResponseTooLarge) => {
++                        // The confirmed tip can shorten a configured range. Reducing the
++                        // configured size would otherwise retry the same rejected query.
++                        let ceiling = learned_limit
++                            .map(|(ceiling, _)| ceiling)
++                            .unwrap_or(MAX_GET_LOGS_ITEMS)
++                            .min(queried_span.saturating_sub(1).max(1));
++                        let reduced_range = (queried_span / 2).max(1).min(ceiling);
+                         s_log_range_size.set(&reduced_range);
+-                        warn!(
+-                            "Transfer log response for blocks {}..={} was too large; reducing the next query to {} block(s)",
+-                            from_block, to_block, reduced_range
+-                        );
+-                    }
+-                    Err(Error::<T>::HttpResponseTooLarge) => {
+-                        warn!(
+-                            "Transfer logs for single block {} exceed the bounded response size; a different sidechain RPC endpoint is required",
+-                            from_block
+-                        );
++                        let retry_after = u64::from(sp_io::offchain::timestamp())
++                            .saturating_add(LOG_RANGE_LIMIT_RETRY_DELAY_MS);
++                        s_log_range_limit.set(&(ceiling, retry_after));
++                        if queried_span > 1 {
++                            warn!(
++                                "Transfer log response for blocks {}..={} was too large; reducing the next query to {} block(s); network={:?}",
++                                from_block, to_block, reduced_range, network_id
++                            );
++                        } else {
++                            warn!(
++                                "Transfer logs for single block {} exceed the bounded response size; a different sidechain RPC endpoint is required; network={:?}",
++                                from_block, network_id
++                            );
++                        }
+                     }
+                     Err(err) => {
+-                        warn!("Failed to load handle logs: {:?}.", err);
++                        if let Some((ceiling, _)) = learned_limit {
++                            if queried_span > ceiling {
++                                // A larger probe can also time out or hit a generic provider
++                                // failure. Resume the smaller scans until another probe is due.
++                                let retry_after = u64::from(sp_io::offchain::timestamp())
++                                    .saturating_add(LOG_RANGE_LIMIT_RETRY_DELAY_MS);
++                                s_log_range_limit.set(&(ceiling, retry_after));
++                            }
++                        }
++                        warn!(
++                            "Failed to load handle logs: {:?}. network={:?}, method=eth_getLogs, blocks={}..={}",
++                            err, network_id, from_block, to_block
++                        );
+                     }
+                 }
+             }
+@@ -895,7 +970,10 @@
+                     from_block, to_block
+                 );
+             }
+-            Err(err) => warn!("Failed to re-handle logs: {:?}.", err),
++            Err(err) => warn!(
++                "Failed to re-handle logs: {:?}. network={:?}, method=eth_getLogs, blocks={}..={}",
++                err, network_id, from_block, to_block
++            ),
+         }
+         true
+     }
+diff --git a/pallets/eth-bridge/src/tests/mock.rs b/pallets/eth-bridge/src/tests/mock.rs
+--- a/pallets/eth-bridge/src/tests/mock.rs
++++ b/pallets/eth-bridge/src/tests/mock.rs
+@@ -72,7 +72,10 @@
+ use parking_lot::RwLock;
+ use permissions::{Scope, BURN, MINT};
+ use rustc_hex::ToHex;
+-use sp_core::offchain::{OffchainStorage, OffchainWorkerExt};
++use sp_core::offchain::{
++    Externalities as OffchainExternalities, HttpError, HttpRequestId, HttpRequestStatus,
++    OffchainStorage, OffchainWorkerExt, OpaqueNetworkState, Timestamp,
++};
+ use sp_core::{H160, H256};
+ use sp_io::TestExternalities;
+ use sp_keystore::testing::MemoryKeystore;
+@@ -296,15 +299,113 @@
+ }
+ 
+ thread_local! {
+-    pub static RESPONSES: RefCell<Vec<Vec<u8>>> = RefCell::new(Vec::new());
++    pub static RESPONSES: RefCell<Vec<Option<(u16, Vec<u8>)>>> = RefCell::new(Vec::new());
+     pub static OFFCHAIN_STATE: RefCell<Option<Arc<RwLock<OffchainState>>>> = RefCell::new(None);
+     pub static SHOULD_FAIL_SEND_SIGNED_TRANSACTION: RefCell<bool> = RefCell::new(false);
++    static HTTP_REQUEST_BODIES: RefCell<Vec<String>> = RefCell::new(Vec::new());
++    static HTTP_RESPONSE_STATUSES: RefCell<BTreeMap<HttpRequestId, u16>> = RefCell::new(BTreeMap::new());
+ }
+ 
+ fn push_response(data: Vec<u8>) {
++    push_global_http_response(200, data);
++}
++
++pub(crate) fn push_global_http_response(status: u16, body: Vec<u8>) {
+     RESPONSES.with(|ref_cell| {
+-        ref_cell.borrow_mut().push(data);
++        ref_cell.borrow_mut().push(Some((status, body)));
+     });
++}
++
++/// Preserve the SDK's HTTP test behavior while allowing real non-200 responses.
++/// `TestOffchainExt` otherwise hardcodes every completed response to HTTP 200.
++struct HttpStatusOffchainExt(TestOffchainExt);
++
++impl OffchainExternalities for HttpStatusOffchainExt {
++    fn is_validator(&self) -> bool {
++        self.0.is_validator()
++    }
++
++    fn network_state(&self) -> Result<OpaqueNetworkState, ()> {
++        self.0.network_state()
++    }
++
++    fn timestamp(&mut self) -> Timestamp {
++        self.0.timestamp()
++    }
++
++    fn sleep_until(&mut self, deadline: Timestamp) {
++        self.0.sleep_until(deadline)
++    }
++
++    fn random_seed(&mut self) -> [u8; 32] {
++        self.0.random_seed()
++    }
++
++    fn http_request_start(
++        &mut self,
++        method: &str,
++        uri: &str,
++        meta: &[u8],
++    ) -> Result<HttpRequestId, ()> {
++        let request_id = self.0.http_request_start(method, uri, meta)?;
++        HTTP_RESPONSE_STATUSES.with(|statuses| statuses.borrow_mut().remove(&request_id));
++        Ok(request_id)
++    }
++
++    fn http_request_add_header(
++        &mut self,
++        request_id: HttpRequestId,
++        name: &str,
++        value: &str,
++    ) -> Result<(), ()> {
++        self.0.http_request_add_header(request_id, name, value)
++    }
++
++    fn http_request_write_body(
++        &mut self,
++        request_id: HttpRequestId,
++        chunk: &[u8],
++        deadline: Option<Timestamp>,
++    ) -> Result<(), HttpError> {
++        self.0.http_request_write_body(request_id, chunk, deadline)
++    }
++
++    fn http_response_wait(
++        &mut self,
++        ids: &[HttpRequestId],
++        deadline: Option<Timestamp>,
++    ) -> Vec<HttpRequestStatus> {
++        let results = self.0.http_response_wait(ids, deadline);
++        HTTP_RESPONSE_STATUSES.with(|statuses| {
++            let statuses = statuses.borrow();
++            ids.iter()
++                .zip(results)
++                .map(|(id, result)| match result {
++                    HttpRequestStatus::Finished(code) => {
++                        HttpRequestStatus::Finished(statuses.get(id).copied().unwrap_or(code))
++                    }
++                    result => result,
++                })
++                .collect()
++        })
++    }
++
++    fn http_response_headers(&mut self, request_id: HttpRequestId) -> Vec<(Vec<u8>, Vec<u8>)> {
++        self.0.http_response_headers(request_id)
++    }
++
++    fn http_response_read_body(
++        &mut self,
++        request_id: HttpRequestId,
++        buffer: &mut [u8],
++        deadline: Option<Timestamp>,
++    ) -> Result<usize, HttpError> {
++        self.0.http_response_read_body(request_id, buffer, deadline)
++    }
++
++    fn set_authorized_nodes(&mut self, nodes: Vec<sp_core::OpaquePeerId>, authorized_only: bool) {
++        self.0.set_authorized_nodes(nodes, authorized_only)
++    }
+ }
+ 
+ fn json_rpc_response<T: Serialize>(value: T) -> jsonrpc_core::Response {
+@@ -329,16 +430,21 @@
+     push_response(value.to_vec());
+ }
+ 
++pub(crate) fn push_global_http_failure() {
++    RESPONSES.with(|responses| responses.borrow_mut().push(None));
++}
++
+ pub struct State {
+     pub networks: HashMap<u32, ExtendedNetworkConfig>,
+     pub authority_account_id: AccountId32,
+     pub pool_state: Arc<RwLock<PoolState>>,
+     pub offchain_state: Arc<RwLock<OffchainState>>,
+-    responses: Vec<Vec<u8>>,
++    responses: Vec<Option<(u16, Vec<u8>)>>,
+ }
+ 
+ impl Mock for State {
+     fn on_request(pending_request: &http::PendingRequest, url: &str, body: Cow<'_, str>) {
++        HTTP_REQUEST_BODIES.with(|requests| requests.borrow_mut().push(body.to_string()));
+         OFFCHAIN_STATE.with(|oc_state_ref_cell| {
+             RESPONSES.with(|ref_cell| {
+                 let oc_state_opt = oc_state_ref_cell.borrow();
+@@ -351,11 +457,20 @@
+                     body
+                 );
+                 let response = responses.remove(0);
+-                offchain_state
+-                    .requests
+-                    .get_mut(&pending_request.id)
+-                    .unwrap()
+-                    .response = Some(response);
++                if let Some((status, response)) = response {
++                    HTTP_RESPONSE_STATUSES.with(|statuses| {
++                        statuses.borrow_mut().insert(pending_request.id, status);
++                    });
++                    offchain_state
++                        .requests
++                        .get_mut(&pending_request.id)
++                        .unwrap()
++                        .response = Some(response);
++                } else {
++                    // TestOffchainExt returns RequestStatus::Invalid when a pending request
++                    // disappears, exercising the real HTTP wait -> HttpFetchingError path.
++                    offchain_state.requests.remove(&pending_request.id);
++                }
+             });
+         });
+     }
+@@ -367,7 +482,25 @@
+ 
+ impl State {
+     pub fn push_response_raw(&mut self, data: Vec<u8>) {
+-        self.responses.push(data);
++        self.push_http_response(200, data);
++    }
++
++    pub fn push_http_response(&mut self, status: u16, body: Vec<u8>) {
++        self.responses.push(Some((status, body)));
++    }
++
++    pub fn push_http_failure(&mut self) {
++        self.responses.push(None);
++    }
++
++    pub fn http_requests(&self) -> Vec<serde_json::Value> {
++        HTTP_REQUEST_BODIES.with(|requests| {
++            requests
++                .borrow()
++                .iter()
++                .map(|body| serde_json::from_str(body).expect("valid JSON-RPC request"))
++                .collect()
++        })
+     }
+ 
+     pub fn push_response<T: Serialize>(&mut self, value: T) {
+@@ -426,7 +559,7 @@
+         let mut responses = Vec::new();
+         std::mem::swap(&mut self.responses, &mut responses);
+         for resp in responses {
+-            push_response(resp);
++            RESPONSES.with(|queued| queued.borrow_mut().push(resp));
+         }
+         let current_block_number = frame_system::Pallet::<Runtime>::block_number();
+         if via_hook {
+@@ -675,6 +808,9 @@
+     }
+ 
+     pub fn build(self) -> (TestExternalities, State) {
++        RESPONSES.with(|responses| responses.borrow_mut().clear());
++        HTTP_REQUEST_BODIES.with(|requests| requests.borrow_mut().clear());
++        HTTP_RESPONSE_STATUSES.with(|statuses| statuses.borrow_mut().clear());
+         let (offchain, offchain_state) = TestOffchainExt::new();
+         let (pool, pool_state) = TestTransactionPoolExt::new();
+         let default_authority_account_id =
+@@ -883,7 +1019,7 @@
+         .unwrap();
+         let mut t = TestExternalities::from(storage);
+         t.register_extension(OffchainDbExt::new(offchain.clone()));
+-        t.register_extension(OffchainWorkerExt::new(offchain));
++        t.register_extension(OffchainWorkerExt::new(HttpStatusOffchainExt(offchain)));
+         t.register_extension(TransactionPoolExt::new(pool));
+         t.register_extension(KeystoreExt::new(key_store));
+         t.execute_with(|| {
+diff --git a/pallets/eth-bridge/src/tests/ocw.rs b/pallets/eth-bridge/src/tests/ocw.rs
+--- a/pallets/eth-bridge/src/tests/ocw.rs
++++ b/pallets/eth-bridge/src/tests/ocw.rs
+@@ -105,6 +105,49 @@
+     )
+ }
+ 
++fn insert_failed_incoming_import(network_id: u32, tx_hash: H256) {
++    let timepoint = bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(0, 0);
++    let load_incoming_request = crate::requests::LoadIncomingRequest::Transaction(
++        crate::requests::LoadIncomingTransactionRequest::new(
++            get_account_id_from_seed::<sr25519::Public>("Alice"),
++            tx_hash,
++            timepoint,
++            IncomingTransactionRequestKind::Transfer,
++            network_id,
++        ),
++    );
++    let import_call: RuntimeCall = crate::Call::<Runtime>::import_incoming_request {
++        load_incoming_request,
++        incoming_request_result: Err(Error::EthTransactionIsFailed.into()),
++    }
++    .into();
++    let call = bridge_multisig::Call::<Runtime>::as_multi_threshold_1 {
++        id: crate::BridgeAccount::<Runtime>::get(network_id).unwrap(),
++        call: Box::new(import_call),
++        timepoint,
++    };
++    let failed = std::collections::BTreeMap::from([(
++        tx_hash,
++        crate::offchain::SignedTransactionData::<Runtime>::new(tx_hash, None, call),
++    )]);
++    StorageValueRef::persistent(crate::STORAGE_FAILED_PENDING_TRANSACTIONS_KEY).set(&failed);
++}
++
++fn handle_substrate_at_finalized_height(height: BlockNumber) {
++    // Isolate secondary-queue recovery from primary-queue retries: these finalized blocks
++    // have already been scanned, so this worker only observes the finalized tip.
++    StorageValueRef::persistent(crate::STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY).set(&(height + 1));
++    push_global_json_rpc_response(H256::zero());
++    push_global_json_rpc_response(types::SubstrateHeaderLimited {
++        parent_hash: Default::default(),
++        number: height.into(),
++        state_root: Default::default(),
++        extrinsics_root: Default::default(),
++        digest: (),
++    });
++    assert_ok!(EthBridge::handle_substrate(), height);
++}
++
+ #[test]
+ fn ocw_should_not_handle_non_finalized_outgoing_request() {
+     let (mut ext, mut state) = ExtBuilder::default().build();
+@@ -1126,6 +1169,164 @@
+             .expect_err("an incomplete response must not be accepted as a null result");
+         assert_eq!(error, Error::JsonDeserializationError);
+         assert!(error.should_retry());
++    });
++}
++
++#[test]
++fn log_http_failure_is_retryable() {
++    let (mut ext, _state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        push_global_http_failure();
++        let error = EthBridge::load_transfers_logs(ETH_NETWORK_ID, 100, 106)
++            .expect_err("invalidated pending HTTP request must fail");
++        assert_eq!(error, Error::HttpFetchingError);
++        assert!(error.should_retry());
++    });
++}
++
++#[test]
++fn log_http_failure_preserves_cursor_and_retries_the_same_range() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let height_key = format!(
++            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
++            ETH_NETWORK_ID
++        );
++        let range_key = format!("eth-bridge-ocw::eth-log-range-size-{:?}", ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&7u64);
++
++        state.push_http_failure();
++        state.run_next_offchain_with_params(
++            200,
++            frame_system::Pallet::<Runtime>::block_number() + 1,
++            false,
++        );
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(7));
++
++        state.push_response::<[Log; 0]>([]);
++        state.run_next_offchain_with_params(
++            201,
++            frame_system::Pallet::<Runtime>::block_number() + 1,
++            false,
++        );
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(107));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(14));
++
++        let requests: Vec<_> = state
++            .http_requests()
++            .into_iter()
++            .filter(|request| request["method"] == "eth_getLogs")
++            .collect();
++        assert_eq!(requests.len(), 2);
++        assert_eq!(requests[0]["params"][0]["fromBlock"], "0x64");
++        assert_eq!(requests[0]["params"][0]["toBlock"], "0x6a");
++        assert_eq!(
++            requests[0], requests[1],
++            "retry must preserve the full filter"
++        );
++    });
++}
++
++#[test]
++fn log_http_failure_does_not_block_outgoing_approvals() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let alice = get_account_id_from_seed::<sr25519::Public>("Alice");
++        Assets::mint_to(&XOR.into(), &alice, &alice, 100).unwrap();
++        assert_ok!(EthBridge::transfer_to_sidechain(
++            RuntimeOrigin::signed(alice),
++            XOR.into(),
++            EthAddress::from_str("19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A").unwrap(),
++            100,
++            ETH_NETWORK_ID,
++        ));
++        let request_hash = last_request(ETH_NETWORK_ID).unwrap().hash();
++        let height_key = format!(
++            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
++            ETH_NETWORK_ID
++        );
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++
++        state.push_http_failure();
++        state.run_next_offchain_with_params(
++            200,
++            frame_system::Pallet::<Runtime>::block_number() + 1,
++            true,
++        );
++
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++        assert_eq!(
++            crate::RequestApprovals::<Runtime>::get(ETH_NETWORK_ID, request_hash).len(),
++            1
++        );
++        assert_eq!(
++            crate::RequestStatuses::<Runtime>::get(ETH_NETWORK_ID, request_hash),
++            Some(RequestStatus::Pending)
++        );
++    });
++}
++
++#[test]
++fn log_http_failure_does_not_block_another_network() {
++    let mut builder = ExtBuilder::default();
++    let second_network =
++        builder.add_network(vec![], None, Some(1), sp_core::H160::repeat_byte(0x23));
++    // The same local signing key must be eligible for both networks in this worker.
++    let peers = builder.networks[&ETH_NETWORK_ID]
++        .config
++        .initial_peers
++        .clone();
++    let keypairs = builder.networks[&ETH_NETWORK_ID].ocw_keypairs.clone();
++    let second_config = builder.networks.get_mut(&second_network).unwrap();
++    second_config.config.initial_peers = peers;
++    second_config.ocw_keypairs = keypairs;
++    let (mut ext, mut state) = builder.build();
++
++    ext.execute_with(|| {
++        let first_height_key = format!(
++            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
++            ETH_NETWORK_ID
++        );
++        let second_height_key = format!(
++            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
++            second_network
++        );
++        StorageValueRef::persistent(first_height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(second_height_key.as_bytes()).set(&300u64);
++
++        // The helper supplies the first network's blockNumber response. These responses then
++        // cover its failing log scan and the second network's successful height and log scan.
++        state.push_http_failure();
++        state.push_response(types::U64::from(400u64));
++        state.push_response::<[Log; 0]>([]);
++        state.run_next_offchain_with_params(
++            200,
++            frame_system::Pallet::<Runtime>::block_number() + 1,
++            false,
++        );
++
++        assert_eq!(
++            state.storage_read::<u64>(first_height_key.as_bytes()),
++            Some(100)
++        );
++        assert_eq!(
++            state.storage_read::<u64>(second_height_key.as_bytes()),
++            Some(350)
++        );
++        let requests: Vec<_> = state
++            .http_requests()
++            .into_iter()
++            .filter(|request| request["method"] == "eth_getLogs")
++            .collect();
++        assert_eq!(requests.len(), 2);
++        assert_eq!(requests[0]["params"][0]["fromBlock"], "0x64");
++        assert_eq!(requests[1]["params"][0]["fromBlock"], "0x12c");
++        assert_eq!(requests[1]["params"][0]["toBlock"], "0x15d");
+     });
+ }
+ 
+@@ -1673,6 +1874,81 @@
+ }
+ 
+ #[test]
++fn failed_import_recovery_removes_completed_request_on_its_own_network() {
++    let mut builder = ExtBuilder::default();
++    let network_id = builder.add_network(vec![], None, Some(1), Default::default());
++    let (mut ext, state) = builder.build();
++    ext.execute_with(|| {
++        let tx_hash = H256::repeat_byte(0x71);
++        insert_failed_incoming_import(network_id, tx_hash);
++        crate::RequestStatuses::<Runtime>::insert(network_id, tx_hash, RequestStatus::Done);
++
++        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
++
++        assert!(state.failed_pending_txs().is_empty());
++        assert!(state.pending_txs().is_empty());
++        assert!(state.pool_state.read().transactions.is_empty());
++    });
++}
++
++#[test]
++fn failed_import_recovery_ignores_status_from_another_network() {
++    let mut builder = ExtBuilder::default();
++    let network_id = builder.add_network(vec![], None, Some(1), Default::default());
++    let (mut ext, state) = builder.build();
++    ext.execute_with(|| {
++        let tx_hash = H256::repeat_byte(0x72);
++        insert_failed_incoming_import(network_id, tx_hash);
++        crate::RequestStatuses::<Runtime>::insert(ETH_NETWORK_ID, tx_hash, RequestStatus::Done);
++
++        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
++
++        assert_eq!(state.failed_pending_txs().len(), 1);
++        assert_eq!(state.pending_txs().len(), 1);
++        assert_eq!(state.pool_state.read().transactions.len(), 1);
++    });
++}
++
++#[test]
++fn failed_import_recovery_runs_after_skipped_finalized_boundary() {
++    let (mut ext, state) = ExtBuilder::default().build();
++    ext.execute_with(|| {
++        insert_failed_incoming_import(ETH_NETWORK_ID, H256::repeat_byte(0x73));
++
++        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD - 1).into());
++        assert!(state.pool_state.read().transactions.is_empty());
++
++        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD + 1).into());
++        assert_eq!(state.pool_state.read().transactions.len(), 1);
++
++        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD + 1).into());
++        assert_eq!(state.pool_state.read().transactions.len(), 1);
++
++        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD - 1).into());
++        handle_substrate_at_finalized_height((RE_HANDLE_TXS_PERIOD + 1).into());
++        assert_eq!(state.pool_state.read().transactions.len(), 1);
++
++        handle_substrate_at_finalized_height((2 * RE_HANDLE_TXS_PERIOD + 1).into());
++        assert_eq!(state.pool_state.read().transactions.len(), 2);
++    });
++}
++
++#[test]
++fn failed_import_recovery_runs_once_for_repeated_finalized_boundary() {
++    let (mut ext, state) = ExtBuilder::default().build();
++    ext.execute_with(|| {
++        insert_failed_incoming_import(ETH_NETWORK_ID, H256::repeat_byte(0x74));
++
++        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
++        assert_eq!(state.pool_state.read().transactions.len(), 1);
++
++        handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
++        assert_eq!(state.pool_state.read().transactions.len(), 1);
++        assert_eq!(state.failed_pending_txs().len(), 1);
++    });
++}
++
++#[test]
+ fn ocw_should_skip_log_with_overflowing_transaction_index() {
+     let mut builder = ExtBuilder::new();
+     builder.add_network(
+diff --git a/pallets/eth-bridge/src/tests/mod.rs b/pallets/eth-bridge/src/tests/mod.rs
+--- a/pallets/eth-bridge/src/tests/mod.rs
++++ b/pallets/eth-bridge/src/tests/mod.rs
+@@ -49,6 +49,7 @@
+ mod cancel;
+ mod ethabi;
+ mod genesis;
++mod http_status;
+ mod incoming_transfer;
+ pub mod mock;
+ mod ocw;
+diff --git a/pallets/eth-bridge/src/tests/http_status.rs b/pallets/eth-bridge/src/tests/http_status.rs
+new file mode 100644
+--- /dev/null
++++ b/pallets/eth-bridge/src/tests/http_status.rs
+@@ -0,0 +1,487 @@
++// This file is part of the SORA network and Polkaswap app.
++// SPDX-License-Identifier: BSD-4-Clause
++
++use super::mock::{push_global_http_response, EthBridge, ExtBuilder, Runtime, State};
++use super::{Error, ETH_NETWORK_ID};
++use crate::types::Log;
++use crate::MAX_GET_LOGS_ITEMS;
++use sp_runtime::offchain::storage::StorageValueRef;
++
++const LOG_RANGE_LIMIT_RESPONSE: &[u8] = br#"{"jsonrpc":"2.0","id":0,"error":{"code":-32602,"message":"eth_getLogs is limited to a 5 blocks range"}}"#;
++const RANGE_LIMIT_RETRY_DELAY_MS: u64 = 30 * 60 * 1000;
++
++fn scan_keys(network_id: u32) -> (String, String, String) {
++    (
++        format!("eth-bridge-ocw::eth-to-handle-from-height-{network_id:?}"),
++        format!("eth-bridge-ocw::eth-log-range-size-{network_id:?}"),
++        format!("eth-bridge-ocw::eth-log-range-limit-v1-{network_id:?}"),
++    )
++}
++
++fn run_scan(state: &mut State, sidechain_height: u64) {
++    state.run_next_offchain_with_params(
++        sidechain_height,
++        frame_system::Pallet::<Runtime>::block_number() + 1,
++        false,
++    );
++}
++
++fn requested_log_spans(state: &State) -> Vec<u64> {
++    state
++        .http_requests()
++        .into_iter()
++        .filter(|request| request["method"] == "eth_getLogs")
++        .map(|request| {
++            let filter = &request["params"][0];
++            let from =
++                u64::from_str_radix(&filter["fromBlock"].as_str().unwrap()[2..], 16).unwrap();
++            let to = u64::from_str_radix(&filter["toBlock"].as_str().unwrap()[2..], 16).unwrap();
++            to - from + 1
++        })
++        .collect()
++}
++
++#[test]
++fn http_413_log_limit_is_classified_as_an_oversized_response() {
++    let (mut ext, _state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        push_global_http_response(413, LOG_RANGE_LIMIT_RESPONSE.to_vec());
++        let error = EthBridge::load_transfers_logs(ETH_NETWORK_ID, 100, 149)
++            .expect_err("the provider rejected the log range with HTTP 413");
++        assert_eq!(error, Error::HttpResponseTooLarge);
++        assert!(error.should_retry());
++    });
++}
++
++#[test]
++fn http_413_log_limits_shrink_the_range_and_recover_without_skipping_blocks() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let height_key = format!(
++            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
++            ETH_NETWORK_ID
++        );
++        let range_key = format!("eth-bridge-ocw::eth-log-range-size-{:?}", ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&MAX_GET_LOGS_ITEMS);
++        assert_eq!(MAX_GET_LOGS_ITEMS, 50);
++
++        // A provider with a five-block limit rejects 50, 25, 12, and six blocks.
++        for expected_range in [25u64, 12, 6, 3] {
++            state.push_http_response(413, LOG_RANGE_LIMIT_RESPONSE.to_vec());
++            state.run_next_offchain_with_params(
++                200,
++                frame_system::Pallet::<Runtime>::block_number() + 1,
++                false,
++            );
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++            assert_eq!(
++                state.storage_read::<u64>(range_key.as_bytes()),
++                Some(expected_range)
++            );
++        }
++
++        state.push_response::<[Log; 0]>([]);
++        state.run_next_offchain_with_params(
++            200,
++            frame_system::Pallet::<Runtime>::block_number() + 1,
++            false,
++        );
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(103));
++
++        let requests: Vec<_> = state
++            .http_requests()
++            .into_iter()
++            .filter(|request| request["method"] == "eth_getLogs")
++            .collect();
++        assert_eq!(requests.len(), 5);
++        for (request, to_block) in requests.iter().zip([149u64, 124, 111, 105, 102]) {
++            assert_eq!(request["params"][0]["fromBlock"], "0x64");
++            assert_eq!(request["params"][0]["toBlock"], format!("0x{to_block:x}"));
++            assert_eq!(
++                request["params"][0]["address"],
++                requests[0]["params"][0]["address"]
++            );
++            assert_eq!(
++                request["params"][0]["topics"],
++                requests[0]["params"][0]["topics"]
++            );
++        }
++    });
++}
++
++#[test]
++fn http_401_and_429_log_failures_preserve_the_cursor_and_range() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let height_key = format!(
++            "eth-bridge-ocw::eth-to-handle-from-height-{:?}",
++            ETH_NETWORK_ID
++        );
++        let range_key = format!("eth-bridge-ocw::eth-log-range-size-{:?}", ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&7u64);
++
++        for (status, body) in [
++            (401, br#"{"jsonrpc":"2.0","id":0,"error":{"code":-32000,"message":"Unauthorized"}}"#.as_slice()),
++            (429, br#"{"jsonrpc":"2.0","id":0,"error":{"code":-32005,"message":"Rate limit exceeded"}}"#.as_slice()),
++        ] {
++            push_global_http_response(status, body.to_vec());
++            assert_eq!(
++                EthBridge::load_transfers_logs(ETH_NETWORK_ID, 100, 106),
++                Err(Error::HttpFetchingError)
++            );
++
++            state.push_http_response(status, body.to_vec());
++            state.run_next_offchain_with_params(
++                200,
++                frame_system::Pallet::<Runtime>::block_number() + 1,
++                false,
++            );
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++            assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(7));
++        }
++
++        state.push_response::<[Log; 0]>([]);
++        state.run_next_offchain_with_params(
++            200,
++            frame_system::Pallet::<Runtime>::block_number() + 1,
++            false,
++        );
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(107));
++    });
++}
++
++#[test]
++fn http_413_for_non_log_methods_remains_an_http_failure() {
++    let (mut ext, _state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        push_global_http_response(413, b"Request Entity Too Large".to_vec());
++        assert_eq!(
++            EthBridge::load_current_height(ETH_NETWORK_ID),
++            Err(Error::HttpFetchingError)
++        );
++    });
++}
++
++#[test]
++fn learned_log_range_limit_prevents_repeated_413_after_recovery() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&6u64);
++
++        state.push_http_response(413, LOG_RANGE_LIMIT_RESPONSE.to_vec());
++        run_scan(&mut state, 1000);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(3));
++
++        for expected_height in [103u64, 108, 113, 118] {
++            state.push_response::<[Log; 0]>([]);
++            run_scan(&mut state, 1000);
++            assert_eq!(
++                state.storage_read::<u64>(height_key.as_bytes()),
++                Some(expected_height)
++            );
++            assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++        }
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++            Some((5, RANGE_LIMIT_RETRY_DELAY_MS))
++        );
++        assert_eq!(requested_log_spans(&state), vec![6, 3, 5, 5, 5]);
++    });
++}
++
++#[test]
++fn log_limit_reduction_uses_the_actual_confirmed_query_span() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&50u64);
++        state.push_http_response(413, LOG_RANGE_LIMIT_RESPONSE.to_vec());
++        // Only 100..=105 is confirmed despite the configured 50-block range.
++        run_scan(&mut state, 135);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(3));
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++            Some((5, RANGE_LIMIT_RETRY_DELAY_MS))
++        );
++        state.push_response::<[Log; 0]>([]);
++        run_scan(&mut state, 135);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(103));
++        assert_eq!(requested_log_spans(&state), vec![6, 3]);
++    });
++}
++
++#[test]
++fn failed_log_limit_probe_restores_the_learned_ceiling_and_cooldown() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&5u64);
++        StorageValueRef::persistent(limit_key.as_bytes()).set(&(5u64, RANGE_LIMIT_RETRY_DELAY_MS));
++
++        state.offchain_state.write().timestamp = (RANGE_LIMIT_RETRY_DELAY_MS - 1).into();
++        state.push_response::<[Log; 0]>([]);
++        run_scan(&mut state, 1000);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(105));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++
++        state.offchain_state.write().timestamp = RANGE_LIMIT_RETRY_DELAY_MS.into();
++        state.push_http_response(413, LOG_RANGE_LIMIT_RESPONSE.to_vec());
++        run_scan(&mut state, 1000);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(105));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++            Some((5, 2 * RANGE_LIMIT_RETRY_DELAY_MS))
++        );
++
++        state.push_response::<[Log; 0]>([]);
++        run_scan(&mut state, 1000);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(110));
++        assert_eq!(requested_log_spans(&state), vec![5, 10, 5]);
++    });
++}
++
++#[test]
++fn successful_log_limit_probe_restores_normal_range_growth() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&5u64);
++        StorageValueRef::persistent(limit_key.as_bytes()).set(&(5u64, RANGE_LIMIT_RETRY_DELAY_MS));
++        state.offchain_state.write().timestamp = RANGE_LIMIT_RETRY_DELAY_MS.into();
++
++        for expected_height in [110u64, 130, 170, 220] {
++            state.push_response::<[Log; 0]>([]);
++            run_scan(&mut state, 1000);
++            assert_eq!(
++                state.storage_read::<u64>(height_key.as_bytes()),
++                Some(expected_height)
++            );
++            assert_eq!(state.storage_read::<(u64, u64)>(limit_key.as_bytes()), None);
++        }
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(50));
++        assert_eq!(requested_log_spans(&state), vec![10, 20, 40, 50]);
++    });
++}
++
++#[test]
++fn small_confirmed_scan_does_not_clear_an_expired_log_limit() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&5u64);
++        let limit = (5u64, RANGE_LIMIT_RETRY_DELAY_MS);
++        StorageValueRef::persistent(limit_key.as_bytes()).set(&limit);
++        state.offchain_state.write().timestamp = RANGE_LIMIT_RETRY_DELAY_MS.into();
++        state.push_response::<[Log; 0]>([]);
++        run_scan(&mut state, 132);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(103));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++            Some(limit)
++        );
++        assert_eq!(requested_log_spans(&state), vec![3]);
++    });
++}
++
++#[test]
++fn failed_above_ceiling_probe_defers_retry_and_restores_smaller_scans() {
++    // Each response exercises the actual HTTP status or pending-request failure path.
++    for status in [Some(401), Some(429), Some(500), None] {
++        let (mut ext, mut state) = ExtBuilder::default().build();
++        ext.execute_with(|| {
++            let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++            StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++            StorageValueRef::persistent(range_key.as_bytes()).set(&5u64);
++            StorageValueRef::persistent(limit_key.as_bytes())
++                .set(&(5u64, RANGE_LIMIT_RETRY_DELAY_MS));
++            state.offchain_state.write().timestamp = RANGE_LIMIT_RETRY_DELAY_MS.into();
++
++            match status {
++                Some(status) => {
++                    state.push_http_response(status, b"provider request rejected".to_vec());
++                }
++                None => state.push_http_failure(),
++            }
++            run_scan(&mut state, 1000);
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++            assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++            assert_eq!(
++                state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++                Some((5, 2 * RANGE_LIMIT_RETRY_DELAY_MS))
++            );
++
++            state.push_response::<[Log; 0]>([]);
++            run_scan(&mut state, 1000);
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(105));
++            assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++
++            state.offchain_state.write().timestamp = (2 * RANGE_LIMIT_RETRY_DELAY_MS - 1).into();
++            state.push_response::<[Log; 0]>([]);
++            run_scan(&mut state, 1000);
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(110));
++            assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++
++            state.offchain_state.write().timestamp = (2 * RANGE_LIMIT_RETRY_DELAY_MS).into();
++            state.push_response::<[Log; 0]>([]);
++            run_scan(&mut state, 1000);
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(120));
++            assert_eq!(state.storage_read::<(u64, u64)>(limit_key.as_bytes()), None);
++            assert_eq!(requested_log_spans(&state), vec![10, 5, 5, 10]);
++        });
++    }
++}
++
++#[test]
++fn failed_small_confirmed_scan_does_not_defer_a_larger_probe() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&5u64);
++        let limit = (5u64, RANGE_LIMIT_RETRY_DELAY_MS);
++        StorageValueRef::persistent(limit_key.as_bytes()).set(&limit);
++        state.offchain_state.write().timestamp = RANGE_LIMIT_RETRY_DELAY_MS.into();
++
++        state.push_http_response(500, b"temporarily unavailable".to_vec());
++        run_scan(&mut state, 132);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(5));
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++            Some(limit)
++        );
++
++        state.push_response::<[Log; 0]>([]);
++        run_scan(&mut state, 1000);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(110));
++        assert_eq!(state.storage_read::<(u64, u64)>(limit_key.as_bytes()), None);
++        assert_eq!(requested_log_spans(&state), vec![3, 10]);
++    });
++}
++
++#[test]
++fn json_rpc_rate_and_quota_errors_do_not_learn_a_log_range_limit() {
++    for message in [
++        "Rate limit exceeded",
++        "ran out of cu",
++        "limit exceeded",
++        "Too many requests",
++    ] {
++        let (mut ext, mut state) = ExtBuilder::default().build();
++        ext.execute_with(|| {
++            let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++            StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++            StorageValueRef::persistent(range_key.as_bytes()).set(&7u64);
++            let body = serde_json::to_vec(&serde_json::json!({
++                "jsonrpc": "2.0", "id": 0,
++                "error": { "code": -32005, "message": message }
++            }))
++            .unwrap();
++            push_global_http_response(200, body.clone());
++            let error = EthBridge::load_transfers_logs(ETH_NETWORK_ID, 100, 106)
++                .expect_err("rate and quota failures must remain retryable RPC errors");
++            assert_eq!(error, Error::JsonDeserializationError, "{message}");
++            assert!(error.should_retry());
++
++            state.push_http_response(200, body);
++            run_scan(&mut state, 1000);
++            assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++            assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(7));
++            assert_eq!(state.storage_read::<(u64, u64)>(limit_key.as_bytes()), None);
++        });
++    }
++}
++
++#[test]
++fn explicit_json_rpc_log_count_limit_still_reduces_the_range() {
++    let (mut ext, mut state) = ExtBuilder::default().build();
++
++    ext.execute_with(|| {
++        let (height_key, range_key, limit_key) = scan_keys(ETH_NETWORK_ID);
++        StorageValueRef::persistent(height_key.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(range_key.as_bytes()).set(&50u64);
++        state.push_http_response(
++            200,
++            br#"{"jsonrpc":"2.0","id":0,"error":{"code":-32005,"message":"logs count exceeds the limit 50000"}}"#.to_vec(),
++        );
++        run_scan(&mut state, 1000);
++        assert_eq!(state.storage_read::<u64>(height_key.as_bytes()), Some(100));
++        assert_eq!(state.storage_read::<u64>(range_key.as_bytes()), Some(25));
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(limit_key.as_bytes()),
++            Some((49, RANGE_LIMIT_RETRY_DELAY_MS))
++        );
++    });
++}
++
++#[test]
++fn learned_log_range_limits_are_isolated_per_network() {
++    let mut builder = ExtBuilder::default();
++    let second_network =
++        builder.add_network(vec![], None, Some(1), sp_core::H160::repeat_byte(0x23));
++    let first_config = &builder.networks[&ETH_NETWORK_ID];
++    let peers = first_config.config.initial_peers.clone();
++    let keypairs = first_config.ocw_keypairs.clone();
++    let second_config = builder.networks.get_mut(&second_network).unwrap();
++    second_config.config.initial_peers = peers;
++    second_config.ocw_keypairs = keypairs;
++    let (mut ext, mut state) = builder.build();
++
++    ext.execute_with(|| {
++        let (first_height, first_range, first_limit) = scan_keys(ETH_NETWORK_ID);
++        let (second_height, second_range, second_limit) = scan_keys(second_network);
++        StorageValueRef::persistent(first_height.as_bytes()).set(&100u64);
++        StorageValueRef::persistent(first_range.as_bytes()).set(&5u64);
++        let limit = (5u64, RANGE_LIMIT_RETRY_DELAY_MS);
++        StorageValueRef::persistent(first_limit.as_bytes()).set(&limit);
++        StorageValueRef::persistent(second_height.as_bytes()).set(&200u64);
++        StorageValueRef::persistent(second_range.as_bytes()).set(&50u64);
++
++        state.push_response::<[Log; 0]>([]);
++        state.push_response(crate::types::U64::from(1000u64));
++        state.push_response::<[Log; 0]>([]);
++        run_scan(&mut state, 1000);
++
++        assert_eq!(
++            state.storage_read::<u64>(first_height.as_bytes()),
++            Some(105)
++        );
++        assert_eq!(
++            state.storage_read::<u64>(second_height.as_bytes()),
++            Some(250)
++        );
++        assert_eq!(state.storage_read::<u64>(first_range.as_bytes()), Some(5));
++        assert_eq!(state.storage_read::<u64>(second_range.as_bytes()), Some(50));
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(first_limit.as_bytes()),
++            Some(limit)
++        );
++        assert_eq!(
++            state.storage_read::<(u64, u64)>(second_limit.as_bytes()),
++            None
++        );
++        assert_eq!(requested_log_spans(&state), vec![5, 50]);
++    });
++}

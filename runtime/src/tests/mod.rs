@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 mod liquidity_proxy;
+mod liveness;
 mod referrals;
 #[cfg(feature = "try-runtime")]
 mod remote;
@@ -292,6 +293,27 @@ pub(crate) fn benchmark_genesis_preset_has_expected_shape() {
         .expect("session keys preset is an array");
     assert_eq!(session_keys.len(), 1);
 
+    let root = preset
+        .as_object()
+        .expect("benchmark preset root is an object");
+    let eth_bridge = value_for_key(root, "eth_bridge", "ethBridge")
+        .as_object()
+        .expect("EthBridge preset is an object");
+    assert_eq!(
+        eth_bridge["networks"]
+            .as_array()
+            .expect("EthBridge networks is an array")
+            .len(),
+        1,
+    );
+    let iroha_migration = value_for_key(root, "iroha_migration", "irohaMigration")
+        .as_object()
+        .expect("IrohaMigration preset is an object");
+    assert!(
+        value_for_key(iroha_migration, "account_id", "accountId").is_string(),
+        "IrohaMigration benchmark account must be configured"
+    );
+
     let staking = preset["staking"]
         .as_object()
         .expect("staking preset is an object");
@@ -352,8 +374,8 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
-    assert_eq!(crate::VERSION.spec_version, 130);
-    assert_eq!(crate::VERSION.transaction_version, 130);
+    assert_eq!(crate::VERSION.spec_version, 131);
+    assert_eq!(crate::VERSION.transaction_version, 131);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),
         StorageVersion::new(2)
@@ -404,7 +426,7 @@ pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
     );
     assert_eq!(
         eth_bridge::Pallet::<crate::Runtime>::in_code_storage_version(),
-        StorageVersion::new(3)
+        StorageVersion::new(4)
     );
 }
 
@@ -460,6 +482,41 @@ pub(crate) fn eth_bridge_storage_version_migration_reaches_v3() {
         assert_eq!(
             eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version(),
             StorageVersion::new(3)
+        );
+    });
+}
+
+pub(crate) fn eth_bridge_account_request_multi_block_migration_reaches_v4() {
+    ext().execute_with(|| {
+        use frame_support::migrations::MultiStepMigrator;
+        use frame_support::traits::Hooks;
+
+        StorageVersion::new(3).put::<eth_bridge::Pallet<crate::Runtime>>();
+        let account_id = sp_runtime::AccountId32::new([43; 32]);
+        // Exercise the audited per-value migration ceiling, not only the first value above the
+        // retained-history limit. This must still make progress under the runtime service budget.
+        let history = (0..65_536u64)
+            .map(|value| (0, sp_core::H256::from_low_u64_be(value)))
+            .collect::<Vec<_>>();
+        let expected = history[history.len() - 2048..].to_vec();
+        eth_bridge::AccountRequests::<crate::Runtime>::insert(&account_id, history);
+
+        <pallet_migrations::Pallet<crate::Runtime> as Hooks<crate::BlockNumber>>::on_runtime_upgrade(
+        );
+        let mut steps = 0u32;
+        while <crate::Runtime as frame_system::Config>::MultiBlockMigrator::ongoing() {
+            <crate::Runtime as frame_system::Config>::MultiBlockMigrator::step();
+            steps = steps.saturating_add(1);
+            assert!(steps <= 32);
+        }
+
+        assert_eq!(
+            eth_bridge::Pallet::<crate::Runtime>::on_chain_storage_version(),
+            StorageVersion::new(4)
+        );
+        assert_eq!(
+            eth_bridge::AccountRequests::<crate::Runtime>::get(account_id),
+            expected
         );
     });
 }
@@ -1004,6 +1061,42 @@ pub(crate) fn eth_bridge_storage_version_migration_try_runtime_hooks() {
         let state = crate::migrations::EthBridgeStorageVersionV3::pre_upgrade().unwrap();
         crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
         crate::migrations::EthBridgeStorageVersionV3::post_upgrade(state).unwrap();
+    });
+
+    ext().execute_with(|| {
+        StorageVersion::new(4).put::<eth_bridge::Pallet<crate::Runtime>>();
+        let state = crate::migrations::EthBridgeStorageVersionV3::pre_upgrade().unwrap();
+        crate::migrations::EthBridgeStorageVersionV3::on_runtime_upgrade();
+        crate::migrations::EthBridgeStorageVersionV3::post_upgrade(state).unwrap();
+    });
+
+    ext().execute_with(|| {
+        use frame_support::migrations::SteppedMigration;
+        use frame_support::weights::WeightMeter;
+
+        type Migration = eth_bridge::migration::AccountRequestsV3ToV4<crate::Runtime>;
+        StorageVersion::new(3).put::<eth_bridge::Pallet<crate::Runtime>>();
+        let account_id = sp_runtime::AccountId32::new([42; 32]);
+        let history = (0..2050)
+            .map(|value| (0, sp_core::H256::from_low_u64_be(value)))
+            .collect::<Vec<_>>();
+        let expected = history[2..].to_vec();
+        eth_bridge::AccountRequests::<crate::Runtime>::insert(&account_id, history);
+
+        let state = <Migration as SteppedMigration>::pre_upgrade().unwrap();
+        let mut cursor = None;
+        loop {
+            let mut meter = WeightMeter::with_limit(crate::MigrationMaxServiceWeight::get());
+            cursor = <Migration as SteppedMigration>::step(cursor, &mut meter).unwrap();
+            if cursor.is_none() {
+                break;
+            }
+        }
+        <Migration as SteppedMigration>::post_upgrade(state).unwrap();
+        assert_eq!(
+            eth_bridge::AccountRequests::<crate::Runtime>::get(account_id),
+            expected
+        );
     });
 }
 

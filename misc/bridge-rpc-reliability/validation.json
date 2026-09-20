@@ -1,0 +1,148 @@
+{
+  "status": "source-ready-for-existing-runtime-upgrade-release-process",
+  "scope": "Final user clarification: finish repository source work and assess runtime-upgrade readiness. No release builds, images, deployment, governance submission, or production operations. Live incident cause and unavailable external watchdog are separate unresolved work.",
+  "date": "2026-09-12",
+  "validationRuns": [
+    {
+      "name": "bridge",
+      "command": "scripts/with_llvm_env.sh cargo test -p eth-bridge --lib --locked",
+      "result": {
+        "passed": 288,
+        "failed": 0,
+        "ignored": 0
+      },
+      "log": "validation/bridge-tests.log",
+      "logSha256": "9c55833fce1808b068165b359776f84ea01bf189ed06ace5b358591ef7863f30"
+    },
+    {
+      "name": "runtimeNative",
+      "command": "SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo test -p framenode-runtime --lib --locked",
+      "result": {
+        "passed": 150,
+        "failed": 0,
+        "ignored": 4
+      },
+      "log": "validation/runtime-native-tests.log",
+      "logSha256": "f8fe36f5a1e5f84d8e9f56d473b57c119a5f24fc3a6b3c8cef0b7a23b1aeea9f",
+      "ignoredTests": [
+        "tests::liquidity_proxy::chameleon_pool_swaps",
+        "tests::liquidity_proxy::chameleon_pool_swaps_burn_kxor",
+        "tests::xor_fee::reminting_for_sora_parliament_works",
+        "xor_fee_impls::tests::check_calls_from_bridge_peers_pays_no"
+      ]
+    },
+    {
+      "name": "runtimeWasm",
+      "command": "SKIP_WASM_BUILD=1 CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --no-default-features --target wasm32-unknown-unknown",
+      "result": {
+        "status": "passed",
+        "exitCode": 0,
+        "target": "wasm32-unknown-unknown",
+        "noDefaultFeatures": true,
+        "releaseArtifactBuilt": false
+      },
+      "log": "validation/runtime-wasm-check.log",
+      "logSha256": "c1654e3487b94fed7bbe29548b74034a85afbc844c2e3ccf7417163a9a77ff6c"
+    }
+  ],
+  "beforeFixTests": [
+    {
+      "suite": "failedImportRecovery",
+      "passed": 0,
+      "failed": 4,
+      "log": "validation/failed-import-before-fix.log",
+      "logSha256": "e047102d7d9bd0b9a24af5d61047ac25952a2dd5f66027bcd4ec67d8ac0d35a7"
+    },
+    {
+      "suite": "httpStatus",
+      "passed": 2,
+      "failed": 2,
+      "log": "validation/http-status-before-fix.log",
+      "logSha256": "6ddb8dac7ccc61c741f28547660933fdd7cdc40b309080d292f4c7a604717a57"
+    },
+    {
+      "suite": "adaptiveRange",
+      "passed": 4,
+      "failed": 6,
+      "log": "validation/adaptive-range-before-fix.log",
+      "logSha256": "7d4931bbe1cfa820bba603da8429d4cf87e3199d2573bb7275c4bccfb9642bd6"
+    },
+    {
+      "suite": "probeAndQuota",
+      "passed": 12,
+      "failed": 2,
+      "log": "validation/probe-quota-before-fix.log",
+      "logSha256": "75c8a9fd854db12c5cc83e057685a0b9985407ee32aa956ed7af51880d9e0bed"
+    }
+  ],
+  "patch": "diagnostics-and-regressions.patch",
+  "patchSha256": "4ea5b7ac9ddba9c3f2cbb9197c1b75c15ee1f8d59fb3de2fa48a4764db6fca53",
+  "patchBaseline": "Original dirty working tree preserved at task start; not clean Git HEAD.",
+  "sources": [
+    {
+      "path": "pallets/eth-bridge/src/offchain/http.rs",
+      "baselineSha256": "c1b1b14983dfdb67d81cdecb08eb84fca706923864cc2525c2f4ceb127661468",
+      "testedSha256": "3101ecd8556fcb2dba7db0e7f8610553c9b08c629103fee0a7c8ea1dbc287928"
+    },
+    {
+      "path": "pallets/eth-bridge/src/offchain/handle.rs",
+      "baselineSha256": "6588e7aa82461e6647c5c80e4246f3479f5ad13191eafedc8cef69f079fc38a3",
+      "testedSha256": "cb255e47c3e470179b2310e7646d22259fe4789f9101812f5a4e8338e8de7bca"
+    },
+    {
+      "path": "pallets/eth-bridge/src/tests/mock.rs",
+      "baselineSha256": "fd750f69cc8e3177781e914935841cd884c1fdc6a4293e55d155cd2fa6df1a79",
+      "testedSha256": "633c3183e34891847149763c0bc1f478960b8572fda54e1d7067435f6567f501"
+    },
+    {
+      "path": "pallets/eth-bridge/src/tests/ocw.rs",
+      "baselineSha256": "f9ee526572323a29eab6605a328cd6c518cada7c5066dad6a88f19348e054c31",
+      "testedSha256": "66b894431d047b0c48fe475bfb2d965d7e37195eaa6b02f65f8712fcdd34f8a5"
+    },
+    {
+      "path": "pallets/eth-bridge/src/tests/mod.rs",
+      "baselineSha256": "2ad974d0b51a7bb827ab004b5f000e6e00d7e6635859a6a27cdbbf47f3245fab",
+      "testedSha256": "8adc07ea126ed49f67126d604e60ebad1d5b1ce549c57bbcf8b089b81e6e54f3"
+    },
+    {
+      "path": "pallets/eth-bridge/src/tests/http_status.rs",
+      "baselineSha256": null,
+      "testedSha256": "f44524ccb9aa61a7f4fc7159b5ccb248a63d7d03d9a2c89572520b2d59c497da"
+    }
+  ],
+  "runtimeContextSha256": {
+    "Cargo.lock": "5f6f71725e48b0511d6d9599392957077eae8824c4ce74cb29fa456982095d0a",
+    "runtime/src/lib.rs": "0226e44afa8c06180a8793be708a6bc5a47b8253b6133b2994ebcdc822aa2ecf",
+    "runtime/src/migrations.rs": "b7ac6ff0ad7b255117d13333437a28f86b198e6843c20e45d6697fa3d027858e"
+  },
+  "runtimeCompatibility": {
+    "specVersion": 131,
+    "transactionVersion": 131,
+    "taskAddsOnChainMigration": false,
+    "taskChangesRuntimeApiOrCallEncoding": false,
+    "newState": "Versioned local offchain range-limit and recovery-generation keys; existing cursor and range encodings preserved.",
+    "review": "Independent review found no remaining introduced runtime compatibility or liveness blocker after failed-probe cooldown, quota classification, and escaped error-message corrections."
+  },
+  "staticChecks": {
+    "rustfmtSixChangedFiles": "passed",
+    "gitDiffWhitespaceCheck": "passed",
+    "taskPatchReverseApplyDryRun": "passed",
+    "testedSourceHashesUnchanged": "passed"
+  },
+  "existingPackage": {
+    "sourceSnapshot": "runtime-upgrade-4.8.9/validation/source-sha256-before.json",
+    "sourceSnapshotSha256": "096372d70ce45e9270658bed85666b5eed9ba51e4343117ba9ef02720d3ef2e1",
+    "matchesFinalBridgeSource": false,
+    "mismatchedSourceFiles": [
+      "pallets/eth-bridge/src/offchain/http.rs",
+      "pallets/eth-bridge/src/offchain/handle.rs"
+    ],
+    "qualification": "Existing package predates final fixes and is not validated by this handoff. Existing local rehearsal stopped on pruned pinned state; offchain workers were disabled. Final artifact build and qualification belong to the normal release process."
+  },
+  "limitations": [
+    "No claim of zero bugs or proof of the production incident cause.",
+    "No live provider, wall-clock HTTP timeout, or streamed-body fault simulation.",
+    "Four pre-existing native runtime tests ignored; listed above.",
+    "Native runtime default features and no-std Wasm checked; no release artifact or wip runtime qualification performed."
+  ]
+}

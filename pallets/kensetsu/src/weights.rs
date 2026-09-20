@@ -312,8 +312,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `354270`
 		// Minimum execution time: 123_291_000 picoseconds.
 		Weight::from_parts(124_532_000, 354270)
-			.saturating_add(T::DbWeight::get().reads(9_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
+				.saturating_add(T::DbWeight::get().reads(11_u64))
+				.saturating_add(T::DbWeight::get().writes(3_u64))
 	}
 	/// Storage: PriceTools FastPriceInfos (r:1 w:0)
 	/// Proof Skipped: PriceTools FastPriceInfos (max_values: None, max_size: None, mode: Measured)
@@ -731,8 +731,8 @@ impl WeightInfo for () {
 		//  Estimated: `354270`
 		// Minimum execution time: 123_291_000 picoseconds.
 		Weight::from_parts(124_532_000, 354270)
-			.saturating_add(RocksDbWeight::get().reads(9_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
+				.saturating_add(RocksDbWeight::get().reads(11_u64))
+				.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 	/// Storage: PriceTools FastPriceInfos (r:1 w:0)
 	/// Proof Skipped: PriceTools FastPriceInfos (max_values: None, max_size: None, mode: Measured)

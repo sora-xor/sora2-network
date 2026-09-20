@@ -1,0 +1,149 @@
+{
+  "checkedAt": "2026-09-12T11:24:43.300002+00:00",
+  "scope": "Validator recovery, session-boundary authorship, deferred financial slashing, and truthful equivocation admission for the captured mainnet workload.",
+  "deployed": false,
+  "submittedTransactions": 0,
+  "oldReleaseGovernanceBundleContainsChanges": false,
+  "policy": {
+    "strictMajority": true,
+    "denominator": "full active validator count",
+    "window": "one session",
+    "excludeDisabledAtAnyTimeInSession": true,
+    "offlineFinancialPenaltiesDisableConsensus": false,
+    "equivocationFinancialPenaltiesAndDisablingPreserved": true,
+    "initialPartiallyObservedSessionGetsOfflineGrace": true,
+    "existingQueuedSlashesCancelled": false
+  },
+  "checks": [
+    {
+      "name": "focused-runtime",
+      "command": "SKIP_WASM_BUILD=1 LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo test --locked -p framenode-runtime --lib tests::liveness",
+      "passed": 37,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "full-runtime",
+      "command": "SKIP_WASM_BUILD=1 LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo test --locked -p framenode-runtime --lib",
+      "passed": 187,
+      "failed": 0,
+      "ignored": 4,
+      "ignoredTests": [
+        "tests::liquidity_proxy::chameleon_pool_swaps",
+        "tests::liquidity_proxy::chameleon_pool_swaps_burn_kxor",
+        "tests::xor_fee::reminting_for_sora_parliament_works",
+        "xor_fee_impls::tests::check_calls_from_bridge_peers_pays_no"
+      ]
+    },
+    {
+      "name": "full-staking",
+      "command": "SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo test --offline --locked -p pallet-staking --lib",
+      "passed": 217,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "name": "no-std-wasm",
+      "command": "SKIP_WASM_BUILD=1 CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --no-default-features --target wasm32-unknown-unknown",
+      "passed": true
+    },
+    {
+      "name": "release-wasm",
+      "command": "env -u SKIP_WASM_BUILD CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --locked -p framenode-runtime --features build-wasm-binary",
+      "passed": true
+    },
+    {
+      "name": "metadata-compatibility",
+      "passed": true,
+      "breakingChanges": [],
+      "counts": {
+        "existingPallets": 80,
+        "existingCalls": 405,
+        "nestedTypePairsVisited": 10351,
+        "existingEvent": 442,
+        "existingError": 962,
+        "existingStorageEntries": 481,
+        "existingConstants": 152,
+        "signedExtensions": 7
+      }
+    },
+    {
+      "name": "new-file-format-and-tracked-whitespace",
+      "passed": true
+    },
+    {
+      "name": "vendor-patch-chain-replay",
+      "passed": true,
+      "detail": "additional-payout.patch followed by deferred-slashing.patch reproduces all vendored upstream files exactly"
+    }
+  ],
+  "realProofCoverage": "Two genuinely signed BABE/VRF reports with archived SDK-generated membership proofs pass real outer Utility batch admission, cryptographic verification, offence recording, financial queueing and disabling. Election results are supplied by the test fixture. The four-call BABE/GRANDPA admission matrix separately uses structural proofs to isolate weight admission.",
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/misc/slash-investigation/framenode-runtime-lifecycle-fixes.compact.compressed.wasm",
+    "bytes": 3055506,
+    "specVersion": 131,
+    "sha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+    "blake2_256": "0xf062ed07861255f5ec443930de9c5066d1e4133036126d48462c8e233a75f27e"
+  },
+  "sourceBaseline": "7104c2ff6e8d5c2babfc7743e8e5851ba65e5a58",
+  "sourceSha256": {
+    "Cargo.toml": "5e794499aa93a1772c7dac3bae90d429b2737ae741b9c613920b7991d2d0d453",
+    "Cargo.lock": "5f6f71725e48b0511d6d9599392957077eae8824c4ce74cb29fa456982095d0a",
+    "runtime/Cargo.toml": "bcd343196512ab49a8a5b3f815eac1b9a54b73e5b7e97dca1dd18205fdf80ff3",
+    "runtime/src/lib.rs": "aa8064686b50c07bd02ee0648c491b3f16c07c4b27bcc67364c850451382b2f7",
+    "runtime/src/liveness.rs": "9de8b16f06767e281e50e2fd793c6c20e617f6a92264f9fe893aff281fb5f1c1",
+    "runtime/src/tests/mod.rs": "c26e06b8ff405d9e9cddc9c36d6e40e9d3dc92d1fbd6d3e39a34fbdc0834849e",
+    "runtime/src/tests/liveness.rs": "d0d7d3356df1d3cc7811f347774dae839f323e4162bed36a962b399e5a39189f",
+    "runtime/src/tests/liveness/deferred_slashes.rs": "054a42656c4615af5977061befbe195aecad5d8e83a803ce65a7eaf7c4dca12a",
+    "runtime/src/tests/liveness/session_boundaries.rs": "dddf0e3ac02066cbd09c7885650f5728c492d6f6e4bfb71238edacdfe43aa758",
+    "runtime/src/tests/liveness/equivocation_admission.rs": "8259e19f7ce38f000fb50e1c32ab6cf3b9728b94efbd705eb8ad75379698cad9",
+    "vendor/polkadot-sdk/frame/staking/src/pallet/impls.rs": "15845efea72c72ccbf0fd4965022300a81eecbe74a27759c95cf729be3120e59",
+    "vendor/polkadot-sdk/frame/staking/src/tests.rs": "a8fa5749568ea4dea3a5ebb8f90c450a10349b59fe8387b6bc90f88c5ec11097"
+  },
+  "evidenceSha256": {
+    "candidate-source.patch": "fd0e4d2355179be8541980918fc82715d66c68643ff8f08424a1d5d828736a54",
+    "candidate-source-base.txt": "dcab4a3ebacb19e17df5d291a6c22278fa24687ef869b6eeb0808db7cdcf543f",
+    "candidate-new-source.tar.gz": "5d23d080ea4d4422d67d66aab1b04fef4536fbfa8862501ac9afa5e009bd6d6e",
+    "candidate-new-source-sha256.json": "3df63c9d30fe0ec00d783b8b66ef076aaedf88f97dd4d3fb036c447ba7700e11",
+    "lifecycle-runtime-tests.log": "bacc2247d7b58079c45b9139a2e33611da4b209e891be27dba685735ce903ad0",
+    "lifecycle-runtime-full-tests.log": "3962a3c00025816e6407d6415246c5ff55fab10130b38fa3d06b7aa5d7a0eb61",
+    "staking-regression-tests.log": "27d9549315a8475ca0e79856a6d434debc4bfe32f261c56726c0df67f097b589",
+    "lifecycle-wasm-check.log": "30b4019bbc63a0ebd23cce7f97ad6a5fad7a762a6aeaadff3e38689c1c46ff04",
+    "lifecycle-release-build.log": "a91f35fee450655a44029cd5ace9b1377a141ebe5dbea0abb2362804557f5b46",
+    "lifecycle-release-metadata.json": "5ba3b24f0f439a7e943bd555716a419c369c8fdb73f15e416a94084f424cb1f3",
+    "lifecycle-metadata-compatibility.json": "49fb71b56bde7c450747d377cd9d2c3005eb23153c63537585ef5fc87c870ae9",
+    "exposure-work-snapshot.json": "1ac6ada98cb3b1822fb852bddad1a3204d96765cdc707db9f4111826701414da",
+    "rehearse-liveness-upgrade.cjs": "e99efc029f8544a79846129b5fe8e1ddaf5b109216ab9adba0c6e1c44d00ea48",
+    "liveness-wasm-rehearsal.json": "eb647316bc3ae02860a93f35cbe6116076d1fe8bf4512d16a0d5832a2b550963",
+    "liveness-wasm-rehearsal.log": "df487123efbeba8ce8eb736d4a881ad5958de79a31a5596c52ff59f561c1165c"
+  },
+  "sourceCaptureIncludesPreexistingWorkspaceChanges": true,
+  "localWasmUpgradeRehearsal": {
+    "status": "passed",
+    "evidence": "liveness-wasm-rehearsal.json",
+    "command": "node misc/slash-investigation/rehearse-liveness-upgrade.cjs",
+    "pinnedBlock": 27620167,
+    "initializedBlock": 27620168,
+    "candidateSha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+    "maxNominationEdges": 113,
+    "maxValidators": 28,
+    "offlineGracePreserved": true,
+    "executedExtrinsics": 0,
+    "submittedTransactions": 0,
+    "constraints": [
+      "Runs the candidate Core_initialize_block against pinned archive state after a local :code overlay; no governance dispatch, consensus verification, block finalization or network submission is exercised.",
+      "Stops immediately after initialization and checks its storage diff; does not advance unrelated bridge multi-block migrations.",
+      "The prior cache contains only block-hash-scoped immutable upstream reads and is never modified. New remote reads are cached only in this process.",
+      "Mock signatures and unresolved imports are executor settings only. Offchain workers are disabled; no extrinsics are executed.",
+      "This release Wasm runs normal runtime-upgrade hooks, not try-runtime pre/post assertions."
+    ]
+  },
+  "limitations": [
+    "No claim of a complete security audit or absence of all bugs; local regressions do not establish production exploitation or causation for every captured slash.",
+    "Genuinely oversized synchronous slashing cohorts remain above the block budget and are deliberately rejected. Supporting the full permitted nomination workload requires paginated financial processing; weights are never clamped to force admission.",
+    "Exposure scan is bounded at4096 overview entries and128 eras. Missing, stale, legacy or over-limit history uses a conservative non-admitting fallback. Current captured mainnet history has749 entries and at most113 aggregate nomination rows per era.",
+    "Handwritten weight allowances retain upstream costs and add conservative storage/CPU/queue bounds; no new hardware benchmark calibration was performed.",
+    "Existing queued slashes are not cancelled, historical stale queue keys are not automatically collected, and legitimately completed withdrawals are not retroactively relocked.",
+    "The earlier runtime-upgrade-4.8.9 preimage/proposal bundle predates these changes. This new candidate has not been submitted or deployed."
+  ]
+}

@@ -51,17 +51,20 @@ use crate::{
     STORAGE_SUB_TO_HANDLE_FROM_HEIGHT_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
     SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION, ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
+use alloc::string::String;
 use alloc::vec::Vec;
 use bridge_multisig::MultiChainHeight;
 use codec::{Decode, Encode};
 use frame_support::__private::log::{debug, error, info, trace, warn};
 use frame_support::sp_runtime::app_crypto::ecdsa;
 use frame_support::sp_runtime::offchain::storage::StorageValueRef;
-use frame_support::sp_runtime::traits::{IdentifyAccount, One, Saturating, Zero};
+use frame_support::sp_runtime::traits::{
+    IdentifyAccount, One, Saturating, UniqueSaturatedInto, Zero,
+};
 use frame_support::sp_runtime::RuntimeAppPublic;
-use frame_support::traits::Get;
 use frame_support::{ensure, fail};
 use frame_system::offchain::{AppCrypto, CreateSignedTransaction, Signer};
+use rustc_hex::ToHex;
 use sp_core::ByteArray;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
@@ -69,7 +72,28 @@ use sp_std::collections::btree_map::BTreeMap;
 use sp_std::collections::btree_set::BTreeSet;
 use sp_std::convert::TryInto;
 
+// Revisit learned provider/body limits without retrying a rejected range every other scan.
+const LOG_RANGE_LIMIT_RETRY_DELAY_MS: u64 = 30 * 60 * 1000;
+
 impl<T: Config> Pallet<T> {
+    fn pending_multisig_rehandle_key(
+        prefix: &str,
+        network_id: T::NetworkId,
+        call_hash: &[u8; 32],
+        sidechain_height: u64,
+        timepoint_index: u32,
+    ) -> Vec<u8> {
+        format!(
+            "{}-v2-{:?}-{}-{}-{}",
+            prefix,
+            network_id,
+            call_hash.to_hex::<String>(),
+            sidechain_height,
+            timepoint_index,
+        )
+        .into_bytes()
+    }
+
     fn per_network_metric_key(prefix: &str, network_id: T::NetworkId) -> Vec<u8> {
         format!("{}-{:?}", prefix, network_id).into_bytes()
     }
@@ -542,7 +566,6 @@ impl<T: Config> Pallet<T> {
     }
 
     fn handle_failed_transactions_queue() {
-        let network_id = T::GetEthNetworkId::get();
         let mut s_failed_pending_txs =
             StorageValueRef::persistent(STORAGE_FAILED_PENDING_TRANSACTIONS_KEY);
         let mut failed_txs =
@@ -569,6 +592,7 @@ impl<T: Config> Pallet<T> {
                         load_incoming_request,
                         ..
                     }) => {
+                        let network_id = load_incoming_request.network_id();
                         let tx_hash = load_incoming_request.hash();
 
                         if RequestStatuses::<T>::get(network_id, tx_hash).is_some() {
@@ -606,8 +630,28 @@ impl<T: Config> Pallet<T> {
             }
         };
 
-        if substrate_finalized_block.number.as_u64() % (RE_HANDLE_TXS_PERIOD as u64) == 0 {
+        let recovery_generation =
+            substrate_finalized_block.number.as_u64() / u64::from(RE_HANDLE_TXS_PERIOD);
+        let mut s_recovery_generation = StorageValueRef::persistent(
+            b"eth-bridge-ocw::failed-transactions-re-handle-generation-v2",
+        );
+        let previous_generation = get_storage_value_or_clear::<u64>(
+            &mut s_recovery_generation,
+            "failed transaction recovery generation",
+        );
+        // Finalized heads can jump past an exact period boundary or be observed repeatedly.
+        // Retry once per new generation, retaining the high-water mark if a head regresses.
+        if previous_generation
+            .map(|previous| recovery_generation > previous)
+            .unwrap_or(recovery_generation > 0)
+        {
             Self::handle_failed_transactions_queue();
+        }
+        if previous_generation
+            .map(|previous| recovery_generation > previous)
+            .unwrap_or(true)
+        {
+            s_recovery_generation.set(&recovery_generation);
         }
 
         let substrate_finalized_height: frame_system::pallet_prelude::BlockNumberFor<T> =
@@ -650,15 +694,18 @@ impl<T: Config> Pallet<T> {
         Ok(substrate_finalized_height)
     }
 
-    fn handle_ethereum(network_id: T::NetworkId) -> Result<u64, Error<T>> {
+    fn handle_ethereum(
+        network_id: T::NetworkId,
+        skip_log_request: bool,
+    ) -> Result<(u64, bool), Error<T>> {
         let string = format!("eth-bridge-ocw::eth-height-{:?}", network_id);
         let s_eth_height = StorageValueRef::persistent(string.as_bytes());
         let current_eth_height = match Self::load_current_height(network_id) {
             Ok(v) => v,
             Err(e) => {
                 info!(
-                    "Failed to load current ethereum height. Skipping off-chain procedure. {:?}",
-                    e
+                    "Failed to load current ethereum height. Skipping off-chain procedure. {:?}; network={:?}, method=eth_blockNumber",
+                    e, network_id
                 );
                 return Err(e);
             }
@@ -678,63 +725,257 @@ impl<T: Config> Pallet<T> {
             from_block_opt
         );
         let from_block = from_block_opt.unwrap_or(current_eth_height);
+        let range_size_key = format!("eth-bridge-ocw::eth-log-range-size-{:?}", network_id);
+        let s_log_range_size = StorageValueRef::persistent(range_size_key.as_bytes());
+        let log_range_size = s_log_range_size
+            .get::<u64>()
+            .ok()
+            .flatten()
+            .unwrap_or(MAX_GET_LOGS_ITEMS)
+            .clamp(1, MAX_GET_LOGS_ITEMS);
+        if skip_log_request {
+            return Ok((current_eth_height, false));
+        }
+        let range_limit_key = format!("eth-bridge-ocw::eth-log-range-limit-v1-{:?}", network_id);
+        let mut s_log_range_limit = StorageValueRef::persistent(range_limit_key.as_bytes());
+        let learned_limit = s_log_range_limit
+            .get::<(u64, u64)>()
+            .ok()
+            .flatten()
+            .map(|(ceiling, retry_after)| (ceiling.clamp(1, MAX_GET_LOGS_ITEMS), retry_after));
+        let log_range_size = match learned_limit {
+            Some((ceiling, retry_after)) => {
+                let normal_range = log_range_size.min(ceiling);
+                if u64::from(sp_io::offchain::timestamp()) >= retry_after {
+                    // Probe through the usual one-request-per-worker path. A failed probe
+                    // retains the old ceiling; a successful larger response removes it.
+                    normal_range.saturating_mul(2).min(MAX_GET_LOGS_ITEMS)
+                } else {
+                    normal_range
+                }
+            }
+            None => log_range_size,
+        };
         // The upper bound of range of blocks to download logs for. Limit the value to
         // `MAX_GET_LOGS_ITEMS` if the OCW is lagging behind Ethereum to avoid downloading too many
         // logs.
         let to_block_opt = current_eth_height
             .checked_sub(CONFIRMATION_INTERVAL)
-            .map(|to_block| (from_block + MAX_GET_LOGS_ITEMS).min(to_block));
+            .map(|to_block| {
+                from_block
+                    .saturating_add(log_range_size.saturating_sub(1))
+                    .min(to_block)
+            });
+        let mut log_request_attempted = false;
         if let Some(to_block) = to_block_opt {
             if to_block >= from_block {
+                log_request_attempted = true;
+                let queried_span = to_block - from_block + 1;
                 let mut new_height = from_block;
-                let err_opt =
-                    Self::handle_logs(from_block, to_block, &mut new_height, network_id).err();
-                if new_height != from_block {
-                    s_eth_to_handle_from_height.set(&new_height);
-                }
-                if let Some(err) = err_opt {
-                    warn!("Failed to load handle logs: {:?}.", err);
+                match Self::handle_logs(from_block, to_block, &mut new_height, network_id) {
+                    Ok(()) => {
+                        let growth_ceiling = match learned_limit {
+                            Some((ceiling, _)) if queried_span > ceiling => {
+                                // The entire HTTP response fitted even if import throttling
+                                // only processed part of it during this invocation.
+                                s_log_range_limit.clear();
+                                MAX_GET_LOGS_ITEMS
+                            }
+                            Some((ceiling, _)) => ceiling,
+                            None => MAX_GET_LOGS_ITEMS,
+                        };
+                        if new_height != from_block {
+                            s_eth_to_handle_from_height.set(&new_height);
+                        }
+                        if new_height > to_block && log_range_size < MAX_GET_LOGS_ITEMS {
+                            let increased_range =
+                                log_range_size.saturating_mul(2).min(growth_ceiling);
+                            s_log_range_size.set(&increased_range);
+                        }
+                    }
+                    Err(Error::<T>::HttpResponseTooLarge) => {
+                        // The confirmed tip can shorten a configured range. Reducing the
+                        // configured size would otherwise retry the same rejected query.
+                        let ceiling = learned_limit
+                            .map(|(ceiling, _)| ceiling)
+                            .unwrap_or(MAX_GET_LOGS_ITEMS)
+                            .min(queried_span.saturating_sub(1).max(1));
+                        let reduced_range = (queried_span / 2).max(1).min(ceiling);
+                        s_log_range_size.set(&reduced_range);
+                        let retry_after = u64::from(sp_io::offchain::timestamp())
+                            .saturating_add(LOG_RANGE_LIMIT_RETRY_DELAY_MS);
+                        s_log_range_limit.set(&(ceiling, retry_after));
+                        if queried_span > 1 {
+                            warn!(
+                                "Transfer log response for blocks {}..={} was too large; reducing the next query to {} block(s); network={:?}",
+                                from_block, to_block, reduced_range, network_id
+                            );
+                        } else {
+                            warn!(
+                                "Transfer logs for single block {} exceed the bounded response size; a different sidechain RPC endpoint is required; network={:?}",
+                                from_block, network_id
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        if let Some((ceiling, _)) = learned_limit {
+                            if queried_span > ceiling {
+                                // A larger probe can also time out or hit a generic provider
+                                // failure. Resume the smaller scans until another probe is due.
+                                let retry_after = u64::from(sp_io::offchain::timestamp())
+                                    .saturating_add(LOG_RANGE_LIMIT_RETRY_DELAY_MS);
+                                s_log_range_limit.set(&(ceiling, retry_after));
+                            }
+                        }
+                        warn!(
+                            "Failed to load handle logs: {:?}. network={:?}, method=eth_getLogs, blocks={}..={}",
+                            err, network_id, from_block, to_block
+                        );
+                    }
                 }
             }
         }
-        Ok(current_eth_height)
+        Ok((current_eth_height, log_request_attempted))
     }
 
-    fn handle_pending_multisig_calls(network_id: T::NetworkId, current_eth_height: u64) {
-        for ms in bridge_multisig::Multisigs::<T>::iter_values() {
-            let from_block = match ms.when.height {
-                MultiChainHeight::Sidechain(sh)
-                    if current_eth_height.saturating_sub(sh)
-                        >= MAX_PENDING_TX_BLOCKS_PERIOD as u64 =>
+    pub(crate) fn handle_pending_multisig_calls(
+        network_id: T::NetworkId,
+        current_eth_height: u64,
+    ) -> bool {
+        let Some(bridge_account) = Self::bridge_account(network_id) else {
+            warn!(
+                "Failed to find bridge account for network {:?} while selecting a pending multisig to re-handle",
+                network_id
+            );
+            return false;
+        };
+        let eligible_count = bridge_multisig::Multisigs::<T>::iter_prefix(&bridge_account)
+            .filter(|(call_hash, ms)| {
+                let MultiChainHeight::Sidechain(sidechain_height) = &ms.when.height else {
+                    return false;
+                };
+                if current_eth_height.saturating_sub(*sidechain_height)
+                    < MAX_PENDING_TX_BLOCKS_PERIOD as u64
                 {
-                    let string = format!(
-                        "eth-bridge-ocw::eth-to-re-handle-from-height-{:?}-{}-{}",
-                        network_id, sh, ms.when.index
-                    );
-                    let s_eth_to_handle_from_height =
-                        StorageValueRef::persistent(string.as_bytes());
-                    let handled = s_eth_to_handle_from_height
-                        .get::<bool>()
-                        .ok()
-                        .flatten()
-                        .unwrap_or(false);
-                    if handled {
-                        continue;
-                    }
-                    s_eth_to_handle_from_height.set(&true);
-                    sh
+                    return false;
                 }
-                _ => {
-                    continue;
-                }
-            };
-            debug!("Re-handling ethereum height {}", from_block);
-            // +1 block should be ok, because MAX_PENDING_TX_BLOCKS_PERIOD > CONFIRMATION_INTERVAL.
-            let err_opt = Self::handle_logs(from_block, from_block + 1, &mut 0, network_id).err();
-            if let Some(err) = err_opt {
-                warn!("Failed to re-handle logs: {:?}.", err);
-            }
+                let handled_key = Self::pending_multisig_rehandle_key(
+                    "eth-bridge-ocw::eth-re-handle-handled",
+                    network_id,
+                    call_hash,
+                    *sidechain_height,
+                    ms.when.index,
+                );
+                !StorageValueRef::persistent(&handled_key)
+                    .get::<bool>()
+                    .ok()
+                    .flatten()
+                    .unwrap_or(false)
+            })
+            .count();
+        if eligible_count == 0 {
+            return false;
         }
+
+        let cursor_key = format!("eth-bridge-ocw::eth-re-handle-cursor-{:?}", network_id);
+        let s_cursor = StorageValueRef::persistent(cursor_key.as_bytes());
+        let cursor = s_cursor.get::<u64>().ok().flatten().unwrap_or_default();
+        let selected_index = cursor.wrapping_rem(eligible_count as u64) as usize;
+        let Some((call_hash, ms)) = bridge_multisig::Multisigs::<T>::iter_prefix(&bridge_account)
+            .filter(|(call_hash, ms)| {
+                let MultiChainHeight::Sidechain(sidechain_height) = &ms.when.height else {
+                    return false;
+                };
+                if current_eth_height.saturating_sub(*sidechain_height)
+                    < MAX_PENDING_TX_BLOCKS_PERIOD as u64
+                {
+                    return false;
+                }
+                let handled_key = Self::pending_multisig_rehandle_key(
+                    "eth-bridge-ocw::eth-re-handle-handled",
+                    network_id,
+                    call_hash,
+                    *sidechain_height,
+                    ms.when.index,
+                );
+                !StorageValueRef::persistent(&handled_key)
+                    .get::<bool>()
+                    .ok()
+                    .flatten()
+                    .unwrap_or(false)
+            })
+            .nth(selected_index)
+        else {
+            warn!(
+                "Failed to select pending multisig {} for re-handle",
+                selected_index
+            );
+            return false;
+        };
+        // Advance before making the request so a failing candidate cannot monopolize future
+        // re-handle attempts.
+        s_cursor.set(&cursor.wrapping_add(1));
+        let MultiChainHeight::Sidechain(initial_height) = ms.when.height else {
+            return false;
+        };
+        // +1 block is safe because MAX_PENDING_TX_BLOCKS_PERIOD > CONFIRMATION_INTERVAL.
+        let final_height = initial_height.saturating_add(1);
+        let handled_key = Self::pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-handled",
+            network_id,
+            &call_hash,
+            initial_height,
+            ms.when.index,
+        );
+        let progress_key = Self::pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-progress",
+            network_id,
+            &call_hash,
+            initial_height,
+            ms.when.index,
+        );
+        let range_key = Self::pending_multisig_rehandle_key(
+            "eth-bridge-ocw::eth-re-handle-range-size",
+            network_id,
+            &call_hash,
+            initial_height,
+            ms.when.index,
+        );
+        let s_handled = StorageValueRef::persistent(&handled_key);
+        let s_progress = StorageValueRef::persistent(&progress_key);
+        let s_range = StorageValueRef::persistent(&range_key);
+        let from_block = s_progress
+            .get::<u64>()
+            .ok()
+            .flatten()
+            .unwrap_or(initial_height)
+            .clamp(initial_height, final_height);
+        let range_size = s_range.get::<u64>().ok().flatten().unwrap_or(2).clamp(1, 2);
+        let to_block = from_block
+            .saturating_add(range_size.saturating_sub(1))
+            .min(final_height);
+        let mut new_height = from_block;
+        debug!("Re-handling ethereum heights {}..={}", from_block, to_block);
+        match Self::handle_logs(from_block, to_block, &mut new_height, network_id) {
+            Ok(()) if new_height > final_height => s_handled.set(&true),
+            Ok(()) if new_height > from_block => s_progress.set(&new_height),
+            Ok(()) => warn!(
+                "Re-handling ethereum height {} made no progress",
+                from_block
+            ),
+            Err(Error::<T>::HttpResponseTooLarge) if range_size > 1 => {
+                s_range.set(&1u64);
+                warn!(
+                    "Re-handle log response for blocks {}..={} was too large; retrying one block per worker",
+                    from_block, to_block
+                );
+            }
+            Err(err) => warn!(
+                "Failed to re-handle logs: {:?}. network={:?}, method=eth_getLogs, blocks={}..={}",
+                err, network_id, from_block, to_block
+            ),
+        }
+        true
     }
 
     fn is_peer_for_network(network_id: T::NetworkId) -> bool {
@@ -769,24 +1010,50 @@ impl<T: Config> Pallet<T> {
         }
         let (pending_outgoing_requests, _) = Self::update_outgoing_queue_metrics(network_id);
 
-        let current_eth_height = match Self::handle_ethereum(network_id) {
-            Ok(v) => Some(v),
-            Err(_e) => {
-                if pending_outgoing_requests > 0 {
-                    Self::record_outgoing_approval_failure(
-                        network_id,
-                        OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
-                    );
+        let rehandle_due_key = format!("eth-bridge-ocw::eth-re-handle-due-{:?}", network_id);
+        let s_rehandle_due = StorageValueRef::persistent(rehandle_due_key.as_bytes());
+        let rehandle_was_due = s_rehandle_due.get::<bool>().ok().flatten().unwrap_or(false);
+        let (current_eth_height, log_request_attempted) =
+            match Self::handle_ethereum(network_id, rehandle_was_due) {
+                Ok((height, log_request_attempted)) => (Some(height), log_request_attempted),
+                Err(_e) => {
+                    if pending_outgoing_requests > 0 {
+                        Self::record_outgoing_approval_failure(
+                            network_id,
+                            OUTGOING_APPROVAL_FAILURE_SIDECHAIN_RPC_PREFLIGHT,
+                        );
+                    }
+                    (None, false)
                 }
-                None
-            }
-        };
+            };
 
+        let finalized_height: u64 = substrate_finalized_height.unique_saturated_into();
+        let rehandle_generation = finalized_height / u64::from(RE_HANDLE_TXS_PERIOD);
+        let generation_key = format!(
+            "eth-bridge-ocw::eth-re-handle-generation-v2-{:?}",
+            network_id
+        );
+        let s_rehandle_generation = StorageValueRef::persistent(generation_key.as_bytes());
+        let previous_generation = s_rehandle_generation.get::<u64>().ok().flatten();
+        if previous_generation
+            .map(|previous| rehandle_generation > previous)
+            .unwrap_or(rehandle_generation > 0)
+        {
+            s_rehandle_due.set(&true);
+        }
+        if previous_generation
+            .map(|previous| rehandle_generation > previous)
+            .unwrap_or(true)
+        {
+            s_rehandle_generation.set(&rehandle_generation);
+        }
         if let Some(current_eth_height) = current_eth_height {
-            if substrate_finalized_height % RE_HANDLE_TXS_PERIOD.into()
-                == frame_system::pallet_prelude::BlockNumberFor::<T>::zero()
-            {
+            let rehandle_due = s_rehandle_due.get::<bool>().ok().flatten().unwrap_or(false);
+            if rehandle_due && !log_request_attempted {
                 Self::handle_pending_multisig_calls(network_id, current_eth_height);
+                // This worker had an opportunity to inspect one network-scoped candidate (or
+                // establish that none exists). A future period will schedule the next attempt.
+                s_rehandle_due.set(&false);
             }
         }
 

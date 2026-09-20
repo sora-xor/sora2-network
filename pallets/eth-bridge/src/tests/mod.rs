@@ -35,6 +35,7 @@ use crate::requests::{
 };
 use crate::tests::mock::*;
 use crate::util::majority;
+use codec::Encode;
 use common::eth;
 use frame_support::dispatch::{Pays, PostDispatchInfo};
 use frame_support::{assert_ok, ensure};
@@ -48,6 +49,7 @@ mod asset;
 mod cancel;
 mod ethabi;
 mod genesis;
+mod http_status;
 mod incoming_transfer;
 pub mod mock;
 mod ocw;
@@ -59,6 +61,17 @@ pub(crate) type Error = crate::Error<Runtime>;
 pub(crate) type Assets = assets::Pallet<Runtime>;
 
 pub const ETH_NETWORK_ID: u32 = 0;
+
+#[test]
+fn error_indices_are_append_only() {
+    assert_eq!(Error::HttpFetchingError.encode(), vec![0]);
+    assert_eq!(Error::AccountNotFound.encode(), vec![1]);
+    assert_eq!(Error::RequestIsAlreadyRegistered.encode(), vec![3]);
+    assert_eq!(Error::DeprecatedLegacyXor.encode(), vec![91]);
+    assert_eq!(Error::HttpResponseTooLarge.encode(), vec![92]);
+    assert_eq!(Error::IncomingRequestHashMismatch.encode(), vec![93]);
+    assert_eq!(Error::TooManyApprovals.encode(), vec![94]);
+}
 
 pub(crate) fn assert_last_event<T: crate::Config>(
     generic_event: <T as crate::Config>::RuntimeEvent,
@@ -92,6 +105,10 @@ pub fn no_event() -> bool {
     frame_system::Pallet::<Runtime>::events().pop().is_none()
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Test helpers preserve the complete FRAME-generated RuntimeEvent for assertions"
+)]
 pub fn approve_request(
     state: &State,
     request: OutgoingRequest<Runtime>,
@@ -170,6 +187,10 @@ pub fn last_outgoing_request(net_id: u32) -> Option<(OutgoingRequest<Runtime>, H
     }
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Test helpers preserve the complete FRAME-generated RuntimeEvent for assertions"
+)]
 pub fn approve_last_request(
     state: &State,
     net_id: u32,
@@ -179,6 +200,10 @@ pub fn approve_last_request(
     Ok((outgoing_request, hash))
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Test helpers preserve the complete FRAME-generated RuntimeEvent for assertions"
+)]
 pub fn approve_next_request(
     state: &State,
     net_id: u32,
@@ -192,6 +217,10 @@ pub fn approve_next_request(
     Ok((outgoing_request, hash))
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Test helpers preserve the complete FRAME-generated RuntimeEvent for assertions"
+)]
 pub fn request_incoming(
     account_id: AccountId,
     tx_hash: H256,
@@ -229,6 +258,10 @@ pub fn request_incoming(
     Ok(hash)
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Test helpers preserve the complete FRAME-generated RuntimeEvent for assertions"
+)]
 pub fn assert_incoming_request_done(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,
@@ -276,6 +309,10 @@ pub fn assert_incoming_request_done(
     Ok(())
 }
 
+#[allow(
+    clippy::result_large_err,
+    reason = "Test helpers preserve the complete FRAME-generated RuntimeEvent for assertions"
+)]
 pub fn assert_incoming_request_registration_failed(
     state: &State,
     incoming_request: IncomingRequest<Runtime>,

@@ -1,0 +1,27 @@
+bridge:
+test result: ok. 288 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.24s
+Command: scripts/with_llvm_env.sh cargo test -p eth-bridge --lib --locked
+
+runtimeNative:
+test result: ok. 150 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 7.52s
+Command: SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo test -p framenode-runtime --lib --locked
+
+runtimeWasm:
+Finished `dev` profile [unoptimized] target(s) in 9.66s
+Command: SKIP_WASM_BUILD=1 CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --no-default-features --target wasm32-unknown-unknown
+
+failedImportRecovery before fix:
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 274 filtered out; finished in 0.10s
+
+httpStatus before fix:
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 274 filtered out; finished in 0.08s
+
+adaptiveRange before fix:
+test result: FAILED. 4 passed; 6 failed; 0 ignored; 0 measured; 274 filtered out; finished in 0.32s
+
+probeAndQuota before fix:
+test result: FAILED. 12 passed; 2 failed; 0 ignored; 0 measured; 274 filtered out; finished in 0.18s
+
+Static checks: rustfmt on six changed Rust files; git diff --check; task-only patch reverse application dry run; unchanged tested source fingerprints. All passed.
+
+Readiness: bridge source ready for the existing runtime-upgrade release process. Existing release artifact predates the final changes. No deployment performed.

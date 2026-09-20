@@ -77,6 +77,69 @@ type BlockWeights = <Runtime as frame_system::Config>::BlockWeights;
 type LengthToFee = <Runtime as pallet_transaction_payment::Config>::LengthToFee;
 type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 
+#[test]
+fn val_buyback_accounts_for_routed_exchange_weight_on_success_and_failure() {
+    ext().execute_with(|| {
+        increase_balance(bob(), XOR.into(), 2 * INITIAL_RESERVES);
+        increase_balance(bob(), VAL.into(), 2 * INITIAL_RESERVES);
+        ensure_pool_initialized(XOR.into(), VAL.into());
+        assert_ok!(PoolXYK::deposit_liquidity(
+            RuntimeOrigin::signed(bob()),
+            0,
+            XOR.into(),
+            VAL.into(),
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+            INITIAL_RESERVES,
+        ));
+        increase_balance(alice(), XOR.into(), INITIAL_BALANCE);
+        let filter = common::LiquiditySourceFilter::with_forbidden(
+            0,
+            [common::LiquiditySourceType::MulticollateralBondingCurvePool].into(),
+        );
+        let estimate = crate::LiquidityProxy::inner_exchange_weight(
+            &0,
+            &XOR.into(),
+            &VAL.into(),
+            filter.clone(),
+        );
+        let actual = frame_support::storage::with_transaction(|| {
+            frame_support::storage::TransactionOutcome::Rollback(
+                crate::LiquidityProxy::inner_exchange(
+                    0,
+                    &alice(),
+                    &alice(),
+                    &XOR.into(),
+                    &VAL.into(),
+                    SwapAmount::WithDesiredInput {
+                        desired_amount_in: balance!(1),
+                        min_amount_out: 0,
+                    },
+                    filter,
+                )
+                .map(|(_, _, weight)| weight),
+            )
+        })
+        .unwrap();
+        let mut weight = Weight::zero();
+        assert_ok!(<Runtime as xor_fee::Config>::remint_val_swap(
+            &mut weight,
+            &alice(),
+            balance!(1)
+        ));
+        assert_eq!(weight, estimate.max(actual));
+        let mut failed_weight = Weight::zero();
+        assert!(<Runtime as xor_fee::Config>::remint_val_swap(
+            &mut failed_weight,
+            &charlie(),
+            balance!(1)
+        )
+        .is_err());
+        assert!(failed_weight.all_gte(estimate));
+    });
+}
+
 const MOCK_WEIGHT: Weight = Weight::from_parts(600_000_000, 0);
 
 const INITIAL_BALANCE: Balance = balance!(1000);
@@ -324,6 +387,9 @@ fn referrer_gets_bonus_from_xorless_tx_fee() {
         let val_fee = (SMALL_FEE + len_fee) * val_price;
         let balance_after_reserving_fee = (INITIAL_BALANCE - val_fee.clone()).into_balance();
 
+        let xor_issuance_before_fee = Balances::total_issuance();
+        let payer_xor_before_fee = Balances::free_balance(alice());
+
         let pre = ChargeTransactionPayment::<Runtime>::new()
             .pre_dispatch(&alice(), call, &dispatch_info, len)
             .unwrap();
@@ -344,6 +410,13 @@ fn referrer_gets_bonus_from_xorless_tx_fee() {
         assert_eq!(
             Currencies::free_balance(VAL.into(), &alice()),
             balance_after_reserving_fee
+        );
+
+        assert_eq!(Balances::free_balance(alice()), payer_xor_before_fee);
+        assert_eq!(
+            Balances::total_issuance(),
+            xor_issuance_before_fee,
+            "paying a VAL fee must not reduce XOR issuance"
         );
 
         let referrer_fee = XorFee::calculate_portion_fee_from_weight(
@@ -544,18 +617,26 @@ fn remint_for_xorless_works() {
             }
         );
 
-        let asset_fee_in_xor = calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, val_fee);
+        let referred_fee_remaining =
+            val_fee - XorFee::calculate_portion_fee_from_weight(FeeReferrerWeight::get(), val_fee);
+        let asset_fee_in_xor =
+            calc_xyk_swap_result(INITIAL_RESERVES, INITIAL_RESERVES, referred_fee_remaining);
         let asset_fee_without_ref_in_xor = calc_xyk_swap_result(
             INITIAL_RESERVES - asset_fee_in_xor,
-            INITIAL_RESERVES + val_fee,
+            INITIAL_RESERVES + referred_fee_remaining,
             val_fee,
         );
         let total_asset_fee_in_xor = asset_fee_in_xor + asset_fee_without_ref_in_xor;
 
-        let total_xor_to_val = XorFee::calculate_portion_fee_from_weight(
+        let referred_val_share = sp_runtime::Perbill::from_rational(
             FeeValBurnedWeight::get(),
-            total_asset_fee_in_xor,
+            FeeValBurnedWeight::get() + FeeXorBurnedWeight::get(),
         );
+        let total_xor_to_val = referred_val_share * asset_fee_in_xor
+            + XorFee::calculate_portion_fee_from_weight(
+                FeeValBurnedWeight::get(),
+                asset_fee_without_ref_in_xor,
+            );
 
         let active_era = pallet_staking::ActiveEra::<Runtime>::get().map(|era| era.index);
         xor_fee::Pallet::<Runtime>::on_initialize(1);
@@ -564,7 +645,7 @@ fn remint_for_xorless_works() {
         let xor_to_val_after_xor_burn =
             total_xor_to_val.saturating_sub(RemintXorBurnPercent::get() * total_xor_to_val);
         let val_burned = calc_xyk_swap_result(
-            INITIAL_RESERVES + val_fee + val_fee,
+            INITIAL_RESERVES + referred_fee_remaining + val_fee,
             INITIAL_RESERVES - total_asset_fee_in_xor,
             xor_to_val_after_xor_burn,
         );
@@ -582,6 +663,170 @@ fn remint_for_xorless_works() {
             Assets::total_issuance(&TBCD.into()).unwrap(),
             2 * INITIAL_RESERVES,
             balance!(0.00001)
+        );
+    });
+}
+
+#[cfg(feature = "wip")] // Xorless fee
+#[test]
+fn xorless_fee_referral_remint_preserves_val_total_issuance() {
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        set_weight_to_fee_multiplier(1);
+
+        Staking::on_finalize(0);
+
+        add_asset_to_white_list_for_xorless(VAL.into());
+
+        increase_balance(bob(), XOR.into(), 3 * INITIAL_RESERVES);
+        increase_balance(alice(), VAL.into(), INITIAL_BALANCE);
+
+        give_xor_initial_balance(alice());
+
+        crate::TradingPair::register_pair(DEXId::Polkaswap.into(), XOR.into(), KUSD.into())
+            .unwrap();
+
+        for target in [KUSD, TBCD, VAL] {
+            increase_balance(bob(), target.into(), 2 * INITIAL_RESERVES);
+            ensure_pool_initialized(XOR.into(), target.into());
+            PoolXYK::deposit_liquidity(
+                RuntimeOrigin::signed(bob()),
+                0,
+                XOR.into(),
+                target.into(),
+                INITIAL_RESERVES,
+                INITIAL_RESERVES,
+                INITIAL_RESERVES,
+                INITIAL_RESERVES,
+            )
+            .unwrap();
+        }
+
+        fill_spot_price();
+        let val_issuance_before_fees = Tokens::total_issuance(VAL);
+
+        assert_eq!(rewards::ValBurnedSinceLastVesting::<Runtime>::get(), 0u128);
+
+        let call: &<Runtime as frame_system::Config>::RuntimeCall =
+            &RuntimeCall::XorFee(xor_fee::Call::xorless_call {
+                call: Box::new(RuntimeCall::Assets(assets::Call::transfer {
+                    asset_id: VAL.into(),
+                    to: bob(),
+                    amount: TRANSFER_AMOUNT,
+                })),
+                asset_id: VAL.into(),
+            });
+
+        let len = 10;
+        let dispatch_info = info_from_weight(MOCK_WEIGHT);
+        let val_price = 999900009999000099;
+        let val_fee = FixedWrapper::from(SMALL_FEE + length_fee(len)) * val_price;
+        let balance_after_reserving_fee =
+            (INITIAL_BALANCE - val_fee.clone() - val_fee.clone()).into_balance();
+        let val_fee = val_fee.into_balance();
+
+        // call without referral
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), call, &dispatch_info, len)
+            .unwrap();
+
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        Referrals::set_referrer_to(&alice(), charlie()).unwrap();
+
+        // call with referral
+        let pre = ChargeTransactionPayment::<Runtime>::new()
+            .pre_dispatch(&alice(), call, &dispatch_info, len)
+            .unwrap();
+
+        assert!(ChargeTransactionPayment::<Runtime>::post_dispatch(
+            Some(pre),
+            &dispatch_info,
+            &default_post_info(),
+            len,
+            &Ok(())
+        )
+        .is_ok());
+
+        assert_eq!(
+            Currencies::free_balance(VAL.into(), &alice()),
+            balance_after_reserving_fee
+        );
+
+        assert_eq!(
+            XorFee::burnt_for_fee(VAL),
+            xor_fee::AssetFee {
+                fee: val_fee,
+                fee_without_referral: val_fee
+            }
+        );
+
+        // Simulate a legacy gross bucket before adding new referred fees. Its one
+        // historical referral has an exact aggregate fallback, while subsequent
+        // small fees deliberately exercise per-transaction rounding.
+        xor_fee::BurntForFeeReferrerPaid::<Runtime>::remove(VAL);
+        for _ in 0..3 {
+            let paid = XorFee::withdraw_fee(&alice(), call, &dispatch_info, 101, 0).unwrap();
+            assert!(matches!(paid, LiquidityInfo::PaidInAsset(..)));
+            assert_ok!(XorFee::correct_and_deposit_fee(
+                &alice(),
+                &dispatch_info,
+                &default_post_info(),
+                101,
+                0,
+                paid,
+            ));
+        }
+        assert_eq!(
+            xor_fee::BurntForFeeReferrerPaid::<Runtime>::get(VAL),
+            Some(Currencies::free_balance(VAL, &charlie())),
+            "the pending bucket must retain the exact referral amounts already issued"
+        );
+
+        // A fully refunded token fee must restore tokens without changing XOR
+        // issuance, referral balances, or either pending-remint bucket.
+        let native_issuance = Balances::total_issuance();
+        let payer_val = Currencies::free_balance(VAL, &alice());
+        let pending = XorFee::burnt_for_fee(VAL);
+        let referrals_paid = xor_fee::BurntForFeeReferrerPaid::<Runtime>::get(VAL);
+        let paid = XorFee::withdraw_fee(&alice(), call, &dispatch_info, 101, 0).unwrap();
+        assert_ok!(XorFee::correct_and_deposit_fee(
+            &alice(),
+            &dispatch_info,
+            &default_post_info(),
+            0,
+            0,
+            paid,
+        ));
+        assert_eq!(Balances::total_issuance(), native_issuance);
+        assert_eq!(Currencies::free_balance(VAL, &alice()), payer_val);
+        assert_eq!(XorFee::burnt_for_fee(VAL), pending);
+        assert_eq!(
+            xor_fee::BurntForFeeReferrerPaid::<Runtime>::get(VAL),
+            referrals_paid
+        );
+
+        // Isolate fee-token reminting from the later XOR-to-VAL buyback/burn.
+        let mut remint_weight = Weight::zero();
+        let mut xor_to_val = 0;
+        let mut xor_to_buy_back = 0;
+        XorFee::remint_fee_asset(&mut remint_weight, &mut xor_to_val, &mut xor_to_buy_back);
+        assert!(xor_fee::BurntForFee::<Runtime>::iter().next().is_none());
+        assert!(!xor_fee::BurntForFeeReferrerPaid::<Runtime>::contains_key(
+            VAL
+        ));
+        assert!(xor_to_val > 0, "the fee conversions must actually execute");
+        assert_eq!(
+            Tokens::total_issuance(VAL),
+            val_issuance_before_fees,
+            "remint must not reissue the fee share already paid to the referrer"
         );
     });
 }

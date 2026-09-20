@@ -1,0 +1,11 @@
+[2026-09-12T11:17:44Z WARN  wasm_testbed] Env variable `AUTHORIZE_UPGRADE_CHECK_VERSION` not specified. If your chain is running on Substrate >= 0.9.41, this will most likely yield wrong values for the `parachainSystem::authorizeUpgrade` call hash.
+🏋️  Runtime size:             2.914 MB (3,055,506 bytes) ⚠️ HEAVY
+🗜  Compressed:               Yes, 76.97%
+✨ Reserved meta:            OK - [6D, 65, 74, 61]
+🎁 Metadata version:         V14
+🔥 Core version:             sora-substrate-131 (sora-substrate-2.tx131.au1)
+🗳️  system.setCode hash:      0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04
+🗳️  authorizeUpgrade hash:    0x3cf056e07ab7cd9a860e6f972b2c66e2147dabfe909255f66037a590f7366905
+🗳️  Blake2-256 hash:          0xf062ed07861255f5ec443930de9c5066d1e4133036126d48462c8e233a75f27e
+📦 IPFS:                     https://www.ipfs.io/ipfs/QmbRPEQXGSD99AHJUqUcGe7YTibfsVLCoZPEsy238nqywU
+

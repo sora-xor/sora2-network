@@ -1,0 +1,274 @@
+{
+  "checkedAt": "2026-09-12T10:57:19.441Z",
+  "endpoint": "wss://ws.mof.sora.org",
+  "blockHash": "0xbc0793b9e85d4eec012edf4647c1d167712f88d8564f58aaedc2a35cffaad127",
+  "blockNumber": 27623828,
+  "activeEra": {
+    "index": 7637,
+    "start": 1789195860003
+  },
+  "eras": [
+    {
+      "era": 7609,
+      "session": 46958,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 113,
+      "largestValidatorNominationRows": 30
+    },
+    {
+      "era": 7610,
+      "session": 46964,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 113,
+      "largestValidatorNominationRows": 30
+    },
+    {
+      "era": 7611,
+      "session": 46970,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 112,
+      "largestValidatorNominationRows": 26
+    },
+    {
+      "era": 7612,
+      "session": 46976,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 111,
+      "largestValidatorNominationRows": 28
+    },
+    {
+      "era": 7613,
+      "session": 46982,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 111,
+      "largestValidatorNominationRows": 18
+    },
+    {
+      "era": 7614,
+      "session": 46988,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 111,
+      "largestValidatorNominationRows": 18
+    },
+    {
+      "era": 7615,
+      "session": 46994,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 111,
+      "largestValidatorNominationRows": 26
+    },
+    {
+      "era": 7616,
+      "session": 47000,
+      "pagedValidators": 28,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 112,
+      "largestValidatorNominationRows": 22
+    },
+    {
+      "era": 7617,
+      "session": 47006,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 19
+    },
+    {
+      "era": 7618,
+      "session": 47012,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 27
+    },
+    {
+      "era": 7619,
+      "session": 47018,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 28
+    },
+    {
+      "era": 7620,
+      "session": 47024,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 21
+    },
+    {
+      "era": 7621,
+      "session": 47030,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 20
+    },
+    {
+      "era": 7622,
+      "session": 47036,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 18
+    },
+    {
+      "era": 7623,
+      "session": 47042,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 29
+    },
+    {
+      "era": 7624,
+      "session": 47048,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 19
+    },
+    {
+      "era": 7625,
+      "session": 47054,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 28
+    },
+    {
+      "era": 7626,
+      "session": 47060,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 26
+    },
+    {
+      "era": 7627,
+      "session": 47066,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 20
+    },
+    {
+      "era": 7628,
+      "session": 47072,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 20
+    },
+    {
+      "era": 7629,
+      "session": 47078,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 21
+    },
+    {
+      "era": 7630,
+      "session": 47084,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 20
+    },
+    {
+      "era": 7631,
+      "session": 47090,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 107,
+      "largestValidatorNominationRows": 20
+    },
+    {
+      "era": 7632,
+      "session": 47096,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 106,
+      "largestValidatorNominationRows": 29
+    },
+    {
+      "era": 7633,
+      "session": 47102,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 106,
+      "largestValidatorNominationRows": 28
+    },
+    {
+      "era": 7634,
+      "session": 47108,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 106,
+      "largestValidatorNominationRows": 21
+    },
+    {
+      "era": 7635,
+      "session": 47114,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 106,
+      "largestValidatorNominationRows": 26
+    },
+    {
+      "era": 7636,
+      "session": 47120,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 106,
+      "largestValidatorNominationRows": 26
+    },
+    {
+      "era": 7637,
+      "session": 47126,
+      "pagedValidators": 25,
+      "legacyValidators": 0,
+      "legacyOnlyValidators": 0,
+      "totalNominationRows": 106,
+      "largestValidatorNominationRows": 27
+    }
+  ],
+  "submittedTransactions": 0
+}

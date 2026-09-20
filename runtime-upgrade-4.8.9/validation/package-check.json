@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "wasmBytes": 3055506,
+  "wasmSha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+  "proposalHash": "0x6de23331a9c21a5ca06944b6cce28c0c0304c57ecd9b26af9fe2bb413b213b04",
+  "proposalBytes": 3055512,
+  "unsignedCallsVerified": 7
+}

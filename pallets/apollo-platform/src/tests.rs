@@ -4,7 +4,7 @@ mod test {
     use crate::*;
     use crate::{mock::*, PoolInfo};
     use crate::{pallet, Error};
-    use codec::Decode;
+    use codec::{Decode, Encode};
     use common::prelude::FixedWrapper;
     use common::APOLLO_ASSET_ID;
     use common::CERES_ASSET_ID;
@@ -21,8 +21,17 @@ mod test {
     use frame_support::PalletId;
     use frame_support::{assert_err, assert_ok};
     use hex_literal::hex;
-    use sp_runtime::traits::AccountIdConversion;
+    use sp_core::offchain::TransactionPoolExt;
+    use sp_runtime::{offchain::testing::TestTransactionPoolExt, traits::AccountIdConversion};
     use std::collections::BTreeMap;
+
+    #[test]
+    fn error_indices_are_append_only() {
+        assert_eq!(Error::<Runtime>::Unauthorized.encode()[0], 0);
+        assert_eq!(Error::<Runtime>::InvalidLiquidation.encode()[0], 29);
+        assert_eq!(Error::<Runtime>::ArithmeticError.encode()[0], 34);
+        assert_eq!(Error::<Runtime>::LiquidationLimit.encode()[0], 35);
+    }
 
     fn get_pallet_account() -> AccountId {
         PalletId(*b"apollolb").into_account_truncating()
@@ -36,6 +45,46 @@ mod test {
     fn get_treasury_account() -> AccountId {
         let bytes = hex!("987579f1d0158f7d3507f0516ac156547f0d3066bbffca4bb6d186291bbd7c11");
         AccountId::decode(&mut &bytes[..]).unwrap()
+    }
+
+    fn active_pool(liquidation_threshold: Balance) -> PoolInfo {
+        PoolInfo {
+            total_liquidity: balance!(1000),
+            loan_to_value: balance!(1),
+            liquidation_threshold,
+            optimal_utilization_rate: balance!(1),
+            ..Default::default()
+        }
+    }
+
+    fn borrowing_position(
+        collateral_amount: Balance,
+        borrowing_amount: Balance,
+    ) -> BorrowingPosition<BlockNumber> {
+        BorrowingPosition {
+            collateral_amount,
+            borrowing_amount,
+            ..Default::default()
+        }
+    }
+
+    fn insert_active_pool(asset_id: AssetId, liquidation_threshold: Balance) {
+        pallet::PoolData::<Runtime>::insert(asset_id, active_pool(liquidation_threshold));
+    }
+
+    fn insert_borrowing_position(
+        user: AccountId,
+        borrowing_asset: AssetId,
+        collateral_asset: AssetId,
+        collateral_amount: Balance,
+        borrowing_amount: Balance,
+    ) {
+        let mut user_infos = BTreeMap::new();
+        user_infos.insert(
+            collateral_asset,
+            borrowing_position(collateral_amount, borrowing_amount),
+        );
+        pallet::UserBorrowingInfo::<Runtime>::insert(borrowing_asset, user, user_infos);
     }
 
     fn calculate_lending_earnings(
@@ -5815,6 +5864,232 @@ mod test {
                 Error::<Runtime>::InvalidLiquidation
             );
         })
+    }
+
+    #[test]
+    fn check_liquidation_zero_borrow_is_not_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(DOT, borrowing_position(balance!(100), 0));
+
+            assert!(!ApolloPlatform::check_liquidation(&user_infos, XOR));
+        });
+    }
+
+    #[test]
+    fn check_liquidation_zero_borrow_price_is_not_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(APOLLO_ASSET_ID, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(DOT, borrowing_position(balance!(100), balance!(1)));
+
+            assert!(!ApolloPlatform::check_liquidation(
+                &user_infos,
+                APOLLO_ASSET_ID
+            ));
+        });
+    }
+
+    #[test]
+    fn check_liquidation_zero_collateral_price_is_not_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(APOLLO_ASSET_ID, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(
+                APOLLO_ASSET_ID,
+                borrowing_position(balance!(100), balance!(1)),
+            );
+
+            assert!(!ApolloPlatform::check_liquidation(&user_infos, XOR));
+        });
+    }
+
+    #[test]
+    fn check_liquidation_missing_collateral_pool_is_not_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(DOT, borrowing_position(balance!(100), balance!(1)));
+
+            assert!(!ApolloPlatform::check_liquidation(&user_infos, XOR));
+        });
+    }
+
+    #[test]
+    fn check_liquidation_valid_unhealthy_position_is_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(DOT, borrowing_position(balance!(100), balance!(200)));
+
+            assert!(ApolloPlatform::check_liquidation(&user_infos, XOR));
+        });
+    }
+
+    #[test]
+    fn check_liquidation_removed_borrowing_pool_remains_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(DOT, borrowing_position(balance!(100), balance!(200)));
+
+            assert_ok!(ApolloPlatform::remove_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                XOR,
+            ));
+            assert!(pallet::PoolData::<Runtime>::get(XOR).unwrap().is_removed);
+            assert!(ApolloPlatform::check_liquidation(&user_infos, XOR));
+        });
+    }
+
+    #[test]
+    fn check_liquidation_removed_collateral_pool_remains_liquidatable() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+
+            let mut user_infos = BTreeMap::new();
+            user_infos.insert(DOT, borrowing_position(balance!(100), balance!(200)));
+
+            assert_ok!(ApolloPlatform::remove_pool(
+                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                DOT,
+            ));
+            assert!(pallet::PoolData::<Runtime>::get(DOT).unwrap().is_removed);
+            assert!(ApolloPlatform::check_liquidation(&user_infos, XOR));
+        });
+    }
+
+    #[test]
+    fn liquidate_fails_when_block_limit_is_reached() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            pallet::LiquidationsThisBlock::<Runtime>::put(1);
+
+            assert_err!(
+                ApolloPlatform::liquidate(
+                    RuntimeOrigin::signed(ApolloPlatform::authority_account()),
+                    alice(),
+                    XOR,
+                ),
+                Error::<Runtime>::LiquidationLimit
+            );
+        });
+    }
+
+    #[test]
+    fn liquidate_limit_resets_on_initialize() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            pallet::LiquidationsThisBlock::<Runtime>::put(1);
+
+            ApolloPlatform::on_initialize(1);
+
+            assert_eq!(pallet::LiquidationsThisBlock::<Runtime>::get(), 0);
+        });
+    }
+
+    #[test]
+    fn liquidation_quota_does_not_reject_next_block_pool_admission() {
+        let mut ext = ExtBuilder::default().build();
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+            insert_borrowing_position(alice(), XOR, DOT, balance!(100), balance!(200));
+            pallet::LiquidationsThisBlock::<Runtime>::put(1);
+            let call = pallet::Call::<Runtime>::liquidate {
+                user: alice(),
+                asset_id: XOR,
+            };
+
+            assert!(
+                <ApolloPlatform as frame_support::unsigned::ValidateUnsigned>::validate_unsigned(
+                    sp_runtime::transaction_validity::TransactionSource::Local,
+                    &call,
+                )
+                .is_ok()
+            );
+            assert!(
+                <ApolloPlatform as frame_support::unsigned::ValidateUnsigned>::validate_unsigned(
+                    sp_runtime::transaction_validity::TransactionSource::InBlock,
+                    &call,
+                )
+                .is_err()
+            );
+        });
+    }
+
+    #[test]
+    fn offchain_worker_limits_liquidation_submissions() {
+        let mut ext = ExtBuilder::default().build();
+        let (pool, pool_state) = TestTransactionPoolExt::new();
+        ext.register_extension(TransactionPoolExt::new(pool));
+
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+            insert_borrowing_position(alice(), XOR, DOT, balance!(100), balance!(200));
+            insert_borrowing_position(bob(), XOR, DOT, balance!(100), balance!(200));
+
+            ApolloPlatform::offchain_worker(1);
+
+            assert_eq!(pool_state.read().transactions.len(), 1);
+        });
+    }
+
+    #[test]
+    fn offchain_worker_rotates_liquidation_candidates() {
+        let mut ext = ExtBuilder::default().build();
+        let (pool, pool_state) = TestTransactionPoolExt::new();
+        ext.register_extension(TransactionPoolExt::new(pool));
+
+        ext.execute_with(|| {
+            insert_active_pool(XOR, balance!(1));
+            insert_active_pool(DOT, balance!(1));
+            insert_borrowing_position(alice(), XOR, DOT, balance!(100), balance!(200));
+            insert_borrowing_position(bob(), XOR, DOT, balance!(100), balance!(200));
+
+            ApolloPlatform::offchain_worker(0);
+            ApolloPlatform::offchain_worker(1);
+
+            let submitted_users = pool_state
+                .read()
+                .transactions
+                .iter()
+                .map(|encoded| {
+                    let extrinsic =
+                        frame_system::mocking::MockUncheckedExtrinsic::<Runtime>::decode(
+                            &mut &encoded[..],
+                        )
+                        .expect("submitted liquidation should decode");
+                    match extrinsic.function {
+                        RuntimeCall::ApolloPlatform(pallet::Call::liquidate { user, .. }) => user,
+                        call => panic!("unexpected offchain call: {call:?}"),
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            assert_eq!(submitted_users, vec![alice(), bob()]);
+        });
     }
 
     #[test]

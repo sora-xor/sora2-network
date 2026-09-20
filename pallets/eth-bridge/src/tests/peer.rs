@@ -497,6 +497,53 @@ fn should_not_add_peer_when_peers_at_limit() {
 }
 
 #[test]
+fn force_add_peer_rejects_a_peer_set_at_the_limit() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let peers: std::collections::BTreeSet<AccountId> = (0..crate::MAX_PEERS)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect();
+        crate::Peers::<Runtime>::insert(net_id, peers);
+
+        assert_err!(
+            EthBridge::force_add_peer(
+                RuntimeOrigin::root(),
+                AccountId::new([250u8; 32]),
+                H160::repeat_byte(0x25),
+                net_id,
+            ),
+            Error::CantAddMorePeers
+        );
+        assert_eq!(crate::Peers::<Runtime>::get(net_id).len(), crate::MAX_PEERS);
+    });
+}
+
+#[test]
+fn register_bridge_rejects_more_than_the_maximum_peers() {
+    let (mut ext, _state) = ExtBuilder::default().build();
+
+    ext.execute_with(|| {
+        let initial_peers = (0..=crate::MAX_PEERS)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect::<Vec<_>>();
+
+        assert_err!(
+            EthBridge::register_bridge(
+                RuntimeOrigin::root(),
+                H160::repeat_byte(0x26),
+                initial_peers,
+                crate::BridgeSignatureVersion::V3,
+            ),
+            Error::CantAddMorePeers
+        );
+    });
+}
+
+#[test]
 fn add_peer_compat_validate_fails_when_peers_at_limit() {
     let mut builder = ExtBuilder::new();
     builder.add_network(vec![], None, Some(5), Default::default());
@@ -572,6 +619,36 @@ fn remove_peer_compat_validate_fails_when_peers_at_minimum() {
             timepoint: Default::default(),
         };
         assert_err!(request.validate(), Error::CantRemoveMorePeers);
+    });
+}
+
+#[test]
+fn force_add_peer_preserves_slot_reserved_for_pending_addition() {
+    let mut builder = ExtBuilder::new();
+    builder.add_network(vec![], None, Some(5), Default::default());
+    let (mut ext, _state) = builder.build();
+
+    ext.execute_with(|| {
+        let net_id = ETH_NETWORK_ID;
+        let peers: std::collections::BTreeSet<AccountId> = (0..crate::MAX_PEERS - 1)
+            .map(|i| AccountId::new([i as u8; 32]))
+            .collect();
+        crate::Peers::<Runtime>::insert(net_id, peers);
+        crate::PendingPeer::<Runtime>::insert(net_id, AccountId::new([249u8; 32]));
+
+        assert_err!(
+            EthBridge::force_add_peer(
+                RuntimeOrigin::root(),
+                AccountId::new([250u8; 32]),
+                H160::repeat_byte(0x25),
+                net_id,
+            ),
+            Error::TooManyPendingPeers
+        );
+        assert_eq!(
+            crate::Peers::<Runtime>::get(net_id).len(),
+            crate::MAX_PEERS - 1
+        );
     });
 }
 

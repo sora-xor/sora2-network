@@ -1,0 +1,85 @@
+{
+  "checks": [
+    {
+      "check": "runtime payout and fee implementation",
+      "command": "SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo test --locked -p framenode-runtime --lib xor_fee_impls::tests",
+      "passed": 62,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "check": "runtime fee integration",
+      "command": "SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo test --locked -p framenode-runtime --lib tests::xor_fee",
+      "passed": 52,
+      "failed": 0,
+      "ignored": 1
+    },
+    {
+      "check": "runtime wip payout and fee integration",
+      "command": "SKIP_WASM_BUILD=1 scripts/with_llvm_env.sh cargo test --locked -p framenode-runtime --features wip --lib xor_fee",
+      "passed": 119,
+      "failed": 0,
+      "ignored": 2
+    },
+    {
+      "check": "staking pallet",
+      "command": "scripts/with_llvm_env.sh cargo test --locked -p pallet-staking --lib",
+      "passed": 213,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "check": "fee pallet",
+      "command": "scripts/with_llvm_env.sh cargo test --locked -p xor-fee --lib",
+      "passed": 49,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "check": "WebAssembly compile",
+      "command": "SKIP_WASM_BUILD=1 CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --no-default-features --target wasm32-unknown-unknown",
+      "passed": true
+    },
+    {
+      "check": "WebAssembly compile --features wip",
+      "command": "SKIP_WASM_BUILD=1 CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --features wip --no-default-features --target wasm32-unknown-unknown",
+      "passed": true
+    },
+    {
+      "check": "frontend focused tests",
+      "command": "yarn polkadot-dev-run-test --env node packages/apps-config/src/api/spec/soraSubstrate/derives packages/apps-config/src/api/spec/soraSubstrate/stakingRewards packages/page-staking/src/Payouts/transactions packages/react-signer/src/directCall",
+      "passedRunnerEntries": 32,
+      "failed": 0
+    },
+    {
+      "check": "full frontend code build",
+      "command": "yarn build:code",
+      "passed": true
+    },
+    {
+      "check": "ESLint all 21 changed frontend files",
+      "passed": true
+    },
+    {
+      "check": "frontend patch applies to clean upstream index",
+      "passed": true
+    },
+    {
+      "check": "vendor patch exactly reproduces 6 changed upstream files",
+      "passed": true
+    }
+  ],
+  "sha256": {
+    "Cargo.toml": "5e794499aa93a1772c7dac3bae90d429b2737ae741b9c613920b7991d2d0d453",
+    "Cargo.lock": "5f6f71725e48b0511d6d9599392957077eae8824c4ce74cb29fa456982095d0a",
+    "runtime/src/lib.rs": "0226e44afa8c06180a8793be708a6bc5a47b8253b6133b2994ebcdc822aa2ecf",
+    "runtime/src/xor_fee_impls.rs": "9da5f71714f08d0f9635fee00d895bc5ac71a31baf19e0f51a2fb1520d3b5073",
+    "runtime/src/tests/xor_fee.rs": "7f92feb3c186fc334e53bd35233e051e3f5016baf721cbfcb585657edd1d6240",
+    "pallets/xor-fee/src/lib.rs": "7bc71a2f258a3280f4e39a16cf8842bf8f4fcef83bf1b2e801f7651e116e3198",
+    "pallets/apollo-platform/src/lib.rs": "24fe2c847e32e9274f49d8e38a51b993af1cbff8ed659e007845aaaca9b487d4",
+    "vendor/polkadot-sdk/frame/staking/additional-payout.patch": "7b592a0b6b1470df5763d900438b2422ea506442327086233bdeaaf63fcfd28e",
+    "misc/polkadotjs/restore-val-staking-payouts.patch": "8de5d05c6a0374e6213f48f59a888c6feff30ce8af18d976cd23bd5f0f41e987"
+  },
+  "frontendBase": "05aa55e844c492d516dba3c4b0bd1b9311f9aeb2",
+  "sdkBase": "e3737178ec726cffe506c907263aaaa417893fd0"
+}

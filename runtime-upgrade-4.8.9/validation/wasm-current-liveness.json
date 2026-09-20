@@ -1,0 +1,660 @@
+{
+  "startedAt": "2026-09-12T12:18:17.014Z",
+  "status": "passed",
+  "endpoint": "https://mof2.sora.org",
+  "pinnedBlockHash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+  "executor": "@acala-network/chopsticks-core@1.5.1",
+  "dependencyManifest": "/tmp/sora-payout-runtime-hunt/package.json",
+  "localOnly": true,
+  "submittedTransactions": 0,
+  "executedExtrinsics": 0,
+  "realSignatures": 0,
+  "mockSignatureHost": true,
+  "allowUnresolvedImports": true,
+  "offchainWorker": false,
+  "remoteRpcMethods": {
+    "state_getStorage": 1,
+    "state_getKeysPaged": 60
+  },
+  "constraints": [
+    "Runs the candidate Core_initialize_block against pinned archive state after a local :code overlay; no governance dispatch, consensus verification, block finalization or network submission is exercised.",
+    "Stops immediately after initialization and checks its storage diff; does not advance unrelated bridge multi-block migrations.",
+    "The prior cache contains only block-hash-scoped immutable upstream reads and is never modified. New remote reads are cached only in this process.",
+    "Mock signatures and unresolved imports are executor settings only. Offchain workers are disabled; no extrinsics are executed.",
+    "This release Wasm runs normal runtime-upgrade hooks, not try-runtime pre/post assertions."
+  ],
+  "stage": "Checking initialized Liveness cache against retained exposure metadata",
+  "readCache": {
+    "path": "/tmp/sora-payout-runtime-hunt/council-current-read-cache.json.gz",
+    "readOnly": true,
+    "existingValues": 22745,
+    "storageHits": 1305,
+    "keyPageHits": 926,
+    "fetchedValues": 1,
+    "fetchedKeyPages": 60
+  },
+  "before": {
+    "number": 27624441,
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 130,
+      "implVersion": 2,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 130,
+      "stateVersion": 0
+    },
+    "context": {
+      "session": 47131,
+      "activeEra": 7637,
+      "plannedEra": 7638,
+      "eras": [
+        7609,
+        7610,
+        7611,
+        7612,
+        7613,
+        7614,
+        7615,
+        7616,
+        7617,
+        7618,
+        7619,
+        7620,
+        7621,
+        7622,
+        7623,
+        7624,
+        7625,
+        7626,
+        7627,
+        7628,
+        7629,
+        7630,
+        7631,
+        7632,
+        7633,
+        7634,
+        7635,
+        7636,
+        7637,
+        7638
+      ]
+    },
+    "lastRuntimeUpgrade": {
+      "specVersion": 130,
+      "specName": "sora-substrate"
+    }
+  },
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.9/framenode-runtime-4.8.9.compact.compressed.wasm",
+    "bytes": 3055506,
+    "sha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 131,
+      "implVersion": 2,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    }
+  },
+  "initializedHeader": {
+    "parentHash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+    "number": 27624442,
+    "stateRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extrinsicsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "digest": {
+      "logs": [
+        {
+          "preRuntime": [
+            "0x42414245",
+            "0x02000000009735c61100000000"
+          ]
+        },
+        {
+          "seal": [
+            "0x42414245",
+            "0x06bc85a1a8e99b160492b7f8bf3c5c5692789d1efc61a8ae62fe3df714636c283c1b3a7df2978b6801473a6036a60408a838ead7044e9f1041f28ab6ff45418e"
+          ]
+        }
+      ]
+    }
+  },
+  "initialize": {
+    "result": "0x01",
+    "storageDiffEntries": 64,
+    "runtimeLogs": [
+      {
+        "message": "🐥 New pallet \"Liveness\" detected in the runtime. The pallet has no defined storage version, so the on-chain version is being initialized to StorageVersion(0).",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(4)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      }
+    ]
+  },
+  "after": {
+    "number": 27624442,
+    "lastRuntimeUpgrade": {
+      "specVersion": 131,
+      "specName": "sora-substrate"
+    },
+    "context": {
+      "session": 47131,
+      "activeEra": 7637,
+      "plannedEra": 7638,
+      "eras": [
+        7609,
+        7610,
+        7611,
+        7612,
+        7613,
+        7614,
+        7615,
+        7616,
+        7617,
+        7618,
+        7619,
+        7620,
+        7621,
+        7622,
+        7623,
+        7624,
+        7625,
+        7626,
+        7627,
+        7628,
+        7629,
+        7630,
+        7631,
+        7632,
+        7633,
+        7634,
+        7635,
+        7636,
+        7637,
+        7638
+      ]
+    },
+    "exposureWork": {
+      "context": {
+        "session": 47131,
+        "activeEra": 7637,
+        "plannedEra": 7638,
+        "eras": [
+          7609,
+          7610,
+          7611,
+          7612,
+          7613,
+          7614,
+          7615,
+          7616,
+          7617,
+          7618,
+          7619,
+          7620,
+          7621,
+          7622,
+          7623,
+          7624,
+          7625,
+          7626,
+          7627,
+          7628,
+          7629,
+          7630,
+          7631,
+          7632,
+          7633,
+          7634,
+          7635,
+          7636,
+          7637,
+          7638
+        ]
+      },
+      "maxNominationEdges": 113,
+      "maxValidators": 28
+    },
+    "disabledDuringSession": null
+  },
+  "independentExposureCounts": {
+    "eras": [
+      {
+        "era": 7609,
+        "validators": 28,
+        "nominationEdges": 113
+      },
+      {
+        "era": 7610,
+        "validators": 28,
+        "nominationEdges": 113
+      },
+      {
+        "era": 7611,
+        "validators": 28,
+        "nominationEdges": 112
+      },
+      {
+        "era": 7612,
+        "validators": 28,
+        "nominationEdges": 111
+      },
+      {
+        "era": 7613,
+        "validators": 28,
+        "nominationEdges": 111
+      },
+      {
+        "era": 7614,
+        "validators": 28,
+        "nominationEdges": 111
+      },
+      {
+        "era": 7615,
+        "validators": 28,
+        "nominationEdges": 111
+      },
+      {
+        "era": 7616,
+        "validators": 28,
+        "nominationEdges": 112
+      },
+      {
+        "era": 7617,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7618,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7619,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7620,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7621,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7622,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7623,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7624,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7625,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7626,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7627,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7628,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7629,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7630,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7631,
+        "validators": 25,
+        "nominationEdges": 107
+      },
+      {
+        "era": 7632,
+        "validators": 25,
+        "nominationEdges": 106
+      },
+      {
+        "era": 7633,
+        "validators": 25,
+        "nominationEdges": 106
+      },
+      {
+        "era": 7634,
+        "validators": 25,
+        "nominationEdges": 106
+      },
+      {
+        "era": 7635,
+        "validators": 25,
+        "nominationEdges": 106
+      },
+      {
+        "era": 7636,
+        "validators": 25,
+        "nominationEdges": 106
+      },
+      {
+        "era": 7637,
+        "validators": 25,
+        "nominationEdges": 106
+      },
+      {
+        "era": 7638,
+        "validators": 25,
+        "nominationEdges": 104
+      }
+    ],
+    "overviewEntries": 774,
+    "maxNominationEdges": 113,
+    "maxValidators": 28
+  },
+  "checks": {
+    "runtimeUpgradeExecuted": true,
+    "exposureCacheSeeded": true,
+    "cacheContextFresh": true,
+    "exposureCountsMatchIndependentScan": true,
+    "incompleteSessionGracePreserved": true
+  },
+  "finishedAt": "2026-09-12T12:18:30.631Z"
+}

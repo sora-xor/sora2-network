@@ -1,0 +1,575 @@
+{
+  "snapshotBlock": 27622680,
+  "snapshotBlockHash": "0x8a681332bb3c8133bb02ce08c00c23489625915211ab4d6a99d7e2f72f591702",
+  "snapshotTimestampMs": "1789202118000",
+  "activeEra": 7637,
+  "currentSession": 47127,
+  "pending": {
+    "records": 193,
+    "applyEraCount": 28,
+    "validatorStashes": 9,
+    "distinctNominatorAccounts": 41,
+    "nominatorEntries": 555,
+    "totalXor": "147.267377810983647148",
+    "ownXor": "7.825086460872880261",
+    "nominatorXor": "139.442291350110766887",
+    "earliestApplyEra": {
+      "applyEra": 7638,
+      "expectedOffenceEraUnderCurrentSourceRule": 7610,
+      "records": 8,
+      "ownXor": "0.822062824460070183",
+      "nominatorXor": "12.13261963148739732",
+      "totalXor": "12.954682455947467503",
+      "validatorsWithMultipleRecords": {}
+    },
+    "byApplyEra": [
+      {
+        "applyEra": 7638,
+        "expectedOffenceEraUnderCurrentSourceRule": 7610,
+        "records": 8,
+        "ownXor": "0.822062824460070183",
+        "nominatorXor": "12.13261963148739732",
+        "totalXor": "12.954682455947467503",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7639,
+        "expectedOffenceEraUnderCurrentSourceRule": 7611,
+        "records": 8,
+        "ownXor": "0.783551248306252213",
+        "nominatorXor": "11.702044509072002486",
+        "totalXor": "12.485595757378254699",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7640,
+        "expectedOffenceEraUnderCurrentSourceRule": 7612,
+        "records": 9,
+        "ownXor": "1.731149307811966722",
+        "nominatorXor": "24.041007564580643712",
+        "totalXor": "25.772156872392610434",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7641,
+        "expectedOffenceEraUnderCurrentSourceRule": 7613,
+        "records": 9,
+        "ownXor": "1.643540278357980547",
+        "nominatorXor": "22.95500027967821384",
+        "totalXor": "24.598540558036194387",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7642,
+        "expectedOffenceEraUnderCurrentSourceRule": 7614,
+        "records": 8,
+        "ownXor": "0.674435116013534344",
+        "nominatorXor": "10.506935781117243244",
+        "totalXor": "11.181370897130777588",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7643,
+        "expectedOffenceEraUnderCurrentSourceRule": 7615,
+        "records": 8,
+        "ownXor": "0.642342136027215143",
+        "nominatorXor": "10.303643004013268448",
+        "totalXor": "10.945985140040483591",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7644,
+        "expectedOffenceEraUnderCurrentSourceRule": 7616,
+        "records": 17,
+        "ownXor": "1.528005549895861109",
+        "nominatorXor": "21.51857660087966784",
+        "totalXor": "23.046582150775528949",
+        "validatorsWithMultipleRecords": {
+          "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp": 2,
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8": 2,
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5": 2,
+          "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK": 2,
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt": 2,
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA": 2,
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee": 2,
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ": 2
+        }
+      },
+      {
+        "applyEra": 7645,
+        "expectedOffenceEraUnderCurrentSourceRule": 7617,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.418896793017569606",
+        "totalXor": "1.418896793017569606",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7646,
+        "expectedOffenceEraUnderCurrentSourceRule": 7618,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.401282824982418652",
+        "totalXor": "1.401282824982418652",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7647,
+        "expectedOffenceEraUnderCurrentSourceRule": 7619,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.383550561073574559",
+        "totalXor": "1.383550561073574559",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7648,
+        "expectedOffenceEraUnderCurrentSourceRule": 7620,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.366373870549633476",
+        "totalXor": "1.366373870549633476",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7649,
+        "expectedOffenceEraUnderCurrentSourceRule": 7621,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.353520831921869655",
+        "totalXor": "1.353520831921869655",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7650,
+        "expectedOffenceEraUnderCurrentSourceRule": 7622,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.336136935159874816",
+        "totalXor": "1.336136935159874816",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7651,
+        "expectedOffenceEraUnderCurrentSourceRule": 7623,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.327862273627839518",
+        "totalXor": "1.327862273627839518",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7652,
+        "expectedOffenceEraUnderCurrentSourceRule": 7624,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.327067880222339401",
+        "totalXor": "1.327067880222339401",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7653,
+        "expectedOffenceEraUnderCurrentSourceRule": 7625,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.296441479194298726",
+        "totalXor": "1.296441479194298726",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7654,
+        "expectedOffenceEraUnderCurrentSourceRule": 7626,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.278784287352824899",
+        "totalXor": "1.278784287352824899",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7655,
+        "expectedOffenceEraUnderCurrentSourceRule": 7627,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.26094927807257264",
+        "totalXor": "1.26094927807257264",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7656,
+        "expectedOffenceEraUnderCurrentSourceRule": 7628,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.243134127907331256",
+        "totalXor": "1.243134127907331256",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7657,
+        "expectedOffenceEraUnderCurrentSourceRule": 7629,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.225249050435273666",
+        "totalXor": "1.225249050435273666",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7658,
+        "expectedOffenceEraUnderCurrentSourceRule": 7630,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.20734854091265539",
+        "totalXor": "1.20734854091265539",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7659,
+        "expectedOffenceEraUnderCurrentSourceRule": 7631,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.189383955331300882",
+        "totalXor": "1.189383955331300882",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7660,
+        "expectedOffenceEraUnderCurrentSourceRule": 7632,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.170081798134773048",
+        "totalXor": "1.170081798134773048",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7661,
+        "expectedOffenceEraUnderCurrentSourceRule": 7633,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.152004363761731399",
+        "totalXor": "1.152004363761731399",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7662,
+        "expectedOffenceEraUnderCurrentSourceRule": 7634,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.134488028563352946",
+        "totalXor": "1.134488028563352946",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7663,
+        "expectedOffenceEraUnderCurrentSourceRule": 7635,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.089342274641369392",
+        "totalXor": "1.089342274641369392",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7664,
+        "expectedOffenceEraUnderCurrentSourceRule": 7636,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.071220605859098569",
+        "totalXor": "1.071220605859098569",
+        "validatorsWithMultipleRecords": {}
+      },
+      {
+        "applyEra": 7665,
+        "expectedOffenceEraUnderCurrentSourceRule": 7637,
+        "records": 6,
+        "ownXor": "0",
+        "nominatorXor": "1.049344218560627501",
+        "totalXor": "1.049344218560627501",
+        "validatorsWithMultipleRecords": {}
+      }
+    ],
+    "byValidator": {
+      "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un": {
+        "pendingRecords": 3,
+        "ownXor": "2.428514816037357069",
+        "nominatorXor": "30.163534075324823727",
+        "sampledOfflineReportCount": 12,
+        "sampledOfflineSessionRanges": [
+          [
+            46976,
+            46984
+          ],
+          [
+            47001,
+            47003
+          ]
+        ]
+      },
+      "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp": {
+        "pendingRecords": 8,
+        "ownXor": "3.459093686393400886",
+        "nominatorXor": "0.110954716728316541",
+        "sampledOfflineReportCount": 38,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47001
+          ]
+        ]
+      },
+      "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8": {
+        "pendingRecords": 29,
+        "ownXor": "0",
+        "nominatorXor": "7.003988156587790192",
+        "sampledOfflineReportCount": 163,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47126
+          ]
+        ]
+      },
+      "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5": {
+        "pendingRecords": 29,
+        "ownXor": "0",
+        "nominatorXor": "8.156054425393624814",
+        "sampledOfflineReportCount": 163,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47126
+          ]
+        ]
+      },
+      "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK": {
+        "pendingRecords": 8,
+        "ownXor": "1.937477958442122306",
+        "nominatorXor": "65.901915026869117916",
+        "sampledOfflineReportCount": 38,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47001
+          ]
+        ]
+      },
+      "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt": {
+        "pendingRecords": 29,
+        "ownXor": "0",
+        "nominatorXor": "6.199159706621500067",
+        "sampledOfflineReportCount": 163,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47126
+          ]
+        ]
+      },
+      "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA": {
+        "pendingRecords": 29,
+        "ownXor": "0",
+        "nominatorXor": "7.188605032821676286",
+        "sampledOfflineReportCount": 163,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47126
+          ]
+        ]
+      },
+      "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee": {
+        "pendingRecords": 29,
+        "ownXor": "0",
+        "nominatorXor": "8.479257696729963248",
+        "sampledOfflineReportCount": 163,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47126
+          ]
+        ]
+      },
+      "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ": {
+        "pendingRecords": 29,
+        "ownXor": "0",
+        "nominatorXor": "6.238822513033954096",
+        "sampledOfflineReportCount": 163,
+        "sampledOfflineSessionRanges": [
+          [
+            46964,
+            47126
+          ]
+        ]
+      }
+    }
+  },
+  "sampledOffences": {
+    "kind": "im-online:offlin",
+    "sessionCount": 163,
+    "firstSession": 46964,
+    "lastSession": 47126,
+    "reports": 1066,
+    "cohorts": [
+      {
+        "firstSession": 46964,
+        "lastSession": 46975,
+        "validators": [
+          "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+          "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+        ],
+        "sessionCount": 12,
+        "validatorCount": 8
+      },
+      {
+        "firstSession": 46976,
+        "lastSession": 46984,
+        "validators": [
+          "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+          "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+          "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+        ],
+        "sessionCount": 9,
+        "validatorCount": 9
+      },
+      {
+        "firstSession": 46985,
+        "lastSession": 47000,
+        "validators": [
+          "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+          "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+        ],
+        "sessionCount": 16,
+        "validatorCount": 8
+      },
+      {
+        "firstSession": 47001,
+        "lastSession": 47001,
+        "validators": [
+          "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+          "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+          "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+        ],
+        "sessionCount": 1,
+        "validatorCount": 9
+      },
+      {
+        "firstSession": 47002,
+        "lastSession": 47003,
+        "validators": [
+          "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+        ],
+        "sessionCount": 2,
+        "validatorCount": 7
+      },
+      {
+        "firstSession": 47004,
+        "lastSession": 47126,
+        "validators": [
+          "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+          "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+          "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+          "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+          "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+          "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+        ],
+        "sessionCount": 123,
+        "validatorCount": 6
+      }
+    ]
+  },
+  "currentKeysAndLiveness": {
+    "validatorCount": 25,
+    "queuedValidatorOrderingMatchesCurrent": true,
+    "allQueuedImOnlineKeysMatchCurrent": true,
+    "duplicateQueuedKeysByType": {
+      "babe": [],
+      "grandpa": [],
+      "imOnline": [],
+      "beefy": []
+    },
+    "disabled": [
+      {
+        "index": 6,
+        "validator": "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+        "slashFractionPpb": 25200000,
+        "currentSessionAuthoredBlocks": 0,
+        "queuedImOnlineKeyMatchesCurrentIndexedImOnlineKey": true
+      },
+      {
+        "index": 13,
+        "validator": "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+        "slashFractionPpb": 25200000,
+        "currentSessionAuthoredBlocks": 0,
+        "queuedImOnlineKeyMatchesCurrentIndexedImOnlineKey": true
+      },
+      {
+        "index": 18,
+        "validator": "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+        "slashFractionPpb": 25200000,
+        "currentSessionAuthoredBlocks": 0,
+        "queuedImOnlineKeyMatchesCurrentIndexedImOnlineKey": true
+      },
+      {
+        "index": 20,
+        "validator": "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+        "slashFractionPpb": 25200000,
+        "currentSessionAuthoredBlocks": 0,
+        "queuedImOnlineKeyMatchesCurrentIndexedImOnlineKey": true
+      },
+      {
+        "index": 22,
+        "validator": "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+        "slashFractionPpb": 25200000,
+        "currentSessionAuthoredBlocks": 0,
+        "queuedImOnlineKeyMatchesCurrentIndexedImOnlineKey": true
+      },
+      {
+        "index": 23,
+        "validator": "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+        "slashFractionPpb": 25200000,
+        "currentSessionAuthoredBlocks": 0,
+        "queuedImOnlineKeyMatchesCurrentIndexedImOnlineKey": true
+      }
+    ],
+    "validatorsWithAuthoredBlockEntries": 19,
+    "authoredBlocksTotal": 351,
+    "receivedHeartbeatEntries": 0
+  },
+  "interpretationNotes": [
+    "Amounts are pending own-plus-others face values in 18-decimal XOR; payout is not an additional slash and actual execution must be checked separately.",
+    "Sampled im-online offline reports are per validator per session. Staking retains the maximum slash fraction per validator per era, and raises the pending amount only when that maximum increases.",
+    "Apply era 7644 contains eight extra incremental records when severity rose in offence era 7616; record repetition is not itself duplicate charging.",
+    "The six current disabled validators have an offline report in every one of the 163 sampled completed sessions. This records chain liveness classification, not operator intent or proven wrongdoing.",
+    "Queued session keys are public on-chain data. Equality with active im-online keys does not prove a running node possesses or uses the matching secret key.",
+    "Snapshot shows no received heartbeats for any validator and 19 validators with authored blocks; no current authored-block entry for a disabled validator does not establish why the validator became disabled.",
+    "Historical fraction values 37499999,44999999,25200000 ppb are consistent with the checked-out im-online formula at offender/set counts 8/28,9/28,6/25 respectively; historical set sizes require independent confirmation."
+  ],
+  "submittedTransactions": 0
+}

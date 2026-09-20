@@ -1,0 +1,252 @@
+{
+  "checkedAt": "2026-09-12T12:12:21.973Z",
+  "endpoint": "wss://ws.mof.sora.org",
+  "blockHash": "0x4540fa40a592c0f7f5fb925bed05d8507bb77048b1fd8647ec5235665f78d7e8",
+  "blockNumber": 27624441,
+  "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "chain": "SORA",
+  "runtimeVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 130,
+    "implVersion": 2,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 130,
+    "stateVersion": 0
+  },
+  "codeSha256": "0ac7b85d845d56d450df99ab7166014897be57a7a1f66437d92e6949b56f49c0",
+  "storageVersions": {
+    "XorFee": {
+      "key": "0xc9283f367dbf74c668ae6ee5f45c97b04e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0300",
+      "version": 3
+    },
+    "Staking": {
+      "key": "0x5f3e4907f716ac89b6347d15ececedca4e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x1000",
+      "version": 16
+    },
+    "Offences": {
+      "key": "0xd5c41b52a371aa36c9254ce34324f2a54e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    },
+    "Session": {
+      "key": "0xcec5070d609dd3497f72bde07fc96ba04e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    },
+    "Grandpa": {
+      "key": "0x5f9cc45b7a00c5899361e1c6099678dc4e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0500",
+      "version": 5
+    },
+    "ImOnline": {
+      "key": "0x2b06af9719ac64d755623cda8ddd9b944e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    },
+    "PoolXYK": {
+      "key": "0x7c2f67164deafeedd91e34da0331ade44e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0300",
+      "version": 3
+    },
+    "PswapDistribution": {
+      "key": "0x31f6b7a64c19140023b52070f65fc2e34e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0200",
+      "version": 2
+    },
+    "VestedRewards": {
+      "key": "0xe41c5e75812adf5bb00364f58d835bf34e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0400",
+      "version": 4
+    },
+    "Identity": {
+      "key": "0x2aeddc77fe58c98d50bd37f1b90840f94e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0200",
+      "version": 2
+    },
+    "Farming": {
+      "key": "0x9caa03c08d70516a1d9a23659da86bff4e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0200",
+      "version": 2
+    },
+    "Kensetsu": {
+      "key": "0xf7f560e8952aa82606c54229c1cc23234e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0600",
+      "version": 6
+    },
+    "Band": {
+      "key": "0x20e20c48df300e3b1a7e08f0f0e750c94e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0200",
+      "version": 2
+    },
+    "Polkamarkt": {
+      "key": "0x7c9df7ef418f869f0ab365233bda527f4e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0700",
+      "version": 7
+    },
+    "EthBridge": {
+      "key": "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0300",
+      "version": 3
+    },
+    "OracleProxy": {
+      "key": "0x6e95e8ab162d1e5278846592690a69904e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    },
+    "BridgeInboundChannel": {
+      "key": "0xdcc431f707e57df466d3df30245684754e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    },
+    "SubstrateBridgeInboundChannel": {
+      "key": "0x2b37b6c7d56c1ecfd9944e8c4aaaa72f4e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    },
+    "SubstrateBridgeOutboundChannel": {
+      "key": "0xc1332d01afb161d79c4c0965aa569c634e7b9012096b41c4eb3aaf947f6ea429",
+      "hex": "0x0100",
+      "version": 1
+    }
+  },
+  "councilMembers": [
+    "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+    "cnSN33HpCwZqxQ4iVf3voVUJ9jx9wPULVMXw6iVgPgkeneNtM",
+    "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
+    "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+    "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+    "cnVcjvUEVGbK4LGLB9K382EEKm57dxtmGYdiFfnjEWWg9vr72",
+    "cnWA5jrFjKWE9e5Tv7nysnQLqC2kEzBthc83ekqnkiHLfE33q",
+    "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le"
+  ],
+  "technicalCommitteeMembers": [
+    "cnSSrHHm7AKjbKbS6a9KpCxzYhzptgnz47yCw4TVjSzYzpJQC",
+    "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+    "cnW7voz8dzsEb961QFqQC2RZE82wWhYbWfjcmaaCSfixC6wDw",
+    "cnXC9NAHCwcgmd6NWUFZ6rak6avn4fVKZVchXUFcRPTEi6Jza"
+  ],
+  "nextExternal": null,
+  "fastTrackVotingPeriod": 1800,
+  "activeEra": {
+    "index": 7637,
+    "start": 1789195860003
+  },
+  "submittedTransactions": 0
+}

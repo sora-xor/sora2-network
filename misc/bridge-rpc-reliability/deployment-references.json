@@ -1,0 +1,12 @@
+[
+  {
+    "repository": "soramitsu/sora2-deploy",
+    "date": "2025-10-18T15:41:14Z",
+    "sha": "efd5c6bb2415298bd319c200048b5f7de639f3fb"
+  },
+  {
+    "repository": "soramitsu/infrastructure",
+    "date": "2026-03-10T17:38:18Z",
+    "sha": "d402e5e6413067b1f01242293a8003651292e68c"
+  }
+]
