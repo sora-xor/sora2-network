@@ -105,6 +105,10 @@ pub fn init_remove_peer_by_peer_fn() -> Box<MethodId> {
     Box::new(calculate_method_id(&remove_peer_by_peer_fn))
 }
 
+#[allow(
+    clippy::box_collection,
+    reason = "OnceBox::get_or_init requires its initializer to return a Box"
+)]
 pub fn functions() -> Box<BTreeMap<MethodId, FunctionMeta>> {
     let add_eth_native_token_fn = ADD_ETH_NATIVE_TOKEN_FN
         .get_or_init(|| Box::new(eth_bridge_contract::functions::add_eth_native_token::function()));

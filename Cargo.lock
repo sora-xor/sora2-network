@@ -1355,7 +1355,7 @@ checksum = "90dbd31c98227229239363921e60fcf5e558e43ec69094d46fc4996f08d1d5bc"
 dependencies = [
  "bitcoin_hashes",
  "rand 0.8.6",
- "rand_core 0.6.4",
+ "rand_core 0.5.1",
  "serde",
  "unicode-normalization",
 ]
@@ -4920,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.8.8"
+version = "4.8.9"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5009,7 +5009,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.8.8"
+version = "4.8.9"
 dependencies = [
  "band",
  "common",
@@ -5042,7 +5042,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.8.8"
+version = "4.8.9"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -8910,6 +8910,7 @@ source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable
 dependencies = [
  "aquamarine",
  "docify",
+ "frame-benchmarking",
  "frame-election-provider-support",
  "frame-support",
  "frame-system",
@@ -8917,7 +8918,10 @@ dependencies = [
  "pallet-balances",
  "parity-scale-codec",
  "scale-info",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
+ "sp-tracing",
 ]
 
 [[package]]
@@ -9352,7 +9356,6 @@ dependencies = [
 [[package]]
 name = "pallet-staking"
 version = "46.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
 dependencies = [
  "frame-benchmarking",
  "frame-election-provider-support",
@@ -9360,15 +9363,34 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-authorship",
+ "pallet-bags-list",
+ "pallet-balances",
  "pallet-session",
+ "pallet-staking-reward-curve",
+ "pallet-timestamp",
  "parity-scale-codec",
  "rand_chacha 0.3.1",
  "scale-info",
  "serde",
  "sp-application-crypto",
+ "sp-core",
  "sp-io",
+ "sp-npos-elections",
  "sp-runtime",
  "sp-staking",
+ "sp-tracing",
+ "substrate-test-utils",
+]
+
+[[package]]
+name = "pallet-staking-reward-curve"
+version = "12.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
+dependencies = [
+ "proc-macro-crate 3.3.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -15165,6 +15187,11 @@ dependencies = [
  "serde",
  "sp-runtime",
 ]
+
+[[package]]
+name = "substrate-test-utils"
+version = "3.0.0"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
 
 [[package]]
 name = "substrate-wasm-builder"

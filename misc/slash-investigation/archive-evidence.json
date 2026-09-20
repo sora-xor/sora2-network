@@ -1,0 +1,1203 @@
+{
+  "checkedAt": "2026-09-12T08:39:19.582Z",
+  "expectedGenesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "expectedGenesisSource": "runtime-upgrade-4.8.9/validation/live-chain.json",
+  "targets": [
+    {
+      "block": 27622328,
+      "expectedHash": "0xf393d082e3f8bb6b71cb3e1e3c33399e4f332deb9bce9ce7b77db1563e287569"
+    },
+    {
+      "block": 27622329,
+      "expectedHash": "0x456eefe176bf22734a0f6badeda1aef4af3092335777ced3dae92c8a74e07a9e"
+    }
+  ],
+  "submittedTransactions": 0,
+  "endpoints": [
+    {
+      "endpoint": "wss://mof2.sora.org",
+      "startedAt": "2026-09-12T08:39:19.583Z",
+      "boundary": [
+        {
+          "block": 27622328,
+          "hash": "0xf393d082e3f8bb6b71cb3e1e3c33399e4f332deb9bce9ce7b77db1563e287569",
+          "hashMatches": true,
+          "session": 47126,
+          "timestamp": "1789199454001",
+          "activeEra": {
+            "index": 7637,
+            "start": 1789195860003
+          },
+          "events": [],
+          "authors": [
+            {
+              "key": [
+                47126,
+                "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer"
+              ],
+              "value": 20
+            },
+            {
+              "key": [
+                47126,
+                "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc"
+              ],
+              "value": 23
+            },
+            {
+              "key": [
+                47126,
+                "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY"
+              ],
+              "value": 31
+            },
+            {
+              "key": [
+                47126,
+                "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt"
+              ],
+              "value": 20
+            },
+            {
+              "key": [
+                47126,
+                "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH"
+              ],
+              "value": 28
+            },
+            {
+              "key": [
+                47126,
+                "cnSunuwsWA5Ju1WrcTdvgieMYUNcUKzXdq3AfmQ8NP8dauMHX"
+              ],
+              "value": 27
+            },
+            {
+              "key": [
+                47126,
+                "cnXCoCUXWTCZqkR3Lfo4Hs9HJ8VUP4HKX5m1a6UGzPj6zqzkY"
+              ],
+              "value": 25
+            },
+            {
+              "key": [
+                47126,
+                "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq"
+              ],
+              "value": 18
+            },
+            {
+              "key": [
+                47126,
+                "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg"
+              ],
+              "value": 22
+            },
+            {
+              "key": [
+                47126,
+                "cnWHoJkvECM4MzWGm9fyZQmtiaMkBfiX8hqNfKAbt5B8Wunk7"
+              ],
+              "value": 23
+            },
+            {
+              "key": [
+                47126,
+                "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP"
+              ],
+              "value": 19
+            },
+            {
+              "key": [
+                47126,
+                "cnVNzYq884MufA4qN5JQCG1PSjCvnErfiC3uS3s6k85iSb8Re"
+              ],
+              "value": 33
+            },
+            {
+              "key": [
+                47126,
+                "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq"
+              ],
+              "value": 27
+            },
+            {
+              "key": [
+                47126,
+                "cnTzp6GHzGgDyGnTr5aBHtEnZYS7taTaVCbrzuWU9sMifyGnB"
+              ],
+              "value": 30
+            },
+            {
+              "key": [
+                47126,
+                "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq"
+              ],
+              "value": 26
+            },
+            {
+              "key": [
+                47126,
+                "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv"
+              ],
+              "value": 26
+            },
+            {
+              "key": [
+                47126,
+                "cnSmsuGWGV3pCxQmrMrd7Mq4bS4HXNDZtjeZ9GnutGYUSBFwk"
+              ],
+              "value": 27
+            },
+            {
+              "key": [
+                47126,
+                "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa"
+              ],
+              "value": 26
+            },
+            {
+              "key": [
+                47126,
+                "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs"
+              ],
+              "value": 21
+            }
+          ],
+          "heartbeats": [],
+          "validators": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+            "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP",
+            "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
+            "cnSmsuGWGV3pCxQmrMrd7Mq4bS4HXNDZtjeZ9GnutGYUSBFwk",
+            "cnSunuwsWA5Ju1WrcTdvgieMYUNcUKzXdq3AfmQ8NP8dauMHX",
+            "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+            "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
+            "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt",
+            "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer",
+            "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY",
+            "cnTzp6GHzGgDyGnTr5aBHtEnZYS7taTaVCbrzuWU9sMifyGnB",
+            "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
+            "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+            "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+            "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+            "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+            "cnVNzYq884MufA4qN5JQCG1PSjCvnErfiC3uS3s6k85iSb8Re",
+            "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+            "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+            "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+            "cnWHoJkvECM4MzWGm9fyZQmtiaMkBfiX8hqNfKAbt5B8Wunk7",
+            "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+            "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+            "cnXCoCUXWTCZqkR3Lfo4Hs9HJ8VUP4HKX5m1a6UGzPj6zqzkY"
+          ],
+          "disabled": [],
+          "keys": [
+            "0xdecb2a0e61bd462c0148785b854deb53c7740b921554ecabd5e392b857557a12",
+            "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+            "0x6a7f36b8518910f60941f52766bd13305d09496a22a3bb23a0bdede41c821b3b",
+            "0x82012f6b23fb8b9450a9aef1a2d43967b5bf8d9e9c54017e0785abc601373d72",
+            "0x0ee1c141a75c0dff9bf6cd409988183ac9aafb6498c3a2c52f5924fb3c3e150b",
+            "0x74c04b64881c2c024922e2fb58a241044e6c70d315918ce2e84174b78deb2845",
+            "0x2259ab01673f667369a20541a339465fac8d3702943f59b1ef7aaacb8f2aeb41",
+            "0x340d9099243fa2a97f8a3f03799439b41ef42d811760df1471574df0151a7a24",
+            "0xf8e18b5e0a7c3912222a41620deff399de8c7aa0b66717dec40c64805de7ce32",
+            "0xf42611c609ad47625a8fc8201d5e3d2c8d76d14c03c036dfa60bd0158b190660",
+            "0x9afc696e6e9edb8eeb45e1d75e63126c493b96eab2aa51047fc4c48e1e44632b",
+            "0x66efbecb7cac3d9d4f9114716d588d1169854c62a8a0a7be76cfd8b8eb6d7d5a",
+            "0x547670eb9bee126547dfb3e775f146d14cef48d639f3f2a814163a1446e14d7d",
+            "0x4267b5bc5a66dd79577052c5f858a4be11d493e79aa2f9def30c7d10d41f5d73",
+            "0x44de127094c26f420430ac7e0b680ad8a752284814f4bd77e5dfa3af3acb8a3a",
+            "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+            "0x4ac5dc9e3d3a0ab0835f00274f9ebed8da56cacbbb31f5654e9b4907c8a7902a",
+            "0xbea605e56dda0fee057ed1562d7f7e187588c363bbeb8c8d75699219dc44e538",
+            "0x747267578cdb29a95b9814095bbe6524d67fb616ba51f88e373fdefbb1d26207",
+            "0x1e6d81a5855be6ce2098d51868017cd56b21fa0f7a53bfb56b7a040c85b9d173",
+            "0x92556d5ecf795f382cb1b092bf0899057fffe5ec1f01d51cbfe0a1167194be1b",
+            "0x548aa5314b363422077268e78053536f121eea19b782c7df12c0b10a92e7e824",
+            "0x7a888401976e4369bf071742a3653b13988efe1bbcafbaf6cd75a38b29cc1f73",
+            "0x46e9d383807c72d35784a1a33a8ed473aaaebd5ce834bbdb06b31072884eae26",
+            "0xb0212c28a188c99a9cbd315dd1fdf069eb0ba207a87c067d0a20c11d407dfc73"
+          ],
+          "queuedKeys": [
+            [
+              "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+              {
+                "babe": "0x7af58e299c0d28e41bafcde06771ad10108cbdf0c101332ff32e35e2f428ff35",
+                "grandpa": "0xe87878c0eecd80bf8df7274cdeb88eecbcc72e65b8300bef4a7c1c66b0255b1b",
+                "imOnline": "0xdecb2a0e61bd462c0148785b854deb53c7740b921554ecabd5e392b857557a12",
+                "beefy": "0x0333ac8c8586e329091aa2067c59367800edca33f12303ba7b0ac238563bf8933c"
+              }
+            ],
+            [
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+              {
+                "babe": "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+                "grandpa": "0x71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573",
+                "imOnline": "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+                "beefy": "0x62656566bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"
+              }
+            ],
+            [
+              "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP",
+              {
+                "babe": "0x80aa8c428b354c308ab272c2ae0fa3000266a936429d85a346d88853d2da676d",
+                "grandpa": "0xdb024aa297c7c8e5e48bf2392576134e477fd951d1eeffe76ee792b08de32f06",
+                "imOnline": "0x6a7f36b8518910f60941f52766bd13305d09496a22a3bb23a0bdede41c821b3b",
+                "beefy": "0x025ec055ef54243872e40f93278f308f97efa87eb53eb98b0d20b82c1181c996e5"
+              }
+            ],
+            [
+              "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
+              {
+                "babe": "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+                "grandpa": "0x7827f835cc3891fa7a7209b208b971fe97a2c3fb8ac13e5a1b76b8fb7fede1b4",
+                "imOnline": "0x82012f6b23fb8b9450a9aef1a2d43967b5bf8d9e9c54017e0785abc601373d72",
+                "beefy": "0x030b5802aca96178a1c0215826cdb116f78ad5e403896b4e6830d478ae6240e94c"
+              }
+            ],
+            [
+              "cnSmsuGWGV3pCxQmrMrd7Mq4bS4HXNDZtjeZ9GnutGYUSBFwk",
+              {
+                "babe": "0x72fce195456e5d7e026b29196b238f7b3d96467b8532a4177e658510e29e4f67",
+                "grandpa": "0x88632032fb2787d80fd066549e934fb6bc7248b4b4049f3703731144645ff526",
+                "imOnline": "0x0ee1c141a75c0dff9bf6cd409988183ac9aafb6498c3a2c52f5924fb3c3e150b",
+                "beefy": "0x02dbc13322c92199575535bc4c44982a7be3bff70a90d400bd2834ec0ff329bd32"
+              }
+            ],
+            [
+              "cnSunuwsWA5Ju1WrcTdvgieMYUNcUKzXdq3AfmQ8NP8dauMHX",
+              {
+                "babe": "0x86059965e8cfbd25af930ba473d4e918e549db2b4b559ef74073cf1110b58a5a",
+                "grandpa": "0xbd326e0934e5ac9fbbb1c67609a36721ab622ca8f1fd80dce493aa1b3413736c",
+                "imOnline": "0x74c04b64881c2c024922e2fb58a241044e6c70d315918ce2e84174b78deb2845",
+                "beefy": "0x027089d39c35476ea06e5678129d52a3bf6fa9c3dcf2be8f1a4ef0144519dd27e0"
+              }
+            ],
+            [
+              "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+              {
+                "babe": "0x8af916adb9d30db59b33222f92b85009ff0a840129b914145ea795284977134e",
+                "grandpa": "0x4615a059e84fc0a88a2b7811f90ff21d26b09fff104d8b4e428fab29c4876999",
+                "imOnline": "0x2259ab01673f667369a20541a339465fac8d3702943f59b1ef7aaacb8f2aeb41",
+                "beefy": "0x03c7ba8df3159a37f2f76289c58b6f7ece16643b69617d4c8e49a545a848d54362"
+              }
+            ],
+            [
+              "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
+              {
+                "babe": "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+                "grandpa": "0xb2678e7c1c0480dc61cce7fce6e6eb839a8ac0f676b0c68d48a939df688795a1",
+                "imOnline": "0x340d9099243fa2a97f8a3f03799439b41ef42d811760df1471574df0151a7a24",
+                "beefy": "0x0366ef0814a978506929667e4254119c1c255e8bcc09d50e107abe88b91a148289"
+              }
+            ],
+            [
+              "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt",
+              {
+                "babe": "0xc8eac417fe806489f1e31c5a7535fb1e5d7998f7d09368ccb880245924d00d67",
+                "grandpa": "0x55702929a5df62a9bbded44c7b42177e00c451efcda266ab4f0f0fdaf47c8321",
+                "imOnline": "0xf8e18b5e0a7c3912222a41620deff399de8c7aa0b66717dec40c64805de7ce32",
+                "beefy": "0x035ba588a041141d318a449bc600c0c5a6963da3d3bb331033591686baf0b2f5f8"
+              }
+            ],
+            [
+              "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer",
+              {
+                "babe": "0x3c28b28be01ee540de25e46e80869cb465efbcdc1f3604f1752d0c5c154be023",
+                "grandpa": "0x9ec33aff2d5a0ae5aa05177b38dad961f52584ef7dc2de6833412db1675dd2cb",
+                "imOnline": "0xf42611c609ad47625a8fc8201d5e3d2c8d76d14c03c036dfa60bd0158b190660",
+                "beefy": "0x02edd57ab442d2f4a1c9b6f0f3a356bb0d16b36a4f07d9d02ca9ab5d43dbc14906"
+              }
+            ],
+            [
+              "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY",
+              {
+                "babe": "0x348b42eae8827e68bfa5884b27afbdda7f57811751e3884ddd2f291f46c02727",
+                "grandpa": "0x2be558fe06476de43b87b1a2342700b2503b34f0ef04b85fcf51f5c84324f4ec",
+                "imOnline": "0x9afc696e6e9edb8eeb45e1d75e63126c493b96eab2aa51047fc4c48e1e44632b",
+                "beefy": "0x030f0b1aafa503b437f1830691ab29e1a1588d4b2b66f5954316b896a47310f031"
+              }
+            ],
+            [
+              "cnTzp6GHzGgDyGnTr5aBHtEnZYS7taTaVCbrzuWU9sMifyGnB",
+              {
+                "babe": "0x8a300674c9828030f4de3252abf9fe0e0b88a13cffa916a84e3fc38289f2eb43",
+                "grandpa": "0x56c0c6f607ff38ed029f4b574a7ae1187dd5bda3554629780ec1bcd92821b2c9",
+                "imOnline": "0x66efbecb7cac3d9d4f9114716d588d1169854c62a8a0a7be76cfd8b8eb6d7d5a",
+                "beefy": "0x026a80aab021b3f5b8587ba0c6668494795dba732352fe686c28e6b00a5e62197a"
+              }
+            ],
+            [
+              "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
+              {
+                "babe": "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+                "grandpa": "0xe8d7ede15247ae3a6cefa071581fcebaf0faf11fce1d887db57af495b7e9104b",
+                "imOnline": "0x547670eb9bee126547dfb3e775f146d14cef48d639f3f2a814163a1446e14d7d",
+                "beefy": "0x02a650ee6a37bee3e6ce9ab6ee11ab12357478511540670c5f5e334e8f856289de"
+              }
+            ],
+            [
+              "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+              {
+                "babe": "0x2a4d96f3a5b9fe0bb5c2f742f927db7327c5288f05a06df9a6495f0c863ce05a",
+                "grandpa": "0x0fcda038b7828de2bcbacf3ee1b0f04b465072f64f0ecdfa522a013324c1238b",
+                "imOnline": "0x4267b5bc5a66dd79577052c5f858a4be11d493e79aa2f9def30c7d10d41f5d73",
+                "beefy": "0x028e731a58943a2bafe0c37bbe639b7c7361e12ba3ddff61a099aec1b3f6d8e0b0"
+              }
+            ],
+            [
+              "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+              {
+                "babe": "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+                "grandpa": "0xff02bade39c464038effa36fcd17f4b6d4b3f6f1fbb41d84bc75b6b09f284382",
+                "imOnline": "0x44de127094c26f420430ac7e0b680ad8a752284814f4bd77e5dfa3af3acb8a3a",
+                "beefy": "0x021c6e4b87b5e3ed58bd012522711dfab39d5970a6f29d788ab560cb5ea01e8ef5"
+              }
+            ],
+            [
+              "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+              {
+                "babe": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+                "grandpa": "0xd603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d",
+                "imOnline": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+                "beefy": "0x626565668c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"
+              }
+            ],
+            [
+              "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+              {
+                "babe": "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+                "grandpa": "0xd88c5b8be387ff8b4762709db9d13a06c41f0490abebc78f2e1ccf8c88680585",
+                "imOnline": "0x4ac5dc9e3d3a0ab0835f00274f9ebed8da56cacbbb31f5654e9b4907c8a7902a",
+                "beefy": "0x0228a2a3adf616cde5a14018c6e43b122695a5180fe3a29841f82ae0f287eee88a"
+              }
+            ],
+            [
+              "cnVNzYq884MufA4qN5JQCG1PSjCvnErfiC3uS3s6k85iSb8Re",
+              {
+                "babe": "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+                "grandpa": "0xd9f87f4995acac32526eb57117088f467e40ca8a5774f8883036bd6414d9a653",
+                "imOnline": "0xbea605e56dda0fee057ed1562d7f7e187588c363bbeb8c8d75699219dc44e538",
+                "beefy": "0x0213468798be66a598e203a0da143adebc7a5f703c83e7d7b6312c06e7635538b3"
+              }
+            ],
+            [
+              "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+              {
+                "babe": "0x7ef92b77cfa6a83b93158fd32ce63d01e32a133c5ff3797c38c7eef9fcfd1561",
+                "grandpa": "0x7b21a68dd5807a326ce41d274c0f2137c82f9b172ed1f73e1683f41ae6ac0d81",
+                "imOnline": "0x747267578cdb29a95b9814095bbe6524d67fb616ba51f88e373fdefbb1d26207",
+                "beefy": "0x03a8aeff1078ec8fa0e8e58bfc9ee7fbaf8a358baea526de39b29eebc2ece71ced"
+              }
+            ],
+            [
+              "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+              {
+                "babe": "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+                "grandpa": "0xeffdff7ec62e6a53976a2e07166e3483834aae5cb33400d973b66d97f3cdc265",
+                "imOnline": "0x1e6d81a5855be6ce2098d51868017cd56b21fa0f7a53bfb56b7a040c85b9d173",
+                "beefy": "0x029f1ee11014df0e24cedc09369530ae53109e5efb0d841547b41b152c91603bfd"
+              }
+            ],
+            [
+              "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+              {
+                "babe": "0xacd10e4763af912c4ab858563514b7668932ac75135e46d2afbc23700b970b1b",
+                "grandpa": "0xb5dbca06a017fc8e307525b4c10249bf5426acfb6f38dfee2fd4ffe15450afbe",
+                "imOnline": "0x92556d5ecf795f382cb1b092bf0899057fffe5ec1f01d51cbfe0a1167194be1b",
+                "beefy": "0x0351b82c9c819c3c025a45c9519591c6b220e1d04e560b52cfb4e35116dacfa705"
+              }
+            ],
+            [
+              "cnWHoJkvECM4MzWGm9fyZQmtiaMkBfiX8hqNfKAbt5B8Wunk7",
+              {
+                "babe": "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+                "grandpa": "0x3716b6123b5e85f9f5f1a5a55ab838ad5386ac4fe3d5b0d497fa319511c090c1",
+                "imOnline": "0x548aa5314b363422077268e78053536f121eea19b782c7df12c0b10a92e7e824",
+                "beefy": "0x02e0b1db2c01e93775ac202d026ca47897e7a7835448feb86b9f00d7749036af7e"
+              }
+            ],
+            [
+              "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+              {
+                "babe": "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+                "grandpa": "0x363075a6ae1f9289e7a5695ccb5f6deca3f7cba5a8de92b1265ddb6fa212e4f7",
+                "imOnline": "0x7a888401976e4369bf071742a3653b13988efe1bbcafbaf6cd75a38b29cc1f73",
+                "beefy": "0x02c5f581278c7bb5e489509fed925e56343dd9b6572256e330b001b7f49d2d5ad9"
+              }
+            ],
+            [
+              "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+              {
+                "babe": "0x281eeee2438428d2f47cfb0253fa0ca7a5edc561d20d6d6adf864992b5c44a3a",
+                "grandpa": "0xaa6d93ddda28b9dbe41efcdeb4cd70bbd3b8ffe57621bf5662f4ce17a27b9924",
+                "imOnline": "0x46e9d383807c72d35784a1a33a8ed473aaaebd5ce834bbdb06b31072884eae26",
+                "beefy": "0x03e0b88409fc970aa70958a5c59b5c2da4f2bafc842f400ad9b5dbdcc13f4a0db8"
+              }
+            ],
+            [
+              "cnXCoCUXWTCZqkR3Lfo4Hs9HJ8VUP4HKX5m1a6UGzPj6zqzkY",
+              {
+                "babe": "0xfe9ef919737c53e3b838b09d99d9605c36dcd12af39faa69a3c37c1022427658",
+                "grandpa": "0x3db0355fc23464dedc01de72a53252be88784a4ff55e0f28f8d24a8a51cdacdf",
+                "imOnline": "0xb0212c28a188c99a9cbd315dd1fdf069eb0ba207a87c067d0a20c11d407dfc73",
+                "beefy": "0x020f544463d85c4c40c9edf3ed0ef6d9accb9f9bb718e2159ad80e58cebe984963"
+              }
+            ]
+          ],
+          "babeAuthorities": [
+            [
+              "0x7af58e299c0d28e41bafcde06771ad10108cbdf0c101332ff32e35e2f428ff35",
+              1
+            ],
+            [
+              "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+              1
+            ],
+            [
+              "0x80aa8c428b354c308ab272c2ae0fa3000266a936429d85a346d88853d2da676d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0x72fce195456e5d7e026b29196b238f7b3d96467b8532a4177e658510e29e4f67",
+              1
+            ],
+            [
+              "0x86059965e8cfbd25af930ba473d4e918e549db2b4b559ef74073cf1110b58a5a",
+              1
+            ],
+            [
+              "0x8af916adb9d30db59b33222f92b85009ff0a840129b914145ea795284977134e",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0xc8eac417fe806489f1e31c5a7535fb1e5d7998f7d09368ccb880245924d00d67",
+              1
+            ],
+            [
+              "0x3c28b28be01ee540de25e46e80869cb465efbcdc1f3604f1752d0c5c154be023",
+              1
+            ],
+            [
+              "0x348b42eae8827e68bfa5884b27afbdda7f57811751e3884ddd2f291f46c02727",
+              1
+            ],
+            [
+              "0x8a300674c9828030f4de3252abf9fe0e0b88a13cffa916a84e3fc38289f2eb43",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x2a4d96f3a5b9fe0bb5c2f742f927db7327c5288f05a06df9a6495f0c863ce05a",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0x7ef92b77cfa6a83b93158fd32ce63d01e32a133c5ff3797c38c7eef9fcfd1561",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0xacd10e4763af912c4ab858563514b7668932ac75135e46d2afbc23700b970b1b",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ],
+            [
+              "0x281eeee2438428d2f47cfb0253fa0ca7a5edc561d20d6d6adf864992b5c44a3a",
+              1
+            ],
+            [
+              "0xfe9ef919737c53e3b838b09d99d9605c36dcd12af39faa69a3c37c1022427658",
+              1
+            ]
+          ]
+        },
+        {
+          "block": 27622329,
+          "hash": "0x456eefe176bf22734a0f6badeda1aef4af3092335777ced3dae92c8a74e07a9e",
+          "hashMatches": true,
+          "session": 47127,
+          "timestamp": "1789199460000",
+          "activeEra": {
+            "index": 7637,
+            "start": 1789195860003
+          },
+          "events": [
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "imOnline",
+              "method": "SomeOffline",
+              "data": [
+                [
+                  [
+                    "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+                    {
+                      "total": 0,
+                      "own": 0,
+                      "others": []
+                    }
+                  ],
+                  [
+                    "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+                    {
+                      "total": 0,
+                      "own": 0,
+                      "others": []
+                    }
+                  ],
+                  [
+                    "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+                    {
+                      "total": 0,
+                      "own": 0,
+                      "others": []
+                    }
+                  ],
+                  [
+                    "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+                    {
+                      "total": 0,
+                      "own": 0,
+                      "others": []
+                    }
+                  ],
+                  [
+                    "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+                    {
+                      "total": 0,
+                      "own": 0,
+                      "others": []
+                    }
+                  ],
+                  [
+                    "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+                    {
+                      "total": 0,
+                      "own": 0,
+                      "others": []
+                    }
+                  ]
+                ]
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "staking",
+              "method": "SlashReported",
+              "data": [
+                "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+                25200000,
+                7637
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "ValidatorDisabled",
+              "data": [
+                "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "staking",
+              "method": "SlashReported",
+              "data": [
+                "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+                25200000,
+                7637
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "ValidatorDisabled",
+              "data": [
+                "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "staking",
+              "method": "SlashReported",
+              "data": [
+                "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+                25200000,
+                7637
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "ValidatorDisabled",
+              "data": [
+                "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "staking",
+              "method": "SlashReported",
+              "data": [
+                "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+                25200000,
+                7637
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "ValidatorDisabled",
+              "data": [
+                "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "staking",
+              "method": "SlashReported",
+              "data": [
+                "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+                25200000,
+                7637
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "ValidatorDisabled",
+              "data": [
+                "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "staking",
+              "method": "SlashReported",
+              "data": [
+                "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+                25200000,
+                7637
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "ValidatorDisabled",
+              "data": [
+                "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "offences",
+              "method": "Offence",
+              "data": [
+                "0x696d2d6f6e6c696e653a6f66666c696e",
+                "0x16b80000"
+              ]
+            },
+            {
+              "phase": {
+                "initialization": null
+              },
+              "section": "session",
+              "method": "NewSession",
+              "data": [
+                47127
+              ]
+            }
+          ],
+          "authors": [],
+          "heartbeats": [],
+          "validators": [
+            "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+            "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+            "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP",
+            "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
+            "cnSmsuGWGV3pCxQmrMrd7Mq4bS4HXNDZtjeZ9GnutGYUSBFwk",
+            "cnSunuwsWA5Ju1WrcTdvgieMYUNcUKzXdq3AfmQ8NP8dauMHX",
+            "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+            "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
+            "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt",
+            "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer",
+            "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY",
+            "cnTzp6GHzGgDyGnTr5aBHtEnZYS7taTaVCbrzuWU9sMifyGnB",
+            "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
+            "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+            "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+            "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+            "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+            "cnVNzYq884MufA4qN5JQCG1PSjCvnErfiC3uS3s6k85iSb8Re",
+            "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+            "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+            "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+            "cnWHoJkvECM4MzWGm9fyZQmtiaMkBfiX8hqNfKAbt5B8Wunk7",
+            "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+            "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+            "cnXCoCUXWTCZqkR3Lfo4Hs9HJ8VUP4HKX5m1a6UGzPj6zqzkY"
+          ],
+          "disabled": [
+            [
+              6,
+              25200000
+            ],
+            [
+              13,
+              25200000
+            ],
+            [
+              18,
+              25200000
+            ],
+            [
+              20,
+              25200000
+            ],
+            [
+              22,
+              25200000
+            ],
+            [
+              23,
+              25200000
+            ]
+          ],
+          "keys": [
+            "0xdecb2a0e61bd462c0148785b854deb53c7740b921554ecabd5e392b857557a12",
+            "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+            "0x6a7f36b8518910f60941f52766bd13305d09496a22a3bb23a0bdede41c821b3b",
+            "0x82012f6b23fb8b9450a9aef1a2d43967b5bf8d9e9c54017e0785abc601373d72",
+            "0x0ee1c141a75c0dff9bf6cd409988183ac9aafb6498c3a2c52f5924fb3c3e150b",
+            "0x74c04b64881c2c024922e2fb58a241044e6c70d315918ce2e84174b78deb2845",
+            "0x2259ab01673f667369a20541a339465fac8d3702943f59b1ef7aaacb8f2aeb41",
+            "0x340d9099243fa2a97f8a3f03799439b41ef42d811760df1471574df0151a7a24",
+            "0xf8e18b5e0a7c3912222a41620deff399de8c7aa0b66717dec40c64805de7ce32",
+            "0xf42611c609ad47625a8fc8201d5e3d2c8d76d14c03c036dfa60bd0158b190660",
+            "0x9afc696e6e9edb8eeb45e1d75e63126c493b96eab2aa51047fc4c48e1e44632b",
+            "0x66efbecb7cac3d9d4f9114716d588d1169854c62a8a0a7be76cfd8b8eb6d7d5a",
+            "0x547670eb9bee126547dfb3e775f146d14cef48d639f3f2a814163a1446e14d7d",
+            "0x4267b5bc5a66dd79577052c5f858a4be11d493e79aa2f9def30c7d10d41f5d73",
+            "0x44de127094c26f420430ac7e0b680ad8a752284814f4bd77e5dfa3af3acb8a3a",
+            "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+            "0x4ac5dc9e3d3a0ab0835f00274f9ebed8da56cacbbb31f5654e9b4907c8a7902a",
+            "0xbea605e56dda0fee057ed1562d7f7e187588c363bbeb8c8d75699219dc44e538",
+            "0x747267578cdb29a95b9814095bbe6524d67fb616ba51f88e373fdefbb1d26207",
+            "0x1e6d81a5855be6ce2098d51868017cd56b21fa0f7a53bfb56b7a040c85b9d173",
+            "0x92556d5ecf795f382cb1b092bf0899057fffe5ec1f01d51cbfe0a1167194be1b",
+            "0x548aa5314b363422077268e78053536f121eea19b782c7df12c0b10a92e7e824",
+            "0x7a888401976e4369bf071742a3653b13988efe1bbcafbaf6cd75a38b29cc1f73",
+            "0x46e9d383807c72d35784a1a33a8ed473aaaebd5ce834bbdb06b31072884eae26",
+            "0xb0212c28a188c99a9cbd315dd1fdf069eb0ba207a87c067d0a20c11d407dfc73"
+          ],
+          "queuedKeys": [
+            [
+              "cnSArjL29J9kU655YX1E8m2b9Lf7jnQz8uYCifnPGwTJXEmLv",
+              {
+                "babe": "0x7af58e299c0d28e41bafcde06771ad10108cbdf0c101332ff32e35e2f428ff35",
+                "grandpa": "0xe87878c0eecd80bf8df7274cdeb88eecbcc72e65b8300bef4a7c1c66b0255b1b",
+                "imOnline": "0xdecb2a0e61bd462c0148785b854deb53c7740b921554ecabd5e392b857557a12",
+                "beefy": "0x0333ac8c8586e329091aa2067c59367800edca33f12303ba7b0ac238563bf8933c"
+              }
+            ],
+            [
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+              {
+                "babe": "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+                "grandpa": "0x71e6acfa06696ae5d962a36b88ddf4b0c7d5751a7107a2db1e6947ee2442f573",
+                "imOnline": "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+                "beefy": "0x62656566bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f357239"
+              }
+            ],
+            [
+              "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP",
+              {
+                "babe": "0x80aa8c428b354c308ab272c2ae0fa3000266a936429d85a346d88853d2da676d",
+                "grandpa": "0xdb024aa297c7c8e5e48bf2392576134e477fd951d1eeffe76ee792b08de32f06",
+                "imOnline": "0x6a7f36b8518910f60941f52766bd13305d09496a22a3bb23a0bdede41c821b3b",
+                "beefy": "0x025ec055ef54243872e40f93278f308f97efa87eb53eb98b0d20b82c1181c996e5"
+              }
+            ],
+            [
+              "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
+              {
+                "babe": "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+                "grandpa": "0x7827f835cc3891fa7a7209b208b971fe97a2c3fb8ac13e5a1b76b8fb7fede1b4",
+                "imOnline": "0x82012f6b23fb8b9450a9aef1a2d43967b5bf8d9e9c54017e0785abc601373d72",
+                "beefy": "0x030b5802aca96178a1c0215826cdb116f78ad5e403896b4e6830d478ae6240e94c"
+              }
+            ],
+            [
+              "cnSmsuGWGV3pCxQmrMrd7Mq4bS4HXNDZtjeZ9GnutGYUSBFwk",
+              {
+                "babe": "0x72fce195456e5d7e026b29196b238f7b3d96467b8532a4177e658510e29e4f67",
+                "grandpa": "0x88632032fb2787d80fd066549e934fb6bc7248b4b4049f3703731144645ff526",
+                "imOnline": "0x0ee1c141a75c0dff9bf6cd409988183ac9aafb6498c3a2c52f5924fb3c3e150b",
+                "beefy": "0x02dbc13322c92199575535bc4c44982a7be3bff70a90d400bd2834ec0ff329bd32"
+              }
+            ],
+            [
+              "cnSunuwsWA5Ju1WrcTdvgieMYUNcUKzXdq3AfmQ8NP8dauMHX",
+              {
+                "babe": "0x86059965e8cfbd25af930ba473d4e918e549db2b4b559ef74073cf1110b58a5a",
+                "grandpa": "0xbd326e0934e5ac9fbbb1c67609a36721ab622ca8f1fd80dce493aa1b3413736c",
+                "imOnline": "0x74c04b64881c2c024922e2fb58a241044e6c70d315918ce2e84174b78deb2845",
+                "beefy": "0x027089d39c35476ea06e5678129d52a3bf6fa9c3dcf2be8f1a4ef0144519dd27e0"
+              }
+            ],
+            [
+              "cnT5yU2sVMqYrPa3E2qLA8njJ8NuCJtqDemJRirFGCgDyP8x8",
+              {
+                "babe": "0x8af916adb9d30db59b33222f92b85009ff0a840129b914145ea795284977134e",
+                "grandpa": "0x4615a059e84fc0a88a2b7811f90ff21d26b09fff104d8b4e428fab29c4876999",
+                "imOnline": "0x2259ab01673f667369a20541a339465fac8d3702943f59b1ef7aaacb8f2aeb41",
+                "beefy": "0x03c7ba8df3159a37f2f76289c58b6f7ece16643b69617d4c8e49a545a848d54362"
+              }
+            ],
+            [
+              "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
+              {
+                "babe": "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+                "grandpa": "0xb2678e7c1c0480dc61cce7fce6e6eb839a8ac0f676b0c68d48a939df688795a1",
+                "imOnline": "0x340d9099243fa2a97f8a3f03799439b41ef42d811760df1471574df0151a7a24",
+                "beefy": "0x0366ef0814a978506929667e4254119c1c255e8bcc09d50e107abe88b91a148289"
+              }
+            ],
+            [
+              "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt",
+              {
+                "babe": "0xc8eac417fe806489f1e31c5a7535fb1e5d7998f7d09368ccb880245924d00d67",
+                "grandpa": "0x55702929a5df62a9bbded44c7b42177e00c451efcda266ab4f0f0fdaf47c8321",
+                "imOnline": "0xf8e18b5e0a7c3912222a41620deff399de8c7aa0b66717dec40c64805de7ce32",
+                "beefy": "0x035ba588a041141d318a449bc600c0c5a6963da3d3bb331033591686baf0b2f5f8"
+              }
+            ],
+            [
+              "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer",
+              {
+                "babe": "0x3c28b28be01ee540de25e46e80869cb465efbcdc1f3604f1752d0c5c154be023",
+                "grandpa": "0x9ec33aff2d5a0ae5aa05177b38dad961f52584ef7dc2de6833412db1675dd2cb",
+                "imOnline": "0xf42611c609ad47625a8fc8201d5e3d2c8d76d14c03c036dfa60bd0158b190660",
+                "beefy": "0x02edd57ab442d2f4a1c9b6f0f3a356bb0d16b36a4f07d9d02ca9ab5d43dbc14906"
+              }
+            ],
+            [
+              "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY",
+              {
+                "babe": "0x348b42eae8827e68bfa5884b27afbdda7f57811751e3884ddd2f291f46c02727",
+                "grandpa": "0x2be558fe06476de43b87b1a2342700b2503b34f0ef04b85fcf51f5c84324f4ec",
+                "imOnline": "0x9afc696e6e9edb8eeb45e1d75e63126c493b96eab2aa51047fc4c48e1e44632b",
+                "beefy": "0x030f0b1aafa503b437f1830691ab29e1a1588d4b2b66f5954316b896a47310f031"
+              }
+            ],
+            [
+              "cnTzp6GHzGgDyGnTr5aBHtEnZYS7taTaVCbrzuWU9sMifyGnB",
+              {
+                "babe": "0x8a300674c9828030f4de3252abf9fe0e0b88a13cffa916a84e3fc38289f2eb43",
+                "grandpa": "0x56c0c6f607ff38ed029f4b574a7ae1187dd5bda3554629780ec1bcd92821b2c9",
+                "imOnline": "0x66efbecb7cac3d9d4f9114716d588d1169854c62a8a0a7be76cfd8b8eb6d7d5a",
+                "beefy": "0x026a80aab021b3f5b8587ba0c6668494795dba732352fe686c28e6b00a5e62197a"
+              }
+            ],
+            [
+              "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
+              {
+                "babe": "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+                "grandpa": "0xe8d7ede15247ae3a6cefa071581fcebaf0faf11fce1d887db57af495b7e9104b",
+                "imOnline": "0x547670eb9bee126547dfb3e775f146d14cef48d639f3f2a814163a1446e14d7d",
+                "beefy": "0x02a650ee6a37bee3e6ce9ab6ee11ab12357478511540670c5f5e334e8f856289de"
+              }
+            ],
+            [
+              "cnUJ6AJHd6CiKy3cSszgJy3yzvCKnUiM8UZzacLzXR8ZDkDb5",
+              {
+                "babe": "0x2a4d96f3a5b9fe0bb5c2f742f927db7327c5288f05a06df9a6495f0c863ce05a",
+                "grandpa": "0x0fcda038b7828de2bcbacf3ee1b0f04b465072f64f0ecdfa522a013324c1238b",
+                "imOnline": "0x4267b5bc5a66dd79577052c5f858a4be11d493e79aa2f9def30c7d10d41f5d73",
+                "beefy": "0x028e731a58943a2bafe0c37bbe639b7c7361e12ba3ddff61a099aec1b3f6d8e0b0"
+              }
+            ],
+            [
+              "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+              {
+                "babe": "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+                "grandpa": "0xff02bade39c464038effa36fcd17f4b6d4b3f6f1fbb41d84bc75b6b09f284382",
+                "imOnline": "0x44de127094c26f420430ac7e0b680ad8a752284814f4bd77e5dfa3af3acb8a3a",
+                "beefy": "0x021c6e4b87b5e3ed58bd012522711dfab39d5970a6f29d788ab560cb5ea01e8ef5"
+              }
+            ],
+            [
+              "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+              {
+                "babe": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+                "grandpa": "0xd603aea460c53393cfd2e2eb2820bb138738288502488fd6431fa93f7b59642d",
+                "imOnline": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+                "beefy": "0x626565668c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd332"
+              }
+            ],
+            [
+              "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+              {
+                "babe": "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+                "grandpa": "0xd88c5b8be387ff8b4762709db9d13a06c41f0490abebc78f2e1ccf8c88680585",
+                "imOnline": "0x4ac5dc9e3d3a0ab0835f00274f9ebed8da56cacbbb31f5654e9b4907c8a7902a",
+                "beefy": "0x0228a2a3adf616cde5a14018c6e43b122695a5180fe3a29841f82ae0f287eee88a"
+              }
+            ],
+            [
+              "cnVNzYq884MufA4qN5JQCG1PSjCvnErfiC3uS3s6k85iSb8Re",
+              {
+                "babe": "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+                "grandpa": "0xd9f87f4995acac32526eb57117088f467e40ca8a5774f8883036bd6414d9a653",
+                "imOnline": "0xbea605e56dda0fee057ed1562d7f7e187588c363bbeb8c8d75699219dc44e538",
+                "beefy": "0x0213468798be66a598e203a0da143adebc7a5f703c83e7d7b6312c06e7635538b3"
+              }
+            ],
+            [
+              "cnVRZ4uNBcSq9qeoYeoSu52FTjBGshoMf7gJesgfs7fxH3Nnt",
+              {
+                "babe": "0x7ef92b77cfa6a83b93158fd32ce63d01e32a133c5ff3797c38c7eef9fcfd1561",
+                "grandpa": "0x7b21a68dd5807a326ce41d274c0f2137c82f9b172ed1f73e1683f41ae6ac0d81",
+                "imOnline": "0x747267578cdb29a95b9814095bbe6524d67fb616ba51f88e373fdefbb1d26207",
+                "beefy": "0x03a8aeff1078ec8fa0e8e58bfc9ee7fbaf8a358baea526de39b29eebc2ece71ced"
+              }
+            ],
+            [
+              "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+              {
+                "babe": "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+                "grandpa": "0xeffdff7ec62e6a53976a2e07166e3483834aae5cb33400d973b66d97f3cdc265",
+                "imOnline": "0x1e6d81a5855be6ce2098d51868017cd56b21fa0f7a53bfb56b7a040c85b9d173",
+                "beefy": "0x029f1ee11014df0e24cedc09369530ae53109e5efb0d841547b41b152c91603bfd"
+              }
+            ],
+            [
+              "cnWA4wz9H22gcevynWG6ysQuSfCw4i1jnneigKNX6h5vFZ5SA",
+              {
+                "babe": "0xacd10e4763af912c4ab858563514b7668932ac75135e46d2afbc23700b970b1b",
+                "grandpa": "0xb5dbca06a017fc8e307525b4c10249bf5426acfb6f38dfee2fd4ffe15450afbe",
+                "imOnline": "0x92556d5ecf795f382cb1b092bf0899057fffe5ec1f01d51cbfe0a1167194be1b",
+                "beefy": "0x0351b82c9c819c3c025a45c9519591c6b220e1d04e560b52cfb4e35116dacfa705"
+              }
+            ],
+            [
+              "cnWHoJkvECM4MzWGm9fyZQmtiaMkBfiX8hqNfKAbt5B8Wunk7",
+              {
+                "babe": "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+                "grandpa": "0x3716b6123b5e85f9f5f1a5a55ab838ad5386ac4fe3d5b0d497fa319511c090c1",
+                "imOnline": "0x548aa5314b363422077268e78053536f121eea19b782c7df12c0b10a92e7e824",
+                "beefy": "0x02e0b1db2c01e93775ac202d026ca47897e7a7835448feb86b9f00d7749036af7e"
+              }
+            ],
+            [
+              "cnWjWRxYHVg3wekb4ALe8z3rjiGKMZ5Cc9se5Q5sRkdqBXbee",
+              {
+                "babe": "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+                "grandpa": "0x363075a6ae1f9289e7a5695ccb5f6deca3f7cba5a8de92b1265ddb6fa212e4f7",
+                "imOnline": "0x7a888401976e4369bf071742a3653b13988efe1bbcafbaf6cd75a38b29cc1f73",
+                "beefy": "0x02c5f581278c7bb5e489509fed925e56343dd9b6572256e330b001b7f49d2d5ad9"
+              }
+            ],
+            [
+              "cnWycFmujoB6XvBrBCK5EpLyh3z18BoUur9i9LrsbCKiZACeZ",
+              {
+                "babe": "0x281eeee2438428d2f47cfb0253fa0ca7a5edc561d20d6d6adf864992b5c44a3a",
+                "grandpa": "0xaa6d93ddda28b9dbe41efcdeb4cd70bbd3b8ffe57621bf5662f4ce17a27b9924",
+                "imOnline": "0x46e9d383807c72d35784a1a33a8ed473aaaebd5ce834bbdb06b31072884eae26",
+                "beefy": "0x03e0b88409fc970aa70958a5c59b5c2da4f2bafc842f400ad9b5dbdcc13f4a0db8"
+              }
+            ],
+            [
+              "cnXCoCUXWTCZqkR3Lfo4Hs9HJ8VUP4HKX5m1a6UGzPj6zqzkY",
+              {
+                "babe": "0xfe9ef919737c53e3b838b09d99d9605c36dcd12af39faa69a3c37c1022427658",
+                "grandpa": "0x3db0355fc23464dedc01de72a53252be88784a4ff55e0f28f8d24a8a51cdacdf",
+                "imOnline": "0xb0212c28a188c99a9cbd315dd1fdf069eb0ba207a87c067d0a20c11d407dfc73",
+                "beefy": "0x020f544463d85c4c40c9edf3ed0ef6d9accb9f9bb718e2159ad80e58cebe984963"
+              }
+            ]
+          ],
+          "babeAuthorities": [
+            [
+              "0x7af58e299c0d28e41bafcde06771ad10108cbdf0c101332ff32e35e2f428ff35",
+              1
+            ],
+            [
+              "0x14d500b666dbacc20535f8d2d4f039a8ace624c58e880d573980553774d7ff1a",
+              1
+            ],
+            [
+              "0x80aa8c428b354c308ab272c2ae0fa3000266a936429d85a346d88853d2da676d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0x72fce195456e5d7e026b29196b238f7b3d96467b8532a4177e658510e29e4f67",
+              1
+            ],
+            [
+              "0x86059965e8cfbd25af930ba473d4e918e549db2b4b559ef74073cf1110b58a5a",
+              1
+            ],
+            [
+              "0x8af916adb9d30db59b33222f92b85009ff0a840129b914145ea795284977134e",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0xc8eac417fe806489f1e31c5a7535fb1e5d7998f7d09368ccb880245924d00d67",
+              1
+            ],
+            [
+              "0x3c28b28be01ee540de25e46e80869cb465efbcdc1f3604f1752d0c5c154be023",
+              1
+            ],
+            [
+              "0x348b42eae8827e68bfa5884b27afbdda7f57811751e3884ddd2f291f46c02727",
+              1
+            ],
+            [
+              "0x8a300674c9828030f4de3252abf9fe0e0b88a13cffa916a84e3fc38289f2eb43",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x2a4d96f3a5b9fe0bb5c2f742f927db7327c5288f05a06df9a6495f0c863ce05a",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0x7ef92b77cfa6a83b93158fd32ce63d01e32a133c5ff3797c38c7eef9fcfd1561",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0xacd10e4763af912c4ab858563514b7668932ac75135e46d2afbc23700b970b1b",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ],
+            [
+              "0x281eeee2438428d2f47cfb0253fa0ca7a5edc561d20d6d6adf864992b5c44a3a",
+              1
+            ],
+            [
+              "0xfe9ef919737c53e3b838b09d99d9605c36dcd12af39faa69a3c37c1022427658",
+              1
+            ]
+          ]
+        }
+      ],
+      "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "genesisMatches": true,
+      "chain": "SORA",
+      "finishedAt": "2026-09-12T08:39:23.789Z"
+    },
+    {
+      "endpoint": "wss://sora.api.onfinality.io/public-ws",
+      "startedAt": "2026-09-12T08:39:19.598Z",
+      "boundary": [],
+      "error": "Error: connection timed out after 30000ms",
+      "finishedAt": "2026-09-12T08:39:49.602Z"
+    }
+  ]
+}

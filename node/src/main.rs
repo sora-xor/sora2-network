@@ -30,8 +30,13 @@
 
 //! Substrate Node Template CLI library.
 #![warn(missing_docs)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
+// Enable correctness, suspicious-code and performance checks while legacy style
+// and simplification findings are migrated separately to narrow exceptions.
+#![allow(
+    clippy::style,
+    clippy::complexity,
+    reason = "incremental adoption of the shared first-party lint policy"
+)]
 
 #[macro_use]
 mod service;
@@ -45,6 +50,10 @@ mod eth_bridge_metrics;
 mod fork_off;
 mod rpc;
 
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK CLI result type at the command boundary"
+)]
 fn main() -> sc_cli::Result<()> {
     command::run()
 }

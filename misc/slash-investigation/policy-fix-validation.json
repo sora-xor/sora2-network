@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-09-12T10:05:36.211467+00:00",
+  "scope": "Strict same-session majority of the full active validator set for ImOnline penalties. Already-disabled, duplicate and nonvalidator accounts are excluded from counted/forwarded offenders. Preserve upstream penalty severity and BABE/GRANDPA offence paths.",
+  "policy": {
+    "strictMajority": true,
+    "denominator": "full active validator set",
+    "excludeAlreadyDisabled": true,
+    "sameSessionRequired": true,
+    "thirteenOfTwentyFiveFractionPercent": 7,
+    "existingQueuedSlashesCancelled": false
+  },
+  "checks": [
+    {
+      "command": "SKIP_WASM_BUILD=1 LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo test --locked -p framenode-runtime --lib tests::liveness",
+      "passed": 11,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "command": "SKIP_WASM_BUILD=1 CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --no-default-features --target wasm32-unknown-unknown",
+      "passed": true
+    },
+    {
+      "command": "rustfmt --edition 2021 --check runtime/src/liveness.rs runtime/src/tests/liveness.rs",
+      "passed": true
+    },
+    {
+      "command": "git diff --check -- runtime/src/lib.rs runtime/src/tests/mod.rs",
+      "passed": true
+    }
+  ],
+  "sha256": {
+    "runtime/src/lib.rs": "18104565b2006a262b6dcef57115887687106c6c0330a071f42f99c8dee91714",
+    "runtime/src/liveness.rs": "10b38a7f3ed53b18989c59cf11a40a22964bd767377768d6087343a2015f775a",
+    "runtime/src/tests/mod.rs": "c26e06b8ff405d9e9cddc9c36d6e40e9d3dc92d1fbd6d3e39a34fbdc0834849e",
+    "runtime/src/tests/liveness.rs": "db747b6473f229fef2b2330e67e7d2036d097f8561d03271c1fc0365ea3de03f"
+  },
+  "releaseWasmBuilt": false,
+  "deployed": false,
+  "submittedTransactions": 0,
+  "previouslyPreparedReleaseArtifactsContainFix": false
+}

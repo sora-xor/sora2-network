@@ -7,6 +7,9 @@ license = "BSD-4-Clause"
 homepage = 'https://sora.org'
 repository = 'https://github.com/sora-xor/sora2-network'
 
+[lints]
+workspace = true
+
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
@@ -81,6 +84,7 @@ std = [
     'codec/std',
     "scale-info/std",
     'ethereum-types/std',
+    'frame-benchmarking?/std',
     'frame-support/std',
     'frame-system/std',
     'jsonrpc-core/std',
@@ -93,6 +97,7 @@ std = [
     'sp-runtime/std',
     'sp-std/std',
     'pallet-scheduler/std',
+    'tokens/std',
     'common/std',
     'bridge-types/std',
 ]
@@ -100,6 +105,7 @@ runtime-benchmarks = [
     "frame-benchmarking",
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
+    "tokens/runtime-benchmarks",
 ]
 
 try-runtime = ["frame-support/try-runtime"]
