@@ -1,0 +1,1158 @@
+{
+  "localOnly": true,
+  "sourcePinnedBlockHash": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e4",
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.10/framenode-runtime-4.8.10.compact.compressed.wasm",
+    "bytes": 3055007,
+    "sha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 132,
+      "implVersion": 1,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    }
+  },
+  "syntheticHeadersAreUnsealed": true,
+  "stages": [
+    {
+      "label": "before",
+      "configuration": {
+        "raw": "0x70170000000000005802000000000000010000000000000004000000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000fe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d02",
+        "value": {
+          "slotDuration": 6000,
+          "epochLength": 600,
+          "c": [
+            1,
+            4
+          ],
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      },
+      "currentEpoch": {
+        "raw": "0x09b90000000000009662c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000fe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d0100000000000000040000000000000002",
+        "value": {
+          "epochIndex": 47369,
+          "startSlot": 298345110,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      },
+      "nextEpoch": {
+        "raw": "0x0ab9000000000000ee64c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e1024801000000000000003446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf0100000000000000040000000000000002",
+        "value": {
+          "epochIndex": 47370,
+          "startSlot": 298345710,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x3446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      }
+    },
+    {
+      "label": "mid-epoch-upgrade",
+      "number": 27734949,
+      "slot": 298345302,
+      "header": {
+        "parentHash": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e4",
+        "number": 27734949,
+        "stateRoot": "0x47883bfdd4babc1ae279f1d8429cc24d42ec38db6b4dba2ff4dc6f6e373b7421",
+        "extrinsicsRoot": "0x9793d5826030c6c77c2f753a417ccb17471f5fb46a6f2c95661f2d85c22aa843",
+        "digest": {
+          "logs": [
+            {
+              "preRuntime": [
+                "0x42414245",
+                "0x02030000005663c81100000000"
+              ]
+            }
+          ]
+        }
+      },
+      "headerHex": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e496ce9c0647883bfdd4babc1ae279f1d8429cc24d42ec38db6b4dba2ff4dc6f6e373b74219793d5826030c6c77c2f753a417ccb17471f5fb46a6f2c95661f2d85c22aa8430406424142453402030000005663c81100000000",
+      "configuration": {
+        "raw": "0x70170000000000005802000000000000010000000000000004000000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000fe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d02",
+        "value": {
+          "slotDuration": 6000,
+          "epochLength": 600,
+          "c": [
+            1,
+            4
+          ],
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      },
+      "currentEpoch": {
+        "raw": "0x09b90000000000009662c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000fe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d0100000000000000040000000000000002",
+        "value": {
+          "epochIndex": 47369,
+          "startSlot": 298345110,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      },
+      "nextEpoch": {
+        "raw": "0x0ab9000000000000ee64c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e1024801000000000000003446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf0100000000000000040000000000000002",
+        "value": {
+          "epochIndex": 47370,
+          "startSlot": 298345710,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x3446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      }
+    },
+    {
+      "label": "first-epoch-boundary",
+      "number": 27734950,
+      "slot": 298345710,
+      "header": {
+        "parentHash": "0x5dacd85fb0e8ecc765af427661fb1b211fcf581fe7b6705a311e4d1516c209e2",
+        "number": 27734950,
+        "stateRoot": "0x0ea5560e4a6453babd93ac4f107114264ba7881f9bae869123a915029e7176e0",
+        "extrinsicsRoot": "0x2fcfd365c8167b7b2caa363bc05f3c001a0744beb455f42fa5c57800d9a08813",
+        "digest": {
+          "logs": [
+            {
+              "preRuntime": [
+                "0x42414245",
+                "0x0202000000ee64c81100000000"
+              ]
+            },
+            {
+              "consensus": [
+                "0x42414245",
+                "0x013c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248010000000000000039301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c"
+              ]
+            },
+            {
+              "consensus": [
+                "0x42414245",
+                "0x03010100000000000000040000000000000001"
+              ]
+            },
+            {
+              "consensus": [
+                "0x42454546",
+                "0x013c02122ae139c83b762402afc6560546d4630bf6784a398f4f3eb49311cad7775222030b5802aca96178a1c0215826cdb116f78ad5e403896b4e6830d478ae6240e94c02b259ac5ac174a39ab6f3d9b9db2532ccb12ac30a08e4234d69ee2bf351a1f21662656566efc046fcc3ee61629dbcb069d20908ef778bd7e3ae173b3b3c7ec2f8220366ef0814a978506929667e4254119c1c255e8bcc09d50e107abe88b91a14828902a650ee6a37bee3e6ce9ab6ee11ab12357478511540670c5f5e334e8f856289de02359d25de47ca062e5004a1de768aefbb2542767a65215b049574c220acd24cfc021c6e4b87b5e3ed58bd012522711dfab39d5970a6f29d788ab560cb5ea01e8ef5626565668c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd3320228a2a3adf616cde5a14018c6e43b122695a5180fe3a29841f82ae0f287eee88a021b02873b284ff04d377a6ee37ddcbb672c93fbfc02e6575b292817c7eb31add00213468798be66a598e203a0da143adebc7a5f703c83e7d7b6312c06e7635538b3029f1ee11014df0e24cedc09369530ae53109e5efb0d841547b41b152c91603bfd02e0b1db2c01e93775ac202d026ca47897e7a7835448feb86b9f00d7749036af7e02c5f581278c7bb5e489509fed925e56343dd9b6572256e330b001b7f49d2d5ad95683000000000000"
+              ]
+            }
+          ]
+        }
+      },
+      "headerHex": "0x5dacd85fb0e8ecc765af427661fb1b211fcf581fe7b6705a311e4d1516c209e29ace9c060ea5560e4a6453babd93ac4f107114264ba7881f9bae869123a915029e7176e02fcfd365c8167b7b2caa363bc05f3c001a0744beb455f42fa5c57800d9a08813100642414245340202000000ee64c811000000000442414245e909013c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248010000000000000039301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c04424142454c030101000000000000000400000000000000010442454546e507013c02122ae139c83b762402afc6560546d4630bf6784a398f4f3eb49311cad7775222030b5802aca96178a1c0215826cdb116f78ad5e403896b4e6830d478ae6240e94c02b259ac5ac174a39ab6f3d9b9db2532ccb12ac30a08e4234d69ee2bf351a1f21662656566efc046fcc3ee61629dbcb069d20908ef778bd7e3ae173b3b3c7ec2f8220366ef0814a978506929667e4254119c1c255e8bcc09d50e107abe88b91a14828902a650ee6a37bee3e6ce9ab6ee11ab12357478511540670c5f5e334e8f856289de02359d25de47ca062e5004a1de768aefbb2542767a65215b049574c220acd24cfc021c6e4b87b5e3ed58bd012522711dfab39d5970a6f29d788ab560cb5ea01e8ef5626565668c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd3320228a2a3adf616cde5a14018c6e43b122695a5180fe3a29841f82ae0f287eee88a021b02873b284ff04d377a6ee37ddcbb672c93fbfc02e6575b292817c7eb31add00213468798be66a598e203a0da143adebc7a5f703c83e7d7b6312c06e7635538b3029f1ee11014df0e24cedc09369530ae53109e5efb0d841547b41b152c91603bfd02e0b1db2c01e93775ac202d026ca47897e7a7835448feb86b9f00d7749036af7e02c5f581278c7bb5e489509fed925e56343dd9b6572256e330b001b7f49d2d5ad95683000000000000",
+      "configuration": {
+        "raw": "0x70170000000000005802000000000000010000000000000004000000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e1024801000000000000003446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf02",
+        "value": {
+          "slotDuration": 6000,
+          "epochLength": 600,
+          "c": [
+            1,
+            4
+          ],
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x3446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf",
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      },
+      "currentEpoch": {
+        "raw": "0x0ab9000000000000ee64c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e1024801000000000000003446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf0100000000000000040000000000000002",
+        "value": {
+          "epochIndex": 47370,
+          "startSlot": 298345710,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x3446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      },
+      "nextEpoch": {
+        "raw": "0x0bb90000000000004667c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248010000000000000039301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c0100000000000000040000000000000001",
+        "value": {
+          "epochIndex": 47371,
+          "startSlot": 298346310,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x39301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryPlainSlots"
+          }
+        }
+      }
+    },
+    {
+      "label": "second-epoch-boundary",
+      "number": 27734951,
+      "slot": 298346310,
+      "header": {
+        "parentHash": "0x974bd5b44303b90429f3df17e7d686d254e2a8ec15e858c6e9bb5de15bb973be",
+        "number": 27734951,
+        "stateRoot": "0x0ea5560e4a6453babd93ac4f107114264ba7881f9bae869123a915029e7176e0",
+        "extrinsicsRoot": "0x2cf29f293ec0e9326fbacd1d15cf6513e9f5b5e9538a0efab90252a45a865fbd",
+        "digest": {
+          "logs": [
+            {
+              "preRuntime": [
+                "0x42414245",
+                "0x02050000004667c81100000000"
+              ]
+            },
+            {
+              "consensus": [
+                "0x42414245",
+                "0x013c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000715fac53e606dac4a00547cb04b41e1d562d9a88d5230ee93bff827da5a49c5c"
+              ]
+            },
+            {
+              "consensus": [
+                "0x42454546",
+                "0x013c02122ae139c83b762402afc6560546d4630bf6784a398f4f3eb49311cad7775222030b5802aca96178a1c0215826cdb116f78ad5e403896b4e6830d478ae6240e94c02b259ac5ac174a39ab6f3d9b9db2532ccb12ac30a08e4234d69ee2bf351a1f21662656566efc046fcc3ee61629dbcb069d20908ef778bd7e3ae173b3b3c7ec2f8220366ef0814a978506929667e4254119c1c255e8bcc09d50e107abe88b91a14828902a650ee6a37bee3e6ce9ab6ee11ab12357478511540670c5f5e334e8f856289de02359d25de47ca062e5004a1de768aefbb2542767a65215b049574c220acd24cfc021c6e4b87b5e3ed58bd012522711dfab39d5970a6f29d788ab560cb5ea01e8ef5626565668c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd3320228a2a3adf616cde5a14018c6e43b122695a5180fe3a29841f82ae0f287eee88a021b02873b284ff04d377a6ee37ddcbb672c93fbfc02e6575b292817c7eb31add00213468798be66a598e203a0da143adebc7a5f703c83e7d7b6312c06e7635538b3029f1ee11014df0e24cedc09369530ae53109e5efb0d841547b41b152c91603bfd02e0b1db2c01e93775ac202d026ca47897e7a7835448feb86b9f00d7749036af7e02c5f581278c7bb5e489509fed925e56343dd9b6572256e330b001b7f49d2d5ad95783000000000000"
+              ]
+            }
+          ]
+        }
+      },
+      "headerHex": "0x974bd5b44303b90429f3df17e7d686d254e2a8ec15e858c6e9bb5de15bb973be9ece9c060ea5560e4a6453babd93ac4f107114264ba7881f9bae869123a915029e7176e02cf29f293ec0e9326fbacd1d15cf6513e9f5b5e9538a0efab90252a45a865fbd0c06424142453402050000004667c811000000000442414245e909013c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000715fac53e606dac4a00547cb04b41e1d562d9a88d5230ee93bff827da5a49c5c0442454546e507013c02122ae139c83b762402afc6560546d4630bf6784a398f4f3eb49311cad7775222030b5802aca96178a1c0215826cdb116f78ad5e403896b4e6830d478ae6240e94c02b259ac5ac174a39ab6f3d9b9db2532ccb12ac30a08e4234d69ee2bf351a1f21662656566efc046fcc3ee61629dbcb069d20908ef778bd7e3ae173b3b3c7ec2f8220366ef0814a978506929667e4254119c1c255e8bcc09d50e107abe88b91a14828902a650ee6a37bee3e6ce9ab6ee11ab12357478511540670c5f5e334e8f856289de02359d25de47ca062e5004a1de768aefbb2542767a65215b049574c220acd24cfc021c6e4b87b5e3ed58bd012522711dfab39d5970a6f29d788ab560cb5ea01e8ef5626565668c3455a327dde32f577e27f0b8a4c42b3fb626ee27f0004f7cf02bd3320228a2a3adf616cde5a14018c6e43b122695a5180fe3a29841f82ae0f287eee88a021b02873b284ff04d377a6ee37ddcbb672c93fbfc02e6575b292817c7eb31add00213468798be66a598e203a0da143adebc7a5f703c83e7d7b6312c06e7635538b3029f1ee11014df0e24cedc09369530ae53109e5efb0d841547b41b152c91603bfd02e0b1db2c01e93775ac202d026ca47897e7a7835448feb86b9f00d7749036af7e02c5f581278c7bb5e489509fed925e56343dd9b6572256e330b001b7f49d2d5ad95783000000000000",
+      "configuration": {
+        "raw": "0x70170000000000005802000000000000010000000000000004000000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248010000000000000039301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c01",
+        "value": {
+          "slotDuration": 6000,
+          "epochLength": 600,
+          "c": [
+            1,
+            4
+          ],
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x39301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c",
+          "allowedSlots": "PrimaryAndSecondaryPlainSlots"
+        }
+      },
+      "currentEpoch": {
+        "raw": "0x0bb90000000000004667c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248010000000000000039301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c0100000000000000040000000000000001",
+        "value": {
+          "epochIndex": 47371,
+          "startSlot": 298346310,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x39301896a69890db82781585ce3fd52276d3fce2a26875a542c0c4424df8945c",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryPlainSlots"
+          }
+        }
+      },
+      "nextEpoch": {
+        "raw": "0x0cb90000000000009e69c8110000000058020000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000715fac53e606dac4a00547cb04b41e1d562d9a88d5230ee93bff827da5a49c5c0100000000000000040000000000000001",
+        "value": {
+          "epochIndex": 47372,
+          "startSlot": 298346910,
+          "duration": 600,
+          "authorities": [
+            [
+              "cnT3TZnTe78tmLetW6rGCjizsM6DaUVitL7ThQNcWK2CEeGQs",
+              1
+            ],
+            [
+              "cnWWZUKM3M49Z1ZgBtz6zuPhrsqZko2aYWnG7Q9N9hZexYFk7",
+              1
+            ],
+            [
+              "cnV87E5nX1NX583W6QZceVWYTaioibFT3iJHVvp32cCpasDmb",
+              1
+            ],
+            [
+              "cnWkQiZXFdBk7vAMcD1gLYjv8m8URWLPv1TR1CFqPCvaQK7DL",
+              1
+            ],
+            [
+              "cnVfEWwC5u392o88NW5grABT9pyMFjExhXApXF6oNfKiix7Dc",
+              1
+            ],
+            [
+              "cnUqsQRmfzgmEcD3Nvb8Vdcurz1wpjUf7BD2R6FzHhhzJ1EFL",
+              1
+            ],
+            [
+              "cnT6DJ1mXkanhUop1u7pyh2khYNKDax1d1wfK8kMCCNeQ1RWE",
+              1
+            ],
+            [
+              "cnVAuXhFFGM9DShLd5sCKTWxxTWvo5HUKS7bw3syGPD21uadh",
+              1
+            ],
+            [
+              "cnSkzHXvgMoYfJ5NHM8HcbieWsxrSwkzhKYvuPgxEqopEMAU6",
+              1
+            ],
+            [
+              "cnTtJeQUGiiVdi9NfMdbDpfrPCA4rQoNCERDkGvz6LZw3ji33",
+              1
+            ],
+            [
+              "cnRrqHu1gEW9tG4XAy2T6uiwRcDQPetLEtKT5LzsHkhX2SNPa",
+              1
+            ],
+            [
+              "cnTx9FT6XPpBEjo14skcA9MVWXmnk8fToeRiAYPzAYRPtw9vV",
+              1
+            ],
+            [
+              "cnVfQBrKvVYcr81SYRsCdZ2NB8uywr9jh34CL1qeJx4tAU8s3",
+              1
+            ],
+            [
+              "cnRW9HugK7R39NSuWxSf4Rn6BeeWGzty4zkLkoMLV5mjjFZSo",
+              1
+            ],
+            [
+              "cnUyT1vcKTNFsbCHbJxRbhnRFqbtzjbFVBeZHjwXYpqvSvxyb",
+              1
+            ]
+          ],
+          "randomness": "0x715fac53e606dac4a00547cb04b41e1d562d9a88d5230ee93bff827da5a49c5c",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryPlainSlots"
+          }
+        }
+      }
+    }
+  ]
+}

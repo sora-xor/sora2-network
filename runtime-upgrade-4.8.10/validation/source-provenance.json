@@ -1,0 +1,24 @@
+{
+  "baseCommit": "282f4679b02e00b4e6ece254d2b4cf9b7249a134",
+  "sourceTreeAfterPatch": "453bdea2cfd3cebf5e9576e5200a112bdd7fe7a3",
+  "patch": "source.patch",
+  "patchSha256": "8650d20c5fe2490bdf12bef0399f6a4487c261cab3944a7bb6af471e1d448d36",
+  "patchAppliesToCleanBase": true,
+  "workingTreeUncommitted": true,
+  "sdkCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
+  "files": {
+    "Cargo.lock": "e9871c1f924f60769f4a6b116d0a0826994142153449f5a7b370b9b4fdf8bd0e",
+    "node/Cargo.toml": "a96e772dc3ab1636be0c62273a4830994c3b25b53d4d70fdffba5dec1a5380df",
+    "node/chain_spec/Cargo.toml": "7351c06ad805fdce95578ee852a9414bc6ff6a8079f97eb0f244cf64e1bf0a2d",
+    "node/src/babe_epoch_repair.rs": "b0338f040b730820719e05b32d70808f51a6bcff5a3b493190344154bc7112f2",
+    "node/src/cli.rs": "099a5013f3e6b68a73f26e7ec7054ef8ca1fdf61e75d924efc3463d581583618",
+    "node/src/command.rs": "5b2c114ee4b29bce31e85aeb2d7461bf86319f4c0e6c9abe5d56ea2c6fe4eb2f",
+    "node/src/main.rs": "fa5032def63556e0b604f2c98c2494d137b42b2ca1948ef5f8164a3b9bf5b26b",
+    "runtime/Cargo.toml": "4a6d6be4dc464d5b1b21bd1ed5379c4f6039aa23d24932cd1cd2245877dfeafd",
+    "runtime/src/babe_config.rs": "cf0e0bb4a2a43b0fca058e90737b77edf2666c534ea7a031191d9d8b7c7c1a64",
+    "runtime/src/lib.rs": "ead5fd0f85882225dc538c5cc9389980672f95ecdf64de5038f2d58aa6067c7f",
+    "runtime/src/migrations.rs": "3705d8a1d9cd987538bba2f5862fa11a0c39b5093c183a4727dbdbdbb7e92482",
+    "runtime/src/tests/babe_config.rs": "86b7eac124058d5afa7dc6b50e8437a0c260418cc1491c129102d68aa4a18641",
+    "runtime/src/tests/mod.rs": "a75598709154469c0665bb61bfc7dfb8135f7bca217a973112f09c3b030276c1"
+  }
+}
