@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-09-23T13:54:30.159Z",
+  "endpoint": "wss://mof2.sora.org",
+  "finalizedBlock": 27748872,
+  "finalizedHash": "0x3449644cd0cf1aeee93146f5357f797755a060bdeb3c7001764a706e8a5b7635",
+  "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "specVersion": 131,
+  "transactionVersion": 131,
+  "candidateWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
+  "setCodePreimageHash": "0xcb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713",
+  "setCodePreimageLength": 3055013,
+  "councilMemberCount": 8,
+  "councilThreshold": 4,
+  "technicalCommitteeMemberCount": 4,
+  "technicalCommitteeThreshold": 3,
+  "fastTrackVotingPeriodBlocks": 1800,
+  "fastTrackDelayBlocks": 0,
+  "nextExternalAtGeneration": [
+    {
+      "lookup": {
+        "hash": "0x3eaa14c5845c5de1234d7e8eea51ea0f7a9186803fe792028001d8bf8db1aa2c",
+        "len": 3036855
+      }
+    },
+    "SimpleMajority"
+  ],
+  "oldProposalBlacklistAtGeneration": null,
+  "staleCouncilMotionAtGeneration": {
+    "hash": "0xcaa6b921f372c6d95087f4fa23fc73ed4b26ebeee8f03a3d64dfcf4b08835a57",
+    "index": 966,
+    "threshold": 4,
+    "ayes": [],
+    "nays": [],
+    "endBlock": 27731148
+  },
+  "calls": {
+    "council-close-stale-motion-966-call": {
+      "file": "council-close-stale-motion-966-call.hex",
+      "section": "council",
+      "method": "close",
+      "length": 39,
+      "hash": "0x976951b21310149ac37701094465c5606f5a8d78acecef0c7ea551f46c28d4a5",
+      "hex": "0x1b06caa6b921f372c6d95087f4fa23fc73ed4b26ebeee8f03a3d64dfcf4b08835a57190f000000"
+    },
+    "democracy-veto-obsolete-4.8.8-call": {
+      "file": "democracy-veto-obsolete-4.8.8-call.hex",
+      "section": "democracy",
+      "method": "vetoExternal",
+      "length": 34,
+      "hash": "0xe42ad2a51ec243176b3e17c5e4f7c34bef32dea12291e67f134d897e7d6d8d2a",
+      "hex": "0x1d083eaa14c5845c5de1234d7e8eea51ea0f7a9186803fe792028001d8bf8db1aa2c"
+    },
+    "utility-guarded-external-majority-call": {
+      "file": "utility-guarded-external-majority-call.hex",
+      "section": "utility",
+      "method": "batchAll",
+      "length": 81,
+      "hash": "0x96c58d0a985a47472653fbc4f7a9b06a9212cfd879c97da2b7f5ba4a72c90c3e",
+      "hex": "0x0b02081d0402cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713a59d2e001d0502cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713a59d2e00"
+    },
+    "council-propose-guarded-external-majority-threshold-4-call": {
+      "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
+      "section": "council",
+      "method": "propose",
+      "length": 86,
+      "hash": "0xf382d48d8d570c5a25c1e57754317831ae3610fe01e8d3aaab01bca7695ab60b",
+      "hex": "0x1b02100b02081d0402cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713a59d2e001d0502cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713a59d2e004501"
+    },
+    "democracy-external-propose-majority-call": {
+      "file": "democracy-external-propose-majority-call.hex",
+      "section": "democracy",
+      "method": "externalProposeMajority",
+      "length": 39,
+      "hash": "0x993ca0695127d5c423ef9d65855fc5ca6789ea1d6de8c80392c67a0a09a36483",
+      "hex": "0x1d0502cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713a59d2e00"
+    },
+    "council-propose-external-majority-threshold-4-call": {
+      "file": "council-propose-external-majority-threshold-4-call.hex",
+      "section": "council",
+      "method": "propose",
+      "length": 43,
+      "hash": "0x55958f23f5bec2013c30529c413ea8c5f352bec469a077971007f562d60172a9",
+      "hex": "0x1b02101d0502cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713a59d2e009c"
+    },
+    "democracy-fast-track-call": {
+      "file": "democracy-fast-track-call.hex",
+      "section": "democracy",
+      "method": "fastTrack",
+      "length": 42,
+      "hash": "0xb5363b379a987f3e9386671968b4a8a4e99ce0b37a2f9fbbb8701f1529dd0872",
+      "hex": "0x1d07cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e67130807000000000000"
+    },
+    "technical-committee-fast-track-threshold-3-call": {
+      "file": "technical-committee-fast-track-threshold-3-call.hex",
+      "section": "technicalCommittee",
+      "method": "propose",
+      "length": 46,
+      "hash": "0x4d3391e4313299473bd71e41ef7ee59c74848a3efde169abb1818de6c8cfdb31",
+      "hex": "0x1c020c1d07cb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e67130807000000000000a8"
+    }
+  },
+  "signedOrSubmitted": false
+}
