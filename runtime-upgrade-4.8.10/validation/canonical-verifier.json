@@ -1,0 +1,33 @@
+{
+  "checkedAt": "2026-09-22T11:00:52.193226+00:00",
+  "sdkCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
+  "realCryptographicVerification": true,
+  "mockedCrypto": false,
+  "submittedTransactions": 0,
+  "sourceHashes": {
+    "verification.rs": "941120d5bd93e930f7cbdcd794224bbe8df2abccd67662658e2bf8cd5e523043",
+    "authorship.rs": "392ba964542d8c090f4f8e00fe649b5578ac48f71148c0c75ccc363d16ff3506"
+  },
+  "fixtureHashes": {
+    "canonical-header.json": "95ea87b180b65c769bb2c22a9ba4e6947d5f77fe579c9e30fbf075bda5ceb691",
+    "babe-config-evidence.json": "24449c16f17b8d266078276ebb1b4fdd86ca470091595045385442d8cf9cfd21"
+  },
+  "runs": [
+    {
+      "label": "observed_rejection_and_plain_control",
+      "exitCode": 0,
+      "stdout": "block=27735177 authority=5 runtime_VRF=SecondarySlotAssignmentsDisabled canonical_Plain=Checked hash=0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391\nverified_mismatches=1 primary_controls=0 mocked_crypto=false submitted_transactions=0\n",
+      "stderr": ""
+    },
+    {
+      "label": "desired_canonical_acceptance_invariant",
+      "exitCode": 101,
+      "stdout": "block=27735177 authority=5 runtime_VRF=SecondarySlotAssignmentsDisabled canonical_Plain=Checked hash=0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391\nverified_mismatches=1 primary_controls=0 mocked_crypto=false submitted_transactions=0\n",
+      "stderr": "\nthread 'main' panicked at /var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-verifier-zfl0tl8_/main.rs:104:9:\nassertion `left == right` failed: FAIL: finalized canonical headers must verify using runtime-advertised epoch configuration\n  left: 1\n right: 0\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+    }
+  ],
+  "limitations": [
+    "Reproduces actual header verification under captured runtime epoch configuration; no affected validator database or process was accessed.",
+    "Does not prove which affected validator used a state-sync/warp-sync or legacy epoch-cache migration path."
+  ]
+}

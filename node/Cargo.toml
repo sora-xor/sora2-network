@@ -1,6 +1,6 @@
 [package]
 name = "framenode"
-version = "4.8.9"
+version = "4.8.10"
 authors = ["Parity Technologies <admin@parity.io>"]
 build = "build.rs"
 edition = "2021"
@@ -64,6 +64,11 @@ sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "p
 sc-consensus = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 sc-consensus-slots = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 sc-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+sc-consensus-epochs = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+sp-database = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", features = ["rocksdb"] }
+parity-db = "0.4.13"
+kvdb-rocksdb = "0.21.0"
+rocksdb = { version = "0.24.0", default-features = false, features = ["snappy"] }
 sp-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 sp-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }

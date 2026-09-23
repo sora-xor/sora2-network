@@ -1,0 +1,13 @@
+observed_rejection_and_plain_control exit=0
+block=27735177 authority=5 runtime_VRF=SecondarySlotAssignmentsDisabled canonical_Plain=Checked hash=0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391
+verified_mismatches=1 primary_controls=0 mocked_crypto=false submitted_transactions=0
+
+desired_canonical_acceptance_invariant exit=101
+block=27735177 authority=5 runtime_VRF=SecondarySlotAssignmentsDisabled canonical_Plain=Checked hash=0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391
+verified_mismatches=1 primary_controls=0 mocked_crypto=false submitted_transactions=0
+
+thread 'main' panicked at /var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-verifier-zfl0tl8_/main.rs:104:9:
+assertion `left == right` failed: FAIL: finalized canonical headers must verify using runtime-advertised epoch configuration
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

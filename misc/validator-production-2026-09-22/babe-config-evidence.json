@@ -1,0 +1,1083 @@
+{
+  "checkedAt": "2026-09-22T10:40:12.536Z",
+  "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "submittedTransactions": 0,
+  "states": [
+    {
+      "label": "reference",
+      "hash": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e4",
+      "block": 27734948,
+      "storage": {
+        "epochConfig": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        },
+        "nextEpochConfig": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        },
+        "pendingEpochConfigChange": null,
+        "authorities": [
+          [
+            "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+            1
+          ],
+          [
+            "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+            1
+          ],
+          [
+            "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+            1
+          ],
+          [
+            "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+            1
+          ],
+          [
+            "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+            1
+          ],
+          [
+            "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+            1
+          ],
+          [
+            "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+            1
+          ],
+          [
+            "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+            1
+          ],
+          [
+            "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+            1
+          ],
+          [
+            "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+            1
+          ],
+          [
+            "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+            1
+          ],
+          [
+            "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+            1
+          ],
+          [
+            "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+            1
+          ],
+          [
+            "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+            1
+          ],
+          [
+            "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+            1
+          ]
+        ],
+        "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+        "epochIndex": 47369,
+        "genesisSlot": 269923710,
+        "currentSlot": 298345301
+      },
+      "rawStorage": {
+        "epochConfig": "0x0100000000000000040000000000000002",
+        "nextEpochConfig": "0x0100000000000000040000000000000002",
+        "pendingEpochConfigChange": "0x",
+        "authorities": "0x3c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000",
+        "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+        "epochIndex": "0x09b9000000000000",
+        "genesisSlot": "0x7eb5161000000000",
+        "currentSlot": "0x5563c81100000000"
+      },
+      "runtimeApi": {
+        "configuration": {
+          "slotDuration": 6000,
+          "epochLength": 600,
+          "c": [
+            1,
+            4
+          ],
+          "authorities": [
+            [
+              "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+              1
+            ],
+            [
+              "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        },
+        "currentEpoch": {
+          "epochIndex": 47369,
+          "startSlot": 298345110,
+          "duration": 600,
+          "authorities": [
+            [
+              "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+              1
+            ],
+            [
+              "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        },
+        "nextEpoch": {
+          "epochIndex": 47370,
+          "startSlot": 298345710,
+          "duration": 600,
+          "authorities": [
+            [
+              "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+              1
+            ],
+            [
+              "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ]
+          ],
+          "randomness": "0x3446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      },
+      "errors": {},
+      "configurationRaw": "0x70170000000000005802000000000000010000000000000004000000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000fe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d02",
+      "epochConfigType": {
+        "name": "EpochConfig",
+        "modifier": "Optional",
+        "type": {
+          "Plain": "670"
+        },
+        "fallback": "0x00",
+        "docs": [
+          " The configuration for the current epoch. Should never be `None` as it is initialized in",
+          " genesis."
+        ],
+        "deprecationInfo": "NotDeprecated"
+      }
+    },
+    {
+      "label": "latest",
+      "hash": "0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391",
+      "block": 27735177,
+      "storage": {
+        "epochConfig": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        },
+        "nextEpochConfig": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        },
+        "pendingEpochConfigChange": null,
+        "authorities": [
+          [
+            "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+            1
+          ],
+          [
+            "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+            1
+          ],
+          [
+            "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+            1
+          ],
+          [
+            "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+            1
+          ],
+          [
+            "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+            1
+          ],
+          [
+            "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+            1
+          ],
+          [
+            "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+            1
+          ],
+          [
+            "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+            1
+          ],
+          [
+            "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+            1
+          ],
+          [
+            "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+            1
+          ],
+          [
+            "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+            1
+          ],
+          [
+            "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+            1
+          ],
+          [
+            "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+            1
+          ],
+          [
+            "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+            1
+          ],
+          [
+            "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+            1
+          ]
+        ],
+        "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+        "epochIndex": 47369,
+        "genesisSlot": 269923710,
+        "currentSlot": 298345599
+      },
+      "rawStorage": {
+        "epochConfig": "0x0100000000000000040000000000000002",
+        "nextEpochConfig": "0x0100000000000000040000000000000002",
+        "pendingEpochConfigChange": "0x",
+        "authorities": "0x3c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000",
+        "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+        "epochIndex": "0x09b9000000000000",
+        "genesisSlot": "0x7eb5161000000000",
+        "currentSlot": "0x7f64c81100000000"
+      },
+      "runtimeApi": {
+        "configuration": {
+          "slotDuration": 6000,
+          "epochLength": 600,
+          "c": [
+            1,
+            4
+          ],
+          "authorities": [
+            [
+              "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+              1
+            ],
+            [
+              "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        },
+        "currentEpoch": {
+          "epochIndex": 47369,
+          "startSlot": 298345110,
+          "duration": 600,
+          "authorities": [
+            [
+              "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+              1
+            ],
+            [
+              "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ]
+          ],
+          "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        },
+        "nextEpoch": {
+          "epochIndex": 47370,
+          "startSlot": 298345710,
+          "duration": 600,
+          "authorities": [
+            [
+              "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+              1
+            ],
+            [
+              "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+              1
+            ],
+            [
+              "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+              1
+            ],
+            [
+              "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+              1
+            ],
+            [
+              "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+              1
+            ],
+            [
+              "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+              1
+            ],
+            [
+              "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+              1
+            ],
+            [
+              "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+              1
+            ],
+            [
+              "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+              1
+            ],
+            [
+              "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+              1
+            ],
+            [
+              "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+              1
+            ],
+            [
+              "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+              1
+            ],
+            [
+              "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+              1
+            ],
+            [
+              "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+              1
+            ],
+            [
+              "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+              1
+            ]
+          ],
+          "randomness": "0x3446591bd8ce180738ca84d9a2f23dc9ab4ecc19b063dcef6854e65168080eaf",
+          "config": {
+            "c": [
+              1,
+              4
+            ],
+            "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+          }
+        }
+      },
+      "errors": {},
+      "configurationRaw": "0x70170000000000005802000000000000010000000000000004000000000000003c44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d0100000000000000de26428de10054885666e95e0126a60669f2995b71e0a305626282adf87720360100000000000000a0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e0100000000000000e8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d59213390100000000000000b8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a950801000000000000009467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08010000000000000046dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b0100000000000000a2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f010000000000000038364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c00401000000000000006a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e0100000000000000106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be961901000000000000006cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd53290100000000000000b8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56010000000000000000a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f06501000000000000009a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e102480100000000000000fe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d02",
+      "epochConfigType": {
+        "name": "EpochConfig",
+        "modifier": "Optional",
+        "type": {
+          "Plain": "670"
+        },
+        "fallback": "0x00",
+        "docs": [
+          " The configuration for the current epoch. Should never be `None` as it is initialized in",
+          " genesis."
+        ],
+        "deprecationInfo": "NotDeprecated"
+      }
+    }
+  ],
+  "headers": [
+    {
+      "block": 27735177,
+      "hash": "0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391",
+      "babePreDigest": "0x02050000007f64c81100000000",
+      "variant": 2,
+      "authorityIndex": 5,
+      "slot": "298345599",
+      "header": {
+        "parentHash": "0xb4bfa4c78b0fb51a57651d0fd8a39d08c6fec0d6dc8170d56462abf4113e53bf",
+        "number": "0x1a73489",
+        "stateRoot": "0xaea9bf72cbab5fbfdfaba50c69795f8800db5327583d31bbfa8c972dfa377d92",
+        "extrinsicsRoot": "0xef2fbfad2a6ba76b68731a1befebd77cacc0f94691293ae77fe67421ea430267",
+        "digest": {
+          "logs": [
+            "0x06424142453402050000007f64c81100000000",
+            "0x05424142450101442513749fd43bc7f2a741644e10ef700bf4b72e52262e50ff2781382651a4303303bf44fe3e8dda99cdf73f525dd10a399da3f612b53d3ad41b750c38172982"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735176,
+      "hash": "0xb4bfa4c78b0fb51a57651d0fd8a39d08c6fec0d6dc8170d56462abf4113e53bf",
+      "babePreDigest": "0x01040000007e64c81100000000baed24e29bf1178b2f549decedeabead746007b36bc731fe2df6d2beb40c7d70546846ef7930e11077ee1e1c5b9babc57802e24cf6e85f8f7965db57be96de0a4f8dea4e0a7a7895fe21b56fd74c9dce672798f3c4a46138f862b1919d01290f",
+      "variant": 1,
+      "authorityIndex": 4,
+      "slot": "298345598",
+      "header": {
+        "parentHash": "0x4ffa2d39e435c6ff8bdac074b64578772ea9fe978a830140b18799e24db918dc",
+        "number": "0x1a73488",
+        "stateRoot": "0x549bd91e893b930ba63ca8eae255abe03bea86aa8e7e9f86277552d7c8e2e66c",
+        "extrinsicsRoot": "0x9b52296b4caf1675bc59459da5b2226cc3bad6071ce6cdb5d9ddc7769f2222ad",
+        "digest": {
+          "logs": [
+            "0x0642414245b50101040000007e64c81100000000baed24e29bf1178b2f549decedeabead746007b36bc731fe2df6d2beb40c7d70546846ef7930e11077ee1e1c5b9babc57802e24cf6e85f8f7965db57be96de0a4f8dea4e0a7a7895fe21b56fd74c9dce672798f3c4a46138f862b1919d01290f",
+            "0x054241424501014274e4924f463861c49a519c1d8729aa976985590772dfe2cb46a10fec44fa5f789ed5322badfe1e548bd2de41fbb76a0382d30ec6f1adf53845ccc9ca8b528f"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735175,
+      "hash": "0x4ffa2d39e435c6ff8bdac074b64578772ea9fe978a830140b18799e24db918dc",
+      "babePreDigest": "0x02070000007d64c81100000000",
+      "variant": 2,
+      "authorityIndex": 7,
+      "slot": "298345597",
+      "header": {
+        "parentHash": "0xc2927204b1d25702a7bdf06e25f6d7fba9e1c843d00526d5b66e3e7516f16417",
+        "number": "0x1a73487",
+        "stateRoot": "0x1bc3783114c8b7cfdbf3a4f5c1871e5a26241c8d3de564933cc5ce7f3dde6391",
+        "extrinsicsRoot": "0x2a2620ffdb0d5b70a911f4936cd295981987b01de66722966ab9666bb4f19dfb",
+        "digest": {
+          "logs": [
+            "0x06424142453402070000007d64c81100000000",
+            "0x05424142450101f09dc93ce1f0f67d8c791524df52edcbfa3ee3812be56fa103c2243afe0392450211ad1446720caf476b6fdb4a1c92614fd470feeac92a66f7047a43a087778a"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735174,
+      "hash": "0xc2927204b1d25702a7bdf06e25f6d7fba9e1c843d00526d5b66e3e7516f16417",
+      "babePreDigest": "0x02010000007c64c81100000000",
+      "variant": 2,
+      "authorityIndex": 1,
+      "slot": "298345596",
+      "header": {
+        "parentHash": "0x2bcc17b50713f640d0ed58c072ce8c48367e7493a0d86ecc87c2913177a17404",
+        "number": "0x1a73486",
+        "stateRoot": "0xcbe28de9998fbb3725bcb69dffb515bc2feb18805dac8a53c7c7663a6b8fce90",
+        "extrinsicsRoot": "0xbeecc787e37cc2ca6b86bfae1ae9a3332b7d9373a5b059515a2fd631ed4d589a",
+        "digest": {
+          "logs": [
+            "0x06424142453402010000007c64c81100000000",
+            "0x054241424501012654e4dafd64e27871390f21785cb5c8b54cfaa90357ccf2aa818343dee18063a4c67cc50b7a8f281b83f3d9bfa8dde5093691d813b66e267f62e3962eea9a86"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735173,
+      "hash": "0x2bcc17b50713f640d0ed58c072ce8c48367e7493a0d86ecc87c2913177a17404",
+      "babePreDigest": "0x01040000007b64c811000000000812652c8d138da502dec6003e87e04eb52eb9df4e2efbdab6ca03c1b28ac66da82b472db891b1465566a7e4cc604fb13b38af0ed8b4af59440f0d94c9f8e202d4db962fe6f79d3b027876cde5e31c9a46df2b1e8d7967a4ea2d86296c126f07",
+      "variant": 1,
+      "authorityIndex": 4,
+      "slot": "298345595",
+      "header": {
+        "parentHash": "0x7857314df695b15e33cf851f7db853a22532af97a9df78f4c7f17b5cd73df77f",
+        "number": "0x1a73485",
+        "stateRoot": "0xc23d5d8815a6a1736b9a27fe0c11bba09e195b0f395a4f91d7f8d79e12ebd1b3",
+        "extrinsicsRoot": "0x5754a9c917fcb18869e67ceda14669c2e00a428f418f3f626709d77700f13672",
+        "digest": {
+          "logs": [
+            "0x0642414245b50101040000007b64c811000000000812652c8d138da502dec6003e87e04eb52eb9df4e2efbdab6ca03c1b28ac66da82b472db891b1465566a7e4cc604fb13b38af0ed8b4af59440f0d94c9f8e202d4db962fe6f79d3b027876cde5e31c9a46df2b1e8d7967a4ea2d86296c126f07",
+            "0x0542414245010160f85ba76bc90718236b52cb5963bbc27ba9eda8e0b689b5f21ece0f790c95588f09f0bf84e5132eb223059c732f3d10fa1c433724af772ef9ba7eec92ebee86"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735172,
+      "hash": "0x7857314df695b15e33cf851f7db853a22532af97a9df78f4c7f17b5cd73df77f",
+      "babePreDigest": "0x02090000007a64c81100000000",
+      "variant": 2,
+      "authorityIndex": 9,
+      "slot": "298345594",
+      "header": {
+        "parentHash": "0x596baa84248350ad356f90e5afee1c060458300fd1bf87a1a71e35d903f7e539",
+        "number": "0x1a73484",
+        "stateRoot": "0xa0a3633708450af83331db1193b2751b0d92dbed8e7a19823b67e1840eca2cb0",
+        "extrinsicsRoot": "0xc7ae77f35a94843fc388dad2ad649c67956c9a62886795886d956343f924fb18",
+        "digest": {
+          "logs": [
+            "0x06424142453402090000007a64c81100000000",
+            "0x05424142450101809b05f6a4d336fda076353a6715a505bff2321affc39c94db8671053d55335cfe042580c7cebcb08877238a81a705b61de8f525046312bfe1d45b6df7fa168f"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735171,
+      "hash": "0x596baa84248350ad356f90e5afee1c060458300fd1bf87a1a71e35d903f7e539",
+      "babePreDigest": "0x010c0000007964c81100000000ded99154887980eb7118016ab10e368f1320077019e9964b6c490885ae650c166ef9e99e2de685f306ed00511a64869fa2371906a8e54526763528a5d4e14a0fc14fc92f0d26923f83b6229747910370af9a517845214dc93c060be5cc74ef00",
+      "variant": 1,
+      "authorityIndex": 12,
+      "slot": "298345593",
+      "header": {
+        "parentHash": "0x7bf5354bbfb2603c9f5ef06204985734062c63ad09a9b2893e576469d241143d",
+        "number": "0x1a73483",
+        "stateRoot": "0xf187fc3a5e3022090ae5dcc4ef4f57adff1ef8417bfe1684fedae8ec222f896c",
+        "extrinsicsRoot": "0xcec22cf0253480f895fcf8347458d83f8a2667baed0769bbc4e22644a4893ece",
+        "digest": {
+          "logs": [
+            "0x0642414245b501010c0000007964c81100000000ded99154887980eb7118016ab10e368f1320077019e9964b6c490885ae650c166ef9e99e2de685f306ed00511a64869fa2371906a8e54526763528a5d4e14a0fc14fc92f0d26923f83b6229747910370af9a517845214dc93c060be5cc74ef00",
+            "0x05424142450101ee3f7880cd4e7f89b63b1a806b33e382175ec781ec72e1558c60683ed05f3e4468f90b5f55e1ed80e60580e0fb87fde8df5768ad7e28847ba9e8a40890eedf85"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735170,
+      "hash": "0x7bf5354bbfb2603c9f5ef06204985734062c63ad09a9b2893e576469d241143d",
+      "babePreDigest": "0x02000000007864c81100000000",
+      "variant": 2,
+      "authorityIndex": 0,
+      "slot": "298345592",
+      "header": {
+        "parentHash": "0xfa78845553ed56bd3b8341d667d66e974941cd97d4ea98b14e56ecd797f32b3d",
+        "number": "0x1a73482",
+        "stateRoot": "0xa9b4ca0bfe29c2b5c59b95c96d1a9cee32f3d82cff8a4689e72aaedb72f6baae",
+        "extrinsicsRoot": "0x4a9bf3c41d09ff85013ce4adaaabe6d3634a6fbdd5a2d7581c7029698b16f0df",
+        "digest": {
+          "logs": [
+            "0x06424142453402000000007864c81100000000",
+            "0x05424142450101aaa0dc5382ce83149d80a368d0210544f0f40794762dfa3fe8cd4079ffeed401cb35b9e630f0d39d3a5e120941937f5d330838eb64836df40c485288f9972c88"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735169,
+      "hash": "0xfa78845553ed56bd3b8341d667d66e974941cd97d4ea98b14e56ecd797f32b3d",
+      "babePreDigest": "0x020d0000007764c81100000000",
+      "variant": 2,
+      "authorityIndex": 13,
+      "slot": "298345591",
+      "header": {
+        "parentHash": "0x3a994c095cc183ce8bcc97edb375d6af9f67e4d4e8fccdff35eb7eae9aa02c80",
+        "number": "0x1a73481",
+        "stateRoot": "0x2e9576a443157466d4686f2598b076ec612502b767680074a57d3841b6744a97",
+        "extrinsicsRoot": "0x9add4c01e4aca70682f2341aefad353da6b1af2fe53e0eafa639e0aae647fed1",
+        "digest": {
+          "logs": [
+            "0x064241424534020d0000007764c81100000000",
+            "0x0542414245010122103ec3ff00e02a5b48fdc7df75481a150e58e510b5f79a0294a9d6be08c5439d3353b74f2f6929727b827cb18c1160925060bf0b89525cac7988abc33e058a"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735168,
+      "hash": "0x3a994c095cc183ce8bcc97edb375d6af9f67e4d4e8fccdff35eb7eae9aa02c80",
+      "babePreDigest": "0x020d0000007664c81100000000",
+      "variant": 2,
+      "authorityIndex": 13,
+      "slot": "298345590",
+      "header": {
+        "parentHash": "0xc780b472079c677c25394da6a3e4e4efd4f342b85b7978123c0c3f6fc53002f7",
+        "number": "0x1a73480",
+        "stateRoot": "0x8f2714ffa4522ac2fe84588ff64ae97eb8fd84c364c69e4098071f2f455a4565",
+        "extrinsicsRoot": "0x945dc3c577c00bbbcfe2089537871a38b78f4dbbeb2080df7ef4ab0cb16c6c40",
+        "digest": {
+          "logs": [
+            "0x064241424534020d0000007664c81100000000",
+            "0x054241424501013cdafb271497d20e0c3299b0c7bb36c0eac65c109f056f9b1964a878be85e07ddb545dc1e0e930879e67e7dd8a7239efd962dee0b2ef9e1b8cf1637566909e86"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735167,
+      "hash": "0xc780b472079c677c25394da6a3e4e4efd4f342b85b7978123c0c3f6fc53002f7",
+      "babePreDigest": "0x010b0000007564c81100000000ea55e5be58534632620be43a73f031733e525e54c691be6106680ea9aa0d70786db6b8a02203f17b645d2078e7e0ad4cef5a540e83c9b740828d4c83b2901f056f3fad4a8e1f75cd44584eda1b22419bff18e1a5f94edef3f7a0c6c4e84a2c02",
+      "variant": 1,
+      "authorityIndex": 11,
+      "slot": "298345589",
+      "header": {
+        "parentHash": "0x541b49e80f89b3b8eff5093c429242478d3f9ab842d9a44a74dc145c9d3fcf18",
+        "number": "0x1a7347f",
+        "stateRoot": "0x5729e3a447602f6f02c4c599cf632e906d67f9c3500ffe972c7b8f4a821f4902",
+        "extrinsicsRoot": "0x9722c1b20cf67c386f5f882028ab8f37954bc3fb984553fc52eb8cb868fd7621",
+        "digest": {
+          "logs": [
+            "0x0642414245b501010b0000007564c81100000000ea55e5be58534632620be43a73f031733e525e54c691be6106680ea9aa0d70786db6b8a02203f17b645d2078e7e0ad4cef5a540e83c9b740828d4c83b2901f056f3fad4a8e1f75cd44584eda1b22419bff18e1a5f94edef3f7a0c6c4e84a2c02",
+            "0x05424142450101f287bf134d4b7d7b7dad1096fb13019ed503a8dc2fc7d044ff882803da378c52f575a76c4618076ae7378be1496120127b2794cead35c7d060499806c46f8f88"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735166,
+      "hash": "0x541b49e80f89b3b8eff5093c429242478d3f9ab842d9a44a74dc145c9d3fcf18",
+      "babePreDigest": "0x02050000007464c81100000000",
+      "variant": 2,
+      "authorityIndex": 5,
+      "slot": "298345588",
+      "header": {
+        "parentHash": "0xbbf8395bd642c632e4b367726b86f4fd9b5863dceede67b1f863887d0400ea52",
+        "number": "0x1a7347e",
+        "stateRoot": "0x2748db71f27950079949c4057dd88acd20315917309d0928735bd9fbf8764ed7",
+        "extrinsicsRoot": "0x1398990ae61d7adcc421a6250c0e4f7ba2d582aa1d89cca7565650563744bfa9",
+        "digest": {
+          "logs": [
+            "0x06424142453402050000007464c81100000000",
+            "0x05424142450101fcfdda298d6c0a351f5cba33b808de968f6ca00b11e47d637622cd6839a37a1237fba3f455fea91108686bf2c67bf2ce4a74731b404a18af54f8e17b6588a387"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735165,
+      "hash": "0xbbf8395bd642c632e4b367726b86f4fd9b5863dceede67b1f863887d0400ea52",
+      "babePreDigest": "0x02050000007264c81100000000",
+      "variant": 2,
+      "authorityIndex": 5,
+      "slot": "298345586",
+      "header": {
+        "parentHash": "0x2ac55e402c7599cd766130b89cfa5e8d489d7f73aaf9249b1376f0bdc92e0ce6",
+        "number": "0x1a7347d",
+        "stateRoot": "0x4a2cd10ab383d7131767ad90894c9640d40188414e0fe503b27ee2be13ec7332",
+        "extrinsicsRoot": "0xed2af93713b850e0f278abfce7ae0e68281477f0949a972fe7f2602dfb847b16",
+        "digest": {
+          "logs": [
+            "0x06424142453402050000007264c81100000000",
+            "0x054241424501013abf5559ddbed837814cdcda4bd7999e78101ca73ab465b592e39ff766a2352630194a7573b5df29c9ee3bf53ca1fd0ce689579ab9a08c0915107c17d3a68186"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735164,
+      "hash": "0x2ac55e402c7599cd766130b89cfa5e8d489d7f73aaf9249b1376f0bdc92e0ce6",
+      "babePreDigest": "0x02010000007064c81100000000",
+      "variant": 2,
+      "authorityIndex": 1,
+      "slot": "298345584",
+      "header": {
+        "parentHash": "0xa45dccce8d1dab0cf2314bcc1a15218837b2eb8791463208e217a4b8506e16d1",
+        "number": "0x1a7347c",
+        "stateRoot": "0x2b1a179b63f12c276f99dac1c4917876e26bbd05e784809d1f05a06b291cac69",
+        "extrinsicsRoot": "0x39be593d74e73b4924acd750d460350aeaf8f3e84887cf4069f0e4e88bfe790f",
+        "digest": {
+          "logs": [
+            "0x06424142453402010000007064c81100000000",
+            "0x054241424501012ec7fe8443a23b259ede65f5b8ce3c617574acaceeb524b7750433564948ac18b1aff9fee7e5457cd19f8252a8b8ba1811de2b77bf2745e8ca1eefd45cb5708b"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735163,
+      "hash": "0xa45dccce8d1dab0cf2314bcc1a15218837b2eb8791463208e217a4b8506e16d1",
+      "babePreDigest": "0x020c0000006f64c81100000000",
+      "variant": 2,
+      "authorityIndex": 12,
+      "slot": "298345583",
+      "header": {
+        "parentHash": "0xa07dccff8f40c2da09883724ef706560119913033e8bf8afb1f6ef006c060c13",
+        "number": "0x1a7347b",
+        "stateRoot": "0xefdf1fb5d7088e800d05be4c8a4fdfcfa1a5a368941e7bcb02f3b3443e9f5089",
+        "extrinsicsRoot": "0xb5db9c8187ff574a2dbd69f8392b916f4f5ad13e0ca1c510c7c105e8eb802a51",
+        "digest": {
+          "logs": [
+            "0x064241424534020c0000006f64c81100000000",
+            "0x054241424501014e70cddcbb89b78ab0030db5700dfd34ffd995f446c5e8afe94879300c5eb6379a16c0e798c12a327b205d593e76803eb923fa43d285e4a316bf630b1b287a86"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735162,
+      "hash": "0xa07dccff8f40c2da09883724ef706560119913033e8bf8afb1f6ef006c060c13",
+      "babePreDigest": "0x010c0000006d64c811000000000c755df5b07318b7326dae563b5b5ffa718ae3431931015edb13b1d1924b6732a677c8779acd48e9dad6ac2b5d230929d87469b99d650f2d51197e6304c38c007ffa138b15f84000236ee3831e2b9949ae2057cbdb1a3e41846edfaa612eb707",
+      "variant": 1,
+      "authorityIndex": 12,
+      "slot": "298345581",
+      "header": {
+        "parentHash": "0x05c685a9b2625838803402f4145109be4a8209a14e8dc1e381e799f61cd85dea",
+        "number": "0x1a7347a",
+        "stateRoot": "0x3c7b8a884d3b5a9e855f4f90b007c10e4d40c0f6aad6d05afc0fdaef5b409d57",
+        "extrinsicsRoot": "0x9ce832643ee48d639eaea8306323341385664a89ee5dd0d8f6352ee4365c7ec1",
+        "digest": {
+          "logs": [
+            "0x0642414245b501010c0000006d64c811000000000c755df5b07318b7326dae563b5b5ffa718ae3431931015edb13b1d1924b6732a677c8779acd48e9dad6ac2b5d230929d87469b99d650f2d51197e6304c38c007ffa138b15f84000236ee3831e2b9949ae2057cbdb1a3e41846edfaa612eb707",
+            "0x0542414245010144aae6d8231a661adafd88854f2e5c230b40e0c838c2db194d5dfb422f71393817f6bd4b09ab6a529605103a1b124c8b3d3e1d5b271956611c5a6ad6755ff48c"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735161,
+      "hash": "0x05c685a9b2625838803402f4145109be4a8209a14e8dc1e381e799f61cd85dea",
+      "babePreDigest": "0x02010000006c64c81100000000",
+      "variant": 2,
+      "authorityIndex": 1,
+      "slot": "298345580",
+      "header": {
+        "parentHash": "0xca200c821462697ff5553e8357dd7d4453aa3afa7295dcd4a8c406d0b21ff813",
+        "number": "0x1a73479",
+        "stateRoot": "0xf737c01abaf23a702e4d5ae6ced433ebd41d76c55521b8072edfe477da841542",
+        "extrinsicsRoot": "0xed0208fa819f578456ed7941d7fc03b89cf6cc292bf7024b079a1dd44613ed69",
+        "digest": {
+          "logs": [
+            "0x06424142453402010000006c64c81100000000",
+            "0x0542414245010108317ec6a44e9ba14dd70220de24c557a53693118f2d5a071f591b656edb6e23b93d489a9eb7e97095d19139e41070883e9cd676aeca633676a480b13fb48284"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735160,
+      "hash": "0xca200c821462697ff5553e8357dd7d4453aa3afa7295dcd4a8c406d0b21ff813",
+      "babePreDigest": "0x01010000006b64c811000000000e88a3d598b013f36282b4645035e7b1681fa3625ce74eb9a505ca27ad04e13a9b399fb7739b05e925bd93ddbea4c8eeaa5e0a7fdb7833983a17e95bcd6f0b0f953627b51dde88528a65551085e36c1801cedc4240a943ba6ac24343e3720f0e",
+      "variant": 1,
+      "authorityIndex": 1,
+      "slot": "298345579",
+      "header": {
+        "parentHash": "0x63cd90866cd9cf1b59e4c18f56c9efd0d1714ce427b5884bd1c9250ee8d64f9e",
+        "number": "0x1a73478",
+        "stateRoot": "0xbf93cca980374890e2f7ecc883389bd6a05c9558bf1c08426df1d6d1a55dc22e",
+        "extrinsicsRoot": "0xb5e2be4317dc108fbc523f6b92ce030181583abb4f5a76bd4796644217fce03b",
+        "digest": {
+          "logs": [
+            "0x0642414245b50101010000006b64c811000000000e88a3d598b013f36282b4645035e7b1681fa3625ce74eb9a505ca27ad04e13a9b399fb7739b05e925bd93ddbea4c8eeaa5e0a7fdb7833983a17e95bcd6f0b0f953627b51dde88528a65551085e36c1801cedc4240a943ba6ac24343e3720f0e",
+            "0x05424142450101aeed36c670d3ce3266528ca219d0a055d7f76976beff14fe1cd17081825bc1418bbeb122680efba2006f5d1af0e0640308dbbf48b0298882f131de2b611a6d82"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735159,
+      "hash": "0x63cd90866cd9cf1b59e4c18f56c9efd0d1714ce427b5884bd1c9250ee8d64f9e",
+      "babePreDigest": "0x010c0000006964c81100000000123dfc3b32b6eaab8d8a1942e7b3c403a3d009a543977deb5bf9d435669b8425b888dc05d4b0918642aa66ca5a9f73440ce36afcff927a96905f462419d5590f73e09c8edcb11e612c3e8e7759be604d0aef7a2b839791544560673d4f6b860d",
+      "variant": 1,
+      "authorityIndex": 12,
+      "slot": "298345577",
+      "header": {
+        "parentHash": "0x412981e44c2c2dc6648ba837863b9917b00a0f2bd2b5ed76e7e46a3e611093c9",
+        "number": "0x1a73477",
+        "stateRoot": "0xb61282da3858a8878e047b916ba36366608f6e69d359dc0dd304c6f5d8974197",
+        "extrinsicsRoot": "0x1d99934c52c9b075301fd733ca1f9a1681a4050169c446ae3598c5cd4a5f7d66",
+        "digest": {
+          "logs": [
+            "0x0642414245b501010c0000006964c81100000000123dfc3b32b6eaab8d8a1942e7b3c403a3d009a543977deb5bf9d435669b8425b888dc05d4b0918642aa66ca5a9f73440ce36afcff927a96905f462419d5590f73e09c8edcb11e612c3e8e7759be604d0aef7a2b839791544560673d4f6b860d",
+            "0x054241424501016cc593e815ff6ae4ae6981454f92a1a7404d823b3eccbd6418d8d4b9de1613400a8467955b6868ff124d9d03cd366f565fa98de96e8a183dc2fd635529a54080"
+          ]
+        }
+      }
+    },
+    {
+      "block": 27735158,
+      "hash": "0x412981e44c2c2dc6648ba837863b9917b00a0f2bd2b5ed76e7e46a3e611093c9",
+      "babePreDigest": "0x02070000006864c81100000000",
+      "variant": 2,
+      "authorityIndex": 7,
+      "slot": "298345576",
+      "header": {
+        "parentHash": "0xae725493e7277d20b3291c545599f58d35157a3f8dd63ce1bb394037d7200d3c",
+        "number": "0x1a73476",
+        "stateRoot": "0xddb443e6bef251737f90ed640225c35307ae00a98947d9921068f531684b174b",
+        "extrinsicsRoot": "0xc2aba00fc3f1e57a4f107f4ab1559b73e29a57aef5e955103e22949c16a6b359",
+        "digest": {
+          "logs": [
+            "0x06424142453402070000006864c81100000000",
+            "0x05424142450101fe6b6ca6aef55d1fbe17cf3f0a966e7002820cfb43466aa4eb3800b43b374e035aefdc3c4d04cde431614226edae8ebbd920d81022b5449ea736ee4f5ba32b8c"
+          ]
+        }
+      }
+    }
+  ]
+}

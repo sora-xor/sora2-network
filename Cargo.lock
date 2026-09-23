@@ -4920,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.8.9"
+version = "4.8.10"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -4946,6 +4946,7 @@ dependencies = [
  "if-watch",
  "iroha-migration-rpc",
  "jsonrpsee",
+ "kvdb-rocksdb",
  "leaf-provider-rpc",
  "libsecp256k1",
  "liquidity-proxy-rpc",
@@ -4956,10 +4957,12 @@ dependencies = [
  "oracle-proxy-rpc",
  "pallet-sudo",
  "pallet-transaction-payment-rpc",
+ "parity-db",
  "parity-scale-codec",
  "polkamarkt-rpc",
  "pswap-distribution-rpc",
  "rewards-rpc",
+ "rocksdb",
  "sc-basic-authorship",
  "sc-chain-spec",
  "sc-cli",
@@ -4970,6 +4973,7 @@ dependencies = [
  "sc-consensus-babe",
  "sc-consensus-beefy",
  "sc-consensus-beefy-rpc",
+ "sc-consensus-epochs",
  "sc-consensus-grandpa",
  "sc-consensus-slots",
  "sc-executor",
@@ -4989,6 +4993,7 @@ dependencies = [
  "sp-consensus-babe",
  "sp-consensus-beefy",
  "sp-core",
+ "sp-database",
  "sp-inherents",
  "sp-io",
  "sp-keyring",
@@ -5009,7 +5014,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.8.9"
+version = "4.8.10"
 dependencies = [
  "band",
  "common",
@@ -5042,7 +5047,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.8.9"
+version = "4.8.10"
 dependencies = [
  "apollo-platform",
  "assets",

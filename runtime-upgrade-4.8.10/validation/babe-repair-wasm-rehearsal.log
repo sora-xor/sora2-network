@@ -1,0 +1,24 @@
+2026-09-22T22:53:02.376Z Loading pinned deployed state through read-only RPC
+2026-09-22T22:53:05.651Z Executing mid-epoch-upgrade Core_initialize_block
+               runtime::babe   INFO: [5] Scheduled mainnet BABE Plain configuration repair
+      runtime::frame-support   INFO: [5] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [5] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [5] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [5] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [5] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [5] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [5] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [5] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [5] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-09-22T22:53:06.501Z Finalizing mid-epoch-upgrade
+2026-09-22T22:53:07.097Z Executing first-epoch-boundary Core_initialize_block
+2026-09-22T22:53:07.932Z Finalizing first-epoch-boundary
+2026-09-22T22:53:08.516Z Executing second-epoch-boundary Core_initialize_block
+  runtime::election-provider   WARN: [23] [#27734951] 🗳  No solution queued, falling back to instant fallback.
+  runtime::election-provider   WARN: [23] [#27734951] 🗳  Failed to finalize election round. reason ElectionError::Feasibility(SnapshotUnavailable)
+  runtime::election-provider  ERROR: [23] [#27734951] 🗳  Entering emergency mode: ElectionError::Feasibility(SnapshotUnavailable)
+  runtime::election-provider   INFO: [23] [#27734951] 🗳  Starting phase Emergency, round 5382.
+  runtime::election-provider   INFO: [23] [#27734951] 🗳  ElectionProvider::elect(0) => Err(ElectionError::Feasibility(SnapshotUnavailable))
+            runtime::staking   WARN: [23] [27734951] 💸 election provider failed due to ElectionError::Feasibility(SnapshotUnavailable)
+2026-09-22T22:53:09.346Z Finalizing second-epoch-boundary
+{"status":"passed","output":"/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.10/validation/babe-repair-wasm-rehearsal.json"}

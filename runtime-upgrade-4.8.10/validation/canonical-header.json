@@ -1,0 +1,95 @@
+{
+  "checkedAt": "2026-09-22T10:44:30.467Z",
+  "endpoint": "https://mof2.sora.org",
+  "hash": "0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391",
+  "block": 27735177,
+  "header": {
+    "parentHash": "0xb4bfa4c78b0fb51a57651d0fd8a39d08c6fec0d6dc8170d56462abf4113e53bf",
+    "number": "0x1a73489",
+    "stateRoot": "0xaea9bf72cbab5fbfdfaba50c69795f8800db5327583d31bbfa8c972dfa377d92",
+    "extrinsicsRoot": "0xef2fbfad2a6ba76b68731a1befebd77cacc0f94691293ae77fe67421ea430267",
+    "digest": {
+      "logs": [
+        "0x06424142453402050000007f64c81100000000",
+        "0x05424142450101442513749fd43bc7f2a741644e10ef700bf4b72e52262e50ff2781382651a4303303bf44fe3e8dda99cdf73f525dd10a399da3f612b53d3ad41b750c38172982"
+      ]
+    }
+  },
+  "epochStateReference": "0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391",
+  "epoch": {
+    "epochIndex": 47369,
+    "startSlot": 298345110,
+    "duration": 600,
+    "authorities": [
+      [
+        "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+        1
+      ],
+      [
+        "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+        1
+      ],
+      [
+        "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+        1
+      ],
+      [
+        "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+        1
+      ],
+      [
+        "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+        1
+      ],
+      [
+        "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+        1
+      ],
+      [
+        "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+        1
+      ],
+      [
+        "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+        1
+      ],
+      [
+        "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+        1
+      ],
+      [
+        "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+        1
+      ],
+      [
+        "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+        1
+      ],
+      [
+        "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+        1
+      ],
+      [
+        "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+        1
+      ],
+      [
+        "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+        1
+      ],
+      [
+        "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+        1
+      ]
+    ],
+    "randomness": "0xfe6f1dd5f8dbeca59fc56145b0e5468f5df34cfbfe8f1e7189d95a415b3c8e6d",
+    "config": {
+      "c": [
+        1,
+        4
+      ],
+      "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+    }
+  },
+  "submittedTransactions": 0
+}

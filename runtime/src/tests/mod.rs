@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+mod babe_config;
 mod liquidity_proxy;
 mod liveness;
 mod referrals;
@@ -374,7 +375,7 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
-    assert_eq!(crate::VERSION.spec_version, 131);
+    assert_eq!(crate::VERSION.spec_version, 132);
     assert_eq!(crate::VERSION.transaction_version, 131);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),
