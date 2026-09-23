@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "verifiedFiles": 41,
+  "candidateSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
+  "proposalHash": "0xcb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713",
+  "unsignedCallsMatchCandidate": true,
+  "exactWasmRehearsalAndCompatibilityPassed": true,
+  "workspaceSourceChecked": true,
+  "networkRequests": 0
+}

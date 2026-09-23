@@ -41,9 +41,10 @@ use frame_support::weights::Weight;
 use sp_runtime::TryRuntimeError;
 use sp_std::prelude::Vec;
 
-// 4.8.9 is expected to upgrade from 4.8.8. The Polkamarkt v6 bridge remains
-// in the tuple so nodes that have not completed it can still reach v7 safely.
+// Existing versioned bridges remain safe when upgrading 4.8.9 to 4.8.10.
+// The BABE repair schedules a normal announced epoch transition once on mainnet.
 pub type Migrations = (
+    crate::babe_config::ScheduleMainnetPlainEpochConfig,
     RemapStakingRewardPointsToStash,
     EthBridgeStorageVersionV3,
     VestedRewardsStorageVersionV4,

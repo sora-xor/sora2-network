@@ -233,6 +233,10 @@ pub fn run() -> sc_cli::Result<()> {
             set_default_ss58_version();
             runner.sync_run(|config| cmd.run(config.chain_spec, config.network))
         }
+        Some(Subcommand::RepairBabeEpochCache(cmd)) => {
+            let runner = cli.create_runner(cmd)?;
+            runner.sync_run(|config| cmd.run(config).map_err(sc_cli::Error::Input))
+        }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();

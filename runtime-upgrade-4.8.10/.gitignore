@@ -1,0 +1,3 @@
+validation/node_modules/
+validation/__pycache__/
+!validation/*.log

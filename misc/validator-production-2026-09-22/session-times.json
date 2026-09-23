@@ -1,0 +1,62 @@
+{
+  "referenceHash": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e4",
+  "checkedAt": "2026-09-22T10:20:54.125Z",
+  "sessions": [
+    {
+      "session": 47368,
+      "firstBlock": 27734322,
+      "firstTimestamp": 1790067060000,
+      "lastBlock": 27734793,
+      "lastTimestamp": 1790070654000
+    },
+    {
+      "session": 47367,
+      "firstBlock": 27733811,
+      "firstTimestamp": 1790063460000,
+      "lastBlock": 27734321,
+      "lastTimestamp": 1790067054000
+    },
+    {
+      "session": 47366,
+      "firstBlock": 27733301,
+      "firstTimestamp": 1790059860001,
+      "lastBlock": 27733810,
+      "lastTimestamp": 1790063454000
+    },
+    {
+      "session": 47365,
+      "firstBlock": 27732784,
+      "firstTimestamp": 1790056260001,
+      "lastBlock": 27733300,
+      "lastTimestamp": 1790059854004
+    },
+    {
+      "session": 47364,
+      "firstBlock": 27732267,
+      "firstTimestamp": 1790052660000,
+      "lastBlock": 27732783,
+      "lastTimestamp": 1790056254000
+    },
+    {
+      "session": 47363,
+      "firstBlock": 27731722,
+      "firstTimestamp": 1790049060004,
+      "lastBlock": 27732266,
+      "lastTimestamp": 1790052654001
+    },
+    {
+      "session": 47362,
+      "firstBlock": 27731172,
+      "firstTimestamp": 1790045460001,
+      "lastBlock": 27731721,
+      "lastTimestamp": 1790049054010
+    },
+    {
+      "session": 47361,
+      "firstBlock": 27730632,
+      "firstTimestamp": 1790041860002,
+      "lastBlock": 27731171,
+      "lastTimestamp": 1790045454010
+    }
+  ]
+}

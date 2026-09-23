@@ -1,0 +1,22 @@
+{
+  "status": "reproduced",
+  "scope": "Local diagnostic using unchanged pinned SDK BABE verification.rs and authorship.rs with captured finalized mainnet headers and exact runtime epoch inputs.",
+  "sdkRevision": "e373717",
+  "verifierSourceSha256": "941120d5bd93e930f7cbdcd794224bbe8df2abccd67662658e2bf8cd5e523043",
+  "authorshipSourceSha256": "392ba964542d8c090f4f8e00fe649b5578ac48f71148c0c75ccc363d16ff3506",
+  "runtimeSpecVersion": 131,
+  "runtimeWasmSha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+  "firstBlock": 27735158,
+  "lastBlock": 27735177,
+  "runtimeReportedConfig": "PrimaryAndSecondaryVRFSlots",
+  "canonicalSecondaryConfig": "PrimaryAndSecondaryPlainSlots",
+  "secondaryPlainHeadersRejectedWithRuntimeConfig": 13,
+  "secondaryPlainHeadersAcceptedWithOnlyAllowedSlotsCorrected": 13,
+  "primaryHeadersAcceptedWithRuntimeConfig": 7,
+  "exactError": "SecondarySlotAssignmentsDisabled",
+  "headerHashesVerified": 20,
+  "mockedCryptography": false,
+  "privateKeysRead": 0,
+  "submittedTransactions": 0,
+  "remainingIncidentEvidence": "Affected validator local epoch caches, startup/sync paths, and error logs have not been inspected. This proves the shared configuration defect and its rejection mechanism, not the local state of each silent validator."
+}

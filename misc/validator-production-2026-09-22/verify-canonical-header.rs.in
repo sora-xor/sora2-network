@@ -1,0 +1,106 @@
+// Local-only diagnostic. Imports the exact SDK verifier and authorship source unchanged.
+// No signing keys, signature mocks, network requests, or transaction submission.
+#![allow(dead_code)]
+use codec::Decode;
+use sc_consensus_slots::CheckedHeader;
+use serde_json::Value;
+use sp_core::{crypto::ByteArray, H256};
+use sp_runtime::{generic, traits::{BlakeTwo256, Block as BlockT, Header as HeaderT}, Digest, DigestItem, OpaqueExtrinsic};
+pub use sc_consensus_babe::{Epoch, Error, find_pre_digest};
+const AUTHORING_SCORE_LENGTH: usize = 16;
+const AUTHORING_SCORE_VRF_CONTEXT: &[u8] = b"substrate-babe-vrf";
+const LOG_TARGET: &str = "babe";
+fn babe_err<B: BlockT>(e: Error<B>) -> Error<B> { e }
+#[path = "__SDK_BABE_SOURCE__/authorship.rs"]
+mod authorship;
+#[path = "__SDK_BABE_SOURCE__/verification.rs"]
+mod verification;
+type Header = generic::Header<u32, BlakeTwo256>;
+type Block = generic::Block<Header, OpaqueExtrinsic>;
+
+fn unhex(s: &str) -> Vec<u8> {
+    let s = s.strip_prefix("0x").unwrap_or(s);
+    assert_eq!(s.len() % 2, 0);
+    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i+2], 16).unwrap()).collect()
+}
+fn number(v: &Value) -> u64 {
+    v.as_u64().unwrap_or_else(|| {
+        let s = v.as_str().unwrap();
+        if let Some(h) = s.strip_prefix("0x") { u64::from_str_radix(h, 16).unwrap() }
+        else { s.parse().unwrap() }
+    })
+}
+fn header(v: &Value) -> Header {
+    let mut logs = Vec::new();
+    for l in v["digest"]["logs"].as_array().unwrap() {
+        if let Some(raw) = l.as_str() {
+            logs.push(DigestItem::decode(&mut unhex(raw).as_slice()).unwrap());
+            continue;
+        }
+        for (k, pair) in l.as_object().unwrap() {
+            let id: [u8; 4] = unhex(pair[0].as_str().unwrap()).try_into().unwrap();
+            let data = unhex(pair[1].as_str().unwrap());
+            logs.push(match k.as_str() {
+                "preRuntime" => DigestItem::PreRuntime(id, data),
+                "seal" => DigestItem::Seal(id, data),
+                "consensus" => DigestItem::Consensus(id, data),
+                other => panic!("Unexpected digest {other}"),
+            });
+        }
+    }
+    Header::new(number(&v["number"]) as u32,
+        H256::from_slice(&unhex(v["extrinsicsRoot"].as_str().unwrap())),
+        H256::from_slice(&unhex(v["stateRoot"].as_str().unwrap())),
+        H256::from_slice(&unhex(v["parentHash"].as_str().unwrap())), Digest { logs })
+}
+fn main() {
+    let args: Vec<_> = std::env::args().collect();
+    let evidence: Value = serde_json::from_slice(&std::fs::read(&args[1]).unwrap()).unwrap();
+    let state = evidence["states"].as_array().unwrap().iter().find(|s| s["label"] == "latest").unwrap();
+    let raw = &state["runtimeApi"]["currentEpoch"];
+    let config = sp_consensus_babe::BabeEpochConfiguration::decode(
+        &mut unhex(state["rawStorage"]["epochConfig"].as_str().unwrap()).as_slice()).unwrap();
+    assert_eq!(raw["config"]["allowedSlots"], "PrimaryAndSecondaryVRFSlots");
+    assert_eq!(config.allowed_slots, sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots);
+    let epoch: Epoch = sp_consensus_babe::Epoch {
+        epoch_index: number(&raw["epochIndex"]),
+        start_slot: number(&raw["startSlot"]).into(),
+        duration: number(&raw["duration"]),
+        authorities: raw["authorities"].as_array().unwrap().iter().map(|p| (
+            sp_consensus_babe::AuthorityId::from_slice(&unhex(p[0].as_str().unwrap())).unwrap(), number(&p[1])
+        )).collect(),
+        randomness: unhex(raw["randomness"].as_str().unwrap()).try_into().unwrap(),
+        config,
+    }.into();
+    let rows = evidence["headers"].as_array().unwrap();
+    let mut mismatches = 0;
+    let mut primary_controls = 0;
+    for row in rows {
+        let v = &row["header"];
+        if v.is_null() { continue; }
+        let h = header(v);
+        assert_eq!(h.hash(), H256::from_slice(&unhex(row["hash"].as_str().unwrap())), "Header hash must match recorded canonical hash");
+        let digest = find_pre_digest::<Block>(&h).unwrap();
+        assert!(digest.slot() >= epoch.start_slot && digest.slot() < epoch.start_slot + epoch.duration);
+        let verify = |e: &Epoch| verification::check_header::<Block>(verification::VerificationParams {
+            header: h.clone(), pre_digest: None, slot_now: (epoch.start_slot + epoch.duration), epoch: e,
+        });
+        let observed = verify(&epoch);
+        if matches!(digest, sp_consensus_babe::digests::PreDigest::SecondaryPlain(_)) {
+            assert!(matches!(observed, Err(Error::SecondarySlotAssignmentsDisabled)), "Advertised VRF config must reproduce exact rejection");
+            let mut corrected = epoch.clone();
+            corrected.config.allowed_slots = sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryPlainSlots;
+            assert!(matches!(verify(&corrected), Ok(CheckedHeader::Checked(_, _))), "Same real header must pass slot assignment and real seal verification under Plain config");
+            mismatches += 1;
+            println!("block={} authority={} runtime_VRF=SecondarySlotAssignmentsDisabled canonical_Plain=Checked hash={:?}", h.number(), digest.authority_index(), h.hash());
+        } else if matches!(digest, sp_consensus_babe::digests::PreDigest::Primary(_)) {
+            assert!(matches!(observed, Ok(CheckedHeader::Checked(_, _))), "Primary control must pass real VRF and seal verification");
+            primary_controls += 1;
+        }
+    }
+    assert!(mismatches > 0, "Need a full canonical SecondaryPlain header");
+    println!("verified_mismatches={mismatches} primary_controls={primary_controls} mocked_crypto=false submitted_transactions=0");
+    if args.iter().any(|a| a == "--expect-runtime-acceptance") {
+        assert_eq!(mismatches, 0, "FAIL: finalized canonical headers must verify using runtime-advertised epoch configuration");
+    }
+}

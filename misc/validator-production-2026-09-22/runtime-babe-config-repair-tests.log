@@ -1,0 +1,27 @@
+   Compiling framenode-runtime v4.8.10 (/Users/takemiyamakoto/dev/sora2-network/runtime)
+warning: unused import: `Get`
+ --> runtime/src/babe_config.rs:8:29
+  |
+8 | use frame_support::traits::{Get, OnRuntimeUpgrade};
+  |                             ^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+   Compiling framenode-chain-spec v4.8.10 (/Users/takemiyamakoto/dev/sora2-network/node/chain_spec)
+warning: `framenode-runtime` (lib) generated 1 warning
+warning: `framenode-runtime` (lib test) generated 1 warning (1 duplicate)
+    Finished `release` profile [optimized] target(s) in 1m 50s
+     Running unittests src/lib.rs (target/release/deps/framenode_runtime-e319e42ad6d66320)
+
+running 8 tests
+test tests::babe_config::repair_leaves_other_networks_and_their_genesis_mode_unchanged ... ok
+test tests::babe_config::configuration_uses_genesis_fallback_before_epoch_storage_exists ... ok
+test tests::babe_config::configuration_preserves_future_vrf_mode_and_nondefault_probability ... ok
+test tests::babe_config::repeated_upgrade_preserves_a_future_legitimate_vrf_transition ... ok
+test tests::babe_config::mainnet_repair_announces_then_activates_without_silent_epoch_rewrite ... ok
+test tests::babe_config::configuration_uses_active_plain_slot_mode_and_probability ... ok
+test tests::babe_config::mainnet_repair_does_not_override_an_existing_governance_plan ... ok
+test tests::babe_config::mainnet_repair_preserves_unknown_or_missing_epoch_configurations ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 191 filtered out; finished in 0.22s
+

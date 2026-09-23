@@ -46,6 +46,7 @@ use bridge_types::traits::Verifier;
 use bridge_types::{GenericNetworkId, SubNetworkId, H256};
 use sp_runtime::traits::Keccak256;
 
+mod babe_config;
 mod bags_thresholds;
 /// Constant values used within the runtime.
 pub mod constants;
@@ -448,8 +449,8 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 131,
-    impl_version: 2,
+    spec_version: 132,
+    impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 131,
     system_version: 0,
@@ -4355,19 +4356,7 @@ impl_runtime_apis! {
 
     impl sp_consensus_babe::BabeApi<Block> for Runtime {
             fn configuration() -> sp_consensus_babe::BabeConfiguration {
-                    // The choice of `c` parameter (where `1 - c` represents the
-                    // probability of a slot being empty), is done in accordance to the
-                    // slot duration and expected target block time, for safely
-                    // resisting network delays of maximum two seconds.
-                    // <https://research.web3.foundation/en/latest/polkadot/BABE/Babe/#6-practical-results>
-                    sp_consensus_babe::BabeConfiguration {
-                            slot_duration: Babe::slot_duration(),
-                            epoch_length: EpochDuration::get(),
-                            c: PRIMARY_PROBABILITY,
-                            authorities: Babe::authorities().to_vec(),
-                            randomness: Babe::randomness(),
-                            allowed_slots: sp_consensus_babe::AllowedSlots::PrimaryAndSecondaryVRFSlots,
-                    }
+                    babe_config::configuration()
             }
 
             fn current_epoch() -> sp_consensus_babe::Epoch {
