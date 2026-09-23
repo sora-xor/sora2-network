@@ -75,8 +75,8 @@ impl sc_cli::CliConfiguration for RepairBabeEpochCacheCmd {
 }
 
 impl RepairBabeEpochCacheCmd {
-    pub fn run(&self, mut config: sc_service::Configuration) -> sc_cli::Result<()> {
-        self.run_inner(&mut config).map_err(sc_cli::Error::Input)
+    pub fn run(&self, mut config: sc_service::Configuration) -> RepairResult<()> {
+        self.run_inner(&mut config)
     }
 
     fn run_inner(&self, config: &mut sc_service::Configuration) -> RepairResult<()> {

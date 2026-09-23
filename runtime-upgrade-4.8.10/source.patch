@@ -126,7 +126,7 @@ index 33b3665ca..22cac93ee 100644
          }
 +        Some(Subcommand::RepairBabeEpochCache(cmd)) => {
 +            let runner = cli.create_runner(cmd)?;
-+            runner.sync_run(|config| cmd.run(config))
++            runner.sync_run(|config| cmd.run(config).map_err(sc_cli::Error::Input))
 +        }
          Some(Subcommand::CheckBlock(cmd)) => {
              let runner = cli.create_runner(cmd)?;
@@ -321,8 +321,8 @@ index 000000000..a46cc43ad
 +}
 +
 +impl RepairBabeEpochCacheCmd {
-+    pub fn run(&self, mut config: sc_service::Configuration) -> sc_cli::Result<()> {
-+        self.run_inner(&mut config).map_err(sc_cli::Error::Input)
++    pub fn run(&self, mut config: sc_service::Configuration) -> RepairResult<()> {
++        self.run_inner(&mut config)
 +    }
 +
 +    fn run_inner(&self, config: &mut sc_service::Configuration) -> RepairResult<()> {
