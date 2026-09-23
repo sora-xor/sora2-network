@@ -69,6 +69,9 @@ pub enum Subcommand {
     /// Revert the chain to a previous state.
     Revert(sc_cli::RevertCmd),
 
+    /// Inspect or explicitly repair the known SORA mainnet BABE epoch cache mismatch offline.
+    RepairBabeEpochCache(crate::babe_epoch_repair::RepairBabeEpochCacheCmd),
+
     /// Generate chainspec for network fork-off
     #[cfg(feature = "private-net")]
     ForkOff(crate::fork_off::ForkOffCmd),

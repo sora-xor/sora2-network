@@ -1,0 +1,18 @@
+2026-09-22 19:10:28        API/INIT: RPC methods not decorated: chainHead_v1_body, chainHead_v1_call, chainHead_v1_continue, chainHead_v1_follow, chainHead_v1_header, chainHead_v1_stopOperation, chainHead_v1_storage, chainHead_v1_unfollow, chainHead_v1_unpin, chainSpec_v1_chainName, chainSpec_v1_genesisHash, chainSpec_v1_properties, mmr_generateAncestryProof, oracleProxy_listEnabledSymbols, oracleProxy_quote, polkamarkt_claimable, polkamarkt_quoteAddLiquidity, polkamarkt_quoteBuy, polkamarkt_quoteFlipPosition, polkamarkt_quoteSell, transactionWatch_v1_submitAndWatch, transactionWatch_v1_unwatch, transaction_v1_broadcast, transaction_v1_stop
+{
+  "block": 27734948,
+  "version": 131,
+  "codeSha256": "db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447",
+  "nodeVersion": "4.8.6-unknown-aarch64-apple-darwin",
+  "session": 47369,
+  "disabled": [],
+  "validators": 15,
+  "authoredEntries": 11,
+  "forceEra": "NotForcing",
+  "activeEra": {
+    "index": 7677,
+    "start": 1790059860001
+  },
+  "hasLiveness": true,
+  "errors": {}
+}

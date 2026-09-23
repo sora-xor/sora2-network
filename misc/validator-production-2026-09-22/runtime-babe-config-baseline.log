@@ -1,0 +1,294 @@
+   Compiling tokio v1.50.0
+   Compiling rustix v1.1.4
+   Compiling libsecp256k1 v0.7.2
+   Compiling bip39 v2.2.2
+   Compiling sp-weights v34.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling rlp v0.5.2
+   Compiling humantime v2.3.0
+   Compiling num-rational v0.4.2
+   Compiling framenode-runtime v4.8.9 (/Users/takemiyamakoto/dev/sora2-network/runtime)
+   Compiling env_logger v0.10.2
+   Compiling impl-rlp v0.3.0
+   Compiling nalgebra v0.33.2
+   Compiling ethbloom v0.13.0
+   Compiling primitive-types v0.12.2
+   Compiling sp-core v40.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling wasmtime-internal-cache v35.0.0
+   Compiling tempfile v3.27.0
+   Compiling ethereum-types v0.14.1
+   Compiling ethash v0.6.0 (https://github.com/sora-xor/ethash.git?branch=sora-v1.6.0#e0860946)
+   Compiling ethabi v17.2.0 (https://github.com/sora-xor/ethabi.git?branch=sora-v1.6.0#d4e99f04)
+   Compiling tokio-util v0.7.16
+   Compiling tokio-rustls v0.26.4
+   Compiling hickory-proto v0.24.4
+   Compiling hickory-proto v0.25.2
+   Compiling if-watch v3.2.2
+   Compiling wasmtime v35.0.0
+   Compiling tokio-tungstenite v0.27.0
+   Compiling h2 v0.4.13
+   Compiling unsigned-varint v0.8.0
+   Compiling tokio-stream v0.1.17
+   Compiling multihash v0.19.3
+   Compiling quick-protobuf-codec v0.3.1
+   Compiling jsonrpsee-core v0.24.10
+   Compiling libp2p-identity v0.2.13
+   Compiling cid v0.11.1
+   Compiling linregress v0.5.4
+   Compiling multiaddr v0.18.2
+   Compiling hickory-resolver v0.25.2
+   Compiling hickory-resolver v0.24.4
+   Compiling libp2p-core v0.42.0
+   Compiling sp-keystore v0.46.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-rpc v38.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-state-db v0.42.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling jsonrpsee-client-transport v0.24.10
+   Compiling libp2p-swarm v0.45.1
+   Compiling libp2p-yamux v0.46.0
+   Compiling libp2p-tcp v0.42.0
+   Compiling libp2p-websocket v0.44.0
+   Compiling libp2p-noise v0.45.0
+   Compiling litep2p v0.13.3
+   Compiling hyper v1.8.1
+   Compiling jsonrpsee-ws-client v0.24.10
+   Compiling libp2p-dns v0.42.0
+   Compiling libp2p-kad v0.46.2
+   Compiling libp2p-allow-block-list v0.4.0
+   Compiling libp2p-request-response v0.27.0
+   Compiling libp2p-ping v0.45.0
+   Compiling libp2p-identify v0.45.0
+   Compiling libp2p-mdns v0.46.0
+   Compiling libp2p-connection-limits v0.4.0
+   Compiling hyper-util v0.1.20
+   Compiling sp-wasm-interface v24.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling substrate-prometheus-endpoint v0.17.7 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling hyper-rustls v0.27.7
+   Compiling jsonrpsee-server v0.24.10
+   Compiling libp2p v0.54.1
+   Compiling sp-trie v43.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling jsonrpsee-http-client v0.24.10
+   Compiling sc-telemetry v30.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling jsonrpsee v0.24.10
+   Compiling sp-runtime-interface v34.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-allocator v36.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-executor-common v0.44.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-executor-polkavm v0.41.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-executor-wasmtime v0.44.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-state-machine v0.50.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-io v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-application-crypto v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-sysinfo v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-types v0.20.2 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-runtime v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-keystore v40.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-version v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-inherents v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-staking v43.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-common v0.53.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-keyring v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-npos-elections v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling polkadot-core-primitives v22.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling polkadot-parachain-primitives v21.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-api v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-genesis-builder v0.22.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-mmr-primitives v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-executor v0.48.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-session v43.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus-grandpa v28.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-offchain v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-transaction-pool v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-system-rpc-runtime-api v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-mixnet v0.19.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling eth-bridge-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/eth-bridge/runtime-api)
+   Compiling dex-manager-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/dex-manager/runtime-api)
+   Compiling iroha-migration-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/iroha-migration/runtime-api)
+   Compiling farming-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/farming/runtime-api)
+   Compiling trading-pair-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/trading-pair/runtime-api)
+   Compiling sp-timestamp v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus v0.47.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-block-builder v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-transaction-storage-proof v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-blockchain v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-support v46.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus-slots v0.47.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-transaction-pool-api v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-block-builder v0.49.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-client-api v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus-beefy v29.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network v0.56.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-consensus v0.55.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-tracing v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-client-db v0.52.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-transaction-pool v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus-aura v0.47.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus-babe v0.47.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-sync v0.55.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-chain-spec v49.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-mixnet v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-light v0.55.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-transactions v0.55.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-informant v0.55.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-gossip v0.56.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-consensus-grandpa v0.41.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-system v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling staging-xcm v22.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling orml-utilities v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/utilities)
+   Compiling frame-try-runtime v0.52.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-statement-store v25.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling snowbridge-beacon-primitives v0.19.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-rpc-api v0.55.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-network-statement v0.38.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling snowbridge-verification-primitives v0.10.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-timestamp v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-balances v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-benchmarking v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-executive v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-authorship v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling bp-runtime v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-transaction-payment v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-election-provider-support v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-asset-conversion v28.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-utility v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-scheduler v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-multisig v3.2.3 (/Users/takemiyamakoto/dev/sora2-network/vendor/pallet-multisig)
+   Compiling sc-statement-store v27.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-elections-phragmen v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-identity v45.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/identity)
+   Compiling pallet-democracy v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling polkadot-sdk-frame v0.15.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-mmr v46.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling snowbridge-pallet-ethereum-client-fixtures v0.29.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-multisig-upstream v45.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/pallet-multisig-upstream)
+   Compiling pallet-offences v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-preimage v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-transaction-payment-rpc-runtime-api v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling bp-header-chain v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-im-online v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-insecure-randomness-collective-flip v34.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-migrations v16.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-rpc v51.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-session v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-rpc-server v28.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-election-provider-multi-phase v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-bags-list v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-sudo v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-membership v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sc-rpc-spec-v2 v0.56.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-skip-feeless-payment v21.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-collective v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling orml-traits v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/traits)
+   Compiling bp-messages v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling staging-xcm-executor v25.1.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling substrate-rpc-client v0.55.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-remote-externalities v0.57.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling bridge-types v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/types)
+   Compiling orml-currencies v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/currencies)
+   Compiling orml-tokens v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/tokens)
+   Compiling sc-service v0.57.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling common v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/common)
+   Compiling bridge-common v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/bridge-common)
+   Compiling dispatch v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/dispatch)
+   Compiling substrate-bridge-app v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/substrate-app)
+   Compiling bridge-proxy-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/bridge-proxy/runtime-api)
+   Compiling beefy-light-client-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/beefy-light-client/runtime-api)
+   Compiling bridge-channel v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/channel)
+   Compiling substrate-bridge-channel v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/substrate-channel)
+   Compiling leaf-provider v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/leaf-provider)
+   Compiling parachain-bridge-app v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/parachain-app)
+   Compiling leaf-provider-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/leaf-provider/runtime-api)
+   Compiling evm-fungible-app v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/evm-fungible-app)
+   Compiling jetton-app v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/jetton-app)
+   Compiling multisig-verifier v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/multisig-verifier)
+   Compiling bridge-data-signer v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/data-signer)
+   Compiling bp-polkadot-core v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-beefy v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-staking v46.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/staking)
+   Compiling pallet-babe v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-grandpa v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling technical v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/technical)
+   Compiling permissions v1.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/permissions)
+   Compiling assets v1.3.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/assets)
+   Compiling band v1.0.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/band)
+   Compiling oracle-proxy v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/oracle-proxy)
+   Compiling referrals v1.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/referrals)
+   Compiling liquidity-proxy-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/liquidity-proxy/runtime-api)
+   Compiling soratopia v0.0.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/soratopia)
+   Compiling xor-fee v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/xor-fee)
+   Compiling oracle-proxy-runtime-api v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/oracle-proxy/runtime-api)
+   Compiling bp-parachains v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling polkamarkt-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/polkamarkt/runtime-api)
+   Compiling pswap-distribution-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/pswap-distribution/runtime-api)
+   Compiling assets-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/assets/runtime-api)
+   Compiling dex-manager v0.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/dex-manager)
+   Compiling dex-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/dex-api/runtime-api)
+   Compiling rewards-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/rewards/runtime-api)
+   Compiling rewards v1.3.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/rewards)
+   Compiling ceres-token-locker v1.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/ceres-token-locker)
+   Compiling extended-assets v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/extended-assets)
+   Compiling bridge-proxy v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/bridge-proxy)
+   Compiling hermes-governance-platform v1.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/hermes-governance-platform)
+   Compiling denomination v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/denomination)
+   Compiling ceres-governance-platform v1.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/ceres-governance-platform)
+   Compiling ceres-staking v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/ceres-staking)
+   Compiling trading-pair v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/trading-pair)
+   Compiling pswap-distribution v1.1.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/pswap-distribution)
+   Compiling mock-liquidity-source v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/mock-liquidity-source)
+   Compiling eth-bridge v0.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/eth-bridge)
+   Compiling faucet v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/faucet)
+   Compiling kensetsu v0.0.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/kensetsu)
+   Compiling vested-rewards-runtime-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/vested-rewards/runtime-api)
+   Compiling ceres-liquidity-locker v1.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/ceres-liquidity-locker)
+   Compiling order-book v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/order-book)
+   Compiling liquidity-proxy v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/liquidity-proxy)
+   Compiling pallet-beefy-mmr v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling dex-api v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/dex-api)
+   Compiling bp-relayers v0.26.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling demeter-farming-platform v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/demeter-farming-platform)
+   Compiling presto v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/presto)
+   Compiling order-book-benchmarking v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/order-book/benchmarking)
+   Compiling pool-xyk v1.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/pool-xyk)
+   Compiling price-tools v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/price-tools)
+   Compiling beefy-light-client v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/beefy-light-client)
+   Compiling multicollateral-bonding-curve-pool v0.3.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/multicollateral-bonding-curve-pool)
+   Compiling xst v1.0.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/xst)
+   Compiling apollo-platform v1.3.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/apollo-platform)
+   Compiling pallet-polkamarkt v0.9.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/polkamarkt)
+   Compiling iroha-migration v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/iroha-migration)
+   Compiling vested-rewards v1.2.1 (/Users/takemiyamakoto/dev/sora2-network/pallets/vested-rewards)
+   Compiling qa-tools v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/qa-tools)
+   Compiling liquidity-proxy-benchmarking v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/liquidity-proxy/benchmarking)
+   Compiling ceres-launchpad v1.0.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/ceres-launchpad)
+   Compiling farming v1.2.0 (/Users/takemiyamakoto/dev/sora2-network/pallets/farming)
+   Compiling staging-xcm-builder v26.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling xcm-runtime-apis v0.13.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling snowbridge-core v0.19.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-xcm v26.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling snowbridge-pallet-ethereum-client v0.21.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling framenode-chain-spec v4.8.9 (/Users/takemiyamakoto/dev/sora2-network/node/chain_spec)
+    Finished `release` profile [optimized] target(s) in 4m 55s
+     Running unittests src/lib.rs (target/release/deps/framenode_runtime-32770c40a912457d)
+
+running 3 tests
+test tests::babe_config::configuration_uses_genesis_fallback_before_epoch_storage_exists ... ok
+thread 'tests::babe_config::configuration_preserves_future_vrf_mode_and_nondefault_probability' panicked at runtime/src/tests/babe_config.rs:56:9:
+assertion `left == right` failed
+  left: ((1, 4), PrimaryAndSecondaryVRFSlots)
+ right: ((2, 7), PrimaryAndSecondaryVRFSlots)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+thread 'tests::babe_config::configuration_uses_active_plain_slot_mode_and_probability' panicked at runtime/src/tests/babe_config.rs:36:9:
+assertion `left == right` failed: configuration() must agree with the active epoch, including after repair
+  left: ((1, 4), PrimaryAndSecondaryVRFSlots)
+ right: ((1, 5), PrimaryAndSecondaryPlainSlots)
+test tests::babe_config::configuration_preserves_future_vrf_mode_and_nondefault_probability ... FAILED
+test tests::babe_config::configuration_uses_active_plain_slot_mode_and_probability ... FAILED
+
+failures:
+
+failures:
+    tests::babe_config::configuration_preserves_future_vrf_mode_and_nondefault_probability
+    tests::babe_config::configuration_uses_active_plain_slot_mode_and_probability
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 191 filtered out; finished in 0.06s
+
+error: test failed, to rerun pass `-p framenode-runtime --lib`

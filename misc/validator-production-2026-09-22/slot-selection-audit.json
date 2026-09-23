@@ -1,0 +1,516 @@
+{
+  "checkedAt": "2026-09-22T10:46:22.721Z",
+  "localOnly": true,
+  "networkRequests": 0,
+  "privateKeysRead": 0,
+  "signaturesCreated": 0,
+  "submittedTransactions": 0,
+  "sdkRevision": "e3737178ec726cffe506c907263aaaa417893fd0",
+  "sourceHashes": {
+    "substrate/client/consensus/babe/src/authorship.rs": "392ba964542d8c090f4f8e00fe649b5578ac48f71148c0c75ccc363d16ff3506",
+    "substrate/client/consensus/babe/src/verification.rs": "941120d5bd93e930f7cbdcd794224bbe8df2abccd67662658e2bf8cd5e523043",
+    "substrate/primitives/consensus/babe/src/lib.rs": "d9bd66cd4ad5efe8dbd7eb13274a5f88b98d5da0026ec5572716e90179295cec",
+    "substrate/primitives/consensus/babe/src/digests.rs": "9669556b32836cc4957fac65cf9c78b8d80664a2723f6fbcf95be503fa166bd9"
+  },
+  "referenceHash": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e4",
+  "testVector": {
+    "source": "authorship.rs::tests::secondary_slot_author_selection_works",
+    "randomness": "0x0303030303030303030303030303030303030303030303030303030303030303",
+    "slot": 100,
+    "authorities": 1000,
+    "expectedIndex": 167,
+    "actualIndex": 167
+  },
+  "limits": [
+    "Secondary assignments are opportunities; a competing primary block may win the same slot.",
+    "Arithmetic is independently implemented in JavaScript and checked against the pinned SDK test vector; this is not execution of the Rust node verifier.",
+    "Raw epoch configurations are independently decoded as two LE-u64 values followed by AllowedSlots: 0=Primary, 1=Plain, 2=VRF, matching the exact pinned Rust enum declaration.",
+    "Public-key decoding and canonical seal verification use existing JavaScript cryptographic libraries; no validator private key is used.",
+    "Historical seals use that epoch authority list where captured; otherwise the current snapshot public key is identified explicitly."
+  ],
+  "rawEpochConfigurations": [
+    {
+      "label": "reference",
+      "block": 27734948,
+      "hash": "0x193b0c9000b1ecf56a883ffc170b6251d9832e478f089ef9052ec1d612a523e4",
+      "epochConfig": {
+        "raw": "0x0100000000000000040000000000000002",
+        "discriminant": 2,
+        "decoded": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      },
+      "nextEpochConfig": {
+        "raw": "0x0100000000000000040000000000000002",
+        "discriminant": 2,
+        "decoded": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      }
+    },
+    {
+      "label": "latest",
+      "block": 27735177,
+      "hash": "0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391",
+      "epochConfig": {
+        "raw": "0x0100000000000000040000000000000002",
+        "discriminant": 2,
+        "decoded": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      },
+      "nextEpochConfig": {
+        "raw": "0x0100000000000000040000000000000002",
+        "discriminant": 2,
+        "decoded": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+        }
+      }
+    }
+  ],
+  "publicKeys": [
+    {
+      "index": 0,
+      "publicKey": "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 1,
+      "publicKey": "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 2,
+      "publicKey": "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 3,
+      "publicKey": "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 4,
+      "publicKey": "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 5,
+      "publicKey": "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 6,
+      "publicKey": "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 7,
+      "publicKey": "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 8,
+      "publicKey": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 9,
+      "publicKey": "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 10,
+      "publicKey": "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 11,
+      "publicKey": "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 12,
+      "publicKey": "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 13,
+      "publicKey": "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    },
+    {
+      "index": 14,
+      "publicKey": "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+      "weight": 1,
+      "validNonidentityRistrettoPoint": true
+    }
+  ],
+  "epochs": [
+    {
+      "session": 47368,
+      "hash": "0xb0689845bbb5c4a04cea3418124d134b3ed86c8a1561a851b31c19a0c9073276",
+      "randomness": "0x2da3099d7cb76eb8d94cf6389a9619739e2442085cc2e8c1293e3500d954f793",
+      "startSlot": "298344510",
+      "endSlotExclusive": "298345110",
+      "epochConfig": {
+        "c": [
+          1,
+          4
+        ],
+        "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+      },
+      "validators": [
+        {
+          "index": 0,
+          "publicKey": "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+          "weight": 1,
+          "secondaryAssignments": 46,
+          "observedCanonicalBlocks": 48,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 1,
+          "publicKey": "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+          "weight": 1,
+          "secondaryAssignments": 44,
+          "observedCanonicalBlocks": 45,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 2,
+          "publicKey": "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+          "weight": 1,
+          "secondaryAssignments": 44,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 3,
+          "publicKey": "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+          "weight": 1,
+          "secondaryAssignments": 42,
+          "observedCanonicalBlocks": 42,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 4,
+          "publicKey": "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+          "weight": 1,
+          "secondaryAssignments": 36,
+          "observedCanonicalBlocks": 37,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 5,
+          "publicKey": "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+          "weight": 1,
+          "secondaryAssignments": 46,
+          "observedCanonicalBlocks": 52,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 6,
+          "publicKey": "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+          "weight": 1,
+          "secondaryAssignments": 42,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 7,
+          "publicKey": "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+          "weight": 1,
+          "secondaryAssignments": 36,
+          "observedCanonicalBlocks": 42,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 8,
+          "publicKey": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+          "weight": 1,
+          "secondaryAssignments": 37,
+          "observedCanonicalBlocks": 48,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 9,
+          "publicKey": "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+          "weight": 1,
+          "secondaryAssignments": 30,
+          "observedCanonicalBlocks": 31,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 10,
+          "publicKey": "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+          "weight": 1,
+          "secondaryAssignments": 44,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 11,
+          "publicKey": "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+          "weight": 1,
+          "secondaryAssignments": 40,
+          "observedCanonicalBlocks": 52,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 12,
+          "publicKey": "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+          "weight": 1,
+          "secondaryAssignments": 37,
+          "observedCanonicalBlocks": 36,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 13,
+          "publicKey": "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+          "weight": 1,
+          "secondaryAssignments": 44,
+          "observedCanonicalBlocks": 39,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 14,
+          "publicKey": "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+          "weight": 1,
+          "secondaryAssignments": 32,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        }
+      ]
+    },
+    {
+      "session": 47367,
+      "hash": "0xa5b8b8f42ad27d383285bb04a41f3c3fa0a3393f96eecc9be2bce0a0b92f8de9",
+      "randomness": "0xe78d392cf2aa377d5f4336094f0b485f6a3b558973b72a7dfeb9fe6e590890bf",
+      "startSlot": "298343910",
+      "endSlotExclusive": "298344510",
+      "epochConfig": {
+        "c": [
+          1,
+          4
+        ],
+        "allowedSlots": "PrimaryAndSecondaryVRFSlots"
+      },
+      "validators": [
+        {
+          "index": 0,
+          "publicKey": "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+          "weight": 1,
+          "secondaryAssignments": 36,
+          "observedCanonicalBlocks": 34,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 1,
+          "publicKey": "0xde26428de10054885666e95e0126a60669f2995b71e0a305626282adf8772036",
+          "weight": 1,
+          "secondaryAssignments": 37,
+          "observedCanonicalBlocks": 33,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 2,
+          "publicKey": "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+          "weight": 1,
+          "secondaryAssignments": 30,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 3,
+          "publicKey": "0xe8b639c614dfc55e3badf785dc393510decce678e1ded870654809e1d5921339",
+          "weight": 1,
+          "secondaryAssignments": 38,
+          "observedCanonicalBlocks": 44,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 4,
+          "publicKey": "0xb8876d6ad9a928f8cf1bd29de64aa1a74890fa748430bc0f173e87aa0e1a9508",
+          "weight": 1,
+          "secondaryAssignments": 49,
+          "observedCanonicalBlocks": 51,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 5,
+          "publicKey": "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+          "weight": 1,
+          "secondaryAssignments": 33,
+          "observedCanonicalBlocks": 37,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 6,
+          "publicKey": "0x46dfbef5007527966b67e220209cbd72d71defd7297615811de8b14ec5ef9c0b",
+          "weight": 1,
+          "secondaryAssignments": 42,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 7,
+          "publicKey": "0xa2eca3f6054f4950c8d953a00384c6108bd12d39accb35ef66fe1083c7cc915f",
+          "weight": 1,
+          "secondaryAssignments": 35,
+          "observedCanonicalBlocks": 38,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 8,
+          "publicKey": "0x38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004",
+          "weight": 1,
+          "secondaryAssignments": 45,
+          "observedCanonicalBlocks": 43,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 9,
+          "publicKey": "0x6a070cae8626883c01526089c00ba8b977c2c90a6363b260d3ea0938f672e16e",
+          "weight": 1,
+          "secondaryAssignments": 45,
+          "observedCanonicalBlocks": 41,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 10,
+          "publicKey": "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+          "weight": 1,
+          "secondaryAssignments": 37,
+          "observedCanonicalBlocks": 39,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 11,
+          "publicKey": "0x6cf466f4954b36c0536c387e921fd9353d5b23866d69c2005a0746accbdd5329",
+          "weight": 1,
+          "secondaryAssignments": 38,
+          "observedCanonicalBlocks": 47,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 12,
+          "publicKey": "0xb8a7fb982c95648e78eb9f091358f07e0cb0f7c3b4292de4d516c5dcaf752d56",
+          "weight": 1,
+          "secondaryAssignments": 48,
+          "observedCanonicalBlocks": 58,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 13,
+          "publicKey": "0x00a7b28ac98112096dd7efb00070553393ba699ce3d6e5056e9703dc5907f065",
+          "weight": 1,
+          "secondaryAssignments": 46,
+          "observedCanonicalBlocks": 46,
+          "primarySelectionProbability": 0.01899606168258583
+        },
+        {
+          "index": 14,
+          "publicKey": "0x9a2fb07ce1dacb70ebb80f68d8ede985df975c41c3c1de3e3020f80b47e10248",
+          "weight": 1,
+          "secondaryAssignments": 41,
+          "observedCanonicalBlocks": 0,
+          "primarySelectionProbability": 0.01899606168258583
+        }
+      ]
+    }
+  ],
+  "canonicalHeaders": [
+    {
+      "block": 27732419,
+      "hash": "0x9359e649be00d9c38128ccef40df6af736e5068770d5f18d6eed1a7721ae96cf",
+      "session": 47364,
+      "epochSource": "completed-session storage snapshot",
+      "stash": "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+      "index": 2,
+      "slot": "298342283",
+      "variant": "SecondaryPlain",
+      "preDigestHex": "0x02020000008b57c81100000000",
+      "preDigestBytes": 13,
+      "headerHashMatches": true,
+      "publicKey": "0xa0ca47176ebbf7343d393229fefb20133b2923db24fad8056d3eebd0960fb52e",
+      "publicKeySource": "current snapshot authority",
+      "sealValid": true,
+      "expectedSecondaryIndex": null,
+      "capturedRuntimeAllowedSlots": null,
+      "permittedByCapturedRuntimeEpoch": null,
+      "sdkRejectionWhenDisallowed": null
+    },
+    {
+      "block": 27734279,
+      "hash": "0x2185b1c7f1de711add7c0b98ab263e23d2ef6f0cecaddd78701c295230d91c04",
+      "session": 47367,
+      "epochSource": "completed-session storage snapshot",
+      "stash": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
+      "index": 10,
+      "slot": "298344455",
+      "variant": "SecondaryPlain",
+      "preDigestHex": "0x020a0000000760c81100000000",
+      "preDigestBytes": 13,
+      "headerHashMatches": true,
+      "publicKey": "0x106f41c12cf32e7292bf8923ec55c3c3ad7a481da6d3087ad9c90b0455be9619",
+      "publicKeySource": "captured epoch authorities",
+      "sealValid": true,
+      "expectedSecondaryIndex": 10,
+      "capturedRuntimeAllowedSlots": "PrimaryAndSecondaryVRFSlots",
+      "permittedByCapturedRuntimeEpoch": false,
+      "sdkRejectionWhenDisallowed": "SecondarySlotAssignmentsDisabled"
+    },
+    {
+      "block": 27735177,
+      "hash": "0x10fdab9d0ed95dc57ddb86163aa88f678a2e7d391743ce91806e6990d97f1391",
+      "session": 47369,
+      "epochSource": "same-block BabeApi_current_epoch",
+      "stash": "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
+      "index": 5,
+      "slot": "298345599",
+      "variant": "SecondaryPlain",
+      "preDigestHex": "0x02050000007f64c81100000000",
+      "preDigestBytes": 13,
+      "headerHashMatches": true,
+      "publicKey": "0x9467d2cc0de8b7f1b23b2d87a8ecc45325e41a8ebaccdceb3f1279180b655b08",
+      "publicKeySource": "captured epoch authorities",
+      "sealValid": true,
+      "expectedSecondaryIndex": 5,
+      "capturedRuntimeAllowedSlots": "PrimaryAndSecondaryVRFSlots",
+      "permittedByCapturedRuntimeEpoch": false,
+      "sdkRejectionWhenDisallowed": "SecondarySlotAssignmentsDisabled"
+    }
+  ],
+  "status": "passed"
+}

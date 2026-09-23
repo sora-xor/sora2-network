@@ -40,6 +40,7 @@
 
 #[macro_use]
 mod service;
+mod babe_epoch_repair;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 mod cli;

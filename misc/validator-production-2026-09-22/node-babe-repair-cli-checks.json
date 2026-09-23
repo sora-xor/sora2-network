@@ -1,0 +1,72 @@
+{
+  "binary": "/Users/takemiyamakoto/dev/sora2-network/target/release/framenode",
+  "sha256": "46fb25c9e409bbc5b71a166ec9cf88510b429321eb276aea46b10c65d0597566",
+  "size_bytes": 96381040,
+  "file": "/Users/takemiyamakoto/dev/sora2-network/target/release/framenode: Mach-O 64-bit executable arm64",
+  "checks": [
+    {
+      "name": "version",
+      "arguments": [
+        "--version"
+      ],
+      "exit_code": 0,
+      "output": "framenode 4.8.10-282f4679b-aarch64-apple-darwin\n\n"
+    },
+    {
+      "name": "repair help",
+      "arguments": [
+        "repair-babe-epoch-cache",
+        "--help"
+      ],
+      "exit_code": 0,
+      "output": "Inspect or explicitly repair the known SORA mainnet BABE epoch cache mismatch offline\n\nUsage: framenode repair-babe-epoch-cache [OPTIONS] <--database <DB>>\n\nOptions:\n      --apply\n          Commit the verified repair. Without this flag the command only diagnoses the cache\n\n      --backup <BACKUP>\n          New backup file for the original cache and its evidence. Existing files are never replaced\n\n      --chain <CHAIN_SPEC>\n          Specify the chain specification.\n          \n          It can be one of the predefined ones (dev, local, or staging) or it can be a path to a\n          file with the chainspec (such as one exported by the `build-spec` subcommand).\n\n      --dev\n          Specify the development chain.\n          \n          This flag sets `--chain=dev`, `--force-authoring`, `--rpc-cors=all`, `--alice`, and\n          `--tmp` flags, unless explicitly overridden. It also disables local peer discovery (see\n          `--no-mdns` and `--discover-local`). With this flag some nodes might start with manual\n          seal, producing blocks at certain events (e.g. `polkadot-omni-node`, which produces blocks\n          at certain intervals dictated by `--dev-block-time`).\n\n  -d, --base-path <PATH>\n          Specify custom base path\n\n  -l, --log <LOG_PATTERN>...\n          Sets a custom logging filter (syntax: `<target>=<level>`).\n          \n          Log levels (least to most verbose) are `error`, `warn`, `info`, `debug`, and `trace`.\n          \n          By default, all targets log `info`. The global log level can be set with `-l<level>`.\n          \n          Multiple `<target>=<level>` entries can be specified and separated by a comma.\n          \n          *Example*: `--log error,sync=debug,grandpa=warn`. Sets Global log level to `error`, sets\n          `sync` target to debug and grandpa target to `warn`.\n\n      --detailed-log-output\n          Enable detailed log output.\n          \n          Includes displaying the log target, log level and thread name.\n          \n          This is automatically enabled when something is logged with any higher level than `info`.\n\n      --disable-log-color\n          Disable log color output\n\n      --enable-log-reloading\n          Enable feature to dynamically update and reload the log filter.\n          \n          Be aware that enabling this feature can lead to a performance decrease up to factor six or\n          more. Depending on the global logging level the performance decrease changes.\n          \n          The `system_addLogFilter` and `system_resetLogFilter` RPCs will have no effect with this\n          option not being set.\n\n      --tracing-targets <TARGETS>\n          Sets a custom profiling filter.\n          \n          Syntax is the same as for logging (`--log`).\n\n      --tracing-receiver <RECEIVER>\n          Receiver to process tracing messages\n\n          Possible values:\n          - log: Output the tracing records using the log\n          \n          [default: log]\n\n      --state-pruning <PRUNING_MODE>\n          Specify the state pruning mode.\n          \n          This mode specifies when the block's state (ie, storage) should be pruned (ie, removed)\n          from the database. This setting can only be set on the first creation of the database.\n          Every subsequent run will load the pruning mode from the database and will error if the\n          stored mode doesn't match this CLI value. It is fine to drop this CLI flag for subsequent\n          runs. The only exception is that `NUMBER` can change between subsequent runs (increasing\n          it will not lead to restoring pruned state).\n          \n          Possible values:\n          \n          - archive: Keep the data of all blocks.\n          \n          - archive-canonical: Keep only the data of finalized blocks.\n          \n          - NUMBER: Keep the data of the last NUMBER of finalized blocks.\n          \n          [default: 256]\n\n      --blocks-pruning <PRUNING_MODE>\n          Specify the blocks pruning mode.\n          \n          This mode specifies when the block's body (including justifications) should be pruned (ie,\n          removed) from the database.\n          \n          Possible values:\n          \n          - archive: Keep the data of all blocks.\n          \n          - archive-canonical: Keep only the data of finalized blocks.\n          \n          - NUMBER: Keep the data of the last NUMBER of finalized blocks.\n          \n          [default: archive-canonical]\n\n      --database <DB>\n          Select database backend to use\n\n          Possible values:\n          - rocksdb:               Facebooks RocksDB\n          - paritydb:              ParityDb. <https://github.com/paritytech/parity-db/>\n          - auto:                  Detect whether there is an existing database. Use it, if there\n            is, if not, create new instance of ParityDb\n          - paritydb-experimental: ParityDb. <https://github.com/paritytech/parity-db/>\n\n      --db-cache <MiB>\n          Limit the memory the database cache can use\n\n  -h, --help\n          Print help (see a summary with '-h')\n\n  -V, --version\n          Print version\n"
+    },
+    {
+      "name": "backend selection required",
+      "arguments": [
+        "repair-babe-epoch-cache"
+      ],
+      "exit_code": 2,
+      "output": "error: the following required arguments were not provided:\n  <--database <DB>>\n\nUsage: framenode repair-babe-epoch-cache <--database <DB>>\n\nFor more information, try '--help'.\n"
+    },
+    {
+      "name": "apply requires backup",
+      "arguments": [
+        "repair-babe-epoch-cache",
+        "--database",
+        "rocksdb",
+        "--apply"
+      ],
+      "exit_code": 2,
+      "output": "error: the following required arguments were not provided:\n  --backup <BACKUP>\n\nUsage: framenode repair-babe-epoch-cache --apply --backup <BACKUP> <--database <DB>>\n\nFor more information, try '--help'.\n"
+    },
+    {
+      "name": "missing paritydb refused",
+      "arguments": [
+        "repair-babe-epoch-cache",
+        "--chain",
+        "main",
+        "--base-path",
+        "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-repair-cli-ynysi6tl",
+        "--database",
+        "paritydb"
+      ],
+      "exit_code": 1,
+      "output": "Error: Input(\"Existing ParityDB metadata is required; refusing to initialize a database\")\n"
+    },
+    {
+      "name": "missing rocksdb refused",
+      "arguments": [
+        "repair-babe-epoch-cache",
+        "--chain",
+        "main",
+        "--base-path",
+        "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-repair-cli-ynysi6tl",
+        "--database",
+        "rocksdb"
+      ],
+      "exit_code": 1,
+      "output": "Error: Input(\"An existing RocksDB database at SDK schema 4 is required\")\n"
+    }
+  ]
+}
