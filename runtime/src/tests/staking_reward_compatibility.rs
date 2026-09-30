@@ -195,6 +195,26 @@ fn published_val_budget_direct_payout_does_not_mint_or_compound_xor() {
                     .count(),
                 1,
             );
+            let events = System::events();
+            let started = events
+                .iter()
+                .position(|record| {
+                    matches!(
+                        &record.event,
+                        RuntimeEvent::Staking(pallet_staking::Event::PayoutStarted { .. })
+                    )
+                })
+                .expect("payout announces its era and page");
+            let rewarded = events
+                .iter()
+                .position(|record| {
+                    matches!(
+                        &record.event,
+                        RuntimeEvent::Staking(pallet_staking::Event::Rewarded { .. })
+                    )
+                })
+                .expect("VAL recipients emit standard reward events");
+            assert!(started < rewarded);
             assert!(payout(&fixture, fixture.era)
                 .dispatch(RuntimeOrigin::signed(fixture.validator.clone()))
                 .is_err());
@@ -291,7 +311,8 @@ fn migration_publishes_only_retained_completed_existing_entries_and_preserves_cl
         let fixture = setup(false);
         let current = 100;
         let active = 99;
-        let oldest = current - <Runtime as pallet_staking::Config>::HistoryDepth::get();
+        let depth: EraIndex = <Runtime as pallet_staking::Config>::HistoryDepth::get();
+        let oldest = current - depth;
         pallet_staking::CurrentEra::<Runtime>::put(current);
         pallet_staking::ActiveEra::<Runtime>::put(ActiveEraInfo {
             index: active,
