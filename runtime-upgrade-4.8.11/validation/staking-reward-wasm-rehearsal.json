@@ -1,0 +1,3842 @@
+{
+  "status": "passed",
+  "startedAt": "2026-09-30T00:37:47.291Z",
+  "localOnly": true,
+  "endpoint": "https://mof2.sora.org",
+  "pinnedBlockHash": "0xf15e54191c639a904ef74a62fc4250178445e15221988069dba92c0523bb49c7",
+  "pinnedBlockNumber": 27834097,
+  "executor": "@acala-network/chopsticks-core@1.5.1",
+  "mockSignatureHost": true,
+  "allowUnresolvedImports": true,
+  "offchainWorker": false,
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "realSignatures": 0,
+  "remoteRpcMethods": {
+    "state_getStorage": 1
+  },
+  "constraints": [
+    "Public RPC supplies block-hash-pinned state. The public provider accepts only enumerated read-only methods.",
+    "Only :code is manually replaced locally. Migration execution and payout changes come from this exact candidate Wasm.",
+    "Headers and local extrinsics use a synthetic BABE pre-digest and mocked signature host. Consensus validity and governance-origin enactment are not tested.",
+    "A normal fee-paying staking.payoutStakers extrinsic is executed locally. XOR transaction fees are recorded separately from staking reward issuance.",
+    "Normal legacy claim pruning may change ledger claim history; total, active and unlocking must remain identical."
+  ],
+  "payoutChecks": [
+    {
+      "method": "staking.payoutStakers",
+      "duplicate": false,
+      "callHex": "0x1112207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f3572391a1e0000",
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000000002393c0fc315e6c"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "PayoutStarted",
+          "data": [
+            7706,
+            "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+            0,
+            null
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            28904018163
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            7706,
+            0,
+            28904018163
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "Rewarded",
+          "data": [
+            "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            {
+              "stash": null
+            },
+            28904018163
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            "0x000000000000000009a5d6d189c6da82"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            7706,
+            0,
+            "0x000000000000000009a5d6d189c6da82"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "Rewarded",
+          "data": [
+            "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            {
+              "staked": null
+            },
+            "0x000000000000000009a5d6d189c6da82"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            "0x0000000000000000003be51594f45be2"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            7706,
+            0,
+            "0x0000000000000000003be51594f45be2"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "Rewarded",
+          "data": [
+            "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            {
+              "stash": null
+            },
+            "0x0000000000000000003be51594f45be2"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            "0x0000000000000000005b117ac09dc497"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            7706,
+            0,
+            "0x0000000000000000005b117ac09dc497"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "Rewarded",
+          "data": [
+            "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            {
+              "stash": null
+            },
+            "0x0000000000000000005b117ac09dc497"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Deposited",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            "0x000000000000000003ce59ceb700da73"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ValStakingRewardPaid",
+          "data": [
+            "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            7706,
+            0,
+            "0x000000000000000003ce59ceb700da73"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "Rewarded",
+          "data": [
+            "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            {
+              "account": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv"
+            },
+            "0x000000000000000003ce59ceb700da73"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000000002393c0fc315e6c"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            4123445224282067
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000010be0076add214"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            1178127206937733
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000000002393c0fc315e6c",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 9804610172,
+                "proofSize": 153051
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "totalValPaid": "1011945659813209697",
+      "valIssuanceBefore": "88351741564129954365396090",
+      "valIssuanceAfter": "88351742576075614178605787",
+      "xorIssuanceBefore": "34975597034283651594999494",
+      "xorIssuanceAfter": "34975597024269570336028762",
+      "signerXorFee": "10014081258970732",
+      "claimedPagesAfter": [
+        0
+      ],
+      "storageDiffEntries": 22,
+      "recipients": [
+        {
+          "before": {
+            "stash": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            "destination": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            "xor": {
+              "free": 1787490109844,
+              "reserved": 200984395105,
+              "frozen": 1020000000000,
+              "flags": "0x8000000000000000000000ed7cbcd800"
+            },
+            "val": {
+              "free": "0x0000000000000001490b58e5b6160e77",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+              "total": 200984395105,
+              "active": 200984395105,
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                5380,
+                5381,
+                5382,
+                5383,
+                5384,
+                5385,
+                5386,
+                5387,
+                5388,
+                5389,
+                5390,
+                5391,
+                5392,
+                5393,
+                5394,
+                5395,
+                5396,
+                5397,
+                5398,
+                5399,
+                5400,
+                5401,
+                5402,
+                5403,
+                5404,
+                5405,
+                5406,
+                5407,
+                5408,
+                5409,
+                5410,
+                5411,
+                5412,
+                5413,
+                5414,
+                5415,
+                5416,
+                5417,
+                5418,
+                5419,
+                5420,
+                5421,
+                5422,
+                5423,
+                5424,
+                5425,
+                5426,
+                5427,
+                5428,
+                5429,
+                5430,
+                5431,
+                5432,
+                5433,
+                5434,
+                5435,
+                5436,
+                5437,
+                5438,
+                5439,
+                5440,
+                5441,
+                5442,
+                5443,
+                5444,
+                5445,
+                5446,
+                5447,
+                5448,
+                5449,
+                5450,
+                5451,
+                5452,
+                5453,
+                5454,
+                5455,
+                5456,
+                5457,
+                5458,
+                5459,
+                5460,
+                5461,
+                5462,
+                5463
+              ]
+            }
+          },
+          "after": {
+            "stash": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            "destination": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+            "xor": {
+              "free": 1787490109844,
+              "reserved": 200984395105,
+              "frozen": 1020000000000,
+              "flags": "0x8000000000000000000000ed7cbcd800"
+            },
+            "val": {
+              "free": "0x0000000000000001490b58ec70e65f6a",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+              "total": 200984395105,
+              "active": 200984395105,
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                5380,
+                5381,
+                5382,
+                5383,
+                5384,
+                5385,
+                5386,
+                5387,
+                5388,
+                5389,
+                5390,
+                5391,
+                5392,
+                5393,
+                5394,
+                5395,
+                5396,
+                5397,
+                5398,
+                5399,
+                5400,
+                5401,
+                5402,
+                5403,
+                5404,
+                5405,
+                5406,
+                5407,
+                5408,
+                5409,
+                5410,
+                5411,
+                5412,
+                5413,
+                5414,
+                5415,
+                5416,
+                5417,
+                5418,
+                5419,
+                5420,
+                5421,
+                5422,
+                5423,
+                5424,
+                5425,
+                5426,
+                5427,
+                5428,
+                5429,
+                5430,
+                5431,
+                5432,
+                5433,
+                5434,
+                5435,
+                5436,
+                5437,
+                5438,
+                5439,
+                5440,
+                5441,
+                5442,
+                5443,
+                5444,
+                5445,
+                5446,
+                5447,
+                5448,
+                5449,
+                5450,
+                5451,
+                5452,
+                5453,
+                5454,
+                5455,
+                5456,
+                5457,
+                5458,
+                5459,
+                5460,
+                5461,
+                5462,
+                5463
+              ]
+            }
+          }
+        },
+        {
+          "before": {
+            "stash": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            "destination": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            "xor": {
+              "free": "0x00000000000000000198685939302e4f",
+              "reserved": "0x000000000000000029d014f6c6d71f86",
+              "frozen": "0x00000000000000003782dace9d900000",
+              "flags": "0x80000000000000003782dace9d900000"
+            },
+            "val": {
+              "free": "0x000000000000001e13a7df5f90116a53",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+              "total": "0x000000000000000029d014f6c6d71f86",
+              "active": "0x000000000000000029d014f6c6d71f86",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                4184,
+                4185,
+                4186,
+                4187,
+                4188,
+                4189,
+                4190,
+                4191,
+                4192,
+                4193,
+                4194,
+                4195,
+                4196,
+                4197,
+                4198,
+                4199,
+                4200,
+                4201,
+                4202,
+                4203,
+                4204,
+                4205,
+                4206,
+                4207,
+                4208,
+                4209,
+                4210,
+                4211,
+                4212,
+                4213,
+                4214,
+                4215,
+                4216,
+                4217,
+                4218,
+                4219,
+                4220,
+                4221,
+                4222,
+                4223,
+                4224,
+                4225,
+                4226,
+                4227,
+                4228,
+                4229,
+                4230,
+                4231,
+                4232,
+                4233,
+                4234,
+                4235,
+                4236,
+                4237,
+                4238,
+                4239,
+                4240,
+                4241,
+                4242,
+                4243,
+                4244,
+                4245,
+                4246,
+                4247,
+                4248,
+                4249,
+                4250,
+                4251,
+                4252,
+                4253,
+                4254,
+                4255,
+                4256,
+                4257,
+                4258,
+                4259,
+                4260,
+                4261,
+                4262,
+                4263,
+                4264,
+                4265,
+                4266,
+                4267
+              ]
+            }
+          },
+          "after": {
+            "stash": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            "destination": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+            "xor": {
+              "free": "0x00000000000000000198685939302e4f",
+              "reserved": "0x000000000000000029d014f6c6d71f86",
+              "frozen": "0x00000000000000003782dace9d900000",
+              "flags": "0x80000000000000003782dace9d900000"
+            },
+            "val": {
+              "free": "0x000000000000001e1d4db63119d844d5",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+              "total": "0x000000000000000029d014f6c6d71f86",
+              "active": "0x000000000000000029d014f6c6d71f86",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                4184,
+                4185,
+                4186,
+                4187,
+                4188,
+                4189,
+                4190,
+                4191,
+                4192,
+                4193,
+                4194,
+                4195,
+                4196,
+                4197,
+                4198,
+                4199,
+                4200,
+                4201,
+                4202,
+                4203,
+                4204,
+                4205,
+                4206,
+                4207,
+                4208,
+                4209,
+                4210,
+                4211,
+                4212,
+                4213,
+                4214,
+                4215,
+                4216,
+                4217,
+                4218,
+                4219,
+                4220,
+                4221,
+                4222,
+                4223,
+                4224,
+                4225,
+                4226,
+                4227,
+                4228,
+                4229,
+                4230,
+                4231,
+                4232,
+                4233,
+                4234,
+                4235,
+                4236,
+                4237,
+                4238,
+                4239,
+                4240,
+                4241,
+                4242,
+                4243,
+                4244,
+                4245,
+                4246,
+                4247,
+                4248,
+                4249,
+                4250,
+                4251,
+                4252,
+                4253,
+                4254,
+                4255,
+                4256,
+                4257,
+                4258,
+                4259,
+                4260,
+                4261,
+                4262,
+                4263,
+                4264,
+                4265,
+                4266,
+                4267
+              ]
+            }
+          }
+        },
+        {
+          "before": {
+            "stash": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            "destination": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            "xor": {
+              "free": "0x000000000000000083270b85dd963f5e",
+              "reserved": "0x00000000000000000103945ebc9558e1",
+              "frozen": "0x0000000000000000132e03ce445b900b",
+              "flags": "0x8000000000000000132e03ce445b900b"
+            },
+            "val": {
+              "free": "0x0000000000000002492700999619f2ff",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+              "total": "0x00000000000000000103945ebc9558e1",
+              "active": "0x00000000000000000103945ebc9558e1",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                5456,
+                5457,
+                5458,
+                5459,
+                5460,
+                5461,
+                5462,
+                5463,
+                5464,
+                5465,
+                5466,
+                5467,
+                5468,
+                5469,
+                5470,
+                5471,
+                5472,
+                5473,
+                5474,
+                5475,
+                5476,
+                5477,
+                5478,
+                5479,
+                5480,
+                5481,
+                5482,
+                5483,
+                5484,
+                5485,
+                5486,
+                5487,
+                5488,
+                5489,
+                5490,
+                5491,
+                5492,
+                5493,
+                5494,
+                5495,
+                5496,
+                5497,
+                5498,
+                5499,
+                5500,
+                5501,
+                5502,
+                5503,
+                5504,
+                5505,
+                5506,
+                5507,
+                5508,
+                5509,
+                5510,
+                5511,
+                5512,
+                5513,
+                5514,
+                5515,
+                5516,
+                5517,
+                5518,
+                5519,
+                5520,
+                5521,
+                5522,
+                5523,
+                5524,
+                5525,
+                5526,
+                5527,
+                5528,
+                5529,
+                5530,
+                5531,
+                5532,
+                5533,
+                5534,
+                5535,
+                5536,
+                5537,
+                5538,
+                5539
+              ]
+            }
+          },
+          "after": {
+            "stash": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            "destination": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+            "xor": {
+              "free": "0x000000000000000083270b85dd963f5e",
+              "reserved": "0x00000000000000000103945ebc9558e1",
+              "frozen": "0x0000000000000000132e03ce445b900b",
+              "flags": "0x8000000000000000132e03ce445b900b"
+            },
+            "val": {
+              "free": "0x00000000000000024962e5af2b0e4ee1",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+              "total": "0x00000000000000000103945ebc9558e1",
+              "active": "0x00000000000000000103945ebc9558e1",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                5456,
+                5457,
+                5458,
+                5459,
+                5460,
+                5461,
+                5462,
+                5463,
+                5464,
+                5465,
+                5466,
+                5467,
+                5468,
+                5469,
+                5470,
+                5471,
+                5472,
+                5473,
+                5474,
+                5475,
+                5476,
+                5477,
+                5478,
+                5479,
+                5480,
+                5481,
+                5482,
+                5483,
+                5484,
+                5485,
+                5486,
+                5487,
+                5488,
+                5489,
+                5490,
+                5491,
+                5492,
+                5493,
+                5494,
+                5495,
+                5496,
+                5497,
+                5498,
+                5499,
+                5500,
+                5501,
+                5502,
+                5503,
+                5504,
+                5505,
+                5506,
+                5507,
+                5508,
+                5509,
+                5510,
+                5511,
+                5512,
+                5513,
+                5514,
+                5515,
+                5516,
+                5517,
+                5518,
+                5519,
+                5520,
+                5521,
+                5522,
+                5523,
+                5524,
+                5525,
+                5526,
+                5527,
+                5528,
+                5529,
+                5530,
+                5531,
+                5532,
+                5533,
+                5534,
+                5535,
+                5536,
+                5537,
+                5538,
+                5539
+              ]
+            }
+          }
+        },
+        {
+          "before": {
+            "stash": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            "destination": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            "xor": {
+              "free": "0x000000000000000011a38b6444352a12",
+              "reserved": "0x0000000000000000018aaeca77a23a10",
+              "frozen": "0x0000000000000000044d575b885f03ed",
+              "flags": "0x8000000000000000044d575b885f03ed"
+            },
+            "val": {
+              "free": "0x000000000000000040b6c833688e8b10",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+              "total": "0x0000000000000000018aaeca77a23a10",
+              "active": "0x0000000000000000018aaeca77a23a10",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                5506,
+                5507,
+                5508,
+                5509,
+                5510,
+                5511,
+                5512,
+                5513,
+                5514,
+                5515,
+                5516,
+                5517,
+                5518,
+                5519,
+                5520,
+                5521,
+                5522,
+                5523,
+                5524,
+                5525,
+                5526,
+                5527,
+                5528,
+                5529,
+                5530,
+                5531,
+                5532,
+                5533,
+                5534,
+                5535,
+                5536,
+                5537,
+                5538,
+                5539,
+                5540,
+                5541,
+                5542,
+                5543,
+                5544,
+                5545,
+                5546,
+                5547,
+                5548,
+                5549,
+                5550,
+                5551,
+                5552,
+                5553,
+                5554,
+                5555,
+                5556,
+                5557,
+                5558,
+                5559,
+                5560,
+                5561,
+                5562,
+                5563,
+                5564,
+                5565,
+                5566,
+                5567,
+                5568,
+                5569,
+                5570,
+                5571,
+                5572,
+                5573,
+                5574,
+                5575,
+                5576,
+                5577,
+                5578,
+                5579,
+                5580,
+                5581,
+                5582,
+                5583,
+                5584,
+                5585,
+                5586,
+                5587,
+                5588,
+                5589
+              ]
+            }
+          },
+          "after": {
+            "stash": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            "destination": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+            "xor": {
+              "free": "0x000000000000000011a38b6444352a12",
+              "reserved": "0x0000000000000000018aaeca77a23a10",
+              "frozen": "0x0000000000000000044d575b885f03ed",
+              "flags": "0x8000000000000000044d575b885f03ed"
+            },
+            "val": {
+              "free": "0x00000000000000004111d9ae292c4fa7",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+              "total": "0x0000000000000000018aaeca77a23a10",
+              "active": "0x0000000000000000018aaeca77a23a10",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                5506,
+                5507,
+                5508,
+                5509,
+                5510,
+                5511,
+                5512,
+                5513,
+                5514,
+                5515,
+                5516,
+                5517,
+                5518,
+                5519,
+                5520,
+                5521,
+                5522,
+                5523,
+                5524,
+                5525,
+                5526,
+                5527,
+                5528,
+                5529,
+                5530,
+                5531,
+                5532,
+                5533,
+                5534,
+                5535,
+                5536,
+                5537,
+                5538,
+                5539,
+                5540,
+                5541,
+                5542,
+                5543,
+                5544,
+                5545,
+                5546,
+                5547,
+                5548,
+                5549,
+                5550,
+                5551,
+                5552,
+                5553,
+                5554,
+                5555,
+                5556,
+                5557,
+                5558,
+                5559,
+                5560,
+                5561,
+                5562,
+                5563,
+                5564,
+                5565,
+                5566,
+                5567,
+                5568,
+                5569,
+                5570,
+                5571,
+                5572,
+                5573,
+                5574,
+                5575,
+                5576,
+                5577,
+                5578,
+                5579,
+                5580,
+                5581,
+                5582,
+                5583,
+                5584,
+                5585,
+                5586,
+                5587,
+                5588,
+                5589
+              ]
+            }
+          }
+        },
+        {
+          "before": {
+            "stash": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            "destination": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            "xor": {
+              "free": "0x0000000000000000013888a2ac093397",
+              "reserved": "0x0000000000000000107ec1e784cd8f10",
+              "frozen": "0x000000000000000019276f44f8e49f86",
+              "flags": "0x800000000000000019276f44f8e49f86"
+            },
+            "val": {
+              "free": "0x000000000000000352fcdc33f5c3d5b7",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+              "total": "0x0000000000000000107ec1e784cd8f10",
+              "active": "0x0000000000000000107ec1e784cd8f10",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                3318,
+                3319,
+                3320,
+                3321,
+                3322,
+                3323,
+                3324,
+                3325,
+                3326,
+                3327,
+                3328,
+                3329,
+                3330,
+                3331,
+                3332,
+                3333,
+                3334,
+                3335,
+                3336,
+                3337,
+                3338,
+                3339,
+                3340,
+                3341,
+                3342,
+                3343,
+                3344,
+                3345,
+                3346,
+                3347,
+                3348,
+                3349,
+                3350,
+                3351,
+                3352,
+                3353,
+                3354,
+                3355,
+                3356,
+                3357,
+                3358,
+                3359,
+                3360,
+                3361,
+                3362,
+                3363,
+                3364,
+                3365,
+                3366,
+                3367,
+                3368,
+                3369,
+                3370,
+                3371,
+                3372,
+                3373,
+                3374,
+                3375,
+                3376,
+                3377,
+                3378,
+                3379,
+                3380,
+                3381,
+                3382,
+                3383,
+                3384,
+                3385,
+                3386,
+                3387,
+                3388,
+                3389,
+                3390,
+                3391,
+                3392,
+                3393,
+                3394,
+                3395,
+                3396,
+                3397,
+                3398,
+                3399,
+                3400,
+                3401
+              ]
+            }
+          },
+          "after": {
+            "stash": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            "destination": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+            "xor": {
+              "free": "0x0000000000000000013888a2ac093397",
+              "reserved": "0x0000000000000000107ec1e784cd8f10",
+              "frozen": "0x000000000000000019276f44f8e49f86",
+              "flags": "0x800000000000000019276f44f8e49f86"
+            },
+            "val": {
+              "free": "0x000000000000000356cb3602acc4b02a",
+              "reserved": 0,
+              "frozen": 0
+            },
+            "ledger": {
+              "stash": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+              "total": "0x0000000000000000107ec1e784cd8f10",
+              "active": "0x0000000000000000107ec1e784cd8f10",
+              "unlocking": [],
+              "legacyClaimedRewards": [
+                3318,
+                3319,
+                3320,
+                3321,
+                3322,
+                3323,
+                3324,
+                3325,
+                3326,
+                3327,
+                3328,
+                3329,
+                3330,
+                3331,
+                3332,
+                3333,
+                3334,
+                3335,
+                3336,
+                3337,
+                3338,
+                3339,
+                3340,
+                3341,
+                3342,
+                3343,
+                3344,
+                3345,
+                3346,
+                3347,
+                3348,
+                3349,
+                3350,
+                3351,
+                3352,
+                3353,
+                3354,
+                3355,
+                3356,
+                3357,
+                3358,
+                3359,
+                3360,
+                3361,
+                3362,
+                3363,
+                3364,
+                3365,
+                3366,
+                3367,
+                3368,
+                3369,
+                3370,
+                3371,
+                3372,
+                3373,
+                3374,
+                3375,
+                3376,
+                3377,
+                3378,
+                3379,
+                3380,
+                3381,
+                3382,
+                3383,
+                3384,
+                3385,
+                3386,
+                3387,
+                3388,
+                3389,
+                3390,
+                3391,
+                3392,
+                3393,
+                3394,
+                3395,
+                3396,
+                3397,
+                3398,
+                3399,
+                3400,
+                3401
+              ]
+            }
+          }
+        }
+      ],
+      "validatorState": {
+        "before": {
+          "stash": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+          "destination": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+          "xor": {
+            "free": 0,
+            "reserved": 0,
+            "frozen": 0,
+            "flags": 0
+          },
+          "val": {
+            "free": "0x000000000000000035d9bd00d65697bb",
+            "reserved": 0,
+            "frozen": 0
+          },
+          "ledger": {
+            "stash": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+            "total": 0,
+            "active": 0,
+            "unlocking": [],
+            "legacyClaimedRewards": [
+              6679,
+              6680,
+              6681,
+              6682,
+              6683,
+              6684,
+              6685,
+              6686,
+              6687,
+              6688,
+              6689,
+              6690,
+              6691,
+              6692,
+              6693,
+              6694,
+              6695,
+              6696,
+              6697,
+              6698,
+              6699,
+              6700,
+              6701,
+              6702,
+              6703,
+              6704,
+              6705,
+              6706,
+              6707,
+              6708,
+              6709,
+              6710,
+              6711,
+              6712,
+              6713,
+              6714,
+              6715,
+              6716,
+              6717,
+              6718,
+              6719,
+              6720,
+              6721,
+              6722,
+              6723,
+              6724,
+              6725,
+              6726,
+              6727,
+              6728,
+              6729,
+              6730,
+              6731,
+              6732,
+              6733,
+              6734,
+              6735,
+              6736,
+              6737,
+              6738,
+              6739,
+              6740,
+              6741,
+              6742,
+              6743,
+              6744,
+              6745,
+              6746,
+              6747,
+              6748,
+              6749,
+              6750,
+              6751,
+              6752,
+              6753,
+              6754,
+              6755,
+              6756,
+              6757,
+              6758,
+              6759,
+              6760,
+              6761,
+              6762
+            ]
+          }
+        },
+        "after": {
+          "stash": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+          "destination": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+          "xor": {
+            "free": 0,
+            "reserved": 0,
+            "frozen": 0,
+            "flags": 0
+          },
+          "val": {
+            "free": "0x000000000000000035d9bd00d65697bb",
+            "reserved": 0,
+            "frozen": 0
+          },
+          "ledger": {
+            "stash": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+            "total": 0,
+            "active": 0,
+            "unlocking": [],
+            "legacyClaimedRewards": []
+          }
+        }
+      },
+      "passed": true
+    },
+    {
+      "method": "staking.payoutStakersByPage",
+      "duplicate": true,
+      "callHex": "0x111a207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f3572391a1e000000000000",
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 17,
+              "error": "0x0e000000"
+            }
+          }
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x00000000000000000023941e1e0cfe6c"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x00000000000000000023941e1e0cfe6c"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            4123609930164420
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000010be2c4a6077ba"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            1178174265761262
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x00000000000000000023941e1e0cfe6c",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 17,
+                "error": "0x0e000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 1220447682,
+                "proofSize": 10861
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "totalValPaid": "0",
+      "valIssuanceBefore": "88351742576075614178605787",
+      "valIssuanceAfter": "88351742576075614178605787",
+      "xorIssuanceBefore": "34975597024269570336028762",
+      "xorIssuanceAfter": "34975597014255089077058030",
+      "signerXorFee": "10014481258970732",
+      "claimedPagesAfter": [
+        0
+      ],
+      "storageDiffEntries": 12,
+      "recipients": [],
+      "decodedError": {
+        "section": "staking",
+        "name": "AlreadyClaimed"
+      },
+      "passed": true
+    },
+    {
+      "method": "staking.payoutStakers",
+      "duplicate": true,
+      "callHex": "0x1112207ed7bbf6fa0685dca5f24d6773a58ab9c710512d1087db5e47e0fe0f3572391a1e0000",
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 17,
+              "error": "0x0e000000"
+            }
+          }
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000000002393c0fc315e6c"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000000002393c0fc315e6c"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            4123445224282067
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000010be0076add214"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            1178127206937733
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000000002393c0fc315e6c",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 17,
+                "error": "0x0e000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 1220447682,
+                "proofSize": 10861
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "totalValPaid": "0",
+      "valIssuanceBefore": "88351742576075614178605787",
+      "valIssuanceAfter": "88351742576075614178605787",
+      "xorIssuanceBefore": "34975597024269570336028762",
+      "xorIssuanceAfter": "34975597014255489077058030",
+      "signerXorFee": "10014081258970732",
+      "claimedPagesAfter": [
+        0
+      ],
+      "storageDiffEntries": 12,
+      "recipients": [],
+      "decodedError": {
+        "section": "staking",
+        "name": "AlreadyClaimed"
+      },
+      "passed": true
+    }
+  ],
+  "dependencies": {
+    "manifest": {
+      "private": true,
+      "description": "Read-only public-state capture and local exact-Wasm staking reward compatibility validation",
+      "dependencies": {
+        "@acala-network/chopsticks-core": "1.5.1",
+        "@babel/runtime": "7.28.4",
+        "@polkadot/api": "16.5.6",
+        "@polkadot/keyring": "14.0.3",
+        "@sora-substrate/type-definitions": "1.27.7"
+      },
+      "name": "sora-staking-reward-compatibility-validation"
+    },
+    "installed": {
+      "@acala-network/chopsticks-core": "1.5.1",
+      "@babel/runtime": "7.28.4",
+      "@polkadot/api": "16.5.6",
+      "@polkadot/keyring": "14.0.3",
+      "@sora-substrate/type-definitions": "1.27.7"
+    },
+    "lockSha256": "9b8aa6f93ba09fe455c03f9ccd92080c0d89309d8ae59b59f6c16fdf1ab85fae"
+  },
+  "stage": "Applying local staking.payoutStakers duplicate",
+  "readCache": {
+    "path": "/tmp/sora-staking-reward-compatibility-public-read-cache.json.gz",
+    "content": "Immutable public storage scoped by block hash",
+    "existingValues": 3313,
+    "storageHits": 3495,
+    "keyPageHits": 191,
+    "fetchedValues": 1,
+    "fetchedKeyPages": 0,
+    "savedBytes": 3690855,
+    "sha256": "5c463bb516e7db35dba140ff80ca4cd22bf58c3f5fa2d45a7848bedc154ed8a1"
+  },
+  "deployedVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 132,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "stateVersion": 0
+  },
+  "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
+  "before": {
+    "marker": null,
+    "budgets": [
+      {
+        "era": 7624,
+        "standard": "0",
+        "val": "332997937638247599396",
+        "valPresent": true
+      },
+      {
+        "era": 7625,
+        "standard": "0",
+        "val": "320650014925704398364",
+        "valPresent": true
+      },
+      {
+        "era": 7626,
+        "standard": "0",
+        "val": "956075206332456587145",
+        "valPresent": true
+      },
+      {
+        "era": 7627,
+        "standard": "0",
+        "val": "609711014050980363948",
+        "valPresent": true
+      },
+      {
+        "era": 7628,
+        "standard": "0",
+        "val": "449579626543131424722",
+        "valPresent": true
+      },
+      {
+        "era": 7629,
+        "standard": "0",
+        "val": "2560339316348961365691",
+        "valPresent": true
+      },
+      {
+        "era": 7630,
+        "standard": "0",
+        "val": "1059184215536663312658",
+        "valPresent": true
+      },
+      {
+        "era": 7631,
+        "standard": "0",
+        "val": "751318138310764234275",
+        "valPresent": true
+      },
+      {
+        "era": 7632,
+        "standard": "0",
+        "val": "1794569444133736716351",
+        "valPresent": true
+      },
+      {
+        "era": 7633,
+        "standard": "0",
+        "val": "116375190947648151922",
+        "valPresent": true
+      },
+      {
+        "era": 7634,
+        "standard": "0",
+        "val": "57813980591259333097",
+        "valPresent": true
+      },
+      {
+        "era": 7635,
+        "standard": "0",
+        "val": "227512080796917644514",
+        "valPresent": true
+      },
+      {
+        "era": 7636,
+        "standard": "0",
+        "val": "21036060574987737155",
+        "valPresent": true
+      },
+      {
+        "era": 7637,
+        "standard": "0",
+        "val": "501404411915294020120",
+        "valPresent": true
+      },
+      {
+        "era": 7638,
+        "standard": "0",
+        "val": "543319267626607167759",
+        "valPresent": true
+      },
+      {
+        "era": 7639,
+        "standard": "0",
+        "val": "131149749694339444978",
+        "valPresent": true
+      },
+      {
+        "era": 7640,
+        "standard": "0",
+        "val": "433583115076513801548",
+        "valPresent": true
+      },
+      {
+        "era": 7641,
+        "standard": "0",
+        "val": "546682552145162117674",
+        "valPresent": true
+      },
+      {
+        "era": 7642,
+        "standard": "0",
+        "val": "46878846824320793750",
+        "valPresent": true
+      },
+      {
+        "era": 7643,
+        "standard": "0",
+        "val": "222754450067364791774",
+        "valPresent": true
+      },
+      {
+        "era": 7644,
+        "standard": "0",
+        "val": "225214731019587206783",
+        "valPresent": true
+      },
+      {
+        "era": 7645,
+        "standard": "0",
+        "val": "293731286139866795098",
+        "valPresent": true
+      },
+      {
+        "era": 7646,
+        "standard": "0",
+        "val": "609227854310652625358",
+        "valPresent": true
+      },
+      {
+        "era": 7647,
+        "standard": "0",
+        "val": "643079141335618264765",
+        "valPresent": true
+      },
+      {
+        "era": 7648,
+        "standard": "0",
+        "val": "331888541766379046908",
+        "valPresent": true
+      },
+      {
+        "era": 7649,
+        "standard": "0",
+        "val": "38844298159596767134",
+        "valPresent": true
+      },
+      {
+        "era": 7650,
+        "standard": "0",
+        "val": "1190133800317147145308",
+        "valPresent": true
+      },
+      {
+        "era": 7651,
+        "standard": "0",
+        "val": "1569518119057548067930",
+        "valPresent": true
+      },
+      {
+        "era": 7652,
+        "standard": "0",
+        "val": "6175760646121964063786",
+        "valPresent": true
+      },
+      {
+        "era": 7653,
+        "standard": "0",
+        "val": "223176270353717483755",
+        "valPresent": true
+      },
+      {
+        "era": 7654,
+        "standard": "0",
+        "val": "189123469702691637785",
+        "valPresent": true
+      },
+      {
+        "era": 7655,
+        "standard": "0",
+        "val": "192761823240247009494",
+        "valPresent": true
+      },
+      {
+        "era": 7656,
+        "standard": "0",
+        "val": "608409917232688611423",
+        "valPresent": true
+      },
+      {
+        "era": 7657,
+        "standard": "0",
+        "val": "44103239832963120714",
+        "valPresent": true
+      },
+      {
+        "era": 7658,
+        "standard": "0",
+        "val": "141798175014189383418",
+        "valPresent": true
+      },
+      {
+        "era": 7659,
+        "standard": "0",
+        "val": "713178918376826701418",
+        "valPresent": true
+      },
+      {
+        "era": 7660,
+        "standard": "0",
+        "val": "23219392480946279763",
+        "valPresent": true
+      },
+      {
+        "era": 7661,
+        "standard": "0",
+        "val": "12486110186519450679",
+        "valPresent": true
+      },
+      {
+        "era": 7662,
+        "standard": "0",
+        "val": "694905436848366623374",
+        "valPresent": true
+      },
+      {
+        "era": 7663,
+        "standard": "0",
+        "val": "748263725815873605356",
+        "valPresent": true
+      },
+      {
+        "era": 7664,
+        "standard": "0",
+        "val": "25490945572744916359",
+        "valPresent": true
+      },
+      {
+        "era": 7665,
+        "standard": "0",
+        "val": "22260136961731237177",
+        "valPresent": true
+      },
+      {
+        "era": 7666,
+        "standard": "0",
+        "val": "181333376259951594617",
+        "valPresent": true
+      },
+      {
+        "era": 7667,
+        "standard": "0",
+        "val": "214138240268525920058",
+        "valPresent": true
+      },
+      {
+        "era": 7668,
+        "standard": "0",
+        "val": "133553907223327385507",
+        "valPresent": true
+      },
+      {
+        "era": 7669,
+        "standard": "0",
+        "val": "577762495801893357603",
+        "valPresent": true
+      },
+      {
+        "era": 7670,
+        "standard": "0",
+        "val": "76044457536642537398",
+        "valPresent": true
+      },
+      {
+        "era": 7671,
+        "standard": "0",
+        "val": "1019290874566586803122",
+        "valPresent": true
+      },
+      {
+        "era": 7672,
+        "standard": "0",
+        "val": "2046483316904663726139",
+        "valPresent": true
+      },
+      {
+        "era": 7673,
+        "standard": "0",
+        "val": "2447064714685932766032",
+        "valPresent": true
+      },
+      {
+        "era": 7674,
+        "standard": "0",
+        "val": "4620224908671385587360",
+        "valPresent": true
+      },
+      {
+        "era": 7675,
+        "standard": "0",
+        "val": "556215837750604760357",
+        "valPresent": true
+      },
+      {
+        "era": 7676,
+        "standard": "0",
+        "val": "740889244177019003453",
+        "valPresent": true
+      },
+      {
+        "era": 7677,
+        "standard": "0",
+        "val": "105260973378178497948",
+        "valPresent": true
+      },
+      {
+        "era": 7678,
+        "standard": "0",
+        "val": "890501292892557453508",
+        "valPresent": true
+      },
+      {
+        "era": 7679,
+        "standard": "0",
+        "val": "13552684209841084752",
+        "valPresent": true
+      },
+      {
+        "era": 7680,
+        "standard": "0",
+        "val": "137962916821953354581",
+        "valPresent": true
+      },
+      {
+        "era": 7681,
+        "standard": "0",
+        "val": "88418551877936696239",
+        "valPresent": true
+      },
+      {
+        "era": 7682,
+        "standard": "0",
+        "val": "2116811671127794677270",
+        "valPresent": true
+      },
+      {
+        "era": 7683,
+        "standard": "0",
+        "val": "1115559469408988417024",
+        "valPresent": true
+      },
+      {
+        "era": 7684,
+        "standard": "0",
+        "val": "1156671150692423750084",
+        "valPresent": true
+      },
+      {
+        "era": 7685,
+        "standard": "0",
+        "val": "6708246299553764770185",
+        "valPresent": true
+      },
+      {
+        "era": 7686,
+        "standard": "0",
+        "val": "1597027353029089121840",
+        "valPresent": true
+      },
+      {
+        "era": 7687,
+        "standard": "0",
+        "val": "2458525489305406438092",
+        "valPresent": true
+      },
+      {
+        "era": 7688,
+        "standard": "0",
+        "val": "1247136769789334167894",
+        "valPresent": true
+      },
+      {
+        "era": 7689,
+        "standard": "0",
+        "val": "1755042664546566820661",
+        "valPresent": true
+      },
+      {
+        "era": 7690,
+        "standard": "0",
+        "val": "3504350160641843200290",
+        "valPresent": true
+      },
+      {
+        "era": 7691,
+        "standard": "0",
+        "val": "2594412151690723310705",
+        "valPresent": true
+      },
+      {
+        "era": 7692,
+        "standard": "0",
+        "val": "2420315446044804203678",
+        "valPresent": true
+      },
+      {
+        "era": 7693,
+        "standard": "0",
+        "val": "2904681201041068907025",
+        "valPresent": true
+      },
+      {
+        "era": 7694,
+        "standard": "0",
+        "val": "3053625275248217849128",
+        "valPresent": true
+      },
+      {
+        "era": 7695,
+        "standard": "0",
+        "val": "4533538916075180676090",
+        "valPresent": true
+      },
+      {
+        "era": 7696,
+        "standard": "0",
+        "val": "3298877932862352509505",
+        "valPresent": true
+      },
+      {
+        "era": 7697,
+        "standard": "0",
+        "val": "5886553194857019792914",
+        "valPresent": true
+      },
+      {
+        "era": 7698,
+        "standard": "0",
+        "val": "3254482238820903364520",
+        "valPresent": true
+      },
+      {
+        "era": 7699,
+        "standard": "0",
+        "val": "1003784849891245036444",
+        "valPresent": true
+      },
+      {
+        "era": 7700,
+        "standard": "0",
+        "val": "196108306947155937214",
+        "valPresent": true
+      },
+      {
+        "era": 7701,
+        "standard": "0",
+        "val": "438349279969639405554",
+        "valPresent": true
+      },
+      {
+        "era": 7702,
+        "standard": "0",
+        "val": "1312755878672869119399",
+        "valPresent": true
+      },
+      {
+        "era": 7703,
+        "standard": "0",
+        "val": "411105715915872753602",
+        "valPresent": true
+      },
+      {
+        "era": 7704,
+        "standard": "0",
+        "val": "1320249456124549465065",
+        "valPresent": true
+      },
+      {
+        "era": 7705,
+        "standard": "0",
+        "val": "522628506435209287137",
+        "valPresent": true
+      },
+      {
+        "era": 7706,
+        "standard": "0",
+        "val": "459778521960750367018",
+        "valPresent": true
+      }
+    ]
+  },
+  "candidate": {
+    "path": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/framenode-runtime-4.8.11.compact.compressed.wasm",
+    "bytes": 3055443,
+    "sha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 133,
+      "implVersion": 1,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    }
+  },
+  "initialize": {
+    "header": {
+      "parentHash": "0xf15e54191c639a904ef74a62fc4250178445e15221988069dba92c0523bb49c7",
+      "number": 27834098,
+      "stateRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "extrinsicsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": {
+        "logs": [
+          {
+            "preRuntime": [
+              "0x42414245",
+              "0x020e0000001f0eca1100000000"
+            ]
+          }
+        ]
+      }
+    },
+    "slot": 298454559,
+    "result": "0x01",
+    "storageDiffEntries": 147,
+    "runtimeLogs": [
+      {
+        "message": "⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      }
+    ]
+  },
+  "migrationBudgets": {
+    "before": [
+      {
+        "era": 7624,
+        "standard": "0",
+        "val": "332997937638247599396",
+        "valPresent": true
+      },
+      {
+        "era": 7625,
+        "standard": "0",
+        "val": "320650014925704398364",
+        "valPresent": true
+      },
+      {
+        "era": 7626,
+        "standard": "0",
+        "val": "956075206332456587145",
+        "valPresent": true
+      },
+      {
+        "era": 7627,
+        "standard": "0",
+        "val": "609711014050980363948",
+        "valPresent": true
+      },
+      {
+        "era": 7628,
+        "standard": "0",
+        "val": "449579626543131424722",
+        "valPresent": true
+      },
+      {
+        "era": 7629,
+        "standard": "0",
+        "val": "2560339316348961365691",
+        "valPresent": true
+      },
+      {
+        "era": 7630,
+        "standard": "0",
+        "val": "1059184215536663312658",
+        "valPresent": true
+      },
+      {
+        "era": 7631,
+        "standard": "0",
+        "val": "751318138310764234275",
+        "valPresent": true
+      },
+      {
+        "era": 7632,
+        "standard": "0",
+        "val": "1794569444133736716351",
+        "valPresent": true
+      },
+      {
+        "era": 7633,
+        "standard": "0",
+        "val": "116375190947648151922",
+        "valPresent": true
+      },
+      {
+        "era": 7634,
+        "standard": "0",
+        "val": "57813980591259333097",
+        "valPresent": true
+      },
+      {
+        "era": 7635,
+        "standard": "0",
+        "val": "227512080796917644514",
+        "valPresent": true
+      },
+      {
+        "era": 7636,
+        "standard": "0",
+        "val": "21036060574987737155",
+        "valPresent": true
+      },
+      {
+        "era": 7637,
+        "standard": "0",
+        "val": "501404411915294020120",
+        "valPresent": true
+      },
+      {
+        "era": 7638,
+        "standard": "0",
+        "val": "543319267626607167759",
+        "valPresent": true
+      },
+      {
+        "era": 7639,
+        "standard": "0",
+        "val": "131149749694339444978",
+        "valPresent": true
+      },
+      {
+        "era": 7640,
+        "standard": "0",
+        "val": "433583115076513801548",
+        "valPresent": true
+      },
+      {
+        "era": 7641,
+        "standard": "0",
+        "val": "546682552145162117674",
+        "valPresent": true
+      },
+      {
+        "era": 7642,
+        "standard": "0",
+        "val": "46878846824320793750",
+        "valPresent": true
+      },
+      {
+        "era": 7643,
+        "standard": "0",
+        "val": "222754450067364791774",
+        "valPresent": true
+      },
+      {
+        "era": 7644,
+        "standard": "0",
+        "val": "225214731019587206783",
+        "valPresent": true
+      },
+      {
+        "era": 7645,
+        "standard": "0",
+        "val": "293731286139866795098",
+        "valPresent": true
+      },
+      {
+        "era": 7646,
+        "standard": "0",
+        "val": "609227854310652625358",
+        "valPresent": true
+      },
+      {
+        "era": 7647,
+        "standard": "0",
+        "val": "643079141335618264765",
+        "valPresent": true
+      },
+      {
+        "era": 7648,
+        "standard": "0",
+        "val": "331888541766379046908",
+        "valPresent": true
+      },
+      {
+        "era": 7649,
+        "standard": "0",
+        "val": "38844298159596767134",
+        "valPresent": true
+      },
+      {
+        "era": 7650,
+        "standard": "0",
+        "val": "1190133800317147145308",
+        "valPresent": true
+      },
+      {
+        "era": 7651,
+        "standard": "0",
+        "val": "1569518119057548067930",
+        "valPresent": true
+      },
+      {
+        "era": 7652,
+        "standard": "0",
+        "val": "6175760646121964063786",
+        "valPresent": true
+      },
+      {
+        "era": 7653,
+        "standard": "0",
+        "val": "223176270353717483755",
+        "valPresent": true
+      },
+      {
+        "era": 7654,
+        "standard": "0",
+        "val": "189123469702691637785",
+        "valPresent": true
+      },
+      {
+        "era": 7655,
+        "standard": "0",
+        "val": "192761823240247009494",
+        "valPresent": true
+      },
+      {
+        "era": 7656,
+        "standard": "0",
+        "val": "608409917232688611423",
+        "valPresent": true
+      },
+      {
+        "era": 7657,
+        "standard": "0",
+        "val": "44103239832963120714",
+        "valPresent": true
+      },
+      {
+        "era": 7658,
+        "standard": "0",
+        "val": "141798175014189383418",
+        "valPresent": true
+      },
+      {
+        "era": 7659,
+        "standard": "0",
+        "val": "713178918376826701418",
+        "valPresent": true
+      },
+      {
+        "era": 7660,
+        "standard": "0",
+        "val": "23219392480946279763",
+        "valPresent": true
+      },
+      {
+        "era": 7661,
+        "standard": "0",
+        "val": "12486110186519450679",
+        "valPresent": true
+      },
+      {
+        "era": 7662,
+        "standard": "0",
+        "val": "694905436848366623374",
+        "valPresent": true
+      },
+      {
+        "era": 7663,
+        "standard": "0",
+        "val": "748263725815873605356",
+        "valPresent": true
+      },
+      {
+        "era": 7664,
+        "standard": "0",
+        "val": "25490945572744916359",
+        "valPresent": true
+      },
+      {
+        "era": 7665,
+        "standard": "0",
+        "val": "22260136961731237177",
+        "valPresent": true
+      },
+      {
+        "era": 7666,
+        "standard": "0",
+        "val": "181333376259951594617",
+        "valPresent": true
+      },
+      {
+        "era": 7667,
+        "standard": "0",
+        "val": "214138240268525920058",
+        "valPresent": true
+      },
+      {
+        "era": 7668,
+        "standard": "0",
+        "val": "133553907223327385507",
+        "valPresent": true
+      },
+      {
+        "era": 7669,
+        "standard": "0",
+        "val": "577762495801893357603",
+        "valPresent": true
+      },
+      {
+        "era": 7670,
+        "standard": "0",
+        "val": "76044457536642537398",
+        "valPresent": true
+      },
+      {
+        "era": 7671,
+        "standard": "0",
+        "val": "1019290874566586803122",
+        "valPresent": true
+      },
+      {
+        "era": 7672,
+        "standard": "0",
+        "val": "2046483316904663726139",
+        "valPresent": true
+      },
+      {
+        "era": 7673,
+        "standard": "0",
+        "val": "2447064714685932766032",
+        "valPresent": true
+      },
+      {
+        "era": 7674,
+        "standard": "0",
+        "val": "4620224908671385587360",
+        "valPresent": true
+      },
+      {
+        "era": 7675,
+        "standard": "0",
+        "val": "556215837750604760357",
+        "valPresent": true
+      },
+      {
+        "era": 7676,
+        "standard": "0",
+        "val": "740889244177019003453",
+        "valPresent": true
+      },
+      {
+        "era": 7677,
+        "standard": "0",
+        "val": "105260973378178497948",
+        "valPresent": true
+      },
+      {
+        "era": 7678,
+        "standard": "0",
+        "val": "890501292892557453508",
+        "valPresent": true
+      },
+      {
+        "era": 7679,
+        "standard": "0",
+        "val": "13552684209841084752",
+        "valPresent": true
+      },
+      {
+        "era": 7680,
+        "standard": "0",
+        "val": "137962916821953354581",
+        "valPresent": true
+      },
+      {
+        "era": 7681,
+        "standard": "0",
+        "val": "88418551877936696239",
+        "valPresent": true
+      },
+      {
+        "era": 7682,
+        "standard": "0",
+        "val": "2116811671127794677270",
+        "valPresent": true
+      },
+      {
+        "era": 7683,
+        "standard": "0",
+        "val": "1115559469408988417024",
+        "valPresent": true
+      },
+      {
+        "era": 7684,
+        "standard": "0",
+        "val": "1156671150692423750084",
+        "valPresent": true
+      },
+      {
+        "era": 7685,
+        "standard": "0",
+        "val": "6708246299553764770185",
+        "valPresent": true
+      },
+      {
+        "era": 7686,
+        "standard": "0",
+        "val": "1597027353029089121840",
+        "valPresent": true
+      },
+      {
+        "era": 7687,
+        "standard": "0",
+        "val": "2458525489305406438092",
+        "valPresent": true
+      },
+      {
+        "era": 7688,
+        "standard": "0",
+        "val": "1247136769789334167894",
+        "valPresent": true
+      },
+      {
+        "era": 7689,
+        "standard": "0",
+        "val": "1755042664546566820661",
+        "valPresent": true
+      },
+      {
+        "era": 7690,
+        "standard": "0",
+        "val": "3504350160641843200290",
+        "valPresent": true
+      },
+      {
+        "era": 7691,
+        "standard": "0",
+        "val": "2594412151690723310705",
+        "valPresent": true
+      },
+      {
+        "era": 7692,
+        "standard": "0",
+        "val": "2420315446044804203678",
+        "valPresent": true
+      },
+      {
+        "era": 7693,
+        "standard": "0",
+        "val": "2904681201041068907025",
+        "valPresent": true
+      },
+      {
+        "era": 7694,
+        "standard": "0",
+        "val": "3053625275248217849128",
+        "valPresent": true
+      },
+      {
+        "era": 7695,
+        "standard": "0",
+        "val": "4533538916075180676090",
+        "valPresent": true
+      },
+      {
+        "era": 7696,
+        "standard": "0",
+        "val": "3298877932862352509505",
+        "valPresent": true
+      },
+      {
+        "era": 7697,
+        "standard": "0",
+        "val": "5886553194857019792914",
+        "valPresent": true
+      },
+      {
+        "era": 7698,
+        "standard": "0",
+        "val": "3254482238820903364520",
+        "valPresent": true
+      },
+      {
+        "era": 7699,
+        "standard": "0",
+        "val": "1003784849891245036444",
+        "valPresent": true
+      },
+      {
+        "era": 7700,
+        "standard": "0",
+        "val": "196108306947155937214",
+        "valPresent": true
+      },
+      {
+        "era": 7701,
+        "standard": "0",
+        "val": "438349279969639405554",
+        "valPresent": true
+      },
+      {
+        "era": 7702,
+        "standard": "0",
+        "val": "1312755878672869119399",
+        "valPresent": true
+      },
+      {
+        "era": 7703,
+        "standard": "0",
+        "val": "411105715915872753602",
+        "valPresent": true
+      },
+      {
+        "era": 7704,
+        "standard": "0",
+        "val": "1320249456124549465065",
+        "valPresent": true
+      },
+      {
+        "era": 7705,
+        "standard": "0",
+        "val": "522628506435209287137",
+        "valPresent": true
+      },
+      {
+        "era": 7706,
+        "standard": "0",
+        "val": "459778521960750367018",
+        "valPresent": true
+      }
+    ],
+    "after": [
+      {
+        "era": 7624,
+        "standard": "332997937638247599396",
+        "val": "332997937638247599396",
+        "valPresent": true
+      },
+      {
+        "era": 7625,
+        "standard": "320650014925704398364",
+        "val": "320650014925704398364",
+        "valPresent": true
+      },
+      {
+        "era": 7626,
+        "standard": "956075206332456587145",
+        "val": "956075206332456587145",
+        "valPresent": true
+      },
+      {
+        "era": 7627,
+        "standard": "609711014050980363948",
+        "val": "609711014050980363948",
+        "valPresent": true
+      },
+      {
+        "era": 7628,
+        "standard": "449579626543131424722",
+        "val": "449579626543131424722",
+        "valPresent": true
+      },
+      {
+        "era": 7629,
+        "standard": "2560339316348961365691",
+        "val": "2560339316348961365691",
+        "valPresent": true
+      },
+      {
+        "era": 7630,
+        "standard": "1059184215536663312658",
+        "val": "1059184215536663312658",
+        "valPresent": true
+      },
+      {
+        "era": 7631,
+        "standard": "751318138310764234275",
+        "val": "751318138310764234275",
+        "valPresent": true
+      },
+      {
+        "era": 7632,
+        "standard": "1794569444133736716351",
+        "val": "1794569444133736716351",
+        "valPresent": true
+      },
+      {
+        "era": 7633,
+        "standard": "116375190947648151922",
+        "val": "116375190947648151922",
+        "valPresent": true
+      },
+      {
+        "era": 7634,
+        "standard": "57813980591259333097",
+        "val": "57813980591259333097",
+        "valPresent": true
+      },
+      {
+        "era": 7635,
+        "standard": "227512080796917644514",
+        "val": "227512080796917644514",
+        "valPresent": true
+      },
+      {
+        "era": 7636,
+        "standard": "21036060574987737155",
+        "val": "21036060574987737155",
+        "valPresent": true
+      },
+      {
+        "era": 7637,
+        "standard": "501404411915294020120",
+        "val": "501404411915294020120",
+        "valPresent": true
+      },
+      {
+        "era": 7638,
+        "standard": "543319267626607167759",
+        "val": "543319267626607167759",
+        "valPresent": true
+      },
+      {
+        "era": 7639,
+        "standard": "131149749694339444978",
+        "val": "131149749694339444978",
+        "valPresent": true
+      },
+      {
+        "era": 7640,
+        "standard": "433583115076513801548",
+        "val": "433583115076513801548",
+        "valPresent": true
+      },
+      {
+        "era": 7641,
+        "standard": "546682552145162117674",
+        "val": "546682552145162117674",
+        "valPresent": true
+      },
+      {
+        "era": 7642,
+        "standard": "46878846824320793750",
+        "val": "46878846824320793750",
+        "valPresent": true
+      },
+      {
+        "era": 7643,
+        "standard": "222754450067364791774",
+        "val": "222754450067364791774",
+        "valPresent": true
+      },
+      {
+        "era": 7644,
+        "standard": "225214731019587206783",
+        "val": "225214731019587206783",
+        "valPresent": true
+      },
+      {
+        "era": 7645,
+        "standard": "293731286139866795098",
+        "val": "293731286139866795098",
+        "valPresent": true
+      },
+      {
+        "era": 7646,
+        "standard": "609227854310652625358",
+        "val": "609227854310652625358",
+        "valPresent": true
+      },
+      {
+        "era": 7647,
+        "standard": "643079141335618264765",
+        "val": "643079141335618264765",
+        "valPresent": true
+      },
+      {
+        "era": 7648,
+        "standard": "331888541766379046908",
+        "val": "331888541766379046908",
+        "valPresent": true
+      },
+      {
+        "era": 7649,
+        "standard": "38844298159596767134",
+        "val": "38844298159596767134",
+        "valPresent": true
+      },
+      {
+        "era": 7650,
+        "standard": "1190133800317147145308",
+        "val": "1190133800317147145308",
+        "valPresent": true
+      },
+      {
+        "era": 7651,
+        "standard": "1569518119057548067930",
+        "val": "1569518119057548067930",
+        "valPresent": true
+      },
+      {
+        "era": 7652,
+        "standard": "6175760646121964063786",
+        "val": "6175760646121964063786",
+        "valPresent": true
+      },
+      {
+        "era": 7653,
+        "standard": "223176270353717483755",
+        "val": "223176270353717483755",
+        "valPresent": true
+      },
+      {
+        "era": 7654,
+        "standard": "189123469702691637785",
+        "val": "189123469702691637785",
+        "valPresent": true
+      },
+      {
+        "era": 7655,
+        "standard": "192761823240247009494",
+        "val": "192761823240247009494",
+        "valPresent": true
+      },
+      {
+        "era": 7656,
+        "standard": "608409917232688611423",
+        "val": "608409917232688611423",
+        "valPresent": true
+      },
+      {
+        "era": 7657,
+        "standard": "44103239832963120714",
+        "val": "44103239832963120714",
+        "valPresent": true
+      },
+      {
+        "era": 7658,
+        "standard": "141798175014189383418",
+        "val": "141798175014189383418",
+        "valPresent": true
+      },
+      {
+        "era": 7659,
+        "standard": "713178918376826701418",
+        "val": "713178918376826701418",
+        "valPresent": true
+      },
+      {
+        "era": 7660,
+        "standard": "23219392480946279763",
+        "val": "23219392480946279763",
+        "valPresent": true
+      },
+      {
+        "era": 7661,
+        "standard": "12486110186519450679",
+        "val": "12486110186519450679",
+        "valPresent": true
+      },
+      {
+        "era": 7662,
+        "standard": "694905436848366623374",
+        "val": "694905436848366623374",
+        "valPresent": true
+      },
+      {
+        "era": 7663,
+        "standard": "748263725815873605356",
+        "val": "748263725815873605356",
+        "valPresent": true
+      },
+      {
+        "era": 7664,
+        "standard": "25490945572744916359",
+        "val": "25490945572744916359",
+        "valPresent": true
+      },
+      {
+        "era": 7665,
+        "standard": "22260136961731237177",
+        "val": "22260136961731237177",
+        "valPresent": true
+      },
+      {
+        "era": 7666,
+        "standard": "181333376259951594617",
+        "val": "181333376259951594617",
+        "valPresent": true
+      },
+      {
+        "era": 7667,
+        "standard": "214138240268525920058",
+        "val": "214138240268525920058",
+        "valPresent": true
+      },
+      {
+        "era": 7668,
+        "standard": "133553907223327385507",
+        "val": "133553907223327385507",
+        "valPresent": true
+      },
+      {
+        "era": 7669,
+        "standard": "577762495801893357603",
+        "val": "577762495801893357603",
+        "valPresent": true
+      },
+      {
+        "era": 7670,
+        "standard": "76044457536642537398",
+        "val": "76044457536642537398",
+        "valPresent": true
+      },
+      {
+        "era": 7671,
+        "standard": "1019290874566586803122",
+        "val": "1019290874566586803122",
+        "valPresent": true
+      },
+      {
+        "era": 7672,
+        "standard": "2046483316904663726139",
+        "val": "2046483316904663726139",
+        "valPresent": true
+      },
+      {
+        "era": 7673,
+        "standard": "2447064714685932766032",
+        "val": "2447064714685932766032",
+        "valPresent": true
+      },
+      {
+        "era": 7674,
+        "standard": "4620224908671385587360",
+        "val": "4620224908671385587360",
+        "valPresent": true
+      },
+      {
+        "era": 7675,
+        "standard": "556215837750604760357",
+        "val": "556215837750604760357",
+        "valPresent": true
+      },
+      {
+        "era": 7676,
+        "standard": "740889244177019003453",
+        "val": "740889244177019003453",
+        "valPresent": true
+      },
+      {
+        "era": 7677,
+        "standard": "105260973378178497948",
+        "val": "105260973378178497948",
+        "valPresent": true
+      },
+      {
+        "era": 7678,
+        "standard": "890501292892557453508",
+        "val": "890501292892557453508",
+        "valPresent": true
+      },
+      {
+        "era": 7679,
+        "standard": "13552684209841084752",
+        "val": "13552684209841084752",
+        "valPresent": true
+      },
+      {
+        "era": 7680,
+        "standard": "137962916821953354581",
+        "val": "137962916821953354581",
+        "valPresent": true
+      },
+      {
+        "era": 7681,
+        "standard": "88418551877936696239",
+        "val": "88418551877936696239",
+        "valPresent": true
+      },
+      {
+        "era": 7682,
+        "standard": "2116811671127794677270",
+        "val": "2116811671127794677270",
+        "valPresent": true
+      },
+      {
+        "era": 7683,
+        "standard": "1115559469408988417024",
+        "val": "1115559469408988417024",
+        "valPresent": true
+      },
+      {
+        "era": 7684,
+        "standard": "1156671150692423750084",
+        "val": "1156671150692423750084",
+        "valPresent": true
+      },
+      {
+        "era": 7685,
+        "standard": "6708246299553764770185",
+        "val": "6708246299553764770185",
+        "valPresent": true
+      },
+      {
+        "era": 7686,
+        "standard": "1597027353029089121840",
+        "val": "1597027353029089121840",
+        "valPresent": true
+      },
+      {
+        "era": 7687,
+        "standard": "2458525489305406438092",
+        "val": "2458525489305406438092",
+        "valPresent": true
+      },
+      {
+        "era": 7688,
+        "standard": "1247136769789334167894",
+        "val": "1247136769789334167894",
+        "valPresent": true
+      },
+      {
+        "era": 7689,
+        "standard": "1755042664546566820661",
+        "val": "1755042664546566820661",
+        "valPresent": true
+      },
+      {
+        "era": 7690,
+        "standard": "3504350160641843200290",
+        "val": "3504350160641843200290",
+        "valPresent": true
+      },
+      {
+        "era": 7691,
+        "standard": "2594412151690723310705",
+        "val": "2594412151690723310705",
+        "valPresent": true
+      },
+      {
+        "era": 7692,
+        "standard": "2420315446044804203678",
+        "val": "2420315446044804203678",
+        "valPresent": true
+      },
+      {
+        "era": 7693,
+        "standard": "2904681201041068907025",
+        "val": "2904681201041068907025",
+        "valPresent": true
+      },
+      {
+        "era": 7694,
+        "standard": "3053625275248217849128",
+        "val": "3053625275248217849128",
+        "valPresent": true
+      },
+      {
+        "era": 7695,
+        "standard": "4533538916075180676090",
+        "val": "4533538916075180676090",
+        "valPresent": true
+      },
+      {
+        "era": 7696,
+        "standard": "3298877932862352509505",
+        "val": "3298877932862352509505",
+        "valPresent": true
+      },
+      {
+        "era": 7697,
+        "standard": "5886553194857019792914",
+        "val": "5886553194857019792914",
+        "valPresent": true
+      },
+      {
+        "era": 7698,
+        "standard": "3254482238820903364520",
+        "val": "3254482238820903364520",
+        "valPresent": true
+      },
+      {
+        "era": 7699,
+        "standard": "1003784849891245036444",
+        "val": "1003784849891245036444",
+        "valPresent": true
+      },
+      {
+        "era": 7700,
+        "standard": "196108306947155937214",
+        "val": "196108306947155937214",
+        "valPresent": true
+      },
+      {
+        "era": 7701,
+        "standard": "438349279969639405554",
+        "val": "438349279969639405554",
+        "valPresent": true
+      },
+      {
+        "era": 7702,
+        "standard": "1312755878672869119399",
+        "val": "1312755878672869119399",
+        "valPresent": true
+      },
+      {
+        "era": 7703,
+        "standard": "411105715915872753602",
+        "val": "411105715915872753602",
+        "valPresent": true
+      },
+      {
+        "era": 7704,
+        "standard": "1320249456124549465065",
+        "val": "1320249456124549465065",
+        "valPresent": true
+      },
+      {
+        "era": 7705,
+        "standard": "522628506435209287137",
+        "val": "522628506435209287137",
+        "valPresent": true
+      },
+      {
+        "era": 7706,
+        "standard": "459778521960750367018",
+        "val": "459778521960750367018",
+        "valPresent": true
+      }
+    ],
+    "claimsAndLedgerWrites": 0,
+    "nonzeroPublishedEras": 83
+  },
+  "timestamp": {
+    "value": 1790727354000,
+    "outcome": {
+      "ok": {
+        "ok": []
+      }
+    }
+  },
+  "signerSelection": {
+    "candidateSource": "Public council, session validators and their bonded controllers",
+    "estimatedPayoutFee": "236568745581258970732",
+    "minimumFree": "947274982325035882928",
+    "localFeeQuery": "TransactionPaymentApi_query_info",
+    "candidates": [
+      {
+        "address": "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+        "free": "9915833563072973681"
+      },
+      {
+        "address": "cnSN33HpCwZqxQ4iVf3voVUJ9jx9wPULVMXw6iVgPgkeneNtM",
+        "free": "2137678458737932549"
+      },
+      {
+        "address": "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
+        "free": "2811911620625931080"
+      },
+      {
+        "address": "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+        "free": "952709260594336029"
+      },
+      {
+        "address": "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+        "free": "34769638270129412250"
+      },
+      {
+        "address": "cnVcjvUEVGbK4LGLB9K382EEKm57dxtmGYdiFfnjEWWg9vr72",
+        "free": "17353059684541510326"
+      },
+      {
+        "address": "cnWA5jrFjKWE9e5Tv7nysnQLqC2kEzBthc83ekqnkiHLfE33q",
+        "free": "803106628883730636"
+      },
+      {
+        "address": "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le",
+        "free": "38855641585253904066"
+      },
+      {
+        "address": "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
+        "free": "756056205348283986"
+      },
+      {
+        "address": "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
+        "free": "340829"
+      },
+      {
+        "address": "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+        "free": "30952309898886709794"
+      },
+      {
+        "address": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
+        "free": "12953131884196562148"
+      },
+      {
+        "address": "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
+        "free": "588218986754152074"
+      },
+      {
+        "address": "cnTd2LcRRAi2yaqtof3URkjDEFADPAsFGF5UF4gsqwbBWiSHQ",
+        "free": "18551025515475813390"
+      },
+      {
+        "address": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+        "free": "1017394911782098095449"
+      }
+    ]
+  },
+  "signer": {
+    "address": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+    "free": "1017394911782098095449",
+    "storageOverrides": []
+  },
+  "upstreamDerive": {
+    "package": "@polkadot/api-derive@16.5.6",
+    "method": "staking.stakerRewardsMultiEras",
+    "customDerivesInstalled": false,
+    "stakerRewardsSourceSha256": "969f4abc35d8c37198e30aa5763bd7ed0cd5e8f76cc31b491f16efe1454b0818",
+    "rows": [
+      {
+        "account": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "0"
+              }
+            },
+            "pendingTotal": "0"
+          }
+        ]
+      },
+      {
+        "account": "cnSwc6gTdd9YQtnip4V3QvrBBTaELoGYfHmBhYXNrY2wEkMJm",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "41998706"
+              }
+            },
+            "pendingTotal": "41998706"
+          }
+        ]
+      },
+      {
+        "account": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "46374447227"
+              }
+            },
+            "pendingTotal": "46374447227"
+          }
+        ]
+      },
+      {
+        "account": "cnTVeT5pQmXFAfBtxMpYeuocvUQxj8SR4SYaRG2sVW67wGznJ",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": true,
+            "validators": {
+              "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH": {
+                "total": "30950320532545643621",
+                "value": "6951394028117021008"
+              },
+              "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un": {
+                "total": "26729822278107601309",
+                "value": "7689413292732352370"
+              },
+              "cnXCoCUXWTCZqkR3Lfo4Hs9HJ8VUP4HKX5m1a6UGzPj6zqzkY": {
+                "total": "30950320532545643621",
+                "value": "7340394786091321824"
+              },
+              "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4": {
+                "total": "31078214419043766115",
+                "value": "9211729916197552057"
+              },
+              "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq": {
+                "total": "29799275554062541172",
+                "value": "7710364289252948899"
+              },
+              "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq": {
+                "total": "31717683851534378587",
+                "value": "24721924639330548262"
+              },
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "27892072609190604752"
+              },
+              "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs": {
+                "total": "32740834943519358541",
+                "value": "10459681610913005564"
+              }
+            },
+            "pendingTotal": "101976975171825354736"
+          }
+        ]
+      },
+      {
+        "account": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "695197925724158969"
+              }
+            },
+            "pendingTotal": "695197925724158969"
+          }
+        ]
+      },
+      {
+        "account": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "16858912409294789"
+              }
+            },
+            "pendingTotal": "16858912409294789"
+          }
+        ]
+      },
+      {
+        "account": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "25633459331352205"
+              }
+            },
+            "pendingTotal": "25633459331352205"
+          }
+        ]
+      },
+      {
+        "account": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+        "eras": [
+          {
+            "era": 7706,
+            "eraReward": "459778521960750367018",
+            "isClaimed": false,
+            "validators": {
+              "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa": {
+                "total": "28904018348575683712",
+                "value": "274255395503827060"
+              }
+            },
+            "pendingTotal": "274255395503827060"
+          }
+        ]
+      }
+    ],
+    "positivePendingRewardVisible": true
+  },
+  "inputs": {
+    "scriptSha256": "01e6a9438df79e23a3baebe841115c6c783a426c6909c7ca0de996814da0be5c",
+    "snapshotSha256": "10273e4491e5b131e2598770d3124d31d34eed47f87b3029a20322635e80a7e1",
+    "packageLockSha256": "9b8aa6f93ba09fe455c03f9ccd92080c0d89309d8ae59b59f6c16fdf1ab85fae"
+  },
+  "checks": {
+    "actualCandidateWasmUpgradeExecuted": true,
+    "retainedCompletedValBudgetsPublished": true,
+    "allClaimAndLedgerMigrationEntriesPreserved": true,
+    "actualStandardPayoutStakersPaidVal": true,
+    "standardRewardEventsAndOrderingPreserved": true,
+    "rewardRecipientXorBalancesUnchanged": true,
+    "stakingLedgerBalancesUnchanged": true,
+    "noNativeXorRewardMinted": true,
+    "unmodifiedUpstreamDeriveShowsPositivePending": true,
+    "duplicateDirectAndByPageRejected": true,
+    "transactionVersionRemains131": true
+  },
+  "finishedAt": "2026-09-30T00:37:54.811Z"
+}

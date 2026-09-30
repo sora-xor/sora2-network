@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-09-29T23:56:00.626237+00:00",
+  "url": "https://polkadot.js.org/apps/?rpc=wss%3A%2F%2Fws.mof.sora.org#/explorer",
+  "readOnly": true,
+  "inspectedJavascriptAssets": 70,
+  "searchedIdentifierCounts": {
+    "valStakingEraReward": 0,
+    "soraValidatorRewards": 0
+  },
+  "appsConfigVersion": "0.171.2-21-x",
+  "rewardDeriveReads": "staking.erasValidatorReward.multi",
+  "payoutRowsExclude": "eraReward.isZero()",
+  "soraCustomDeriveMappingPresent": false,
+  "assets": {
+    "conf.e54510773a1a9df5.js": {
+      "url": "https://polkadot.js.org/apps/conf.e54510773a1a9df5.js",
+      "bytes": 80439,
+      "sha256": "73d3a49ddd34b2628b7cafd13de3258581363f98912d762481afc53a438be36c"
+    },
+    "modu.8a6f905d52c72166.js": {
+      "url": "https://polkadot.js.org/apps/modu.8a6f905d52c72166.js",
+      "bytes": 201751,
+      "sha256": "70018b38bd26f89e3cd6d21418fef8bb6487d27dc98c04924e187b9ab2a9ec10"
+    },
+    "comm.2cb61eb18ec2917e.js": {
+      "url": "https://polkadot.js.org/apps/comm.2cb61eb18ec2917e.js",
+      "bytes": 402743,
+      "sha256": "48eb7d7fa746f6858dc64bf7408f9e5479c4b5d175e63c416fbe56a4efb3e752"
+    }
+  },
+  "limitations": [
+    "This captures the deployed JavaScript paths and configuration, not a wallet-specific rendered payouts view.",
+    "A separate exact-Wasm rehearsal exercises the unmodified upstream derive on pinned chain state."
+  ]
+}

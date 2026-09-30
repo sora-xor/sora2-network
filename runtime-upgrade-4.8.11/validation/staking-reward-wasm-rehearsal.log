@@ -1,0 +1,16 @@
+2026-09-30T00:37:47.296Z Loading pinned deployed spec-132 state through read-only public RPC
+2026-09-30T00:37:50.716Z Executing exact candidate Core_initialize_block and upgrade migration
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-09-30T00:37:53.251Z Checking unmodified upstream staking reward derives after actual migration
+2026-09-30T00:37:53.610Z Applying local staking.payoutStakers
+2026-09-30T00:37:54.058Z Applying local staking.payoutStakersByPage duplicate
+2026-09-30T00:37:54.314Z Applying local staking.payoutStakers duplicate
+{"status":"passed","output":"/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/staking-reward-wasm-rehearsal.json","candidateSha256":"15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a"}
