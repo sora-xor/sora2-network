@@ -1,0 +1,1040 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+warning: framenode-runtime@4.8.11: Failed to create '.git/hooks' dir (skipping hook install): Not a directory (os error 20)
+   Compiling framenode-runtime v4.8.11 (/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime)
+    Finished `release` profile [optimized] target(s) in 1m 22s
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/framenode_runtime-6b02ce145b9dd370)
+
+running 204 tests
+test impls::test::test_balance_precision_converter ... ok
+test impls::test::democracy_weight_info_should_scale_weight_linearly_up_to_max_preimage_size ... ok
+test impls::test::democracy_weight_info_should_overweight_for_huge_preimages ... ok
+test runtime_upgrade_storage_versions_match_expected_code_versions ... ok
+test kensetsu_storage_version_bridge_reaches_v6 ... ok
+test demeter_storage_version_bridge_reaches_v3 ... ok
+test benchmark_genesis_preset_is_available ... ok
+test benchmark_genesis_preset_has_expected_shape ... ok
+test __construct_runtime_integrity_test::runtime_integrity_tests ... ok
+2026-09-30T00:20:45.831972Z ERROR iroha_migration::pallet: IrohaMigration genesis account_id is not configured    
+test test_genesis_config_builds ... ok
+test benchmark_genesis_preset_builds_state ... ok
+2026-09-30T00:20:45.909116Z  WARN framenode_runtime::migrations: Skipping Ethereum XOR Thischain add-asset request: legacy Ethereum XOR is not decommissioned    
+test runtime_upgrade_version_only_migrations_bump_zero_to_one ... ok
+test tests::babe_config::mainnet_repair_announces_then_activates_without_silent_epoch_rewrite ... ok
+test get_total_balance ... ok
+test tests::babe_config::configuration_uses_genesis_fallback_before_epoch_storage_exists ... ok
+test tests::liquidity_proxy::chameleon_pool_swaps ... ignored
+test tests::liquidity_proxy::chameleon_pool_swaps_burn_kxor ... ignored
+test eth_bridge_account_request_multi_block_migration_reaches_v4 ... ok
+test queue_ethereum_xor_thischain_add_asset_migration_queues_once ... ok
+test denomination_rejects_zero_factor_without_mutating_state ... ok
+test tests::babe_config::configuration_uses_active_plain_slot_mode_and_probability ... ok
+test tests::babe_config::configuration_preserves_future_vrf_mode_and_nondefault_probability ... ok
+test tests::babe_config::repair_leaves_other_networks_and_their_genesis_mode_unchanged ... ok
+test denomination_rolls_back_base_storage_when_hook_fails ... ok
+test tests::liveness::deferred_slashes::deferred_application_must_use_the_original_offence_era ... ok
+test tests::liveness::babe_equivocation_still_slashes_validator_and_nominator ... ok
+test tests::liveness::any_legacy_exposure_prevents_a_partial_paged_weight_estimate ... ok
+test tests::liveness::concurrent_equivocations_update_existing_disable_severity_and_reject_duplicates ... ok
+test tests::liveness::deferred_slashes::late_first_report_must_not_remain_in_an_already_drained_era ... ok
+test tests::liveness::deferred_slashes::planned_era_must_not_unlock_funds_before_deferred_application ... ok
+test tests::liveness::disabled_validator_can_prove_liveness_with_a_signed_heartbeat_next_session ... ok
+test tests::babe_config::repeated_upgrade_preserves_a_future_legitimate_vrf_transition ... ok
+test tests::liveness::duplicate_or_nonvalidator_reports_cannot_inflate_a_minority_into_a_majority ... ok
+test tests::liveness::equivocation_admission::missing_or_stale_exposure_bound_keeps_reports_above_admission_limit ... ok
+test eth_bridge_storage_version_migration_reaches_v3 ... ok
+test tests::liveness::equivocation_admission::captured_mainnet_historical_work_admits_all_four_equivocation_calls ... ok
+test tests::liveness::equivocation_admission::real_large_exposure_work_is_not_undercharged_to_force_admission ... ok
+test tests::liveness::equivocation_admission::repro_signed_and_unsigned_equivocation_reports_fit_runtime_admission ... ok
+test tests::babe_config::mainnet_repair_does_not_override_an_existing_governance_plan ... ok
+test tests::liveness::already_disabled_missing_validator_does_not_push_a_minority_above_the_threshold ... ok
+2026-09-30T00:20:46.061489Z  WARN framenode_runtime::migrations: Skipping Ethereum XOR Thischain add-asset request: legacy Ethereum XOR is not decommissioned    
+test tests::liveness::equivocation_weight_tracks_growing_future_queues_without_a_session_refresh ... ok
+test tests::liveness::exposure_budget_counts_repeated_nominators_across_all_validators ... ok
+2026-09-30T00:20:46.068803Z  WARN price_tools: Failed to get spot price for AssetId(0x0200040000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.068937Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.068971Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.069001Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.070470Z  WARN price_tools: Failed to get spot price for AssetId(0x0200040000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.070499Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.070523Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.070547Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::liveness::equivocation_admission::valid_signed_babe_reports_pass_admission_and_dispatch_in_a_batch ... ok
+test tests::liveness::historical_equivocation_slashes_without_disabling_current_era ... ok
+test tests::liveness::exposure_budget_retains_the_largest_historical_aggregate ... ok
+test tests::liveness::inherited_disablement_is_remembered_if_reenabled_during_the_next_session ... ok
+test tests::liveness::grandpa_equivocation_still_slashes_validator_and_nominator ... ok
+test tests::liveness::invulnerable_equivocation_does_not_disable_or_slash ... ok
+test tests::liveness::late_reenable_does_not_manufacture_an_offline_majority ... ok
+test tests::liveness::majority_penalty_excludes_already_disabled_missing_validators ... ok
+test tests::liveness::mismatched_session_or_validator_count_is_rejected_without_penalties ... ok
+test tests::liveness::minority_reports_from_different_sessions_do_not_accumulate_into_a_majority ... ok
+test tests::liveness::recovering_after_a_majority_outage_does_not_create_further_offline_penalties ... ok
+test tests::liveness::queue_growth_envelope_covers_reports_priced_before_earlier_wrapped_calls ... ok
+test tests::liveness::repeated_disablement_does_not_grow_history_for_the_same_validator ... ok
+test tests::pswap_buy_back_fractions_split_kusd_10_xor_90 ... ok
+test tests::liveness::runtime_upgrade_rebuilds_the_known_exposure_budget_with_charged_bounded_work ... ok
+test tests::liveness::repeated_missing_liveness_is_observed_without_disabling_or_slashing ... ok
+test tests::liveness::same_session_disable_reenable_history_expires_after_a_full_session_boundary ... ok
+test tests::liveness::exposure_scan_limit_never_publishes_a_partial_budget ... ok
+2026-09-30T00:20:46.166468Z  WARN price_tools: Failed to get spot price for AssetId(0x0200040000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166535Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166571Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166596Z  WARN price_tools: Failed to get spot price for AssetId(0x0200040000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166636Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166663Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166603Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.166689Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::liveness::session_boundaries::first_new_session_block_credits_its_real_author_and_new_session ... ok
+test tests::liveness::session_boundaries::returning_boundary_author_survives_prior_session_offline_penalty ... ok
+test tests::polkamarkt_runtime_api_quotes_and_market_state_use_dpm_defaults ... ok
+test tests::referrals::denominate_scales_all_referrer_balances ... ok
+test tests::referrals::denominate_zero_factor_leaves_referrer_balances_unchanged ... ok
+test tests::referrals::reserve_unreserve ... ok
+test tests::referrals::reserve_insufficient_balance ... ok
+test tests::referrals::set_referrer_to ... ok
+test tests::referrals::withdraw ... ok
+test tests::referrals::set_referrer_to_has_referrer ... ok
+test tests::referrals::withdraw_fee_insufficient_balance ... ok
+2026-09-30T00:20:46.233103Z ERROR runtime::timestamp: `pallet_timestamp::UnixTime::now` is called at genesis, invalid value returned: 0    
+test tests::staking_reward_compatibility::era_close_publishes_the_full_val_budget_despite_native_staked_reward_cap ... ok
+test tests::staking_reward_compatibility::migration_publishes_only_retained_completed_existing_entries_and_preserves_claims ... ok
+test tests::staking_reward_compatibility::published_val_budget_failed_mint_rolls_back_events_claims_and_both_currencies ... ok
+test tests::staking_reward_compatibility::published_val_budgets_hosted_style_batch_pay_each_completed_era_once ... ok
+test tests::xor_fee::actual_weight_is_ignored_works ... ok
+test tests::xor_fee::applied_signed_extrinsic_decreases_xor_total_supply ... ok
+test tests::xor_fee::bare_query_info_and_fee_details_stay_free_with_length ... ok
+test tests::xor_fee::bridge_peer_with_nonzero_length_fee_still_skips_withdrawal ... ok
+test tests::xor_fee::compute_actual_fee_matches_details_for_standard_and_custom_calls ... ok
+test tests::liveness::missing_or_stale_exposure_budget_keeps_the_full_static_fallback ... ok
+2026-09-30T00:20:46.294696Z ERROR framenode_runtime::migrations: Ethereum XOR Thischain add-asset marker is set before legacy Ethereum XOR decommission    
+test tests::xor_fee::custom_actual_fee_details_add_length_fee ... ok
+test tests::xor_fee::compute_fee_matches_fee_details_for_standard_and_custom_calls ... ok
+test tests::liveness::upgrade_grace_waits_for_a_complete_session_before_offline_penalties ... ok
+test tests::xor_fee::custom_fee_details_add_length_without_changing_custom_metadata ... ok
+test tests::xor_fee::custom_fees_multiplied ... ok
+test tests::xor_fee::custom_fees_work ... ok
+test tests::xor_fee::fee_multiplier_applies_to_tip_but_not_custom_length_fee ... ok
+test tests::xor_fee::fee_multiplier_does_not_apply_to_custom_length_fee ... ok
+test tests::xor_fee::fee_not_postponed_place_limit_order ... ok
+2026-09-30T00:20:46.341468Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341536Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341566Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341614Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341638Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341661Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341696Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341718Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341739Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341772Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341793Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341814Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341848Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341889Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341911Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341944Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341964Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.341984Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342018Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342039Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342060Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342096Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342118Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342138Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342171Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342272Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342296Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342333Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342355Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342379Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342422Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342446Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342471Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342509Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342534Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342602Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342635Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342657Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342837Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342873Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342893Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.342970Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343134Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343179Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343204Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343244Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343284Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343306Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343340Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343361Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343383Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343418Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343440Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343460Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343493Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343514Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343534Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343567Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343587Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343607Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343640Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343661Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343687Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343720Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343740Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343760Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343792Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343813Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343833Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343865Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343886Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343906Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343939Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343959Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.343980Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344013Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344033Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344053Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344095Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344115Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344136Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344168Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344189Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344209Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344241Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344262Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344282Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344316Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344337Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.344357Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::fee_payment_postpone_failed_xorless_transfer ... ok
+2026-09-30T00:20:46.350416Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350464Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350497Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350552Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350560Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350588Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350602Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350615Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350633Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350658Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350689Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350691Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350740Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350763Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350798Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350823Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350847Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350888Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350914Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350943Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350994Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351022Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351051Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351094Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351123Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351150Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351192Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351220Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351247Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351290Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351318Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351345Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.350714Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351815Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352001Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352072Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.351385Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352152Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352176Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352234Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352277Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352390Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352432Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352474Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352183Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352630Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352672Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352702Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352747Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352778Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352808Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352858Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352910Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352944Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352945Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.352991Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353003Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353024Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353043Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353062Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353082Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353116Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353123Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353136Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353152Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353159Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353178Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353187Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353235Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353255Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353270Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353286Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353301Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353193Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353347Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353321Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353384Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353422Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353426Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353466Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353471Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353496Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353479Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353541Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353613Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353547Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353702Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353737Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353741Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353849Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353883Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353911Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353554Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353987Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354023Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354049Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354072Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354128Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354149Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354193Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354205Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354250Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354297Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.353952Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354399Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354428Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354460Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354488Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354520Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354576Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354932Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355000Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355046Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355120Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355161Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355268Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354471Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355328Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355373Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355379Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355415Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355452Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355478Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355495Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355519Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355537Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355559Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355603Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355624Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355645Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355666Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355695Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355753Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.354526Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355789Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355853Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355874Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355913Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355932Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355946Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356029Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356041Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356077Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.355823Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356105Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356123Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356134Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356153Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356181Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356205Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356210Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356232Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356264Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356286Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356337Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356346Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356388Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356401Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356422Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356278Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356504Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356506Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356521Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356530Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356567Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356599Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356624Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356575Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356633Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356673Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356690Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356723Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356744Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356779Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356728Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356798Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356821Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356854Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356810Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356895Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356881Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356923Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.356931Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357026Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357029Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357041Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357109Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357093Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357147Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357161Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357194Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357249Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357181Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357285Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357315Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357340Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357349Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357392Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357415Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357294Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357503Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357511Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357558Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357516Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357603Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357618Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357629Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357666Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357684Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357763Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357842Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357863Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357685Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357934Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357942Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357891Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357973Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.357964Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358071Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358070Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358115Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358133Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358148Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358167Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358202Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358224Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358093Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358255Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358236Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358355Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358292Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358453Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358356Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358478Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358518Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358555Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358498Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358559Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358613Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358657Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358618Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358701Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358742Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358757Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358773Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358807Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358855Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358885Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358910Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.358683Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::fee_payment_postponed_swap_transfer ... ok
+2026-09-30T00:20:46.358945Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359029Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359060Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359078Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359103Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359176Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359334Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359400Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::fee_payment_postponed_swap ... ok
+2026-09-30T00:20:46.359466Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359601Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359646Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359710Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359755Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359795Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359858Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359903Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.359944Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.360008Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.360053Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.360093Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::fee_payment_postponed_xorless_transfer ... ok
+test tests::xor_fee::fee_payment_regular_swap ... ok
+2026-09-30T00:20:46.364907Z  WARN framenode_runtime::migrations: Band storage version StorageVersion(0) is neither v1 nor v2, skipping runtime wrapper migration    
+test band_migrate_to_v2_if_needed_handles_expected_versions ... ok
+test tests::xor_fee::fee_payment_should_not_postpone ... ok
+2026-09-30T00:20:46.375130Z  WARN xor-fee: Force-applied multiplier override at block 23206222: FixedU128(14862961117709.108000000000000000)    
+test tests::xor_fee::forced_multiplier_triggers_at_configured_block ... ok
+test tests::xor_fee::it_works_eth_bridge_pays_no ... ok
+test tests::xor_fee::length_fee_charges_encoded_bytes ... ok
+test tests::xor_fee::normal_fees_multiplied ... ok
+test queue_ethereum_xor_thischain_add_asset_migration_handles_full_queue ... ok
+test tests::xor_fee::pays_no_fee_details_ignore_length_fee ... ok
+2026-09-30T00:20:46.411035Z ERROR runtime::timestamp: `pallet_timestamp::UnixTime::now` is called at genesis, invalid value returned: 0    
+test tests::xor_fee::paid_fees_increase_with_encoded_len ... ok
+test tests::xor_fee::reminting_for_sora_parliament_works ... ignored
+2026-09-30T00:20:46.414572Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.414664Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.414721Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::polkamarkt_buy_sell_tx_fees_match_regular_polkaswap_swap ... ok
+2026-09-30T00:20:46.415707Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416231Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416280Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::polkamarkt_growth_calls_charge_small_fee ... 2026-09-30T00:20:46.416326Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+ok2026-09-30T00:20:46.416356Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+
+2026-09-30T00:20:46.416385Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416498Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416554Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416602Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416667Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416708Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416750Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416813Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416853Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416893Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.416957Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417003Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417043Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417105Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417146Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417185Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417247Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417286Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417325Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417386Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417424Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417464Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417525Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417565Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417603Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417664Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417712Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417751Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417812Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417852Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417892Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417954Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.417997Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418037Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418096Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418135Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418173Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418231Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418270Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418307Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418474Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418537Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418591Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418824Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418867Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418893Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418933Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418956Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.418980Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419015Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419039Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419067Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419107Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419134Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419162Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419204Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419231Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419257Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419306Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419331Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419360Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419401Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419425Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419451Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419489Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419514Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419539Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419578Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419603Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419629Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419675Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419699Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419725Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419764Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419788Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419811Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419849Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419878Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419901Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419937Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419960Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.419983Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::notify_val_burned_works ... ok
+test tests::xor_fee::polkamarkt_non_trade_user_calls_do_not_get_trade_fee_override ... ok
+test tests::xor_fee::pays_no_fee_details_keep_tip_but_ignore_length_and_custom_fee ... ok
+test tests::xor_fee::polkamarkt_trade_calls_charge_small_fee ... ok
+2026-09-30T00:20:46.440467Z ERROR runtime::timestamp: `pallet_timestamp::UnixTime::now` is called at genesis, invalid value returned: 0    
+2026-09-30T00:20:46.441088Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441128Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441157Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441201Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441223Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441245Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441282Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441311Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.441336Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::referrer_gets_bonus_from_tx_fee ... ok
+test tests::xor_fee::polkamarkt_trade_custom_fee_respects_multiplier_tip_and_length_fee ... ok
+2026-09-30T00:20:46.441372Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.445577Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.445633Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.446316Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.446355Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449170Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449305Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449356Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449406Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449478Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449558Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449597Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449646Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449680Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449718Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449762Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449785Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449808Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449848Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449871Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449893Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449930Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449953Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.449978Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450018Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450040Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450063Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450101Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450122Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450143Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450179Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450202Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450224Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450259Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450281Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450304Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450338Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450358Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450378Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450410Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450434Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450457Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450497Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450519Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::refund_if_pays_no_works ... ok
+2026-09-30T00:20:46.450541Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450602Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450623Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450642Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450674Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450694Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450714Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450746Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450765Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450785Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450817Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450837Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450857Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450938Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450959Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.450979Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451011Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451031Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451054Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451086Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451109Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451128Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451161Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451181Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451201Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451232Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451252Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451272Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451303Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451325Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451345Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451376Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451396Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451415Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451450Z  WARN price_tools: Failed to get spot price for AssetId(0x0200050000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451469Z  WARN price_tools: Failed to get spot price for AssetId(0x0200060000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+2026-09-30T00:20:46.451489Z  WARN price_tools: Failed to get spot price for AssetId(0x0200070000000000000000000000000000000000000000000000000000000000): Module(ModuleError { index: 26, error: [0, 0, 0, 0], message: Some("UnavailableExchangePath") })    
+test tests::xor_fee::random_remint_works ... ok
+test tests::staking_reward_compatibility::published_val_budget_direct_payout_does_not_mint_or_compound_xor ... ok
+test tests::xor_fee::right_custom_fee_for_vested_transfer_err ... ok
+test tests::xor_fee::standard_fee_details_expose_length_fee ... ok
+test tests::xor_fee::right_custom_fee_for_vested_transfer_ok ... ok
+test tests::xor_fee::standard_actual_fee_details_preserve_weight_and_length ... ok
+test tests::xor_fee::val_buyback_accounts_for_routed_exchange_weight_on_success_and_failure ... ok
+test tests::xor_fee::signed_query_info_and_fee_details_charge_custom_length_fee ... ok
+test unknown_benchmark_genesis_preset_is_rejected ... ok
+test vested_rewards_storage_version_bridge_reaches_v4 ... ok
+test xor_fee_impls::tests::check_calls_from_bridge_peers_pays_no ... ignored
+test xor_fee_impls::tests::check_calls_from_bridge_peers_pays_yes ... ok
+test xor_fee_impls::tests::compute_fee_works_fine ... ok
+test xor_fee_impls::tests::no_direct_call_not_work_for_vesting ... ok
+test xor_fee_impls::tests::regular_batch_should_not_pass_for_vesting ... ok
+test xor_fee_impls::tests::regular_batch_should_pass ... ok
+test tests::xor_fee::withdraw_fee_place_limit_order_with_crossing_spread ... ok
+test tests::xor_fee::withdraw_fee_place_limit_order_with_error ... ok
+test tests::xor_fee::withdraw_fee_place_limit_order_with_default_lifetime ... ok
+test tests::xor_fee::vested_transfer_actual_fee_variants_keep_length_fee ... ok
+test tests::xor_fee::withdraw_fee_place_limit_order_with_some_lifetime ... ok
+test tests::xor_fee::withdraw_fee_set_referrer_already ... ok
+test xor_fee_impls::tests::simple_call_should_pass ... ok
+test tests::xor_fee::xorless_polkamarkt_trade_calls_charge_small_fee ... ok
+test tests::xor_fee::withdraw_fee_set_referrer ... ok
+test tests::xor_fee::zero_actual_custom_fee_keeps_multiplied_tip_without_length_fee ... ok
+test xor_fee_impls::tests::signed_extension_failed_dispatch_does_not_trigger_staking_val_payout ... ok
+test tests::xor_fee::withdraw_fee_set_referrer_already2 ... ok
+test xor_fee_impls::tests::signed_extension_post_dispatch_does_not_mint_without_staking_dispatch ... ok
+test tests::xor_fee::zero_actual_custom_fee_stays_free_even_with_length ... ok
+test xor_fee_impls::tests::signed_extension_unfunded_pre_dispatch_does_not_trigger_staking_val_payout ... ok
+test xor_fee_impls::tests::signed_extension_post_dispatch_without_pre_does_not_trigger_staking_val_payout ... ok
+test xor_fee_impls::tests::signed_extension_validate_does_not_trigger_staking_val_payout ... ok
+test xor_fee_impls::tests::staking_payout_by_page_claimed_page_failed_dispatch_mints_nothing ... ok
+test xor_fee_impls::tests::staking_payout_by_page_uses_only_requested_paged_exposure ... ok
+test xor_fee_impls::tests::staking_payout_by_page_with_missing_exposure_mints_nothing ... ok
+test xor_fee_impls::tests::staking_payout_by_page_failed_dispatch_mints_nothing ... ok
+test xor_fee_impls::tests::staking_payout_by_page_zero_prorates_own_stake_and_commission ... ok
+test xor_fee_impls::tests::staking_payout_by_page_prorates_commission_to_requested_page ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_batch_all_failure_rolls_back_claim_and_val ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_multisig_pays_val ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_mint_failure_rolls_back_earlier_payments_and_claim ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_fee_settlement_does_not_pay_twice ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_partial_batch_preserves_only_successful_claim ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_retains_val_weight_with_zero_native_reward ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_self_only_zero_page_count_is_claimable_once ... ok
+2026-09-30T00:20:46.626083Z  WARN framenode_runtime::migrations: Repairing Ethereum XOR Thischain add-asset marker: request is neither pending nor finalized    
+test xor_fee_impls::tests::staking_payout_dispatch_pays_once_and_preserves_xor_issuance ... ok
+test xor_fee_impls::tests::staking_payout_hook_does_not_mint_when_validator_has_no_reward_points ... ok
+test xor_fee_impls::tests::staking_payout_hook_does_not_mint_without_recorded_val_reward ... ok
+test xor_fee_impls::tests::staking_payout_hook_does_not_mint_with_zero_total_reward_points ... ok
+test xor_fee_impls::tests::staking_payout_handles_self_only_zero_page_count_overview ... ok
+test xor_fee_impls::tests::staking_payout_hook_does_not_mint_on_failed_dispatch ... ok
+test xor_fee_impls::tests::staking_payout_hook_full_commission_pays_only_validator ... ok
+test xor_fee_impls::tests::staking_payout_hook_ignores_controller_keyed_reward_points ... ok
+test xor_fee_impls::tests::staking_payout_hook_missing_payee_skips_only_that_staker ... ok
+test xor_fee_impls::tests::staking_payout_hook_skips_controller_destination_without_bond ... ok
+test xor_fee_impls::tests::staking_payout_hook_pays_account_reward_destinations ... ok
+test xor_fee_impls::tests::staking_payout_hook_uses_validator_reward_point_share ... ok
+test xor_fee_impls::tests::staking_payout_hook_uses_stash_reward_points_for_session_author ... ok
+test xor_fee_impls::tests::staking_payout_hook_zero_total_exposure_mints_nothing ... ok
+test xor_fee_impls::tests::staking_payout_hook_mints_val_rewards ... ok
+test xor_fee_impls::tests::staking_payout_hook_respects_reward_destination_none ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_rejects_empty_paged_overview ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_ignores_non_staking_and_nested_utility_calls ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_rejects_fully_claimed_paged_exposure ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_rejects_legacy_already_claimed_era ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_returns_none_for_bonded_validator_without_ledger ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_skips_claimed_paged_pages ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_returns_none_for_unbonded_validator ... ok
+test xor_fee_impls::tests::staking_payout_reward_point_migration_merges_controller_and_stash_points ... ok
+test xor_fee_impls::tests::swap_in_batch_should_fail ... ok
+test xor_fee_impls::tests::staking_payout_pre_dispatch_returns_none_for_corrupt_bonded_ledger ... ok
+test xor_fee_impls::tests::swap_transfer_in_batch_should_fail ... ok
+test xor_fee_impls::tests::xorless_call_vesting_should_pass ... ok
+test xor_fee_impls::tests::staking_payout_reward_point_migration_is_one_shot ... ok
+test xor_fee_impls::tests::staking_payout_dispatch_paged_rewards_pay_each_page_once ... ok
+test xor_fee_impls::tests::staking_payout_reward_point_migration_remaps_session_author_points_to_stash ... ok
+test xor_fee_impls::tests::staking_payout_reward_point_migration_preserves_unbonded_accounts ... ok
+test xor_fee_impls::tests::staking_payout_reward_point_migration_saturates_merged_points ... ok
+test xor_fee_impls::tests::staking_reward_points_follow_current_session_validator_set ... ok
+test xor_fee_impls::tests::staking_payout_tiny_validator_share_mints_no_zero_value_events ... ok
+test xor_fee_impls::tests::staking_reward_points_preserve_unbonded_author_without_panic ... ok
+test xor_fee_impls::tests::staking_reward_points_use_stash_when_author_is_already_stash ... ok
+test xor_tbcd_reward_denomination_repair_migration_scales_once ... ok
+2026-09-30T00:20:46.802699Z ERROR framenode_runtime::migrations: Failed to repair stale XOR/TBCD reward denomination state: Module(ModuleError { index: 40, error: [8, 0, 0, 0], message: Some("ArithmeticError") })    
+test tests::liveness::offline_slashes_require_a_strict_majority_in_odd_and_even_validator_sets ... ok
+test xor_tbcd_reward_denomination_repair_rolls_back_on_error_without_panic ... ok
+2026-09-30T00:20:46.847882Z ERROR framenode_runtime::migrations: Skipping Ethereum XOR Thischain add-asset request: stale sidechain token mapping remains after legacy decommission    
+test xor_fee_impls::tests::staking_payout_dispatch_utility_batches_pay_val ... ok
+test tests::babe_config::mainnet_repair_preserves_unknown_or_missing_epoch_configurations ... ok
+2026-09-30T00:20:46.906821Z ERROR framenode_runtime::migrations: Skipping Ethereum XOR Thischain add-asset request: bridge is migrating    
+test staking_storage_version_bridge_reaches_v16 ... ok
+2026-09-30T00:20:47.016573Z ERROR framenode_runtime::migrations: Ethereum bridge signature version is not V3 after marking XOR Thischain add-asset request queued    
+2026-09-30T00:20:47.078259Z ERROR framenode_runtime::migrations: Ethereum XOR has a stale sidechain token mapping after marking XOR Thischain add-asset request queued    
+2026-09-30T00:20:47.142040Z ERROR framenode_runtime::migrations: Skipping Ethereum XOR Thischain add-asset marker write: pending request cannot finalize while bridge is migrating    
+2026-09-30T00:20:47.350487Z ERROR framenode_runtime::migrations: Ethereum XOR Thischain add-asset marker is set but pending request cannot finalize while bridge is migrating    
+2026-09-30T00:20:47.573986Z ERROR framenode_runtime::migrations: Skipping Ethereum XOR Thischain add-asset request: Ethereum bridge signature version must be V3    
+test queue_ethereum_xor_thischain_add_asset_migration_handles_adversarial_states ... ok
+
+test result: ok. 200 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 2.03s
+
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/pallet_staking-d3cb804054b320ac)
+
+running 218 tests
+test inflation::test::__pallet_staking_reward_curve_test_module::reward_curve_piece_count ... ok
+test mock::__pallet_staking_reward_curve_test_module::reward_curve_piece_count ... ok
+test slashing::tests::span_contains_era ... ok
+test inflation::test::npos_curve_is_sensible ... ok
+test slashing::tests::pruning_spans ... ok
+test slashing::tests::ending_span ... ok
+test slashing::tests::many_prior_spans ... ok
+test election_size_tracker::tests::election_size_tracker_works ... ok
+test slashing::tests::single_slashing_span ... ok
+test election_size_tracker::tests::election_size_tracker_bounds_works ... ok
+test mock::__pallet_staking_reward_curve_test_module::reward_curve_precision ... ok
+test inflation::test::__pallet_staking_reward_curve_test_module::reward_curve_precision ... ok
+test mock::test_genesis_config_builds ... ok
+test mock::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+test tests::bond_extra_controller_bad_state_works ... ok
+test tests::add_reward_points_fns_works ... ok
+test tests::blocking_and_kicking_works ... ok
+test tests::api_nominations_quota_works ... ok
+test tests::can_page_exposure ... ok
+test tests::bond_extra_works ... ok
+test tests::additional_payout_failure_rolls_back_claim_and_hook_writes ... ok
+test tests::bond_with_duplicate_vote_should_be_ignored_by_election_provider ... ok
+test tests::bond_with_duplicate_vote_should_be_ignored_by_election_provider_elected ... ok
+test tests::additional_payout_weight_is_retained_when_native_reward_is_zero ... ok
+test tests::basic_setup_works ... ok
+test tests::bond_extra_and_withdraw_unbonded_works ... ok
+test tests::bond_with_little_staked_value_bounded ... ok
+test tests::cannot_bond_extra_to_lower_than_ed ... ok
+test tests::cannot_reserve_staked_balance ... ok
+test tests::bond_with_no_staked_value ... ok
+test tests::cannot_rebond_to_lower_than_ed ... ok
+test tests::cannot_transfer_staked_balance ... ok
+test tests::cannot_transfer_staked_balance_2 ... ok
+test tests::auto_withdraw_may_not_unlock_all_chunks ... ok
+test tests::cannot_set_unsupported_validator_count ... ok
+2026-09-30T00:20:47.884095Z  WARN runtime::staking: [60] 💸 nominator 101 stake 475 exceeds the sum_exposed of exposures 500.    
+2026-09-30T00:20:47.884662Z  WARN runtime::staking: [60] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+2026-09-30T00:20:47.884109Z  WARN runtime::staking: [60] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+test tests::change_controller_already_paired_once_stash ... ok
+test tests::check_payee_invariant2_works - should panic ... ok
+test tests::check_payee_invariant1_works - should panic ... ok
+test tests::count_check_works - should panic ... ok
+test tests::deferred_slash_late_increment_only_collects_the_remaining_amount ... ok
+test tests::deferred_slashes_are_deferred ... ok
+test tests::do_not_die_when_active_is_ed ... ok
+2026-09-30T00:20:47.884103Z  WARN runtime::staking: [60] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+2026-09-30T00:20:47.886041Z  WARN runtime::staking: [60] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+2026-09-30T00:20:47.888207Z  WARN runtime::staking: [50] 💸 chain does not have enough staking candidates to operate for era 2 (2 elected, minimum is 1000)    
+test tests::change_controller_works ... ok
+test tests::capped_stakers_works ... ok
+test tests::deferred_slash_retains_stake_until_the_execution_era_is_active ... ok
+2026-09-30T00:20:47.888310Z  WARN runtime::staking: [60] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+test tests::deferred_slash_uses_the_original_era_for_unlocking_proportions ... ok
+test tests::dont_slash_if_fraction_is_zero ... ok
+test tests::double_controlling_attempt_should_fail ... ok
+test tests::double_staking_should_fail ... ok
+test tests::deferred_slash_late_first_report_is_applied_with_its_original_era ... ok
+test tests::election_data_provider::estimate_next_election_works ... ok
+test tests::election_data_provider::lazy_quota_npos_voters_works_above_quota ... ok
+test tests::election_data_provider::targets_2sec_block ... ok
+test tests::election_data_provider::voters_2sec_block ... ok
+test tests::election_data_provider::nomination_quota_checks_at_nominate_works ... ok
+test tests::election_data_provider::nominations_quota_limits_size_work ... ok
+test tests::election_data_provider::set_minimum_active_stake_is_correct ... ok
+test tests::election_data_provider::respects_snapshot_size_limits ... ok
+test tests::election_data_provider::voters_include_self_vote ... ok
+test tests::election_data_provider::set_minimum_active_stake_lower_bond_works ... ok
+test tests::election_data_provider::respects_snapshot_count_limits ... ok
+test tests::force_apply_min_commission_works ... ok
+test tests::era_is_always_same_length ... ok
+test tests::force_unstake_works ... ok
+test tests::getters::get_active_era_returns_value_from_storage ... ok
+test tests::getters::get_canceled_payout_returns_value_from_storage ... ok
+test tests::getters::get_claimed_rewards_returns_value_from_storage ... ok
+test tests::forcing_new_era_works ... ok
+test tests::getters::get_current_era_returns_value_from_storage ... ok
+test tests::getters::get_current_planned_session_returns_value_from_storage ... ok
+test tests::bond_during_era_does_not_populate_legacy_claimed_rewards ... ok
+test tests::garbage_collection_after_slashing ... ok
+test tests::getters::get_eras_reward_points_returns_value_from_storage ... ok
+test tests::getters::get_eras_stakers_clipped_returns_value_from_storage ... ok
+test tests::getters::get_eras_start_session_index_returns_value_from_storage ... ok
+test tests::getters::get_eras_total_stake_returns_value_from_storage ... ok
+test tests::getters::get_eras_validator_prefs_returns_value_from_storage ... ok
+test tests::getters::get_eras_validator_reward_returns_value_from_storage ... ok
+test tests::getters::get_force_era_returns_value_from_storage ... ok
+test tests::getters::get_invulnerables_returns_value_from_storage ... ok
+test tests::getters::get_minimum_validator_count_returns_value_from_storage ... ok
+test tests::getters::get_nominators_returns_value_from_storage ... ok
+test tests::getters::get_slash_reward_fraction_returns_value_from_storage ... ok
+test tests::getters::get_slashing_spans_returns_value_from_storage ... ok
+test tests::getters::get_validator_count_returns_value_from_storage ... ok
+test tests::getters::get_validators_returns_value_from_storage ... ok
+2026-09-30T00:20:47.897413Z ERROR runtime::storage: Corrupted state at `0x5f3e4907f716ac89b6347d15ececedca422adb579f1dbf4f3886c5cfa3bb8cc45d3c1c7d123ff06a6a17a67a411427e26500000000000000`: Error { cause: Some(Error { cause: None, desc: "BoundedVec exceeds its limit" }), desc: "Could not decode `StakingLedger::unlocking`" }    
+2026-09-30T00:20:47.897706Z ERROR runtime::storage: Corrupted state at `0x5f3e4907f716ac89b6347d15ececedca422adb579f1dbf4f3886c5cfa3bb8cc45d3c1c7d123ff06a6a17a67a411427e26500000000000000`: Error { cause: Some(Error { cause: None, desc: "BoundedVec exceeds its limit" }), desc: "Could not decode `StakingLedger::unlocking`" }    
+test tests::garbage_collection_on_window_pruning ... ok
+test tests::increase_validator_count_errors ... ok
+test tests::hold_migration::migrate_removes_old_lock ... ok
+test tests::election_data_provider::set_minimum_active_bond_corrupt_state ... ok
+test tests::hold_migration::ledger_update_creates_hold ... ok
+test tests::hold_migration::cannot_hold_all_stake ... ok
+test tests::hold_migration::overstaked_and_partially_unbonding ... ok
+test tests::invulnerables_are_not_slashed ... ok
+test tests::ledger::bond_works ... ok
+test tests::ledger::deprecate_controller_batch_with_bad_state_failures ... ok
+test tests::chill_other_works ... ok
+test tests::hold_migration::virtual_staker_consumer_provider_dec ... ok
+test tests::ledger::deprecate_controller_batch_with_bad_state_ok ... ok
+test tests::ledger::deprecate_controller_batch_skips_unmigrated_controller_payees ... ok
+test tests::ledger::get_ledger_bad_state_fails ... ok
+test tests::ledger::bond_controller_cannot_be_stash_works ... ok
+test tests::hold_migration::remove_old_lock_when_stake_already_on_hold ... ok
+test tests::ledger::is_bonded_works ... ok
+test tests::ledger::get_ledger_works ... ok
+test tests::kill_stash_works ... ok
+test tests::ledger::paired_account_works ... ok
+test tests::ledger::set_controller_with_bad_state_fails ... ok
+test tests::ledger::set_payee_errors_on_controller_destination ... ok
+test tests::ledger_recovery::inspect_recovery_ledger_simple_works ... ok
+test tests::ledger_recovery::inspect_recovery_ledger_corupted_killed_works ... ok
+test tests::ledger_recovery::inspect_recovery_ledger_corupted_killed_other_works ... ok
+test tests::ledger::set_controller_with_bad_state_ok ... ok
+test tests::ledger_recovery::inspect_recovery_ledger_lock_corrupted_works ... ok
+test tests::locked_balance_can_be_staked ... ok
+2026-09-30T00:20:47.908644Z  WARN runtime::staking: [15] 💸 nominator 101 stake 406 exceeds the sum_exposed of exposures 438.    
+test tests::manual_slashing_works ... ok
+test tests::less_than_needed_candidates_works ... ok
+test tests::ledger_recovery::restore_ledger_corrupted_works ... ok
+test tests::ledger::update_payee_migration_works ... ok
+test tests::ledger_recovery::restore_ledger_corrupted_bond_extra_works ... ok
+test tests::ledger_recovery::restore_ledger_corrupted_killed_other_works ... ok
+test tests::ledger_recovery::restore_ledger_corrupted_killed_works ... ok
+test tests::new_era_elects_correct_number_of_validators ... ok
+test tests::nomination_quota_max_changes_decoding ... ok
+test tests::offence_ensures_new_era_without_clobbering ... ok
+test tests::offence_doesnt_force_new_era ... ok
+test tests::max_staked_rewards_default_works ... ok
+test tests::min_commission_works ... ok
+test tests::max_staked_rewards_works ... ok
+test tests::nominating_and_rewards_should_work ... ok
+2026-09-30T00:20:47.918924Z  WARN runtime::staking: [15] 💸 nominator 101 stake 494 exceeds the sum_exposed of exposures 500.    
+test tests::min_bond_checks_work ... ok
+test tests::nominators_also_get_slashed_pro_rata ... ok
+test tests::no_candidate_emergency_condition ... ok
+test tests::only_slash_for_max_in_era ... ok
+test tests::payout_to_any_account_works ... ok
+test tests::proportional_ledger_slash_works ... ok
+test tests::on_finalize_weight_is_nonzero ... ok
+test tests::phragmen_should_not_overflow ... ok
+test tests::offences_weight_calculated_correctly ... ok
+test tests::reap_stash_works ... ok
+test tests::rebond_emits_right_value_in_event ... ok
+test tests::reap_stash_works_with_existential_deposit_zero ... ok
+test tests::proportional_slash_stop_slashing_if_remaining_zero ... ok
+test tests::rebond_is_fifo ... ok
+test tests::reporters_receive_their_slice ... ok
+test tests::rebond_works ... ok
+test tests::replacement_reward_claim_preserves_native_balances_and_staked_ledgers ... ok
+test tests::replacement_reward_era_budget_bypasses_native_cap_and_remainder_issuance ... ok
+test tests::remove_multi_deferred ... ok
+test tests::payout_stakers_handles_weight_refund ... ok
+test tests::replacement_reward_events_follow_page_start_and_roll_back_on_failure ... ok
+2026-09-30T00:20:47.937318Z  WARN runtime::staking: [60] 💸 nominator 101 stake 493 exceeds the sum_exposed of exposures 500.    
+2026-09-30T00:20:47.937471Z ERROR runtime::storage: Corrupted state at `0x5f3e4907f716ac89b6347d15ececedca422adb579f1dbf4f3886c5cfa3bb8cc48e79fdf1428e95842eaa9af0b22414be0300000000000000`: Error { cause: Some(Error { cause: None, desc: "BoundedVec exceeds its limit" }), desc: "Could not decode `StakingLedger::unlocking`" }    
+2026-09-30T00:20:47.937875Z ERROR runtime::storage: Corrupted state at `0x5f3e4907f716ac89b6347d15ececedca422adb579f1dbf4f3886c5cfa3bb8cc48e79fdf1428e95842eaa9af0b22414be0300000000000000`: Error { cause: Some(Error { cause: None, desc: "BoundedVec exceeds its limit" }), desc: "Could not decode `StakingLedger::unlocking`" }    
+test tests::remove_deferred ... ok
+test tests::reward_to_stake_works ... ok
+test tests::reducing_max_unlocking_chunks_abrupt ... ok
+2026-09-30T00:20:47.940134Z  WARN runtime::staking: [75] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+test tests::reward_validator_slashing_validator_does_not_overflow ... ok
+test tests::reward_destination_works ... ok
+test tests::reward_from_authorship_event_handler_works ... ok
+test tests::retroactive_deferred_slashes_one_before ... ok
+2026-09-30T00:20:47.941268Z  WARN runtime::staking: [60] 💸 nominator 101 stake 488 exceeds the sum_exposed of exposures 500.    
+test tests::restricted_accounts_can_only_withdraw ... ok
+test tests::scale_validator_count_errors ... ok
+test tests::retroactive_deferred_slashes_two_eras_before ... ok
+test tests::rewards_should_work ... ok
+test tests::session_and_eras_work_complex ... ok
+test tests::session_and_eras_work_simple ... ok
+test tests::session_buffering_with_offset ... ok
+test tests::session_buffering_no_offset ... ok
+test tests::set_min_commission_works_with_admin_origin ... ok
+test tests::set_staking_configs_works ... ok
+test tests::should_retain_era_info_only_upto_history_depth ... ok
+test tests::six_session_delay ... ok
+test tests::slashing_performed_according_exposure ... ok
+2026-09-30T00:20:47.946214Z  WARN runtime::staking: [60] 💸 nominator 101 stake 449 exceeds the sum_exposed of exposures 463.    
+test tests::sorted_list_provider::re_validate_does_not_change_counters_or_list ... ok
+test tests::slashes_are_summed_across_spans ... ok
+2026-09-30T00:20:47.947494Z  WARN runtime::staking: [45] 💸 nominator 101 stake 388 exceeds the sum_exposed of exposures 500.    
+test tests::sorted_list_provider::re_nominate_does_not_change_counters_or_list ... ok
+test tests::staking_interface::do_withdraw_unbonded_with_wrong_slash_spans_works_as_expected ... ok
+test tests::slashing_nominators_by_span_max ... ok
+test tests::staking_interface::force_unstake_with_slash_works ... ok
+test tests::staker_cannot_bail_deferred_slash ... ok
+test tests::staking_interface::status ... ok
+test tests::staking_interface::do_withdraw_unbonded_can_kill_stash_with_existential_deposit_zero ... ok
+test tests::staking_unchecked::migrate_virtual_staker ... ok
+test tests::staking_unchecked::normal_staker_cannot_virtual_bond ... ok
+test tests::staking_should_work ... ok
+test tests::staking_unchecked::virtual_staker_cannot_bond_again ... ok
+2026-09-30T00:20:47.951241Z  WARN runtime::staking: [15] 💸 nominator 101 stake 494 exceeds the sum_exposed of exposures 500.    
+test tests::staking_unchecked::virtual_staker_cannot_pay_reward_to_self_account ... ok
+test tests::staking_unchecked::restore_ledger_not_allowed_for_virtual_stakers ... ok
+test tests::staking_unchecked::virtual_nominators_are_lazily_slashed ... ok
+test tests::staking_unchecked::virtual_bond_does_not_lock ... ok
+test tests::switching_roles ... ok
+test tests::subsequent_reports_in_same_span_pay_out_less ... ok
+2026-09-30T00:20:47.953518Z  WARN runtime::staking: [15] 💸 nominator 101 stake 0 exceeds the sum_exposed of exposures 500.    
+test tests::test_legacy_claimed_rewards_is_checked_at_reward_payout ... ok
+test tests::staking_unchecked::virtual_stakers_cannot_be_reaped ... ok
+test tests::unbonded_balance_is_not_slashable ... ok
+test tests::unbond_with_chill_works ... ok
+test tests::test_runtime_api_pending_rewards ... ok
+2026-09-30T00:20:47.961822Z  WARN runtime::staking: [15] 💸 nominator 101 stake 251 exceeds the sum_exposed of exposures 500.    
+test tests::validator_disabling_integration::clear_disabled_only_on_era_change ... ok
+test tests::validator_disabling_integration::do_not_reenable_higher_offenders_mock ... ok
+2026-09-30T00:20:47.963635Z  WARN runtime::staking: [15] 💸 nominator 101 stake 406 exceeds the sum_exposed of exposures 500.    
+test tests::validator_disabling_integration::non_slashable_offence_disables_validator ... ok
+2026-09-30T00:20:47.964599Z  WARN runtime::staking: [15] 💸 nominator 101 stake 413 exceeds the sum_exposed of exposures 500.    
+2026-09-30T00:20:47.964907Z  WARN runtime::staking: [15] 💸 nominator 101 stake 438 exceeds the sum_exposed of exposures 500.    
+test tests::test_validator_exposure_is_backward_compatible_with_non_paged_rewards_payout ... ok
+test tests::validator_disabling_integration::reenable_lower_offenders ... ok
+test tests::validator_disabling_integration::offence_threshold_doesnt_force_new_era ... ok
+2026-09-30T00:20:47.966026Z  WARN runtime::staking: [15] 💸 nominator 101 stake 344 exceeds the sum_exposed of exposures 500.    
+test tests::claim_reward_at_the_last_era_and_no_double_claim_and_invalid_claim ... ok
+2026-09-30T00:20:47.967439Z  WARN runtime::staking: [45] 💸 nominator 101 stake 381 exceeds the sum_exposed of exposures 500.    
+test tests::validator_disabling_integration::slashing_independent_of_disabling_validator ... ok
+test tests::wrong_vote_is_moot ... ok
+test tests::validator_payment_prefs_work ... ok
+test tests::validator_disabling_integration::validator_is_not_disabled_for_an_offence_in_previous_era ... ok
+test tests::many_unbond_calls_should_work ... ok
+test tests::zero_slash_keeps_nominators ... ok
+test tests::test_nominators_over_max_exposure_page_size_are_rewarded ... ok
+test tests::test_page_count_and_size ... ok
+test tests::test_nominators_are_rewarded_for_all_exposure_page ... ok
+test tests::test_commission_paid_across_pages ... ok
+test tests::payout_stakers_handles_basic_errors ... ok
+test tests::test_multi_page_payout_stakers_by_page ... ok
+test election_size_tracker::tests::len_prefix_works ... ok
+test tests::test_multi_page_payout_stakers_backward_compatible ... ok
+test tests::ledger::deprecate_controller_batch_works_full_weight ... ok
+test tests::ledger::deprecate_controller_batch_works_half_weight ... ok
+
+test result: ok. 218 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.69s
+
