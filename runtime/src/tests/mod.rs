@@ -32,9 +32,9 @@ mod babe_config;
 mod liquidity_proxy;
 mod liveness;
 mod referrals;
-mod staking_reward_compatibility;
 #[cfg(feature = "try-runtime")]
 mod remote;
+mod staking_reward_compatibility;
 mod xor_fee;
 
 use crate::{
