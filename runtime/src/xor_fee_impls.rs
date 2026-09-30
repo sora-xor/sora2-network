@@ -202,7 +202,24 @@ pub struct StakingValPayoutPre {
 
 pub struct StakingValPayout;
 
+/// Publish the ending era's VAL budget through the standard staking reward API.
+/// XOR remains the staking currency; `StakingValPayout` replaces native rewards.
+pub struct ValEraPayout;
+
+impl pallet_staking::EraPayout<Balance> for ValEraPayout {
+    fn era_payout(_: Balance, _: Balance, _: u64) -> (Balance, Balance) {
+        let reward = pallet_staking::ActiveEra::<Runtime>::get()
+            .map(|active| xor_fee::ValStakingEraReward::<Runtime>::get(active.index))
+            .unwrap_or_default();
+        (reward, 0)
+    }
+}
+
 impl pallet_staking::AdditionalPayout<AccountId> for StakingValPayout {
+    fn pays_native_reward() -> bool {
+        false
+    }
+
     fn payout(validator_stash: &AccountId, era: EraIndex, page: Page) -> DispatchResult {
         pay_val_staking_reward(StakingValPayoutPre {
             validator_stash: validator_stash.clone(),
@@ -299,6 +316,7 @@ fn pay_val_to_reward_destination(
     let Some(payee) = pallet_staking::Payee::<Runtime>::get(stash) else {
         return Ok(());
     };
+    let reward_destination = payee.clone();
     let dest = match payee {
         pallet_staking::RewardDestination::Staked | pallet_staking::RewardDestination::Stash => {
             stash.clone()
@@ -317,6 +335,15 @@ fn pay_val_to_reward_destination(
     let val = GetValAssetId::get();
     Assets::mint_unchecked(&val, &dest, amount)?;
     XorFee::deposit_val_staking_reward_paid(stash.clone(), dest, era, page, amount);
+    // Existing staking clients refresh claim history using this event. It reports the
+    // actual VAL reward; replacement mode never mints XOR or compounds XOR stake.
+    crate::System::deposit_event(crate::RuntimeEvent::Staking(pallet_staking::Event::<
+        Runtime,
+    >::Rewarded {
+        stash: stash.clone(),
+        dest: reward_destination,
+        amount,
+    }));
     Ok(())
 }
 
@@ -882,7 +909,7 @@ mod tests {
         let era = 7;
         drop(Balances::deposit_creating(&validator, 100));
         pallet_staking::CurrentEra::<Runtime>::put(era + 1);
-        pallet_staking::ErasValidatorReward::<Runtime>::insert(era, 0);
+        pallet_staking::ErasValidatorReward::<Runtime>::insert(era, total_reward.unwrap_or(0));
 
         pallet_staking::Bonded::<Runtime>::insert(&validator, &controller);
         pallet_staking::Ledger::<Runtime>::insert(
