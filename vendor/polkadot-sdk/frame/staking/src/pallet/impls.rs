@@ -662,7 +662,10 @@ impl<T: Config> Pallet<T> {
 
                 // apply cap to validators payout and add difference to remainder.
                 let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
-                (validator_payout, total_payout.saturating_sub(validator_payout))
+                (
+                    validator_payout,
+                    total_payout.saturating_sub(validator_payout),
+                )
             } else {
                 // These amounts describe another asset, not native inflation. Preserve the
                 // configured reward budget and let its payout handler own the remainder.
