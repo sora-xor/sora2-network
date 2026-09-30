@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-09-30",
+  "sourceCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
+  "sourceLock": "Cargo.lock",
+  "source": "https://github.com/paritytech/polkadot-sdk/tree/e3737178ec726cffe506c907263aaaa417893fd0",
+  "defaultStaticExtraHeapPages": 2048,
+  "wasmPageBytes": 65536,
+  "findings": [
+    "The pinned Wasmtime executor converts the declared memory import into an internal memory export and lets Wasmtime create it.",
+    "Heap allocation reads each module declared initial page count. Static allocation adds configured extra pages to that initial count; the default adds 2048.",
+    "A change from 45 to 46 initial pages therefore uses 2,094 total pages under the default static strategy, 64 KiB more than the baseline 2,093. No fixed baseline 45-page import is reused.",
+    "Structural review is supplemented by successful candidate Wasm instantiation and execution in the separate local exact-Wasm rehearsal. It does not inspect production operator heap settings."
+  ],
+  "sourceEvidence": [
+    {
+      "path": "substrate/client/executor/wasmtime/src/runtime.rs",
+      "sha256": "26b0042e667fca22185636bffc88ab0041a27eebee8a649c7ade7d246651bd8b",
+      "startLine": 631,
+      "endLine": 644,
+      "excerpt": "\tsemantics: &Semantics,\n) -> std::result::Result<RuntimeBlob, WasmError> {\n\tif let Some(DeterministicStackLimit { logical_max, .. }) = semantics.deterministic_stack_limit {\n\t\tblob = blob.inject_stack_depth_metering(logical_max)?;\n\t}\n\n\t// We don't actually need the memory to be imported so we can just convert any memory\n\t// import into an export with impunity. This simplifies our code since `wasmtime` will\n\t// now automatically take care of creating the memory for us, and it is also necessary\n\t// to enable `wasmtime`'s instance pooling. (Imported memories are ineligible for pooling.)\n\tblob.convert_memory_import_into_export()?;\n\tblob.setup_memory_according_to_heap_alloc_strategy(semantics.heap_alloc_strategy)?;\n\n\tOk(blob)"
+    },
+    {
+      "path": "substrate/client/executor/common/src/runtime_blob/runtime_blob.rs",
+      "sha256": "8f38e448363d556841312919b2a13aed5449da0ba29924bc63cbd113179ba909",
+      "startLine": 99,
+      "endLine": 120,
+      "excerpt": "\t\tlet raw_module = self.as_webassembly_blob_mut()?;\n\t\tlet import_section = match raw_module.import_section_mut() {\n\t\t\tSome(import_section) => import_section,\n\t\t\tNone => return Ok(()),\n\t\t};\n\n\t\tlet import_entries = import_section.entries_mut();\n\t\tfor index in 0..import_entries.len() {\n\t\t\tlet entry = &import_entries[index];\n\t\t\tlet memory_ty = match entry.external() {\n\t\t\t\tExternal::Memory(memory_ty) => *memory_ty,\n\t\t\t\t_ => continue,\n\t\t\t};\n\n\t\t\tlet memory_name = entry.field().to_owned();\n\t\t\timport_entries.remove(index);\n\n\t\t\traw_module\n\t\t\t\t.insert_section(Section::Memory(MemorySection::with_entries(vec![memory_ty])))\n\t\t\t\t.map_err(|error| {\n\t\t\t\t\tWasmError::Other(format!(\n\t\t\t\t\t\"can't convert a memory import into an export: failed to insert a new memory section: {}\","
+    },
+    {
+      "path": "substrate/client/executor/common/src/runtime_blob/runtime_blob.rs",
+      "sha256": "8f38e448363d556841312919b2a13aed5449da0ba29924bc63cbd113179ba909",
+      "startLine": 155,
+      "endLine": 176,
+      "excerpt": "\t\tlet memory_section = raw_module\n\t\t\t.memory_section_mut()\n\t\t\t.ok_or_else(|| WasmError::Other(\"no memory section found\".into()))?;\n\n\t\tif memory_section.entries().is_empty() {\n\t\t\treturn Err(WasmError::Other(\"memory section is empty\".into()));\n\t\t}\n\t\tfor memory_ty in memory_section.entries_mut() {\n\t\t\tlet initial = memory_ty.limits().initial();\n\t\t\tlet (min, max) = match heap_alloc_strategy {\n\t\t\t\tHeapAllocStrategy::Dynamic { maximum_pages } => {\n\t\t\t\t\t// Ensure `initial <= maximum_pages`\n\t\t\t\t\t(maximum_pages.map(|m| m.min(initial)).unwrap_or(initial), maximum_pages)\n\t\t\t\t},\n\t\t\t\tHeapAllocStrategy::Static { extra_pages } => {\n\t\t\t\t\tlet pages = initial.saturating_add(extra_pages);\n\t\t\t\t\t(pages, Some(pages))\n\t\t\t\t},\n\t\t\t};\n\t\t\t*memory_ty = MemoryType::new(min, max);\n\t\t}\n\t\tOk(())"
+    },
+    {
+      "path": "substrate/client/executor/common/src/wasm_runtime.rs",
+      "sha256": "bc87e898c30d847cfaf303d1a38d933470369bfd8414a8df8ac21da13c2f6655",
+      "startLine": 23,
+      "endLine": 30,
+      "excerpt": "pub use sc_allocator::AllocationStats;\n\n/// Default heap allocation strategy.\npub const DEFAULT_HEAP_ALLOC_STRATEGY: HeapAllocStrategy =\n\tHeapAllocStrategy::Static { extra_pages: DEFAULT_HEAP_ALLOC_PAGES };\n\n/// Default heap allocation pages.\npub const DEFAULT_HEAP_ALLOC_PAGES: u32 = 2048;"
+    }
+  ]
+}

@@ -1,0 +1,347 @@
+{
+  "status": "preflight-passed-scope-prepared",
+  "createdAt": "2026-09-30T00:31:55.809Z",
+  "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+  "endpoint": "wss://ws.mof.sora.org",
+  "sourceBlockNumber": 27834097,
+  "sourceBlockHash": "0xf15e54191c639a904ef74a62fc4250178445e15221988069dba92c0523bb49c7",
+  "sourceRuntimeSpecVersion": 132,
+  "sourceTransactionVersion": 131,
+  "preflight": {
+    "readOnly": true,
+    "submittedTransactions": 0,
+    "privateKeysRead": 0,
+    "method": "WsProvider state_getStorage for all 19 FRAME versions, five custom guards and three migration markers, pinned to sourceBlockHash.",
+    "auditedStorageVersions": [
+      {
+        "pallet": "XorFee",
+        "key": "0xc9283f367dbf74c668ae6ee5f45c97b04e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0300",
+        "decodedVersion": 3,
+        "expectedVersion": 3
+      },
+      {
+        "pallet": "Staking",
+        "key": "0x5f3e4907f716ac89b6347d15ececedca4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x1000",
+        "decodedVersion": 16,
+        "expectedVersion": 16
+      },
+      {
+        "pallet": "Offences",
+        "key": "0xd5c41b52a371aa36c9254ce34324f2a54e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "Session",
+        "key": "0xcec5070d609dd3497f72bde07fc96ba04e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "Grandpa",
+        "key": "0x5f9cc45b7a00c5899361e1c6099678dc4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0500",
+        "decodedVersion": 5,
+        "expectedVersion": 5
+      },
+      {
+        "pallet": "ImOnline",
+        "key": "0x2b06af9719ac64d755623cda8ddd9b944e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "PoolXYK",
+        "key": "0x7c2f67164deafeedd91e34da0331ade44e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0300",
+        "decodedVersion": 3,
+        "expectedVersion": 3
+      },
+      {
+        "pallet": "PswapDistribution",
+        "key": "0x31f6b7a64c19140023b52070f65fc2e34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "VestedRewards",
+        "key": "0xe41c5e75812adf5bb00364f58d835bf34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4,
+        "expectedVersion": 4
+      },
+      {
+        "pallet": "Identity",
+        "key": "0x2aeddc77fe58c98d50bd37f1b90840f94e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "Farming",
+        "key": "0x9caa03c08d70516a1d9a23659da86bff4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "Kensetsu",
+        "key": "0xf7f560e8952aa82606c54229c1cc23234e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0600",
+        "decodedVersion": 6,
+        "expectedVersion": 6
+      },
+      {
+        "pallet": "Band",
+        "key": "0x20e20c48df300e3b1a7e08f0f0e750c94e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "Polkamarkt",
+        "key": "0x7c9df7ef418f869f0ab365233bda527f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0700",
+        "decodedVersion": 7,
+        "expectedVersion": 7
+      },
+      {
+        "pallet": "EthBridge",
+        "key": "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4,
+        "expectedVersion": 4
+      },
+      {
+        "pallet": "OracleProxy",
+        "key": "0x6e95e8ab162d1e5278846592690a69904e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "BridgeInboundChannel",
+        "key": "0xdcc431f707e57df466d3df30245684754e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "SubstrateBridgeInboundChannel",
+        "key": "0x2b37b6c7d56c1ecfd9944e8c4aaaa72f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "SubstrateBridgeOutboundChannel",
+        "key": "0xc1332d01afb161d79c4c0965aa569c634e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      }
+    ],
+    "customVersionGuards": [
+      {
+        "pallet": "DemeterFarmingPlatform",
+        "key": "0x270c102199328d18305885706f3f591a1601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x02",
+        "decodedVersion": "V3",
+        "expectedHook": "No-op on this live version."
+      },
+      {
+        "pallet": "CeresGovernancePlatform",
+        "key": "0x856dcaf407bfed6ffc84ad25f280a0721601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x02",
+        "decodedVersion": "V3",
+        "expectedHook": "No-op on this live version."
+      },
+      {
+        "pallet": "CeresTokenLocker",
+        "key": "0xed68da8f0472e9ece6e248dfe5e44a921601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x01",
+        "decodedVersion": "V2",
+        "expectedHook": "No-op on this live version."
+      },
+      {
+        "pallet": "CeresLiquidityLocker",
+        "key": "0xf73544dd7fd8ed678dbe240c8267b3261601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x01",
+        "decodedVersion": "V2",
+        "expectedHook": "No-op on this live version."
+      },
+      {
+        "pallet": "HermesGovernancePlatform",
+        "key": "0xa420a1e69ffb5aa3cb8eca7d0bedf7d51601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x01",
+        "decodedVersion": "V2",
+        "expectedHook": "No-op on this live version."
+      }
+    ],
+    "markers": [
+      {
+        "label": "Reward points remapped",
+        "key": "0x72756e74696d653a6d6967726174696f6e733a7374616b696e675f7265776172645f706f696e74735f73746173685f72656d6170706564",
+        "raw": "0x01",
+        "meaning": "Earlier migration is a no-op."
+      },
+      {
+        "label": "VAL reward publication",
+        "key": "0x72756e74696d653a6d6967726174696f6e733a76616c5f7374616b696e675f726577617264735f7075626c6973686564",
+        "raw": null,
+        "meaning": "New publication migration must execute."
+      },
+      {
+        "label": "BABE mainnet configuration repair",
+        "key": "0x1cb6f36e027abb2091cfb5110ab5087f69d646ed62163e7bbeec206d356c550f",
+        "raw": "0x01",
+        "meaning": "Earlier BABE repair is a no-op."
+      }
+    ]
+  },
+  "scope": {
+    "pallets": [
+      "MultiBlockMigrations",
+      "XorFee",
+      "Staking",
+      "Offences",
+      "Session",
+      "Grandpa",
+      "ImOnline",
+      "PoolXYK",
+      "PswapDistribution",
+      "VestedRewards",
+      "Identity",
+      "Farming",
+      "Kensetsu",
+      "Band",
+      "Polkamarkt",
+      "OracleProxy",
+      "BridgeInboundChannel",
+      "SubstrateBridgeInboundChannel",
+      "SubstrateBridgeOutboundChannel",
+      "Babe",
+      "Liveness"
+    ],
+    "hashedPrefixes": [
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d3d58d7b3d264ccf1905be36bf3f4f7040",
+        "label": "EthBridge.LoadToIncomingRequestHash",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d32455672c652ba1a1af2a4ce9614f541b",
+        "label": "EthBridge.AccountRequests",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d32db2d969c1d2247f7efebb578ef18d2b",
+        "label": "EthBridge.Peers",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d3b94b71c7bb97c63db43b451b46f31b09",
+        "label": "EthBridge.RequestApprovals",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d317cd2ab6bb58708f5903f65e8ace2fb0",
+        "label": "EthBridge.RequestApprovers",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d34f1c48c3cf3da900a7dac823371f7a9f",
+        "label": "EthBridge.RequestsQueue",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d35c63ad4ba9b87d8a9938e57f2391a87b",
+        "label": "EthBridge.RequestStatuses",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34",
+        "label": "EthBridge.Requests",
+        "reason": "Includes every value iterated by remote.rs replay-index and collection-bounds assertions; AccountRequests is also the multi-block migration input."
+      },
+      {
+        "key": "0x72756e74696d653a",
+        "label": "Raw runtime: prefix",
+        "reason": "Retains one-shot raw runtime migration markers, including the already-applied reward-point remap and new VAL publication marker."
+      }
+    ],
+    "hashedKeys": [
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "EthBridge FRAME storage version",
+        "reason": "Prevents the omitted full pallet prefix from appearing to be an unmigrated v0 bridge; current version is v4."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef7f9cce9c888469bb1a0dceaa129672ef8",
+        "label": "System.LastRuntimeUpgrade",
+        "reason": "Retains live runtime upgrade provenance without scraping System.Account."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef7a44704b568d21667356a5a050c118746b4def25cfda6ef3a00000000",
+        "label": "System.BlockHash(0)",
+        "reason": "Retains mainnet genesis identity for the BABE repair guard; runtime BlockNumber encodes as u32."
+      },
+      {
+        "key": "0x270c102199328d18305885706f3f591a1601562ebcdff856cb2f34e65f3b2659",
+        "label": "DemeterFarmingPlatform.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0x856dcaf407bfed6ffc84ad25f280a0721601562ebcdff856cb2f34e65f3b2659",
+        "label": "CeresGovernancePlatform.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0xed68da8f0472e9ece6e248dfe5e44a921601562ebcdff856cb2f34e65f3b2659",
+        "label": "CeresTokenLocker.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0xf73544dd7fd8ed678dbe240c8267b3261601562ebcdff856cb2f34e65f3b2659",
+        "label": "CeresLiquidityLocker.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0xa420a1e69ffb5aa3cb8eca7d0bedf7d51601562ebcdff856cb2f34e65f3b2659",
+        "label": "HermesGovernancePlatform.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0x3a636f6465",
+        "label": ":code",
+        "reason": "Retains pinned on-chain runtime code in the remote externalities input."
+      }
+    ],
+    "childTrie": false,
+    "explanation": "Uses the prior proven audited-pallet rehearsal scope, excludes the large System pallet prefix, and adds Babe, Liveness, current custom-version guards and raw runtime markers. Full Staking contains all publication inputs, claim state and exposures needed by the runtime-local Liveness upgrade refresh. Full MultiBlockMigrations retains live cursor and historical migration state."
+  },
+  "environment": {
+    "REQUIRE_REMOTE": "1",
+    "REMOTE_RPC_URL": "wss://ws.mof.sora.org",
+    "REMOTE_BLOCK_HASH": "0xf15e54191c639a904ef74a62fc4250178445e15221988069dba92c0523bb49c7",
+    "REMOTE_CHILD_TRIE": "0",
+    "REMOTE_PALLETS": "MultiBlockMigrations,XorFee,Staking,Offences,Session,Grandpa,ImOnline,PoolXYK,PswapDistribution,VestedRewards,Identity,Farming,Kensetsu,Band,Polkamarkt,OracleProxy,BridgeInboundChannel,SubstrateBridgeInboundChannel,SubstrateBridgeOutboundChannel,Babe,Liveness",
+    "REMOTE_HASHED_PREFIXES": "0x8e8f4d4777099074419cbb4597dac1d3d58d7b3d264ccf1905be36bf3f4f7040,0x8e8f4d4777099074419cbb4597dac1d32455672c652ba1a1af2a4ce9614f541b,0x8e8f4d4777099074419cbb4597dac1d32db2d969c1d2247f7efebb578ef18d2b,0x8e8f4d4777099074419cbb4597dac1d3b94b71c7bb97c63db43b451b46f31b09,0x8e8f4d4777099074419cbb4597dac1d317cd2ab6bb58708f5903f65e8ace2fb0,0x8e8f4d4777099074419cbb4597dac1d34f1c48c3cf3da900a7dac823371f7a9f,0x8e8f4d4777099074419cbb4597dac1d35c63ad4ba9b87d8a9938e57f2391a87b,0x8e8f4d4777099074419cbb4597dac1d3e973821932a99de497c2362ed9f9be34,0x72756e74696d653a",
+    "REMOTE_HASHED_KEYS": "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429,0x26aa394eea5630e07c48ae0c9558cef7f9cce9c888469bb1a0dceaa129672ef8,0x26aa394eea5630e07c48ae0c9558cef7a44704b568d21667356a5a050c118746b4def25cfda6ef3a00000000,0x270c102199328d18305885706f3f591a1601562ebcdff856cb2f34e65f3b2659,0x856dcaf407bfed6ffc84ad25f280a0721601562ebcdff856cb2f34e65f3b2659,0xed68da8f0472e9ece6e248dfe5e44a921601562ebcdff856cb2f34e65f3b2659,0xf73544dd7fd8ed678dbe240c8267b3261601562ebcdff856cb2f34e65f3b2659,0xa420a1e69ffb5aa3cb8eca7d0bedf7d51601562ebcdff856cb2f34e65f3b2659,0x3a636f6465"
+  },
+  "limitations": [
+    "This records read-only preflight and the intended native rehearsal scope; it does not claim the native rehearsal has run or passed.",
+    "System.Account, native balance accounts, nonnative token balances, assets and unrelated pallets are omitted. This scoped snapshot validates configured upgrade hooks, audited storage versions and bridge replay/index bounds, not actual payout execution. The exact-Wasm live-state fork supplies separate payout evidence.",
+    "Child tries are omitted; the selected migration paths use ordinary pallet/raw storage. This is not a complete chain-state snapshot or a global state-invariant check.",
+    "The scope relies on the pinned preflight showing legacy guard versions current. If any guarded old migration becomes active at another checkpoint, expand that pallet and its dependencies before rehearsal.",
+    "Do not reuse a previously narrower snapshot simply because its block hash matches. remote.rs verifies the snapshot header but does not verify its original filter coverage. Use a new scoped snapshot or one known to be a superset.",
+    "Only eight EthBridge maps are scraped. They cover all explicit remote.rs audits and the current v4 migration no-op; unrelated bridge maps are not covered.",
+    "This is a native runtime execution rehearsal, not validator consensus, host-import completeness, signed transactions or governance enactment."
+  ]
+}

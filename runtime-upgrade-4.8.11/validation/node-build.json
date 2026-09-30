@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+  "platform": "macOS arm64",
+  "version": "framenode 4.8.11-870df1dbe-aarch64-apple-darwin",
+  "binary": "/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/framenode",
+  "binaryBytes": 96372944,
+  "binarySha256": "974bfffc567f6c4b02d29474f70e7da7b5d486a49f8ac3e3ab4e4a5b5d816646",
+  "builtWithWasm": true,
+  "generatedWasmSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+  "packagedValidatedWasmSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+  "generatedWasmMatchesValidatedPackage": true,
+  "log": "node-build.log",
+  "logSha256": "0762690735eaf3b7d32233c596d33c7e67d33c05265dd2f79c230476aa110d05",
+  "limitations": [
+    "This is a local macOS build and version check, not a Linux validator binary validation or production restart.",
+    "Only the explicitly packaged Wasm is covered by the exact candidate execution reports."
+  ]
+}

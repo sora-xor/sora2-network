@@ -1,0 +1,30 @@
+{
+  "baseCommit": "51949ad854fc7c1a04a2c6a0f1d352b292caac35",
+  "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+  "sourceTreeAfterPatch": "04ccb953cc6413d4cf2be42b53523a8d2207bc79",
+  "patch": "source.patch",
+  "patchSha256": "71f74c2f37da1af93fc5ebfc8e6d25f13770fea1ae81ab0ad3e76eb107047453",
+  "patchAppliesToCleanBase": true,
+  "workingTreeTrackedChangesAtBuild": false,
+  "sdkCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
+  "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
+  "files": {
+    "Cargo.lock": "69c4d4d0ae49c1fbc17d9ae0cac3ffb8261b1e66de85d8cf72212d4c3cb6a520",
+    "misc/polkadotjs/README.md": "c1aeba696e3d0b9363fa1c5631da79ccf7ddad049fde607d498cd6a354366970",
+    "misc/polkadotjs/runtime-fixes.md": "8b9f50e8195e6f1840ad6d10765ed9a29dc8b324b1ba10260bd4dec8a30afeac",
+    "node/Cargo.toml": "da7ff96461c37758c845eddeca5066431957ef4ac1cba8db7dbf93cc50a59f29",
+    "node/chain_spec/Cargo.toml": "bb038c57f80c847e71836024425cf1aeccf26eb816f59b45b4afa008c0086d44",
+    "runtime/Cargo.toml": "92c4486359210930e859baeaed2a9ebadbe654d2e6f6ec852b41448c59a54c3e",
+    "runtime/src/lib.rs": "9da49d2c44259cf7c53595969261b2e4570fbaaf16d9897035ee2df1c7ba6f40",
+    "runtime/src/migrations.rs": "893d4682a56d3d60c557c9abd96a09561835a2874a33bb7e172f7b4168f59ef9",
+    "runtime/src/tests/mod.rs": "ff0d32155780baa7bac25bf0305f6582c3ae470192b02880f88a8352b45183b9",
+    "runtime/src/tests/staking_reward_compatibility.rs": "64b6278422a647893d114d642e4bf6f513bcd6498fcff4671e822b79b58598cb",
+    "runtime/src/xor_fee_impls.rs": "cd99a9e4aa3c98a0581e94cb0c5965d56498f365835b37dfdd1217fe7531b102",
+    "vendor/polkadot-sdk/frame/staking/PATCHES.md": "1d9a4d3154a51dac30224aa0b28a9b329f2c96f8562bf8b37e3914c8e2d47e74",
+    "vendor/polkadot-sdk/frame/staking/native-reward-compatibility.patch": "92185bf16c3bb1bfe77129dc9ffbc6ecf77f671580bcb1310f51902f605b67f2",
+    "vendor/polkadot-sdk/frame/staking/src/lib.rs": "4a68bf6db82309e2e7ce00654307376d846f09a1da42ea9c54937923d701c90a",
+    "vendor/polkadot-sdk/frame/staking/src/mock.rs": "662b336ced89823c14514150f1cbf63d49405cfbf1238d1dc136374fcc201ba7",
+    "vendor/polkadot-sdk/frame/staking/src/pallet/impls.rs": "3e53386c94d3d2d0d16cd183b707cee3c5e219a99f9d5c4758fc5abd611336ae",
+    "vendor/polkadot-sdk/frame/staking/src/tests.rs": "c49be50b2e9a633c073b8154821d20af747348c6262a95818469c71081d42e76"
+  }
+}

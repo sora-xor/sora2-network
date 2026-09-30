@@ -1,0 +1,2884 @@
+{
+  "status": "passed",
+  "startedAt": "2026-09-30T00:45:21.853Z",
+  "localOnly": true,
+  "remoteRequests": 0,
+  "inputs": {
+    "baseline": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/live-runtime-132.compact.compressed.wasm",
+      "bytes": 3055007,
+      "sha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
+      "uncompressedBytes": 13265416,
+      "uncompressedSha256": "65e19280824ce168bd8d9fad1dae229bdbcbcae5aa03a03fcbb34ee8a20438b0",
+      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/baseline-metadata.json",
+      "metadataSha256": "ee445496ff86c4c59d028410838b01c8d2e2773dd828e0edd3fca51bc93059ca",
+      "info": {
+        "size": 3055007,
+        "compression": {
+          "size_compressed": 3055007,
+          "size_decompressed": 13265416,
+          "compressed": true
+        },
+        "reserved_meta": [
+          109,
+          101,
+          116,
+          97
+        ],
+        "reserved_meta_valid": true,
+        "metadata_version": 14,
+        "core_version": {
+          "specName": "sora-substrate",
+          "implName": "sora-substrate",
+          "authoringVersion": 1,
+          "specVersion": 132,
+          "implVersion": 1,
+          "apis": [
+            [
+              "0xdf6acb689907609b",
+              5
+            ],
+            [
+              "0x37e397fc7c91f5e4",
+              2
+            ],
+            [
+              "0x40fe3ad401f8959a",
+              6
+            ],
+            [
+              "0xd2bc9897eed08f15",
+              3
+            ],
+            [
+              "0xf78b278be53f454c",
+              2
+            ],
+            [
+              "0xab3c0572291feb8b",
+              2
+            ],
+            [
+              "0x37c8bb1350a9a2a8",
+              4
+            ],
+            [
+              "0x49a15104d14de433",
+              1
+            ],
+            [
+              "0x3c174d7764069e61",
+              2
+            ],
+            [
+              "0x0f3489937d1c2064",
+              1
+            ],
+            [
+              "0x7b08daa9d117c89b",
+              1
+            ],
+            [
+              "0xd83dc51e16a813fc",
+              1
+            ],
+            [
+              "0xf8e0c25200c466cc",
+              1
+            ],
+            [
+              "0x7714ae7197b04674",
+              1
+            ],
+            [
+              "0xfa5dc115e8dd759b",
+              3
+            ],
+            [
+              "0x8fd89fd41faef876",
+              1
+            ],
+            [
+              "0xc890b8837395d703",
+              1
+            ],
+            [
+              "0x5cb928f4410f41fc",
+              1
+            ],
+            [
+              "0xcbca25e39f142387",
+              2
+            ],
+            [
+              "0xbc9d89904f5b923f",
+              1
+            ],
+            [
+              "0x49eaaf1b548a0cb0",
+              6
+            ],
+            [
+              "0x91d5df18b0d2cf58",
+              3
+            ],
+            [
+              "0xed99c5acb25eedf5",
+              3
+            ],
+            [
+              "0xeb4d485ae89fbcb5",
+              1
+            ],
+            [
+              "0x8e688fe9454ac970",
+              1
+            ],
+            [
+              "0x4ee6f974cd3d43f9",
+              2
+            ],
+            [
+              "0x98deaed7652aeff9",
+              1
+            ],
+            [
+              "0xfbc577b9d747efd6",
+              1
+            ]
+          ],
+          "transactionVersion": 131,
+          "stateVersion": 0
+        },
+        "proposal_hash": "0xcb822d1ad3293838ba0ecfb4eb9ded109c040693f626e406f07b184ecc5e6713",
+        "parachain_authorize_upgrade_hash": "0xfa291b215aa0931969f5166a47b7a400e2f9d1990b82b92c513ad1efb9e54215",
+        "ipfs_hash": "QmSuDqVR45RgyTUHpjAFcDXdnNxduxYHv9MKiatgRWmFzQ",
+        "blake2_256": "0xd6340e0b86f38526885bb09224310861aae17057f33a09b72812f23a2362ded4"
+      },
+      "imports": [
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_add_header_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_start_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_write_body_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_read_body_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_wait_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_is_validator_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_clear_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_compare_and_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_get_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_random_seed_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_submit_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_timestamp_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_free_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_malloc_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_append_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_prefix_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_commit_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_exists_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_get_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_next_key_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_read_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_rollback_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_root_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_start_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_hex_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_num_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_utf8_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_runtime_version_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_index_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_trie_blake2_256_ordered_root_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_generate_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_public_keys_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_prehashed_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_verify_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_generate_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_sign_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_verify_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_secp256k1_ecdsa_recover_compressed_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_generate_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_public_keys_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_sign_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_verify_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_128_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_256_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_keccak_256_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_sha2_256_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_128_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_64_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_log_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_max_level_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "name": "Core_version",
+          "kind": "function"
+        },
+        {
+          "name": "Core_execute_block",
+          "kind": "function"
+        },
+        {
+          "name": "Core_initialize_block",
+          "kind": "function"
+        },
+        {
+          "name": "Metadata_metadata",
+          "kind": "function"
+        },
+        {
+          "name": "Metadata_metadata_at_version",
+          "kind": "function"
+        },
+        {
+          "name": "Metadata_metadata_versions",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_apply_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_finalize_block",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_inherent_extrinsics",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_check_inherents",
+          "kind": "function"
+        },
+        {
+          "name": "TaggedTransactionQueue_validate_transaction",
+          "kind": "function"
+        },
+        {
+          "name": "OffchainWorkerApi_offchain_worker",
+          "kind": "function"
+        },
+        {
+          "name": "SessionKeys_decode_session_keys",
+          "kind": "function"
+        },
+        {
+          "name": "SessionKeys_generate_session_keys",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_info",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_fee_details",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_weight_to_fee",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_length_to_fee",
+          "kind": "function"
+        },
+        {
+          "name": "DEXManagerAPI_list_dex_ids",
+          "kind": "function"
+        },
+        {
+          "name": "DEXAPI_quote",
+          "kind": "function"
+        },
+        {
+          "name": "DEXAPI_can_exchange",
+          "kind": "function"
+        },
+        {
+          "name": "DEXAPI_list_supported_sources",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_quote_buy",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_quote_sell",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_market_state",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_claimable",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_list_enabled_pairs",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_is_pair_enabled",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_list_enabled_sources_for_pair",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_is_source_enabled_for_pair",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_free_balance",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_usable_balance",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_total_balance",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_total_supply",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_list_asset_ids",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_list_asset_infos",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_get_asset_info",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_get_asset_content_src",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_requests",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_approved_requests",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_approvals",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_account_requests",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_registered_assets",
+          "kind": "function"
+        },
+        {
+          "name": "IrohaMigrationAPI_needs_migration",
+          "kind": "function"
+        },
+        {
+          "name": "LiquidityProxyAPI_quote",
+          "kind": "function"
+        },
+        {
+          "name": "LiquidityProxyAPI_is_path_available",
+          "kind": "function"
+        },
+        {
+          "name": "LiquidityProxyAPI_list_enabled_sources_for_path",
+          "kind": "function"
+        },
+        {
+          "name": "OracleProxyAPI_quote",
+          "kind": "function"
+        },
+        {
+          "name": "OracleProxyAPI_list_enabled_symbols",
+          "kind": "function"
+        },
+        {
+          "name": "PswapDistributionAPI_claimable_amount",
+          "kind": "function"
+        },
+        {
+          "name": "RewardsAPI_claimables",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_configuration",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_current_epoch",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_current_epoch_start",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_next_epoch",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_generate_key_ownership_proof",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_submit_report_equivocation_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "AccountNonceApi_account_nonce",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_beefy_genesis",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_validator_set",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_submit_report_double_voting_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_submit_report_fork_voting_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_submit_report_future_block_voting_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_generate_key_ownership_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_mmr_root",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_mmr_leaf_count",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_generate_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_verify_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_generate_ancestry_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_verify_proof_stateless",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_grandpa_authorities",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_current_set_id",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_submit_report_equivocation_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_generate_key_ownership_proof",
+          "kind": "function"
+        },
+        {
+          "name": "LeafProviderAPI_latest_digest",
+          "kind": "function"
+        },
+        {
+          "name": "BridgeProxyAPI_list_apps",
+          "kind": "function"
+        },
+        {
+          "name": "BridgeProxyAPI_list_supported_assets",
+          "kind": "function"
+        },
+        {
+          "name": "VestedRewardsApi_crowdloan_claimable",
+          "kind": "function"
+        },
+        {
+          "name": "VestedRewardsApi_crowdloan_lease",
+          "kind": "function"
+        },
+        {
+          "name": "FarmingApi_reward_doubling_assets",
+          "kind": "function"
+        },
+        {
+          "name": "GenesisBuilder_build_state",
+          "kind": "function"
+        },
+        {
+          "name": "GenesisBuilder_get_preset",
+          "kind": "function"
+        },
+        {
+          "name": "GenesisBuilder_preset_names",
+          "kind": "function"
+        },
+        {
+          "name": "__data_end",
+          "kind": "global"
+        },
+        {
+          "name": "__heap_base",
+          "kind": "global"
+        }
+      ],
+      "importedInterfaces": [
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_add_header_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_start_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_write_body_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_read_body_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_wait_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_is_validator_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_clear_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_compare_and_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_get_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_random_seed_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_submit_transaction_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_timestamp_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_free_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_malloc_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_append_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_prefix_version_2",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_commit_transaction_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_exists_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_get_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_next_key_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_read_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_rollback_transaction_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_root_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_start_transaction_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_hex_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_num_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_utf8_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_runtime_version_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_index_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_trie_blake2_256_ordered_root_version_2",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_generate_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_public_keys_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_prehashed_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_verify_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_generate_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_sign_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_verify_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_secp256k1_ecdsa_recover_compressed_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_generate_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_public_keys_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_sign_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_verify_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_128_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_256_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_keccak_256_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_sha2_256_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_128_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_64_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_log_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_max_level_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory",
+          "minimumPages": 45,
+          "maximumPages": null,
+          "shared": false,
+          "addressType": "i32"
+        }
+      ]
+    },
+    "candidate": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/framenode-runtime-4.8.11.compact.compressed.wasm",
+      "bytes": 3055443,
+      "sha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+      "uncompressedBytes": 13272284,
+      "uncompressedSha256": "eb380abb1f0f399c7b8da0074833d4b9476154a9915d8334381cfac6ce1330f0",
+      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/candidate-metadata.json",
+      "metadataSha256": "4deeb8ba960034d2c649dd82606d535030186b33b09b9b9f9cc91f241fff9840",
+      "info": {
+        "size": 3055443,
+        "compression": {
+          "size_compressed": 3055443,
+          "size_decompressed": 13272284,
+          "compressed": true
+        },
+        "reserved_meta": [
+          109,
+          101,
+          116,
+          97
+        ],
+        "reserved_meta_valid": true,
+        "metadata_version": 14,
+        "core_version": {
+          "specName": "sora-substrate",
+          "implName": "sora-substrate",
+          "authoringVersion": 1,
+          "specVersion": 133,
+          "implVersion": 1,
+          "apis": [
+            [
+              "0xdf6acb689907609b",
+              5
+            ],
+            [
+              "0x37e397fc7c91f5e4",
+              2
+            ],
+            [
+              "0x40fe3ad401f8959a",
+              6
+            ],
+            [
+              "0xd2bc9897eed08f15",
+              3
+            ],
+            [
+              "0xf78b278be53f454c",
+              2
+            ],
+            [
+              "0xab3c0572291feb8b",
+              2
+            ],
+            [
+              "0x37c8bb1350a9a2a8",
+              4
+            ],
+            [
+              "0x49a15104d14de433",
+              1
+            ],
+            [
+              "0x3c174d7764069e61",
+              2
+            ],
+            [
+              "0x0f3489937d1c2064",
+              1
+            ],
+            [
+              "0x7b08daa9d117c89b",
+              1
+            ],
+            [
+              "0xd83dc51e16a813fc",
+              1
+            ],
+            [
+              "0xf8e0c25200c466cc",
+              1
+            ],
+            [
+              "0x7714ae7197b04674",
+              1
+            ],
+            [
+              "0xfa5dc115e8dd759b",
+              3
+            ],
+            [
+              "0x8fd89fd41faef876",
+              1
+            ],
+            [
+              "0xc890b8837395d703",
+              1
+            ],
+            [
+              "0x5cb928f4410f41fc",
+              1
+            ],
+            [
+              "0xcbca25e39f142387",
+              2
+            ],
+            [
+              "0xbc9d89904f5b923f",
+              1
+            ],
+            [
+              "0x49eaaf1b548a0cb0",
+              6
+            ],
+            [
+              "0x91d5df18b0d2cf58",
+              3
+            ],
+            [
+              "0xed99c5acb25eedf5",
+              3
+            ],
+            [
+              "0xeb4d485ae89fbcb5",
+              1
+            ],
+            [
+              "0x8e688fe9454ac970",
+              1
+            ],
+            [
+              "0x4ee6f974cd3d43f9",
+              2
+            ],
+            [
+              "0x98deaed7652aeff9",
+              1
+            ],
+            [
+              "0xfbc577b9d747efd6",
+              1
+            ]
+          ],
+          "transactionVersion": 131,
+          "stateVersion": 0
+        },
+        "proposal_hash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+        "parachain_authorize_upgrade_hash": "0x111daefbe3aa39b6b2c66459b9b68b44ea8bf3f70d99212701fe4542cd036a34",
+        "ipfs_hash": "QmbTxdNoCYA23McQ8EEwTk8Qco8SJv42eaRPkiRv8KwQ3d",
+        "blake2_256": "0xfe91daf57982171d8051acc71c1ca7626041cec571561232b3d6256544acbed3"
+      },
+      "imports": [
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_add_header_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_start_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_write_body_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_read_body_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_wait_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_is_validator_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_clear_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_compare_and_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_get_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_random_seed_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_submit_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_timestamp_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_free_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_malloc_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_append_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_prefix_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_commit_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_exists_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_get_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_next_key_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_read_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_rollback_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_root_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_start_transaction_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_hex_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_num_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_utf8_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_runtime_version_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_index_set_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_trie_blake2_256_ordered_root_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_generate_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_public_keys_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_prehashed_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_verify_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_generate_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_sign_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_verify_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_secp256k1_ecdsa_recover_compressed_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_generate_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_public_keys_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_sign_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_verify_version_2",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_128_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_256_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_keccak_256_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_sha2_256_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_128_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_64_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_log_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_max_level_version_1",
+          "kind": "function"
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory"
+        }
+      ],
+      "exports": [
+        {
+          "name": "__indirect_function_table",
+          "kind": "table"
+        },
+        {
+          "name": "Core_version",
+          "kind": "function"
+        },
+        {
+          "name": "Core_execute_block",
+          "kind": "function"
+        },
+        {
+          "name": "Core_initialize_block",
+          "kind": "function"
+        },
+        {
+          "name": "Metadata_metadata",
+          "kind": "function"
+        },
+        {
+          "name": "Metadata_metadata_at_version",
+          "kind": "function"
+        },
+        {
+          "name": "Metadata_metadata_versions",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_apply_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_finalize_block",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_inherent_extrinsics",
+          "kind": "function"
+        },
+        {
+          "name": "BlockBuilder_check_inherents",
+          "kind": "function"
+        },
+        {
+          "name": "TaggedTransactionQueue_validate_transaction",
+          "kind": "function"
+        },
+        {
+          "name": "OffchainWorkerApi_offchain_worker",
+          "kind": "function"
+        },
+        {
+          "name": "SessionKeys_decode_session_keys",
+          "kind": "function"
+        },
+        {
+          "name": "SessionKeys_generate_session_keys",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_info",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_fee_details",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_weight_to_fee",
+          "kind": "function"
+        },
+        {
+          "name": "TransactionPaymentApi_query_length_to_fee",
+          "kind": "function"
+        },
+        {
+          "name": "DEXManagerAPI_list_dex_ids",
+          "kind": "function"
+        },
+        {
+          "name": "DEXAPI_quote",
+          "kind": "function"
+        },
+        {
+          "name": "DEXAPI_can_exchange",
+          "kind": "function"
+        },
+        {
+          "name": "DEXAPI_list_supported_sources",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_quote_buy",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_quote_sell",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_market_state",
+          "kind": "function"
+        },
+        {
+          "name": "PolkamarktAPI_claimable",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_list_enabled_pairs",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_is_pair_enabled",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_list_enabled_sources_for_pair",
+          "kind": "function"
+        },
+        {
+          "name": "TradingPairAPI_is_source_enabled_for_pair",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_free_balance",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_usable_balance",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_total_balance",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_total_supply",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_list_asset_ids",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_list_asset_infos",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_get_asset_info",
+          "kind": "function"
+        },
+        {
+          "name": "AssetsAPI_get_asset_content_src",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_requests",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_approved_requests",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_approvals",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_account_requests",
+          "kind": "function"
+        },
+        {
+          "name": "EthBridgeRuntimeApi_get_registered_assets",
+          "kind": "function"
+        },
+        {
+          "name": "IrohaMigrationAPI_needs_migration",
+          "kind": "function"
+        },
+        {
+          "name": "LiquidityProxyAPI_quote",
+          "kind": "function"
+        },
+        {
+          "name": "LiquidityProxyAPI_is_path_available",
+          "kind": "function"
+        },
+        {
+          "name": "LiquidityProxyAPI_list_enabled_sources_for_path",
+          "kind": "function"
+        },
+        {
+          "name": "OracleProxyAPI_quote",
+          "kind": "function"
+        },
+        {
+          "name": "OracleProxyAPI_list_enabled_symbols",
+          "kind": "function"
+        },
+        {
+          "name": "PswapDistributionAPI_claimable_amount",
+          "kind": "function"
+        },
+        {
+          "name": "RewardsAPI_claimables",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_configuration",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_current_epoch",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_current_epoch_start",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_next_epoch",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_generate_key_ownership_proof",
+          "kind": "function"
+        },
+        {
+          "name": "BabeApi_submit_report_equivocation_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "AccountNonceApi_account_nonce",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_beefy_genesis",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_validator_set",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_submit_report_double_voting_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_submit_report_fork_voting_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_submit_report_future_block_voting_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "BeefyApi_generate_key_ownership_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_mmr_root",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_mmr_leaf_count",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_generate_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_verify_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_generate_ancestry_proof",
+          "kind": "function"
+        },
+        {
+          "name": "MmrApi_verify_proof_stateless",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_grandpa_authorities",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_current_set_id",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_submit_report_equivocation_unsigned_extrinsic",
+          "kind": "function"
+        },
+        {
+          "name": "GrandpaApi_generate_key_ownership_proof",
+          "kind": "function"
+        },
+        {
+          "name": "LeafProviderAPI_latest_digest",
+          "kind": "function"
+        },
+        {
+          "name": "BridgeProxyAPI_list_apps",
+          "kind": "function"
+        },
+        {
+          "name": "BridgeProxyAPI_list_supported_assets",
+          "kind": "function"
+        },
+        {
+          "name": "VestedRewardsApi_crowdloan_claimable",
+          "kind": "function"
+        },
+        {
+          "name": "VestedRewardsApi_crowdloan_lease",
+          "kind": "function"
+        },
+        {
+          "name": "FarmingApi_reward_doubling_assets",
+          "kind": "function"
+        },
+        {
+          "name": "GenesisBuilder_build_state",
+          "kind": "function"
+        },
+        {
+          "name": "GenesisBuilder_get_preset",
+          "kind": "function"
+        },
+        {
+          "name": "GenesisBuilder_preset_names",
+          "kind": "function"
+        },
+        {
+          "name": "__data_end",
+          "kind": "global"
+        },
+        {
+          "name": "__heap_base",
+          "kind": "global"
+        }
+      ],
+      "importedInterfaces": [
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_add_header_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_start_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_request_write_body_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_read_body_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_http_response_wait_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_is_validator_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_clear_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_compare_and_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_get_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_local_storage_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_random_seed_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_submit_transaction_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_timestamp_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_free_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_allocator_malloc_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_append_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_clear_prefix_version_2",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_commit_transaction_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_exists_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_get_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_next_key_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_read_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_rollback_transaction_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_root_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_storage_start_transaction_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_hex_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_num_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_print_utf8_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_misc_runtime_version_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_offchain_index_set_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_trie_blake2_256_ordered_root_version_2",
+          "kind": "function",
+          "parameters": [
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_generate_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_public_keys_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_sign_prehashed_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ecdsa_verify_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_generate_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_sign_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_ed25519_verify_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_secp256k1_ecdsa_recover_compressed_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_generate_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_public_keys_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_sign_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i32",
+            "i64"
+          ],
+          "results": [
+            "i64"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_crypto_sr25519_verify_version_2",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i32"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_128_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_blake2_256_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_keccak_256_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_sha2_256_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_128_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_hashing_twox_64_version_1",
+          "kind": "function",
+          "parameters": [
+            "i64"
+          ],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_log_version_1",
+          "kind": "function",
+          "parameters": [
+            "i32",
+            "i64",
+            "i64"
+          ],
+          "results": []
+        },
+        {
+          "module": "env",
+          "name": "ext_logging_max_level_version_1",
+          "kind": "function",
+          "parameters": [],
+          "results": [
+            "i32"
+          ]
+        },
+        {
+          "module": "env",
+          "name": "memory",
+          "kind": "memory",
+          "minimumPages": 46,
+          "maximumPages": null,
+          "shared": false,
+          "addressType": "i32"
+        }
+      ]
+    }
+  },
+  "checks": {
+    "existingScaleEncodingCompatible": true,
+    "noMetadataAdditions": true,
+    "onlyRuntimeVersionConstantChanged": true,
+    "hostImportNamesKindsAndOrderUnchanged": true,
+    "hostFunctionSignaturesUnchanged": true,
+    "declaredMemoryMinimumIncreasedBy64KiB": true,
+    "memoryGrowthCompatibleWithPinnedSdkDefaultAllocation": true,
+    "wasmExportsUnchanged": true,
+    "runtimeApiVersionsUnchanged": true,
+    "transactionVersionRemains131": true,
+    "specVersionAdvancedTo133": true,
+    "implVersionRemains1": true
+  },
+  "tools": {
+    "subwasm": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
+    "comparator": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/compare-metadata.py",
+    "comparatorSha256": "033a4dfd3be69b85f433f71db7c52b04c9832fe3f7068e3f764440a5ed005858"
+  },
+  "metadataComparison": {
+    "compatibleExistingScaleEncoding": true,
+    "counts": {
+      "existingPallets": 81,
+      "existingCalls": 405,
+      "nestedTypePairsVisited": 10366,
+      "existingEvent": 442,
+      "existingError": 967,
+      "existingStorageEntries": 485,
+      "existingConstants": 155,
+      "signedExtensions": 7
+    },
+    "breakingChanges": [],
+    "additions": 0,
+    "constantValueChanges": 1,
+    "selfChecks": 5,
+    "output": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/metadata-compatibility.json"
+  },
+  "memoryCompatibility": {
+    "baseline": {
+      "module": "env",
+      "name": "memory",
+      "kind": "memory",
+      "minimumPages": 45,
+      "maximumPages": null,
+      "shared": false,
+      "addressType": "i32"
+    },
+    "candidate": {
+      "module": "env",
+      "name": "memory",
+      "kind": "memory",
+      "minimumPages": 46,
+      "maximumPages": null,
+      "shared": false,
+      "addressType": "i32"
+    },
+    "minimumIncreasePages": 1,
+    "minimumIncreaseBytes": 65536,
+    "defaultBaselinePages": 2093,
+    "defaultCandidatePages": 2094,
+    "maximumSharedAndAddressTypeUnchanged": true,
+    "pinnedSdkHandlesDeclaredMinimum": true,
+    "policyPath": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/executor-memory-policy.json",
+    "policySha256": "fd01e663d9fdb88f420239a1144772ff94874d5cd0e52cafffc608e10f789f28",
+    "policy": {
+      "checkedAt": "2026-09-30",
+      "sourceCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
+      "sourceLock": "Cargo.lock",
+      "source": "https://github.com/paritytech/polkadot-sdk/tree/e3737178ec726cffe506c907263aaaa417893fd0",
+      "defaultStaticExtraHeapPages": 2048,
+      "wasmPageBytes": 65536,
+      "findings": [
+        "The pinned Wasmtime executor converts the declared memory import into an internal memory export and lets Wasmtime create it.",
+        "Heap allocation reads each module declared initial page count. Static allocation adds configured extra pages to that initial count; the default adds 2048.",
+        "A change from 45 to 46 initial pages therefore uses 2,094 total pages under the default static strategy, 64 KiB more than the baseline 2,093. No fixed baseline 45-page import is reused.",
+        "Structural review is supplemented by successful candidate Wasm instantiation and execution in the separate local exact-Wasm rehearsal. It does not inspect production operator heap settings."
+      ],
+      "sourceEvidence": [
+        {
+          "path": "substrate/client/executor/wasmtime/src/runtime.rs",
+          "sha256": "26b0042e667fca22185636bffc88ab0041a27eebee8a649c7ade7d246651bd8b",
+          "startLine": 631,
+          "endLine": 644,
+          "excerpt": "\tsemantics: &Semantics,\n) -> std::result::Result<RuntimeBlob, WasmError> {\n\tif let Some(DeterministicStackLimit { logical_max, .. }) = semantics.deterministic_stack_limit {\n\t\tblob = blob.inject_stack_depth_metering(logical_max)?;\n\t}\n\n\t// We don't actually need the memory to be imported so we can just convert any memory\n\t// import into an export with impunity. This simplifies our code since `wasmtime` will\n\t// now automatically take care of creating the memory for us, and it is also necessary\n\t// to enable `wasmtime`'s instance pooling. (Imported memories are ineligible for pooling.)\n\tblob.convert_memory_import_into_export()?;\n\tblob.setup_memory_according_to_heap_alloc_strategy(semantics.heap_alloc_strategy)?;\n\n\tOk(blob)"
+        },
+        {
+          "path": "substrate/client/executor/common/src/runtime_blob/runtime_blob.rs",
+          "sha256": "8f38e448363d556841312919b2a13aed5449da0ba29924bc63cbd113179ba909",
+          "startLine": 99,
+          "endLine": 120,
+          "excerpt": "\t\tlet raw_module = self.as_webassembly_blob_mut()?;\n\t\tlet import_section = match raw_module.import_section_mut() {\n\t\t\tSome(import_section) => import_section,\n\t\t\tNone => return Ok(()),\n\t\t};\n\n\t\tlet import_entries = import_section.entries_mut();\n\t\tfor index in 0..import_entries.len() {\n\t\t\tlet entry = &import_entries[index];\n\t\t\tlet memory_ty = match entry.external() {\n\t\t\t\tExternal::Memory(memory_ty) => *memory_ty,\n\t\t\t\t_ => continue,\n\t\t\t};\n\n\t\t\tlet memory_name = entry.field().to_owned();\n\t\t\timport_entries.remove(index);\n\n\t\t\traw_module\n\t\t\t\t.insert_section(Section::Memory(MemorySection::with_entries(vec![memory_ty])))\n\t\t\t\t.map_err(|error| {\n\t\t\t\t\tWasmError::Other(format!(\n\t\t\t\t\t\"can't convert a memory import into an export: failed to insert a new memory section: {}\","
+        },
+        {
+          "path": "substrate/client/executor/common/src/runtime_blob/runtime_blob.rs",
+          "sha256": "8f38e448363d556841312919b2a13aed5449da0ba29924bc63cbd113179ba909",
+          "startLine": 155,
+          "endLine": 176,
+          "excerpt": "\t\tlet memory_section = raw_module\n\t\t\t.memory_section_mut()\n\t\t\t.ok_or_else(|| WasmError::Other(\"no memory section found\".into()))?;\n\n\t\tif memory_section.entries().is_empty() {\n\t\t\treturn Err(WasmError::Other(\"memory section is empty\".into()));\n\t\t}\n\t\tfor memory_ty in memory_section.entries_mut() {\n\t\t\tlet initial = memory_ty.limits().initial();\n\t\t\tlet (min, max) = match heap_alloc_strategy {\n\t\t\t\tHeapAllocStrategy::Dynamic { maximum_pages } => {\n\t\t\t\t\t// Ensure `initial <= maximum_pages`\n\t\t\t\t\t(maximum_pages.map(|m| m.min(initial)).unwrap_or(initial), maximum_pages)\n\t\t\t\t},\n\t\t\t\tHeapAllocStrategy::Static { extra_pages } => {\n\t\t\t\t\tlet pages = initial.saturating_add(extra_pages);\n\t\t\t\t\t(pages, Some(pages))\n\t\t\t\t},\n\t\t\t};\n\t\t\t*memory_ty = MemoryType::new(min, max);\n\t\t}\n\t\tOk(())"
+        },
+        {
+          "path": "substrate/client/executor/common/src/wasm_runtime.rs",
+          "sha256": "bc87e898c30d847cfaf303d1a38d933470369bfd8414a8df8ac21da13c2f6655",
+          "startLine": 23,
+          "endLine": 30,
+          "excerpt": "pub use sc_allocator::AllocationStats;\n\n/// Default heap allocation strategy.\npub const DEFAULT_HEAP_ALLOC_STRATEGY: HeapAllocStrategy =\n\tHeapAllocStrategy::Static { extra_pages: DEFAULT_HEAP_ALLOC_PAGES };\n\n/// Default heap allocation pages.\npub const DEFAULT_HEAP_ALLOC_PAGES: u32 = 2048;"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "Structural metadata comparison covers declared SCALE layouts, indices, storage hashers/defaults and signed extension shapes; it does not execute migrations or prove custom codec behavior.",
+    "Import comparison checks names, kinds, order, resolved function parameter/result types and imported memory limits/shared/address type. It does not prove host implementation behavior. Actual execution of reward publication and ordinary staking payouts is covered by the separate exact-Wasm rehearsal."
+  ],
+  "finishedAt": "2026-09-30T00:45:32.786Z"
+}
