@@ -4920,7 +4920,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.8.10"
+version = "4.8.11"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5014,7 +5014,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.8.10"
+version = "4.8.11"
 dependencies = [
  "band",
  "common",
@@ -5047,7 +5047,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.8.10"
+version = "4.8.11"
 dependencies = [
  "apollo-platform",
  "assets",

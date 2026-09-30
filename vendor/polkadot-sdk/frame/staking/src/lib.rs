@@ -371,6 +371,17 @@ pub type RewardPoint = u32;
 /// the claimed-page marker, so the page can be retried. `weight` must conservatively cover all
 /// work done by `payout` for a page with up to `nominators` nominators, including failure paths.
 pub trait AdditionalPayout<AccountId> {
+    /// Whether the published era payout is paid in the native staking currency.
+    ///
+    /// Defaults to the upstream native reward behavior. An implementation returning `false`
+    /// must pay the advertised reward through `payout` in its replacement asset. Native rewards
+    /// then neither mint currency nor increase a `Staked` ledger, and `end_era` publishes the
+    /// configured `EraPayout` unchanged without applying the native inflation cap or issuing
+    /// its remainder. The replacement implementation owns any asset-specific remainder policy.
+    fn pays_native_reward() -> bool {
+        true
+    }
+
     fn payout(validator_stash: &AccountId, era: EraIndex, page: Page)
         -> sp_runtime::DispatchResult;
     fn weight(nominators: u32) -> Weight;

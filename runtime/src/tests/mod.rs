@@ -32,6 +32,7 @@ mod babe_config;
 mod liquidity_proxy;
 mod liveness;
 mod referrals;
+mod staking_reward_compatibility;
 #[cfg(feature = "try-runtime")]
 mod remote;
 mod xor_fee;

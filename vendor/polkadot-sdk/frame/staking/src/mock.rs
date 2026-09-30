@@ -290,14 +290,26 @@ pub(crate) const DISABLING_LIMIT_FACTOR: usize = 3;
 /// Disabled by default; enabled by the additional-payout regression tests only.
 pub(crate) const ADDITIONAL_PAYOUT_MODE: &[u8] = b":staking:test:additional-payout-mode";
 pub(crate) const ADDITIONAL_PAYOUT_RECORD: &[u8] = b":staking:test:additional-payout-record";
+pub(crate) const REPLACEMENT_REWARD_MODE: &[u8] = b":staking:test:replacement-reward-mode";
 
 pub struct MockAdditionalPayout;
 impl AdditionalPayout<AccountId> for MockAdditionalPayout {
+    fn pays_native_reward() -> bool {
+        !sp_io::storage::exists(REPLACEMENT_REWARD_MODE)
+    }
+
     fn payout(validator: &AccountId, era: EraIndex, page: Page) -> sp_runtime::DispatchResult {
         let Some(mode) = sp_io::storage::get(ADDITIONAL_PAYOUT_MODE) else {
             return Ok(());
         };
         sp_io::storage::set(ADDITIONAL_PAYOUT_RECORD, &(*validator, era, page).encode());
+        if mode.as_ref() == [3] {
+            Staking::deposit_event(Event::<Test>::Rewarded {
+                stash: *validator,
+                dest: RewardDestination::Stash,
+                amount: 1,
+            });
+        }
         if mode.as_ref() == [2] {
             return Err(sp_runtime::DispatchError::Other("additional reward failed"));
         }
