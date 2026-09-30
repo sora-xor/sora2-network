@@ -449,7 +449,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 132,
+    spec_version: 133,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 131,
@@ -853,7 +853,7 @@ impl pallet_staking::Config for Runtime {
     type SlashDeferDuration = SlashDeferDuration;
     type AdminOrigin = StakingAdminOrigin;
     type SessionInterface = liveness::SlashOnlySessionInterface;
-    type EraPayout = ();
+    type EraPayout = xor_fee_impls::ValEraPayout;
     type AdditionalPayout = xor_fee_impls::StakingValPayout;
     type NextNewSession = Session;
     type MaxValidatorSet = MaxActiveValidators;

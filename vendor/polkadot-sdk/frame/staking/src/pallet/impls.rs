@@ -330,6 +330,18 @@ impl<T: Config> Pallet<T> {
                 .with_weight(T::WeightInfo::payout_stakers_alive_staked(0))
         })?;
 
+        let pays_native_reward = T::AdditionalPayout::pays_native_reward();
+        if !pays_native_reward {
+            // The replacement hook may emit standard reward events, which must follow the
+            // page's PayoutStarted event. A hook failure rolls back this event with the claim.
+            Self::deposit_event(Event::<T>::PayoutStarted {
+                era_index: era,
+                validator_stash: stash.clone(),
+                page,
+                next: EraInfo::<T>::get_next_claimable_page(era, &stash, &ledger),
+            });
+        }
+
         // Pay additional reward assets inside the same transaction as the claim marker. Charge
         // for the full exposure page even when the native era payout is zero.
         let exposure_nominators = exposure.others().len() as u32;
@@ -388,12 +400,15 @@ impl<T: Config> Pallet<T> {
         // validator commission is paid out in fraction across pages proportional to the page stake.
         let validator_commission_payout = page_stake_part * validator_total_commission_payout;
 
-        Self::deposit_event(Event::<T>::PayoutStarted {
-            era_index: era,
-            validator_stash: stash.clone(),
-            page,
-            next: EraInfo::<T>::get_next_claimable_page(era, &stash, &ledger),
-        });
+        if pays_native_reward {
+            // Preserve upstream event ordering and its zero-points behavior for native rewards.
+            Self::deposit_event(Event::<T>::PayoutStarted {
+                era_index: era,
+                validator_stash: stash.clone(),
+                page,
+                next: EraInfo::<T>::get_next_claimable_page(era, &stash, &ledger),
+            });
+        }
 
         let mut total_imbalance = PositiveImbalanceOf::<T>::zero();
         // We can now make total validator payout:
@@ -462,6 +477,12 @@ impl<T: Config> Pallet<T> {
         stash: &T::AccountId,
         amount: BalanceOf<T>,
     ) -> Option<(PositiveImbalanceOf<T>, RewardDestination<T::AccountId>)> {
+        // A replacement asset owns this payment. In particular, do not add its reward to the
+        // native staking ledger for a `Staked` destination before skipping the native mint.
+        if !T::AdditionalPayout::pays_native_reward() {
+            return None;
+        }
+
         // noop if amount is zero
         if amount.is_zero() {
             return None;
@@ -633,13 +654,20 @@ impl<T: Config> Pallet<T> {
             let (validator_payout, remainder) =
                 T::EraPayout::era_payout(staked, issuance, era_duration);
 
-            let total_payout = validator_payout.saturating_add(remainder);
-            let max_staked_rewards =
-                MaxStakedRewards::<T>::get().unwrap_or(Percent::from_percent(100));
+            let pays_native_reward = T::AdditionalPayout::pays_native_reward();
+            let (validator_payout, remainder) = if pays_native_reward {
+                let total_payout = validator_payout.saturating_add(remainder);
+                let max_staked_rewards =
+                    MaxStakedRewards::<T>::get().unwrap_or(Percent::from_percent(100));
 
-            // apply cap to validators payout and add difference to remainder.
-            let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
-            let remainder = total_payout.saturating_sub(validator_payout);
+                // apply cap to validators payout and add difference to remainder.
+                let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
+                (validator_payout, total_payout.saturating_sub(validator_payout))
+            } else {
+                // These amounts describe another asset, not native inflation. Preserve the
+                // configured reward budget and let its payout handler own the remainder.
+                (validator_payout, remainder)
+            };
 
             Self::deposit_event(Event::<T>::EraPaid {
                 era_index: active_era.index,
@@ -649,7 +677,9 @@ impl<T: Config> Pallet<T> {
 
             // Set ending era reward.
             <ErasValidatorReward<T>>::insert(&active_era.index, validator_payout);
-            T::RewardRemainder::on_unbalanced(asset::issue::<T>(remainder));
+            if pays_native_reward {
+                T::RewardRemainder::on_unbalanced(asset::issue::<T>(remainder));
+            }
         }
     }
 
