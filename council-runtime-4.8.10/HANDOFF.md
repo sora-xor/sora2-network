@@ -79,7 +79,7 @@ choose that route after reviewing the live queued item; a signer could close
 an approved Council motion before a planned last-minute recheck. The guarded
 route avoids that replacement risk.
 
-Run `sha256sum -c SHA256SUMS` from the extracted directory. Recheck finalized
+Run `shasum -a 256 -c SHA256SUMS` from the extracted directory. Recheck finalized
 chain state, membership, metadata, fees, deposit and motion votes before
 signing. The previous 4.8.9 governance runbook describes the same
 Council/Technical Committee/referendum flow, but its call hashes, thresholds

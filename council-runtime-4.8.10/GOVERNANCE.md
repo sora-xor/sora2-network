@@ -15,7 +15,7 @@ The raw 3,055,007-byte Wasm is not the preimage.
 
 ## 1. Verify the package and current chain
 
-From the extracted directory, run `sha256sum -c SHA256SUMS`. Confirm the
+From the extracted directory, run `shasum -a 256 -c SHA256SUMS`. Confirm the
 genesis above, deployed spec 131/transaction 131, on-chain runtime-code
 SHA-256
 `db948406c5f22d4923b2760019de53bcd0ef756ed05accaf5156ca3041988447`,
