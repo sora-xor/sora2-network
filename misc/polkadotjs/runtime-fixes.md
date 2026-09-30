@@ -11,8 +11,10 @@ reward size. An error rolls back claim markers, token issuance, token balances,
 and reward events.
 
 `runtime/src/lib.rs` configures this hook and makes the older transaction
-extension's payout hook a no-op, preventing duplicate minting. It leaves native
-`EraPayout = ()` intact. Tests exercise legacy and paged payouts, self-only
+extension's payout hook a no-op, preventing duplicate minting. The 4.8.11 compatibility correction uses `ValEraPayout` to publish VAL
+budgets through standard staking storage. Its additional-payout policy disables
+native payouts, native reward caps, and native remainder issuance; XOR staking
+balances and ledgers remain unchanged by VAL rewards. Tests exercise legacy and paged payouts, self-only
 validators, direct dispatch, all three utility batch modes, multisig, failed
 batch rollback, deposit fault injection with retry, duplicate claims, fee
 settlement without duplicate payment, and unchanged XOR issuance.
