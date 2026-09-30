@@ -52,7 +52,7 @@ index 3559ad3c4..ba988c473 100644
              return Err(sp_runtime::DispatchError::Other("additional reward failed"));
          }
 diff --git a/src/pallet/impls.rs b/src/pallet/impls.rs
-index e50135124..0deaba742 100644
+index e50135124..8afc462a8 100644
 --- a/src/pallet/impls.rs
 +++ b/src/pallet/impls.rs
 @@ -330,6 +330,18 @@ impl<T: Config> Pallet<T> {
@@ -109,25 +109,29 @@ index e50135124..0deaba742 100644
          // noop if amount is zero
          if amount.is_zero() {
              return None;
-@@ -633,13 +654,20 @@ impl<T: Config> Pallet<T> {
+@@ -633,13 +654,23 @@ impl<T: Config> Pallet<T> {
              let (validator_payout, remainder) =
                  T::EraPayout::era_payout(staked, issuance, era_duration);
  
 -            let total_payout = validator_payout.saturating_add(remainder);
 -            let max_staked_rewards =
 -                MaxStakedRewards::<T>::get().unwrap_or(Percent::from_percent(100));
+-
+-            // apply cap to validators payout and add difference to remainder.
+-            let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
+-            let remainder = total_payout.saturating_sub(validator_payout);
 +            let pays_native_reward = T::AdditionalPayout::pays_native_reward();
 +            let (validator_payout, remainder) = if pays_native_reward {
 +                let total_payout = validator_payout.saturating_add(remainder);
 +                let max_staked_rewards =
 +                    MaxStakedRewards::<T>::get().unwrap_or(Percent::from_percent(100));
- 
--            // apply cap to validators payout and add difference to remainder.
--            let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
--            let remainder = total_payout.saturating_sub(validator_payout);
++
 +                // apply cap to validators payout and add difference to remainder.
 +                let validator_payout = validator_payout.min(max_staked_rewards * total_payout);
-+                (validator_payout, total_payout.saturating_sub(validator_payout))
++                (
++                    validator_payout,
++                    total_payout.saturating_sub(validator_payout),
++                )
 +            } else {
 +                // These amounts describe another asset, not native inflation. Preserve the
 +                // configured reward budget and let its payout handler own the remainder.
@@ -136,7 +140,7 @@ index e50135124..0deaba742 100644
  
              Self::deposit_event(Event::<T>::EraPaid {
                  era_index: active_era.index,
-@@ -649,7 +677,9 @@ impl<T: Config> Pallet<T> {
+@@ -649,7 +680,9 @@ impl<T: Config> Pallet<T> {
  
              // Set ending era reward.
              <ErasValidatorReward<T>>::insert(&active_era.index, validator_payout);
@@ -148,10 +152,10 @@ index e50135124..0deaba742 100644
      }
  
 diff --git a/src/tests.rs b/src/tests.rs
-index 55829eced..0ab265fb8 100644
+index 55829eced..452930b23 100644
 --- a/src/tests.rs
 +++ b/src/tests.rs
-@@ -4974,6 +4974,150 @@ fn test_commission_paid_across_pages() {
+@@ -4974,6 +4974,155 @@ fn test_commission_paid_across_pages() {
          });
  }
  
@@ -194,10 +198,9 @@ index 55829eced..0ab265fb8 100644
 +            assert_eq!(
 +                result.unwrap().actual_weight,
 +                Some(
-+                    <Test as Config>::WeightInfo::payout_stakers_alive_staked(0)
-+                        .saturating_add(MockAdditionalPayout::weight(
-+                            exposure.others().len() as u32
-+                        ))
++                    <Test as Config>::WeightInfo::payout_stakers_alive_staked(0).saturating_add(
++                        MockAdditionalPayout::weight(exposure.others().len() as u32)
++                    )
 +                )
 +            );
 +            assert_eq!(asset::total_issuance::<Test>(), issuance);
@@ -214,7 +217,12 @@ index 55829eced..0ab265fb8 100644
 +            );
 +            assert!(staking_events().iter().any(|event| matches!(
 +                event,
-+                Event::PayoutStarted { era_index: 0, validator_stash: 11, page: 0, .. }
++                Event::PayoutStarted {
++                    era_index: 0,
++                    validator_stash: 11,
++                    page: 0,
++                    ..
++                }
 +            )));
 +            assert!(!staking_events()
 +                .iter()
@@ -291,11 +299,12 @@ index 55829eced..0ab265fb8 100644
 +        assert_eq!(ErasValidatorReward::<Test>::get(0), Some(payout));
 +        assert_eq!(asset::total_issuance::<Test>(), issuance);
 +        assert_eq!(RewardRemainderUnbalanced::get(), 0);
-+        assert!(staking_events().iter().any(|event| *event == Event::EraPaid {
-+            era_index: 0,
-+            validator_payout: payout,
-+            remainder: maximum_payout - payout,
-+        }));
++        assert!(staking_events().iter().any(|event| *event
++            == Event::EraPaid {
++                era_index: 0,
++                validator_payout: payout,
++                remainder: maximum_payout - payout,
++            }));
 +    });
 +}
 +

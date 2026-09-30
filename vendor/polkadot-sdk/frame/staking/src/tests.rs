@@ -5013,10 +5013,9 @@ fn replacement_reward_claim_preserves_native_balances_and_staked_ledgers() {
             assert_eq!(
                 result.unwrap().actual_weight,
                 Some(
-                    <Test as Config>::WeightInfo::payout_stakers_alive_staked(0)
-                        .saturating_add(MockAdditionalPayout::weight(
-                            exposure.others().len() as u32
-                        ))
+                    <Test as Config>::WeightInfo::payout_stakers_alive_staked(0).saturating_add(
+                        MockAdditionalPayout::weight(exposure.others().len() as u32)
+                    )
                 )
             );
             assert_eq!(asset::total_issuance::<Test>(), issuance);
@@ -5033,7 +5032,12 @@ fn replacement_reward_claim_preserves_native_balances_and_staked_ledgers() {
             );
             assert!(staking_events().iter().any(|event| matches!(
                 event,
-                Event::PayoutStarted { era_index: 0, validator_stash: 11, page: 0, .. }
+                Event::PayoutStarted {
+                    era_index: 0,
+                    validator_stash: 11,
+                    page: 0,
+                    ..
+                }
             )));
             assert!(!staking_events()
                 .iter()
@@ -5110,11 +5114,12 @@ fn replacement_reward_era_budget_bypasses_native_cap_and_remainder_issuance() {
         assert_eq!(ErasValidatorReward::<Test>::get(0), Some(payout));
         assert_eq!(asset::total_issuance::<Test>(), issuance);
         assert_eq!(RewardRemainderUnbalanced::get(), 0);
-        assert!(staking_events().iter().any(|event| *event == Event::EraPaid {
-            era_index: 0,
-            validator_payout: payout,
-            remainder: maximum_payout - payout,
-        }));
+        assert!(staking_events().iter().any(|event| *event
+            == Event::EraPaid {
+                era_index: 0,
+                validator_payout: payout,
+                remainder: maximum_payout - payout,
+            }));
     });
 }
 

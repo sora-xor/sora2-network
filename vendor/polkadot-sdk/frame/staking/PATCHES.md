@@ -11,12 +11,16 @@ all SDK dependencies retain the same pinned release tag and feature defaults.
 The manifest also expands the Rust and Clippy lint tables inherited from that
 SDK workspace, so vendoring preserves its lint policy without changing the
 SORA workspace policy.
-The complete local diff against that upstream directory is reproduced by applying
+The local Rust sources are reproduced from that upstream directory by applying
 [`additional-payout.patch`](additional-payout.patch), followed by
-[`deferred-slashing.patch`](deferred-slashing.patch), then
+[`deferred-slashing.patch`](deferred-slashing.patch), formatting the resulting
+Rust files with this repository's `rustfmt` defaults, then applying
 [`native-reward-compatibility.patch`](native-reward-compatibility.patch).
 The first two patches preserve their existing reviewed changes; the compatibility
-patch applies to their resulting sources and is checked against this directory.
+patch applies to their formatted sources and is checked against this directory.
+All three layers, including that existing formatting step, reproduce the five
+changed Rust source files byte for byte. The manifest expansion described above
+is retained separately.
 
 ## Deferred slashing
 
