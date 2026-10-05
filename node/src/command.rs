@@ -235,7 +235,7 @@ pub fn run() -> sc_cli::Result<()> {
         }
         Some(Subcommand::RepairBabeEpochCache(cmd)) => {
             let runner = cli.create_runner(cmd)?;
-            runner.sync_run(|config| cmd.run(config))
+            runner.sync_run(|config| cmd.run(config).map_err(sc_cli::Error::Input))
         }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;

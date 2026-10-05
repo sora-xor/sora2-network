@@ -1139,6 +1139,9 @@ impl<T: Config> Pallet<T> {
 
     /// Read-only counterpart of operation admission. Called before a fee exemption
     /// is granted, so replay and duplicate approvals never reach execution.
+    // Mirror the multisig call arguments plus authenticated admission context,
+    // keeping validation and dispatch aligned without changing the call interface.
+    #[allow(clippy::too_many_arguments)]
     pub fn validate_protocol_operation(
         who: &T::AccountId,
         id: &T::AccountId,

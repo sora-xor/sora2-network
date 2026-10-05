@@ -1,8 +1,8 @@
 {
-  "binary": "/Users/takemiyamakoto/dev/sora2-network/target/release/framenode",
-  "sha256": "46fb25c9e409bbc5b71a166ec9cf88510b429321eb276aea46b10c65d0597566",
-  "size_bytes": 96381040,
-  "file": "/Users/takemiyamakoto/dev/sora2-network/target/release/framenode: Mach-O 64-bit executable arm64",
+  "binary": "/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/framenode",
+  "sha256": "6eac1a97829d5195dc23a13b4218068bbb08d29056be6e23a854cf9d74f4fd6e",
+  "size_bytes": 96380960,
+  "file": "/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/framenode: Mach-O 64-bit executable arm64",
   "checks": [
     {
       "name": "version",
@@ -10,7 +10,7 @@
         "--version"
       ],
       "exit_code": 0,
-      "output": "framenode 4.8.10-282f4679b-aarch64-apple-darwin\n\n"
+      "output": "framenode 4.8.10-89155489b-aarch64-apple-darwin\n\n"
     },
     {
       "name": "repair help",
@@ -47,7 +47,7 @@
         "--chain",
         "main",
         "--base-path",
-        "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-repair-cli-ynysi6tl",
+        "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-repair-cli-en5svgze",
         "--database",
         "paritydb"
       ],
@@ -61,7 +61,7 @@
         "--chain",
         "main",
         "--base-path",
-        "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-repair-cli-ynysi6tl",
+        "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-babe-repair-cli-en5svgze",
         "--database",
         "rocksdb"
       ],

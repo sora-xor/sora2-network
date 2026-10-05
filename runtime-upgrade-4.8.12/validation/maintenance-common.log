@@ -1,0 +1,164 @@
+    Blocking waiting for file lock on build directory
+   Compiling serde_json v1.0.149
+   Compiling sp-runtime v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-version v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-inherents v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-staking v43.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-api v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-timestamp v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-genesis-builder v0.22.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-mmr-primitives v41.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling frame-support v46.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling sp-consensus-beefy v29.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling staging-xcm v22.0.1 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling orml-utilities v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/utilities)
+   Compiling frame-system v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling pallet-timestamp v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178)
+   Compiling orml-traits v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/traits)
+   Compiling bridge-types v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/types)
+   Compiling orml-currencies v1.5.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/open-runtime-module-library-v1/currencies)
+   Compiling common v0.1.0 (/Users/takemiyamakoto/dev/sora2-network/common)
+    Finished `release` profile [optimized] target(s) in 39.04s
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/common-bae1e91c1e45e332)
+
+running 137 tests
+test arithmetic::bounds::wrapping_bounded ... ok
+test arithmetic::bounds::wrapping_is_bounded ... ok
+test arithmetic::bounds::wrapping_bounded_u256 ... ok
+test alt::tests::check_discrete_quotation_verification_with_zero ... ok
+test alt::tests::check_discrete_quotation_verification_with_price_order ... ok
+test alt::tests::check_discrete_quotation_verification_with_slippage ... ok
+test alt::tests::check_discrete_quotation_verification_with_precision ... ok
+test alt::tests::check_align_chunk ... ok
+test alt::tests::check_align_chunk_precision ... ok
+test alt::tests::check_align_chunk_min ... ok
+test alt::tests::check_align_extra_chunk_max ... ok
+test alt::tests::check_align_chunk_max ... ok
+test arithmetic::helpers_256bit::tests::rational_multiply_big_number_works ... ok
+test arithmetic::helpers_256bit::tests::test_double256_addition ... ok
+test arithmetic::helpers_256bit::tests::rational_multiply_basic_rounding_works ... ok
+test arithmetic::helpers_256bit::tests::test_double256_addition_overflow ... ok
+test arithmetic::helpers_256bit::tests::test_double256_division ... ok
+test arithmetic::helpers_256bit::tests::test_double256_division_by_one ... ok
+test arithmetic::helpers_256bit::tests::test_double256_product_large_numbers ... ok
+test arithmetic::helpers_256bit::tests::test_double256_product_of ... ok
+test arithmetic::identities::wrapping_identities ... ok
+test arithmetic::identities::wrapping_is_one ... ok
+test arithmetic::identities::wrapping_is_zero ... ok
+test arithmetic::saturating::test_saturating_traits ... ok
+test balance_unit::tests::check_add ... ok
+test balance_unit::tests::check_add_assign ... ok
+test balance_unit::tests::check_checked_add ... ok
+test balance_unit::tests::check_checked_div ... ok
+test balance_unit::tests::check_checked_mul ... ok
+test balance_unit::tests::check_checked_sub ... ok
+test balance_unit::tests::check_constructors ... ok
+test balance_unit::tests::check_display ... ok
+test balance_unit::tests::check_div ... ok
+test balance_unit::tests::check_div_assign ... ok
+test balance_unit::tests::check_into_divisible ... ok
+test balance_unit::tests::check_into_indivisible ... ok
+test balance_unit::tests::check_mul ... ok
+test balance_unit::tests::check_mul_assign ... ok
+test balance_unit::tests::check_parts ... ok
+test balance_unit::tests::check_pow ... ok
+test balance_unit::tests::check_saturating_add ... ok
+test balance_unit::tests::check_saturating_mul ... ok
+test balance_unit::tests::check_saturating_pow ... ok
+test balance_unit::tests::check_saturating_sub ... ok
+test balance_unit::tests::check_sqrt ... ok
+test balance_unit::tests::check_sub ... ok
+test balance_unit::tests::check_sub_assign ... ok
+test cache_storage::item::tests::enum_variant_switches ... ok
+test fixed::fixed_u256_test::checked_div_int_works ... ok
+test fixed::fixed_u256_test::checked_from_integer_works ... ok
+test fixed::fixed_u256_test::checked_from_rational_works ... ok
+test fixed::fixed_u256_test::checked_mul_int_works ... ok
+test fixed::fixed_u256_test::checked_mul_works ... ok
+test fixed::fixed_u256_test::const_checked_mul_works ... ok
+test fixed::fixed_u256_test::from_i257_works ... ok
+test fixed::fixed_u256_test::from_inner_works ... ok
+test fixed::fixed_u256_test::from_rational_works ... ok
+test fixed::fixed_u256_test::has_max_encoded_len ... ok
+test fixed::fixed_u256_test::macro_preconditions ... ok
+test fixed::fixed_u256_test::op_add_works ... ok
+test fixed::fixed_u256_test::op_checked_add_overflow_works ... ok
+test fixed::fixed_u256_test::op_checked_mul_overflow_works ... ok
+test fixed::fixed_u256_test::op_checked_sub_underflow_works ... ok
+test fixed::fixed_u256_test::op_div_works ... ok
+test fixed::fixed_u256_test::op_mul_works ... ok
+test fixed::fixed_u256_test::op_neg_works ... ok
+test fixed::fixed_u256_test::op_sub_works ... ok
+test fixed::fixed_u256_test::saturating_abs_works ... ok
+test fixed::fixed_u256_test::saturating_div_int_works ... ok
+test fixed::fixed_u256_test::saturating_div_int_panics_when_divisor_is_zero - should panic ... ok
+test fixed::fixed_u256_test::op_div_panics_on_zero_divisor - should panic ... ok
+test fixed::fixed_u256_test::saturating_from_integer_works ... ok
+test fixed::fixed_u256_test::saturating_from_rational_panics_on_zero_divisor - should panic ... ok
+test fixed::fixed_u256_test::saturating_from_rational_works ... ok
+test fixed::fixed_u256_test::saturating_mul_int_works ... ok
+test fixed::fixed_u256_test::to_bound_works ... ok
+test fixed_wrapper::tests::fixed_wrapper_sqrt_small_sanity_check ... ok
+test fixed_wrapper_u256::wrapper::fixed_wrapper_pow_uses_fixed_point_identity ... ok
+test fixed_wrapper_u256::wrapper::fixed_wrapper_sqrt_small_sanity_check ... ok
+test macros::tests::assert_approx_eq_abs_works ... ok
+test macros::tests::assert_approx_eq_fails_f64 - should panic ... ok
+test macros::tests::assert_approx_eq_fails_fixed - should panic ... ok
+test macros::tests::assert_approx_eq_fails_u128 - should panic ... ok
+test macros::tests::assert_approx_eq_rel_works ... ok
+test macros::tests::assert_approx_eq_works ... ok
+test macros::tests::fixed_256_macro_works ... ok
+test macros::tests::should_calculate_formula ... ok
+test primitives::tests::check_itoa ... ok
+test primitives::tests::check_tech_asset_from_asset ... ok
+test primitives::tests::should_serialize_and_deserialize_assetid32_properly_with_string ... ok
+test primitives::tests::should_serialize_and_deserialize_balance_properly_with_string ... ok
+test swap_amount::tests::test_mul_amount_should_pass ... ok
+test swap_amount::tests::test_mul_assign_amount_should_pass ... ok
+test test_utils::test::should_approx_eq_abs_equalize_exact_numbers ... ok
+test test_utils::test::should_approx_eq_abs_match_abs_tolerance ... ok
+test test_utils::test::should_approx_eq_abs_match_both_tolerance ... ok
+test test_utils::test::should_approx_eq_abs_not_match ... ok
+test test_utils::test::should_approx_eq_abs_not_match_rel_tolerance ... ok
+test test_utils::test::should_approx_eq_match_abs_tolerance ... ok
+test test_utils::test::should_approx_eq_equalize_exact_numbers ... ok
+test test_utils::test::should_approx_eq_match_both_tolerance ... ok
+test test_utils::test::should_approx_eq_match_rel_tolerance ... ok
+test test_utils::test::should_approx_eq_not_match ... ok
+test test_utils::test::should_approx_eq_rel_equalize_exact_numbers ... ok
+test test_utils::test::should_approx_eq_rel_match_both_tolerance ... ok
+test test_utils::test::should_approx_eq_rel_match_rel_tolerance ... ok
+test storage::test::decode_is_full_works_for_different_storages ... ok
+test storage::test::decode_is_full_works_for_different_collections ... ok
+test test_utils::test::should_approx_eq_rel_not_match ... ok
+test test_utils::test::should_approx_eq_rel_not_match_abs_tolerance ... ok
+test test_utils::test::should_fail_incorrect_absolute_percentage ... ok
+test test_utils::test::should_fail_incorrect_relative_percentage ... ok
+test utils::tests::test_filter_allow_all_should_pass ... ok
+test utils::tests::test_filter_allow_liquidity_source_id_should_pass ... ok
+test utils::tests::test_filter_allow_none_should_pass ... ok
+test utils::tests::test_filter_allow_some_should_pass ... ok
+test utils::tests::test_filter_forbid_all_should_pass ... ok
+test utils::tests::test_filter_forbid_liquidity_source_id_should_pass ... ok
+test utils::tests::test_filter_forbid_none_should_pass ... ok
+test utils::tests::test_filter_forbid_some_should_pass ... ok
+test utils::tests::test_filter_indices_empty_should_pass ... ok
+test utils::tests::test_filter_matches_dex_id_should_pass ... ok
+test utils::tests::test_filter_mode_allowed_none_should_pass ... ok
+test utils::tests::test_filter_mode_allowed_some_should_pass ... ok
+test utils::tests::test_filter_mode_disabled_none_should_pass ... ok
+test utils::tests::test_filter_mode_disabled_some_should_pass ... ok
+test utils::tests::test_filter_mode_forbidden_none_should_pass ... ok
+test utils::tests::test_filter_mode_forbidden_some_should_pass ... ok
+test utils::tests::test_fixed_from_basis_points_should_pass ... ok
+test utils::tests::test_in_basis_points_range_should_pass ... ok
+test utils::tests::test_linspace_corner_cases_should_pass ... ok
+test utils::tests::test_linspace_should_pass ... ok
+test utils::tests::test_pow ... ok
+test weights::tests::test_check_accrue_n_works ... ok
+test fixed::fixed_u256_test::op_sqrt_works ... ok
+test arithmetic::helpers_256bit::tests::sqrt_works ... ok
+test arithmetic::helpers_256bit::tests::op_checked_rounded_div_works ... ok
+
+test result: ok. 137 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.09s
+
