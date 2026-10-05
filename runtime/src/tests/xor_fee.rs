@@ -1228,7 +1228,7 @@ fn custom_actual_fee_details_add_length_fee() {
 }
 
 #[test]
-fn standard_actual_fee_details_preserve_weight_and_length() {
+fn standard_actual_fee_refunds_unused_weight_and_preserves_length() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
 
@@ -1254,7 +1254,7 @@ fn standard_actual_fee_details_preserve_weight_and_length() {
         assert_eq!(inclusion_fee.len_fee, length_fee(len));
         assert_eq!(
             inclusion_fee.adjusted_weight_fee,
-            WeightToFee::weight_to_fee(&MOCK_WEIGHT)
+            WeightToFee::weight_to_fee(&actual_weight)
         );
     });
 }
@@ -1659,7 +1659,7 @@ fn applied_signed_extrinsic_decreases_xor_total_supply() {
 }
 
 #[test]
-fn bridge_peer_with_nonzero_length_fee_still_skips_withdrawal() {
+fn invalid_bridge_protocol_is_rejected_before_any_fee_withdrawal() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
 
@@ -1673,17 +1673,17 @@ fn bridge_peer_with_nonzero_length_fee_still_skips_withdrawal() {
         let quoted_fee = XorFee::compute_fee(len, &call, &dispatch_info, 0).0;
 
         assert_eq!(quoted_fee, SMALL_FEE + length_fee(len as usize));
-        assert_ok!(XorFee::can_withdraw_fee(
-            &who,
-            &call,
-            &dispatch_info,
-            quoted_fee,
-            0
-        ));
+        give_xor_initial_balance(who.clone());
+        let before = Balances::free_balance(&who);
         assert_eq!(
-            XorFee::withdraw_fee(&who, &call, &dispatch_info, quoted_fee, 0),
-            Ok(LiquidityInfo::Paid(who, None, None))
+            XorFee::can_withdraw_fee(&who, &call, &dispatch_info, quoted_fee, 0),
+            Err(sp_runtime::transaction_validity::InvalidTransaction::Call.into())
         );
+        assert_eq!(
+            XorFee::withdraw_fee(&who, &call, &dispatch_info, quoted_fee, 0).unwrap_err(),
+            sp_runtime::transaction_validity::InvalidTransaction::Call.into()
+        );
+        assert_eq!(Balances::free_balance(&who), before);
     });
 }
 
@@ -2519,7 +2519,7 @@ fn withdraw_fee_set_referrer_already2() {
 }
 
 #[test]
-fn it_works_eth_bridge_pays_no() {
+fn invalid_bridge_protocol_is_rejected_by_payment_extension() {
     ext().execute_with(|| {
         set_weight_to_fee_multiplier(1);
         let who = crate::EthBridge::bridge_account(0).unwrap();
@@ -2537,23 +2537,20 @@ fn it_works_eth_bridge_pays_no() {
             Some(CustomFeeDetails::Regular(SMALL_FEE))
         );
         assert_eq!(CustomFees::get_fee_source(&who, &call, fee), who);
-        assert!(!CustomFees::should_be_paid(&who, &call));
-        let res = xor_fee::extension::ChargeTransactionPayment::<Runtime>::new().pre_dispatch(
+        assert!(CustomFees::should_be_paid(&who, &call));
+        give_xor_initial_balance(who.clone());
+        let before = Balances::free_balance(&who);
+        let result = xor_fee::extension::ChargeTransactionPayment::<Runtime>::new().pre_dispatch(
             &who,
             &call,
             &info,
             len as usize,
         );
         assert_eq!(
-            res,
-            Ok((
-                0,
-                who.clone(),
-                LiquidityInfo::Paid(who, None, None),
-                Some(CustomFeeDetails::Regular(SMALL_FEE)),
-                None,
-            ))
+            result.unwrap_err(),
+            sp_runtime::transaction_validity::InvalidTransaction::Call.into()
         );
+        assert_eq!(Balances::free_balance(&who), before);
     });
 }
 

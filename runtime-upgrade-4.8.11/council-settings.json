@@ -1,0 +1,103 @@
+{
+  "release": "4.8.11",
+  "signed": false,
+  "submittedTransactions": 0,
+  "network": {
+    "name": "SORA mainnet",
+    "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+    "endpoint": "wss://ws.mof.sora.org",
+    "finalizedBlock": 27834839,
+    "finalizedBlockHash": "0xeeb86cfbfe19ef39cc295f8a790460133be8b775269060ebe92b8e76ea016951",
+    "checkedAt": "2026-09-30T01:30:21.780Z"
+  },
+  "runtime": {
+    "baselineSpecVersion": 132,
+    "file": "framenode-runtime-4.8.11.compact.compressed.wasm",
+    "bytes": 3055443,
+    "sha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+    "specVersion": 133,
+    "transactionVersion": 131
+  },
+  "preimage": {
+    "method": "preimage.notePreimage",
+    "bytesArgumentFile": "set-code-call.hex",
+    "completeCallFile": "preimage-note-call.hex",
+    "hash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+    "hashAlgorithm": "BLAKE2-256 of full SCALE system.setCode call",
+    "status": null,
+    "bytes": 3055449,
+    "maxBytes": 4194304,
+    "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
+    "baseDepositBaseUnits": "133546666666663200",
+    "byteDepositBaseUnits": "3333333333300",
+    "unrequestedDepositBaseUnits": "10318376666564814900",
+    "unrequestedDepositXor": "10.318376666564814900",
+    "depositSource": "Tested spec-132 runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
+    "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
+  },
+  "council": {
+    "method": "council.propose",
+    "callFile": "council-propose-guarded-external-majority-threshold-4-call.hex",
+    "threshold": 4,
+    "members": 8,
+    "innerCallFile": "utility-guarded-external-majority-call.hex",
+    "innerCall": "utility.batchAll([democracy.externalPropose(candidate), democracy.externalProposeMajority(candidate)])",
+    "proposalLengthBound": 81,
+    "motionHashForVoteAndClose": "0x44d4bd9f8ea23612bfa609b09445b724e3f7d4504c4b51fa80b84453b0fd09ed",
+    "motionIndex": null,
+    "close": {
+      "lengthBound": 85,
+      "weightBound": {
+        "refTime": "325460526",
+        "proofSize": "10700"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    }
+  },
+  "technicalCommittee": {
+    "method": "technicalCommittee.propose",
+    "callFile": "technical-committee-fast-track-threshold-3-call.hex",
+    "threshold": 3,
+    "members": 4,
+    "innerCallFile": "democracy-fast-track-call.hex",
+    "innerCall": "democracy.fastTrack",
+    "proposalHash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+    "votingPeriodBlocks": 1800,
+    "enactmentDelayBlocks": 0,
+    "proposalLengthBound": 42,
+    "motionHashForVoteAndClose": "0x677291b7185f43a3f52864d8569a3a020f7437f3178ff4e008fc916e88a91ee0",
+    "motionIndex": null,
+    "close": {
+      "lengthBound": 46,
+      "weightBound": {
+        "refTime": "595041000",
+        "proofSize": "3518"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    }
+  },
+  "referendumIndex": null,
+  "instructions": [
+    "These are unsigned review artifacts. No governance action has been submitted.",
+    "Repeat finalized governance-state inspection immediately before use. Existing unrelated motions are recorded and remain untouched.",
+    "Council majority proposal needs at least half the current council. Technical fast-track needs more than half the current committee.",
+    "Use the preferred guarded council call: atomic batchAll([externalPropose(target), externalProposeMajority(target)]). It rejects an occupied queue at execution and rolls back on failure.",
+    "The two direct external-majority files are review-only supersession alternatives: they overwrite any queued proposal at execution and bypass its blacklist. They are not the default submission route.",
+    "Proposers must cast explicit aye votes. Generate vote and close calls only after the actual motion index, votes and live weight bounds are known.",
+    "Before executing technical fast-track, confirm the council inner execution succeeded and NextExternal contains this exact setCode proposal hash.",
+    "Use Democracy.Started to obtain the actual referendum index. Encoding these calls neither approves nor enacts the runtime.",
+    "Null motion/referendum indices are intentionally unset. Read actual Proposed/Started events; never submit null or guessed indices.",
+    "Requery live stored-motion weights and membership before signing vote/close calls.",
+    "Preimage registration, council approval, technical fast-track, referendum passage and enactment are separate steps."
+  ],
+  "inputSha256": {
+    "runtime-upgrade-4.8.11-info.json": "098376deb415cbd29f94915746048d57497f4a0220fd7ee14cad978069be4db0",
+    "governance-calls.json": "2930c407212898fc7f0743bb3b1a24cfa9f3f420dec648151b9b2bbc889997fd"
+  }
+}

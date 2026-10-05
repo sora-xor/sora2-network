@@ -339,3 +339,14 @@ pub fn new_tester() -> sp_io::TestExternalities {
     )));
     ext
 }
+
+impl bridge_types::traits::DispatchWithOutcome for RuntimeCall {
+    fn dispatch_with_outcome(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> Result<bridge_types::traits::MessageDispatchOutcome, sp_runtime::DispatchError> {
+        sp_runtime::traits::Dispatchable::dispatch(self, origin)
+            .map(|_| bridge_types::traits::MessageDispatchOutcome::Applied)
+            .map_err(|error| error.error)
+    }
+}

@@ -1,0 +1,40 @@
+{
+  "status": "passed",
+  "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+  "sourceBlockNumber": 27834097,
+  "sourceBlockHash": "0xf15e54191c639a904ef74a62fc4250178445e15221988069dba92c0523bb49c7",
+  "endpoint": "wss://mof2.sora.org",
+  "snapshot": "/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora-staking-4811-mainnet-27834097.snap",
+  "stateMode": "OfflineOrElseOnline; snapshot pinned block hash is checked by the test",
+  "scope": "native-remote-scope.json",
+  "command": [
+    "scripts/with_llvm_env.sh",
+    "cargo",
+    "test",
+    "--release",
+    "--offline",
+    "--locked",
+    "-p",
+    "framenode-runtime",
+    "--features",
+    "try-runtime",
+    "--lib",
+    "remote_try_runtime_upgrade_rehearsal",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "exitCode": 0,
+  "log": "native-remote-rehearsal.log",
+  "logSha256": "eb9d562c4ca274d7ff7a012294523e9a3213dffccb34cb0722f3ac3543da1748",
+  "submittedTransactions": 0,
+  "limitations": [
+    "System.Account, native balance accounts, nonnative token balances, assets and unrelated pallets are omitted. This scoped snapshot validates configured upgrade hooks, audited storage versions and bridge replay/index bounds, not actual payout execution. The exact-Wasm live-state fork supplies separate payout evidence.",
+    "Child tries are omitted; the selected migration paths use ordinary pallet/raw storage. This is not a complete chain-state snapshot or a global state-invariant check.",
+    "The scope relies on the pinned preflight showing legacy guard versions current. If any guarded old migration becomes active at another checkpoint, expand that pallet and its dependencies before rehearsal.",
+    "Do not reuse a previously narrower snapshot simply because its block hash matches. remote.rs verifies the snapshot header but does not verify its original filter coverage. Use a new scoped snapshot or one known to be a superset.",
+    "Only eight EthBridge maps are scraped. They cover all explicit remote.rs audits and the current v4 migration no-op; unrelated bridge maps are not covered.",
+    "This is a native runtime execution rehearsal, not validator consensus, host-import completeness, signed transactions or governance enactment."
+  ],
+  "observedStateInput": "Live public RPC scrape"
+}

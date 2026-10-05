@@ -421,7 +421,7 @@ impl<T: Config> IncomingRequest<T> {
         Ok(req)
     }
 
-    pub(crate) fn hash(&self) -> H256 {
+    pub fn hash(&self) -> H256 {
         match self {
             IncomingRequest::Transfer(request) => request.tx_hash,
             IncomingRequest::AddToken(request) => request.tx_hash,
@@ -768,7 +768,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     /// Calculates or returns an already calculated request hash.
-    pub(crate) fn hash(&self) -> H256 {
+    pub fn hash(&self) -> H256 {
         match self {
             OffchainRequest::Outgoing(_request, hash) => *hash,
             OffchainRequest::LoadIncoming(request) => request.hash(),

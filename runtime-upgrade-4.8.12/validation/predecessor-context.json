@@ -1,0 +1,302 @@
+{
+  "status": "retained-historical-evidence",
+  "freshFollowupExecutionClaimed": false,
+  "candidate": {
+    "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
+    "bytes": 3086444,
+    "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+    "specVersion": 134,
+    "transactionVersion": 131
+  },
+  "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+  "metadataFile": "previous-candidate-metadata.json",
+  "metadataSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
+  "previousNativeTests": {
+    "status": "passed",
+    "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+    "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
+    "log": "native-tests.log",
+    "logSha256": "c4e0f459448fc61786a41e4ab67ea3239ef2714d70aec387f4cb927dcfe081a4",
+    "suites": [
+      {
+        "crate": "eth_bridge",
+        "passed": 288,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "framenode_runtime",
+        "passed": 233,
+        "failed": 0,
+        "ignored": 3
+      },
+      {
+        "crate": "iroha_migration",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "order_book",
+        "passed": 203,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "pallet_babe",
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "pallet_grandpa",
+        "passed": 27,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "pallet_multisig",
+        "passed": 42,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "pallet_preimage",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "pallet_staking",
+        "passed": 218,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "rewards",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "crate": "xor_fee",
+        "passed": 49,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "baseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+    "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+    "logSource": "/private/tmp/sora-paid-migration-native.log",
+    "totalPassed": 1151,
+    "totalFailed": 0,
+    "totalIgnored": 3,
+    "newRuntimeRegressionsPassed": 32,
+    "capacityExecutiveRegressionsPassed": 2,
+    "followupRegressionsPassed": 6,
+    "requiredFollowupRegressions": [
+      "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
+      "tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee",
+      "tests::liveness::migration_fees::migration_settlement_failure_keeps_fee_and_rolls_back_claim",
+      "tests::liveness::migration_fees::migration_requires_xor_before_valid_claim_can_execute",
+      "tests::liveness::migration_fees::migration_invalid_proof_and_replay_pay_without_duplicate_val",
+      "tests::liveness::migration_fees::wrapped_migration_requires_xor_and_keeps_success_fee"
+    ],
+    "cargoFmtAllCheckPassed": true,
+    "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "limitations": [
+      "Existing explicitly ignored runtime tests are retained and counted.",
+      "Native Executive regressions use real cryptographic signatures; execution is local."
+    ]
+  },
+  "previousWasmBuild": {
+    "status": "passed",
+    "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+    "baseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+    "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+    "candidateSha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+    "candidateBytes": 3086444,
+    "cargoLockSha256": "206c00afce9062930f87f30729d65422a23d1b3b9462cae1013e958f8669225e",
+    "wasmCargoLockSha256": "3006c5998004bdea4fa8d17b66bdd6a2a04f4b0e82afdfa9bbbd371881a19b8b",
+    "wasmDependencyPackages": 599,
+    "wasmPackagesMatchSourceLock": true,
+    "dependencyNamesVersionsSourcesAndChecksumsChecked": true,
+    "onlyGeneratedWrapperPackageAdded": [
+      [
+        "framenode-runtime-blob",
+        "1.0.0",
+        ""
+      ]
+    ],
+    "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-paid-migration CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary",
+    "logSource": "/private/tmp/sora-paid-migration-wasm.log",
+    "log": "wasm-build.log",
+    "logSha256": "68716081507a21851c7b095a15c7f33bb73522e24537e513e7f9459bc128b866",
+    "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
+    "cargoCleanRun": false
+  },
+  "historicalCapacityComparisonSha256": "96ec1c947ebd4099fdca0535a28af69f53652ccb88ca44f55bc5a80829569e47",
+  "earlierSponsorshipContext": {
+    "status": "retained-historical-evidence",
+    "freshFollowupExecutionClaimed": false,
+    "candidate": {
+      "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
+      "bytes": 3092259,
+      "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+      "specVersion": 134,
+      "transactionVersion": 131
+    },
+    "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+    "metadataFile": "previous-candidate-metadata.json",
+    "metadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
+    "previousNativeTests": {
+      "status": "passed",
+      "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
+      "log": "native-tests.log",
+      "logSha256": "95c4f4b3be738faa656c373800ad652afd1f4c5addf1748c9788636056d06628",
+      "suites": [
+        {
+          "crate": "eth_bridge",
+          "passed": 288,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "framenode_runtime",
+          "passed": 236,
+          "failed": 0,
+          "ignored": 3
+        },
+        {
+          "crate": "iroha_migration",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "order_book",
+          "passed": 203,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "pallet_babe",
+          "passed": 31,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "pallet_grandpa",
+          "passed": 27,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "pallet_multisig",
+          "passed": 42,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "pallet_preimage",
+          "passed": 24,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "pallet_staking",
+          "passed": 218,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "rewards",
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "crate": "xor_fee",
+          "passed": 49,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+      "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+      "logSource": "/private/tmp/sora-followup-native-tests.log",
+      "totalPassed": 1154,
+      "totalFailed": 0,
+      "totalIgnored": 3,
+      "newRuntimeRegressionsPassed": 35,
+      "capacityExecutiveRegressionsPassed": 2,
+      "followupRegressionsPassed": 3,
+      "requiredFollowupRegressions": [
+        "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
+        "tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor",
+        "tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits"
+      ],
+      "cargoFmtAllCheckPassed": true,
+      "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "limitations": [
+        "Existing explicitly ignored runtime tests are retained and counted.",
+        "Native Executive regressions use real cryptographic signatures; execution is local."
+      ]
+    },
+    "previousWasmBuild": {
+      "status": "passed",
+      "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+      "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+      "candidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+      "candidateBytes": 3092259,
+      "cargoLockSha256": "206c00afce9062930f87f30729d65422a23d1b3b9462cae1013e958f8669225e",
+      "wasmCargoLockSha256": "5e124eb02f83d5ebedd687a657f06d45c58818d48cecece906313a25e9e82ca9",
+      "wasmDependencyPackages": 599,
+      "wasmPackagesMatchSourceLock": true,
+      "dependencyNamesVersionsSourcesAndChecksumsChecked": true,
+      "onlyGeneratedWrapperPackageAdded": [
+        [
+          "framenode-runtime-blob",
+          "1.0.0",
+          ""
+        ]
+      ],
+      "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-followup-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary",
+      "logSource": "/private/tmp/sora-followup-wasm-build.log",
+      "log": "wasm-build.log",
+      "logSha256": "dd43b89802c47f74739674bbc7d3b16e4e98aa618829a35c600551476584ab35",
+      "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
+      "cargoCleanRun": false
+    },
+    "previousClippy": {
+      "status": "passed",
+      "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+      "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+      "command": "CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target CARGO_NET_OFFLINE=true scripts/with_llvm_env.sh ./housekeeping/clippy.sh all",
+      "profiles": [
+        "mainnet",
+        "try-runtime",
+        "extended"
+      ],
+      "exitCode": 0,
+      "internalFlags": [
+        "SKIP_WASM_BUILD=1",
+        "--locked",
+        "--all-targets",
+        "-- -D warnings"
+      ],
+      "log": "clippy.log",
+      "logSource": "/private/tmp/sora-followup-clippy.log",
+      "logSha256": "b4e26ee5303c9b2f8a29ca119ece872c42ef7f9d00409926cae753acbebb5a62",
+      "networkRequests": 0,
+      "cargoCleanRun": false
+    },
+    "historicalCapacityComparison": "historical-capacity-metadata-compatibility.json",
+    "historicalCapacityComparisonSha256": "96ec1c947ebd4099fdca0535a28af69f53652ccb88ca44f55bc5a80829569e47",
+    "scope": "The preceding210511 candidate included undeployed sponsorship and migration success refunds. These policy claims and all prior execution totals are historical only. Current paid-migration source/build/behavior evidence is recorded independently."
+  },
+  "limitation": "All predecessor evidence is retained historical context; lending-retirement changes require fresh source-bound native, Wasm and feature-runtime validation."
+}

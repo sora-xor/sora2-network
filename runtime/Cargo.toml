@@ -5,7 +5,7 @@ license = "BSD-4-Clause"
 homepage = "https://sora.org"
 repository = "https://github.com/sora-xor/sora2-network"
 name = "framenode-runtime"
-version = "4.8.10"
+version = "4.8.12"
 
 [lints]
 workspace = true
@@ -185,6 +185,9 @@ traits = { workspace = true }
 bridge-types = { git = "https://github.com/sora-xor/sora2-common.git", branch = "polkadotsdk_1.6.0", default-features = false }
 
 [dev-dependencies]
+sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
+ed25519-dalek-iroha = { git = "https://github.com/soramitsu/sora2-ed25519-dalek-iroha.git", branch = "develop", default-features = false, features = ["u64_backend"] }
+sha3 = { version = "0.9.1", default-features = false }
 env_logger = "0.10.0"
 # Keep the runtime test path native by default. Tests that genuinely need the
 # chain-spec WASM blob should enable `framenode-chain-spec/runtime-wasm`

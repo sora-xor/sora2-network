@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+  "candidateSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+  "candidateBytes": 3055443,
+  "cargoLockSha256": "69c4d4d0ae49c1fbc17d9ae0cac3ffb8261b1e66de85d8cf72212d4c3cb6a520",
+  "wasmCargoLockSha256": "7058269b457aeb92e66739d4b88d6b3a72b09b8c6f12bfb044ec17843d2f20be",
+  "wasmDependencyPackages": 599,
+  "wasmPackagesMatchSourceLock": true,
+  "onlyGeneratedWrapperPackageAdded": [
+    [
+      "framenode-runtime-blob",
+      "1.0.0",
+      ""
+    ]
+  ],
+  "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.11-locked-workspace CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary",
+  "log": "wasm-build.log",
+  "logSha256": "6ad39dfdb319143fc7572cc00bd311e80ba15e2f9ab5fa6d6ae9033c01db04cb"
+}

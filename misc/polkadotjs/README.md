@@ -1,12 +1,25 @@
 # SORA VAL payout fixes
 
+The 4.8.11 runtime candidate restores reward discovery in unmodified public
+Polkadot.js Apps. Completed-era VAL budgets are exposed through standard
+`staking.erasValidatorReward`, and a bounded migration publishes existing
+budgets still inside the staking claim window. The payout hook replaces native
+rewards, so positive displayed amounts cannot mint XOR or increase XOR stake.
+Actual VAL payments also emit the standard staking reward event. See
+[`runtime-upgrade-4.8.11`](../../runtime-upgrade-4.8.11/README.md) for release
+validation and governance activation. This requires a runtime upgrade.
+
+## Earlier frontend-only workaround
+
 The runtime fixes are implemented in this checkout. The accompanying
 `restore-val-staking-payouts.patch` restores payout discovery in
 [Polkadot.js Apps](https://github.com/polkadot-js/apps/tree/05aa55e844c492d516dba3c4b0bd1b9311f9aeb2)
 at commit `05aa55e844c492d516dba3c4b0bd1b9311f9aeb2`.
 
-The public Apps site and SORA mainnet still require their respective releases.
-No transaction was signed or submitted during this work.
+The patch below is retained as an earlier frontend workaround. The 4.8.11
+node/runtime correction does not require that patch to be published by the
+Polkadot.js maintainers. The older validation snapshots below describe their
+recorded runtime versions, not current mainnet deployment.
 
 ## Fixed behavior
 
@@ -27,8 +40,9 @@ No transaction was signed or submitted during this work.
 
 Apps keeps direct-call signing for compatibility with deployed runtime 130.
 It queues up to 40 calls, oldest era first; each call pays the next unclaimed
-page. The runtime fix does not copy VAL rewards into `ErasValidatorReward`,
-which would mint additional XOR.
+page. The original 4.8.9 runtime fix kept `ErasValidatorReward` at zero. The
+4.8.11 candidate publishes VAL there only with native minting disabled in both
+payout and era-remainder paths.
 
 ## Review and verification
 

@@ -34,6 +34,7 @@ mod liveness;
 mod referrals;
 #[cfg(feature = "try-runtime")]
 mod remote;
+mod staking_reward_compatibility;
 mod xor_fee;
 
 use crate::{
@@ -375,7 +376,7 @@ pub(crate) fn unknown_benchmark_genesis_preset_is_rejected() {
 }
 
 pub(crate) fn runtime_upgrade_storage_versions_match_expected_code_versions() {
-    assert_eq!(crate::VERSION.spec_version, 132);
+    assert_eq!(crate::VERSION.spec_version, 134);
     assert_eq!(crate::VERSION.transaction_version, 131);
     assert_eq!(
         band::Pallet::<crate::Runtime>::in_code_storage_version(),

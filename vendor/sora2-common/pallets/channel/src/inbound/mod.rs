@@ -32,12 +32,13 @@
 
 use bridge_types::evm::AdditionalEVMOutboundData;
 use bridge_types::traits::{
-    AppRegistry, EVMFeeHandler, MessageDispatch, MessageStatusNotifier, OutboundChannel, Verifier,
+    AppRegistry, EVMFeeHandler, MessageDispatch, MessageDispatchOutcome, MessageStatusNotifier,
+    OutboundChannel, Verifier,
 };
 use bridge_types::types::MessageId;
 use bridge_types::SubNetworkId;
 use bridge_types::{EVMChainId, H160};
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchResult, Pays};
 use frame_support::traits::Get;
 use frame_system::RawOrigin;
 
@@ -65,7 +66,6 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_support::weights::Weight;
     use frame_system::{ensure_root, pallet_prelude::*};
-    use log::warn;
     use sp_core::H160;
     use sp_std::prelude::*;
 
@@ -73,7 +73,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config<RuntimeEvent: From<Event<Self>>> + pallet_timestamp::Config
     {
-
         /// Verifier module for message verification.
         type Verifier: Verifier;
 
@@ -181,6 +180,31 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Read-only admission for an authenticated, fresh bridge commitment.
+        /// Fee exemption and unsigned validation use the same checks as dispatch.
+        pub fn validate_submission(
+            network_id: GenericNetworkId,
+            commitment: &bridge_types::GenericCommitment<
+                T::MaxMessagesPerCommit,
+                T::MaxMessagePayloadSize,
+            >,
+            proof: &<T::Verifier as Verifier>::Proof,
+        ) -> DispatchResult {
+            match (network_id, commitment) {
+                (GenericNetworkId::EVM(id), bridge_types::GenericCommitment::EVM(value)) => {
+                    Self::verify_evm_commitment(id, value)?
+                }
+                (GenericNetworkId::Sub(id), bridge_types::GenericCommitment::Sub(value)) => {
+                    Self::verify_sub_commitment(id, value)?
+                }
+                (GenericNetworkId::TON(id), bridge_types::GenericCommitment::TON(value)) => {
+                    Self::verify_ton_commitment(id, value)?
+                }
+                _ => frame_support::fail!(Error::<T>::InvalidCommitment),
+            }
+            T::Verifier::verify(network_id, commitment.hash(), proof)
+        }
+
         fn submit_weight(
             commitment: &bridge_types::GenericCommitment<
                 T::MaxMessagesPerCommit,
@@ -214,6 +238,9 @@ pub mod pallet {
             <T as Config>::WeightInfo::submit()
                 .saturating_add(commitment_weight)
                 .saturating_add(proof_weight)
+                // Signed admission may verify in validation, preparation and dispatch.
+                // Keep a conservative bound until new submission benchmarks are collected.
+                .saturating_mul(3)
         }
 
         fn ensure_evm_channel(chain_id: EVMChainId, channel: H160) -> DispatchResult {
@@ -232,22 +259,28 @@ pub mod pallet {
 
         fn ensure_channel_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
             let nonce = ChannelNonces::<T>::get(network_id);
-            ensure!(nonce + 1 == new_nonce, Error::<T>::InvalidNonce);
+            ensure!(
+                nonce.checked_add(1) == Some(new_nonce),
+                Error::<T>::InvalidNonce
+            );
             Ok(())
         }
 
         fn ensure_reported_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
             let nonce = ReportedChannelNonces::<T>::get(network_id);
-            ensure!(nonce + 1 == new_nonce, Error::<T>::InvalidNonce);
+            ensure!(
+                nonce.checked_add(1) == Some(new_nonce),
+                Error::<T>::InvalidNonce
+            );
             Ok(())
         }
 
         fn update_channel_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
             <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if new_nonce != *nonce + 1 {
+                if nonce.checked_add(1) != Some(new_nonce) {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
-                    *nonce += 1;
+                    *nonce = new_nonce;
                     Ok(())
                 }
             })?;
@@ -256,10 +289,10 @@ pub mod pallet {
 
         fn update_reported_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
             <ReportedChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if new_nonce != *nonce + 1 {
+                if nonce.checked_add(1) != Some(new_nonce) {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
-                    *nonce += 1;
+                    *nonce = new_nonce;
                     Ok(())
                 }
             })?;
@@ -269,10 +302,10 @@ pub mod pallet {
         fn handle_ton_commitment(
             network_id: TonNetworkId,
             commitment: bridge_types::ton::Commitment<T::MaxMessagePayloadSize>,
-        ) -> DispatchResult {
+        ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError> {
             Self::verify_ton_commitment(network_id, &commitment)?;
             let network_id = GenericNetworkId::TON(network_id);
-            match commitment {
+            let outcome = match commitment {
                 bridge_types::ton::Commitment::Inbound(inbound_commitment) => {
                     Self::update_channel_nonce(network_id, inbound_commitment.nonce)?;
                     let message_id = MessageId::basic(
@@ -289,10 +322,10 @@ pub mod pallet {
                             source: inbound_commitment.source,
                         }
                         .into(),
-                    );
+                    )
                 }
-            }
-            Ok(())
+            };
+            Ok(outcome)
         }
 
         fn verify_ton_commitment(
@@ -315,10 +348,10 @@ pub mod pallet {
                 T::MaxMessagesPerCommit,
                 T::MaxMessagePayloadSize,
             >,
-        ) -> DispatchResult {
+        ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError> {
             Self::verify_evm_commitment(chain_id, &commitment)?;
             let network_id = GenericNetworkId::EVM(chain_id);
-            match commitment {
+            let outcome = match commitment {
                 bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
                     Self::update_channel_nonce(network_id, inbound_commitment.nonce)?;
                     let message_id = MessageId::basic(
@@ -335,7 +368,7 @@ pub mod pallet {
                             source: inbound_commitment.source,
                         }
                         .into(),
-                    );
+                    )
                 }
                 bridge_types::evm::Commitment::StatusReport(status_report) => {
                     Self::update_reported_nonce(network_id, status_report.nonce)?;
@@ -367,20 +400,22 @@ pub mod pallet {
                         .base_fee
                         .saturating_add(T::EVMPriorityFee::get().into());
                     let fee_paid = gas_used.saturating_mul(gas_price);
-                    T::EVMFeeHandler::on_fee_paid(chain_id, status_report.relayer, fee_paid)
+                    T::EVMFeeHandler::on_fee_paid(chain_id, status_report.relayer, fee_paid);
+                    MessageDispatchOutcome::Applied
                 }
                 bridge_types::evm::Commitment::BaseFeeUpdate(update) => {
                     T::EVMFeeHandler::update_base_fee(
                         chain_id,
                         update.new_base_fee,
                         update.evm_block_number,
-                    )
+                    );
+                    MessageDispatchOutcome::Applied
                 }
                 bridge_types::evm::Commitment::Outbound(_) => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
                 }
-            }
-            Ok(())
+            };
+            Ok(outcome)
         }
 
         fn verify_evm_commitment(
@@ -422,10 +457,15 @@ pub mod pallet {
                 T::MaxMessagesPerCommit,
                 T::MaxMessagePayloadSize,
             >,
-        ) -> DispatchResult {
+        ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError> {
             Self::verify_sub_commitment(sub_network_id, &commitment)?;
             let network_id = GenericNetworkId::Sub(sub_network_id);
             Self::update_channel_nonce(network_id, commitment.nonce)?;
+            let mut outcome = if commitment.messages.is_empty() {
+                MessageDispatchOutcome::Failed
+            } else {
+                MessageDispatchOutcome::Applied
+            };
             for (idx, message) in commitment.messages.into_iter().enumerate() {
                 let message_id = MessageId::batched(
                     network_id,
@@ -433,15 +473,18 @@ pub mod pallet {
                     commitment.nonce,
                     idx as u64,
                 );
-                T::MessageDispatch::dispatch(
+                if T::MessageDispatch::dispatch(
                     sub_network_id.into(),
                     message_id,
                     message.timepoint,
                     &message.payload,
                     GenericAdditionalInboundData::Sub,
-                );
+                ) == MessageDispatchOutcome::Failed
+                {
+                    outcome = MessageDispatchOutcome::Failed;
+                }
             }
-            Ok(())
+            Ok(outcome)
         }
 
         fn verify_sub_commitment(
@@ -470,10 +513,13 @@ pub mod pallet {
             >,
             proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
-            ensure_none(origin)?;
-            let commitment_hash = commitment.hash();
-            T::Verifier::verify(network_id, commitment_hash, &proof)?;
-            match (network_id, commitment) {
+            let raw: Result<frame_system::RawOrigin<T::AccountId>, OriginFor<T>> = origin.into();
+            match raw {
+                Ok(frame_system::RawOrigin::Signed(_) | frame_system::RawOrigin::None) => {}
+                _ => return Err(sp_runtime::DispatchError::BadOrigin.into()),
+            }
+            Self::validate_submission(network_id, &commitment, &proof)?;
+            let _outcome = match (network_id, commitment) {
                 (
                     GenericNetworkId::EVM(evm_network_id),
                     bridge_types::GenericCommitment::EVM(evm_commitment),
@@ -489,8 +535,10 @@ pub mod pallet {
                 _ => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
                 }
-            }
-            Ok(().into())
+            };
+            // Authentication plus consumed protocol progress is the bridge exemption.
+            // A local application failure cannot reopen this nonce for a free retry.
+            Ok(Pays::No.into())
         }
 
         #[pallet::call_index(1)]
@@ -521,49 +569,29 @@ pub mod pallet {
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
-        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            if let Call::submit {
+            let Call::submit {
                 network_id,
                 commitment,
                 proof,
             } = call
-            {
-                match (network_id, &commitment) {
-                    (
-                        GenericNetworkId::EVM(evm_network_id),
-                        bridge_types::GenericCommitment::EVM(evm_commitment),
-                    ) => Self::verify_evm_commitment(*evm_network_id, evm_commitment)
-                        .map_err(|_| InvalidTransaction::BadProof)?,
-                    (
-                        GenericNetworkId::Sub(sub_network_id),
-                        bridge_types::GenericCommitment::Sub(sub_commitment),
-                    ) => Self::verify_sub_commitment(*sub_network_id, sub_commitment)
-                        .map_err(|_| InvalidTransaction::BadProof)?,
-                    (
-                        GenericNetworkId::TON(ton_network_id),
-                        bridge_types::GenericCommitment::TON(ton_commitment),
-                    ) => Self::verify_ton_commitment(*ton_network_id, ton_commitment)
-                        .map_err(|_| InvalidTransaction::BadProof)?,
-                    _ => {
-                        return Err(InvalidTransaction::BadProof.into());
-                    }
-                }
-                let commitment_hash = commitment.hash();
-                T::Verifier::verify(*network_id, commitment_hash, proof).map_err(|e| {
-                    warn!("Bad submit proof received: {:?}", e);
-                    InvalidTransaction::BadProof
-                })?;
-                ValidTransaction::with_tag_prefix("SubstrateBridgeChannelSubmit")
-                    .priority(T::UnsignedPriority::get())
-                    .longevity(T::UnsignedLongevity::get())
-                    .and_provides((network_id, commitment_hash))
-                    .propagate(true)
-                    .build()
-            } else {
-                warn!("Unknown unsigned call, can't validate");
-                InvalidTransaction::Call.into()
-            }
+            else {
+                return InvalidTransaction::Call.into();
+            };
+            Self::validate_submission(*network_id, commitment, proof)
+                .map_err(|_| InvalidTransaction::BadProof)?;
+            ValidTransaction::with_tag_prefix("BridgeAuthenticatedSubmit")
+                .priority(T::UnsignedPriority::get())
+                .longevity(T::UnsignedLongevity::get())
+                .and_provides((network_id, commitment.hash()))
+                .propagate(true)
+                .build()
+        }
+
+        fn pre_dispatch(
+            call: &Self::Call,
+        ) -> Result<(), sp_runtime::transaction_validity::TransactionValidityError> {
+            Self::validate_unsigned(TransactionSource::InBlock, call).map(drop)
         }
     }
 }

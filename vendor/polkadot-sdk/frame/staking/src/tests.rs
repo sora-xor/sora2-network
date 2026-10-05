@@ -4975,6 +4975,155 @@ fn test_commission_paid_across_pages() {
 }
 
 #[test]
+fn replacement_reward_claim_preserves_native_balances_and_staked_ledgers() {
+    for by_page in [false, true] {
+        ExtBuilder::default().build_and_execute(|| {
+            assert!(<() as AdditionalPayout<AccountId>>::pays_native_reward());
+            Staking::reward_by_ids(vec![(11, 10)]);
+            start_active_era(1);
+            assert!(ErasValidatorReward::<Test>::get(0).unwrap() > 0);
+            let exposure = EraInfo::<Test>::get_paged_exposure(0, &11, 0).unwrap();
+            assert!(!exposure.others().is_empty());
+            let recipients: Vec<_> = core::iter::once(11)
+                .chain(exposure.others().iter().map(|other| other.who))
+                .collect();
+            for who in &recipients {
+                Payee::<Test>::insert(who, RewardDestination::Staked);
+            }
+            let before: Vec<_> = recipients
+                .iter()
+                .map(|who| {
+                    (
+                        *who,
+                        asset::total_balance::<Test>(who),
+                        Staking::ledger(StakingAccount::Stash(*who)).unwrap(),
+                    )
+                })
+                .collect();
+            let issuance = asset::total_issuance::<Test>();
+            sp_io::storage::set(REPLACEMENT_REWARD_MODE, &[1]);
+            sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[1]);
+
+            let result = if by_page {
+                Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 0, 0)
+            } else {
+                Staking::payout_stakers(RuntimeOrigin::signed(1337), 11, 0)
+            };
+            assert_ok!(result);
+            assert_eq!(
+                result.unwrap().actual_weight,
+                Some(
+                    <Test as Config>::WeightInfo::payout_stakers_alive_staked(0).saturating_add(
+                        MockAdditionalPayout::weight(exposure.others().len() as u32)
+                    )
+                )
+            );
+            assert_eq!(asset::total_issuance::<Test>(), issuance);
+            for (who, balance, ledger) in before {
+                assert_eq!(asset::total_balance::<Test>(&who), balance);
+                assert_eq!(Staking::ledger(StakingAccount::Stash(who)).unwrap(), ledger);
+            }
+            assert_eq!(ClaimedRewards::<Test>::get(0, 11), vec![0]);
+            assert_eq!(
+                sp_io::storage::get(ADDITIONAL_PAYOUT_RECORD)
+                    .unwrap()
+                    .as_ref(),
+                &(11u64, 0u32, 0u32).encode()[..]
+            );
+            assert!(staking_events().iter().any(|event| matches!(
+                event,
+                Event::PayoutStarted {
+                    era_index: 0,
+                    validator_stash: 11,
+                    page: 0,
+                    ..
+                }
+            )));
+            assert!(!staking_events()
+                .iter()
+                .any(|event| matches!(event, Event::Rewarded { .. })));
+            assert_noop!(
+                Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 0, 0),
+                Error::<Test>::AlreadyClaimed
+                    .with_weight(<Test as Config>::WeightInfo::payout_stakers_alive_staked(0))
+            );
+        });
+    }
+}
+
+#[test]
+fn replacement_reward_events_follow_page_start_and_roll_back_on_failure() {
+    ExtBuilder::default().build_and_execute(|| {
+        Staking::reward_by_ids(vec![(11, 10)]);
+        start_active_era(1);
+        sp_io::storage::set(REPLACEMENT_REWARD_MODE, &[1]);
+        sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[2]);
+        let exposure = EraInfo::<Test>::get_paged_exposure(0, &11, 0).unwrap();
+        let failure_weight = <Test as Config>::WeightInfo::payout_stakers_alive_staked(
+            exposure.others().len() as u32,
+        )
+        .saturating_add(MockAdditionalPayout::weight(exposure.others().len() as u32));
+        assert_noop!(
+            Staking::payout_stakers_by_page(RuntimeOrigin::signed(1337), 11, 0, 0),
+            sp_runtime::DispatchError::Other("additional reward failed")
+                .with_weight(failure_weight)
+        );
+        assert!(ClaimedRewards::<Test>::get(0, 11).is_empty());
+
+        // An actual replacement implementation can emit the standard Rewarded event.
+        sp_io::storage::set(ADDITIONAL_PAYOUT_MODE, &[3]);
+        System::reset_events();
+        assert_ok!(Staking::payout_stakers_by_page(
+            RuntimeOrigin::signed(1337),
+            11,
+            0,
+            0
+        ));
+        assert_eq!(
+            staking_events(),
+            vec![
+                Event::PayoutStarted {
+                    era_index: 0,
+                    validator_stash: 11,
+                    page: 0,
+                    next: None,
+                },
+                Event::Rewarded {
+                    stash: 11,
+                    dest: RewardDestination::Stash,
+                    amount: 1,
+                },
+            ]
+        );
+    });
+}
+
+#[test]
+fn replacement_reward_era_budget_bypasses_native_cap_and_remainder_issuance() {
+    ExtBuilder::default().build_and_execute(|| {
+        sp_io::storage::set(REPLACEMENT_REWARD_MODE, &[1]);
+        MaxStakedRewards::<Test>::set(Some(Percent::from_percent(1)));
+        let payout = current_total_payout_for_duration(reward_time_per_era());
+        let maximum_payout = maximum_payout_for_duration(reward_time_per_era());
+        assert!(payout > Percent::from_percent(1) * maximum_payout);
+        assert!(maximum_payout > payout);
+        let issuance = asset::total_issuance::<Test>();
+
+        start_active_era(1);
+
+        assert_eq!(ErasValidatorReward::<Test>::get(0), Some(payout));
+        assert_eq!(asset::total_issuance::<Test>(), issuance);
+        assert_eq!(RewardRemainderUnbalanced::get(), 0);
+        assert!(staking_events().iter().any(|event| *event
+            == Event::EraPaid {
+                era_index: 0,
+                validator_payout: payout,
+                remainder: maximum_payout - payout,
+            }));
+    });
+}
+
+#[test]
 fn additional_payout_failure_rolls_back_claim_and_hook_writes() {
     ExtBuilder::default().build_and_execute(|| {
         Staking::reward_by_ids(vec![(11, 10)]);

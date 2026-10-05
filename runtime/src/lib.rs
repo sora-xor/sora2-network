@@ -48,6 +48,8 @@ use sp_runtime::traits::Keccak256;
 
 mod babe_config;
 mod bags_thresholds;
+mod bridge_multisig_filter;
+pub use bridge_multisig_filter::BridgeMultisigCallFilter;
 /// Constant values used within the runtime.
 pub mod constants;
 mod impls;
@@ -449,7 +451,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 132,
+    spec_version: 134,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
     transaction_version: 131,
@@ -853,7 +855,7 @@ impl pallet_staking::Config for Runtime {
     type SlashDeferDuration = SlashDeferDuration;
     type AdminOrigin = StakingAdminOrigin;
     type SessionInterface = liveness::SlashOnlySessionInterface;
-    type EraPayout = ();
+    type EraPayout = xor_fee_impls::ValEraPayout;
     type AdditionalPayout = xor_fee_impls::StakingValPayout;
     type NextNewSession = Session;
     type MaxValidatorSet = MaxActiveValidators;
@@ -1833,6 +1835,7 @@ parameter_types! {
 }
 
 impl bridge_multisig::Config for Runtime {
+    type CallFilter = BridgeMultisigCallFilter;
     type RuntimeCall = RuntimeCall;
     type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
@@ -1840,6 +1843,8 @@ impl bridge_multisig::Config for Runtime {
     type DepositFactor = DepositFactor;
     type MaxSignatories = MaxSignatories;
     type WeightInfo = ();
+    type MaxPendingOperations = ConstU32<128>;
+    type MaxCallBytes = ConstU32<16384>;
 }
 
 parameter_types! {
@@ -2554,6 +2559,8 @@ parameter_types! {
 }
 
 impl kensetsu::Config for Runtime {
+    type RepaymentOnly = frame_support::traits::ConstBool<true>;
+    type AuthorityId = kensetsu::crypto::AuthorityId;
     type RuntimeEvent = RuntimeEvent;
     type Randomness = RandomnessCollectiveFlip;
     type AssetInfoProvider = Assets;
@@ -2584,6 +2591,8 @@ parameter_types! {
 }
 
 impl apollo_platform::Config for Runtime {
+    type RepaymentOnly = frame_support::traits::ConstBool<true>;
+    type AuthorityId = apollo_platform::crypto::AuthorityId;
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;
     type PriceTools = price_tools::FastPriceTools<Runtime>;
@@ -3282,7 +3291,7 @@ construct_runtime! {
         Session: pallet_session::{Pallet, Call, Storage, Event<T>, Config<T>, HoldReason} = 12,
         // Resolve the boundary block's author against the incoming session and era.
         Authorship: pallet_authorship::{Pallet, Storage} = 16,
-        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event} = 15,
+        Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event, ValidateUnsigned} = 15,
         ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
         Liveness: liveness::{Pallet, Storage} = 120,
 

@@ -214,7 +214,12 @@ pub fn charlie() -> AccountId32 {
 #[macro_export]
 macro_rules! mock_apollo_platform_config {
     ($runtime:ty) => {
+        $crate::mock_apollo_platform_config!($runtime, frame_support::traits::ConstBool<false>);
+    };
+    ($runtime:ty, $repayment_only:ty) => {
         impl apollo_platform::Config for $runtime {
+            type RepaymentOnly = $repayment_only;
+            type AuthorityId = apollo_platform::crypto::AuthorityId;
             const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self> = 150;
             type LiquidityProxyPallet = MockLiquidityProxy;
             type PriceTools = MockPriceTools;
@@ -357,9 +362,15 @@ macro_rules! mock_bridge_multisig_config {
         frame_support::parameter_types! {
             pub const DepositBase: u64 = 1;
             pub const DepositFactor: u64 = 1;
-            pub const MaxSignatories: u16 = 4;
+            pub const MaxSignatories: u16 = 100;
+
         }
         impl bridge_multisig::Config for $runtime {
+            type CallFilter = frame_support::traits::Everything;
+
+            type MaxPendingOperations = frame_support::traits::ConstU32<128>;
+            type MaxCallBytes = frame_support::traits::ConstU32<16384>;
+
             type Currency = Balances;
             type DepositBase = DepositBase;
             type DepositFactor = DepositFactor;
@@ -669,6 +680,8 @@ macro_rules! mock_frame_system_config {
 macro_rules! mock_kensetsu_config {
     ($runtime:ty) => {
         impl kensetsu::Config for TestRuntime {
+            type RepaymentOnly = RepaymentOnly;
+            type AuthorityId = kensetsu::crypto::AuthorityId;
             type AssetInfoProvider = Assets;
             type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
             type KarmaAssetId = KarmaAssetId;

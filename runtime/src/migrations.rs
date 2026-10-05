@@ -34,18 +34,19 @@ use codec::{Decode, Encode};
 use frame_support::dispatch::DispatchResult;
 use frame_support::storage::storage_prefix;
 use frame_support::traits::{
-    GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
+    Get, GetStorageVersion, Hooks, OnRuntimeUpgrade, StorageVersion, UncheckedOnRuntimeUpgrade,
 };
 use frame_support::weights::Weight;
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
 use sp_std::prelude::Vec;
 
-// Existing versioned bridges remain safe when upgrading 4.8.9 to 4.8.10.
+// Existing versioned bridges remain safe when upgrading 4.8.10 to 4.8.11.
 // The BABE repair schedules a normal announced epoch transition once on mainnet.
 pub type Migrations = (
     crate::babe_config::ScheduleMainnetPlainEpochConfig,
     RemapStakingRewardPointsToStash,
+    PublishValStakingRewards,
     EthBridgeStorageVersionV3,
     VestedRewardsStorageVersionV4,
     KensetsuStorageVersionV6,
@@ -700,6 +701,90 @@ impl OnRuntimeUpgrade for RemapStakingRewardPointsToStash {
                 "staking reward point remap marker was not written",
             ))
         }
+    }
+}
+
+const VAL_STAKING_REWARDS_PUBLISHED_KEY: &[u8] =
+    b"runtime:migrations:val_staking_rewards_published";
+
+pub fn val_staking_rewards_published() -> bool {
+    frame_support::storage::unhashed::get(VAL_STAKING_REWARDS_PUBLISHED_KEY).unwrap_or(false)
+}
+
+/// Expose recorded VAL budgets to ordinary staking clients without changing claims.
+/// Only retained, completed eras with an existing payout entry are updated.
+pub struct PublishValStakingRewards;
+
+impl OnRuntimeUpgrade for PublishValStakingRewards {
+    fn on_runtime_upgrade() -> Weight {
+        let db_weight = <crate::Runtime as frame_system::Config>::DbWeight::get();
+        let mut weight = db_weight.reads(1);
+        if val_staking_rewards_published() {
+            return weight;
+        }
+
+        let active = pallet_staking::ActiveEra::<crate::Runtime>::get();
+        let current = pallet_staking::CurrentEra::<crate::Runtime>::get();
+        weight.saturating_accrue(db_weight.reads(2));
+        if let (Some(active), Some(current)) = (active, current) {
+            let depth = <crate::Runtime as pallet_staking::Config>::HistoryDepth::get();
+            for era in current.saturating_sub(depth)..active.index.min(current) {
+                let standard = pallet_staking::ErasValidatorReward::<crate::Runtime>::get(era);
+                let val = xor_fee::ValStakingEraReward::<crate::Runtime>::try_get(era).ok();
+                weight.saturating_accrue(db_weight.reads(2));
+                if let (Some(standard), Some(val)) = (standard, val) {
+                    if standard != val {
+                        pallet_staking::ErasValidatorReward::<crate::Runtime>::insert(era, val);
+                        weight.saturating_accrue(db_weight.writes(1));
+                    }
+                }
+            }
+        }
+
+        frame_support::storage::unhashed::put(VAL_STAKING_REWARDS_PUBLISHED_KEY, &true);
+        weight.saturating_accrue(db_weight.writes(1));
+        weight
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+        let mut rewards: Vec<(sp_staking::EraIndex, crate::Balance)> = Vec::new();
+        if val_staking_rewards_published() {
+            return Ok(rewards.encode());
+        }
+        if let (Some(active), Some(current)) = (
+            pallet_staking::ActiveEra::<crate::Runtime>::get(),
+            pallet_staking::CurrentEra::<crate::Runtime>::get(),
+        ) {
+            let depth = <crate::Runtime as pallet_staking::Config>::HistoryDepth::get();
+            for era in current.saturating_sub(depth)..active.index.min(current) {
+                if pallet_staking::ErasValidatorReward::<crate::Runtime>::contains_key(era) {
+                    if let Ok(val) = xor_fee::ValStakingEraReward::<crate::Runtime>::try_get(era) {
+                        rewards.push((era, val));
+                    }
+                }
+            }
+        }
+        Ok(rewards.encode())
+    }
+
+    #[cfg(feature = "try-runtime")]
+    fn post_upgrade(state: Vec<u8>) -> Result<(), TryRuntimeError> {
+        let expected = Vec::<(sp_staking::EraIndex, crate::Balance)>::decode(&mut &state[..])
+            .map_err(|_| TryRuntimeError::Other("failed to decode VAL reward publication state"))?;
+        if !val_staking_rewards_published() {
+            return Err(TryRuntimeError::Other(
+                "VAL reward publication marker was not written",
+            ));
+        }
+        for (era, reward) in expected {
+            if pallet_staking::ErasValidatorReward::<crate::Runtime>::get(era) != Some(reward) {
+                return Err(TryRuntimeError::Other(
+                    "published staking reward does not match VAL budget",
+                ));
+            }
+        }
+        Ok(())
     }
 }
 

@@ -49,7 +49,9 @@ use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::Randomness;
-use frame_system::offchain::{CreateBare, CreateTransactionBase};
+use frame_system::offchain::{
+    CreateBare, CreateSignedTransaction, CreateTransactionBase, SigningTypes,
+};
 use permissions::Scope;
 use sp_arithmetic::Percent;
 use sp_core::crypto::AccountId32;
@@ -66,7 +68,7 @@ type Hash = H256;
 type Signature = MultiSignature;
 type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
 type TechAssetId = common::TechAssetId<PredefinedAssetId>;
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<TestRuntime, u64>;
 
 pub struct MockRandomness;
 
@@ -303,7 +305,30 @@ where
     }
 }
 
+impl SigningTypes for TestRuntime {
+    type Public = sp_runtime::MultiSigner;
+    type Signature = sp_runtime::MultiSignature;
+}
+
+impl<LocalCall> CreateSignedTransaction<LocalCall> for TestRuntime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_signed_transaction<
+        C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+    >(
+        call: RuntimeCall,
+        public: Self::Public,
+        account: Self::AccountId,
+        nonce: Self::Nonce,
+    ) -> Option<Self::Extrinsic> {
+        C::sign(&codec::Encode::encode(&call), public)?;
+        Some(UncheckedExtrinsic::new_signed(call, account, nonce, ()))
+    }
+}
+
 parameter_types! {
+    pub storage RepaymentOnly: bool = false;
     pub KensetsuDepositoryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),

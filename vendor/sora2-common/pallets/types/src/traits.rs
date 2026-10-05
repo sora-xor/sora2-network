@@ -88,6 +88,21 @@ pub trait EVMOutboundChannel {
     fn submit_gas(chain_id: EVMChainId) -> Result<U256, DispatchError>;
 }
 
+/// Local application outcome, distinct from accepting authenticated delivery.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MessageDispatchOutcome {
+    Applied,
+    Failed,
+}
+
+/// Dispatch a decoded bridge application without hiding failed local credit.
+pub trait DispatchWithOutcome: sp_runtime::traits::Dispatchable {
+    fn dispatch_with_outcome(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError>;
+}
+
 /// Dispatch a message
 pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
     fn dispatch(
@@ -96,7 +111,7 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
         timepoint: GenericTimepoint,
         payload: &[u8],
         additional: Additional,
-    );
+    ) -> MessageDispatchOutcome;
 
     fn dispatch_weight(payload: &[u8]) -> Weight;
 

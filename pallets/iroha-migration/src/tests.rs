@@ -39,7 +39,7 @@ use common::{AssetInfoProvider, VAL};
 use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
-use frame_support::dispatch::CheckIfFeeless;
+use frame_support::dispatch::{CheckIfFeeless, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::traits::OnInitialize;
 use referrals::Referrers;
 use sha3::Sha3_256;
@@ -132,14 +132,15 @@ fn signing_message_uses_configured_genesis_hash() {
 }
 
 #[test]
-fn valid_migration_call_is_feeless_before_dispatch() {
+fn valid_migration_requires_fee_funding_before_dispatch() {
     new_test_ext().execute_with(|| {
         let key = test_keypair(1);
         let iroha_address = "did_sora_balance@sora";
         install_public_keys(iroha_address, &[&key]);
 
         let call = migrate_call_with_key(ALICE, iroha_address, &key);
-        assert!(call.is_feeless(&RuntimeOrigin::signed(ALICE)));
+        assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
+        assert!(!call.is_feeless(&RuntimeOrigin::signed(ALICE)));
         assert!(!call.is_feeless(&RuntimeOrigin::signed(BOB)));
 
         let bad_call = RuntimeCall::IrohaMigration(crate::Call::<Runtime>::migrate {
@@ -159,7 +160,7 @@ fn migrated_account_is_not_feeless_again() {
         install_public_keys(iroha_address, &[&key]);
 
         let call = migrate_call_with_key(ALICE, iroha_address, &key);
-        assert!(call.is_feeless(&RuntimeOrigin::signed(ALICE)));
+        assert!(!call.is_feeless(&RuntimeOrigin::signed(ALICE)));
 
         assert_ok!(migrate_with_key(ALICE, iroha_address, &key));
 
@@ -262,7 +263,13 @@ fn test_migrate_balance() {
             Assets::free_balance(&VAL, &ALICE).unwrap(),
             Balance::from(0u128)
         );
-        assert_ok!(migrate_with_key(ALICE, iroha_address, &key));
+        assert_eq!(
+            migrate_with_key(ALICE, iroha_address, &key),
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::Yes,
+            })
+        );
         assert_eq!(
             Assets::free_balance(&VAL, &ALICE).unwrap(),
             Balance::from(300u128)
@@ -328,7 +335,13 @@ fn test_migrate_multi_sig() {
         let charlie_key = test_keypair(3);
         install_public_keys(&iroha_address, &[&alice_key, &bob_key, &charlie_key]);
 
-        assert_ok!(migrate_with_key(ALICE, &iroha_address, &alice_key));
+        assert_eq!(
+            migrate_with_key(ALICE, &iroha_address, &alice_key),
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::Yes,
+            })
+        );
         assert!(!MigratedAccounts::<Runtime>::contains_key(&iroha_address));
         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(
             &iroha_address
@@ -342,11 +355,23 @@ fn test_migrate_multi_sig() {
             Assets::free_balance(&VAL, &multi_account).unwrap(),
             Balance::from(0u128)
         );
-        assert_ok!(migrate_with_key(BOB, &iroha_address, &bob_key));
+        assert_eq!(
+            migrate_with_key(BOB, &iroha_address, &bob_key),
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::Yes,
+            })
+        );
         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(
             &iroha_address
         ));
-        assert_ok!(migrate_with_key(CHARLIE, &iroha_address, &charlie_key));
+        assert_eq!(
+            migrate_with_key(CHARLIE, &iroha_address, &charlie_key),
+            Ok(PostDispatchInfo {
+                actual_weight: None,
+                pays_fee: Pays::Yes,
+            })
+        );
         assert!(MigratedAccounts::<Runtime>::contains_key(&iroha_address));
         assert!(!PendingMultiSigAccounts::<Runtime>::contains_key(
             &iroha_address

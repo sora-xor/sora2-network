@@ -4,6 +4,7 @@ use bridge_types::types;
 use bridge_types::types::GenericAdditionalInboundData;
 use bridge_types::GenericNetworkId;
 use codec::Encode;
+use frame_support::derive_impl;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU32, Everything};
 use sp_core::H256;
@@ -28,6 +29,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
@@ -102,4 +104,15 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
         .build_storage()
         .unwrap();
     sp_io::TestExternalities::new(t)
+}
+
+impl bridge_types::traits::DispatchWithOutcome for RuntimeCall {
+    fn dispatch_with_outcome(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> Result<bridge_types::traits::MessageDispatchOutcome, sp_runtime::DispatchError> {
+        sp_runtime::traits::Dispatchable::dispatch(self, origin)
+            .map(|_| bridge_types::traits::MessageDispatchOutcome::Applied)
+            .map_err(|error| error.error)
+    }
 }

@@ -1,0 +1,29 @@
+{
+  "status": "passed",
+  "sourceTreeAfterPatch": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
+  "candidateSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+  "scriptSha256": "cae819a7f7312561f7ea83be5aaf990b5e137139e256a51e6cc1188a651611d3",
+  "documents": {
+    "README.md": "4b9f5c180b5b649b5aa35d267f848df98cfbd81919c8fe4f68e899e201591e65",
+    "VALIDATION.md": "444dfac7993638bb819da638370318d73f73e0f49cdf9a00d0795d7efc302f70",
+    "GOVERNANCE-RUNBOOK.md": "b26d550b5e868c649da74e4325071919492fa0e26cc5f69453bc4495ad0a42fc",
+    "COUNCIL_MESSAGE.md": "b7dd32e68f255d9d82b08df3b93c401ad258eff9e57d77620ad96a480d3a001b"
+  },
+  "inputSha256": {
+    "runtime-upgrade-4.8.12-info.json": "390b4c47646115760bdbfcbd1d4312a50d412366c908fdf1118a1f317f45706f",
+    "council-settings.json": "fde4750f841751971ba957541efde8682c3c4713b2960bda78695dbb52b729e9",
+    "validation/source-provenance.json": "6313c58a369ce0cbdfd4fc6806c6a210547eb2292b819ce127bbab6d5fe6923f",
+    "validation/native-tests.json": "34f29e6bf9752228a6807acbb8169123d525bc3e2acabf3a64b9e3477190c43c",
+    "validation/wasm-build.json": "118aa8b64f9a6f4ed4d124ca7d1e526a87a27203c6fabcdab578eeaa3233c7c1",
+    "validation/fee-policy-wasm-rehearsal.json": "863c4cf3eb82e4c38ff69876f8b810ce0da1a11790c2ec52bcab36071bd2fa9c",
+    "validation/wasm-compatibility.json": "99309eddb4f98fa3a8183f8935c56844964facdf45850a2d050656bc4d7164e5",
+    "validation/governance-call-check.json": "48da8738f03259426d3d95fd83e2daf5779be1690234f31e46ce30f6f414b107",
+    "validation/clippy.json": "9955d9c65484479f67d6252f8bd6643a7a6187314ba8e929c59b0f15b6f7e19f",
+    "validation/retired-lending-fixture.cjs": "ad4e082ba5928497ca119c4f6037d9f0467803c90d13c8bfebd68b3fccbc762c",
+    "validation/chain-spec-runtimes.json": "41c764247a6fd7898a9501730db876ad118b53d85c08f11e120f4c7ba90695a3",
+    "validation/docs/README.md.in": "8836c5240bbc80c3fc0ab54657ad3cab09bceb983e716cb176a3b44d7bb37207",
+    "validation/docs/VALIDATION.md.in": "702eb125daf11fda560b26e62a4db45a1c96a673ab915df2cbc2380119f84285",
+    "validation/docs/GOVERNANCE-RUNBOOK.md.in": "648a431ba8a5922cf13a9b63d760b2a30ce74592b940650b30e2c98199d6f0a6",
+    "validation/docs/COUNCIL_MESSAGE.md.in": "2c15758a1ed5057539f7f348aac08902be94f3e473c4ee6658b414045647200c"
+  }
+}

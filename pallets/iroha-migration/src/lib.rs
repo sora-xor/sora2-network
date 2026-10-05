@@ -162,19 +162,6 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
-    pub(crate) fn can_migrate_feeless(
-        origin: &frame_system::pallet_prelude::OriginFor<T>,
-        iroha_address: &String,
-        iroha_public_key: &String,
-        iroha_signature: &String,
-    ) -> bool {
-        let Ok(who) = ensure_signed(origin.clone()) else {
-            return false;
-        };
-
-        Self::check_migrate(iroha_address, iroha_public_key, iroha_signature, &who).is_ok()
-    }
-
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
         let iroha_public_key =
             hex::decode(&iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
@@ -382,14 +369,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::feeless_if(|origin: &OriginFor<T>, iroha_address: &String, iroha_public_key: &String, iroha_signature: &String| -> bool {
-            Pallet::<T>::can_migrate_feeless(
-                origin,
-                iroha_address,
-                iroha_public_key,
-                iroha_signature,
-            )
-        })]
+        // Ownership is checked once in dispatch, with the claimant paying the fee.
         #[pallet::weight((WeightInfoOf::<T>::migrate(), Pays::Yes))]
         pub fn migrate(
             origin: OriginFor<T>,
@@ -414,10 +394,10 @@ pub mod pallet {
                         key_count,
                     )?;
                 }
-                // The user doesn't have to pay fees if the migration is succeeded
+                // A successful claim pays the same transaction fee as a failed attempt.
                 Ok(PostDispatchInfo {
                     actual_weight: None,
-                    pays_fee: Pays::No,
+                    pays_fee: Pays::Yes,
                 })
             })
         }

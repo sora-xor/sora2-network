@@ -61,7 +61,7 @@ benchmarks! {
             }
         );
         let proof = T::Verifier::valid_proof().unwrap();
-    }: _(RawOrigin::None, BASE_NETWORK_ID, commitment, proof)
+    }: _(RawOrigin::Signed(frame_benchmarking::account("relayer", 0, 0)), BASE_NETWORK_ID, commitment, proof)
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
     }

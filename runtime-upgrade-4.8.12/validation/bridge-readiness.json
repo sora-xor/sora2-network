@@ -1,0 +1,858 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-05T09:30:01.573Z",
+  "endpoint": "wss://mof2.sora.org",
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "limits": {
+    "pendingOperationsPerAccount": 128,
+    "storedCallBytes": 16384
+  },
+  "accounts": [
+    {
+      "network": 0,
+      "account": "cnTQ1kbv7PBNNQrEb1tZpmK7m6B1ToDe2qJbdz7aQw8F3W1CK",
+      "pendingOperationsObserved": 129,
+      "pendingScanComplete": false,
+      "legacyBacklogAtOrAboveSharedLimit": true,
+      "peerCount": 3,
+      "perProposerQuotaAfterUpgrade": 42,
+      "peers": [
+        {
+          "account": "cnSRgH9n7hKJHqgLUubsPZ18CQgJCkprnMZwjNGFY7NBbbmpG",
+          "nonce": "877453",
+          "providers": 6,
+          "consumers": 0,
+          "sufficients": 0,
+          "freeXorBaseUnits": "0",
+          "reservedXorBaseUnits": "0",
+          "xorFundingRequiredForAuthenticatedProtocol": false
+        },
+        {
+          "account": "cnTgsL4SGJBTMvQo8eoorUj8GyJSXdaeDLwnqHYPbnawuAjj3",
+          "nonce": "180859",
+          "providers": 3,
+          "consumers": 1,
+          "sufficients": 0,
+          "freeXorBaseUnits": "0",
+          "reservedXorBaseUnits": "0",
+          "xorFundingRequiredForAuthenticatedProtocol": false
+        },
+        {
+          "account": "cnVByMHQrfhbz81zioyZhP5YQmt5VGcpJY7bg3S5z5WcMVQNJ",
+          "nonce": "928727",
+          "providers": 6,
+          "consumers": 0,
+          "sufficients": 0,
+          "freeXorBaseUnits": "0",
+          "reservedXorBaseUnits": "0",
+          "xorFundingRequiredForAuthenticatedProtocol": false
+        }
+      ],
+      "operations": [
+        {
+          "hash": "0x183f4bb5db09961a9e14a092f57285877fd5659a4f1ab9d340058841f56abd84",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6eccd94c1d7850302e460fed605d11077f5c154b9e56987f85d5c3b9be91a632",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x917667c11b57f055c07d5965d30bf26dbaa5170d9409974330e7241323c8a22f",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x334b33a8305b040d09245f1f199e28948bcb7b10d980564ddf4ce2d280069b77",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xcf0ceb18891a980d0f5fb864e7d31b094deb77e6623f7591682c772d05378bb4",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc39f54eae1cf71cbc38f58139d9cd4dbd9584559f44c921c57b0170891310a57",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x7e3bdd0a756f6451cf6af3bc0b98aaa6d8f49751ce85c372feaba249fbb33901",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb331a9b9e196d8e29f873ca66972511d911888d32e7d907cf5011f30b2c17fab",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xcbb3bde6b7c66e2b7c45c641a649026842dc1e08978b7104e8fa7dc66c662132",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x069b08024b2b2ed6f28335b352af4a6c2014ea519c80ad9f9bc7fd16e032baa6",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc476ce485d13a0ff1f679973c4bc99043e0e6b635160242ee881b39d88b7caa9",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xe316310a175cf2f9b5e128c7c389b3a39516b5ccb8355c8ee028867e4fb9e9db",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xd6a839393b207022f1ea20f56ed5d6aec0124b7f65283bbcfc2052b76739ef33",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb27a959936121c5d23723767dfae550dd9412dc8505035de26b2ce0ba163e5b2",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc8067148aee6d3b447a024fe3633c420338a17c7f0d955c078fa57c71e0904e8",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4f812fd9f9093568a2bdb3ad6ecbf678bff83111514fd5f907a234d7ab08c541",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x0125dd221c384b3d90159befbea516048a679213e88d8390bfa5dcd3639aa98b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb3d6d2e6aeabdededc6e3159d2f5b3df3b5b735bc1025199ea04e2d5990a8467",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xaa40a6433214bc311b44bcad5bc51c091c00a79980aa1589bd2b2490380d964e",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x0fc2e2c8d003066038277cfb34be32f8271ebd6ff1051aad6abe65ba91c3746d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x8e3a859cae39820e8c0672ade81da5d7762105ec7c3ff5cdbf5b485231d73eb5",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x5a7948474167ea5fc44bbcc7be7d0e57098a3f2b2ac201c09d964d1d1cf7dea7",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x9aebc884ca176adaf5ba2a31fbc08e3170ce6521def7382ff0bd565b1af5c64a",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x5140e55cb2ebc2f0941c6e7c45da10b57b94da166aacd7b74a043b10b8bf58b2",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6aee252cf4c3d5d8d4012b70b2119182d144ed4bb7965c166e4871f100b215a9",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc7bd9175019d40852faea55868d3850f45fd60a4e76a3fe1bb13ab8dcc0e5e43",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x661b5d776bc2df34e4f2d04c20db6acb33adc5dbe3389fc4325ee824cc8adab4",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x0c22f81c083e68338f9fa92d2064c96fe125ee79683380896081f2f7426c17de",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x43410814fc68f6eeba81274ee0315728c6facbf5d043e6022e7c501b4e690b9e",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x161f773191b1ec397fe7068a5e15bf90375f9858199e60235d389ca783666c25",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xdd1a3cb9a6893a025ad3831810090520a2a29f86b14e81922ff65ea6c6f90cf3",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x47db1a355d928ea89d56cef56eec10291ef672fc57f55f28a5d097825363f351",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf3438977128ceb5620ea20b0d342c9bb4eb1983c9b259d62421faeaf69eeee31",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x27eb485b120f6431bab718d834b4634454596f5f24fa9c0608ca28c36238b1ee",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xadf42dda0fd3edb9ff8d9688b247f5a5172483b3c9a62d03ab652fea9f4a5846",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xec938ff1f8591ebc8b97e0d993cb16e4081fdde9d99de161d7c69331e0ed4f65",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x766d82cdd2a7de6113149e2510dce811f0875ee5f4d3afecfd02594f372abd30",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4c126dc0718815ecb889f2f606ae1be1c96384aede5ab70d2758cd55366b75a1",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6cc07ec1b29a76556e715ca1305dc94e6b12e4260fc5123f46ed538f18ea664b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x3c907ff3227063035a1f8df67e7699a4f3eb7fa1732e942f6c784e275b349b17",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4b5f4c19b54de187c11163d2525a47ec614eca7bf8cc84a3cca0f17d2a831b61",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4afba299a93534adcfdc3b422ea0db2755a2ea6a8df65c31ddcff248b96d2f41",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x511920fd85b7d33b63aa905aa61cd958875e9f30730690a9a25484a234bf4586",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xd293de6034985b16add3233a28286725e73bf5ed6db4917d5e06e92506331b21",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x64735e375db2052010bd17522fbce9bc3facef702f31c46a81314c1b31821f00",
+          "storedCallBytes": 278,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xe5b3a19eb399c55f03e01c9911f4fa9985693205f047abddf85c2d44842e4660",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xebbbfec9c0e26277457fa0e37ee74a538567cf29124e5ff16e87eb3ac27fce59",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x55a6495e6a10fd43dc7f3273cc4862873dd39d4c51717104562aaf40f9310a9f",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xee5c37a374284ba7f30e4a266ae487d199de72ff41a7f8b288889657075c1578",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf0dd414013f596725b7e13035de1bdc51735791f2ec885da164028d61e38c99b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x2e0d94e766d0ff9d686502d094bf77f361503407f9a98d769d076d71107b9274",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6e92feedc6c2f4119753bac6f84a9c9c2aa0a0aadc60c197272b798f75ab076d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x05400cd13d3fe4de70fcec0eb81dea1cc97c62cfa46372e158c613515e676205",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xdd01bcfac64e71ec55b755b6feb2340abebdc5565686f3614f76379cd9df370f",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf1ec3164e328c6ae6337add6837a7ff6207b7a842ccbe542429b1c29f999ab1a",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x379be820d92e74a57e710037a102636d387e778ed52c1c82fe9dd212228f1d3f",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x11be9d577c64b5b5753186f16ee827f91d62e68960d5cd516a6dd2fd1bacfd05",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x5efa140a5e7a171e87231fc067e7f331e58e329d0659bb6ce9521ddf1c4fe48c",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc1cbe4271ee8a3c31e94eb4a9e8fae78c612d9392ca7ef8bc084a07255a006c7",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xe4e971215ca75bee68dbed24c98f03703355031a3accba314a8703b7f1c8d33d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf31899dc5facba57e1d8a3fa349f50d20dc0831a0b25d95d418a499c4e577a39",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x0dc8173e45954bf9898b18ef5aac0714161b40290cad76aaa9e7bf0d9444e27d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xff2fcdee50bd37af4c950aee18de6631cdb967a0e92ff5322c5db6d9354a42d2",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x9c7aa2b9e183275252e49e5a4be502db0865b42f1ec38abbe8ed7b2c4854ab37",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6acd82b1a601746ce0bbe456830df54347cdea97e11e82ebdcf839613c736720",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x2f16d9334ecc924e2c072f979865b4d128a4bf5a34c8ed1ed116ae6446a88c4e",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xaff9dd33576b6e8985c6087065206fc8b50a3e551a0f1efa9cea5167eb56b183",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xcb1a469f4ea179385a33e290a1ce7bea466df52fc6a8e299dbe625c331357fb9",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x3b7de265d245b9d66bc0fa0f9fad2953d8e711177a16bf7d73234914ddf8f2e1",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x45ef6014f61d5aa75b94b0df078ba652790d1be07d534bc74afbf2009c4020de",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xedc8b3d8aeda908ca4fa9a54807b62c68f755a12e263472dfe13856850333082",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x7be57c46047fbcd0312432fd88acd7148fb1682b6c32aecbc2886017a8b7626e",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc0e8e95d22cd248500654734275cd9c4641f78fa760648562a2ef8ed56612d86",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x306ff41a0565f205ef88f22cc7ebe5f4ae382de7b5bc4e4e331d7925183b9482",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xe310255284d683330911179f479b46dd0ddbefdd946b745e670b54a258b8be8e",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc371586dd733a4e5317d244dbc0899586693ec4900f73939030dc4fecff24c7a",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xe6e85863b390ecfd7c0b0433b1ac4b1ba2feed15f58912e224cb259846b16172",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4fa6c09c90e83e5d6075fcfa2410a17576d42d918fa4bc5b47f0cbf3ccb69b5d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4e8511588fd3762f07c047dc3365a427c5322ade3b4c738d50915cd14d32559c",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa3ccaa197aa0c98d62796ce949652cb3b9cf09235f8586ab91c830be20f9a71d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x62b3b523dce0401a2b8b5bd440ef44d647ab1cb300bd1f80e26dc5504ce51a70",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x4260736c62e8c4c989e0628a616ba9126c57cb52943dd563e18e3551c2d0c16b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x99c26c15ff1188550b0c67c1fc8136ba03098c74c233287b1e0a7bea261b576d",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x076a41aa2fbfb83674fbe3c6a2616072397d285a2713f3426c2ec372ccefd9d2",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xd322d507a8a87c714f7f20e670f7a47d3e04a64c23ffa223f4f020955bc1cb4b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x637a94427add740e4fa628a03f0111d7e2555e2e1294c9a35347171c4e5343e6",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x053277169e44af6bbf1453615d1736928e9ae111994ba7a13bf3bae91f52f8df",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x2a204c78e0a0ada22ffc6332ba77e402508fdd0bf1ca9a6d4feb36cd1c2b2d99",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb38751068057aade7f7a92b2d91817c8d942d41f73af681004138d05248069a9",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf56ecfeeda8776886c605e840244b2d243450d1b393df5e70d03cc9268e59c61",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x7b39b6907d23a2e1cfbff0fa4453e1f75d44e8319ab1176040a8b9a1d7283678",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa90d62457e3b4f203d250d53ca2f3824391791222cd3f6e2f5cbf58365d4c697",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6f40d98d74a559181cc2dac170f023e94572428184b59727191b1de843792306",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x5d5969f92d3a9cd470ac51e6e58e9c716f188c980c7f23bb100853477535d96f",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x27a16c1a9d335b38ec5354388d7466249b477ca0c61515385de22a4979720dc5",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xef529e66553e86ad1255e124969fa3bded0f31953b034c4f1cd8163de544ff35",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf25192e2a09546a3c67d647ea41c2ed2204270c7b556c360cf9c7fb28b8a0aac",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x7d16485b508e02516b6a4c07487cd2e008f638be694fc89f5fd261d8a43fc7fb",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xba2573735e7b004cbdb00a32b7ae9447b5577023c949abfc530c1e4d98b0e48b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x00ac7b4e00d7f45ebf3a9ff7394181a320b99de580f70ca4669e0b3540559cff",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xda780e42549b8cccd2bdec4377ce8b9f40361d954c15b9a2dd61fd37036bc17b",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x9fcc188f8bef9a7218add3bd19c75a1c842c0200d29f84230d6df958461c9e89",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x45fc46537631b1eb61d3bf50d14f0f5accfe76012e30d76fc5b683a3ae515361",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf2ffd4b6619ce12c9d4bfa06386d5672b6177192f8290e0f2d477364c4171850",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa0c210d43a9c44a138e26d7e859b6c521bede04035303527af7709a933114ab2",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xcb08783c045a9ef8f7e8c70566b71cc22509c9244e2195557554a1ae1ad075fe",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa07ac24df85718391117f34b4b649d3b1571df5d6f8ef573e35aaca046da99ef",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x0b6dca2969d0874ffce4d87b3b4ec81fa2717471aa4984fde7ce4bb520165e40",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa70f1a1c59c15a2c762de1d41dfef3760ccd9fe3956ab4a967f5493b5f758028",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x9de5b209e83c9ee83c5c4161446035b2728e52eec23d4ff978a2de5d279574b3",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc8247463056d899954de7f0e8e42175dd239a617b9c62cb30c1861c0141a678a",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb437bb13b80025df0a7691eecdc949cb1b951183f9bd7ce57ac9b9c6c31f9e63",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb9cae9b558228e7c94537f93151238feb17d629f3c534243a31152e65a883153",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa487a544c7d187292b0a435f5b6b365c416a7e3086040bf0261454013acb10c3",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x3e9b53b20f3c88f9e462a70264f4d6c27c21e910fdf284d3cb34664c08b810a2",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xef675c6b0e90da0ee03f1034306c5a1359c4fe1ab743da56e00a1c6ca1da15b6",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x2f280368ea8f9552eba09622a13f17726adfe0c04145c9aef5f8e245a47eaabc",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xff3dac109a92fd1a2238070912125bfe31fdd7f4517a5a3ec381b1581b146e3f",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x2cba5f2c5302bbd419edca57b0c36574aa68b3a2ec2a8cfe97fb23b3d8a7e5b1",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb514bab9ea95d8dfb38931648c6b90680682d3271fbbd215a86139230e314f61",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x2aabb038fce5c1e017878ddc4453d2ce450435c349d8cf6860c58a895006dc4c",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x846b1162be0a1328237474919b11fa8fecda258641795ea292114f108fa0deec",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x6b267fa3485e59076b82d9d33c97c1cc51ef7a9681b096041e37997787ee9d6a",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xc923a8bd1526bae49b7761e68216a1b83e1cc0c03dcf6e8d76482e8a2f003f01",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xb658761bd820963b167a6b9a06eec0f1db3b7c0b49adc64643bebcdb5109c568",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x00cd74004e2fc170d54d0040dbac7b2617ac36d1ca095e5d30124a3f9943c431",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xa89221a9cb749b34d7795f65a1d9c90a82af842a273dca1e0165d65cf50df1e1",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0xf5d23cbcee1c75e6276cc6bd8b6a6e4dd3e60511e4b86bb1558b3823045cc2c0",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        },
+        {
+          "hash": "0x36ba3d09467281030a3177d5323b09a225c9df7f06db802afb6be4c8f7d50116",
+          "storedCallBytes": null,
+          "exceedsNewCallLimit": false
+        }
+      ]
+    }
+  ],
+  "blockHash": "0xd1f586078378c8a8894d080d276b1b00a2120d3919e487677639de036e03d94e",
+  "blockNumber": 27911254,
+  "runtimeVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 132,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "stateVersion": 0
+  },
+  "legacyBacklogGrandfathered": true,
+  "newOperationLimitUsesAdditiveTracking": true,
+  "fairPerProposerQuotaConfigured": true,
+  "currentPeerQuorumCancellationConfigured": true,
+  "cancellationCall": "ethBridge.cancelPendingMultisig(networkId, callHash, timepoint)",
+  "capacityRecoveryScope": "Current peer quorum releases only the pending multisig operation/capacity; incoming status, canonical hash and unrelated execution tombstones are not retried or reset.",
+  "sampledStoredCallsWithinLimit": true,
+  "operatorReadinessConfirmed": false,
+  "limitations": [
+    "Bridge peers have no XOR funding requirement for authenticated exempt protocol calls. Balances and account references are public observations only.",
+    "The legacy backlog is grandfathered and does not consume the additive new-operation limit. The bounded 129-operation sample does not prove the size of every stored call when the scan is incomplete.",
+    "The per-proposer quota is a source-derived preview max(1,floor(128/current_signatories)); this public-state read does not execute the candidate. Exact-Wasm synthetic fixtures cover quota admission and quorum recovery separately.",
+    "Only currently configured EthBridge accounts are inspected; arbitrary standalone BridgeMultisig accounts are outside bridge operator readiness.",
+    "An unstored hash-only operation has no observable call length. Its submitting client must respect the new bound.",
+    "Refresh before activation; pending operations and balances can change."
+  ],
+  "remoteRpcMethods": {
+    "chain_getBlockHash": 1,
+    "state_getRuntimeVersion": 3,
+    "system_chain": 1,
+    "system_properties": 1,
+    "rpc_methods": 1,
+    "state_call": 2,
+    "state_subscribeRuntimeVersion": 1,
+    "chain_getFinalizedHead": 1,
+    "chain_getHeader": 2,
+    "state_getKeysPaged": 2,
+    "state_queryStorageAt": 2,
+    "state_getStorage": 133
+  },
+  "scriptSha256": "727c389d24d650c2c5b4e090ff4a8f62debaf8a3ed5fca7ff81a204050b48aeb",
+  "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f"
+}

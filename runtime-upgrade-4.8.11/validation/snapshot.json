@@ -1,0 +1,849 @@
+{
+  "status": "passed",
+  "capturedAt": "2026-09-30T00:26:41.142Z",
+  "endpoint": "wss://ws.mof.sora.org",
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "remoteRpcMethods": {
+    "chain_getBlockHash": 2,
+    "state_getRuntimeVersion": 3,
+    "system_chain": 1,
+    "system_properties": 1,
+    "rpc_methods": 1,
+    "state_call": 2,
+    "state_subscribeRuntimeVersion": 1,
+    "chain_getHeader": 2,
+    "state_getMetadata": 1,
+    "state_getStorage": 269
+  },
+  "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "blockHash": "0xf15e54191c639a904ef74a62fc4250178445e15221988069dba92c0523bb49c7",
+  "blockNumber": 27834097,
+  "header": {
+    "parentHash": "0xc2bc20f44e80f82f1d19b9635f40076252809a5ca13b9bab8743c585330541b1",
+    "number": 27834097,
+    "stateRoot": "0x234e59287ae601812dd95163cfbdf69335c7e784a900062b30c8e7ab2d320d0e",
+    "extrinsicsRoot": "0x809f8f6cf595fa0b575cedf3bc32b413a0505cae69487e8137d55b93ff2bdb55",
+    "digest": {
+      "logs": [
+        {
+          "preRuntime": [
+            "0x42414245",
+            "0x02090000001e0eca1100000000"
+          ]
+        },
+        {
+          "seal": [
+            "0x42414245",
+            "0xfe695f8c485a45acfb49190e7aff17c6ddf3a39a06598b882de75c964b261a4f4cd9337e3eb32cd9ef5309592aedd3daac72318bf41c9fd2816a1a3bacf37e85"
+          ]
+        }
+      ]
+    }
+  },
+  "runtimeVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 132,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "stateVersion": 0
+  },
+  "metadata": {
+    "path": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/deployed-spec-132-metadata.scale",
+    "bytes": 623616,
+    "sha256": "02ff8610d9203be7e256d8b4a82681281690ca38a871cdb747d0caf6f8268371"
+  },
+  "code": {
+    "path": "/Users/takemiyamakoto/.codex/worktrees/sora-staking-reward-compatibility/sora2-network/runtime-upgrade-4.8.11/validation/live-runtime-132.compact.compressed.wasm",
+    "bytes": 3055007,
+    "sha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3"
+  },
+  "publicationMarker": null,
+  "activeEra": {
+    "index": 7707,
+    "start": 1790707860010
+  },
+  "currentEra": 7708,
+  "historyDepth": 84,
+  "xorIssuance": "34975597034283651594999494",
+  "eras": [
+    {
+      "era": 7624,
+      "standard": "0",
+      "val": "332997937638247599396",
+      "valPresent": true
+    },
+    {
+      "era": 7625,
+      "standard": "0",
+      "val": "320650014925704398364",
+      "valPresent": true
+    },
+    {
+      "era": 7626,
+      "standard": "0",
+      "val": "956075206332456587145",
+      "valPresent": true
+    },
+    {
+      "era": 7627,
+      "standard": "0",
+      "val": "609711014050980363948",
+      "valPresent": true
+    },
+    {
+      "era": 7628,
+      "standard": "0",
+      "val": "449579626543131424722",
+      "valPresent": true
+    },
+    {
+      "era": 7629,
+      "standard": "0",
+      "val": "2560339316348961365691",
+      "valPresent": true
+    },
+    {
+      "era": 7630,
+      "standard": "0",
+      "val": "1059184215536663312658",
+      "valPresent": true
+    },
+    {
+      "era": 7631,
+      "standard": "0",
+      "val": "751318138310764234275",
+      "valPresent": true
+    },
+    {
+      "era": 7632,
+      "standard": "0",
+      "val": "1794569444133736716351",
+      "valPresent": true
+    },
+    {
+      "era": 7633,
+      "standard": "0",
+      "val": "116375190947648151922",
+      "valPresent": true
+    },
+    {
+      "era": 7634,
+      "standard": "0",
+      "val": "57813980591259333097",
+      "valPresent": true
+    },
+    {
+      "era": 7635,
+      "standard": "0",
+      "val": "227512080796917644514",
+      "valPresent": true
+    },
+    {
+      "era": 7636,
+      "standard": "0",
+      "val": "21036060574987737155",
+      "valPresent": true
+    },
+    {
+      "era": 7637,
+      "standard": "0",
+      "val": "501404411915294020120",
+      "valPresent": true
+    },
+    {
+      "era": 7638,
+      "standard": "0",
+      "val": "543319267626607167759",
+      "valPresent": true
+    },
+    {
+      "era": 7639,
+      "standard": "0",
+      "val": "131149749694339444978",
+      "valPresent": true
+    },
+    {
+      "era": 7640,
+      "standard": "0",
+      "val": "433583115076513801548",
+      "valPresent": true
+    },
+    {
+      "era": 7641,
+      "standard": "0",
+      "val": "546682552145162117674",
+      "valPresent": true
+    },
+    {
+      "era": 7642,
+      "standard": "0",
+      "val": "46878846824320793750",
+      "valPresent": true
+    },
+    {
+      "era": 7643,
+      "standard": "0",
+      "val": "222754450067364791774",
+      "valPresent": true
+    },
+    {
+      "era": 7644,
+      "standard": "0",
+      "val": "225214731019587206783",
+      "valPresent": true
+    },
+    {
+      "era": 7645,
+      "standard": "0",
+      "val": "293731286139866795098",
+      "valPresent": true
+    },
+    {
+      "era": 7646,
+      "standard": "0",
+      "val": "609227854310652625358",
+      "valPresent": true
+    },
+    {
+      "era": 7647,
+      "standard": "0",
+      "val": "643079141335618264765",
+      "valPresent": true
+    },
+    {
+      "era": 7648,
+      "standard": "0",
+      "val": "331888541766379046908",
+      "valPresent": true
+    },
+    {
+      "era": 7649,
+      "standard": "0",
+      "val": "38844298159596767134",
+      "valPresent": true
+    },
+    {
+      "era": 7650,
+      "standard": "0",
+      "val": "1190133800317147145308",
+      "valPresent": true
+    },
+    {
+      "era": 7651,
+      "standard": "0",
+      "val": "1569518119057548067930",
+      "valPresent": true
+    },
+    {
+      "era": 7652,
+      "standard": "0",
+      "val": "6175760646121964063786",
+      "valPresent": true
+    },
+    {
+      "era": 7653,
+      "standard": "0",
+      "val": "223176270353717483755",
+      "valPresent": true
+    },
+    {
+      "era": 7654,
+      "standard": "0",
+      "val": "189123469702691637785",
+      "valPresent": true
+    },
+    {
+      "era": 7655,
+      "standard": "0",
+      "val": "192761823240247009494",
+      "valPresent": true
+    },
+    {
+      "era": 7656,
+      "standard": "0",
+      "val": "608409917232688611423",
+      "valPresent": true
+    },
+    {
+      "era": 7657,
+      "standard": "0",
+      "val": "44103239832963120714",
+      "valPresent": true
+    },
+    {
+      "era": 7658,
+      "standard": "0",
+      "val": "141798175014189383418",
+      "valPresent": true
+    },
+    {
+      "era": 7659,
+      "standard": "0",
+      "val": "713178918376826701418",
+      "valPresent": true
+    },
+    {
+      "era": 7660,
+      "standard": "0",
+      "val": "23219392480946279763",
+      "valPresent": true
+    },
+    {
+      "era": 7661,
+      "standard": "0",
+      "val": "12486110186519450679",
+      "valPresent": true
+    },
+    {
+      "era": 7662,
+      "standard": "0",
+      "val": "694905436848366623374",
+      "valPresent": true
+    },
+    {
+      "era": 7663,
+      "standard": "0",
+      "val": "748263725815873605356",
+      "valPresent": true
+    },
+    {
+      "era": 7664,
+      "standard": "0",
+      "val": "25490945572744916359",
+      "valPresent": true
+    },
+    {
+      "era": 7665,
+      "standard": "0",
+      "val": "22260136961731237177",
+      "valPresent": true
+    },
+    {
+      "era": 7666,
+      "standard": "0",
+      "val": "181333376259951594617",
+      "valPresent": true
+    },
+    {
+      "era": 7667,
+      "standard": "0",
+      "val": "214138240268525920058",
+      "valPresent": true
+    },
+    {
+      "era": 7668,
+      "standard": "0",
+      "val": "133553907223327385507",
+      "valPresent": true
+    },
+    {
+      "era": 7669,
+      "standard": "0",
+      "val": "577762495801893357603",
+      "valPresent": true
+    },
+    {
+      "era": 7670,
+      "standard": "0",
+      "val": "76044457536642537398",
+      "valPresent": true
+    },
+    {
+      "era": 7671,
+      "standard": "0",
+      "val": "1019290874566586803122",
+      "valPresent": true
+    },
+    {
+      "era": 7672,
+      "standard": "0",
+      "val": "2046483316904663726139",
+      "valPresent": true
+    },
+    {
+      "era": 7673,
+      "standard": "0",
+      "val": "2447064714685932766032",
+      "valPresent": true
+    },
+    {
+      "era": 7674,
+      "standard": "0",
+      "val": "4620224908671385587360",
+      "valPresent": true
+    },
+    {
+      "era": 7675,
+      "standard": "0",
+      "val": "556215837750604760357",
+      "valPresent": true
+    },
+    {
+      "era": 7676,
+      "standard": "0",
+      "val": "740889244177019003453",
+      "valPresent": true
+    },
+    {
+      "era": 7677,
+      "standard": "0",
+      "val": "105260973378178497948",
+      "valPresent": true
+    },
+    {
+      "era": 7678,
+      "standard": "0",
+      "val": "890501292892557453508",
+      "valPresent": true
+    },
+    {
+      "era": 7679,
+      "standard": "0",
+      "val": "13552684209841084752",
+      "valPresent": true
+    },
+    {
+      "era": 7680,
+      "standard": "0",
+      "val": "137962916821953354581",
+      "valPresent": true
+    },
+    {
+      "era": 7681,
+      "standard": "0",
+      "val": "88418551877936696239",
+      "valPresent": true
+    },
+    {
+      "era": 7682,
+      "standard": "0",
+      "val": "2116811671127794677270",
+      "valPresent": true
+    },
+    {
+      "era": 7683,
+      "standard": "0",
+      "val": "1115559469408988417024",
+      "valPresent": true
+    },
+    {
+      "era": 7684,
+      "standard": "0",
+      "val": "1156671150692423750084",
+      "valPresent": true
+    },
+    {
+      "era": 7685,
+      "standard": "0",
+      "val": "6708246299553764770185",
+      "valPresent": true
+    },
+    {
+      "era": 7686,
+      "standard": "0",
+      "val": "1597027353029089121840",
+      "valPresent": true
+    },
+    {
+      "era": 7687,
+      "standard": "0",
+      "val": "2458525489305406438092",
+      "valPresent": true
+    },
+    {
+      "era": 7688,
+      "standard": "0",
+      "val": "1247136769789334167894",
+      "valPresent": true
+    },
+    {
+      "era": 7689,
+      "standard": "0",
+      "val": "1755042664546566820661",
+      "valPresent": true
+    },
+    {
+      "era": 7690,
+      "standard": "0",
+      "val": "3504350160641843200290",
+      "valPresent": true
+    },
+    {
+      "era": 7691,
+      "standard": "0",
+      "val": "2594412151690723310705",
+      "valPresent": true
+    },
+    {
+      "era": 7692,
+      "standard": "0",
+      "val": "2420315446044804203678",
+      "valPresent": true
+    },
+    {
+      "era": 7693,
+      "standard": "0",
+      "val": "2904681201041068907025",
+      "valPresent": true
+    },
+    {
+      "era": 7694,
+      "standard": "0",
+      "val": "3053625275248217849128",
+      "valPresent": true
+    },
+    {
+      "era": 7695,
+      "standard": "0",
+      "val": "4533538916075180676090",
+      "valPresent": true
+    },
+    {
+      "era": 7696,
+      "standard": "0",
+      "val": "3298877932862352509505",
+      "valPresent": true
+    },
+    {
+      "era": 7697,
+      "standard": "0",
+      "val": "5886553194857019792914",
+      "valPresent": true
+    },
+    {
+      "era": 7698,
+      "standard": "0",
+      "val": "3254482238820903364520",
+      "valPresent": true
+    },
+    {
+      "era": 7699,
+      "standard": "0",
+      "val": "1003784849891245036444",
+      "valPresent": true
+    },
+    {
+      "era": 7700,
+      "standard": "0",
+      "val": "196108306947155937214",
+      "valPresent": true
+    },
+    {
+      "era": 7701,
+      "standard": "0",
+      "val": "438349279969639405554",
+      "valPresent": true
+    },
+    {
+      "era": 7702,
+      "standard": "0",
+      "val": "1312755878672869119399",
+      "valPresent": true
+    },
+    {
+      "era": 7703,
+      "standard": "0",
+      "val": "411105715915872753602",
+      "valPresent": true
+    },
+    {
+      "era": 7704,
+      "standard": "0",
+      "val": "1320249456124549465065",
+      "valPresent": true
+    },
+    {
+      "era": 7705,
+      "standard": "0",
+      "val": "522628506435209287137",
+      "valPresent": true
+    },
+    {
+      "era": 7706,
+      "standard": "0",
+      "val": "459778521960750367018",
+      "valPresent": true
+    }
+  ],
+  "payoutSample": {
+    "era": 7706,
+    "validator": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+    "controller": "cnRxbi3kyTzFr8Pu54148cJ8JzpRUE8yiGjT1cEpZUY14NbUp",
+    "page": 0,
+    "pageCount": 1,
+    "budget": {
+      "era": 7706,
+      "standard": "0",
+      "val": "459778521960750367018",
+      "valPresent": true
+    },
+    "claimedPages": [],
+    "ledger": {
+      "stash": "cnSDtgsZsShAxW5g9NSfiepjdZGji4vPA7cr7kDJMZzdhDxQa",
+      "total": 0,
+      "active": 0,
+      "unlocking": [],
+      "legacyClaimedRewards": [
+        6679,
+        6680,
+        6681,
+        6682,
+        6683,
+        6684,
+        6685,
+        6686,
+        6687,
+        6688,
+        6689,
+        6690,
+        6691,
+        6692,
+        6693,
+        6694,
+        6695,
+        6696,
+        6697,
+        6698,
+        6699,
+        6700,
+        6701,
+        6702,
+        6703,
+        6704,
+        6705,
+        6706,
+        6707,
+        6708,
+        6709,
+        6710,
+        6711,
+        6712,
+        6713,
+        6714,
+        6715,
+        6716,
+        6717,
+        6718,
+        6719,
+        6720,
+        6721,
+        6722,
+        6723,
+        6724,
+        6725,
+        6726,
+        6727,
+        6728,
+        6729,
+        6730,
+        6731,
+        6732,
+        6733,
+        6734,
+        6735,
+        6736,
+        6737,
+        6738,
+        6739,
+        6740,
+        6741,
+        6742,
+        6743,
+        6744,
+        6745,
+        6746,
+        6747,
+        6748,
+        6749,
+        6750,
+        6751,
+        6752,
+        6753,
+        6754,
+        6755,
+        6756,
+        6757,
+        6758,
+        6759,
+        6760,
+        6761,
+        6762
+      ]
+    },
+    "payee": {
+      "staked": null
+    },
+    "rewardPoints": "4520",
+    "totalRewardPoints": "71900",
+    "overview": {
+      "total": "0x0000000000000006ca7022ccd39a87b5",
+      "own": 0,
+      "nominatorCount": 7,
+      "pageCount": 1
+    },
+    "exposure": {
+      "pageTotal": "0x0000000000000006ca7022ccd39a87b5",
+      "others": [
+        {
+          "who": "cnSwc6gTdd9YQtnip4V3QvrBBTaELoGYfHmBhYXNrY2wEkMJm",
+          "value": 182018976
+        },
+        {
+          "who": "cnRzUNHed4Hn16ewG6riNwQSJc4grSZ4vb3MnfLoyTX4MoXFg",
+          "value": 200983078062
+        },
+        {
+          "who": "cnTVeT5pQmXFAfBtxMpYeuocvUQxj8SR4SYaRG2sVW67wGznJ",
+          "value": "0x00000000000000068d9308967daf6c58"
+        },
+        {
+          "who": "cnX2QAdrX3CSDH2mSmUcXHFrDxJf5tZyzPY2UwhcHJ1Tf7wFa",
+          "value": "0x000000000000000029d014f6c6d0fd8e"
+        },
+        {
+          "who": "cnUDkCcP3G8JVu313dJY3PgW4iSmGW63YyUoyhwcJkYb54aUk",
+          "value": "0x00000000000000000103945ebc7b5357"
+        },
+        {
+          "who": "cnTUiRfaFeu69T6MNkKgPooRGzqLCo8vumJPusU4AqcpcCGjb",
+          "value": "0x0000000000000000018aaeca7787de57"
+        },
+        {
+          "who": "cnSaoCUbVZjCS4R4Ze59yVyH6Y1qFXmXCzFRwCGuDqBEshGwv",
+          "value": "0x0000000000000000107ec1e784b723d3"
+        }
+      ]
+    },
+    "prefs": {
+      "commission": 0,
+      "blocked": false
+    }
+  },
+  "summary": {
+    "boundedCompletedEras": 83,
+    "nonzeroValBudgets": 83,
+    "standardZeroValPositive": 83
+  },
+  "inputs": {
+    "scriptSha256": "1c9714391ce60d514b8fcffef528f788fa13d6f938aa05cf662832a7e990e6be",
+    "packageLockSha256": "9b8aa6f93ba09fe455c03f9ccd92080c0d89309d8ae59b59f6c16fdf1ab85fae"
+  },
+  "finishedAt": "2026-09-30T00:27:18.265Z"
+}

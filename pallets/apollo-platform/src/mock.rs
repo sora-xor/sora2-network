@@ -23,7 +23,7 @@ use {
     frame_support::{construct_runtime, pallet_prelude::Weight, parameter_types, traits::Hooks},
     frame_system::{
         self,
-        offchain::{CreateBare, CreateTransactionBase},
+        offchain::{CreateBare, CreateSignedTransaction, CreateTransactionBase, SigningTypes},
         pallet_prelude::BlockNumberFor,
         RawOrigin,
     },
@@ -31,7 +31,7 @@ use {
     sp_runtime::{traits::Zero, AccountId32, BuildStorage, Perbill},
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime, u64>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type AccountId = AccountId32;
@@ -87,7 +87,12 @@ construct_runtime! {
     }
 }
 
-mock_apollo_platform_config!(Runtime);
+parameter_types! {
+    pub storage RepaymentOnly: bool = false;
+    pub storage ExchangeAvailable: bool = true;
+    pub storage ExchangeCalls: u32 = 0;
+}
+mock_apollo_platform_config!(Runtime, RepaymentOnly);
 mock_assets_config!(Runtime);
 mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
@@ -123,6 +128,28 @@ where
 {
     fn create_bare(call: RuntimeCall) -> Self::Extrinsic {
         UncheckedExtrinsic::new_bare(call)
+    }
+}
+
+impl SigningTypes for Runtime {
+    type Public = sp_runtime::MultiSigner;
+    type Signature = sp_runtime::MultiSignature;
+}
+
+impl<LocalCall> CreateSignedTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_signed_transaction<
+        C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+    >(
+        call: RuntimeCall,
+        public: Self::Public,
+        account: Self::AccountId,
+        nonce: Self::Nonce,
+    ) -> Option<Self::Extrinsic> {
+        C::sign(&codec::Encode::encode(&call), public)?;
+        Some(UncheckedExtrinsic::new_signed(call, account, nonce, ()))
     }
 }
 
@@ -235,6 +262,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: common::prelude::SwapAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
     ) -> Result<common::prelude::SwapOutcome<Balance, AssetId>, sp_runtime::DispatchError> {
+        ExchangeCalls::set(&ExchangeCalls::get().saturating_add(1));
+        if !ExchangeAvailable::get() {
+            return Err(sp_runtime::DispatchError::Other("NoLiquidity"));
+        }
         // Transfer to exchange account (input asset)
         let _ = Assets::transfer(
             RawOrigin::Signed(sender.clone()).into(),

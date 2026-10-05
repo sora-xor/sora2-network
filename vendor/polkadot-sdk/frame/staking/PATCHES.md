@@ -11,10 +11,16 @@ all SDK dependencies retain the same pinned release tag and feature defaults.
 The manifest also expands the Rust and Clippy lint tables inherited from that
 SDK workspace, so vendoring preserves its lint policy without changing the
 SORA workspace policy.
-The complete local diff against that upstream directory is reproduced by applying
+The local Rust sources are reproduced from that upstream directory by applying
 [`additional-payout.patch`](additional-payout.patch), followed by
-[`deferred-slashing.patch`](deferred-slashing.patch). Both patches were replayed
-against the pinned upstream files and compared byte for byte with this directory.
+[`deferred-slashing.patch`](deferred-slashing.patch), formatting the resulting
+Rust files with this repository's `rustfmt` defaults, then applying
+[`native-reward-compatibility.patch`](native-reward-compatibility.patch).
+The first two patches preserve their existing reviewed changes; the compatibility
+patch applies to their formatted sources and is checked against this directory.
+All three layers, including that existing formatting step, reproduce the five
+changed Rust source files byte for byte. The manifest expansion described above
+is retained separately.
 
 ## Deferred slashing
 
@@ -52,7 +58,8 @@ The hook supplies a conservative `weight(nominators)` bound, including failure
 paths. Both call declarations reserve the maximum page bound. Successful calls
 retain the actual page's hook bound even if native rewards are zero. Hook
 failures retain the full native page bound plus the hook bound. Existing call
-indexes, storage layouts, and native reward calculations are unchanged.
+indexes and storage layouts are unchanged. Native reward behavior remains the
+default; replacement-asset behavior is an explicit opt-in described below.
 
 The mock hook is a no-op unless a test enables it. Two focused regressions
 exercise failed-hook rollback and retry, and declared/refunded hook weight
@@ -64,3 +71,33 @@ cargo test -p pallet-staking --lib additional_payout
 
 Runtime-specific VAL accounting and wrapper-dispatch regressions live in
 `runtime/src/xor_fee_impls.rs`.
+
+## Replacement reward compatibility
+
+`AdditionalPayout::pays_native_reward()` defaults to `true`, preserving upstream
+native staking rewards. A hook returning `false` owns payment of the published
+era budget in a replacement asset. The ordinary `ErasValidatorReward` storage,
+claim validation and payout calls continue to expose that budget to clients.
+The replacement hook must implement the actual asset payment and any standard
+reward events required by those clients.
+
+In replacement mode, native `make_payout` exits before looking up the payee,
+depositing currency or increasing a `Staked` ledger. Era finalization preserves
+the configured `EraPayout` amounts rather than applying `MaxStakedRewards`, and
+does not issue its remainder in the native staking currency. Asset-specific
+remainder policy belongs to the replacement implementation. Claims and hook
+payments retain their existing storage transaction and weight accounting.
+Replacement pages emit `PayoutStarted` before invoking the hook, so standard
+reward events emitted by that hook follow their page marker. A failed hook
+rolls back the marker event together with its claim. Native rewards keep their
+existing event ordering and zero-reward-points behavior.
+
+Three regressions cover direct and paged claims with a nonzero advertised reward,
+unchanged native balances, issuance and `Staked` ledgers, successful hook/claim
+bookkeeping and duplicate rejection; event ordering and rollback after hook
+failure; and an era cap below 100% that neither reduces the published replacement
+budget nor issues native remainder:
+
+```sh
+cargo test --locked -p pallet-staking --lib replacement_reward_
+```
