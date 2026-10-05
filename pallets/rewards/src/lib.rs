@@ -487,7 +487,7 @@ pub mod pallet {
         /// Add addresses, who will receive UMI NFT rewards.
         #[transactional]
         #[pallet::call_index(1)]
-        #[pallet::weight((WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u32), Pays::No))]
+        #[pallet::weight(WeightInfoOf::<T>::add_umi_nfts_receivers(receivers.len() as u32))]
         pub fn add_umi_nft_receivers(
             origin: OriginFor<T>,
             receivers: Vec<EthAddress>,
@@ -496,7 +496,7 @@ pub mod pallet {
             for address in receivers {
                 Self::add_umi_nft_receiver(&address)?;
             }
-            Ok(().into())
+            Ok(Pays::No.into())
         }
     }
 

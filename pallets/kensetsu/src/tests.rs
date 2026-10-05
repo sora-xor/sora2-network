@@ -56,6 +56,18 @@ use sp_runtime::{
     transaction_validity::TransactionSource,
 };
 
+fn install_keeper_key(ext: &mut sp_io::TestExternalities) {
+    let (offchain, _) = sp_runtime::offchain::testing::TestOffchainExt::new();
+    ext.register_extension(sp_core::offchain::OffchainDbExt::new(offchain.clone()));
+    ext.register_extension(sp_core::offchain::OffchainWorkerExt::new(offchain));
+    ext.register_extension(sp_keystore::KeystoreExt::new(
+        sp_keystore::testing::MemoryKeystore::new(),
+    ));
+    ext.execute_with(|| {
+        sp_io::crypto::sr25519_generate(crate::crypto::KEY_TYPE, Some(b"//Alice".to_vec()));
+    });
+}
+
 type KensetsuError = Error<TestRuntime>;
 type KensetsuPallet = Pallet<TestRuntime>;
 type System = frame_system::Pallet<TestRuntime>;
@@ -69,6 +81,7 @@ fn error_indices_are_append_only() {
         17
     );
     assert_eq!(KensetsuError::AccrueLimit.encode()[0], 18);
+    assert_eq!(KensetsuError::RepaymentOnly.encode()[0], 19);
 }
 
 fn setup_accruable_cdps(count: usize) -> Vec<CdpId> {
@@ -1583,7 +1596,7 @@ fn test_liquidate_cdp_does_not_exist() {
         let cdp_id = 1;
 
         assert_noop!(
-            KensetsuPallet::liquidate(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::liquidate(alice(), cdp_id),
             KensetsuError::CDPNotFound
         );
     });
@@ -1602,7 +1615,7 @@ fn test_liquidate_cdp_safe() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
 
         assert_noop!(
-            KensetsuPallet::liquidate(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::liquidate(alice(), cdp_id),
             KensetsuError::CDPSafe
         );
     });
@@ -1622,7 +1635,7 @@ fn test_liquidate_unavailable() {
         LiquidatedThisBlock::<TestRuntime>::set(true);
 
         assert_noop!(
-            KensetsuPallet::liquidate(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::liquidate(alice(), cdp_id),
             KensetsuError::LiquidationLimit
         );
     });
@@ -2005,7 +2018,7 @@ fn test_liquidate_kusd_bad_debt() {
         MockLiquidityProxy::set_amounts_for_the_next_exchange(KUSD, collateral);
         // CDP debt now is 110 KUSD, it is unsafe
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
         // withdraw 10 KUSD from interest, so the protocol can not cover bad debt
         let interest = balance!(10);
         assert_ok!(KensetsuPallet::withdraw_profit(
@@ -2119,7 +2132,7 @@ fn test_accrue_cdp_does_not_exist() {
         let cdp_id = 1;
 
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::accrue(alice(), cdp_id),
             KensetsuError::CDPNotFound
         );
     });
@@ -2138,7 +2151,7 @@ fn test_accrue_no_debt() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(0));
 
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::accrue(alice(), cdp_id),
             KensetsuError::UncollectedStabilityFeeTooSmall
         );
     });
@@ -2160,17 +2173,17 @@ fn test_accrue_block_limit() {
     new_test_ext().execute_with(|| {
         let cdp_ids = setup_accruable_cdps(3);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_ids[0]));
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_ids[1]));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_ids[0]));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_ids[1]));
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_ids[2]),
+            KensetsuPallet::accrue(alice(), cdp_ids[2]),
             KensetsuError::AccrueLimit
         );
     });
 }
 
 #[test]
-fn accrue_quota_does_not_reject_next_block_pool_admission() {
+fn unsigned_accrual_is_rejected_regardless_of_quota() {
     new_test_ext().execute_with(|| {
         let cdp_id = setup_accruable_cdps(1)[0];
         AccruesThisBlock::<TestRuntime>::put(2);
@@ -2181,7 +2194,7 @@ fn accrue_quota_does_not_reject_next_block_pool_admission() {
                 TransactionSource::Local,
                 &call,
             )
-            .is_ok()
+            .is_err()
         );
         assert!(
             <KensetsuPallet as frame_support::unsigned::ValidateUnsigned>::validate_unsigned(
@@ -2198,6 +2211,7 @@ fn offchain_worker_limits_accrue_submissions() {
     let mut ext = new_test_ext();
     let (pool, pool_state) = TestTransactionPoolExt::new();
     ext.register_extension(TransactionPoolExt::new(pool));
+    install_keeper_key(&mut ext);
 
     ext.execute_with(|| {
         setup_accruable_cdps(3);
@@ -2213,6 +2227,7 @@ fn offchain_worker_rotates_accrue_candidates() {
     let mut ext = new_test_ext();
     let (pool, pool_state) = TestTransactionPoolExt::new();
     ext.register_extension(TransactionPoolExt::new(pool));
+    install_keeper_key(&mut ext);
 
     ext.execute_with(|| {
         let cdp_ids = setup_accruable_cdps(3);
@@ -2226,10 +2241,14 @@ fn offchain_worker_rotates_accrue_candidates() {
             .iter()
             .map(|encoded| {
                 let extrinsic =
-                    frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime>::decode(
+                    frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime, u64>::decode(
                         &mut &encoded[..],
                     )
                     .expect("submitted accrue should decode");
+                assert!(matches!(
+                    extrinsic.preamble,
+                    sp_runtime::generic::Preamble::Signed(..)
+                ));
                 match extrinsic.function {
                     RuntimeCall::Kensetsu(Call::accrue { cdp_id }) => cdp_id,
                     call => panic!("unexpected offchain call: {call:?}"),
@@ -2237,10 +2256,7 @@ fn offchain_worker_rotates_accrue_candidates() {
             })
             .collect::<Vec<_>>();
 
-        assert_eq!(
-            submitted_ids,
-            vec![cdp_ids[0], cdp_ids[1], cdp_ids[2], cdp_ids[0]]
-        );
+        assert_eq!(submitted_ids, vec![cdp_ids[0], cdp_ids[1], cdp_ids[2]]);
     });
 }
 
@@ -2249,6 +2265,7 @@ fn offchain_worker_accrue_limit_does_not_skip_liquidation() {
     let mut ext = new_test_ext();
     let (pool, pool_state) = TestTransactionPoolExt::new();
     ext.register_extension(TransactionPoolExt::new(pool));
+    install_keeper_key(&mut ext);
 
     ext.execute_with(|| {
         setup_accruable_cdps(3);
@@ -2260,10 +2277,14 @@ fn offchain_worker_accrue_limit_does_not_skip_liquidation() {
             (0, 0),
             |(accrues, liquidations), encoded| {
                 let extrinsic =
-                    frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime>::decode(
+                    frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime, u64>::decode(
                         &mut &encoded[..],
                     )
                     .expect("submitted offchain call should decode");
+                assert!(matches!(
+                    extrinsic.preamble,
+                    sp_runtime::generic::Preamble::Signed(..)
+                ));
                 match extrinsic.function {
                     RuntimeCall::Kensetsu(Call::accrue { .. }) => (accrues + 1, liquidations),
                     RuntimeCall::Kensetsu(Call::liquidate { .. }) => (accrues, liquidations + 1),
@@ -2290,7 +2311,7 @@ fn test_accrue_wrong_time() {
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::accrue(alice(), cdp_id),
             KensetsuError::AccrueWrongTime
         );
     });
@@ -2311,7 +2332,7 @@ fn test_accrue_overflow() {
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(9999000);
 
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::accrue(alice(), cdp_id),
             KensetsuError::ArithmeticError
         );
     });
@@ -2337,7 +2358,7 @@ fn test_accrue_profit() {
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         // interest is 10*10%*1 = 1,
         // where 10 - initial balance, 10% - per second rate, 1 - second passed
@@ -2376,7 +2397,7 @@ fn test_accrue_one_year() {
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(31556952000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         // interest is 100*1% = 1, with some precision error
         let interest = 1000000000663351100u128;
@@ -2412,11 +2433,11 @@ fn test_accrue_profit_same_time() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         // double call should fail
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::accrue(alice(), cdp_id),
             KensetsuError::UncollectedStabilityFeeTooSmall
         );
     });
@@ -2439,11 +2460,11 @@ fn test_accrue_profit_from_past() {
         let cdp_id = create_cdp_for_xor(alice(), balance!(100), debt);
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1);
         assert_noop!(
-            KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id),
+            KensetsuPallet::accrue(alice(), cdp_id),
             KensetsuError::UncollectedStabilityFeeTooSmall
         );
     });
@@ -2470,7 +2491,7 @@ fn test_accrue_interest_less_bad_debt() {
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         // interest is 10*10%*1 = 1 KUSD,
         // where 10 - initial balance, 10% - per second rate, 1 - second passed
@@ -2516,7 +2537,7 @@ fn test_accrue_interest_eq_bad_debt() {
         // 1 sec passed
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         // interest is 10*10%*1 = 1 KUSD,
         // where 10 - initial balance, 10% - per second rate, 1 - second passed
@@ -2561,7 +2582,7 @@ fn test_accrue_interest_gt_bad_debt() {
         pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
         let initial_kusd_supply = get_total_supply(&KUSD);
 
-        assert_ok!(KensetsuPallet::accrue(RuntimeOrigin::none(), cdp_id));
+        assert_ok!(KensetsuPallet::accrue(alice(), cdp_id));
 
         // interest is 10*20%*1 = 2 KUSD,
         // where 10 - initial balance, 20% - per second rate, 1 - second passed
@@ -3603,5 +3624,436 @@ fn denominate_zero_factor_with_mixed_collateral_infos_rolls_back_all() {
             .unwrap(),
             before_ken
         );
+    });
+}
+
+#[test]
+fn funded_maintenance_rejects_unsigned_and_root_origins_without_side_effects() {
+    new_test_ext().execute_with(|| {
+        use frame_support::dispatch::{GetDispatchInfo, Pays};
+        use sp_runtime::traits::ValidateUnsigned;
+        for call in [
+            Call::<TestRuntime>::accrue { cdp_id: 0 },
+            Call::liquidate { cdp_id: 0 },
+        ] {
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            for source in [
+                TransactionSource::External,
+                TransactionSource::Local,
+                TransactionSource::InBlock,
+            ] {
+                assert!(
+                    <KensetsuPallet as ValidateUnsigned>::validate_unsigned(source, &call).is_err()
+                );
+            }
+            assert!(<KensetsuPallet as ValidateUnsigned>::pre_dispatch(&call).is_err());
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+            assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
+        }
+        assert_noop!(KensetsuPallet::accrue(RuntimeOrigin::none(), 0), BadOrigin);
+        assert_noop!(KensetsuPallet::accrue(RuntimeOrigin::root(), 0), BadOrigin);
+        assert_noop!(
+            KensetsuPallet::liquidate(RuntimeOrigin::none(), 0),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::liquidate(RuntimeOrigin::root(), 0),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn projected_liquidation_eligibility_does_not_accrue_or_mint() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = setup_accruable_cdps(1)[0];
+        let original = CDPDepository::<TestRuntime>::get(cdp_id).unwrap();
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        let projected = KensetsuPallet::projected_cdp(cdp_id).unwrap();
+        assert!(projected.debt > original.debt);
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+    });
+}
+
+#[test]
+fn shared_keeper_queue_assigns_unique_nonces_and_preserves_pending_calls_across_blocks() {
+    let mut ext = new_test_ext();
+    let (pool, pool_state) = TestTransactionPoolExt::new();
+    ext.register_extension(TransactionPoolExt::new(pool));
+    install_keeper_key(&mut ext);
+    ext.execute_with(|| {
+        System::set_block_number(1);
+        setup_accruable_cdps(3);
+        KensetsuPallet::offchain_worker(1);
+        let other_hook = RuntimeCall::System(frame_system::Call::remark {
+            remark: b"other keeper hook".to_vec(),
+        });
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(
+                other_hook.clone()
+            ),
+            Ok(common::keeper::SubmitStatus::Submitted)
+        );
+        let nonces = || {
+            pool_state
+                .read()
+                .transactions
+                .iter()
+                .map(|encoded| {
+                    let tx =
+                        frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime, u64>::decode(
+                            &mut &encoded[..],
+                        )
+                        .unwrap();
+                    match tx.preamble {
+                        sp_runtime::generic::Preamble::Signed(_, nonce, _) => nonce,
+                        _ => panic!("keeper must sign"),
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(nonces(), vec![0, 1, 2]);
+        System::set_block_number(2);
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(
+                other_hook.clone()
+            ),
+            Ok(common::keeper::SubmitStatus::AlreadyPending)
+        );
+        assert_eq!(nonces(), vec![0, 1, 2, 0, 1, 2]);
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(other_hook),
+            Ok(common::keeper::SubmitStatus::AlreadyPending)
+        );
+        assert_eq!(nonces().len(), 6);
+        frame_system::Account::<TestRuntime>::mutate(alice_account_id(), |account| {
+            account.nonce = 2
+        });
+        System::set_block_number(3);
+        let next = RuntimeCall::System(frame_system::Call::remark {
+            remark: b"next keeper operation".to_vec(),
+        });
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(next),
+            Ok(common::keeper::SubmitStatus::Submitted)
+        );
+        assert_eq!(nonces(), vec![0, 1, 2, 0, 1, 2, 2, 3]);
+    });
+}
+
+#[test]
+fn keeper_renews_expired_and_old_version_transactions_at_the_same_nonce() {
+    let mut ext = new_test_ext();
+    let (pool, pool_state) = TestTransactionPoolExt::new();
+    ext.register_extension(TransactionPoolExt::new(pool));
+    install_keeper_key(&mut ext);
+    ext.execute_with(|| {
+        System::set_block_number(1);
+        let call = RuntimeCall::System(frame_system::Call::remark {
+            remark: b"pending".to_vec(),
+        });
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(call.clone()),
+            Ok(common::keeper::SubmitStatus::Submitted)
+        );
+        let key = (b"sora/keep/pending/v1", &alice_account_id()).encode();
+        let storage = sp_runtime::offchain::storage::StorageValueRef::persistent(&key);
+        // The persisted record is nonce, operation hash, call, signed bytes,
+        // era death, rebroadcast block, spec version and transaction version.
+        type Record = (u64, [u8; 32], Vec<u8>, Vec<u8>, u64, u64, u32, u32);
+        let mut pending = storage.get::<Vec<Record>>().unwrap().unwrap();
+        pending[0].6 = u32::MAX;
+        storage.set(&pending);
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(call.clone()),
+            Ok(common::keeper::SubmitStatus::AlreadyPending)
+        );
+        let mut pending = storage.get::<Vec<Record>>().unwrap().unwrap();
+        assert_ne!(pending[0].6, u32::MAX);
+        pending[0].4 = 0;
+        storage.set(&pending);
+        assert_eq!(
+            common::keeper::submit::<TestRuntime, _, crate::crypto::AuthorityId>(call),
+            Ok(common::keeper::SubmitStatus::AlreadyPending)
+        );
+        let pending = storage.get::<Vec<Record>>().unwrap().unwrap();
+        assert!(pending[0].4 > 1);
+        assert_eq!(pool_state.read().transactions.len(), 3);
+        for encoded in &pool_state.read().transactions {
+            let tx = frame_system::mocking::MockUncheckedExtrinsic::<TestRuntime, u64>::decode(
+                &mut &encoded[..],
+            )
+            .unwrap();
+            assert!(matches!(
+                tx.preamble,
+                sp_runtime::generic::Preamble::Signed(_, 0, _)
+            ));
+        }
+    });
+}
+
+fn repayment_only_fixture() -> CdpId {
+    configure_kensetsu_dollar_for_xor(
+        Balance::MAX,
+        Perbill::from_percent(50),
+        FixedU128::zero(),
+        balance!(0),
+    );
+    let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+    crate::mock::RepaymentOnly::set(&true);
+    cdp_id
+}
+
+#[test]
+fn repayment_only_blocks_non_exit_calls_without_changes() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        assert_noop!(
+            KensetsuPallet::create_cdp(
+                alice(),
+                XOR,
+                balance!(100),
+                KUSD,
+                balance!(10),
+                balance!(10),
+                CdpType::Type2,
+            ),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(1), balance!(1)),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::liquidate(bob(), cdp_id),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::accrue(bob(), cdp_id),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::donate(alice(), KUSD, balance!(1)),
+            KensetsuError::RepaymentOnly
+        );
+        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(10));
+        assert_eq!(get_total_supply(&KUSD), balance!(10));
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(100));
+    });
+}
+
+#[test]
+fn repayment_only_allows_partial_repayment_and_owner_close() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(4)));
+        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(6));
+        assert_eq!(get_total_supply(&KUSD), balance!(6));
+        assert_balance(&alice_account_id(), &KUSD, balance!(6));
+        assert_balance(&alice_account_id(), &XOR, 0);
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(100));
+
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+        assert_eq!(get_total_supply(&KUSD), 0);
+        assert_balance(&alice_account_id(), &KUSD, 0);
+        assert_balance(&alice_account_id(), &XOR, balance!(100));
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
+        let collateral = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .unwrap();
+        assert_eq!(collateral.stablecoin_supply, 0);
+        assert_eq!(collateral.total_collateral, 0);
+    });
+}
+
+#[test]
+fn repayment_only_preserves_interest_and_treasury_accounting_during_owner_exit() {
+    // Exercise the same sequence before and after retirement, including the
+    // existing offset of bad debt before stability fees are minted to treasury.
+    for repayment_only in [false, true] {
+        for bad_debt in [0, balance!(0.5)] {
+            new_test_ext().execute_with(|| {
+                configure_kensetsu_dollar_for_xor(
+                    Balance::MAX,
+                    Perbill::from_percent(50),
+                    FixedU128::from_inner(balance!(0.1)),
+                    0,
+                );
+                let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+                // Repayment funding comes from an existing stablecoin balance;
+                // retirement does not mint additional borrowing to the owner.
+                add_balance(alice_account_id(), balance!(1.7), KUSD);
+                set_bad_debt(bad_debt);
+                crate::mock::RepaymentOnly::set(&repayment_only);
+                pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
+                assert_noop!(
+                    KensetsuPallet::repay_debt(bob(), cdp_id, balance!(4)),
+                    KensetsuError::OperationNotPermitted
+                );
+                assert_noop!(
+                    KensetsuPallet::close_cdp(bob(), cdp_id),
+                    KensetsuError::OperationNotPermitted
+                );
+                if repayment_only {
+                    assert_noop!(
+                        KensetsuPallet::borrow(alice(), cdp_id, balance!(1), balance!(1)),
+                        KensetsuError::RepaymentOnly
+                    );
+                    assert_noop!(
+                        KensetsuPallet::create_cdp(
+                            alice(),
+                            XOR,
+                            balance!(100),
+                            KUSD,
+                            balance!(1),
+                            balance!(1),
+                            CdpType::Type2,
+                        ),
+                        KensetsuError::RepaymentOnly
+                    );
+                }
+                assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(4)));
+                let remaining = KensetsuPallet::cdp(cdp_id).unwrap();
+                assert_eq!(remaining.debt, balance!(7)); // 10 + 1 interest - 4 repaid
+                assert_eq!(remaining.interest_coefficient.into_inner(), balance!(1.1));
+                assert_balance(&alice_account_id(), &KUSD, balance!(7.7));
+                assert_balance(&alice_account_id(), &XOR, 0);
+                assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1) - bad_debt);
+                assert_eq!(get_total_supply(&KUSD), balance!(8.7) - bad_debt);
+                assert_bad_debt(0);
+                let pair = StablecoinCollateralIdentifier {
+                    collateral_asset_id: XOR,
+                    stablecoin_asset_id: KUSD,
+                };
+                assert_eq!(
+                    KensetsuPallet::collateral_infos(&pair)
+                        .unwrap()
+                        .stablecoin_supply,
+                    balance!(7)
+                );
+
+                pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2000);
+                assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+                // The second second adds 0.7 interest to the remaining 7 debt.
+                assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+                assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+                assert_balance(&alice_account_id(), &KUSD, 0);
+                assert_balance(&alice_account_id(), &XOR, balance!(100));
+                assert_balance(&depository_tech_account_id(), &XOR, 0);
+                assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1.7) - bad_debt);
+                assert_eq!(get_total_supply(&KUSD), balance!(1.7) - bad_debt);
+                let collateral = KensetsuPallet::collateral_infos(pair).unwrap();
+                assert_eq!(collateral.stablecoin_supply, 0);
+                assert_eq!(collateral.total_collateral, 0);
+            });
+        }
+    }
+}
+
+#[test]
+fn repayment_only_rejects_non_owner_exit_without_changes() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        assert_noop!(
+            KensetsuPallet::repay_debt(bob(), cdp_id, balance!(1)),
+            KensetsuError::OperationNotPermitted
+        );
+        assert_noop!(
+            KensetsuPallet::close_cdp(bob(), cdp_id),
+            KensetsuError::OperationNotPermitted
+        );
+        assert_noop!(
+            KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::repay_debt(RuntimeOrigin::root(), cdp_id, balance!(1)),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn repayment_only_failed_close_preserves_repayment_and_collateral() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        // Force collateral release to fail after the debt burn. The whole exit
+        // must roll back, preserving the owner's stablecoin, debt and CDP.
+        assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
+            RuntimeOrigin::root(),
+            depository_tech_account_id(),
+            XOR,
+            -(balance!(100) as i128),
+        ));
+        frame_support::assert_storage_noop!({
+            assert!(KensetsuPallet::close_cdp(alice(), cdp_id).is_err());
+        });
+        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(10));
+        assert_eq!(get_total_supply(&KUSD), balance!(10));
+        assert_balance(&alice_account_id(), &KUSD, balance!(10));
+        assert_eq!(get_account_cdp_ids(&alice_account_id()), vec![cdp_id]);
+    });
+}
+
+#[test]
+fn repayment_only_hooks_are_idle() {
+    new_test_ext().execute_with(|| {
+        setup_accruable_cdps(3);
+        make_xor_cdps_unsafe_without_disabling_accrue();
+        crate::mock::RepaymentOnly::set(&true);
+        LiquidatedThisBlock::<TestRuntime>::put(true);
+        AccruesThisBlock::<TestRuntime>::put(7);
+        // No offchain host extensions are installed: retirement must return
+        // before scanning candidates, fetching a key or submitting work.
+        frame_support::assert_storage_noop!({
+            assert_eq!(
+                KensetsuPallet::on_initialize(2),
+                frame_support::weights::Weight::zero()
+            );
+            KensetsuPallet::offchain_worker(2);
+        });
+        assert!(KensetsuPallet::liquidated_this_block());
+        assert_eq!(AccruesThisBlock::<TestRuntime>::get(), 7);
+    });
+}
+
+#[test]
+fn repayment_only_debt_free_close_needs_no_accrual_or_mint_permission() {
+    new_test_ext().execute_with(|| {
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.1),
+            balance!(0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), 0);
+        crate::mock::RepaymentOnly::set(&true);
+        // This would make interest calculation fail even when multiplied by
+        // zero debt. Retirement must still let the owner retrieve collateral.
+        CollateralInfos::<TestRuntime>::mutate(
+            StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            },
+            |info| info.as_mut().unwrap().last_fee_update_time = u64::MAX,
+        );
+        permissions::Permissions::<TestRuntime>::mutate(
+            treasury_tech_account_id(),
+            permissions::Scope::Unlimited,
+            |permissions| permissions.retain(|permission| *permission != permissions::MINT),
+        );
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+        assert_eq!(get_total_supply(&KUSD), 0);
+        assert_balance(&treasury_tech_account_id(), &KUSD, 0);
+        assert_balance(&alice_account_id(), &XOR, balance!(100));
     });
 }

@@ -64,6 +64,7 @@ mod balance_unit;
 pub mod cache_storage;
 pub mod eth;
 mod fixed_wrapper;
+pub mod keeper;
 pub mod macros;
 pub mod migrations;
 mod outcome_fee;

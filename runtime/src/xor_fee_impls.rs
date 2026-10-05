@@ -151,44 +151,6 @@ impl RuntimeCall {
             },
         }
     }
-
-    pub fn is_called_by_bridge_peer(&self, who: &AccountId) -> bool {
-        match self {
-            RuntimeCall::BridgeMultisig(call) => match call {
-                bridge_multisig::Call::as_multi {
-                    id: multisig_id, ..
-                }
-                | bridge_multisig::Call::as_multi_threshold_1 {
-                    id: multisig_id, ..
-                } => bridge_multisig::Accounts::<Runtime>::get(multisig_id)
-                    .map(|acc| acc.is_signatory(&who)),
-                _ => None,
-            },
-            RuntimeCall::EthBridge(call) => match call {
-                eth_bridge::Call::approve_request { network_id, .. } => {
-                    Some(eth_bridge::Pallet::<Runtime>::is_peer(who, *network_id))
-                }
-                eth_bridge::Call::register_incoming_request { incoming_request } => {
-                    let net_id = incoming_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::import_incoming_request {
-                    load_incoming_request,
-                    ..
-                } => {
-                    let net_id = load_incoming_request.network_id();
-                    eth_bridge::BridgeAccount::<Runtime>::get(net_id).map(|acc| acc == *who)
-                }
-                eth_bridge::Call::finalize_incoming_request { network_id, .. }
-                | eth_bridge::Call::abort_request { network_id, .. } => {
-                    eth_bridge::BridgeAccount::<Runtime>::get(network_id).map(|acc| acc == *who)
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-        .unwrap_or(false)
-    }
 }
 
 pub struct CustomFees;
@@ -202,7 +164,24 @@ pub struct StakingValPayoutPre {
 
 pub struct StakingValPayout;
 
+/// Publish the ending era's VAL budget through the standard staking reward API.
+/// XOR remains the staking currency; `StakingValPayout` replaces native rewards.
+pub struct ValEraPayout;
+
+impl pallet_staking::EraPayout<Balance> for ValEraPayout {
+    fn era_payout(_: Balance, _: Balance, _: u64) -> (Balance, Balance) {
+        let reward = pallet_staking::ActiveEra::<Runtime>::get()
+            .map(|active| xor_fee::ValStakingEraReward::<Runtime>::get(active.index))
+            .unwrap_or_default();
+        (reward, 0)
+    }
+}
+
 impl pallet_staking::AdditionalPayout<AccountId> for StakingValPayout {
+    fn pays_native_reward() -> bool {
+        false
+    }
+
     fn payout(validator_stash: &AccountId, era: EraIndex, page: Page) -> DispatchResult {
         pay_val_staking_reward(StakingValPayoutPre {
             validator_stash: validator_stash.clone(),
@@ -299,6 +278,7 @@ fn pay_val_to_reward_destination(
     let Some(payee) = pallet_staking::Payee::<Runtime>::get(stash) else {
         return Ok(());
     };
+    let reward_destination = payee.clone();
     let dest = match payee {
         pallet_staking::RewardDestination::Staked | pallet_staking::RewardDestination::Stash => {
             stash.clone()
@@ -317,6 +297,15 @@ fn pay_val_to_reward_destination(
     let val = GetValAssetId::get();
     Assets::mint_unchecked(&val, &dest, amount)?;
     XorFee::deposit_val_staking_reward_paid(stash.clone(), dest, era, page, amount);
+    // Existing staking clients refresh claim history using this event. It reports the
+    // actual VAL reward; replacement mode never mints XOR or compounds XOR stake.
+    crate::System::deposit_event(crate::RuntimeEvent::Staking(pallet_staking::Event::<
+        Runtime,
+    >::Rewarded {
+        stash: stash.clone(),
+        dest: reward_destination,
+        amount,
+    }));
     Ok(())
 }
 
@@ -563,11 +552,15 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         }
     }
 
-    fn should_be_paid(who: &AccountId, call: &RuntimeCall) -> bool {
-        if call.is_called_by_bridge_peer(who) {
-            return false;
-        }
+    fn should_be_paid(_who: &AccountId, _call: &RuntimeCall) -> bool {
         true
+    }
+
+    fn validate_fee_exemption(
+        who: &AccountId,
+        call: &RuntimeCall,
+    ) -> Result<bool, sp_runtime::transaction_validity::TransactionValidityError> {
+        validate_bridge_fee_exemption(who, call)
     }
 
     fn compute_actual_fee(
@@ -851,8 +844,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: fix check_calls_from_bridge_peers_pays_no test
-    fn check_calls_from_bridge_peers_pays_no() {
+    fn bridge_identity_never_skips_upfront_payment() {
         framenode_chain_spec::ext().execute_with(|| {
             let call: &<Runtime as frame_system::Config>::RuntimeCall =
                 &RuntimeCall::EthBridge(eth_bridge::Call::finalize_incoming_request {
@@ -862,7 +854,7 @@ mod tests {
 
             let who = eth_bridge::BridgeAccount::<Runtime>::get(0).unwrap();
 
-            assert!(!CustomFees::should_be_paid(&who, call));
+            assert!(CustomFees::should_be_paid(&who, call));
         });
     }
 
@@ -882,7 +874,7 @@ mod tests {
         let era = 7;
         drop(Balances::deposit_creating(&validator, 100));
         pallet_staking::CurrentEra::<Runtime>::put(era + 1);
-        pallet_staking::ErasValidatorReward::<Runtime>::insert(era, 0);
+        pallet_staking::ErasValidatorReward::<Runtime>::insert(era, total_reward.unwrap_or(0));
 
         pallet_staking::Bonded::<Runtime>::insert(&validator, &controller);
         pallet_staking::Ledger::<Runtime>::insert(
@@ -2852,4 +2844,160 @@ mod tests {
         assert_eq!(CustomFees::compute_fee(&set_call), None);
         assert_eq!(CustomFees::compute_fee(&xorless_call), None);
     }
+}
+
+/// The bridge exception is tied to authenticated protocol progress, never to
+/// peer identity alone. Invalid or replayed candidates are rejected before
+/// fee withdrawal and before dispatch in both pool validation and pre-dispatch.
+pub fn validate_bridge_fee_exemption(
+    who: &AccountId,
+    call: &RuntimeCall,
+) -> Result<bool, sp_runtime::transaction_validity::TransactionValidityError> {
+    use frame_support::dispatch::GetDispatchInfo;
+    use sp_runtime::transaction_validity::InvalidTransaction;
+    let invalid = |_| {
+        sp_runtime::transaction_validity::TransactionValidityError::from(InvalidTransaction::Call)
+    };
+    match call {
+        RuntimeCall::BridgeInboundChannel(bridge_channel::inbound::Call::submit {
+            network_id,
+            commitment,
+            proof,
+        }) => {
+            BridgeInboundChannel::validate_submission(*network_id, commitment, proof)
+                .map_err(invalid)?;
+            return Ok(true);
+        }
+        RuntimeCall::SubstrateBridgeInboundChannel(
+            substrate_bridge_channel::inbound::Call::submit {
+                network_id,
+                commitment,
+                proof,
+            },
+        ) => {
+            SubstrateBridgeInboundChannel::validate_submission(*network_id, commitment, proof)
+                .map_err(invalid)?;
+            return Ok(true);
+        }
+        RuntimeCall::EthBridge(protocol) => {
+            return EthBridge::validate_peer_protocol_call(who, protocol).map_err(invalid)
+        }
+        _ => {}
+    }
+    let (id, timepoint, hash, inner, store, max_weight, threshold_one) = match call {
+        RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi_threshold_1 {
+            id,
+            call,
+            timepoint,
+        }) => (
+            id,
+            Some(*timepoint),
+            sp_io::hashing::blake2_256(&call.encode()),
+            call.as_ref().clone(),
+            false,
+            call.get_dispatch_info().total_weight(),
+            true,
+        ),
+        RuntimeCall::BridgeMultisig(bridge_multisig::Call::as_multi {
+            id,
+            maybe_timepoint,
+            call,
+            store_call,
+            max_weight,
+        }) => {
+            let hash = sp_io::hashing::blake2_256(call);
+            let Some(inner) = BridgeMultisig::decode_call(&hash, Some(call)) else {
+                return Ok(false);
+            };
+            (
+                id,
+                *maybe_timepoint,
+                hash,
+                inner,
+                *store_call,
+                *max_weight,
+                false,
+            )
+        }
+        RuntimeCall::BridgeMultisig(bridge_multisig::Call::approve_as_multi {
+            id,
+            maybe_timepoint,
+            call_hash,
+            max_weight,
+        }) => {
+            let Some(inner) = BridgeMultisig::decode_call(call_hash, None) else {
+                return Ok(false);
+            };
+            (
+                id,
+                *maybe_timepoint,
+                *call_hash,
+                inner,
+                false,
+                *max_weight,
+                false,
+            )
+        }
+        RuntimeCall::BridgeMultisig(bridge_multisig::Call::cancel_as_multi {
+            id,
+            timepoint,
+            call_hash,
+        }) => {
+            let Some(RuntimeCall::EthBridge(protocol)) =
+                BridgeMultisig::decode_call(call_hash, None)
+            else {
+                return Ok(false);
+            };
+            let Some(network) = EthBridge::peer_protocol_network(&protocol) else {
+                return Ok(false);
+            };
+            if EthBridge::bridge_account(network).as_ref() != Some(id)
+                || !EthBridge::peers(network).contains(who)
+            {
+                return Ok(false);
+            }
+            let operation = bridge_multisig::Multisigs::<Runtime>::get(id, call_hash)
+                .ok_or(InvalidTransaction::Call)?;
+            if operation.when != *timepoint
+                || operation.depositor != *who
+                || BridgeMultisig::accounts(id)
+                    .map(|account| account.threshold_num() <= 1 || !account.is_signatory(who))
+                    .unwrap_or(true)
+                || bridge_multisig::DispatchedCalls::<Runtime>::contains_key(call_hash, timepoint)
+            {
+                return Err(InvalidTransaction::Call.into());
+            }
+            return Ok(true);
+        }
+        _ => return Ok(false),
+    };
+    let RuntimeCall::EthBridge(protocol) = &inner else {
+        return Ok(false);
+    };
+    let Some(network) = EthBridge::peer_protocol_network(protocol) else {
+        return Ok(false);
+    };
+    if EthBridge::bridge_account(network).as_ref() != Some(id)
+        || !EthBridge::peers(network).contains(who)
+        || BridgeMultisig::accounts(id)
+            .map(|account| !account.is_signatory(who))
+            .unwrap_or(true)
+    {
+        return Ok(false);
+    }
+    if !EthBridge::validate_peer_protocol_call(id, protocol).map_err(invalid)? {
+        return Ok(false);
+    }
+    BridgeMultisig::validate_protocol_operation(
+        who,
+        id,
+        timepoint,
+        &hash,
+        &inner,
+        store,
+        max_weight,
+        threshold_one,
+    )
+    .map_err(invalid)?;
+    Ok(true)
 }

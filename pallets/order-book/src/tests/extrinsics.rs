@@ -3430,3 +3430,109 @@ fn should_execute_market_order_with_indivisible_asset() {
         );
     });
 }
+
+#[test]
+fn cancellation_batch_rejects_empty_groups_and_enforces_limits() {
+    use frame_support::dispatch::{GetDispatchInfo, Pays};
+    ext().execute_with(|| {
+        let book = OrderBookId {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        let max = <<Runtime as Config>::MaxOpenedLimitOrdersPerUser as Get<u32>>::get() as usize;
+        let weight = |groups| {
+            framenode_runtime::RuntimeCall::OrderBook(
+                framenode_runtime::order_book::Call::cancel_limit_orders_batch {
+                    limit_orders_to_cancel: groups,
+                },
+            )
+            .get_dispatch_info()
+            .call_weight
+        };
+        let packed = weight(vec![(book, vec![1, 2])]);
+        let split = weight(vec![(book, vec![1]), (book, vec![2])]);
+        assert!(
+            split.ref_time() > packed.ref_time(),
+            "outer groups have a validation time cost"
+        );
+        assert_eq!(
+            split.proof_size(),
+            packed.proof_size(),
+            "validation reads input, not storage"
+        );
+        assert_eq!(weight(vec![(book, vec![1; max + 1])]).ref_time(), u64::MAX);
+        for batch in [
+            vec![],
+            vec![(book, vec![])],
+            vec![(book, vec![1]), (book, vec![])],
+        ] {
+            let call = framenode_runtime::RuntimeCall::OrderBook(
+                framenode_runtime::order_book::Call::cancel_limit_orders_batch {
+                    limit_orders_to_cancel: batch.clone(),
+                },
+            );
+            let info = call.get_dispatch_info();
+            assert_eq!(info.pays_fee, Pays::Yes);
+            assert!(info.call_weight.ref_time() > 0);
+            let err = OrderBookPallet::cancel_limit_orders_batch(
+                RawOrigin::Signed(accounts::bob::<Runtime>()).into(),
+                batch,
+            )
+            .unwrap_err();
+            assert_eq!(err.error, E::EmptyCancellationBatch.into());
+            assert_eq!(err.post_info.pays_fee, Pays::Yes);
+        }
+        for batch in [
+            vec![(book, vec![1; max + 1])],
+            vec![(book, vec![1]); max + 1],
+        ] {
+            assert_err!(
+                OrderBookPallet::cancel_limit_orders_batch(
+                    RawOrigin::Signed(accounts::bob::<Runtime>()).into(),
+                    batch
+                ),
+                E::TooManyCancellationOrders
+            );
+        }
+    });
+}
+
+#[test]
+fn cancellation_batch_duplicate_and_late_failures_roll_back_all_storage() {
+    use frame_support::dispatch::Pays;
+    ext().execute_with(|| {
+        let book = OrderBookId {
+            dex_id: DEX.into(),
+            base: VAL,
+            quote: XOR,
+        };
+        create_and_fill_order_book::<Runtime>(book);
+        for (batch, expected) in [
+            (vec![(book, vec![1, 1])], E::UnknownLimitOrder),
+            (vec![(book, vec![1]), (book, vec![1])], E::UnknownLimitOrder),
+            (vec![(book, vec![1, 100])], E::UnknownLimitOrder),
+            (vec![(book, vec![1, 2])], E::Unauthorized),
+        ] {
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            let err = OrderBookPallet::cancel_limit_orders_batch(
+                RawOrigin::Signed(accounts::bob::<Runtime>()).into(),
+                batch,
+            )
+            .unwrap_err();
+            assert_eq!(err.error, expected.into());
+            assert_eq!(err.post_info.pays_fee, Pays::Yes);
+            assert_eq!(
+                sp_io::storage::root(sp_runtime::StateVersion::V1),
+                before,
+                "failed batch must restore transfers, expiry schedules, events and cached orders"
+            );
+        }
+        let result = OrderBookPallet::cancel_limit_orders_batch(
+            RawOrigin::Signed(accounts::bob::<Runtime>()).into(),
+            vec![(book, vec![1, 3])],
+        )
+        .unwrap();
+        assert_eq!(result.pays_fee, Pays::No);
+    });
+}

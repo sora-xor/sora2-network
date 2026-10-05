@@ -166,6 +166,7 @@ impl<T> BridgeAssetLockerImpl<T> {
 impl<T: traits::MultiCurrency<AccountId32>> BridgeAssetLocker<AccountId32>
     for BridgeAssetLockerImpl<T>
 where
+    T::CurrencyId: codec::DecodeWithMemTracking,
     T::Balance: frame_support::Parameter
         + sp_runtime::traits::AtLeast32BitUnsigned
         + sp_runtime::traits::MaybeSerializeDeserialize,
@@ -183,10 +184,21 @@ where
         match asset_kind {
             crate::types::AssetKind::Thischain => {
                 let bridge_acc = Self::bridge_account(network_id);
-                T::transfer(*asset_id, who, &bridge_acc, *amount)?;
+                T::transfer(
+                    *asset_id,
+                    who,
+                    &bridge_acc,
+                    *amount,
+                    frame_support::traits::ExistenceRequirement::AllowDeath,
+                )?;
             }
             crate::types::AssetKind::Sidechain => {
-                T::withdraw(*asset_id, who, *amount)?;
+                T::withdraw(
+                    *asset_id,
+                    who,
+                    *amount,
+                    frame_support::traits::ExistenceRequirement::AllowDeath,
+                )?;
             }
         }
         Ok(())
@@ -202,7 +214,13 @@ where
         match asset_kind {
             crate::types::AssetKind::Thischain => {
                 let bridge_acc = Self::bridge_account(network_id);
-                T::transfer(*asset_id, &bridge_acc, who, *amount)?;
+                T::transfer(
+                    *asset_id,
+                    &bridge_acc,
+                    who,
+                    *amount,
+                    frame_support::traits::ExistenceRequirement::AllowDeath,
+                )?;
             }
             crate::types::AssetKind::Sidechain => {
                 T::deposit(*asset_id, who, *amount)?;
@@ -218,7 +236,13 @@ where
         amount: &Self::Balance,
     ) -> frame_support::dispatch::DispatchResult {
         let bridge_acc = Self::bridge_fee_account(network_id);
-        T::transfer(*asset_id, &bridge_acc, who, *amount)?;
+        T::transfer(
+            *asset_id,
+            &bridge_acc,
+            who,
+            *amount,
+            frame_support::traits::ExistenceRequirement::AllowDeath,
+        )?;
         Ok(())
     }
 
@@ -229,7 +253,13 @@ where
         amount: &Self::Balance,
     ) -> frame_support::dispatch::DispatchResult {
         let bridge_acc = Self::bridge_fee_account(network_id);
-        T::transfer(*asset_id, who, &bridge_acc, *amount)?;
+        T::transfer(
+            *asset_id,
+            who,
+            &bridge_acc,
+            *amount,
+            frame_support::traits::ExistenceRequirement::AllowDeath,
+        )?;
         Ok(())
     }
 }

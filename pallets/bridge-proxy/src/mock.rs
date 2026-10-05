@@ -100,6 +100,17 @@ mock_permissions_config!(Test);
 mock_technical_config!(Test);
 mock_tokens_config!(Test);
 
+impl bridge_types::traits::DispatchWithOutcome for RuntimeCall {
+    fn dispatch_with_outcome(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> Result<bridge_types::traits::MessageDispatchOutcome, sp_runtime::DispatchError> {
+        sp_runtime::traits::Dispatchable::dispatch(self, origin)
+            .map(|_| bridge_types::traits::MessageDispatchOutcome::Applied)
+            .map_err(|error| error.error)
+    }
+}
+
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const GetBaseAssetId: AssetId = XOR;

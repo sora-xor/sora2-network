@@ -142,22 +142,3 @@ impl WeightInfo for () {
             .saturating_add(RocksDbWeight::get().writes(2 as u64))
     }
 }
-
-#[inline(always)]
-pub(super) fn pays_no_with_maybe_weight<E: Into<DispatchError>>(
-    result: Result<Option<Weight>, (Option<Weight>, E)>,
-) -> DispatchResultWithPostInfo {
-    result
-        .map_err(|(weight, e)| DispatchErrorWithPostInfo {
-            post_info: (weight, Pays::No).into(),
-            error: e.into(),
-        })
-        .map(|weight| (weight, Pays::No).into())
-}
-
-#[inline(always)]
-pub(super) fn pays_no<T, E: Into<DispatchError>>(
-    result: Result<T, E>,
-) -> DispatchResultWithPostInfo {
-    pays_no_with_maybe_weight(result.map(|_| None).map_err(|e| (None, e)))
-}

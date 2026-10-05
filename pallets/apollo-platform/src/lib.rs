@@ -54,6 +54,21 @@ pub struct PoolInfo {
     pub is_removed: bool,
 }
 
+/// Funded keeper workers share the dedicated `keep` key with Kensetsu.
+pub mod crypto {
+    use sp_core::crypto::KeyTypeId;
+    use sp_runtime::app_crypto::{app_crypto, sr25519};
+    use sp_runtime::{MultiSignature, MultiSigner};
+    pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"keep");
+    app_crypto!(sr25519, KEY_TYPE);
+    pub struct AuthorityId;
+    impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for AuthorityId {
+        type RuntimeAppPublic = Public;
+        type GenericSignature = sp_core::sr25519::Signature;
+        type GenericPublic = sp_core::sr25519::Public;
+    }
+}
+
 pub use pallet::*;
 pub mod migrations;
 
@@ -72,25 +87,31 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_support::PalletId;
-    use frame_system::offchain::{CreateBare, SubmitTransaction};
+    use frame_system::offchain::{
+        AppCrypto, CreateSignedTransaction, CreateTransactionBase, SigningTypes,
+    };
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
+    use orml_traits::MultiReservableCurrency;
     use sp_runtime::traits::{Saturating, UniqueSaturatedInto, Zero};
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
-    /// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
-    const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 1;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config
+    pub trait Config: frame_system::Config<RuntimeCall: From<Call<Self>>>
         + liquidity_proxy::Config
         + trading_pair::Config
         + common::Config
-        + CreateBare<Call<Self>>
+        + SigningTypes
+        + CreateSignedTransaction<Call<Self>>
+        + CreateTransactionBase<Call<Self>, RuntimeCall = <Self as frame_system::Config>::RuntimeCall>
     {
+        type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+        /// Retire new lending activity while preserving repayment, withdrawals and earned claims.
+        #[pallet::constant]
+        type RepaymentOnly: Get<bool>;
         const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -166,6 +187,14 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn pool_info)]
     pub type PoolData<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, PoolInfo, OptionQuery>;
+
+    /// Repaid interest held in real reserves in its original asset during retirement.
+    /// It is excluded from lending liquidity and cannot fund reward/principal payouts.
+    /// Distribution/unreservation requires a separately reviewed governance change.
+    #[pallet::storage]
+    #[pallet::getter(fn deferred_protocol_interest)]
+    pub type DeferredProtocolInterest<T: Config> =
+        StorageMap<_, Identity, AssetIdOf<T>, Balance, ValueQuery>;
 
     /// BlockNumber -> AssetId (for updating pools interests by block)
     #[pallet::storage]
@@ -368,6 +397,8 @@ pub mod pallet {
         ArithmeticError,
         /// Liquidation limit reached
         LiquidationLimit,
+        /// Apollo is retired; only repayment, withdrawals and earned claims remain available.
+        RepaymentOnly,
     }
 
     #[pallet::call]
@@ -387,6 +418,7 @@ pub mod pallet {
             reserve_factor: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             if user != AuthorityAccount::<T>::get() {
                 return Err(Error::<T>::Unauthorized.into());
@@ -499,6 +531,7 @@ pub mod pallet {
             let user = ensure_signed(origin)?;
 
             // Check if lending amount is minimum 10$
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             let lending_asset_price = Self::get_price(lending_asset);
             let lending_amount_in_dollars: u128 = (FixedWrapper::from(lending_amount)
                 * FixedWrapper::from(lending_asset_price))
@@ -557,6 +590,7 @@ pub mod pallet {
             loan_to_value: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             ensure!(
                 collateral_asset != borrowing_asset,
@@ -753,7 +787,11 @@ pub mod pallet {
 
                 let lending_rewards = lend_user_info.lending_interest;
                 lend_user_info.lending_interest = 0;
-                <UserLendingInfo<T>>::insert(asset_id, user.clone(), &lend_user_info);
+                if T::RepaymentOnly::get() && lend_user_info.lending_amount.is_zero() {
+                    UserLendingInfo::<T>::remove(asset_id, user.clone());
+                } else {
+                    <UserLendingInfo<T>>::insert(asset_id, user.clone(), &lend_user_info);
+                }
                 <PoolData<T>>::insert(asset_id, pool_info);
 
                 Self::deposit_event(Event::ClaimedLendingRewards(
@@ -789,7 +827,18 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::UnableToTransferRewards)?;
 
-                <UserBorrowingInfo<T>>::insert(asset_id, user.clone(), &user_infos);
+                if T::RepaymentOnly::get() {
+                    user_infos.retain(|_, position| {
+                        !position.borrowing_amount.is_zero()
+                            || !position.borrowing_interest.is_zero()
+                            || !position.collateral_amount.is_zero()
+                    });
+                }
+                if T::RepaymentOnly::get() && user_infos.is_empty() {
+                    UserBorrowingInfo::<T>::remove(asset_id, user.clone());
+                } else {
+                    <UserBorrowingInfo<T>>::insert(asset_id, user.clone(), &user_infos);
+                }
 
                 Self::deposit_event(Event::ClaimedBorrowingRewards(
                     user,
@@ -821,7 +870,8 @@ pub mod pallet {
                 Error::<T>::LendingAmountExceeded
             );
             ensure!(
-                withdrawn_amount < pool_info.total_liquidity,
+                withdrawn_amount < pool_info.total_liquidity
+                    || (T::RepaymentOnly::get() && withdrawn_amount == pool_info.total_liquidity),
                 Error::<T>::CanNotTransferLendingAmount
             );
 
@@ -841,17 +891,21 @@ pub mod pallet {
             user_info.lending_amount = user_info.lending_amount.saturating_sub(withdrawn_amount);
 
             // Check if lending amount is less than user's lending amount
-            if withdrawn_amount < previous_lending_amount {
+            if withdrawn_amount < previous_lending_amount
+                || (T::RepaymentOnly::get() && !user_info.lending_interest.is_zero())
+            {
                 <UserLendingInfo<T>>::insert(withdrawn_asset, user.clone(), user_info);
             } else {
                 // Transfer lending interest when user withdraws whole lending amount
-                T::AssetManager::transfer_from(
-                    &APOLLO_ASSET_ID.into(),
-                    &Self::account_id(),
-                    &user,
-                    user_info.lending_interest,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
+                if !T::RepaymentOnly::get() {
+                    T::AssetManager::transfer_from(
+                        &APOLLO_ASSET_ID.into(),
+                        &Self::account_id(),
+                        &user,
+                        user_info.lending_interest,
+                    )
+                    .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
+                }
                 <UserLendingInfo<T>>::remove(withdrawn_asset, user.clone());
             }
 
@@ -892,6 +946,15 @@ pub mod pallet {
                 &borrow_pool_info,
                 block_number,
             )?;
+            if T::RepaymentOnly::get() {
+                ensure!(
+                    !amount_to_repay.is_zero()
+                        && (!user_info.borrowing_amount.is_zero()
+                            || !user_info.borrowing_interest.is_zero()
+                            || !user_info.collateral_amount.is_zero()),
+                    Error::<T>::NothingToRepay
+                );
+            }
 
             // Total repaid
             let mut total_repaid: Balance = amount_to_repay;
@@ -979,14 +1042,17 @@ pub mod pallet {
                     user_info.collateral_amount,
                 )?;
 
-                // Transfer borrowing amount and borrowing interest to pallet
-                T::AssetManager::transfer_from(
-                    &borrowing_asset,
-                    &user,
-                    &Self::account_id(),
-                    total_borrowed_amount,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
+                // Denomination can round debt to zero while collateral remains.
+                // Closing that position requires no borrowed-asset transfer.
+                if !T::RepaymentOnly::get() || !total_borrowed_amount.is_zero() {
+                    T::AssetManager::transfer_from(
+                        &borrowing_asset,
+                        &user,
+                        &Self::account_id(),
+                        total_borrowed_amount,
+                    )
+                    .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
+                }
 
                 // Transfer collateral to user
                 T::AssetManager::transfer_from(
@@ -997,16 +1063,26 @@ pub mod pallet {
                 )
                 .map_err(|_| Error::<T>::UnableToTransferCollateral)?;
 
-                // Transfer borrowing rewards to user
-                T::AssetManager::transfer_from(
-                    &APOLLO_ASSET_ID.into(),
-                    &Self::account_id(),
-                    &user,
-                    user_info.borrowing_rewards,
-                )
-                .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
-
-                borrow_user_info.remove(&collateral_asset);
+                if T::RepaymentOnly::get() && !user_info.borrowing_rewards.is_zero() {
+                    // Principal/collateral exit never depends on an APOLLO reward pot.
+                    // Keep the existing position as a reward-only claim for get_rewards.
+                    let mut claim = user_info.clone();
+                    claim.collateral_amount = 0;
+                    claim.borrowing_amount = 0;
+                    claim.borrowing_interest = 0;
+                    borrow_user_info.insert(collateral_asset, claim);
+                } else {
+                    if !T::RepaymentOnly::get() {
+                        T::AssetManager::transfer_from(
+                            &APOLLO_ASSET_ID.into(),
+                            &Self::account_id(),
+                            &user,
+                            user_info.borrowing_rewards,
+                        )
+                        .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
+                    }
+                    borrow_user_info.remove(&collateral_asset);
+                }
                 if borrow_user_info.is_empty() {
                     <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
                 } else {
@@ -1036,6 +1112,7 @@ pub mod pallet {
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             if user != AuthorityAccount::<T>::get() {
                 return Err(Error::<T>::Unauthorized.into());
@@ -1074,6 +1151,7 @@ pub mod pallet {
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             if user != AuthorityAccount::<T>::get() {
                 return Err(Error::<T>::Unauthorized.into());
@@ -1137,10 +1215,12 @@ pub mod pallet {
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(
-            _origin: OriginFor<T>,
+            origin: OriginFor<T>,
             user: AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
+            ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             ensure!(
                 LiquidationsThisBlock::<T>::get() < T::MaxLiquidationsPerBlock::get(),
                 Error::<T>::LiquidationLimit
@@ -1260,6 +1340,13 @@ pub mod pallet {
 
             let mut pool_info =
                 PoolData::<T>::get(asset_id_to_remove).ok_or(Error::<T>::PoolDoesNotExist)?;
+            if T::RepaymentOnly::get() {
+                // Keep historical rates and PoolData needed by existing exits/earned claims.
+                pool_info.is_removed = true;
+                PoolData::<T>::insert(asset_id_to_remove, pool_info);
+                Self::deposit_event(Event::PoolRemoved(user, asset_id_to_remove));
+                return Ok(());
+            }
             pool_info.basic_lending_rate = 0;
             pool_info.borrowing_rewards_rate = 0;
             pool_info.is_removed = true;
@@ -1310,6 +1397,7 @@ pub mod pallet {
             new_tc: Balance,
         ) -> DispatchResult {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             if user != AuthorityAccount::<T>::get() {
                 return Err(Error::<T>::Unauthorized.into());
@@ -1360,6 +1448,7 @@ pub mod pallet {
             borrowing_asset: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             ensure!(
                 collateral_asset != borrowing_asset,
@@ -1469,6 +1558,7 @@ pub mod pallet {
             amount: Balance,
         ) -> DispatchResultWithPostInfo {
             let user = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             if user != AuthorityAccount::<T>::get() {
                 return Err(Error::<T>::Unauthorized.into());
@@ -1486,35 +1576,11 @@ pub mod pallet {
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
 
-        /// It is allowed to call only liquidate() and only if it fulfills conditions.
-        fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            match call {
-                Call::liquidate { user, asset_id } => {
-                    if matches!(source, TransactionSource::InBlock)
-                        && LiquidationsThisBlock::<T>::get() >= T::MaxLiquidationsPerBlock::get()
-                    {
-                        return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT)
-                            .into();
-                    }
-
-                    let user_infos =
-                        UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap_or_default();
-                    if Self::check_liquidation(&user_infos, *asset_id) {
-                        ValidTransaction::with_tag_prefix("Apollo::liquidate")
-                            .priority(T::UnsignedPriority::get())
-                            .longevity(T::UnsignedLongevity::get())
-                            .and_provides((user, asset_id))
-                            .propagate(true)
-                            .build()
-                    } else {
-                        InvalidTransaction::Call.into()
-                    }
-                }
-                _ => {
-                    warn!("Unknown unsigned call {:?}", call);
-                    InvalidTransaction::Call.into()
-                }
-            }
+        fn validate_unsigned(
+            _source: TransactionSource,
+            _call: &Self::Call,
+        ) -> TransactionValidity {
+            InvalidTransaction::Call.into()
         }
     }
 
@@ -1560,6 +1626,9 @@ pub mod pallet {
 
         /// Off-chain worker procedure - calls liquidations
         fn offchain_worker(block_number: BlockNumberFor<T>) {
+            if T::RepaymentOnly::get() {
+                return;
+            }
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -1589,12 +1658,8 @@ pub mod pallet {
                     user: user.clone(),
                     asset_id,
                 };
-                let tx = T::create_bare(call.into());
-                if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                    warn!(
-                        "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
-                        user, err
-                    );
+                if let Err(error) = common::keeper::submit::<T, _, T::AuthorityId>(call) {
+                    warn!("Funded keeper transaction submission failed: {:?}", error);
                 }
             };
 
@@ -1714,6 +1779,14 @@ pub mod pallet {
                 }
             }
 
+            let mut deferred_interest_updates = Vec::new();
+            for (asset_id, amount) in DeferredProtocolInterest::<T>::iter() {
+                if should_denominate(&asset_id) {
+                    deferred_interest_updates
+                        .push((asset_id, Self::denominate_value(amount, factor)?));
+                }
+            }
+
             for (asset_id, pool_info) in pool_updates {
                 PoolData::<T>::insert(asset_id, pool_info);
             }
@@ -1725,6 +1798,9 @@ pub mod pallet {
             }
             for (user, collateral_asset, total_collateral) in total_collateral_updates {
                 UserTotalCollateral::<T>::insert(user, collateral_asset, total_collateral);
+            }
+            for (asset_id, amount) in deferred_interest_updates {
+                DeferredProtocolInterest::<T>::insert(asset_id, amount);
             }
 
             Ok(())
@@ -2122,6 +2198,27 @@ pub mod pallet {
             amount: Balance,
             borrowing_asset_id: AssetIdOf<T>,
         ) -> DispatchResultWithPostInfo {
+            if T::RepaymentOnly::get() {
+                // Repay has already received this interest. Reserve it separately
+                // instead of requiring unavailable DEX buybacks or forgiving it.
+                if amount.is_zero() {
+                    return Ok(().into());
+                }
+                return common::with_transaction(|| {
+                    DeferredProtocolInterest::<T>::try_mutate(
+                        asset_id,
+                        |pending| -> DispatchResult {
+                            let total = pending
+                                .checked_add(amount)
+                                .ok_or(Error::<T>::ArithmeticError)?;
+                            T::MultiCurrency::reserve(asset_id, &Self::account_id(), amount)?;
+                            *pending = total;
+                            Ok(())
+                        },
+                    )?;
+                    Ok(().into())
+                });
+            }
             common::with_transaction(|| {
                 let mut pool_info =
                     PoolData::<T>::get(borrowing_asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;

@@ -38,7 +38,7 @@ use pallet_transaction_payment as ptp;
 use ptp::OnChargeTransaction;
 use scale_info::TypeInfo;
 use sp_runtime::{
-    traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension},
+    traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension, Zero},
     transaction_validity::{
         TransactionPriority, TransactionValidity, TransactionValidityError, ValidTransaction,
     },
@@ -202,14 +202,21 @@ where
         result: &DispatchResult,
     ) -> Result<(), TransactionValidityError> {
         if let Some((tip, who, imbalance, custom_fee_details, staking_val_payout)) = maybe_pre {
-            let actual_fee = crate::Pallet::<T>::compute_actual_fee(
-                len as u32,
-                info,
-                post_info,
-                result,
-                tip,
-                custom_fee_details,
-            );
+            let actual_fee = if matches!(&imbalance, LiquidityInfo::NotPaid) {
+                // Authenticated protocol exemptions secure no fee and reject
+                // tips during admission. Report the actual zero charge even
+                // when the accepted protocol operation reports a local failure.
+                Zero::zero()
+            } else {
+                crate::Pallet::<T>::compute_actual_fee(
+                    len as u32,
+                    info,
+                    post_info,
+                    result,
+                    tip,
+                    custom_fee_details,
+                )
+            };
             T::OnChargeTransaction::correct_and_deposit_fee(
                 &who, info, post_info, actual_fee, tip, imbalance,
             )?;

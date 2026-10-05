@@ -1,0 +1,273 @@
+{
+  "status": "passed",
+  "reviewedAt": "2026-09-30T01:16:56.084250+00:00",
+  "currentHead": "a05ecb8de476bcdf0212a1a646a1fbcac2f0b5c5",
+  "originalBuild": {
+    "baseCommit": "51949ad854fc7c1a04a2c6a0f1d352b292caac35",
+    "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+    "sourceTree": "04ccb953cc6413d4cf2be42b53523a8d2207bc79",
+    "originalProvenancePreserved": true,
+    "noRebuildPerformed": true
+  },
+  "previousRelease": {
+    "version": "4.8.10",
+    "commit": "e3e58c7a693d9692f32f49d0e3084aae008a56da",
+    "sourceBaseRuntimeInputsMatchPreviousRelease": true,
+    "checkedPaths": [
+      "runtime",
+      "pallets",
+      "vendor",
+      "common",
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "scripts",
+      ".cargo"
+    ]
+  },
+  "currentSourceEquivalence": {
+    "recordedRuntimeInputsMatchHead": true,
+    "recordedRuntimeInputsMatchWorkingTree": true,
+    "checkedPaths": [
+      "runtime",
+      "pallets",
+      "vendor",
+      "common",
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "scripts",
+      ".cargo"
+    ],
+    "sourceToHeadChangedPathsOutsideReleaseArtifacts": [
+      "node/chain_spec/src/bytes/chain_spec_bridge_staging.json",
+      "node/chain_spec/src/bytes/chain_spec_staging.json",
+      "node/chain_spec/src/bytes/chain_spec_test.json",
+      "node/src/babe_epoch_repair.rs",
+      "node/src/command.rs"
+    ],
+    "artifactPathsExcludedFromCodeComparison": [
+      "council-runtime-4.8.10 2/COUNCIL_MESSAGE.md",
+      "council-runtime-4.8.10 2/GOVERNANCE.md",
+      "council-runtime-4.8.10 2/HANDOFF.md",
+      "council-runtime-4.8.10 2/SHA256SUMS",
+      "council-runtime-4.8.10 2/VALIDATION.md",
+      "council-runtime-4.8.10 2/council-close-stale-motion-966-call.hex",
+      "council-runtime-4.8.10 2/council-propose-external-majority-threshold-4-call.hex",
+      "council-runtime-4.8.10 2/council-propose-guarded-external-majority-threshold-4-call.hex",
+      "council-runtime-4.8.10 2/democracy-external-propose-majority-call.hex",
+      "council-runtime-4.8.10 2/democracy-fast-track-call.hex",
+      "council-runtime-4.8.10 2/democracy-veto-obsolete-4.8.8-call.hex",
+      "council-runtime-4.8.10 2/framenode-runtime-4.8.10.compact.compressed.wasm",
+      "council-runtime-4.8.10 2/governance-calls.json",
+      "council-runtime-4.8.10 2/preimage-note-call.hex",
+      "council-runtime-4.8.10 2/set-code-call.hex",
+      "council-runtime-4.8.10 2/set-code-call.scale",
+      "council-runtime-4.8.10 2/technical-committee-fast-track-threshold-3-call.hex",
+      "council-runtime-4.8.10 2/utility-guarded-external-majority-call.hex",
+      "council-runtime-4.8.10.zip",
+      "runtime-upgrade-4.8.10/SHA256SUMS",
+      "runtime-upgrade-4.8.10/VALIDATION.md",
+      "runtime-upgrade-4.8.10/source.patch",
+      "runtime-upgrade-4.8.10/validation/node-babe-repair-build.log",
+      "runtime-upgrade-4.8.10/validation/node-babe-repair-cli-checks.json",
+      "runtime-upgrade-4.8.10/validation/node-clippy-extended.log",
+      "runtime-upgrade-4.8.10/validation/node-clippy-mainnet.log",
+      "runtime-upgrade-4.8.10/validation/node-clippy-try-runtime.log",
+      "runtime-upgrade-4.8.10/validation/node-full-unit-tests.log",
+      "runtime-upgrade-4.8.10/validation/package-check.json",
+      "runtime-upgrade-4.8.10/validation/source-provenance.json",
+      "runtime-upgrade-4.8.11/GOVERNANCE-RUNBOOK.md",
+      "runtime-upgrade-4.8.11/README.md",
+      "runtime-upgrade-4.8.11/SHA256SUMS",
+      "runtime-upgrade-4.8.11/VALIDATION.md",
+      "runtime-upgrade-4.8.11/council-propose-external-majority-threshold-4-call.hex",
+      "runtime-upgrade-4.8.11/democracy-external-propose-majority-call.hex",
+      "runtime-upgrade-4.8.11/democracy-fast-track-call.hex",
+      "runtime-upgrade-4.8.11/framenode-runtime-4.8.11.compact.compressed.wasm",
+      "runtime-upgrade-4.8.11/governance-calls.json",
+      "runtime-upgrade-4.8.11/preimage-note-call.hex",
+      "runtime-upgrade-4.8.11/runtime-upgrade-4.8.11-info.json",
+      "runtime-upgrade-4.8.11/set-code-call.hex",
+      "runtime-upgrade-4.8.11/set-code-call.scale",
+      "runtime-upgrade-4.8.11/source.patch",
+      "runtime-upgrade-4.8.11/technical-committee-fast-track-threshold-3-call.hex",
+      "runtime-upgrade-4.8.11/validation/baseline-metadata.json",
+      "runtime-upgrade-4.8.11/validation/candidate-metadata.json",
+      "runtime-upgrade-4.8.11/validation/candidate-runtime-info.json",
+      "runtime-upgrade-4.8.11/validation/capture-staking-state.cjs",
+      "runtime-upgrade-4.8.11/validation/capture-staking-state.log",
+      "runtime-upgrade-4.8.11/validation/compare-metadata.py",
+      "runtime-upgrade-4.8.11/validation/deployed-spec-132-info.json",
+      "runtime-upgrade-4.8.11/validation/deployed-spec-132-metadata.scale",
+      "runtime-upgrade-4.8.11/validation/executor-memory-policy.json",
+      "runtime-upgrade-4.8.11/validation/governance-call-check.json",
+      "runtime-upgrade-4.8.11/validation/governance-call-check.log",
+      "runtime-upgrade-4.8.11/validation/governance-preflight.json",
+      "runtime-upgrade-4.8.11/validation/hosted-client-evidence.json",
+      "runtime-upgrade-4.8.11/validation/live-runtime-132.compact.compressed.wasm",
+      "runtime-upgrade-4.8.11/validation/make-manifest.py",
+      "runtime-upgrade-4.8.11/validation/metadata-compatibility.json",
+      "runtime-upgrade-4.8.11/validation/native-remote-rehearsal.json",
+      "runtime-upgrade-4.8.11/validation/native-remote-rehearsal.log",
+      "runtime-upgrade-4.8.11/validation/native-remote-scope.json",
+      "runtime-upgrade-4.8.11/validation/native-tests.json",
+      "runtime-upgrade-4.8.11/validation/native-tests.log",
+      "runtime-upgrade-4.8.11/validation/node-build.json",
+      "runtime-upgrade-4.8.11/validation/node-build.log",
+      "runtime-upgrade-4.8.11/validation/package-check.json",
+      "runtime-upgrade-4.8.11/validation/package-lock.json",
+      "runtime-upgrade-4.8.11/validation/package.json",
+      "runtime-upgrade-4.8.11/validation/prepare-governance-calls.cjs",
+      "runtime-upgrade-4.8.11/validation/prepare-governance-calls.log",
+      "runtime-upgrade-4.8.11/validation/prepare-package.cjs",
+      "runtime-upgrade-4.8.11/validation/prepare-package.log",
+      "runtime-upgrade-4.8.11/validation/rehearse-native-upgrade.py",
+      "runtime-upgrade-4.8.11/validation/rehearse-staking-reward-compatibility.cjs",
+      "runtime-upgrade-4.8.11/validation/snapshot.json",
+      "runtime-upgrade-4.8.11/validation/source-provenance.json",
+      "runtime-upgrade-4.8.11/validation/staking-reward-wasm-rehearsal.json",
+      "runtime-upgrade-4.8.11/validation/staking-reward-wasm-rehearsal.log",
+      "runtime-upgrade-4.8.11/validation/verify-governance-calls.cjs",
+      "runtime-upgrade-4.8.11/validation/verify-package.py",
+      "runtime-upgrade-4.8.11/validation/verify-wasm-compatibility.cjs",
+      "runtime-upgrade-4.8.11/validation/wasm-build.json",
+      "runtime-upgrade-4.8.11/validation/wasm-build.log",
+      "runtime-upgrade-4.8.11/validation/wasm-compatibility.json",
+      "runtime-upgrade-4.8.11/validation/wasm-compatibility.log"
+    ],
+    "unexpectedChangedPaths": [],
+    "rationale": [
+      "All repository differences between original build source and current HEAD are enumerated. Five non-artifact differences are node-only; all other differences are release packages and council handoff artifacts.",
+      "The two node Rust changes only move sc_cli::Error::Input mapping from command dispatch into the BABE repair method; these are not runtime dependencies.",
+      "The three embedded chain-spec JSON files are native node network presets. framenode-chain-spec appears only under runtime dev-dependencies, so these are not inputs to the production runtime Wasm. Native test evidence is retained as evidence for the original source and is not relabeled as a current-HEAD test run.",
+      "Unchanged Cargo.lock and manifests preserve pinned registry and Git dependencies; this review does not newly rebuild dependencies or claim independent build reproducibility."
+    ]
+  },
+  "recordedSourceFiles": {
+    "Cargo.lock": {
+      "expectedSha256": "69c4d4d0ae49c1fbc17d9ae0cac3ffb8261b1e66de85d8cf72212d4c3cb6a520",
+      "currentSha256": "69c4d4d0ae49c1fbc17d9ae0cac3ffb8261b1e66de85d8cf72212d4c3cb6a520",
+      "matches": true
+    },
+    "misc/polkadotjs/README.md": {
+      "expectedSha256": "c1aeba696e3d0b9363fa1c5631da79ccf7ddad049fde607d498cd6a354366970",
+      "currentSha256": "c1aeba696e3d0b9363fa1c5631da79ccf7ddad049fde607d498cd6a354366970",
+      "matches": true
+    },
+    "misc/polkadotjs/runtime-fixes.md": {
+      "expectedSha256": "8b9f50e8195e6f1840ad6d10765ed9a29dc8b324b1ba10260bd4dec8a30afeac",
+      "currentSha256": "8b9f50e8195e6f1840ad6d10765ed9a29dc8b324b1ba10260bd4dec8a30afeac",
+      "matches": true
+    },
+    "node/Cargo.toml": {
+      "expectedSha256": "da7ff96461c37758c845eddeca5066431957ef4ac1cba8db7dbf93cc50a59f29",
+      "currentSha256": "da7ff96461c37758c845eddeca5066431957ef4ac1cba8db7dbf93cc50a59f29",
+      "matches": true
+    },
+    "node/chain_spec/Cargo.toml": {
+      "expectedSha256": "bb038c57f80c847e71836024425cf1aeccf26eb816f59b45b4afa008c0086d44",
+      "currentSha256": "bb038c57f80c847e71836024425cf1aeccf26eb816f59b45b4afa008c0086d44",
+      "matches": true
+    },
+    "runtime/Cargo.toml": {
+      "expectedSha256": "92c4486359210930e859baeaed2a9ebadbe654d2e6f6ec852b41448c59a54c3e",
+      "currentSha256": "92c4486359210930e859baeaed2a9ebadbe654d2e6f6ec852b41448c59a54c3e",
+      "matches": true
+    },
+    "runtime/src/lib.rs": {
+      "expectedSha256": "9da49d2c44259cf7c53595969261b2e4570fbaaf16d9897035ee2df1c7ba6f40",
+      "currentSha256": "9da49d2c44259cf7c53595969261b2e4570fbaaf16d9897035ee2df1c7ba6f40",
+      "matches": true
+    },
+    "runtime/src/migrations.rs": {
+      "expectedSha256": "893d4682a56d3d60c557c9abd96a09561835a2874a33bb7e172f7b4168f59ef9",
+      "currentSha256": "893d4682a56d3d60c557c9abd96a09561835a2874a33bb7e172f7b4168f59ef9",
+      "matches": true
+    },
+    "runtime/src/tests/mod.rs": {
+      "expectedSha256": "ff0d32155780baa7bac25bf0305f6582c3ae470192b02880f88a8352b45183b9",
+      "currentSha256": "ff0d32155780baa7bac25bf0305f6582c3ae470192b02880f88a8352b45183b9",
+      "matches": true
+    },
+    "runtime/src/tests/staking_reward_compatibility.rs": {
+      "expectedSha256": "64b6278422a647893d114d642e4bf6f513bcd6498fcff4671e822b79b58598cb",
+      "currentSha256": "64b6278422a647893d114d642e4bf6f513bcd6498fcff4671e822b79b58598cb",
+      "matches": true
+    },
+    "runtime/src/xor_fee_impls.rs": {
+      "expectedSha256": "cd99a9e4aa3c98a0581e94cb0c5965d56498f365835b37dfdd1217fe7531b102",
+      "currentSha256": "cd99a9e4aa3c98a0581e94cb0c5965d56498f365835b37dfdd1217fe7531b102",
+      "matches": true
+    },
+    "vendor/polkadot-sdk/frame/staking/PATCHES.md": {
+      "expectedSha256": "1d9a4d3154a51dac30224aa0b28a9b329f2c96f8562bf8b37e3914c8e2d47e74",
+      "currentSha256": "1d9a4d3154a51dac30224aa0b28a9b329f2c96f8562bf8b37e3914c8e2d47e74",
+      "matches": true
+    },
+    "vendor/polkadot-sdk/frame/staking/native-reward-compatibility.patch": {
+      "expectedSha256": "92185bf16c3bb1bfe77129dc9ffbc6ecf77f671580bcb1310f51902f605b67f2",
+      "currentSha256": "92185bf16c3bb1bfe77129dc9ffbc6ecf77f671580bcb1310f51902f605b67f2",
+      "matches": true
+    },
+    "vendor/polkadot-sdk/frame/staking/src/lib.rs": {
+      "expectedSha256": "4a68bf6db82309e2e7ce00654307376d846f09a1da42ea9c54937923d701c90a",
+      "currentSha256": "4a68bf6db82309e2e7ce00654307376d846f09a1da42ea9c54937923d701c90a",
+      "matches": true
+    },
+    "vendor/polkadot-sdk/frame/staking/src/mock.rs": {
+      "expectedSha256": "662b336ced89823c14514150f1cbf63d49405cfbf1238d1dc136374fcc201ba7",
+      "currentSha256": "662b336ced89823c14514150f1cbf63d49405cfbf1238d1dc136374fcc201ba7",
+      "matches": true
+    },
+    "vendor/polkadot-sdk/frame/staking/src/pallet/impls.rs": {
+      "expectedSha256": "3e53386c94d3d2d0d16cd183b707cee3c5e219a99f9d5c4758fc5abd611336ae",
+      "currentSha256": "3e53386c94d3d2d0d16cd183b707cee3c5e219a99f9d5c4758fc5abd611336ae",
+      "matches": true
+    },
+    "vendor/polkadot-sdk/frame/staking/src/tests.rs": {
+      "expectedSha256": "c49be50b2e9a633c073b8154821d20af747348c6262a95818469c71081d42e76",
+      "currentSha256": "c49be50b2e9a633c073b8154821d20af747348c6262a95818469c71081d42e76",
+      "matches": true
+    }
+  },
+  "sourcePatch": {
+    "file": "source.patch",
+    "sha256": "71f74c2f37da1af93fc5ebfc8e6d25f13770fea1ae81ab0ad3e76eb107047453",
+    "matchesRecordedSha256": true,
+    "matchesFullGitBinaryDiff": true,
+    "cleanBaseAppliedToTemporaryIndex": true,
+    "reconstructedTree": "04ccb953cc6413d4cf2be42b53523a8d2207bc79",
+    "matchesRecordedSourceTree": true,
+    "repositoryIndexAndObjectsUnmodified": true,
+    "method": [
+      "git read-tree <base>",
+      "git apply --cached --binary source.patch",
+      "git write-tree"
+    ],
+    "isolation": "Temporary GIT_INDEX_FILE and GIT_OBJECT_DIRECTORY, with existing repository objects read via GIT_ALTERNATE_OBJECT_DIRECTORIES; temporary files removed afterward."
+  },
+  "candidate": {
+    "file": "framenode-runtime-4.8.11.compact.compressed.wasm",
+    "bytes": 3055443,
+    "sha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+    "warmBuildOutput": "/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/wbuild/framenode-runtime/framenode_runtime.compact.compressed.wasm",
+    "warmBuildOutputSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+    "warmBuildOutputMatchesPackagedCandidate": true
+  },
+  "committedPackageIntegrity": {
+    "commit": "a05ecb8de476bcdf0212a1a646a1fbcac2f0b5c5",
+    "manifest": "runtime-upgrade-4.8.11/SHA256SUMS",
+    "verifiedFiles": 56,
+    "allCommittedFileHashesMatch": true,
+    "note": "This checks immutable Git blobs, so concurrent current-turn preflight refreshes do not invalidate the comparison. The refreshed working-tree package requires its final manifest and governance verifier pass."
+  },
+  "networkRequests": 0,
+  "signedExtrinsics": 0,
+  "submittedTransactions": 0,
+  "limitations": [
+    "No fresh Cargo build or native test was run by this source-equivalence audit. Existing evidence remains attributed to its actual source commit.",
+    "Final governance preparation must use refreshed live state and verify the complete refreshed package.",
+    "Linux validator binaries, production operator settings and production restarts are not validated here."
+  ]
+}

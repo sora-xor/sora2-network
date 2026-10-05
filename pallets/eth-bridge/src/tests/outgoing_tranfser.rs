@@ -135,7 +135,7 @@ fn should_approve_outgoing_transfer() {
 }
 
 #[test]
-fn approve_request_reports_non_finalizing_weight_and_duplicate_weight() {
+fn approve_request_retains_paid_metadata_and_rejects_duplicate_approvals() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -153,8 +153,6 @@ fn approve_request_reports_non_finalizing_weight_and_duplicate_weight() {
         let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
         let (_signer, account_id, seed) = &state.networks[&net_id].ocw_keypairs[0];
         let (ocw_public, signature_params) = approval_params(&request, hash, seed);
-        let expected_weight = <() as crate::WeightInfo>::approve_request();
-
         assert_ok!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account_id.clone()),
@@ -164,28 +162,25 @@ fn approve_request_reports_non_finalizing_weight_and_duplicate_weight() {
                 net_id,
             ),
             PostDispatchInfo {
-                pays_fee: Pays::No.into(),
-                actual_weight: Some(expected_weight),
+                pays_fee: Pays::Yes.into(),
+                actual_weight: None,
             }
         );
-        assert_ok!(
+        assert_err!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account_id.clone()),
                 ocw_public,
                 hash,
                 signature_params,
-                net_id,
+                net_id
             ),
-            PostDispatchInfo {
-                pays_fee: Pays::No.into(),
-                actual_weight: Some(expected_weight),
-            }
+            Error::DuplicateApproval
         );
     });
 }
 
 #[test]
-fn approve_request_reports_finalizing_weight_when_quorum_reached() {
+fn approve_request_retains_declared_weight_before_and_at_quorum() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -211,24 +206,38 @@ fn approve_request_reports_finalizing_weight_when_quorum_reached() {
 
         for (i, (_signer, account_id, seed)) in keypairs.iter().take(sigs_needed).enumerate() {
             let (ocw_public, signature_params) = approval_params(&request, hash, seed);
-            let actual_weight = if i + 1 == sigs_needed {
-                <() as crate::WeightInfo>::approve_request_finalize()
-            } else {
-                <() as crate::WeightInfo>::approve_request()
-            };
-
-            assert_ok!(
-                EthBridge::approve_request(
-                    RuntimeOrigin::signed(account_id.clone()),
-                    ocw_public,
-                    hash,
-                    signature_params,
-                    net_id,
-                ),
+            let info = crate::Call::<Runtime>::approve_request {
+                ocw_public: ocw_public.clone(),
+                hash,
+                signature_params: signature_params.clone(),
+                network_id: net_id,
+            }
+            .get_dispatch_info();
+            let post_info = EthBridge::approve_request(
+                RuntimeOrigin::signed(account_id.clone()),
+                ocw_public,
+                hash,
+                signature_params,
+                net_id,
+            )
+            .expect("valid peer approval succeeds");
+            assert_eq!(
+                post_info,
                 PostDispatchInfo {
-                    pays_fee: Pays::No.into(),
-                    actual_weight: Some(actual_weight),
+                    pays_fee: Pays::Yes.into(),
+                    actual_weight: None,
                 }
+            );
+            // Both branches retain the admission-validation work included in
+            // the declaration instead of refunding to dispatch-only weights.
+            assert_eq!(post_info.calc_actual_weight(&info), info.total_weight());
+            assert_eq!(
+                crate::RequestStatuses::<Runtime>::get(net_id, hash),
+                Some(if i + 1 == sigs_needed {
+                    RequestStatus::ApprovalsReady
+                } else {
+                    RequestStatus::Pending
+                })
             );
         }
     });
@@ -265,8 +274,8 @@ fn pending_peer_requires_one_additional_signature_before_finalizing() {
                     net_id,
                 ),
                 PostDispatchInfo {
-                    pays_fee: Pays::No.into(),
-                    actual_weight: Some(<() as crate::WeightInfo>::approve_request()),
+                    pays_fee: Pays::Yes.into(),
+                    actual_weight: None,
                 }
             );
         }
@@ -287,8 +296,8 @@ fn pending_peer_requires_one_additional_signature_before_finalizing() {
                 net_id,
             ),
             PostDispatchInfo {
-                pays_fee: Pays::No.into(),
-                actual_weight: Some(<() as crate::WeightInfo>::approve_request_finalize()),
+                pays_fee: Pays::Yes.into(),
+                actual_weight: None,
             }
         );
         assert_eq!(
@@ -300,7 +309,7 @@ fn pending_peer_requires_one_additional_signature_before_finalizing() {
 }
 
 #[test]
-fn approve_request_reports_non_finalizing_weight_after_quorum_is_already_reached() {
+fn approve_request_retains_declared_weight_after_quorum_is_already_reached() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -344,18 +353,15 @@ fn approve_request_reports_non_finalizing_weight_after_quorum_is_already_reached
         let (_signer, duplicate_account_id, duplicate_seed) = &keypairs[0];
         let (duplicate_public, duplicate_signature) =
             approval_params(&request, hash, duplicate_seed);
-        assert_ok!(
+        assert_err!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(duplicate_account_id.clone()),
                 duplicate_public,
                 hash,
                 duplicate_signature,
-                net_id,
+                net_id
             ),
-            PostDispatchInfo {
-                pays_fee: Pays::No.into(),
-                actual_weight: Some(<() as crate::WeightInfo>::approve_request()),
-            }
+            Error::DuplicateApproval
         );
         assert!(last_event().is_none());
         assert_eq!(
@@ -375,8 +381,8 @@ fn approve_request_reports_non_finalizing_weight_after_quorum_is_already_reached
                 net_id,
             ),
             PostDispatchInfo {
-                pays_fee: Pays::No.into(),
-                actual_weight: Some(<() as crate::WeightInfo>::approve_request()),
+                pays_fee: Pays::Yes.into(),
+                actual_weight: None,
             }
         );
         assert!(last_event().is_none());
@@ -963,13 +969,16 @@ fn same_peer_malleated_signature_does_not_advance_quorum() {
         ));
 
         System::reset_events();
-        assert_ok!(EthBridge::approve_request(
-            RuntimeOrigin::signed(account_id.clone()),
-            ocw_public,
-            hash,
-            malleated_signature,
-            net_id,
-        ));
+        assert_err!(
+            EthBridge::approve_request(
+                RuntimeOrigin::signed(account_id.clone()),
+                ocw_public,
+                hash,
+                malleated_signature,
+                net_id,
+            ),
+            Error::DuplicateApproval
+        );
         assert_eq!(
             crate::RequestApprovals::<Runtime>::get(net_id, &hash).len(),
             1

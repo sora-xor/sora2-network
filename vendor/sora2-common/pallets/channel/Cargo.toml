@@ -36,11 +36,11 @@ once_cell = { version = "1.5.2", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-pallet-balances = { workspace = true }
-tokens = { workspace = true }
-traits = { workspace = true }
-currencies = { workspace = true }
-sp-keyring = { workspace = true }
+pallet-balances = { workspace = true, features = ["std"] }
+tokens = { workspace = true, features = ["std"] }
+traits = { workspace = true, features = ["std"] }
+currencies = { workspace = true, features = ["std"] }
+sp-keyring = { workspace = true, features = ["std"] }
 rlp = { version = "0.5" }
 
 [features]

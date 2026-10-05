@@ -67,16 +67,16 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-use codec::{Decode, DecodeWithMemTracking, Encode};
+use codec::{Decode, DecodeLimit, DecodeWithMemTracking, Encode};
 use frame_support::{
-    dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, PostDispatchInfo},
-    traits::{Currency, Get, ReservableCurrency},
+    dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, Pays, PostDispatchInfo},
+    traits::{Contains, Currency, Get, ReservableCurrency},
     weights::{
         constants::{WEIGHT_REF_TIME_PER_MICROS, WEIGHT_REF_TIME_PER_NANOS},
         Weight,
     },
 };
-use frame_support::{ensure, Parameter};
+use frame_support::{ensure, BoundedVec, Parameter};
 use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::{self as system, ensure_signed, RawOrigin};
 use scale_info::prelude::vec;
@@ -100,11 +100,21 @@ pub use pallet::*;
 
 const WEIGHT_PER_MICROS: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_MICROS, 0);
 const WEIGHT_PER_NANOS: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_NANOS, 0);
+const MAX_CALL_DECODE_DEPTH: u32 = 32;
+
+/// Adapt the existing u16 membership limit to the bounded cancellation vote vector.
+pub struct CancellationVoteBound<T>(core::marker::PhantomData<T>);
+
+impl<T: Config> Get<u32> for CancellationVoteBound<T> {
+    fn get() -> u32 {
+        T::MaxSignatories::get() as u32
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use crate::weights::{pays_no, pays_no_with_maybe_weight, WeightInfo};
+    use crate::weights::WeightInfo;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use sp_std::fmt::Debug;
@@ -127,6 +137,10 @@ pub mod pallet {
             + From<frame_system::Call<Self>>
             + Debug;
 
+        /// Restrict calls executed through this pallet's fee-exempt dispatch route.
+        /// This is checked again at execution, including stored approved calls.
+        type CallFilter: Contains<<Self as Config>::RuntimeCall>;
+
         /// The currency mechanism.
         type Currency: ReservableCurrency<Self::AccountId>;
 
@@ -148,10 +162,9 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet.
         type WeightInfo: WeightInfo;
+        type MaxPendingOperations: Get<u32>;
+        type MaxCallBytes: Get<u32>;
     }
-
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -167,7 +180,7 @@ pub mod pallet {
         /// Total Complexity: O(M + logM)
         /// # <weight>
         #[pallet::call_index(0)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(T::DbWeight::get().reads_writes(4, 4).saturating_add(Weight::from_parts(50_000_000, 16_384)))]
         pub fn register_multisig(
             origin: OriginFor<T>,
             signatories: Vec<T::AccountId>,
@@ -188,63 +201,26 @@ pub mod pallet {
         /// Total complexity - O(M)
         /// # <weight>
         #[pallet::call_index(1)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(T::DbWeight::get().reads_writes(4, 4).saturating_add(Weight::from_parts(50_000_000, 16_384)))]
         pub fn remove_signatory(
             origin: OriginFor<T>,
             signatory: T::AccountId,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
-            <Accounts<T>>::mutate(&who, |opt| {
+            Accounts::<T>::try_mutate(&who, |opt| {
                 let multisig = opt.as_mut().ok_or(Error::<T>::UnknownMultisigAccount)?;
-                // remove the signatory
                 let pos = multisig
                     .signatories
                     .binary_search(&signatory)
                     .map_err(|_| Error::<T>::NotInSignatories)?;
-                multisig.signatories.remove(pos);
-                // remove the signatory's approvals
-                let mut total_weight = Weight::zero();
-                let updated_ops = Multisigs::<T>::iter_prefix(&who).filter_map(
-                    |(call_hash, mut operation): (_, Multisig<_, _, _>)| {
-                        let timepoint = operation.when;
-                        let search_res = operation.approvals.binary_search(&signatory);
-                        if let Ok(pos) = search_res {
-                            operation.approvals.remove(pos);
-                        }
-                        let approvals = operation.approvals.len() as u16;
-                        let threshold = multisig.threshold_num();
-                        if approvals >= threshold {
-                            if !DispatchedCalls::<T>::contains_key(&call_hash, timepoint) {
-                                if let Some(call) = Self::get_call(&call_hash, None) {
-                                    total_weight += Pallet::<T>::dispatch_call(
-                                        &who,
-                                        &who,
-                                        multisig.signatories.len(),
-                                        call_hash,
-                                        1,
-                                        timepoint,
-                                        call,
-                                    )
-                                    .unwrap_or(Weight::zero());
-                                    return Some((call_hash, operation, true));
-                                }
-                            }
-                        }
-                        if search_res.is_ok() {
-                            Some((call_hash, operation, false))
-                        } else {
-                            None
-                        }
-                    },
+                ensure!(
+                    multisig.signatories.len() > 1,
+                    Error::<T>::TooFewSignatories
                 );
-                for (hash, op, dispatched) in updated_ops {
-                    if dispatched {
-                        Multisigs::<T>::remove(&who, &hash);
-                    } else {
-                        Multisigs::<T>::insert(&who, &hash, op);
-                    }
-                }
-                pays_no::<_, DispatchError>(Ok(()))
+                multisig.signatories.remove(pos);
+                // Do not execute an unbounded queue during membership changes.
+                // Every later approval filters stored votes against current members.
+                Ok(().into())
             })
         }
 
@@ -260,7 +236,7 @@ pub mod pallet {
         /// Total complexity - O(M)
         /// # <weight>
         #[pallet::call_index(2)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(T::DbWeight::get().reads_writes(4, 4).saturating_add(Weight::from_parts(50_000_000, 16_384)))]
         pub fn add_signatory(
             origin: OriginFor<T>,
             new_member: T::AccountId,
@@ -272,9 +248,13 @@ pub mod pallet {
                     !multisig.signatories.contains(&new_member),
                     Error::<T>::AlreadyInSignatories
                 );
+                ensure!(
+                    multisig.signatories.len() < T::MaxSignatories::get() as usize,
+                    Error::<T>::TooManySignatories
+                );
                 multisig.signatories.push(new_member.clone());
                 multisig.signatories.sort();
-                pays_no::<_, DispatchError>(Ok(()))
+                Ok(().into())
             })
         }
 
@@ -296,7 +276,7 @@ pub mod pallet {
         /// - Plus Call Weight
         /// # </weight>
         #[pallet::call_index(3)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(weight_of::as_multi_threshold_1::<T>(call.encoded_size(), call.get_dispatch_info().total_weight()).saturating_add(Pallet::<T>::protocol_validation_weight()))]
         pub fn as_multi_threshold_1(
             origin: OriginFor<T>,
             id: T::AccountId,
@@ -313,7 +293,7 @@ pub mod pallet {
             let signatories = multisig.signatories;
             ensure!(signatories.contains(&who), Error::<T>::NotInSignatories);
 
-            pays_no_with_maybe_weight(Self::inner_as_multi_threshold_1(id, call, timepoint))
+            Self::inner_as_multi_threshold_1(who, id, call, timepoint)
         }
 
         /// Register approval for a dispatch to be made from a deterministic composite account if
@@ -375,7 +355,8 @@ pub mod pallet {
             let w = T::WeightInfo::as_multi_create(s, z)
             .max(T::WeightInfo::as_multi_approve(s, z))
             .max(T::WeightInfo::as_multi_complete(s, z));
-            w
+            w.saturating_add(*max_weight).saturating_add(Pallet::<T>::protocol_validation_weight())
+                .saturating_add(T::DbWeight::get().reads_writes(2, 2))
         })]
         pub fn as_multi(
             origin: OriginFor<T>,
@@ -394,17 +375,14 @@ pub mod pallet {
                 multisig.is_signatory(&who),
                 Error::<T>::SenderNotInSignatories
             );
-            pays_no_with_maybe_weight(
-                Self::operate(
-                    multisig,
-                    threshold,
-                    who,
-                    id,
-                    maybe_timepoint,
-                    CallOrHash::Call(call, store_call),
-                    max_weight,
-                )
-                .map_err(|e| (None, e)),
+            Self::operate(
+                multisig,
+                threshold,
+                who,
+                id,
+                maybe_timepoint,
+                CallOrHash::Call(call, store_call),
+                max_weight,
             )
         }
 
@@ -448,7 +426,7 @@ pub mod pallet {
         ///     - Write: Multisig Storage, [Caller Account]
         /// # </weight>
         #[pallet::call_index(5)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(T::WeightInfo::as_multi_approve(T::MaxSignatories::get() as u32, T::MaxCallBytes::get()).saturating_add(*max_weight).saturating_add(Pallet::<T>::protocol_validation_weight()).saturating_add(T::DbWeight::get().reads_writes(2, 2)))]
         pub fn approve_as_multi(
             origin: OriginFor<T>,
             id: T::AccountId,
@@ -465,17 +443,14 @@ pub mod pallet {
                 multisig.is_signatory(&who),
                 Error::<T>::SenderNotInSignatories
             );
-            pays_no_with_maybe_weight(
-                Self::operate(
-                    multisig,
-                    threshold,
-                    who,
-                    id,
-                    maybe_timepoint,
-                    CallOrHash::Hash(call_hash),
-                    max_weight,
-                )
-                .map_err(|e| (None, e)),
+            Self::operate(
+                multisig,
+                threshold,
+                who,
+                id,
+                maybe_timepoint,
+                CallOrHash::Hash(call_hash),
+                max_weight,
             )
         }
 
@@ -507,7 +482,7 @@ pub mod pallet {
         ///     - Write: Multisig Storage, [Caller Account], Refund Account, Calls
         /// # </weight>
         #[pallet::call_index(6)]
-        #[pallet::weight(Weight::from_parts(0, 0))]
+        #[pallet::weight(T::DbWeight::get().reads_writes(4, 4).saturating_add(Weight::from_parts(50_000_000, 16_384)).saturating_add(Pallet::<T>::protocol_validation_weight()))]
         pub fn cancel_as_multi(
             origin: OriginFor<T>,
             id: T::AccountId,
@@ -527,7 +502,7 @@ pub mod pallet {
             ensure!(m.when == timepoint, Error::<T>::WrongTimepoint);
             ensure!(m.depositor == who, Error::<T>::NotOwner);
 
-            <Multisigs<T>>::remove(&id, &call_hash);
+            Self::remove_pending_operation(&id, &call_hash);
             Self::clear_call(&call_hash);
 
             Self::deposit_event(Event::MultisigCancelled(who, timepoint, id, call_hash));
@@ -560,6 +535,13 @@ pub mod pallet {
         ),
         /// A multisig operation has been cancelled. [cancelling, timepoint, multisig, call_hash]
         MultisigCancelled(
+            T::AccountId,
+            BridgeTimepoint<BlockNumberFor<T>>,
+            T::AccountId,
+            [u8; 32],
+        ),
+        /// A current member approved cancellation of an existing operation.
+        MultisigCancellationApproval(
             T::AccountId,
             BridgeTimepoint<BlockNumberFor<T>>,
             T::AccountId,
@@ -611,6 +593,9 @@ pub mod pallet {
         SignatoriesAreNotUniqueOrUnordered,
         /// Call with the given hash was already dispatched.
         AlreadyDispatched,
+        CallTooLarge,
+        TooManyPendingOperations,
+        TooManyPendingOperationsByProposer,
     }
 
     /// Multisignature accounts.
@@ -628,6 +613,45 @@ pub mod pallet {
         Blake2_128Concat,
         [u8; 32],
         Multisig<BlockNumberFor<T>, BalanceOf<T>, T::AccountId>,
+    >;
+
+    /// Additive admission accounting: legacy operations have no marker and
+    /// remain resumable without consuming the new-operation capacity.
+    #[pallet::storage]
+    pub type NewPendingOperations<T: Config> =
+        StorageMap<_, Twox64Concat, T::AccountId, u32, ValueQuery>;
+    #[pallet::storage]
+    pub type CountedNewOperations<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, [u8; 32], ()>;
+
+    /// Fair admission accounting for operations created after proposer quotas were added.
+    /// Earlier operations have no proposer marker and never debit this counter on removal.
+    #[pallet::storage]
+    pub type PendingOperationsByProposer<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::AccountId,
+        Twox64Concat,
+        T::AccountId,
+        u32,
+        ValueQuery,
+    >;
+    #[pallet::storage]
+    pub type ProposerCountedOperations<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, [u8; 32], ()>;
+
+    /// Votes are bounded by current membership and attached to an existing operation's timepoint.
+    #[pallet::storage]
+    pub type CancellationApprovals<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        [u8; 32],
+        (
+            BridgeTimepoint<BlockNumberFor<T>>,
+            BoundedVec<T::AccountId, CancellationVoteBound<T>>,
+        ),
     >;
 
     #[pallet::storage]
@@ -760,7 +784,7 @@ impl<AccountId: PartialEq + Ord + Encode> MultisigAccount<AccountId> {
     /// Number of signatories needed for a proposal execution.
     pub fn threshold_num(&self) -> u16 {
         let signatories_count = self.signatories.len() as u16;
-        signatories_count - (signatories_count - 1) / 3
+        signatories_count.saturating_sub(signatories_count.saturating_sub(1) / 3)
     }
 }
 
@@ -811,6 +835,15 @@ enum CallOrHash {
 }
 
 impl<T: Config> Pallet<T> {
+    pub fn protocol_validation_weight() -> Weight {
+        T::DbWeight::get()
+            .reads_writes(40, 5)
+            .saturating_add(Weight::from_parts(
+                5_000_000_000,
+                T::MaxCallBytes::get() as u64 + 262_144,
+            ))
+    }
+
     pub fn register_multisig_inner(
         creator: T::AccountId,
         signatories: Vec<T::AccountId>,
@@ -823,6 +856,7 @@ impl<T: Config> Pallet<T> {
             Error::<T>::MultisigAlreadyExists
         );
         let max_sigs = T::MaxSignatories::get() as usize;
+        ensure!(!signatories.is_empty(), Error::<T>::TooFewSignatories);
         ensure!(
             signatories.len() <= max_sigs,
             Error::<T>::TooManySignatories
@@ -863,7 +897,7 @@ impl<T: Config> Pallet<T> {
         maybe_timepoint: Option<BridgeTimepoint<BlockNumberFor<T>>>,
         call_or_hash: CallOrHash,
         max_weight: Weight,
-    ) -> Result<Option<Weight>, DispatchError> {
+    ) -> DispatchResultWithPostInfo {
         let signatories = multisig.signatories;
         let signatories_len = signatories.len();
 
@@ -872,6 +906,10 @@ impl<T: Config> Pallet<T> {
             CallOrHash::Call(call, should_store) => {
                 let call_hash = blake2_256(&call);
                 let call_len = call.len();
+                ensure!(
+                    call_len <= T::MaxCallBytes::get() as usize,
+                    Error::<T>::CallTooLarge
+                );
                 (call_hash, call_len, Some(call), should_store)
             }
             CallOrHash::Hash(h) => (h, 0, None, false),
@@ -888,6 +926,8 @@ impl<T: Config> Pallet<T> {
             );
 
             // Ensure that either we have not yet signed or that it is at threshold.
+            m.approvals
+                .retain(|member| signatories.binary_search(member).is_ok());
             let mut approvals = m.approvals.len() as u16;
             // We only bother with the approval if we're below threshold.
             let maybe_pos = m
@@ -913,8 +953,7 @@ impl<T: Config> Pallet<T> {
                     max_weight.all_gte(call.get_dispatch_info().total_weight()),
                     Error::<T>::WeightTooLow
                 );
-                <Multisigs<T>>::remove(&id, call_hash);
-                let post_info = <Pallet<T>>::dispatch_call(
+                Self::dispatch_call(
                     &who,
                     &id,
                     signatories_len,
@@ -922,12 +961,15 @@ impl<T: Config> Pallet<T> {
                     call_len,
                     timepoint,
                     call,
-                );
-                Ok(post_info)
+                )
             } else {
                 // We cannot dispatch the call now; either it isn't available, or it is, but we
                 // don't have threshold approvals even with our signature.
 
+                ensure!(
+                    maybe_pos.is_some() || (store && !Calls::<T>::contains_key(call_hash)),
+                    Error::<T>::AlreadyApproved
+                );
                 // Store the call if desired.
                 let stored = if let Some(data) = maybe_call.filter(|_| store) {
                     Self::store_call_and_reserve(
@@ -935,8 +977,7 @@ impl<T: Config> Pallet<T> {
                         &call_hash,
                         data,
                         BalanceOf::<T>::zero(),
-                    );
-                    true
+                    )
                 } else {
                     false
                 };
@@ -958,22 +999,40 @@ impl<T: Config> Pallet<T> {
                 }
 
                 // Call is not made, so the actual weight does not include call
-                Ok(Some(weight_of::as_multi::<T>(
-                    signatories_len,
-                    call_len,
-                    Weight::zero(),
-                    stored, // Call stored?
-                    false,  // No refund
-                )))
+                Ok((
+                    Some(
+                        weight_of::as_multi::<T>(
+                            signatories_len,
+                            call_len,
+                            Weight::zero(),
+                            stored,
+                            false,
+                        )
+                        .saturating_add(Pallet::<T>::protocol_validation_weight()),
+                    ),
+                    Pays::Yes,
+                )
+                    .into())
             }
         } else {
+            // Only operations created after this upgrade consume capacity.
+            // Never scan or count the legacy backlog during admission.
+            ensure!(
+                NewPendingOperations::<T>::get(&id) < T::MaxPendingOperations::get(),
+                Error::<T>::TooManyPendingOperations
+            );
+            Self::ensure_proposer_capacity(&id, &who, signatories_len)?;
+            let timepoint = maybe_timepoint.unwrap_or_else(|| Self::thischain_timepoint());
+            ensure!(
+                !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+                Error::<T>::AlreadyDispatched
+            );
             // Just start the operation by recording it in storage.
             let deposit = T::DepositBase::get() + T::DepositFactor::get() * threshold.into();
 
             // Store the call if desired.
             let stored = if let Some(data) = maybe_call.filter(|_| store) {
-                Self::store_call_and_reserve(who.clone(), &call_hash, data, deposit);
-                true
+                Self::store_call_and_reserve(who.clone(), &call_hash, data, deposit)
             } else {
                 false
             };
@@ -994,38 +1053,51 @@ impl<T: Config> Pallet<T> {
                     approvals: vec![who.clone()],
                 },
             );
+            CountedNewOperations::<T>::insert(&id, call_hash, ());
+            NewPendingOperations::<T>::mutate(&id, |count| *count = count.saturating_add(1));
+            ProposerCountedOperations::<T>::insert(&id, call_hash, ());
+            PendingOperationsByProposer::<T>::mutate(&id, &who, |count| {
+                *count = count.saturating_add(1)
+            });
             Self::deposit_event(Event::NewMultisig(who, id, call_hash));
             // Call is not made, so we can return that weight
-            return Ok(Some(weight_of::as_multi::<T>(
-                signatories_len,
-                call_len,
-                Weight::zero(),
-                stored, // Call stored?
-                false,  // No refund
-            )));
+            return Ok((
+                Some(
+                    weight_of::as_multi::<T>(
+                        signatories_len,
+                        call_len,
+                        Weight::zero(),
+                        stored,
+                        false,
+                    )
+                    .saturating_add(Pallet::<T>::protocol_validation_weight()),
+                ),
+                Pays::Yes,
+            )
+                .into());
         }
     }
 
     fn inner_as_multi_threshold_1(
+        who: T::AccountId,
         id: T::AccountId,
         call: Box<<T as Config>::RuntimeCall>,
         timepoint: BridgeTimepoint<BlockNumberFor<T>>,
-    ) -> Result<Option<Weight>, (Option<Weight>, DispatchError)> {
+    ) -> DispatchResultWithPostInfo {
+        ensure!(
+            T::CallFilter::contains(call.as_ref()),
+            frame_system::Error::<T>::CallFiltered
+        );
         let (call_len, call_hash) = call.using_encoded(|c| (c.len(), blake2_256(c)));
         ensure!(
-            !DispatchedCalls::<T>::contains_key(&call_hash, timepoint.clone()),
-            (None, Error::<T>::AlreadyDispatched.into())
+            call_len <= T::MaxCallBytes::get() as usize,
+            Error::<T>::CallTooLarge
         );
-        DispatchedCalls::<T>::insert(&call_hash, timepoint, ());
-        let origin = RawOrigin::Signed(id).into();
-        let result = call.dispatch(origin);
-        result
-            .map(|post_dispatch_info| {
-                post_dispatch_info.actual_weight.map(|actual_weight| {
-                    weight_of::as_multi_threshold_1::<T>(call_len, actual_weight)
-                })
-            })
-            .map_err(|err| (err.post_info.actual_weight, err.error.into()))
+        ensure!(
+            !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
+            Error::<T>::AlreadyDispatched
+        );
+        Self::dispatch_call(&who, &id, 1, call_hash, call_len, timepoint, *call)
     }
 
     fn dispatch_call(
@@ -1036,30 +1108,167 @@ impl<T: Config> Pallet<T> {
         call_len: usize,
         timepoint: BridgeTimepoint<BlockNumberFor<T>>,
         call: <T as Config>::RuntimeCall,
-    ) -> Option<Weight> {
-        // Clean up storage before executing call to avoid an possibility of reentrancy
-        // attack.
+    ) -> DispatchResultWithPostInfo {
+        let allowed = T::CallFilter::contains(&call);
+        Self::remove_pending_operation(id, &call_hash);
         Self::clear_call(&call_hash);
-
-        let origin = RawOrigin::Signed(id.clone()).into();
-        let result = call.dispatch(origin);
-        DispatchedCalls::<T>::insert(&call_hash, timepoint.clone(), ());
+        let info = call.get_dispatch_info();
+        let result = if allowed {
+            call.clone().dispatch(RawOrigin::Signed(id.clone()).into())
+        } else {
+            Err(frame_system::Error::<T>::CallFiltered.into())
+        };
+        DispatchedCalls::<T>::insert(&call_hash, timepoint, ());
         Self::deposit_event(Event::MultisigExecuted(
             who.clone(),
             timepoint,
             id.clone(),
             call_hash,
-            result.err().map(|x| x.error),
+            result.as_ref().err().map(|error| error.error),
         ));
-        get_result_weight(result).map(|actual_weight| {
-            weight_of::as_multi::<T>(
-                signatories_len,
-                call_len,
-                actual_weight,
-                true, // Call is removed
-                true, // User is refunded
+        let actual = frame_support::dispatch::extract_actual_weight(&result, &info);
+        let weight = if signatories_len == 1 {
+            weight_of::as_multi_threshold_1::<T>(call_len, actual)
+        } else {
+            weight_of::as_multi::<T>(signatories_len, call_len, actual, true, true)
+        }
+        .saturating_add(Pallet::<T>::protocol_validation_weight());
+        // Retain successful outer dispatch/event semantics while preserving the
+        // actual fee outcome. Threshold-one continues to return the inner error.
+        match result {
+            Err(error) if signatories_len == 1 => {
+                Err(frame_support::dispatch::DispatchErrorWithPostInfo {
+                    post_info: (Some(weight), Pays::Yes).into(),
+                    error: error.error,
+                })
+            }
+            _ => Ok((Some(weight), Pays::Yes).into()),
+        }
+    }
+
+    fn remove_pending_operation(id: &T::AccountId, hash: &[u8; 32]) {
+        let operation = Multisigs::<T>::take(id, hash);
+        CancellationApprovals::<T>::remove(id, hash);
+        if CountedNewOperations::<T>::take(id, hash).is_some() {
+            NewPendingOperations::<T>::mutate(id, |count| *count = count.saturating_sub(1));
+        }
+        if ProposerCountedOperations::<T>::take(id, hash).is_some() {
+            if let Some(operation) = operation {
+                PendingOperationsByProposer::<T>::mutate(id, operation.depositor, |count| {
+                    *count = count.saturating_sub(1)
+                });
+            }
+        }
+    }
+
+    fn ensure_proposer_capacity(
+        id: &T::AccountId,
+        who: &T::AccountId,
+        signatories_len: usize,
+    ) -> Result<(), DispatchError> {
+        let quota = T::MaxPendingOperations::get()
+            .checked_div(signatories_len as u32)
+            .unwrap_or(0)
+            .max(1);
+        ensure!(
+            PendingOperationsByProposer::<T>::get(id, who) < quota,
+            Error::<T>::TooManyPendingOperationsByProposer
+        );
+        Ok(())
+    }
+
+    /// Conservative bound for repeated admission checks, current-member votes and final cleanup.
+    /// Cancellation neither decodes nor executes the target call and bypasses creation quotas.
+    pub fn cancellation_weight() -> Weight {
+        Self::protocol_validation_weight()
+            .saturating_mul(3)
+            .saturating_add(
+                T::DbWeight::get()
+                    .reads_writes(3u64.saturating_mul(T::MaxSignatories::get() as u64 + 5), 7),
             )
-        })
+    }
+
+    /// Validate a cancellation vote without writing storage. The additional predicate lets
+    /// the bridge require its own current peer membership as well as multisig membership.
+    pub fn validate_cancellation(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+        hash: &[u8; 32],
+        is_eligible: impl Fn(&T::AccountId) -> bool,
+    ) -> Result<(), DispatchError> {
+        Self::cancellation_votes(who, id, timepoint, hash, &is_eligible).map(drop)
+    }
+
+    /// Current members may cancel an orphaned or invalid proposal by quorum without
+    /// the depositor's cooperation, stored call bytes, or execution of its payload.
+    pub fn approve_cancellation(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+        hash: &[u8; 32],
+        is_eligible: impl Fn(&T::AccountId) -> bool,
+    ) -> Result<(), DispatchError> {
+        let (votes, threshold) = Self::cancellation_votes(who, id, timepoint, hash, &is_eligible)?;
+        if votes.len() >= threshold as usize {
+            Self::remove_pending_operation(id, hash);
+            Self::clear_call(hash);
+            Self::deposit_event(Event::MultisigCancelled(
+                who.clone(),
+                timepoint,
+                id.clone(),
+                *hash,
+            ));
+        } else {
+            CancellationApprovals::<T>::insert(id, hash, (timepoint, votes));
+            Self::deposit_event(Event::MultisigCancellationApproval(
+                who.clone(),
+                timepoint,
+                id.clone(),
+                *hash,
+            ));
+        }
+        Ok(())
+    }
+
+    fn cancellation_votes(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+        hash: &[u8; 32],
+        is_eligible: &impl Fn(&T::AccountId) -> bool,
+    ) -> Result<(BoundedVec<T::AccountId, CancellationVoteBound<T>>, u16), DispatchError> {
+        let account = Accounts::<T>::get(id).ok_or(Error::<T>::UnknownMultisigAccount)?;
+        ensure!(
+            !account.signatories.is_empty(),
+            Error::<T>::TooFewSignatories
+        );
+        ensure!(
+            account.is_signatory(who) && is_eligible(who),
+            Error::<T>::NotInSignatories
+        );
+        let operation = Multisigs::<T>::get(id, hash).ok_or(Error::<T>::NotFound)?;
+        ensure!(operation.when == timepoint, Error::<T>::WrongTimepoint);
+        // Dispatch markers are shared across multisig accounts. Another account
+        // may have dispatched this hash while this account's proposal remains
+        // pending. Cleanup must still work; it never executes the call or clears
+        // the marker. A completed target itself is already rejected as NotFound.
+        let mut votes = CancellationApprovals::<T>::get(id, hash)
+            .filter(|(when, _)| *when == timepoint)
+            .map(|(_, votes)| votes)
+            .unwrap_or_default();
+        votes.retain(|voter| account.is_signatory(voter) && is_eligible(voter));
+        let threshold = account.threshold_num();
+        match votes.binary_search(who) {
+            Ok(_) => ensure!(
+                votes.len() >= threshold as usize,
+                Error::<T>::AlreadyApproved
+            ),
+            Err(pos) => votes
+                .try_insert(pos, who.clone())
+                .map_err(|_| Error::<T>::TooManySignatories)?,
+        }
+        Ok((votes, threshold))
     }
 
     /// Place a call's encoded data in storage, reserving funds as appropriate.
@@ -1072,26 +1281,131 @@ impl<T: Config> Pallet<T> {
         hash: &[u8; 32],
         data: OpaqueCall,
         other_deposit: BalanceOf<T>,
-    ) {
+    ) -> bool {
         if !Calls::<T>::contains_key(hash) {
             let deposit = other_deposit
                 + T::DepositBase::get()
                 + T::DepositFactor::get() * BalanceOf::<T>::from(((data.len() + 31) / 32) as u32);
             Calls::<T>::insert(&hash, (data, who, deposit));
+            true
+        } else {
+            false
         }
+    }
+
+    /// Bounded call decoding for the runtime's peer-protocol admission check.
+    pub fn decode_call(
+        hash: &[u8; 32],
+        maybe_known: Option<&[u8]>,
+    ) -> Option<<T as Config>::RuntimeCall> {
+        if maybe_known
+            .map(|data| data.len() > T::MaxCallBytes::get() as usize)
+            .unwrap_or(false)
+        {
+            return None;
+        }
+        Self::get_call(hash, maybe_known)
+    }
+
+    /// Read-only counterpart of operation admission. Called before a fee exemption
+    /// is granted, so replay and duplicate approvals never reach execution.
+    // Mirror the multisig call arguments plus authenticated admission context,
+    // keeping validation and dispatch aligned without changing the call interface.
+    #[allow(clippy::too_many_arguments)]
+    pub fn validate_protocol_operation(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: Option<BridgeTimepoint<BlockNumberFor<T>>>,
+        hash: &[u8; 32],
+        call: &<T as Config>::RuntimeCall,
+        store_call: bool,
+        max_weight: Weight,
+        threshold_one: bool,
+    ) -> Result<(), DispatchError> {
+        let account = Accounts::<T>::get(id).ok_or(Error::<T>::UnknownMultisigAccount)?;
+        ensure!(
+            !account.signatories.is_empty(),
+            Error::<T>::TooFewSignatories
+        );
+        ensure!(account.is_signatory(who), Error::<T>::NotInSignatories);
+        ensure!(
+            call.encoded_size() <= T::MaxCallBytes::get() as usize,
+            Error::<T>::CallTooLarge
+        );
+        ensure!(
+            T::CallFilter::contains(call),
+            frame_system::Error::<T>::CallFiltered
+        );
+        let threshold = account.threshold_num();
+        if threshold_one {
+            ensure!(threshold == 1, Error::<T>::TooManySignatories);
+            let timepoint = timepoint.ok_or(Error::<T>::NoTimepoint)?;
+            ensure!(
+                !DispatchedCalls::<T>::contains_key(hash, timepoint),
+                Error::<T>::AlreadyDispatched
+            );
+            return Ok(());
+        }
+        ensure!(threshold > 1, Error::<T>::MinimumThreshold);
+        if let Some(mut operation) = Multisigs::<T>::get(id, hash) {
+            let timepoint = timepoint.ok_or(Error::<T>::NoTimepoint)?;
+            ensure!(operation.when == timepoint, Error::<T>::WrongTimepoint);
+            ensure!(
+                !DispatchedCalls::<T>::contains_key(hash, timepoint),
+                Error::<T>::AlreadyDispatched
+            );
+            operation
+                .approvals
+                .retain(|peer| account.is_signatory(peer));
+            let already = operation.approvals.contains(who);
+            let count = operation.approvals.len() + usize::from(!already);
+            if count >= threshold as usize {
+                ensure!(
+                    max_weight.all_gte(call.get_dispatch_info().total_weight()),
+                    Error::<T>::WeightTooLow
+                );
+            } else {
+                ensure!(
+                    !already || (store_call && !Calls::<T>::contains_key(hash)),
+                    Error::<T>::AlreadyApproved
+                );
+            }
+        } else {
+            ensure!(
+                NewPendingOperations::<T>::get(id) < T::MaxPendingOperations::get(),
+                Error::<T>::TooManyPendingOperations
+            );
+            Self::ensure_proposer_capacity(id, who, account.signatories.len())?;
+            let timepoint = timepoint.unwrap_or_else(Self::thischain_timepoint);
+            ensure!(
+                !DispatchedCalls::<T>::contains_key(hash, timepoint),
+                Error::<T>::AlreadyDispatched
+            );
+        }
+        Ok(())
     }
 
     /// Attempt to decode and return the call, provided by the user or from storage.
     fn get_call(hash: &[u8; 32], maybe_known: Option<&[u8]>) -> Option<<T as Config>::RuntimeCall> {
+        let decode = |data: &[u8]| {
+            if data.len() > T::MaxCallBytes::get() as usize {
+                return None;
+            }
+            <T as Config>::RuntimeCall::decode_all_with_depth_limit(
+                MAX_CALL_DECODE_DEPTH,
+                &mut &data[..],
+            )
+            .ok()
+        };
         maybe_known.map_or_else(
-            || Calls::<T>::get(hash).and_then(|(data, ..)| Decode::decode(&mut &data[..]).ok()),
-            |data| Decode::decode(&mut &data[..]).ok(),
+            || Calls::<T>::get(hash).and_then(|(data, ..)| decode(&data)),
+            decode,
         )
     }
 
     /// Attempt to remove a call from storage, returning any deposit on it to the owner.
     fn clear_call(hash: &[u8; 32]) {
-        let _ = Calls::<T>::take(hash);
+        Calls::<T>::remove(hash);
     }
 
     /// The current `BridgeTimepoint` at Thischain.
@@ -1108,15 +1422,5 @@ impl<T: Config> Pallet<T> {
             height: MultiChainHeight::Sidechain(height),
             index,
         }
-    }
-}
-
-/// Return the weight of a dispatch call result as an `Option`.
-///
-/// Will return the weight regardless of what the state of the result is.
-fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
-    match result {
-        Ok(post_info) => post_info.actual_weight,
-        Err(err) => err.post_info.actual_weight,
     }
 }

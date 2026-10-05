@@ -326,7 +326,7 @@ pub fn assert_incoming_request_registration_failed(
             incoming_request.clone(),
         ),
         PostDispatchInfo {
-            pays_fee: Pays::No.into(),
+            pays_fee: Pays::Yes.into(),
             actual_weight: None
         }
     );

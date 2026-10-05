@@ -1,0 +1,75 @@
+{
+  "status": "passed",
+  "checkedSignedReports": 9,
+  "candidateSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+  "rehearsalSha256": "d633326a233041c9367c264d4ef35f91057b273510b5fd15863b2eeaf36f6d90",
+  "scriptSha256": "fcfa12a99dfd34fff942d7a189f274853451a2293bb7a2d181d37fcf9ed955fe",
+  "allFeeEventsMatchPayerBalanceDecrease": true,
+  "allFailedReportsAreDuplicateOffenceReport": true,
+  "networkRequests": 0,
+  "checks": [
+    {
+      "method": "babe.reportEquivocation",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362387991946668400714",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "babe.reportEquivocation duplicate",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362501916733161224785",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362387991946668400714",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned duplicate",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362501916733161224785",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocation",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362912967362764364176",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocation duplicate",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "363026892149257188248",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362912967362764364176",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned duplicate",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "363026892149257188248",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "utility.batchAll([babe.reportEquivocationUnsigned])",
+      "payer": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+      "actualFee": "362447194398717266356",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    }
+  ]
+}

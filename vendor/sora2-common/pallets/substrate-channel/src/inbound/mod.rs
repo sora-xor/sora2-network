@@ -30,10 +30,10 @@
 
 //! Channel for passing messages from ethereum to substrate.
 
-use bridge_types::traits::{MessageDispatch, Verifier};
+use bridge_types::traits::{MessageDispatch, MessageDispatchOutcome, Verifier};
 use bridge_types::types::MessageId;
 use bridge_types::SubNetworkId;
-use frame_support::dispatch::DispatchResult;
+use frame_support::dispatch::{DispatchResult, Pays};
 use frame_support::traits::Get;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -55,14 +55,12 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_support::weights::Weight;
     use frame_system::pallet_prelude::*;
-    use log::warn;
     use sp_std::prelude::*;
 
     #[pallet::config]
     pub trait Config:
         frame_system::Config<RuntimeEvent: From<Event<Self>>> + pallet_timestamp::Config
     {
-
         /// Verifier module for message verification.
         type Verifier: Verifier;
 
@@ -128,6 +126,25 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Read-only admission for a peer-authenticated fresh Substrate batch.
+        pub fn validate_submission(
+            network_id: SubNetworkId,
+            commitment: &bridge_types::GenericCommitment<
+                T::MaxMessagesPerCommit,
+                T::MaxMessagePayloadSize,
+            >,
+            proof: &<T::Verifier as Verifier>::Proof,
+        ) -> DispatchResult {
+            let bridge_types::GenericCommitment::Sub(batch) = commitment else {
+                frame_support::fail!(Error::<T>::InvalidCommitment);
+            };
+            ensure!(
+                ChannelNonces::<T>::get(network_id).checked_add(1) == Some(batch.nonce),
+                Error::<T>::InvalidNonce
+            );
+            T::Verifier::verify(network_id.into(), commitment.hash(), proof)
+        }
+
         fn submit_weight(
             commitment: &bridge_types::GenericCommitment<
                 T::MaxMessagesPerCommit,
@@ -152,6 +169,9 @@ pub mod pallet {
             <T as Config>::WeightInfo::submit()
                 .saturating_add(commitment_weight)
                 .saturating_add(proof_weight)
+                // Signed admission may verify in validation, preparation and dispatch.
+                // Keep a conservative bound until new submission benchmarks are collected.
+                .saturating_mul(3)
         }
     }
 
@@ -168,23 +188,30 @@ pub mod pallet {
             >,
             proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
-            ensure_none(origin)?;
-            let commitment_hash = commitment.hash();
+            let raw: Result<frame_system::RawOrigin<T::AccountId>, OriginFor<T>> = origin.into();
+            match raw {
+                Ok(frame_system::RawOrigin::Signed(_) | frame_system::RawOrigin::None) => {}
+                _ => return Err(sp_runtime::DispatchError::BadOrigin.into()),
+            }
+            Self::validate_submission(network_id, &commitment, &proof)?;
             let bridge_types::GenericCommitment::Sub(sub_commitment) = commitment else {
                 frame_support::fail!(Error::<T>::InvalidCommitment);
             };
-            // submit commitment to verifier for verification
-            T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
             // Verify batch nonce
             <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if sub_commitment.nonce != *nonce + 1 {
+                if nonce.checked_add(1) != Some(sub_commitment.nonce) {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
-                    *nonce += 1;
+                    *nonce = sub_commitment.nonce;
                     Ok(())
                 }
             })?;
 
+            let mut outcome = if sub_commitment.messages.is_empty() {
+                MessageDispatchOutcome::Failed
+            } else {
+                MessageDispatchOutcome::Applied
+            };
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
                 let message_id = MessageId::batched(
                     network_id.into(),
@@ -192,49 +219,49 @@ pub mod pallet {
                     sub_commitment.nonce,
                     idx as u64,
                 );
-                T::MessageDispatch::dispatch(
+                if T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
                     message.timepoint,
                     &message.payload,
                     (),
-                );
+                ) == MessageDispatchOutcome::Failed
+                {
+                    outcome = MessageDispatchOutcome::Failed;
+                }
             }
-            Ok(().into())
+            // Local failure consumes the authenticated batch nonce and remains free.
+            let _ = outcome;
+            Ok(Pays::No.into())
         }
     }
 
     #[pallet::validate_unsigned]
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
-        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            if let Call::submit {
+            let Call::submit {
                 network_id,
                 commitment,
                 proof,
             } = call
-            {
-                let nonce = ChannelNonces::<T>::get(network_id);
-                // If messages batch already submitted
-                if commitment.nonce() != nonce + 1 {
-                    return InvalidTransaction::BadProof.into();
-                }
-                let commitment_hash = commitment.hash();
-                T::Verifier::verify((*network_id).into(), commitment_hash, proof).map_err(|e| {
-                    warn!("Bad submit proof received: {:?}", e);
-                    InvalidTransaction::BadProof
-                })?;
-                ValidTransaction::with_tag_prefix("SubstrateBridgeChannelSubmit")
-                    .priority(T::UnsignedPriority::get())
-                    .longevity(T::UnsignedLongevity::get())
-                    .and_provides((network_id, commitment_hash))
-                    .propagate(true)
-                    .build()
-            } else {
-                warn!("Unknown unsigned call, can't validate");
-                InvalidTransaction::Call.into()
-            }
+            else {
+                return InvalidTransaction::Call.into();
+            };
+            Self::validate_submission(*network_id, commitment, proof)
+                .map_err(|_| InvalidTransaction::BadProof)?;
+            ValidTransaction::with_tag_prefix("SubstrateBridgeAuthenticatedSubmit")
+                .priority(T::UnsignedPriority::get())
+                .longevity(T::UnsignedLongevity::get())
+                .and_provides((network_id, commitment.hash()))
+                .propagate(true)
+                .build()
+        }
+
+        fn pre_dispatch(
+            call: &Self::Call,
+        ) -> Result<(), sp_runtime::transaction_validity::TransactionValidityError> {
+            Self::validate_unsigned(TransactionSource::InBlock, call).map(drop)
         }
     }
 }

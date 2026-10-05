@@ -1,0 +1,160 @@
+# SORA 4.8.12 governance runbook
+
+This package contains six **unsigned review calls** for runtime spec **134**,
+transaction version **131**. The final Wasm is 3,066,913 bytes:
+`de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221` (SHA-256).
+
+The exact `system.setCode` proposal is 3,066,919 bytes with hash
+`0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313`. All six calls passed independent
+offline decoding and binding to this Wasm. Finalized governance preflight block
+**27,911,262** recorded council threshold **4** and technical committee
+threshold **3**. Use `council-settings.json` for exact current call files,
+lengths, weights and the unrequested-preimage deposit estimate. Obtain a fresh
+signed-account fee/deposit quote before submission.
+
+The finalized external queue at block **27,911,262** contains **4.8.11**. Settings record
+`activationReady: false`; the guarded route rejects replacement of an occupied
+queue. Resolve the existing proposal through normal governance, then refresh
+finalized baseline/governance state. If 4.8.11 enacts, repeat metadata and exact
+Wasm validation against its deployed runtime before regenerating this package.
+No direct supersession alternative is provided.
+
+## Operator readiness before activation
+
+1. Confirm Kensetsu permits repayment/closure and Apollo permits repayment,
+   withdrawal and earned-reward claims. Exercise partial repayment, full collateral
+   return, a last-lender withdrawal and an unfunded reward pot. New deposits,
+   borrowing and liquidation must reject even through wrappers. Both automatic
+   maintenance workers are disabled; no keeper keys, funding or nonce-queue
+   rollout is needed. Existing Kensetsu debt continues accruing interest under existing terms. Repayment or closure books accrued interest with the existing treasury accounting; no new borrowing is permitted. Apollo interest terms are retained;
+   received protocol interest is reserved, excluded from lendable liquidity and
+   recorded for separately authorized distribution. Earned APOLLO rewards remain
+   independently claimable after principal exits.
+2. Switch BABE/GRANDPA equivocation reporters to signed funded submission.
+   Legacy report call names/arguments remain available, but bare reports are
+   rejected and automatic unsigned submission APIs return no transaction.
+3. Confirm bridge client proof, nonce and recovery behavior. Registered peers
+   need zero XOR for authenticated protocol operations, including accepted
+   local failures. Invalid proofs and replay reject before execution. Generic
+   and substrate inbound clients may retain valid bare submissions. Accepted
+   failed or partially applied work consumes its protocol nonce; use recovery
+   rather than replaying it. Arbitrary peer calls remain paid.
+4. Review bounded pending/stored-call readiness. New pending multisig operations
+   are capped at 128 per account. Each proposer has
+   `max(1, floor(128 / current multisig member count))` slots (32 with four
+   members); stored calls are capped at 16,384 bytes. Legacy
+   operation counts are grandfathered through additive tracking; the decode
+   cap also applies to old calls. Inspect the complete backlog and arrange
+   recovery for any oversized entry, which normal approval/execution rejects.
+   Current peer quorum can cancel abandoned entries without decoding them,
+   even at full capacity and after the proposer leaves; see the procedure below.
+   Membership removal requires explicit weighted dispatch for stored calls.
+   Numeric old deposit
+   fields are not currency reserves; no incoming fee escrow/bond is introduced.
+   The public readiness scan is bounded and is not complete backlog or operator
+   attestation.
+5. Tell legacy Iroha claimants to fund their signing account with enough XOR for
+   the quoted transaction fee before claiming VAL. Successful and failed attempts
+   both pay; a successful claim does not waive the fee. Zero-XOR submissions are
+   rejected before execution. The undeployed sponsorship calls, grants and payer
+   hooks are removed. Existing claim records, ownership checks and pending
+   multisig completion behavior remain intact.
+
+These prerequisites and the occupied queue keep the package review-only until
+fresh finalized checks and operator readiness are established.
+
+## Cancel an abandoned bridge multisig proposal
+
+1. Resolve the network's current bridge account and inspect its
+   `BridgeMultisig.Multisigs(bridgeAccount, callHash)` entry. Use the stored
+   `when` timepoint exactly. `callHash` is the multisig payload hash, not the
+   external transaction hash.
+2. Current bridge peers submit
+   `ethBridge.cancelPendingMultisig(networkId, callHash, timepoint)` directly.
+   These authenticated calls need no XOR. A voter must also be a current
+   signatory of that multisig account. Votes from removed members are discarded.
+3. Collect the current multisig quorum and verify `MultisigCancelled` and removal
+   of the pending entry. This works while all new-operation slots are occupied
+   and does not require the original proposer or stored call bytes. A dispatch
+   marker left by another multisig cannot block cleanup; the marker is preserved.
+4. Verify released counters before admitting replacement work. Cancellation
+   never executes the original payload. It does not clear a consumed canonical
+   incoming transaction hash, reset failed incoming status, retry a transfer or
+   establish external-chain inclusion. Use the bridge's separate recovery
+   procedure where needed. Duplicate or stale cancellation votes are rejected.
+
+## Verify and refresh evidence
+
+Verify the final ZIP companion SHA-256 and extracted `SHA256SUMS`. From
+`validation`, use the pinned dependency lock (`npm ci` if needed):
+
+```sh
+python3 verify-package.py
+node verify-governance-calls.cjs
+```
+
+The read-only public endpoint is `wss://mof2.sora.org`. If deployed code/metadata
+changes, capture and repeat validation against the new baseline before creating
+calls:
+
+```sh
+node capture-public-state.cjs
+node verify-wasm-compatibility.cjs
+node rehearse-equivocation-fees.cjs
+python3 verify-fee-events.py
+node rehearse-fee-policy.cjs --synthetic-fixtures
+node check-bridge-readiness.cjs
+```
+
+The synthetic option enables only recorded local fixtures. The rehearsals use
+mock Wasm signatures and do not establish operator rollout or production
+consensus authoring. Native real-signature checks remain required.
+
+Refresh finalized governance state and regenerate calls/settings immediately
+before use, even if deployed code/metadata is unchanged:
+
+```sh
+node prepare-package.cjs
+node prepare-governance-calls.cjs
+python3 prepare-council-settings.py
+node verify-governance-calls.cjs
+python3 finalize-docs.py --require-final-gates
+python3 make-manifest.py
+python3 verify-package.py
+```
+
+Preparation scripts allow read-only RPC and never sign or submit transactions.
+An occupied queue is recorded as a prerequisite and only the guarded review
+route is encoded. A blacklisted candidate stops preparation. Refresh signed
+payer balances/fees and actual motion close bounds separately.
+
+## Normal governance sequence
+
+1. Note the exact `set-code-call.hex` bytes as a preimage, using the final
+   `preimage-note-call.hex`. Obtain a fresh signer fee/deposit quote. Successful
+   first requested-preimage provision is refunded; an unrequested preimage may
+   require its storage deposit. After 4.8.12 activation, signed repeated
+   provision is charged.
+2. Use the guarded council call named by `council-settings.json`. Its atomic
+   `utility.batchAll([democracy.externalPropose(target),
+   democracy.externalProposeMajority(target)])` refuses an occupied queue and
+   rolls back on failure. Verify exact proposal hash/length and fresh membership.
+3. Read the actual motion index from `council.Proposed`, cast explicit votes,
+   and query stored motion, current membership, weight and length before close.
+   Prepared close bounds are estimates; unset motion indices are intentional.
+4. Confirm inner execution succeeded and `democracy.NextExternal` contains the
+   exact final candidate. Then use the prepared technical committee fast-track
+   call, obtain its motion index from events, collect votes and refresh bounds.
+5. Read the actual referendum index from `democracy.Started`. Normal referendum
+   approval and enactment must install the exact code; preparation performs none
+   of these chain actions.
+6. After enactment and block initialization, verify spec 134, transaction
+   version 131, candidate code hash and the complete fee policy. Check funded
+   signed reporter operation, retired lending exits, free useful cancellations, zero-XOR authenticated
+   bridge handling, pre-execution replay rejection, and XOR-paid legacy migration
+   including successful VAL claims. Confirm sponsorship calls/storage are absent.
+
+The preceding 4.8.11 reward publication migration is included. From captured
+spec 132, verify retained completed-era VAL budgets are published to standard
+staking reward storage while claims/ledgers remain intact. Actual payouts
+remain VAL.

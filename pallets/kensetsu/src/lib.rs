@@ -63,21 +63,28 @@ mod compounding;
 pub mod migrations;
 pub mod weights;
 
+/// Dedicated operational signing key for funded liquidation and accrual workers.
+pub mod crypto {
+    use sp_core::crypto::KeyTypeId;
+    use sp_runtime::app_crypto::{app_crypto, sr25519};
+    use sp_runtime::{MultiSignature, MultiSigner};
+
+    pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"keep");
+    app_crypto!(sr25519, KEY_TYPE);
+
+    pub struct AuthorityId;
+    impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for AuthorityId {
+        type RuntimeAppPublic = Public;
+        type GenericSignature = sp_core::sr25519::Signature;
+        type GenericPublic = sp_core::sr25519::Public;
+    }
+}
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"kensetsu";
 /// Tech account for fees.
 pub const TECH_ACCOUNT_TREASURY_MAIN: &[u8] = b"treasury";
 /// Tech account for collaterals.
 pub const TECH_ACCOUNT_DEPOSITORY_MAIN: &[u8] = b"depository";
-
-/// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
-const VALIDATION_ERROR_ACCRUE: u8 = 1;
-const VALIDATION_ERROR_ACCRUE_NO_DEBT: u8 = 2;
-const VALIDATION_ERROR_CHECK_SAFE: u8 = 3;
-const VALIDATION_ERROR_CDP_SAFE: u8 = 4;
-/// Liquidation limit reached
-const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 5;
-/// Accrue limit reached
-const VALIDATION_ERROR_ACCRUE_LIMIT: u8 = 6;
 
 /// Staiblecoin may be pegged either to Oracle (like XAU, BTC) or Price tools AssetId (like XOR,
 /// DAI).
@@ -221,7 +228,10 @@ pub mod pallet {
     };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
-    use frame_system::offchain::{CreateBare, SubmitTransaction};
+    use frame_support::transactional;
+    use frame_system::offchain::{
+        AppCrypto, CreateSignedTransaction, CreateTransactionBase, SigningTypes,
+    };
     use frame_system::pallet_prelude::*;
     use pallet_timestamp as timestamp;
     use sp_arithmetic::traits::{CheckedDiv, CheckedMul, CheckedSub, Saturating};
@@ -243,6 +253,9 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Resets liquidation flag.
         fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
+            if T::RepaymentOnly::get() {
+                return Weight::zero();
+            }
             LiquidatedThisBlock::<T>::put(false);
             AccruesThisBlock::<T>::put(0);
             T::DbWeight::get().writes(2)
@@ -252,6 +265,9 @@ pub mod pallet {
         ///
         /// Accrues fees and calls liquidations
         fn offchain_worker(block_number: BlockNumberFor<T>) {
+            if T::RepaymentOnly::get() {
+                return;
+            }
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -259,13 +275,13 @@ pub mod pallet {
             let mut unsafe_cdp_count = 0usize;
             let max_accrues = T::MaxAccruesPerBlock::get();
             let mut accruable_cdp_count = 0usize;
-            for (cdp_id, cdp) in <CDPDepository<T>>::iter() {
+            for (cdp_id, _) in <CDPDepository<T>>::iter() {
                 if let Ok(true) = Self::is_accruable(&cdp_id) {
                     accruable_cdp_count = accruable_cdp_count.saturating_add(1);
                 }
 
                 // Liquidation
-                match Self::check_cdp_is_safe(&cdp) {
+                match Self::projected_cdp(cdp_id).and_then(|cdp| Self::check_cdp_is_safe(&cdp)) {
                     Ok(true) => {}
                     Ok(false) => {
                         debug!("CDP {:?} unsafe", cdp_id);
@@ -290,13 +306,7 @@ pub mod pallet {
                 let submit_accrue = |cdp_id: CdpId| {
                     debug!("Accrue for CDP {:?}", cdp_id);
                     let call = Call::<T>::accrue { cdp_id };
-                    let tx = T::create_bare(call.into());
-                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                        debug!(
-                            "Failed in offchain_worker send accrue(cdp_id: {:?}): {:?}",
-                            cdp_id, err
-                        );
-                    }
+                    Self::submit_keeper_call(call);
                 };
 
                 for cdp_id in CDPDepository::<T>::iter()
@@ -332,9 +342,13 @@ pub mod pallet {
                         // Random bias by modulus operation is acceptable here
                         let random_id = random_number as usize % unsafe_cdp_count;
                         CDPDepository::<T>::iter()
-                            .filter_map(|(cdp_id, cdp)| {
-                                matches!(Self::check_cdp_is_safe(&cdp), Ok(false))
-                                    .then_some(cdp_id)
+                            .filter_map(|(cdp_id, _)| {
+                                matches!(
+                                    Self::projected_cdp(cdp_id)
+                                        .and_then(|cdp| Self::check_cdp_is_safe(&cdp)),
+                                    Ok(false)
+                                )
+                                .then_some(cdp_id)
                             })
                             .nth(random_id)
                             .map_or_else(
@@ -344,13 +358,7 @@ pub mod pallet {
                                 |cdp_id| {
                                     debug!("Liquidation of CDP {:?}", cdp_id);
                                     let call = Call::<T>::liquidate { cdp_id };
-                                    let tx = T::create_bare(call.into());
-                                    if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                                        warn!(
-                                            "Failed in offchain_worker send liquidate(cdp_id: {:?}): {:?}",
-                                            cdp_id, err
-                                        );
-                                    }
+                                    Self::submit_keeper_call(call);
                                 },
                             );
                     }
@@ -363,9 +371,18 @@ pub mod pallet {
     }
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + technical::Config + timestamp::Config + CreateBare<Call<Self>>
+    pub trait Config: frame_system::Config<RuntimeCall: From<Call<Self>>>
+        + technical::Config
+        + timestamp::Config
+        + SigningTypes
+        + CreateSignedTransaction<Call<Self>>
+        + CreateTransactionBase<Call<Self>, RuntimeCall = <Self as frame_system::Config>::RuntimeCall>
     {
+        /// A funded `keep` sr25519 key; separate from validator consensus keys.
+        type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+        /// Retire user-facing activity except repayment and closing existing CDPs.
+        #[pallet::constant]
+        type RepaymentOnly: Get<bool>;
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: Randomness<Self::Hash, frame_system::pallet_prelude::BlockNumberFor<Self>>;
@@ -686,6 +703,8 @@ pub mod pallet {
         CollateralNotRegisteredInPriceTools,
         /// Accrue limit reached
         AccrueLimit,
+        /// Only repayment and closure of existing CDPs are available.
+        RepaymentOnly,
     }
 
     #[pallet::call]
@@ -714,6 +733,7 @@ pub mod pallet {
             _cdp_type: CdpType,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             ensure!(
                 borrow_amount_min <= borrow_amount_max,
@@ -768,14 +788,16 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
         ///  will be transferred.
+        #[transactional]
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
+        #[pallet::weight(<T as Config>::WeightInfo::close_cdp().saturating_add(T::DbWeight::get().reads(1)))]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            let cdp = Self::get_cdp_updated(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
 
+            let cdp = Self::get_cdp_updated(cdp_id)?;
             Self::repay_debt_internal(cdp_id, cdp.debt)?;
             Self::delete_cdp(cdp_id)
         }
@@ -795,6 +817,7 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             Self::deposit_internal(&who, cdp_id, collateral_amount)
         }
 
@@ -816,6 +839,7 @@ pub mod pallet {
             borrow_amount_max: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             ensure!(
                 borrow_amount_min <= borrow_amount_max,
                 Error::<T>::WrongBorrowAmounts
@@ -830,11 +854,12 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to repay debt for.
         /// - `amount`: The amount to repay against the CDP's debt.
+        #[transactional]
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::get_cdp_updated(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             Self::repay_debt_internal(cdp_id, amount)
         }
@@ -843,11 +868,13 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `_origin`: The origin of the transaction (unused).
+        /// - `origin`: A signed, funded keeper submitting the transaction.
         /// - `cdp_id`: The ID of the CDP to be liquidated.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
-        pub fn liquidate(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+        pub fn liquidate(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+            ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             // only one liquidation per block
             ensure!(
                 Self::check_liquidation_available(),
@@ -875,11 +902,13 @@ pub mod pallet {
         ///
         /// ## Parameters
         ///
-        /// - `_origin`: The origin of the transaction (unused).
+        /// - `origin`: A signed, funded keeper submitting the transaction.
         /// - `cdp_id`: The ID of the CDP to accrue interest on.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
-        pub fn accrue(_origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+        pub fn accrue(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+            ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             ensure!(
                 AccruesThisBlock::<T>::get() < T::MaxAccruesPerBlock::get(),
                 Error::<T>::AccrueLimit
@@ -1033,6 +1062,7 @@ pub mod pallet {
             amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             technical::Pallet::<T>::transfer_in(
                 &stablecoin_asset_id,
                 &who,
@@ -1304,61 +1334,36 @@ pub mod pallet {
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
 
-        /// It is allowed to call accrue() and liquidate() only if it fulfills conditions.
-        fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            match call {
-                Call::accrue { cdp_id } => {
-                    if matches!(source, TransactionSource::InBlock)
-                        && AccruesThisBlock::<T>::get() >= T::MaxAccruesPerBlock::get()
-                    {
-                        return InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE_LIMIT).into();
-                    }
-
-                    if Self::is_accruable(cdp_id)
-                        .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE))?
-                    {
-                        ValidTransaction::with_tag_prefix("Kensetsu::accrue")
-                            .priority(T::UnsignedPriority::get())
-                            .longevity(T::UnsignedLongevity::get())
-                            .and_provides([&cdp_id])
-                            .propagate(true)
-                            .build()
-                    } else {
-                        InvalidTransaction::Custom(VALIDATION_ERROR_ACCRUE_NO_DEBT).into()
-                    }
-                }
-                Call::liquidate { cdp_id } => {
-                    if matches!(source, TransactionSource::InBlock)
-                        && !Self::check_liquidation_available()
-                    {
-                        return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT)
-                            .into();
-                    }
-
-                    let cdp = Self::get_cdp_updated(*cdp_id)
-                        .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?;
-                    if !Self::check_cdp_is_safe(&cdp)
-                        .map_err(|_| InvalidTransaction::Custom(VALIDATION_ERROR_CHECK_SAFE))?
-                    {
-                        ValidTransaction::with_tag_prefix("Kensetsu::liquidate")
-                            .priority(T::UnsignedPriority::get())
-                            .longevity(T::UnsignedLongevity::get())
-                            .and_provides([&cdp_id])
-                            .propagate(true)
-                            .build()
-                    } else {
-                        InvalidTransaction::Custom(VALIDATION_ERROR_CDP_SAFE).into()
-                    }
-                }
-                _ => {
-                    warn!("Unknown unsigned call {:?}", call);
-                    InvalidTransaction::Call.into()
-                }
-            }
+        fn validate_unsigned(
+            _source: TransactionSource,
+            _call: &Self::Call,
+        ) -> TransactionValidity {
+            InvalidTransaction::Call.into()
         }
     }
 
     impl<T: Config> Pallet<T> {
+        fn submit_keeper_call(call: Call<T>) {
+            if let Err(error) = common::keeper::submit::<T, _, T::AuthorityId>(call) {
+                warn!("Funded keeper transaction submission failed: {:?}", error);
+            }
+        }
+
+        /// Project interest without mutating debt, supply, bad debt or treasury balances.
+        pub(crate) fn projected_cdp(
+            cdp_id: CdpId,
+        ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
+        {
+            let (fee, coefficient) = Self::calculate_stability_fee(cdp_id)?;
+            let mut cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+            cdp.debt = cdp
+                .debt
+                .checked_add(fee)
+                .ok_or(Error::<T>::ArithmeticError)?;
+            cdp.interest_coefficient = coefficient;
+            Ok(cdp)
+        }
+
         /// Registers asset id for stablecoin.
         fn register_asset_id(
             stablecoin_parameters: &StablecoinParameters<AssetIdOf<T>>,
@@ -1920,6 +1925,14 @@ pub mod pallet {
             cdp_id: CdpId,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
         {
+            if T::RepaymentOnly::get() {
+                let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+                // Debt-free owners must be able to recover collateral without
+                // accrual calculations or any treasury mint operation.
+                if cdp.debt.is_zero() {
+                    return Ok(cdp);
+                }
+            }
             let (mut stability_fee, new_coefficient) = Self::calculate_stability_fee(cdp_id)?;
             let cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;

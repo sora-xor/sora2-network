@@ -267,3 +267,33 @@ fn it_works_finalize_asset_registration() {
         ));
     });
 }
+
+#[test]
+fn mint_failure_reports_transport_success_but_preserves_failed_application_outcome() {
+    new_tester().execute_with(|| {
+        let origin: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
+            SubNetworkId::Liberland,
+            H256([7; 32]),
+            bridge_types::GenericTimepoint::Unknown,
+            (),
+        ))
+        .into();
+        let outcome = SubstrateApp::mint_with_outcome(
+            origin,
+            AssetId::Custom(1),
+            GenericAccount::Sora(Keyring::Alice.into()),
+            Keyring::Alice.into(),
+            GenericBalance::Substrate(1_000_000_000_000_000_000),
+        )
+        .unwrap();
+        assert_eq!(
+            outcome,
+            bridge_types::traits::MessageDispatchOutcome::Failed
+        );
+        assert!(System::events().iter().any(|event| event.event
+            == crate::mock::RuntimeEvent::SubstrateApp(crate::Event::FailedToMint(
+                H256([7; 32]),
+                Error::<Test>::TokenIsNotRegistered.into()
+            ))));
+    });
+}

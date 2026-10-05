@@ -35,7 +35,7 @@ use bridge_types::{
 };
 use frame_support::{assert_noop, assert_ok, traits::Hooks};
 use frame_system::RawOrigin;
-use sp_keyring::AccountKeyring as Keyring;
+use sp_keyring::sr25519::Keyring;
 use sp_runtime::{AccountId32, BoundedVec, DispatchError};
 
 #[test]

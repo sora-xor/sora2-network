@@ -522,6 +522,10 @@ pub mod pallet {
         ForbiddenStatusToUpdateOrderBook,
         /// Order Book is locked for technical maintenance. Try again later.
         OrderBookIsLocked,
+        /// A cancellation batch and every order-book group must contain orders.
+        EmptyCancellationBatch,
+        /// The cancellation batch exceeds the configured per-user order limit.
+        TooManyCancellationOrders,
     }
 
     #[pallet::hooks]
@@ -914,20 +918,30 @@ pub mod pallet {
         /// # Note:
         /// Network fee isn't charged if orders are successfully cancelled by the owner
         #[pallet::call_index(6)]
-        #[pallet::weight({
-            let cancel_limit_order = <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
-                .max(<T as Config>::WeightInfo::cancel_limit_order_last_expiration());
-            let limit_orders_count: u64 = limit_orders_to_cancel
-                .iter()
-                .fold(0, |count, (_, order_ids)| count.saturating_add(order_ids.len() as u64));
-
-            cancel_limit_order.saturating_mul(limit_orders_count)
-        })]
+        #[pallet::weight(Pallet::<T>::cancellation_batch_weight(limit_orders_to_cancel))]
         pub fn cancel_limit_orders_batch(
             origin: OriginFor<T>,
             limit_orders_to_cancel: Vec<(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)>,
         ) -> DispatchResultWithPostInfo {
             let who = ensure_signed(origin)?;
+            let max_orders = T::MaxOpenedLimitOrdersPerUser::get() as usize;
+            ensure!(
+                limit_orders_to_cancel.len() <= max_orders,
+                Error::<T>::TooManyCancellationOrders
+            );
+            ensure!(
+                !limit_orders_to_cancel.is_empty(),
+                Error::<T>::EmptyCancellationBatch
+            );
+            let mut order_count = 0usize;
+            for (_, order_ids) in &limit_orders_to_cancel {
+                ensure!(!order_ids.is_empty(), Error::<T>::EmptyCancellationBatch);
+                order_count = order_count.saturating_add(order_ids.len());
+                ensure!(
+                    order_count <= max_orders,
+                    Error::<T>::TooManyCancellationOrders
+                );
+            }
             let mut data = CacheDataLayer::<T>::new();
 
             for (order_book_id, order_ids) in limit_orders_to_cancel {
@@ -1154,6 +1168,33 @@ impl<T: Config> Delegate<T::AccountId, AssetIdOf<T>, T::OrderId, T::DEXId, Momen
 }
 
 impl<T: Config> Pallet<T> {
+    fn cancellation_batch_weight(
+        groups: &[(OrderBookId<AssetIdOf<T>, T::DEXId>, Vec<T::OrderId>)],
+    ) -> Weight {
+        let max_orders = T::MaxOpenedLimitOrdersPerUser::get() as usize;
+        // Refuse oversized inputs before scanning their groups. Normal inputs are
+        // charged one existing worst-case cancellation time unit for every group
+        // as well as every order, conservatively covering validation and outer-loop
+        // overhead, including rejected empty groups. Group validation only reads
+        // decoded input, so it adds no storage proof. Empty batches have nonzero time.
+        if groups.len() > max_orders {
+            return Weight::from_parts(u64::MAX, u64::MAX);
+        }
+        let orders = groups.iter().fold(0u64, |count, (_, ids)| {
+            count.saturating_add(ids.len() as u64)
+        });
+        if orders > max_orders as u64 {
+            return Weight::from_parts(u64::MAX, u64::MAX);
+        }
+        let cancellation = <T as Config>::WeightInfo::cancel_limit_order_first_expiration()
+            .max(<T as Config>::WeightInfo::cancel_limit_order_last_expiration());
+        let validation = Weight::from_parts(cancellation.ref_time(), 0)
+            .saturating_mul((groups.len() as u64).max(1));
+        cancellation
+            .saturating_mul(orders)
+            .saturating_add(validation)
+    }
+
     pub fn tech_account_for_order_book(
         order_book_id: &OrderBookId<AssetIdOf<T>, T::DEXId>,
     ) -> <T as technical::Config>::TechAccountId {

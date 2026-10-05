@@ -1,0 +1,93 @@
+   Compiling substrate-bridge-channel v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/substrate-channel)
+   Compiling bridge-channel v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/channel)
+warning: unused import: `bridge_types::evm::AdditionalEVMInboundData`
+ --> pallets/dispatch/src/mock.rs:2:5
+  |
+2 | use bridge_types::evm::AdditionalEVMInboundData;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `codec::Encode`
+ --> pallets/dispatch/src/mock.rs:6:5
+  |
+6 | use codec::Encode;
+  |     ^^^^^^^^^^^^^
+
+warning: `dispatch` (lib test) generated 2 warnings (run `cargo fix --lib -p dispatch --tests` to apply 2 suggestions)
+   Compiling substrate-bridge-app v0.1.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/sora2-common/pallets/substrate-app)
+    Finished `release` profile [optimized] target(s) in 10.03s
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/bridge_channel-5cf676a3da285732)
+
+running 15 tests
+test outbound::test::test_genesis_config_builds ... ok
+test inbound::test::test_genesis_config_builds ... ok
+test outbound::test::test_submit_exceeds_payload_limit ... ok
+test inbound::test::unauthenticated_or_wrong_type_submission_is_rejected_before_execution ... ok
+test outbound::test::test_submit_fails_on_nonce_overflow ... ok
+test inbound::test::test_submit_with_invalid_network_id ... ok
+test inbound::test::test_submit ... ok
+test outbound::test::evm_queue_total_gas_is_cleared_after_commit ... ok
+test outbound::test::test_submit ... ok
+test inbound::test::test_submit_with_invalid_nonce ... ok
+test inbound::test::signed_status_report_refunds_authenticated_remote_failure_reporting ... ok
+test outbound::test::test_submit_exceeds_queue_limit ... ok
+test inbound::test::authenticated_deliveries_stay_free_and_consume_failed_batch_nonces ... ok
+test inbound::test::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+test outbound::test::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/dispatch-3d14f1d3a180090a)
+
+running 6 tests
+test mock::test_genesis_config_builds ... ok
+test tests::trailing_payload_is_a_failed_application ... ok
+test tests::test_message_rejected ... ok
+test tests::test_dispatch_bridge_message ... ok
+test tests::test_message_decode_failed ... ok
+test mock::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/substrate_bridge_app-a4682bba1db0a120)
+
+running 12 tests
+test mock::test_genesis_config_builds ... ok
+test tests::it_works_finalize_asset_registration ... ok
+test tests::it_works_incoming_thischain_asset_registration ... ok
+test tests::it_works_register_sidechain_asset ... ok
+test tests::it_works_deposit_event_mint_not_registered ... ok
+test tests::mint_failure_reports_transport_success_but_preserves_failed_application_outcome ... ok
+test tests::it_fails_mint_no_precision ... ok
+test tests::it_fails_mint_wrong_amount ... ok
+test tests::it_fails_burn_token_not_registered ... ok
+test tests::it_works_burn ... ok
+test tests::it_fails_burn_unknown_presicion ... ok
+test mock::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/Users/takemiyamakoto/dev/.sora2-pr1366-target/release/deps/substrate_bridge_channel-7f88bb26b10c90bc)
+
+running 17 tests
+test inbound::test::test_genesis_config_builds ... ok
+test outbound::mock::test_genesis_config_builds ... ok
+test outbound::test::test_update_interval_works ... ok
+test inbound::test::unauthenticated_or_wrong_type_submission_is_rejected_before_execution ... ok
+test inbound::test::test_submit ... ok
+test outbound::test::test_submit_fails_on_nonce_overflow ... ok
+test outbound::test::test_submit_exceeds_payload_limit ... ok
+test inbound::test::test_submit_with_invalid_network_id ... ok
+test outbound::test::test_update_interval_bad_origin ... ok
+test outbound::test::test_submit ... ok
+test outbound::test::test_submit_exceeds_queue_limit ... ok
+test inbound::test::test_submit_with_invalid_nonce ... ok
+test outbound::test::test_update_interval_zero_interval ... ok
+test outbound::test::test_on_finalize ... ok
+test inbound::test::authenticated_deliveries_stay_free_and_consume_failed_batch_nonces ... ok
+test inbound::test::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+test outbound::mock::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

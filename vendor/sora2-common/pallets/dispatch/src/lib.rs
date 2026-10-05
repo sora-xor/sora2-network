@@ -51,7 +51,7 @@ use sp_std::prelude::*;
 use bridge_types::traits;
 
 use bridge_types::H256;
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeAll, Encode};
 
 #[cfg(feature = "runtime-benchmarks")]
 pub trait BenchmarkHelper<T: pallet::Config<I>, I: 'static = ()> {
@@ -74,23 +74,14 @@ impl<T: pallet::Config<I>, I: 'static> BenchmarkHelper<T, I> for () {
 }
 
 #[derive(
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    Encode,
-    Decode,
-    Debug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Copy, Clone, PartialEq, Eq, Encode, Decode, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 pub struct RawOrigin<OriginOutput: traits::BridgeOriginOutput> {
     pub origin: OriginOutput,
 }
 
-impl<OriginOutput> codec::DecodeWithMemTracking for RawOrigin<OriginOutput>
-where
-    OriginOutput: traits::BridgeOriginOutput + codec::Decode,
+impl<OriginOutput> codec::DecodeWithMemTracking for RawOrigin<OriginOutput> where
+    OriginOutput: traits::BridgeOriginOutput + codec::Decode
 {
 }
 
@@ -160,7 +151,6 @@ pub mod pallet {
     pub trait Config<I: 'static = ()>:
         frame_system::Config<RuntimeEvent: From<Event<Self, I>>>
     {
-
         type OriginOutput: traits::BridgeOriginOutput;
 
         /// The overarching origin type.
@@ -177,7 +167,8 @@ pub mod pallet {
             + Dispatchable<
                 RuntimeOrigin = <Self as Config<I>>::Origin,
                 PostInfo = frame_support::dispatch::PostDispatchInfo,
-            > + GetDispatchInfo;
+            > + GetDispatchInfo
+            + traits::DispatchWithOutcome;
 
         /// The pallet will filter all incoming calls right before they're dispatched. If this filter
         /// rejects the call, special event (`Event::MessageRejected`) is emitted.
@@ -220,18 +211,18 @@ pub mod pallet {
             timepoint: GenericTimepoint,
             payload: &[u8],
             additional: AdditionalOf<T, I>,
-        ) {
-            let call = match <T as Config<I>>::Call::decode(&mut &payload[..]) {
+        ) -> traits::MessageDispatchOutcome {
+            let call = match <T as Config<I>>::Call::decode_all(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
                     Self::deposit_event(Event::MessageDecodeFailed(message_id));
-                    return;
+                    return traits::MessageDispatchOutcome::Failed;
                 }
             };
 
             if !T::CallFilter::contains(&call) {
                 Self::deposit_event(Event::MessageRejected(message_id));
-                return;
+                return traits::MessageDispatchOutcome::Failed;
             }
 
             let origin = RawOrigin::new(<T::OriginOutput as traits::BridgeOriginOutput>::new(
@@ -241,16 +232,18 @@ pub mod pallet {
                 additional,
             ))
             .into();
-            let result = call.dispatch(origin);
+            let result = traits::DispatchWithOutcome::dispatch_with_outcome(call, origin);
+            let outcome = result
+                .as_ref()
+                .copied()
+                .unwrap_or(traits::MessageDispatchOutcome::Failed);
 
-            Self::deposit_event(Event::MessageDispatched(
-                message_id,
-                result.map(drop).map_err(|e| e.error),
-            ));
+            Self::deposit_event(Event::MessageDispatched(message_id, result.map(drop)));
+            outcome
         }
 
         fn dispatch_weight(payload: &[u8]) -> Weight {
-            let call = match <T as Config<I>>::Call::decode(&mut &payload[..]) {
+            let call = match <T as Config<I>>::Call::decode_all(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
                     return <T as Config<I>>::WeightInfo::dispatch_decode_failed();

@@ -1,0 +1,423 @@
+{
+  "status": "prepared",
+  "checkedAt": "2026-10-05T09:30:48.585Z",
+  "endpoint": "wss://mof2.sora.org",
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "signed": false,
+  "remoteRpcMethods": {
+    "chain_getBlockHash": 1,
+    "state_getRuntimeVersion": 3,
+    "system_chain": 1,
+    "system_properties": 1,
+    "rpc_methods": 1,
+    "state_call": 4,
+    "state_subscribeRuntimeVersion": 1,
+    "chain_getFinalizedHead": 1,
+    "chain_getHeader": 2,
+    "state_getStorage": 13,
+    "state_getMetadata": 1
+  },
+  "calls": {
+    "utility-guarded-external-majority-call": {
+      "file": "utility-guarded-external-majority-call.hex",
+      "bytes": 81,
+      "hash": "0xeca8a8b42c1067713e9cad13092408c50238ed10fb650c380ae59baf02d8db74",
+      "section": "utility",
+      "method": "batchAll",
+      "decoded": {
+        "args": {
+          "calls": [
+            {
+              "args": {
+                "proposal": {
+                  "Lookup": {
+                    "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                    "len": "3,066,919"
+                  }
+                }
+              },
+              "method": "externalPropose",
+              "section": "democracy"
+            },
+            {
+              "args": {
+                "proposal": {
+                  "Lookup": {
+                    "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                    "len": "3,066,919"
+                  }
+                }
+              },
+              "method": "externalProposeMajority",
+              "section": "democracy"
+            }
+          ]
+        },
+        "method": "batchAll",
+        "section": "utility"
+      }
+    },
+    "council-propose-guarded-external-majority-threshold-4-call": {
+      "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
+      "bytes": 86,
+      "hash": "0xb53494684f35cc340ddff58cee34eaf2029a966abec790d24c646e7e42b04b30",
+      "section": "council",
+      "method": "propose",
+      "decoded": {
+        "args": {
+          "threshold": "4",
+          "proposal": {
+            "args": {
+              "calls": [
+                {
+                  "args": {
+                    "proposal": {
+                      "Lookup": {
+                        "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                        "len": "3,066,919"
+                      }
+                    }
+                  },
+                  "method": "externalPropose",
+                  "section": "democracy"
+                },
+                {
+                  "args": {
+                    "proposal": {
+                      "Lookup": {
+                        "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                        "len": "3,066,919"
+                      }
+                    }
+                  },
+                  "method": "externalProposeMajority",
+                  "section": "democracy"
+                }
+              ]
+            },
+            "method": "batchAll",
+            "section": "utility"
+          },
+          "length_bound": "81"
+        },
+        "method": "propose",
+        "section": "council"
+      }
+    },
+    "democracy-fast-track-call": {
+      "file": "democracy-fast-track-call.hex",
+      "bytes": 42,
+      "hash": "0xa3dda94e7245ad3f040444993359160acc7ffe4d7a055c6aadd30d0282be554e",
+      "section": "democracy",
+      "method": "fastTrack",
+      "decoded": {
+        "args": {
+          "proposal_hash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+          "voting_period": "1,800",
+          "delay": "0"
+        },
+        "method": "fastTrack",
+        "section": "democracy"
+      }
+    },
+    "technical-committee-fast-track-threshold-3-call": {
+      "file": "technical-committee-fast-track-threshold-3-call.hex",
+      "bytes": 46,
+      "hash": "0x6b2916c9fab24c6b22a2713f2e9d0ca7fadc9f41fda41fdca3e0f2250a5af6dc",
+      "section": "technicalCommittee",
+      "method": "propose",
+      "decoded": {
+        "args": {
+          "threshold": "3",
+          "proposal": {
+            "args": {
+              "proposal_hash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+              "voting_period": "1,800",
+              "delay": "0"
+            },
+            "method": "fastTrack",
+            "section": "democracy"
+          },
+          "length_bound": "42"
+        },
+        "method": "propose",
+        "section": "technicalCommittee"
+      }
+    }
+  },
+  "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "blockHash": "0xe73285457da54fdf851e67217acc9b6555f5cf0b2fe5d62161542f37d22231a3",
+  "blockNumber": 27911262,
+  "runtimeVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 132,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "stateVersion": 0
+  },
+  "setCodeProposalHash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+  "setCodeProposalBytes": 3066919,
+  "nextExternal": [
+    {
+      "lookup": {
+        "hash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+        "len": 3055449
+      }
+    },
+    "SimpleMajority"
+  ],
+  "candidateBlacklist": null,
+  "publicProposals": [],
+  "council": {
+    "members": [
+      "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+      "cnSN33HpCwZqxQ4iVf3voVUJ9jx9wPULVMXw6iVgPgkeneNtM",
+      "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
+      "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
+      "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
+      "cnVcjvUEVGbK4LGLB9K382EEKm57dxtmGYdiFfnjEWWg9vr72",
+      "cnWA5jrFjKWE9e5Tv7nysnQLqC2kEzBthc83ekqnkiHLfE33q",
+      "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le"
+    ],
+    "proposalCount": 971,
+    "motions": []
+  },
+  "technicalCommittee": {
+    "members": [
+      "cnSSrHHm7AKjbKbS6a9KpCxzYhzptgnz47yCw4TVjSzYzpJQC",
+      "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc",
+      "cnW7voz8dzsEb961QFqQC2RZE82wWhYbWfjcmaaCSfixC6wDw",
+      "cnXC9NAHCwcgmd6NWUFZ6rak6avn4fVKZVchXUFcRPTEi6Jza"
+    ],
+    "proposalCount": 801,
+    "motions": [
+      {
+        "hash": "0xae6b06f73c17954adefc4a7491844c94a8e0186cdf4bff7c9d4bd88fe66db11e",
+        "voting": {
+          "index": 800,
+          "threshold": 3,
+          "ayes": [
+            "cnXC9NAHCwcgmd6NWUFZ6rak6avn4fVKZVchXUFcRPTEi6Jza",
+            "cnUwZp4vQSnYVJuTY5tZfdNZGXrcbKYdDRGj8YHh4vFSXdsMc"
+          ],
+          "nays": [],
+          "end": 27961626
+        },
+        "proposal": {
+          "section": "democracy",
+          "method": "fastTrack",
+          "encodedBytes": 42
+        }
+      }
+    ]
+  },
+  "fastTrackVotingPeriod": 1800,
+  "enactmentDelay": 0,
+  "minimumCouncilThreshold": 4,
+  "technicalCommitteeThreshold": 3,
+  "preimage": {
+    "status": null,
+    "bytes": 3066919,
+    "maxBytes": 4194304,
+    "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
+    "baseDepositBaseUnits": "133546666666663200",
+    "byteDepositBaseUnits": "3333333333300",
+    "unrequestedDepositBaseUnits": "10356609999897765900",
+    "unrequestedDepositXor": "10.356609999897765900",
+    "depositSource": "Captured baseline runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
+    "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
+  },
+  "governanceQueueReady": false,
+  "operatorReadiness": {
+    "ready": false,
+    "status": "requires-operator-attestation",
+    "requirements": [
+      "Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.",
+      "Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.",
+      "Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.",
+      "Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.",
+      "For Iroha migration onboarding, fund the signed claimant with enough XOR for normal fees on success and failure; no sponsor or success refund is available."
+    ]
+  },
+  "activationReady": false,
+  "activation": {
+    "ready": false,
+    "existingQueuedProposal": [
+      {
+        "lookup": {
+          "hash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+          "len": 3055449
+        }
+      },
+      "SimpleMajority"
+    ],
+    "reason": "An existing external proposal is queued and operator readiness is unconfirmed; the guarded route rejects replacing the queue.",
+    "prerequisites": [
+      "Resolve the existing external proposal through normal governance so NextExternal is clear; never overwrite it.",
+      "Refresh finalized baseline, metadata, governance membership and unsigned calls before use. If runtime code or metadata changed, repeat compatibility and exact-Wasm rehearsal against the new deployed baseline.",
+      "Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.",
+      "Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.",
+      "Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.",
+      "Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.",
+      "For Iroha migration onboarding, fund the signed claimant with enough XOR for normal fees on success and failure; no sponsor or success refund is available."
+    ]
+  },
+  "preferredCouncilCall": "council-propose-guarded-external-majority-threshold-4-call.hex",
+  "preferredCouncilMotionHash": "0xeca8a8b42c1067713e9cad13092408c50238ed10fb650c380ae59baf02d8db74",
+  "technicalMotionHash": "0xa3dda94e7245ad3f040444993359160acc7ffe4d7a055c6aadd30d0282be554e",
+  "reviewOnlySupersessionCalls": [],
+  "directSupersessionArtifactsExcluded": true,
+  "closeBounds": {
+    "council": {
+      "lengthBound": 85,
+      "weightBound": {
+        "refTime": "325460526",
+        "proofSize": "10700"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    },
+    "technicalCommittee": {
+      "lengthBound": 46,
+      "weightBound": {
+        "refTime": "595041000",
+        "proofSize": "3518"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    },
+    "weightSource": "Read-only TransactionPaymentApi.query_info of the exact inner call wrapped as an unsigned extrinsic at the finalized preflight block. This weight covers dispatch; its fee is not a signed-account fee quote. Requery for actual stored motion and live runtime before close.",
+    "source": "Pinned collective validate_and_get_proposal documents storage::read length overhead of four bytes; motion indices must come from Proposed events."
+  },
+  "instructions": [
+    "These are unsigned review artifacts. No governance action has been submitted.",
+    "Repeat finalized governance-state inspection immediately before use. Existing unrelated motions are recorded and remain untouched.",
+    "Council majority proposal needs at least half the current council. Technical fast-track needs more than half the current committee.",
+    "Use the preferred guarded council call: atomic batchAll([externalPropose(target), externalProposeMajority(target)]). It rejects an occupied queue at execution and rolls back on failure.",
+    "Direct supersession alternatives are excluded. An occupied external queue requires resolution and baseline refresh before this upgrade is activated.",
+    "Proposers must cast explicit aye votes. Generate vote and close calls only after the actual motion index, votes and live weight bounds are known.",
+    "Before executing technical fast-track, confirm the council inner execution succeeded and NextExternal contains this exact setCode proposal hash.",
+    "Use Democracy.Started to obtain the actual referendum index. Encoding these calls neither approves nor enacts the runtime."
+  ]
+}

@@ -31,12 +31,13 @@
 use super::*;
 use bridge_types::substrate::BridgeMessage;
 use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::derive_impl;
 
 use frame_support::traits::{Everything, UnfilteredDispatchable};
 use frame_support::{assert_err, assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use scale_info::TypeInfo;
 use sp_core::{ConstU64, H256};
-use sp_keyring::AccountKeyring as Keyring;
+use sp_keyring::sr25519::Keyring;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, ValidateUnsigned, Verify};
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidityError,
@@ -71,6 +72,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 #[derive(
     Encode,
     Decode,
+    codec::DecodeWithMemTracking,
     PartialEq,
     Eq,
     Debug,
@@ -95,6 +97,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -127,6 +130,7 @@ parameter_types! {
     pub const MaxReserves: u32 = 50;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
@@ -141,7 +145,6 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
 }
 
@@ -151,7 +154,10 @@ pub struct MockVerifier;
 impl Verifier for MockVerifier {
     type Proof = Vec<u8>;
 
-    fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
+    fn verify(network_id: GenericNetworkId, _hash: H256, proof: &Vec<u8>) -> DispatchResult {
+        if proof == &vec![255] {
+            return Err(sp_runtime::DispatchError::Other("Invalid bridge proof"));
+        }
         let network_id = match network_id {
             bridge_types::GenericNetworkId::Sub(ni) => ni,
             _ => return Err(Error::<Test>::InvalidNetwork.into()),
@@ -177,7 +183,23 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch {
-    fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) {}
+    fn dispatch(
+        _: SubNetworkId,
+        _: MessageId,
+        _: GenericTimepoint,
+        payload: &[u8],
+        _: (),
+    ) -> bridge_types::traits::MessageDispatchOutcome {
+        if payload == [255] {
+            bridge_types::traits::MessageDispatchOutcome::Failed
+        } else {
+            let count = sp_io::storage::get(b"test/applied-messages")
+                .and_then(|value| value.first().copied())
+                .unwrap_or(0);
+            sp_io::storage::set(b"test/applied-messages", &[count.saturating_add(1)]);
+            bridge_types::traits::MessageDispatchOutcome::Applied
+        }
+    }
 
     fn dispatch_weight(_: &[u8]) -> frame_support::weights::Weight {
         Default::default()
@@ -209,7 +231,6 @@ parameter_types! {
 }
 
 impl bridge_inbound_channel::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type UnsignedLongevity = ConstU64<100>;
@@ -228,6 +249,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob, 1_000_000_000_000_000_000)],
+        ..Default::default()
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -240,7 +262,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 #[test]
 fn test_submit() {
     new_tester().execute_with(|| {
-        let origin = RuntimeOrigin::none();
+        let origin = RuntimeOrigin::signed(Keyring::Bob.into());
 
         // Submit message 1
         let message_1 = BridgeMessage {
@@ -299,7 +321,7 @@ fn test_submit() {
 #[test]
 fn test_submit_with_invalid_nonce() {
     new_tester().execute_with(|| {
-        let origin = RuntimeOrigin::none();
+        let origin = RuntimeOrigin::signed(Keyring::Bob.into());
 
         // Submit message
         let message = BridgeMessage {
@@ -342,7 +364,7 @@ fn test_submit_with_invalid_nonce() {
 #[test]
 fn test_submit_with_invalid_network_id() {
     new_tester().execute_with(|| {
-        let origin = RuntimeOrigin::none();
+        let origin = RuntimeOrigin::signed(Keyring::Bob.into());
 
         // Submit message
         let message = BridgeMessage {
@@ -369,5 +391,126 @@ fn test_submit_with_invalid_network_id() {
             call.dispatch_bypass_filter(origin),
             Error::<Test>::InvalidNetwork
         );
+    });
+}
+
+#[test]
+fn authenticated_deliveries_stay_free_and_consume_failed_batch_nonces() {
+    new_tester().execute_with(|| {
+        use frame_support::dispatch::{GetDispatchInfo, Pays};
+        for (nonce, payloads, expected) in [
+            (1, vec![vec![1]], Pays::No),
+            (2, vec![vec![1], vec![255]], Pays::No),
+            (3, vec![], Pays::No),
+        ] {
+            let messages = payloads
+                .into_iter()
+                .map(|payload| BridgeMessage {
+                    timepoint: Default::default(),
+                    payload: payload.try_into().unwrap(),
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap();
+            let commitment =
+                bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                    nonce,
+                    messages,
+                });
+            let call = Call::<Test>::submit {
+                network_id: BASE_NETWORK_ID,
+                commitment,
+                proof: vec![],
+            };
+            assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
+            for source in [
+                TransactionSource::External,
+                TransactionSource::Local,
+                TransactionSource::InBlock,
+            ] {
+                let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+                assert_ok!(Pallet::<Test>::validate_unsigned(source, &call));
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+            }
+            assert_ok!(Pallet::<Test>::pre_dispatch(&call));
+            let origin = if nonce == 2 {
+                RuntimeOrigin::none()
+            } else {
+                RuntimeOrigin::signed(Keyring::Bob.into())
+            };
+            let result = call.clone().dispatch_bypass_filter(origin).unwrap();
+            assert_eq!(result.pays_fee, expected);
+            assert_eq!(
+                sp_io::storage::get(b"test/applied-messages").unwrap()[0],
+                if nonce == 1 { 1 } else { 2 }
+            );
+            assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), nonce);
+            for source in [
+                TransactionSource::External,
+                TransactionSource::Local,
+                TransactionSource::InBlock,
+            ] {
+                assert_err!(
+                    Pallet::<Test>::validate_unsigned(source, &call),
+                    TransactionValidityError::Invalid(InvalidTransaction::BadProof)
+                );
+            }
+            assert!(Pallet::<Test>::pre_dispatch(&call).is_err());
+            assert_noop!(
+                call.dispatch_bypass_filter(RuntimeOrigin::signed(Keyring::Bob.into())),
+                Error::<Test>::InvalidNonce
+            );
+        }
+    });
+}
+
+#[test]
+fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
+    new_tester().execute_with(|| {
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![BridgeMessage {
+                    timepoint: Default::default(),
+                    payload: vec![1].try_into().unwrap(),
+                }]
+                .try_into()
+                .unwrap(),
+            });
+        let call = Call::<Test>::submit {
+            network_id: BASE_NETWORK_ID,
+            commitment,
+            proof: vec![255],
+        };
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        for source in [
+            TransactionSource::External,
+            TransactionSource::Local,
+            TransactionSource::InBlock,
+        ] {
+            assert_err!(
+                Pallet::<Test>::validate_unsigned(source, &call),
+                TransactionValidityError::Invalid(InvalidTransaction::BadProof)
+            );
+        }
+        assert!(Pallet::<Test>::pre_dispatch(&call).is_err());
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        let wrong_type = Call::<Test>::submit {
+            network_id: BASE_NETWORK_ID,
+            commitment: bridge_types::GenericCommitment::EVM(
+                bridge_types::evm::Commitment::BaseFeeUpdate(bridge_types::evm::BaseFeeUpdate {
+                    new_base_fee: 1.into(),
+                    evm_block_number: 1,
+                }),
+            ),
+            proof: vec![],
+        };
+        assert_err!(
+            Pallet::<Test>::validate_unsigned(TransactionSource::External, &wrong_type),
+            TransactionValidityError::Invalid(InvalidTransaction::BadProof)
+        );
+        assert!(Pallet::<Test>::pre_dispatch(&wrong_type).is_err());
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
     });
 }

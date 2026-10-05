@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-10-05T02:45:01.895445+00:00",
+  "status": "passed",
+  "scope": "Owned maintenance, common and generic/Substrate bridge pallet unit suites. Overall final source hash and runtime/Wasm integration evidence are recorded separately by the release owner.",
+  "sdk_git_sources": [
+    "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
+  ],
+  "tests_passed": 430,
+  "tests_failed": 0,
+  "tests_ignored": 0,
+  "suites": [
+    {
+      "package": "apollo-platform",
+      "passed": 121,
+      "log": "maintenance-apollo.log",
+      "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p kensetsu -p apollo-platform --lib",
+      "provenance": "Exact Apollo package stdout excerpt from the combined initial invocation. Apollo passed121; that invocation later failed three obsolete unsigned-origin Kensetsu expectations. Those were fixed and the entire Kensetsu suite passed in maintenance-kensetsu.log.",
+      "source_log_sha256": "ca973ddace651693da264158a55b24529180c0c2cf329449c421b855852381b1"
+    },
+    {
+      "package": "kensetsu",
+      "passed": 122,
+      "log": "maintenance-kensetsu.log",
+      "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p kensetsu --lib",
+      "exit_code": 0
+    },
+    {
+      "package": "common",
+      "passed": 137,
+      "log": "maintenance-common.log",
+      "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p common --lib",
+      "exit_code": 0
+    },
+    {
+      "packages": {
+        "bridge-channel": 15,
+        "dispatch": 6,
+        "substrate-bridge-app": 12,
+        "substrate-bridge-channel": 17
+      },
+      "passed": 50,
+      "log": "bridge-pallets.log",
+      "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --manifest-path vendor/sora2-common/Cargo.toml --release --offline --locked -p bridge-channel -p substrate-bridge-channel -p substrate-bridge-app -p dispatch --lib",
+      "exit_code": 0,
+      "dependency_provenance": "bridge-resolution-parity.json: root-seeded nested lock, same SDK commit and production ORML paths; 400 normal dependencies match root source/version/path, one extra test tracing dependency thread_local1.1.10."
+    }
+  ],
+  "confirmed_policy": [
+    "BABE/GRANDPA and keeper maintenance require payment; their runtime Executive evidence is recorded separately.",
+    "Authenticated fresh bridge protocol is free, including local application failure; invalid or replayed bare calls reject in validation and pre-dispatch.",
+    "Signed zero-XOR bridge admission integration is validated separately in the runtime suite."
+  ],
+  "validation_files": {
+    "maintenance-apollo.log": "cf3e721744dae595a4fa1f87b9269c3449944577e8449459ada81ce16b0fd8f1",
+    "maintenance-kensetsu.log": "4b5de9cbdd22602521559b143c9065481f48752bb8dbf99c1dd9e4936c1bd971",
+    "maintenance-common.log": "3e86991f1400037efa7ea59afa4bd612ebab893173a1e7e69c2d3db35a645c09",
+    "bridge-pallets.log": "2965f1e36bafa1144e11bccee01d4d9e73ca4ec005c2087811ab8b18c0be2170",
+    "bridge-resolution-parity.json": "b8b917421e8527731b3863db30439b1719c08a7419ee36a28d453589d905a790"
+  },
+  "production_sdk_and_lock_provenance": {
+    "root_cargo_lock_sha256": "206c00afce9062930f87f30729d65422a23d1b3b9462cae1013e958f8669225e",
+    "nested_cargo_lock_sha256": "cbbfd58735ac1c191e6146037fc854f70c7b76f1c2e581db774fb05cef4b1e87"
+  },
+  "infrastructure_operations": "None; all commands were local release-mode offline locked Cargo tests using the existing warm target.",
+  "initial_harness_compilation": {
+    "resolved": "Legacy nested test harness required explicit std dev features, current SDK derive_impl imports/config defaults, DecodeWithMemTracking and production ORML API arguments. All final suites then passed with the production SDK commit and unchanged compiler flags.",
+    "secondary_rustc_ice": "Four compiler ICE diagnostic files occurred while construct_runtime expanded mocks whose Config implementations failed due to missing derive_impl import. The invalid mock imports/config were fixed; no ICE occurred in final successful tests. Generated raw ICE files were removed."
+  }
+}

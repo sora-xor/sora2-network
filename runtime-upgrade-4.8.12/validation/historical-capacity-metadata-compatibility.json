@@ -1,0 +1,185 @@
+{
+  "compatibleExistingScaleEncoding": true,
+  "counts": {
+    "existingPallets": 81,
+    "existingCalls": 407,
+    "nestedTypePairsVisited": 10392,
+    "existingEvent": 445,
+    "existingError": 975,
+    "existingStorageEntries": 488,
+    "existingConstants": 155,
+    "signedExtensions": 7
+  },
+  "breakingChanges": [],
+  "additions": [
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "BridgeMultisig.error",
+      "variant": "TooManyPendingOperationsByProposer",
+      "variantIndex": 23
+    },
+    {
+      "path": "BridgeMultisig.event",
+      "variant": "MultisigCancellationApproval",
+      "variantIndex": 5
+    },
+    {
+      "path": "BridgeMultisig.storage.CancellationApprovals",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Blake2_128Concat"
+            ],
+            "key": 689,
+            "value": 692
+          }
+        }
+      }
+    },
+    {
+      "path": "BridgeMultisig.storage.PendingOperationsByProposer",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Twox64Concat"
+            ],
+            "key": 691,
+            "value": 4
+          }
+        }
+      }
+    },
+    {
+      "path": "BridgeMultisig.storage.ProposerCountedOperations",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Blake2_128Concat"
+            ],
+            "key": 689,
+            "value": 62
+          }
+        }
+      }
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "EthBridge.calls",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
+      "variant": "MultisigCancellationApproval",
+      "variantIndex": 5
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    }
+  ],
+  "constantValueChanges": [],
+  "signedExtensionIdentifiers": [
+    "CheckSpecVersion",
+    "CheckTxVersion",
+    "CheckGenesis",
+    "CheckMortality",
+    "CheckNonce",
+    "CheckWeight",
+    "ChargeTransactionPayment"
+  ],
+  "checkedAt": "2026-10-05T05:42:38.822295+00:00",
+  "metadataVersion": 14,
+  "inputs": {
+    "baselineMetadata": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/previous-candidate-metadata.json",
+      "sha256": "7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82"
+    },
+    "candidateMetadata": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
+      "sha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020"
+    },
+    "comparisonScript": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
+      "sha256": "033a4dfd3be69b85f433f71db7c52b04c9832fe3f7068e3f764440a5ed005858"
+    }
+  },
+  "selfChecks": [
+    "All portable IDs shifted by10000: unchanged semantics accepted",
+    "Nested u32-to-u64 mutation rejected for staking calls, storage and CheckNonce",
+    "Changed payout_stakers call index rejected",
+    "Signed-extension reorder rejected",
+    "Storage hasher mutation rejected"
+  ],
+  "limitations": [
+    "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
+    "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",
+    "Source paths, documentation, generic type IDs and typeName aliases are ignored; extrinsic Address/Call/Signature/Extra generic parameters are explicitly traversed.",
+    "Constant values may intentionally change. Their encoded types are checked and changed bytes are reported separately."
+  ]
+}

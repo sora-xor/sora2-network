@@ -39,6 +39,7 @@ use codec::Decode;
 use codec::Encode;
 use codec::MaxEncodedLen;
 use currencies::BasicCurrencyAdapter;
+use frame_support::derive_impl;
 
 // Mock runtime
 use bridge_types::types::AssetKind;
@@ -65,6 +66,7 @@ type Block = frame_system::mocking::MockBlock<Test>;
 #[derive(
     Encode,
     Decode,
+    codec::DecodeWithMemTracking,
     PartialEq,
     Eq,
     Debug,
@@ -109,6 +111,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -139,6 +142,7 @@ parameter_types! {
     pub const ExistentialDeposit: u128 = 1;
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
@@ -151,7 +155,6 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
 }
 
@@ -162,7 +165,6 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -346,7 +348,6 @@ impl Convert<AssetId, bridge_types::GenericAssetId> for AssetIdConverter {
 }
 
 impl substrate_app::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type MessageStatusNotifier = ();
     type CallOrigin =
         dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
@@ -369,6 +370,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
             (Keyring::Bob.into(), 1_000_000_000_000_000_000),
             (Keyring::Alice.into(), 1_000_000_000_000_000_000),
         ],
+        ..Default::default()
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -418,6 +420,7 @@ pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
             (Keyring::Bob.into(), 1_000_000_000_000_000_000),
             (Keyring::Alice.into(), 1_000_000_000_000_000_000),
         ],
+        ..Default::default()
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -429,4 +432,15 @@ pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));
     ext
+}
+
+impl bridge_types::traits::DispatchWithOutcome for RuntimeCall {
+    fn dispatch_with_outcome(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> Result<bridge_types::traits::MessageDispatchOutcome, sp_runtime::DispatchError> {
+        sp_runtime::traits::Dispatchable::dispatch(self, origin)
+            .map(|_| bridge_types::traits::MessageDispatchOutcome::Applied)
+            .map_err(|error| error.error)
+    }
 }

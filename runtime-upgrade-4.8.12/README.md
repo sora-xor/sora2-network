@@ -1,0 +1,59 @@
+# SORA 4.8.12 runtime upgrade
+
+Runtime spec **134**, transaction version **131**, closes transaction-fee bypasses
+while preserving useful order-cancellation refunds and zero-XOR bridge operation.
+
+**Legacy Iroha migration requires the claimant to pay XOR, including successful
+VAL claims.** Insufficient XOR rejects admission before execution. Failed
+settlement retains the fee and restores the claim. All proposed sponsorship
+calls, storage, events, errors and fee-payer hooks are removed. Legacy claim
+records, ownership proofs, referrals and pending multisig behavior remain intact.
+
+Kensetsu permits only repayment/closure of existing user positions; new borrowing,
+collateral deposits and liquidation are disabled. Existing Kensetsu debt continues accruing interest under existing terms. Repayment or closure books accrued interest with the existing treasury accounting; no new borrowing is permitted. Apollo
+permits repayment, withdrawal and earned-reward claims; new lending and liquidation
+are disabled. Both automatic maintenance workers are off. Apollo principal exits
+retain unpaid reward claims separately and reserve received protocol interest
+pending authorized distribution.
+
+BABE/GRANDPA reports require signed funded payers.
+Successful useful order cancellations and first requested-preimage provision
+retain refunds; failed/empty/replayed cancellations, unauthorized Rewards calls
+and requested-preimage replay pay. See [FEE_POLICY.md](FEE_POLICY.md).
+
+Registered bridge peers require **zero XOR** for authenticated protocol work,
+including accepted local failures. Invalid/replayed requests reject before
+execution. Successful outgoing approvals retain their full validation weight.
+New bridge proposals have a fair per-proposer quota within the shared 128-operation
+limit. Current quorum can cancel abandoned proposals at full capacity without
+executing their payload or changing consumed incoming state. The preceding VAL
+staking repair remains included.
+
+Final Wasm SHA-256: `de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221` (3,066,913 bytes).
+Source overlay tree: `36c466398e3f2760e8ab44fdb89de796f5b0dd99`; reviewed base: `bb38216396835fae45de9c38104e4927a96eb36c`.
+Fresh native validation: **1,413 passed**, zero failed,
+**3 existing ignored**, including **39**
+runtime fee-policy regressions. Five paid-migration cases and the bridge
+approval-weight case are required by exact name, alongside seven retired-lending
+regressions covering blocked direct/wrapped calls, exits and silent workers.
+
+The exact Wasm verifies paid VAL delivery, paid replay, failed-settlement rollback
+and zero-XOR rejection, in addition to the existing report, bridge and cancellation
+checks. Deployed-baseline compatibility remains strict. Comparisons to the prior
+unreleased paid-migration candidate preserve existing encodings and permit only
+the explicitly enumerated lending-retirement additions. [VALIDATION.md](VALIDATION.md) discloses fixtures, limitations and historical
+results; earlier execution is never relabeled as fresh validation.
+
+All three stage/test chain-spec blobs are rebuilt from this source. Only `:code`
+changes; all other JSON values and bytes remain intact. Feature-runtime binaries
+and metadata are not duplicated in this package; workspace verification checks
+the actual embedded blobs.
+
+Six unsigned governance review calls match this Wasm and finalized preflight
+block **27,911,262**. Verify the ZIP companion checksum and extracted
+`SHA256SUMS`, then follow [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md). The guarded
+route preserves an occupied external queue. Refresh baseline/state/operator
+readiness before signing. Preparation does not submit or enact transactions.
+
+Fresh feature-runtime regeneration gate: **passed**.
+Fresh three-profile Clippy gate: **passed**.

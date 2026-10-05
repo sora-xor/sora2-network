@@ -217,8 +217,14 @@ where
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: BalanceOf<T>,
-        _tip: BalanceOf<T>,
+        tip: BalanceOf<T>,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
+        if T::CustomFees::validate_fee_exemption(who, call)? {
+            if !tip.is_zero() {
+                return Err(InvalidTransaction::Payment.into());
+            }
+            return Ok(LiquidityInfo::NotPaid);
+        }
         // Not pay fee at all. It's not possible to withdraw fee if it's disabled here.
         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
             return Ok((who.clone(), None, None).into());
@@ -254,8 +260,15 @@ where
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: BalanceOf<T>,
-        _tip: BalanceOf<T>,
+        tip: BalanceOf<T>,
     ) -> Result<(), TransactionValidityError> {
+        if T::CustomFees::validate_fee_exemption(who, call)? {
+            return if tip.is_zero() {
+                Ok(())
+            } else {
+                Err(InvalidTransaction::Payment.into())
+            };
+        }
         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
             return Ok(());
         }
@@ -506,6 +519,16 @@ impl<Call, AccountId> StakingValPayout<Call, AccountId> for () {
 pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
     /// Additinal information to be passed between `Self::compute_fee` and `Self::compute_actual_fee`
     type FeeDetails;
+
+    /// Authenticate a narrow protocol exemption and reject invalid/replayed
+    /// requests before execution. Called read-only in validation and again at
+    /// withdrawal, so a pool-valid request cannot bypass changed chain state.
+    fn validate_fee_exemption(
+        _who: &AccountId,
+        _call: &Call,
+    ) -> Result<bool, TransactionValidityError> {
+        Ok(false)
+    }
 
     /// Check if the fee payment should be postponed
     ///
@@ -776,7 +799,9 @@ where
                 }),
                 tip,
             },
-            None => pallet_transaction_payment::Pallet::<T>::compute_fee_details(len, info, tip),
+            None => pallet_transaction_payment::Pallet::<T>::compute_actual_fee_details(
+                len, info, post_info, tip,
+            ),
         };
         Self::multiplied_fee(fee)
     }

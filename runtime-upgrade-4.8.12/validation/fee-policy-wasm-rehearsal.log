@@ -1,0 +1,43 @@
+2026-10-05T07:45:18.986Z Loading pinned deployed public state
+2026-10-05T07:45:21.417Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-10-05T07:45:22.725Z Exact Wasm: paid cancellation failure empty outer batch
+2026-10-05T07:45:23.033Z Exact Wasm: paid cancellation failure empty inner group
+2026-10-05T07:45:23.337Z Exact Wasm: paid cancellation failure all empty inner groups
+2026-10-05T07:45:23.642Z Exact Wasm: paid cancellation failure mixed real-ID/empty groups
+2026-10-05T07:45:23.945Z Exact Wasm: unauthorized Rewards failure retains fees
+2026-10-05T07:45:24.251Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.accrue missing CDP
+2026-10-05T07:45:25.167Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.liquidate missing CDP
+2026-10-05T07:45:26.077Z Exact Wasm: signed invalid maintenance pays and bare rejects apolloPlatform.liquidate missing position
+2026-10-05T07:45:26.994Z Exact Wasm: bare inbound relay rejected bridgeInboundChannel
+   multisig_verifier::pallet  ERROR: [39] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [40] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [41] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [42] verify_signatures: Network Sub(Mainnet) not initialized
+2026-10-05T07:45:27.601Z Exact Wasm: bare inbound relay rejected substrateBridgeInboundChannel
+   multisig_verifier::pallet  ERROR: [43] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [44] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [45] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [46] verify_signatures: Network Sub(Mainnet) not initialized
+2026-10-05T07:45:28.208Z Exact Wasm: first requested preimage provision refunds
+2026-10-05T07:45:28.518Z Exact Wasm: requested preimage replay retains fees
+2026-10-05T07:45:28.835Z Exact Wasm: migration requires XOR before a valid VAL claim can execute
+2026-10-05T07:45:29.446Z Exact Wasm: successful migration delivers VAL and retains the XOR fee
+2026-10-05T07:45:30.566Z Exact Wasm: failed migration keeps its fee and rolls back the VAL claim
+2026-10-05T07:45:31.072Z Exact Wasm: authenticated legacy peer reports remote failure with zero XOR
+2026-10-05T07:45:31.380Z Exact Wasm: authenticated legacy protocol replay rejects before execution
+2026-10-05T07:45:31.990Z Exact Wasm: one zero-XOR peer opens its 32-operation fair quota
+2026-10-05T07:45:44.969Z Exact Wasm: current zero-XOR quorum releases a full orphaned queue without proposer or payload
+2026-10-05T07:45:47.457Z Exact Wasm: place useful synthetic sell order on existing public book
+2026-10-05T07:45:47.765Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrder
+2026-10-05T07:45:48.074Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrder
+2026-10-05T07:45:48.382Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrdersBatch
+2026-10-05T07:45:48.690Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrdersBatch

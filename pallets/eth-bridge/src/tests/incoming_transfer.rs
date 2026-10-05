@@ -443,7 +443,7 @@ fn should_reject_imported_legacy_transfer_xor_after_thischain_reregistration() {
         .unwrap_err();
         let expected_error: DispatchError = Error::DeprecatedLegacyXor.into();
         assert_eq!(error.error, expected_error);
-        assert_eq!(error.post_info.pays_fee, Pays::No.into());
+        assert_eq!(error.post_info.pays_fee, Pays::Yes.into());
 
         assert_eq!(crate::RequestsQueue::<Runtime>::get(net_id), queue);
         assert!(crate::Requests::<Runtime>::get(net_id, load_request_hash).is_none());
@@ -731,7 +731,7 @@ fn should_cancel_incoming_transfer() {
                 net_id,
             ),
             PostDispatchInfo {
-                pays_fee: Pays::No.into(),
+                pays_fee: Pays::Yes.into(),
                 actual_weight: None
             }
         );
@@ -923,7 +923,7 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
                 incoming_transfer.clone(),
             ),
             PostDispatchInfo {
-                pays_fee: Pays::No.into(),
+                pays_fee: Pays::Yes.into(),
                 actual_weight: None
             }
         );
@@ -944,7 +944,12 @@ fn should_fail_registering_incoming_request_if_preparation_failed() {
             }
             other => panic!("unexpected event: {:?}", other),
         }
-        assert!(crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
+        assert_eq!(req_hash, expected_hash);
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            crate::RequestStatuses::<Runtime>::get(net_id, expected_hash)
+        );
         assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&req_hash));
         assert!(crate::Requests::<Runtime>::get(net_id, &req_hash).is_none());
         assert!(matches!(
@@ -1711,7 +1716,7 @@ fn should_not_register_same_replay_key_for_different_recipient() {
                 replayed_transfer,
             ),
             DispatchErrorWithPostInfo {
-                post_info: Pays::No.into(),
+                post_info: Pays::Yes.into(),
                 error: Error::RequestIsAlreadyRegistered.into()
             }
         );
@@ -1737,7 +1742,7 @@ fn should_not_register_same_replay_key_for_different_recipient() {
 }
 
 #[test]
-fn failed_incoming_registration_does_not_consume_replay_key() {
+fn failed_incoming_registration_consumes_replay_key_and_closes_pending_load() {
     let net_id = ETH_NETWORK_ID;
     let mut builder = ExtBuilder::default();
     builder.add_currency(
@@ -1782,9 +1787,15 @@ fn failed_incoming_registration_does_not_consume_replay_key() {
             crate::RequestStatuses::<Runtime>::get(net_id, invalid_request_hash),
             Some(RequestStatus::Failed(Error::UnableToPayFees.into()))
         );
-        assert!(!crate::LoadToIncomingRequestHash::<Runtime>::contains_key(
-            net_id, tx_hash
-        ));
+        assert_eq!(
+            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash),
+            invalid_request_hash
+        );
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(net_id, tx_hash),
+            Some(RequestStatus::Failed(Error::UnableToPayFees.into()))
+        );
+        assert!(!crate::RequestsQueue::<Runtime>::get(net_id).contains(&tx_hash));
 
         let corrected_transfer = IncomingRequest::Transfer(crate::IncomingTransfer {
             from: EthAddress::from([1; 20]),
@@ -1792,31 +1803,35 @@ fn failed_incoming_registration_does_not_consume_replay_key() {
             asset_id: USDT.into(),
             asset_kind: AssetKind::Sidechain,
             amount: 100u32.into(),
-            author: alice.clone(),
+            author: get_account_id_from_seed::<sr25519::Public>("Bob"),
             tx_hash,
             at_height: 1,
-            timepoint: Default::default(),
+            timepoint: bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(17, 19),
             network_id: net_id,
             should_take_fee: false,
         });
         let corrected_request_hash = OffchainRequest::incoming(corrected_transfer.clone()).hash();
-        assert_ok!(EthBridge::register_incoming_request(
-            RuntimeOrigin::signed(bridge_acc_id.clone()),
-            corrected_transfer,
-        ));
-        assert_eq!(
-            crate::LoadToIncomingRequestHash::<Runtime>::get(net_id, tx_hash),
-            corrected_request_hash
+        assert_err!(
+            EthBridge::validate_peer_protocol_call(
+                &bridge_acc_id,
+                &crate::Call::register_incoming_request {
+                    incoming_request: corrected_transfer.clone()
+                }
+            ),
+            Error::RequestIsAlreadyRegistered
         );
-        assert_ok!(EthBridge::finalize_incoming_request(
-            RuntimeOrigin::signed(bridge_acc_id),
-            corrected_request_hash,
+        assert_err!(
+            EthBridge::register_incoming_request(
+                RuntimeOrigin::signed(bridge_acc_id),
+                corrected_transfer
+            ),
+            Error::RequestIsAlreadyRegistered
+        );
+        assert!(!crate::Requests::<Runtime>::contains_key(
             net_id,
+            corrected_request_hash
         ));
-        assert_eq!(
-            Assets::total_balance(&USDT.into(), &alice).unwrap(),
-            100u32.into()
-        );
+        assert_eq!(Assets::total_balance(&USDT.into(), &alice).unwrap(), 0);
     });
 }
 

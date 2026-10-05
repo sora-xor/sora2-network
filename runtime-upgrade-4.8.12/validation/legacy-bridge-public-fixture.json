@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "endpoint": "wss://mof2.sora.org",
+  "startedAt": "2026-10-05T02:47:45.823Z",
+  "maximumFinalizedBlocks": 256,
+  "scannedBlocks": 256,
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "remoteRpcMethods": {
+    "chain_getBlockHash": 257,
+    "state_getRuntimeVersion": 257,
+    "system_chain": 1,
+    "system_properties": 1,
+    "rpc_methods": 1,
+    "state_call": 2,
+    "state_subscribeRuntimeVersion": 1,
+    "chain_getFinalizedHead": 1,
+    "chain_getHeader": 257,
+    "chain_getBlock": 256
+  },
+  "candidates": [],
+  "finalizedHead": "0x9ea0cc317fccc8b8f787ce01153113be2d171511172fed05c2fc98f64c0386a0",
+  "finalizedNumber": 27907240,
+  "earliestPossibleBlock": 27906985,
+  "scriptSha256": "390e28d5d71271db8856c1274de6ff0f9f46ea04279d837e598d13270806da8e",
+  "foundProtocolCandidates": false,
+  "finishedAt": "2026-10-05T02:48:13.900Z"
+}

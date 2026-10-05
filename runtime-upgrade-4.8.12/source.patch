@@ -1,0 +1,3452 @@
+diff --git a/common/src/mock.rs b/common/src/mock.rs
+index 5c7c4e318..2466b922e 100644
+--- a/common/src/mock.rs
++++ b/common/src/mock.rs
+@@ -214,7 +214,11 @@ pub fn charlie() -> AccountId32 {
+ #[macro_export]
+ macro_rules! mock_apollo_platform_config {
+     ($runtime:ty) => {
++        $crate::mock_apollo_platform_config!($runtime, frame_support::traits::ConstBool<false>);
++    };
++    ($runtime:ty, $repayment_only:ty) => {
+         impl apollo_platform::Config for $runtime {
++            type RepaymentOnly = $repayment_only;
+             type AuthorityId = apollo_platform::crypto::AuthorityId;
+             const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self> = 150;
+             type LiquidityProxyPallet = MockLiquidityProxy;
+@@ -676,6 +680,7 @@ macro_rules! mock_frame_system_config {
+ macro_rules! mock_kensetsu_config {
+     ($runtime:ty) => {
+         impl kensetsu::Config for TestRuntime {
++            type RepaymentOnly = RepaymentOnly;
+             type AuthorityId = kensetsu::crypto::AuthorityId;
+             type AssetInfoProvider = Assets;
+             type DepositoryTechAccount = KensetsuDepositoryTechAccountId;
+diff --git a/pallets/apollo-platform/Cargo.toml b/pallets/apollo-platform/Cargo.toml
+index 55e6562b8..dca45f726 100644
+--- a/pallets/apollo-platform/Cargo.toml
++++ b/pallets/apollo-platform/Cargo.toml
+@@ -19,6 +19,7 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
+ frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+ frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+ common = { path = "../../common", default-features = false }
++orml-traits = { workspace = true, default-features = false }
+ sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+ sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+ sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
+@@ -70,6 +71,7 @@ std = [
+     "sp-runtime/std",
+     "sp-std/std",
+     "sp-io/std",
++    "orml-traits/std",
+ ]
+ 
+ runtime-benchmarks = [
+diff --git a/pallets/apollo-platform/src/lib.rs b/pallets/apollo-platform/src/lib.rs
+index c246b2b39..48b2563c3 100644
+--- a/pallets/apollo-platform/src/lib.rs
++++ b/pallets/apollo-platform/src/lib.rs
+@@ -93,6 +93,7 @@ pub mod pallet {
+     use frame_system::pallet_prelude::*;
+     use frame_system::RawOrigin;
+     use hex_literal::hex;
++    use orml_traits::MultiReservableCurrency;
+     use sp_runtime::traits::{Saturating, UniqueSaturatedInto, Zero};
+     use sp_std::collections::btree_map::BTreeMap;
+     use sp_std::vec::Vec;
+@@ -108,6 +109,9 @@ pub mod pallet {
+         + CreateTransactionBase<Call<Self>, RuntimeCall = <Self as frame_system::Config>::RuntimeCall>
+     {
+         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
++        /// Retire new lending activity while preserving repayment, withdrawals and earned claims.
++        #[pallet::constant]
++        type RepaymentOnly: Get<bool>;
+         const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
+         #[allow(deprecated)]
+         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+@@ -184,6 +188,14 @@ pub mod pallet {
+     #[pallet::getter(fn pool_info)]
+     pub type PoolData<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, PoolInfo, OptionQuery>;
+ 
++    /// Repaid interest held in real reserves in its original asset during retirement.
++    /// It is excluded from lending liquidity and cannot fund reward/principal payouts.
++    /// Distribution/unreservation requires a separately reviewed governance change.
++    #[pallet::storage]
++    #[pallet::getter(fn deferred_protocol_interest)]
++    pub type DeferredProtocolInterest<T: Config> =
++        StorageMap<_, Identity, AssetIdOf<T>, Balance, ValueQuery>;
++
+     /// BlockNumber -> AssetId (for updating pools interests by block)
+     #[pallet::storage]
+     #[pallet::getter(fn pools_by_block)]
+@@ -385,6 +397,8 @@ pub mod pallet {
+         ArithmeticError,
+         /// Liquidation limit reached
+         LiquidationLimit,
++        /// Apollo is retired; only repayment, withdrawals and earned claims remain available.
++        RepaymentOnly,
+     }
+ 
+     #[pallet::call]
+@@ -404,6 +418,7 @@ pub mod pallet {
+             reserve_factor: Balance,
+         ) -> DispatchResultWithPostInfo {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             if user != AuthorityAccount::<T>::get() {
+                 return Err(Error::<T>::Unauthorized.into());
+@@ -516,6 +531,7 @@ pub mod pallet {
+             let user = ensure_signed(origin)?;
+ 
+             // Check if lending amount is minimum 10$
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             let lending_asset_price = Self::get_price(lending_asset);
+             let lending_amount_in_dollars: u128 = (FixedWrapper::from(lending_amount)
+                 * FixedWrapper::from(lending_asset_price))
+@@ -574,6 +590,7 @@ pub mod pallet {
+             loan_to_value: Balance,
+         ) -> DispatchResultWithPostInfo {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             ensure!(
+                 collateral_asset != borrowing_asset,
+@@ -770,7 +787,11 @@ pub mod pallet {
+ 
+                 let lending_rewards = lend_user_info.lending_interest;
+                 lend_user_info.lending_interest = 0;
+-                <UserLendingInfo<T>>::insert(asset_id, user.clone(), &lend_user_info);
++                if T::RepaymentOnly::get() && lend_user_info.lending_amount.is_zero() {
++                    UserLendingInfo::<T>::remove(asset_id, user.clone());
++                } else {
++                    <UserLendingInfo<T>>::insert(asset_id, user.clone(), &lend_user_info);
++                }
+                 <PoolData<T>>::insert(asset_id, pool_info);
+ 
+                 Self::deposit_event(Event::ClaimedLendingRewards(
+@@ -806,7 +827,18 @@ pub mod pallet {
+                 )
+                 .map_err(|_| Error::<T>::UnableToTransferRewards)?;
+ 
+-                <UserBorrowingInfo<T>>::insert(asset_id, user.clone(), &user_infos);
++                if T::RepaymentOnly::get() {
++                    user_infos.retain(|_, position| {
++                        !position.borrowing_amount.is_zero()
++                            || !position.borrowing_interest.is_zero()
++                            || !position.collateral_amount.is_zero()
++                    });
++                }
++                if T::RepaymentOnly::get() && user_infos.is_empty() {
++                    UserBorrowingInfo::<T>::remove(asset_id, user.clone());
++                } else {
++                    <UserBorrowingInfo<T>>::insert(asset_id, user.clone(), &user_infos);
++                }
+ 
+                 Self::deposit_event(Event::ClaimedBorrowingRewards(
+                     user,
+@@ -838,7 +870,8 @@ pub mod pallet {
+                 Error::<T>::LendingAmountExceeded
+             );
+             ensure!(
+-                withdrawn_amount < pool_info.total_liquidity,
++                withdrawn_amount < pool_info.total_liquidity
++                    || (T::RepaymentOnly::get() && withdrawn_amount == pool_info.total_liquidity),
+                 Error::<T>::CanNotTransferLendingAmount
+             );
+ 
+@@ -858,17 +891,21 @@ pub mod pallet {
+             user_info.lending_amount = user_info.lending_amount.saturating_sub(withdrawn_amount);
+ 
+             // Check if lending amount is less than user's lending amount
+-            if withdrawn_amount < previous_lending_amount {
++            if withdrawn_amount < previous_lending_amount
++                || (T::RepaymentOnly::get() && !user_info.lending_interest.is_zero())
++            {
+                 <UserLendingInfo<T>>::insert(withdrawn_asset, user.clone(), user_info);
+             } else {
+                 // Transfer lending interest when user withdraws whole lending amount
+-                T::AssetManager::transfer_from(
+-                    &APOLLO_ASSET_ID.into(),
+-                    &Self::account_id(),
+-                    &user,
+-                    user_info.lending_interest,
+-                )
+-                .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
++                if !T::RepaymentOnly::get() {
++                    T::AssetManager::transfer_from(
++                        &APOLLO_ASSET_ID.into(),
++                        &Self::account_id(),
++                        &user,
++                        user_info.lending_interest,
++                    )
++                    .map_err(|_| Error::<T>::CanNotTransferLendingInterest)?;
++                }
+                 <UserLendingInfo<T>>::remove(withdrawn_asset, user.clone());
+             }
+ 
+@@ -909,6 +946,15 @@ pub mod pallet {
+                 &borrow_pool_info,
+                 block_number,
+             )?;
++            if T::RepaymentOnly::get() {
++                ensure!(
++                    !amount_to_repay.is_zero()
++                        && (!user_info.borrowing_amount.is_zero()
++                            || !user_info.borrowing_interest.is_zero()
++                            || !user_info.collateral_amount.is_zero()),
++                    Error::<T>::NothingToRepay
++                );
++            }
+ 
+             // Total repaid
+             let mut total_repaid: Balance = amount_to_repay;
+@@ -996,14 +1042,17 @@ pub mod pallet {
+                     user_info.collateral_amount,
+                 )?;
+ 
+-                // Transfer borrowing amount and borrowing interest to pallet
+-                T::AssetManager::transfer_from(
+-                    &borrowing_asset,
+-                    &user,
+-                    &Self::account_id(),
+-                    total_borrowed_amount,
+-                )
+-                .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
++                // Denomination can round debt to zero while collateral remains.
++                // Closing that position requires no borrowed-asset transfer.
++                if !T::RepaymentOnly::get() || !total_borrowed_amount.is_zero() {
++                    T::AssetManager::transfer_from(
++                        &borrowing_asset,
++                        &user,
++                        &Self::account_id(),
++                        total_borrowed_amount,
++                    )
++                    .map_err(|_| Error::<T>::CanNotTransferBorrowingAmount)?;
++                }
+ 
+                 // Transfer collateral to user
+                 T::AssetManager::transfer_from(
+@@ -1014,16 +1063,26 @@ pub mod pallet {
+                 )
+                 .map_err(|_| Error::<T>::UnableToTransferCollateral)?;
+ 
+-                // Transfer borrowing rewards to user
+-                T::AssetManager::transfer_from(
+-                    &APOLLO_ASSET_ID.into(),
+-                    &Self::account_id(),
+-                    &user,
+-                    user_info.borrowing_rewards,
+-                )
+-                .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
+-
+-                borrow_user_info.remove(&collateral_asset);
++                if T::RepaymentOnly::get() && !user_info.borrowing_rewards.is_zero() {
++                    // Principal/collateral exit never depends on an APOLLO reward pot.
++                    // Keep the existing position as a reward-only claim for get_rewards.
++                    let mut claim = user_info.clone();
++                    claim.collateral_amount = 0;
++                    claim.borrowing_amount = 0;
++                    claim.borrowing_interest = 0;
++                    borrow_user_info.insert(collateral_asset, claim);
++                } else {
++                    if !T::RepaymentOnly::get() {
++                        T::AssetManager::transfer_from(
++                            &APOLLO_ASSET_ID.into(),
++                            &Self::account_id(),
++                            &user,
++                            user_info.borrowing_rewards,
++                        )
++                        .map_err(|_| Error::<T>::CanNotTransferBorrowingRewards)?;
++                    }
++                    borrow_user_info.remove(&collateral_asset);
++                }
+                 if borrow_user_info.is_empty() {
+                     <UserBorrowingInfo<T>>::remove(borrowing_asset, user.clone());
+                 } else {
+@@ -1053,6 +1112,7 @@ pub mod pallet {
+             amount: Balance,
+         ) -> DispatchResultWithPostInfo {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             if user != AuthorityAccount::<T>::get() {
+                 return Err(Error::<T>::Unauthorized.into());
+@@ -1091,6 +1151,7 @@ pub mod pallet {
+             amount: Balance,
+         ) -> DispatchResultWithPostInfo {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             if user != AuthorityAccount::<T>::get() {
+                 return Err(Error::<T>::Unauthorized.into());
+@@ -1159,6 +1220,7 @@ pub mod pallet {
+             asset_id: AssetIdOf<T>,
+         ) -> DispatchResult {
+             ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             ensure!(
+                 LiquidationsThisBlock::<T>::get() < T::MaxLiquidationsPerBlock::get(),
+                 Error::<T>::LiquidationLimit
+@@ -1278,6 +1340,13 @@ pub mod pallet {
+ 
+             let mut pool_info =
+                 PoolData::<T>::get(asset_id_to_remove).ok_or(Error::<T>::PoolDoesNotExist)?;
++            if T::RepaymentOnly::get() {
++                // Keep historical rates and PoolData needed by existing exits/earned claims.
++                pool_info.is_removed = true;
++                PoolData::<T>::insert(asset_id_to_remove, pool_info);
++                Self::deposit_event(Event::PoolRemoved(user, asset_id_to_remove));
++                return Ok(());
++            }
+             pool_info.basic_lending_rate = 0;
+             pool_info.borrowing_rewards_rate = 0;
+             pool_info.is_removed = true;
+@@ -1328,6 +1397,7 @@ pub mod pallet {
+             new_tc: Balance,
+         ) -> DispatchResult {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             if user != AuthorityAccount::<T>::get() {
+                 return Err(Error::<T>::Unauthorized.into());
+@@ -1378,6 +1448,7 @@ pub mod pallet {
+             borrowing_asset: AssetIdOf<T>,
+         ) -> DispatchResultWithPostInfo {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             ensure!(
+                 collateral_asset != borrowing_asset,
+@@ -1487,6 +1558,7 @@ pub mod pallet {
+             amount: Balance,
+         ) -> DispatchResultWithPostInfo {
+             let user = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             if user != AuthorityAccount::<T>::get() {
+                 return Err(Error::<T>::Unauthorized.into());
+@@ -1554,6 +1626,9 @@ pub mod pallet {
+ 
+         /// Off-chain worker procedure - calls liquidations
+         fn offchain_worker(block_number: BlockNumberFor<T>) {
++            if T::RepaymentOnly::get() {
++                return;
++            }
+             debug!(
+                 "Entering off-chain worker, block number is {:?}",
+                 block_number
+@@ -1704,6 +1779,14 @@ pub mod pallet {
+                 }
+             }
+ 
++            let mut deferred_interest_updates = Vec::new();
++            for (asset_id, amount) in DeferredProtocolInterest::<T>::iter() {
++                if should_denominate(&asset_id) {
++                    deferred_interest_updates
++                        .push((asset_id, Self::denominate_value(amount, factor)?));
++                }
++            }
++
+             for (asset_id, pool_info) in pool_updates {
+                 PoolData::<T>::insert(asset_id, pool_info);
+             }
+@@ -1716,6 +1799,9 @@ pub mod pallet {
+             for (user, collateral_asset, total_collateral) in total_collateral_updates {
+                 UserTotalCollateral::<T>::insert(user, collateral_asset, total_collateral);
+             }
++            for (asset_id, amount) in deferred_interest_updates {
++                DeferredProtocolInterest::<T>::insert(asset_id, amount);
++            }
+ 
+             Ok(())
+         }
+@@ -2112,6 +2198,27 @@ pub mod pallet {
+             amount: Balance,
+             borrowing_asset_id: AssetIdOf<T>,
+         ) -> DispatchResultWithPostInfo {
++            if T::RepaymentOnly::get() {
++                // Repay has already received this interest. Reserve it separately
++                // instead of requiring unavailable DEX buybacks or forgiving it.
++                if amount.is_zero() {
++                    return Ok(().into());
++                }
++                return common::with_transaction(|| {
++                    DeferredProtocolInterest::<T>::try_mutate(
++                        asset_id,
++                        |pending| -> DispatchResult {
++                            let total = pending
++                                .checked_add(amount)
++                                .ok_or(Error::<T>::ArithmeticError)?;
++                            T::MultiCurrency::reserve(asset_id, &Self::account_id(), amount)?;
++                            *pending = total;
++                            Ok(())
++                        },
++                    )?;
++                    Ok(().into())
++                });
++            }
+             common::with_transaction(|| {
+                 let mut pool_info =
+                     PoolData::<T>::get(borrowing_asset_id).ok_or(Error::<T>::PoolDoesNotExist)?;
+diff --git a/pallets/apollo-platform/src/mock.rs b/pallets/apollo-platform/src/mock.rs
+index 9b7d68b40..f5730920d 100644
+--- a/pallets/apollo-platform/src/mock.rs
++++ b/pallets/apollo-platform/src/mock.rs
+@@ -87,7 +87,12 @@ construct_runtime! {
+     }
+ }
+ 
+-mock_apollo_platform_config!(Runtime);
++parameter_types! {
++    pub storage RepaymentOnly: bool = false;
++    pub storage ExchangeAvailable: bool = true;
++    pub storage ExchangeCalls: u32 = 0;
++}
++mock_apollo_platform_config!(Runtime, RepaymentOnly);
+ mock_assets_config!(Runtime);
+ mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
+ mock_common_config!(Runtime);
+@@ -257,6 +262,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
+         amount: common::prelude::SwapAmount<Balance>,
+         _filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
+     ) -> Result<common::prelude::SwapOutcome<Balance, AssetId>, sp_runtime::DispatchError> {
++        ExchangeCalls::set(&ExchangeCalls::get().saturating_add(1));
++        if !ExchangeAvailable::get() {
++            return Err(sp_runtime::DispatchError::Other("NoLiquidity"));
++        }
+         // Transfer to exchange account (input asset)
+         let _ = Assets::transfer(
+             RawOrigin::Signed(sender.clone()).into(),
+diff --git a/pallets/apollo-platform/src/tests.rs b/pallets/apollo-platform/src/tests.rs
+index 774cdde5b..53abf1ddd 100644
+--- a/pallets/apollo-platform/src/tests.rs
++++ b/pallets/apollo-platform/src/tests.rs
+@@ -7760,4 +7760,407 @@ mod test {
+             );
+         });
+     }
++
++    fn prepare_retirement_positions() {
++        System::set_block_number(1);
++        assert_ok!(Assets::mint_to(&XOR, &alice(), &bob(), balance!(1000)));
++        assert_ok!(Assets::mint_to(&DOT, &alice(), &alice(), balance!(200)));
++        for asset in [XOR, DOT] {
++            assert_ok!(ApolloPlatform::add_pool(
++                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
++                asset,
++                balance!(1),
++                balance!(1),
++                balance!(1),
++                balance!(0.1),
++                balance!(0.1),
++                balance!(0.1),
++                balance!(0.1)
++            ));
++        }
++        assert_ok!(ApolloPlatform::lend(
++            RuntimeOrigin::signed(bob()),
++            XOR,
++            balance!(1000)
++        ));
++        assert_ok!(ApolloPlatform::lend(
++            RuntimeOrigin::signed(alice()),
++            DOT,
++            balance!(200)
++        ));
++        assert_ok!(ApolloPlatform::borrow(
++            RuntimeOrigin::signed(alice()),
++            DOT,
++            XOR,
++            balance!(100),
++            balance!(1)
++        ));
++        // The borrower received 100 XOR and must also fund the recorded interest.
++        assert_ok!(Assets::mint_to(&XOR, &alice(), &alice(), balance!(5)));
++        UserBorrowingInfo::<Runtime>::mutate(XOR, alice(), |positions| {
++            let position = positions.as_mut().unwrap().get_mut(&DOT).unwrap();
++            position.borrowing_interest = balance!(5);
++            position.borrowing_rewards = balance!(7);
++        });
++        UserLendingInfo::<Runtime>::mutate(DOT, alice(), |position| {
++            position.as_mut().unwrap().lending_interest = balance!(3);
++        });
++        assert_eq!(
++            Assets::free_balance(&APOLLO_ASSET_ID, &get_pallet_account()).unwrap(),
++            0
++        );
++    }
++
++    #[test]
++    fn repayment_only_blocks_direct_and_dispatched_growth_without_mutation() {
++        use sp_runtime::traits::Dispatchable;
++        ExtBuilder::default().build().execute_with(|| {
++            prepare_retirement_positions();
++            RepaymentOnly::set(&true);
++            let calls = vec![
++                crate::Call::<Runtime>::add_pool {
++                    asset_id: KSM,
++                    loan_to_value: balance!(1),
++                    liquidation_threshold: balance!(1),
++                    optimal_utilization_rate: balance!(1),
++                    base_rate: balance!(1),
++                    slope_rate_1: balance!(1),
++                    slope_rate_2: balance!(1),
++                    reserve_factor: balance!(1),
++                },
++                crate::Call::lend {
++                    lending_asset: XOR,
++                    lending_amount: balance!(1),
++                },
++                crate::Call::borrow {
++                    collateral_asset: DOT,
++                    borrowing_asset: XOR,
++                    borrowing_amount: balance!(1),
++                    loan_to_value: balance!(1),
++                },
++                crate::Call::liquidate {
++                    user: alice(),
++                    asset_id: XOR,
++                },
++                crate::Call::add_collateral {
++                    collateral_asset: DOT,
++                    collateral_amount: balance!(1),
++                    borrowing_asset: XOR,
++                },
++                crate::Call::change_rewards_amount {
++                    is_lending: true,
++                    amount: balance!(1),
++                },
++                crate::Call::change_rewards_per_block {
++                    is_lending: true,
++                    amount: balance!(1),
++                },
++                crate::Call::edit_pool_info {
++                    asset_id: XOR,
++                    new_loan_to_value: balance!(1),
++                    new_liquidation_threshold: balance!(1),
++                    new_optimal_utilization_rate: balance!(1),
++                    new_base_rate: balance!(1),
++                    new_slope_rate_1: balance!(1),
++                    new_slope_rate_2: balance!(1),
++                    new_reserve_factor: balance!(1),
++                    new_tl: 0,
++                    new_tb: 0,
++                    new_tc: 0,
++                },
++                crate::Call::change_collateral_factor {
++                    amount: balance!(1),
++                },
++            ];
++            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
++            for call in calls {
++                let error = RuntimeCall::ApolloPlatform(call)
++                    .dispatch(RuntimeOrigin::signed(ApolloPlatform::authority_account()))
++                    .unwrap_err();
++                assert_eq!(error.error, Error::<Runtime>::RepaymentOnly.into());
++                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
++            }
++            assert_err!(
++                ApolloPlatform::lend(RuntimeOrigin::signed(alice()), XOR, balance!(1)),
++                Error::<Runtime>::RepaymentOnly
++            );
++            assert_eq!(Error::<Runtime>::RepaymentOnly.encode()[0], 36);
++        });
++    }
++
++    #[test]
++    fn retirement_exits_without_reward_pot_or_dex_and_preserves_claims_and_received_interest() {
++        use orml_traits::MultiReservableCurrency;
++        ExtBuilder::default().build().execute_with(|| {
++            prepare_retirement_positions();
++            let rewards_before = Assets::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap();
++            let pool_before = PoolData::<Runtime>::get(XOR).unwrap();
++            RepaymentOnly::set(&true);
++            ExchangeAvailable::set(&false);
++            assert_ok!(ApolloPlatform::remove_pool(
++                RuntimeOrigin::signed(ApolloPlatform::authority_account()),
++                XOR
++            ));
++            let removed = PoolData::<Runtime>::get(XOR).unwrap();
++            assert!(removed.is_removed);
++            assert_eq!(removed.basic_lending_rate, pool_before.basic_lending_rate);
++            assert_eq!(removed.borrowing_rate, pool_before.borrowing_rate);
++            let dot_before = Assets::free_balance(&DOT, &alice()).unwrap();
++            assert_ok!(ApolloPlatform::repay(
++                RuntimeOrigin::signed(alice()),
++                DOT,
++                XOR,
++                balance!(105)
++            ));
++            assert_ok!(ApolloPlatform::withdraw(
++                RuntimeOrigin::signed(alice()),
++                DOT,
++                balance!(100)
++            ));
++            assert_eq!(
++                Assets::free_balance(&DOT, &alice()).unwrap() - dot_before,
++                balance!(200)
++            );
++            assert_eq!(ExchangeCalls::get(), 0);
++            assert_eq!(DeferredProtocolInterest::<Runtime>::get(XOR), balance!(5));
++            assert_eq!(
++                Currencies::reserved_balance(XOR, &get_pallet_account()),
++                balance!(5)
++            );
++            assert_eq!(
++                Assets::free_balance(&XOR, &get_pallet_account()).unwrap(),
++                balance!(1000)
++            );
++            assert_eq!(
++                PoolData::<Runtime>::get(XOR).unwrap().total_liquidity,
++                balance!(1000)
++            );
++            let borrower = UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap()[&DOT].clone();
++            assert_eq!(borrower.borrowing_amount, 0);
++            assert_eq!(borrower.borrowing_interest, 0);
++            assert_eq!(borrower.collateral_amount, 0);
++            assert_eq!(borrower.borrowing_rewards, balance!(7));
++            let lender = UserLendingInfo::<Runtime>::get(DOT, alice()).unwrap();
++            assert_eq!(lender.lending_amount, 0);
++            assert_eq!(lender.lending_interest, balance!(3));
++            assert_err!(
++                ApolloPlatform::get_rewards(RuntimeOrigin::signed(alice()), XOR, false),
++                Error::<Runtime>::UnableToTransferRewards
++            );
++            assert_eq!(
++                UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap()[&DOT].borrowing_rewards,
++                balance!(7)
++            );
++            assert_err!(
++                ApolloPlatform::get_rewards(RuntimeOrigin::signed(alice()), DOT, true),
++                Error::<Runtime>::UnableToTransferRewards
++            );
++            assert_eq!(
++                UserLendingInfo::<Runtime>::get(DOT, alice())
++                    .unwrap()
++                    .lending_interest,
++                balance!(3)
++            );
++            assert_ok!(Assets::mint_to(
++                &APOLLO_ASSET_ID,
++                &alice(),
++                &get_pallet_account(),
++                balance!(10)
++            ));
++            assert_ok!(ApolloPlatform::get_rewards(
++                RuntimeOrigin::signed(alice()),
++                XOR,
++                false
++            ));
++            assert_ok!(ApolloPlatform::get_rewards(
++                RuntimeOrigin::signed(alice()),
++                DOT,
++                true
++            ));
++            assert_eq!(
++                Assets::free_balance(&APOLLO_ASSET_ID, &alice()).unwrap() - rewards_before,
++                balance!(10)
++            );
++            assert!(UserBorrowingInfo::<Runtime>::get(XOR, alice()).is_none());
++            assert!(UserLendingInfo::<Runtime>::get(DOT, alice()).is_none());
++            assert_eq!(
++                Currencies::reserved_balance(XOR, &get_pallet_account()),
++                balance!(5)
++            );
++        });
++    }
++
++    #[test]
++    fn retirement_returns_collateral_after_denomination_rounds_debt_to_zero() {
++        for rewards in [0, balance!(11)] {
++            ExtBuilder::default().build().execute_with(|| {
++                System::set_block_number(1);
++                // Run the actual denomination hook on sub-factor debt. DOT, like VAL,
++                // is not denominated, so its collateral remains after XOR debt floors to zero.
++                PoolData::<Runtime>::insert(
++                    XOR,
++                    PoolInfo {
++                        total_borrowed: 9,
++                        ..Default::default()
++                    },
++                );
++                PoolData::<Runtime>::insert(
++                    DOT,
++                    PoolInfo {
++                        total_collateral: balance!(30),
++                        ..Default::default()
++                    },
++                );
++                let mut positions = BTreeMap::new();
++                positions.insert(
++                    DOT,
++                    BorrowingPosition {
++                        collateral_amount: balance!(30),
++                        borrowing_amount: 9,
++                        borrowing_interest: 7,
++                        last_borrowing_block: 1,
++                        borrowing_rewards: rewards,
++                    },
++                );
++                UserBorrowingInfo::<Runtime>::insert(XOR, alice(), positions);
++                UserTotalCollateral::<Runtime>::insert(alice(), DOT, balance!(30));
++                assert_ok!(Assets::mint_to(
++                    &DOT,
++                    &alice(),
++                    &get_pallet_account(),
++                    balance!(30)
++                ));
++                assert_ok!(crate::DenominateXorAndTbcd::<Runtime>::on_denominate(&10));
++                let position =
++                    UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap()[&DOT].clone();
++                assert_eq!(position.borrowing_amount, 0);
++                assert_eq!(position.borrowing_interest, 0);
++                assert_eq!(position.collateral_amount, balance!(30));
++                assert_eq!(position.borrowing_rewards, rewards);
++                RepaymentOnly::set(&true);
++                ExchangeAvailable::set(&false);
++                let user_xor = Assets::free_balance(&XOR, &alice()).unwrap();
++                let pallet_xor = Assets::free_balance(&XOR, &get_pallet_account()).unwrap();
++                let user_dot = Assets::free_balance(&DOT, &alice()).unwrap();
++                assert_eq!(user_xor, 0);
++                frame_support::assert_noop!(
++                    ApolloPlatform::repay(RuntimeOrigin::signed(alice()), DOT, XOR, 0),
++                    Error::<Runtime>::NothingToRepay
++                );
++                assert_ok!(ApolloPlatform::repay(
++                    RuntimeOrigin::signed(alice()),
++                    DOT,
++                    XOR,
++                    1
++                ));
++                assert_eq!(Assets::free_balance(&XOR, &alice()).unwrap(), user_xor);
++                assert_eq!(
++                    Assets::free_balance(&XOR, &get_pallet_account()).unwrap(),
++                    pallet_xor
++                );
++                assert_eq!(
++                    Assets::free_balance(&DOT, &alice()).unwrap() - user_dot,
++                    balance!(30)
++                );
++                assert_eq!(
++                    Assets::free_balance(&DOT, &get_pallet_account()).unwrap(),
++                    0
++                );
++                assert_eq!(PoolData::<Runtime>::get(DOT).unwrap().total_collateral, 0);
++                assert_eq!(PoolData::<Runtime>::get(XOR).unwrap().total_borrowed, 0);
++                assert!(UserTotalCollateral::<Runtime>::get(alice(), DOT).is_none());
++                assert_eq!(DeferredProtocolInterest::<Runtime>::get(XOR), 0);
++                assert_eq!(ExchangeCalls::get(), 0);
++                if rewards == 0 {
++                    assert!(UserBorrowingInfo::<Runtime>::get(XOR, alice()).is_none());
++                } else {
++                    let claim =
++                        UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap()[&DOT].clone();
++                    assert_eq!(claim.collateral_amount, 0);
++                    assert_eq!(claim.borrowing_amount, 0);
++                    assert_eq!(claim.borrowing_interest, 0);
++                    assert_eq!(claim.borrowing_rewards, rewards);
++                    frame_support::assert_noop!(
++                        ApolloPlatform::repay(RuntimeOrigin::signed(alice()), DOT, XOR, 1),
++                        Error::<Runtime>::NothingToRepay
++                    );
++                }
++            });
++        }
++    }
++
++    #[test]
++    fn retirement_preserves_existing_interest_accrual_and_reward_accounting() {
++        use orml_traits::MultiReservableCurrency;
++        ExtBuilder::default().build().execute_with(|| {
++            prepare_retirement_positions();
++            let position = UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap()[&DOT].clone();
++            let pool = PoolData::<Runtime>::get(XOR).unwrap();
++            let (interest, reward) =
++                ApolloPlatform::calculate_borrowing_interest_and_reward(&position, &pool, 2);
++            assert!(interest > 0);
++            let lending_budget = LendingRewards::<Runtime>::get();
++            let borrowing_budget = BorrowingRewards::<Runtime>::get();
++            RepaymentOnly::set(&true);
++            ExchangeAvailable::set(&false);
++            run_to_block(2);
++            assert_eq!(
++                LendingRewards::<Runtime>::get(),
++                lending_budget - LendingRewardsPerBlock::<Runtime>::get()
++            );
++            assert_eq!(
++                BorrowingRewards::<Runtime>::get(),
++                borrowing_budget - BorrowingRewardsPerBlock::<Runtime>::get()
++            );
++            let due = balance!(5) + interest;
++            assert_ok!(ApolloPlatform::repay(
++                RuntimeOrigin::signed(alice()),
++                DOT,
++                XOR,
++                due
++            ));
++            let current = UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap()[&DOT].clone();
++            assert_eq!(current.borrowing_amount, balance!(100));
++            assert_eq!(current.borrowing_interest, 0);
++            assert_eq!(current.borrowing_rewards, balance!(7) + reward);
++            assert_eq!(DeferredProtocolInterest::<Runtime>::get(XOR), due);
++            assert_eq!(
++                Currencies::reserved_balance(XOR, &get_pallet_account()),
++                due
++            );
++            assert_eq!(
++                PoolData::<Runtime>::get(XOR).unwrap().total_liquidity,
++                balance!(900)
++            );
++            assert_eq!(ExchangeCalls::get(), 0);
++        });
++    }
++
++    #[test]
++    fn retirement_worker_does_not_scan_sign_or_rebroadcast_pending_liquidation() {
++        let mut ext = ExtBuilder::default().build();
++        install_keeper_key(&mut ext);
++        let (pool, pool_state) = TestTransactionPoolExt::new();
++        ext.register_extension(TransactionPoolExt::new(pool));
++        ext.execute_with(|| {
++            System::set_block_number(1);
++            insert_active_pool(XOR, balance!(1));
++            insert_active_pool(DOT, balance!(0.1));
++            insert_borrowing_position(alice(), XOR, DOT, balance!(10), balance!(100));
++            assert!(ApolloPlatform::check_liquidation(
++                &UserBorrowingInfo::<Runtime>::get(XOR, alice()).unwrap(),
++                XOR
++            ));
++            RepaymentOnly::set(&true);
++            ApolloPlatform::offchain_worker(1);
++            assert!(pool_state.read().transactions.is_empty());
++            RepaymentOnly::set(&false);
++            ApolloPlatform::offchain_worker(1);
++            assert_eq!(pool_state.read().transactions.len(), 1);
++            RepaymentOnly::set(&true);
++            System::set_block_number(2);
++            ApolloPlatform::offchain_worker(2);
++            assert_eq!(pool_state.read().transactions.len(), 1);
++        });
++    }
+ }
+diff --git a/pallets/iroha-migration/src/lib.rs b/pallets/iroha-migration/src/lib.rs
+index d6447976c..595bc47a5 100644
+--- a/pallets/iroha-migration/src/lib.rs
++++ b/pallets/iroha-migration/src/lib.rs
+@@ -54,15 +54,15 @@ mod tests;
+ 
+ pub mod weights;
+ 
+-use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
++use codec::{Decode, Encode};
+ use common::prelude::Balance;
+ use common::{FromGenericPair, VAL};
+ use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
+ use frame_support::dispatch::Pays;
+ use frame_support::ensure;
+-use frame_support::sp_runtime::traits::{Hash, Zero};
++use frame_support::sp_runtime::traits::Zero;
+ use frame_support::sp_runtime::DispatchError;
+-use frame_support::traits::{Currency, Get, WithdrawReasons};
++use frame_support::traits::Get;
+ use frame_support::weights::Weight;
+ use frame_system::ensure_signed;
+ use frame_system::pallet_prelude::BlockNumberFor;
+@@ -79,21 +79,6 @@ pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
+ pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
+ const MIGRATION_SIGNING_PAYLOAD_PREFIX: &str = "SORA2-IROHA-MIGRATION-V2";
+ 
+-/// A voluntary authorization, never a claim on another account's funds.
+-/// The payment extension withdraws XOR before consuming an attempt, outside
+-/// the migration call's rollback layer. Quoted fees bound total exposure.
+-#[derive(
+-    Clone, Debug, Encode, Decode, DecodeWithMemTracking, MaxEncodedLen, scale_info::TypeInfo,
+-)]
+-pub struct FeeSponsorship<AccountId, BlockNumber> {
+-    pub sponsor: AccountId,
+-    pub beneficiary: AccountId,
+-    pub max_fee: Balance,
+-    pub remaining_budget: Balance,
+-    pub remaining_attempts: u8,
+-    pub valid_until: BlockNumber,
+-}
+-
+ fn blocks_till_migration<T>() -> BlockNumberFor<T>
+ where
+     T: frame_system::Config,
+@@ -126,21 +111,6 @@ where
+ }
+ 
+ impl<T: Config> Pallet<T> {
+-    fn can_fund_sponsorship(sponsor: &T::AccountId, budget: Balance) -> bool {
+-        let Some(remaining) = T::FeeCurrency::free_balance(sponsor).checked_sub(budget) else {
+-            return false;
+-        };
+-        remaining > 0
+-            && remaining >= T::FeeCurrency::minimum_balance()
+-            && T::FeeCurrency::ensure_can_withdraw(
+-                sponsor,
+-                budget,
+-                WithdrawReasons::TRANSACTION_PAYMENT,
+-                remaining,
+-            )
+-            .is_ok()
+-    }
+-
+     pub fn needs_migration(iroha_address: &String) -> bool {
+         Balances::<T>::contains_key(iroha_address)
+             && !MigratedAccounts::<T>::contains_key(iroha_address)
+@@ -192,73 +162,6 @@ impl<T: Config> Pallet<T> {
+         Ok(())
+     }
+ 
+-    pub fn sponsorship_id(
+-        account: &T::AccountId,
+-        iroha_address: &String,
+-        iroha_public_key: &String,
+-    ) -> T::Hash {
+-        T::Hashing::hash_of(&(account, iroha_address, iroha_public_key.to_lowercase()))
+-    }
+-
+-    pub fn fee_sponsor(
+-        account: &T::AccountId,
+-        iroha_address: &String,
+-        iroha_public_key: &String,
+-        iroha_signature: &String,
+-        fee: Balance,
+-        tip: Balance,
+-    ) -> Option<T::AccountId> {
+-        if !tip.is_zero()
+-            || fee.is_zero()
+-            || iroha_address.len() > 128
+-            || iroha_public_key.len() != 64
+-            || iroha_signature.len() != 128
+-        {
+-            return None;
+-        }
+-        Self::check_migrate(iroha_address, iroha_public_key, iroha_signature, account).ok()?;
+-        let id = Self::sponsorship_id(account, iroha_address, iroha_public_key);
+-        let grant = FeeSponsorships::<T>::get(id)?;
+-        (grant.remaining_attempts > 0
+-            && fee <= grant.max_fee
+-            && fee <= grant.remaining_budget
+-            && frame_system::Pallet::<T>::block_number() <= grant.valid_until)
+-            .then_some(grant.sponsor)
+-    }
+-
+-    /// Called only after a matching sponsored fee has been withdrawn atomically.
+-    pub fn consume_fee_sponsorship(
+-        account: &T::AccountId,
+-        iroha_address: &String,
+-        iroha_public_key: &String,
+-        sponsor: &T::AccountId,
+-        fee: Balance,
+-    ) -> Result<(), DispatchError> {
+-        let id = Self::sponsorship_id(account, iroha_address, iroha_public_key);
+-        FeeSponsorships::<T>::try_mutate_exists(id, |stored| {
+-            let grant = stored.as_mut().ok_or(Error::<T>::InvalidFeeSponsorship)?;
+-            ensure!(
+-                &grant.sponsor == sponsor
+-                    && grant.remaining_attempts > 0
+-                    && fee <= grant.max_fee
+-                    && fee <= grant.remaining_budget
+-                    && frame_system::Pallet::<T>::block_number() <= grant.valid_until,
+-                Error::<T>::InvalidFeeSponsorship
+-            );
+-            grant.remaining_attempts -= 1;
+-            grant.remaining_budget -= fee;
+-            // Keep the bounded exhausted grant until explicitly cleaned up. Its
+-            // sufficient reference preserves the claimant's nonce through a
+-            // failed final attempt; revocation releases that reference.
+-            Self::deposit_event(Event::FeeSponsorshipUsed {
+-                claim: id,
+-                sponsor: sponsor.clone(),
+-                maximum_fee: fee,
+-            });
+-            Ok(())
+-        })
+-    }
+-
+     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
+         let iroha_public_key =
+             hex::decode(&iroha_public_key).map_err(|_| Error::<T>::PublicKeyParsingFailed)?;
+@@ -426,7 +329,6 @@ pub mod pallet {
+         #[allow(deprecated)]
+         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+         type MigrationGenesisHash: Get<Self::Hash>;
+-        type FeeCurrency: Currency<Self::AccountId, Balance = Balance>;
+         type WeightInfo: WeightInfo;
+     }
+ 
+@@ -438,15 +340,6 @@ pub mod pallet {
+     #[pallet::without_storage_info]
+     pub struct Pallet<T>(PhantomData<T>);
+ 
+-    #[pallet::storage]
+-    pub type FeeSponsorships<T: Config> = StorageMap<
+-        _,
+-        Blake2_128Concat,
+-        T::Hash,
+-        FeeSponsorship<T::AccountId, BlockNumberFor<T>>,
+-        OptionQuery,
+-    >;
+-
+     #[pallet::hooks]
+     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+         fn on_initialize(block_number: BlockNumberFor<T>) -> Weight {
+@@ -476,8 +369,8 @@ pub mod pallet {
+     #[pallet::call]
+     impl<T: Config> Pallet<T> {
+         #[pallet::call_index(0)]
+-        // Cover ownership checks in payment admission as well as dispatch.
+-        #[pallet::weight((WeightInfoOf::<T>::migrate().saturating_mul(3), Pays::Yes))]
++        // Ownership is checked once in dispatch, with the claimant paying the fee.
++        #[pallet::weight((WeightInfoOf::<T>::migrate(), Pays::Yes))]
+         pub fn migrate(
+             origin: OriginFor<T>,
+             iroha_address: String,
+@@ -501,121 +394,13 @@ pub mod pallet {
+                         key_count,
+                     )?;
+                 }
+-                // The user doesn't have to pay fees if the migration is succeeded
++                // A successful claim pays the same transaction fee as a failed attempt.
+                 Ok(PostDispatchInfo {
+                     actual_weight: None,
+-                    pays_fee: Pays::No,
++                    pays_fee: Pays::Yes,
+                 })
+             })
+         }
+-
+-        /// Authorize up to three fee-funded migration attempts for one claimant.
+-        /// The sponsor's available XOR is checked and withdrawn at execution;
+-        /// an unfunded authorization never admits an unpaid migration.
+-        #[pallet::call_index(1)]
+-        #[pallet::weight(WeightInfoOf::<T>::migrate())]
+-        pub fn sponsor_migration(
+-            origin: OriginFor<T>,
+-            beneficiary: T::AccountId,
+-            iroha_address: String,
+-            iroha_public_key: String,
+-            max_fee: Balance,
+-            attempts: u8,
+-            valid_until: BlockNumberFor<T>,
+-        ) -> DispatchResult {
+-            let sponsor = ensure_signed(origin)?;
+-            ensure!(
+-                iroha_address.len() <= 128 && iroha_public_key.len() == 64,
+-                Error::<T>::InvalidMigrationInput
+-            );
+-            ensure!(
+-                attempts > 0 && attempts <= 3 && max_fee > 0,
+-                Error::<T>::InvalidFeeSponsorship
+-            );
+-            ensure!(
+-                valid_until > frame_system::Pallet::<T>::block_number(),
+-                Error::<T>::InvalidFeeSponsorship
+-            );
+-            let key = iroha_public_key.to_lowercase();
+-            ensure!(
+-                PublicKeys::<T>::get(&iroha_address)
+-                    .iter()
+-                    .any(|(used, public)| !used && public == &key),
+-                Error::<T>::AccountNotFound
+-            );
+-            ensure!(
+-                !MigratedAccounts::<T>::contains_key(&iroha_address),
+-                Error::<T>::AccountAlreadyMigrated
+-            );
+-            let claim = Self::sponsorship_id(&beneficiary, &iroha_address, &key);
+-            let remaining_budget = max_fee
+-                .checked_mul(attempts as Balance)
+-                .ok_or(Error::<T>::InvalidFeeSponsorship)?;
+-            ensure!(
+-                Self::can_fund_sponsorship(&sponsor, remaining_budget),
+-                Error::<T>::InvalidFeeSponsorship
+-            );
+-            // A volunteer can replace an underpriced grant without requiring
+-            // the zero-XOR claimant to pay for revocation. A stranger may only
+-            // replace a live funded grant with a strictly higher fee cap and no lower
+-            // budget, attempt allowance or expiry, backed by the new sponsor's
+-            // own funds. Check current storage so stale replacements cannot
+-            // degrade a grant that was improved while they were pending.
+-            if let Some(existing) = FeeSponsorships::<T>::get(claim) {
+-                ensure!(
+-                    existing.sponsor == sponsor
+-                        || existing.remaining_attempts == 0
+-                        || existing.valid_until < frame_system::Pallet::<T>::block_number()
+-                        || !Self::can_fund_sponsorship(
+-                            &existing.sponsor,
+-                            existing.remaining_budget
+-                        )
+-                        || (max_fee > existing.max_fee
+-                            && remaining_budget >= existing.remaining_budget
+-                            && attempts >= existing.remaining_attempts
+-                            && valid_until >= existing.valid_until),
+-                    Error::<T>::NotFeeSponsor
+-                );
+-            } else {
+-                frame_system::Pallet::<T>::inc_sufficients(&beneficiary);
+-            }
+-            FeeSponsorships::<T>::insert(
+-                claim,
+-                FeeSponsorship {
+-                    sponsor: sponsor.clone(),
+-                    beneficiary: beneficiary.clone(),
+-                    max_fee,
+-                    remaining_budget,
+-                    remaining_attempts: attempts,
+-                    valid_until,
+-                },
+-            );
+-            Self::deposit_event(Event::FeeSponsorshipGranted {
+-                claim,
+-                sponsor,
+-                beneficiary,
+-            });
+-            Ok(())
+-        }
+-
+-        /// Revoke a grant, or remove an expired grant without spending its funds.
+-        #[pallet::call_index(2)]
+-        #[pallet::weight(WeightInfoOf::<T>::migrate())]
+-        pub fn revoke_sponsorship(origin: OriginFor<T>, claim: T::Hash) -> DispatchResult {
+-            let who = ensure_signed(origin)?;
+-            let grant =
+-                FeeSponsorships::<T>::get(claim).ok_or(Error::<T>::InvalidFeeSponsorship)?;
+-            ensure!(
+-                grant.sponsor == who
+-                    || grant.beneficiary == who
+-                    || grant.valid_until < frame_system::Pallet::<T>::block_number(),
+-                Error::<T>::NotFeeSponsor
+-            );
+-            FeeSponsorships::<T>::remove(claim);
+-            frame_system::Pallet::<T>::dec_sufficients(&grant.beneficiary);
+-            Self::deposit_event(Event::FeeSponsorshipRevoked { claim });
+-            Ok(())
+-        }
+     }
+ 
+     #[pallet::event]
+@@ -623,19 +408,6 @@ pub mod pallet {
+     pub enum Event<T: Config> {
+         /// Migrated. [source, target]
+         Migrated(String, AccountIdOf<T>),
+-        FeeSponsorshipGranted {
+-            claim: T::Hash,
+-            sponsor: T::AccountId,
+-            beneficiary: T::AccountId,
+-        },
+-        FeeSponsorshipUsed {
+-            claim: T::Hash,
+-            sponsor: T::AccountId,
+-            maximum_fee: Balance,
+-        },
+-        FeeSponsorshipRevoked {
+-            claim: T::Hash,
+-        },
+     }
+ 
+     #[pallet::error]
+@@ -660,9 +432,6 @@ pub mod pallet {
+         MultiSigCreationFailed,
+         /// Signatory addition to multi-signature account failed
+         SignatoryAdditionFailed,
+-        InvalidMigrationInput,
+-        InvalidFeeSponsorship,
+-        NotFeeSponsor,
+     }
+ 
+     #[pallet::storage]
+diff --git a/pallets/iroha-migration/src/mock.rs b/pallets/iroha-migration/src/mock.rs
+index b2aa5688e..359ede888 100644
+--- a/pallets/iroha-migration/src/mock.rs
++++ b/pallets/iroha-migration/src/mock.rs
+@@ -109,7 +109,6 @@ parameter_types! {
+ }
+ 
+ impl Config for Runtime {
+-    type FeeCurrency = Balances;
+     type RuntimeEvent = RuntimeEvent;
+     type MigrationGenesisHash = MigrationGenesisHash;
+     type WeightInfo = ();
+diff --git a/pallets/iroha-migration/src/tests.rs b/pallets/iroha-migration/src/tests.rs
+index 55c08b0e3..848b4d1a2 100644
+--- a/pallets/iroha-migration/src/tests.rs
++++ b/pallets/iroha-migration/src/tests.rs
+@@ -39,7 +39,7 @@ use common::{AssetInfoProvider, VAL};
+ use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
+ use frame_support::assert_noop;
+ use frame_support::assert_ok;
+-use frame_support::dispatch::CheckIfFeeless;
++use frame_support::dispatch::{CheckIfFeeless, GetDispatchInfo, Pays, PostDispatchInfo};
+ use frame_support::traits::OnInitialize;
+ use referrals::Referrers;
+ use sha3::Sha3_256;
+@@ -139,6 +139,7 @@ fn valid_migration_requires_fee_funding_before_dispatch() {
+         install_public_keys(iroha_address, &[&key]);
+ 
+         let call = migrate_call_with_key(ALICE, iroha_address, &key);
++        assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
+         assert!(!call.is_feeless(&RuntimeOrigin::signed(ALICE)));
+         assert!(!call.is_feeless(&RuntimeOrigin::signed(BOB)));
+ 
+@@ -262,7 +263,13 @@ fn test_migrate_balance() {
+             Assets::free_balance(&VAL, &ALICE).unwrap(),
+             Balance::from(0u128)
+         );
+-        assert_ok!(migrate_with_key(ALICE, iroha_address, &key));
++        assert_eq!(
++            migrate_with_key(ALICE, iroha_address, &key),
++            Ok(PostDispatchInfo {
++                actual_weight: None,
++                pays_fee: Pays::Yes,
++            })
++        );
+         assert_eq!(
+             Assets::free_balance(&VAL, &ALICE).unwrap(),
+             Balance::from(300u128)
+@@ -328,7 +335,13 @@ fn test_migrate_multi_sig() {
+         let charlie_key = test_keypair(3);
+         install_public_keys(&iroha_address, &[&alice_key, &bob_key, &charlie_key]);
+ 
+-        assert_ok!(migrate_with_key(ALICE, &iroha_address, &alice_key));
++        assert_eq!(
++            migrate_with_key(ALICE, &iroha_address, &alice_key),
++            Ok(PostDispatchInfo {
++                actual_weight: None,
++                pays_fee: Pays::Yes,
++            })
++        );
+         assert!(!MigratedAccounts::<Runtime>::contains_key(&iroha_address));
+         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(
+             &iroha_address
+@@ -342,11 +355,23 @@ fn test_migrate_multi_sig() {
+             Assets::free_balance(&VAL, &multi_account).unwrap(),
+             Balance::from(0u128)
+         );
+-        assert_ok!(migrate_with_key(BOB, &iroha_address, &bob_key));
++        assert_eq!(
++            migrate_with_key(BOB, &iroha_address, &bob_key),
++            Ok(PostDispatchInfo {
++                actual_weight: None,
++                pays_fee: Pays::Yes,
++            })
++        );
+         assert!(PendingMultiSigAccounts::<Runtime>::contains_key(
+             &iroha_address
+         ));
+-        assert_ok!(migrate_with_key(CHARLIE, &iroha_address, &charlie_key));
++        assert_eq!(
++            migrate_with_key(CHARLIE, &iroha_address, &charlie_key),
++            Ok(PostDispatchInfo {
++                actual_weight: None,
++                pays_fee: Pays::Yes,
++            })
++        );
+         assert!(MigratedAccounts::<Runtime>::contains_key(&iroha_address));
+         assert!(!PendingMultiSigAccounts::<Runtime>::contains_key(
+             &iroha_address
+diff --git a/pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md b/pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md
+index 9a88aa58b..56cc7469d 100644
+--- a/pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md
++++ b/pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md
+@@ -1,40 +1,37 @@
+-# Funded keepers and incoming relayers
+-
+-Runtime activation requires the following operator preparation. The runtime does
+-not install keys, fund accounts, or contact operators automatically.
+-
+-## Kensetsu and Apollo workers
+-
+-1. Generate a separate sr25519 operational account. Do not reuse BABE, GRANDPA,
+-   ImOnline, or bridge proof keys. Both workers use the application key type
+-   `keep` (the four UTF-8 bytes `0x6b656570`).
+-2. Fund its native XOR balance from the operator's approved account. Estimate
+-   the normal transaction fee for `kensetsu.accrue`, `kensetsu.liquidate`, and
+-   `apolloPlatform.liquidate` using the candidate runtime and maintain a balance
+-   buffer for repeated failures and the configured worker submission limits.
+-   These maintenance calls pay fees on both success and failure.
+-3. Install the operational key only through the node's local authorized key
+-   management interface. The Substrate `author_insertKey` request has parameters
+-   `["keep", "<secret URI>", "0x<sr25519 public key>"]`. Never place its secret
+-   URI in shared logs, release evidence, or remote public RPC requests.
+-4. Confirm that the public key identifies the funded account and that the node
+-   runs offchain workers. A missing key logs a warning and sends no maintenance
+-   transaction. The signed transaction builder includes normal nonce, genesis,
+-   runtime versions, mortal era, weight, and fee extensions.
+-5. Before activation, rehearse a signed maintenance success and failure using
+-   the candidate runtime. Confirm a nonzero fee, correct sender/nonce, and no
+-   genuine unsigned maintenance admission. Monitor the operational balance and
+-   refill it through the existing approved funding process.
+-
+-Multiple keeper keys on the same node are unnecessary: the workers select the
+-first available `keep` account. Use one funded key per operational lane. A shared
+-offchain lock and bounded 32-operation queue coordinate Kensetsu and Apollo
+-nonces. Pending operations are deduplicated and rebroadcast using exact signed
+-bytes once per block. Confirmed entries are removed; expired or version-changed
+-entries are re-signed at the same nonce, so later pending transactions have no
+-nonce gap. An operation that becomes stale while pending can subsequently fail
+-and pay a fee. Two independent nodes using the same account must coordinate
+-transaction nonces or use separate funded accounts.
++# Retired lending protocols and incoming relayers
++
++SORA 4.8.12 configures Kensetsu and Apollo in repayment-only mode. The previous
++funded-keeper rollout plan is superseded for these two protocols. Their offchain
++workers return before scanning positions, accessing keys or submitting work.
++Operators do not need to install or fund `keep` keys for this release.
++
++## Existing-position exits
++
++Kensetsu owners retain `repay_debt` and `close_cdp` to settle existing debt and
++recover collateral. New CDPs, borrowing, additional collateral deposits,
++standalone accrual, donations and liquidation are disabled at pallet dispatch,
++including when calls are wrapped. Debt-free positions can close without
++interest calculations or treasury mint permission. Repayment/closure checks
++ownership before accounting, and failures roll back debt, tokens and collateral.
++Existing debt continues accruing interest under its current terms. Repayment and
++closure retain the existing fee calculation and treasury accounting, including
++its settlement mint. No new borrower debt or borrower mint is permitted.
++
++Apollo retains repayment, principal withdrawal and earned-reward claims. New
++pools, lending deposits, borrowing, additional collateral and liquidation are
++disabled. A last lender may withdraw exactly the available pool liquidity.
++Principal/collateral exits preserve unpaid APOLLO rewards as separately
++claimable records and do not require a funded reward pot. Existing borrowing
++interest terms remain in force. Received interest is reserved in its original
++asset and tracked in `DeferredProtocolInterest`, excluded from lending liquidity;
++DEX buybacks cannot block repayment. Distribution of those reserves requires a
++separately reviewed governance change.
++
++All normal signed exit calls and rejected signed attempts pay transaction fees.
++Bare maintenance calls remain rejected. Before activation, exercise existing
++position exits and confirm new activity and automatic submissions are blocked.
++The shared keeper helper remains generic library code, unused by these production
++workers. BABE/GRANDPA signed reporting is a separate deployment requirement.
+ 
+ ## Generic and federated Substrate bridge protocol
+ 
+@@ -58,5 +55,5 @@ Existing payload and batch bounds remain in place. Submission weights use a
+ conservative three-times bound for the additional admission checks until fresh
+ benchmarks are collected. Activation evidence must cover valid zero-XOR bare and
+ signed delivery, invalid proof, stale nonce, partial application, hidden mint
+-failure, empty batch, read-only validation and pre-dispatch rejection. Keeper
+-maintenance is a separate paid operation and still needs a funded `keep` key.
++failure, empty batch, read-only validation and pre-dispatch rejection. Kensetsu and Apollo
++maintenance is disabled; the bridge exception does not depend on keeper funding.
+diff --git a/pallets/kensetsu/src/lib.rs b/pallets/kensetsu/src/lib.rs
+index b9b477eab..751365e38 100644
+--- a/pallets/kensetsu/src/lib.rs
++++ b/pallets/kensetsu/src/lib.rs
+@@ -228,6 +228,7 @@ pub mod pallet {
+     };
+     use frame_support::pallet_prelude::*;
+     use frame_support::traits::Randomness;
++    use frame_support::transactional;
+     use frame_system::offchain::{
+         AppCrypto, CreateSignedTransaction, CreateTransactionBase, SigningTypes,
+     };
+@@ -252,6 +253,9 @@ pub mod pallet {
+     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+         /// Resets liquidation flag.
+         fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
++            if T::RepaymentOnly::get() {
++                return Weight::zero();
++            }
+             LiquidatedThisBlock::<T>::put(false);
+             AccruesThisBlock::<T>::put(0);
+             T::DbWeight::get().writes(2)
+@@ -261,6 +265,9 @@ pub mod pallet {
+         ///
+         /// Accrues fees and calls liquidations
+         fn offchain_worker(block_number: BlockNumberFor<T>) {
++            if T::RepaymentOnly::get() {
++                return;
++            }
+             debug!(
+                 "Entering off-chain worker, block number is {:?}",
+                 block_number
+@@ -373,6 +380,9 @@ pub mod pallet {
+     {
+         /// A funded `keep` sr25519 key; separate from validator consensus keys.
+         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
++        /// Retire user-facing activity except repayment and closing existing CDPs.
++        #[pallet::constant]
++        type RepaymentOnly: Get<bool>;
+         #[allow(deprecated)]
+         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+         type Randomness: Randomness<Self::Hash, frame_system::pallet_prelude::BlockNumberFor<Self>>;
+@@ -693,6 +703,8 @@ pub mod pallet {
+         CollateralNotRegisteredInPriceTools,
+         /// Accrue limit reached
+         AccrueLimit,
++        /// Only repayment and closure of existing CDPs are available.
++        RepaymentOnly,
+     }
+ 
+     #[pallet::call]
+@@ -721,6 +733,7 @@ pub mod pallet {
+             _cdp_type: CdpType,
+         ) -> DispatchResult {
+             let who = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+ 
+             ensure!(
+                 borrow_amount_min <= borrow_amount_max,
+@@ -775,14 +788,16 @@ pub mod pallet {
+         /// - `origin`: The origin of the transaction, only CDP owner is allowed.
+         /// - `cdp_id`: The ID of the CDP to be closed.
+         ///  will be transferred.
++        #[transactional]
+         #[pallet::call_index(1)]
+-        #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
++        #[pallet::weight(<T as Config>::WeightInfo::close_cdp().saturating_add(T::DbWeight::get().reads(1)))]
+         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+             let who = ensure_signed(origin)?;
+ 
+-            let cdp = Self::get_cdp_updated(cdp_id)?;
++            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
+ 
++            let cdp = Self::get_cdp_updated(cdp_id)?;
+             Self::repay_debt_internal(cdp_id, cdp.debt)?;
+             Self::delete_cdp(cdp_id)
+         }
+@@ -802,6 +817,7 @@ pub mod pallet {
+             collateral_amount: Balance,
+         ) -> DispatchResult {
+             let who = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             Self::deposit_internal(&who, cdp_id, collateral_amount)
+         }
+ 
+@@ -823,6 +839,7 @@ pub mod pallet {
+             borrow_amount_max: Balance,
+         ) -> DispatchResult {
+             let who = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             ensure!(
+                 borrow_amount_min <= borrow_amount_max,
+                 Error::<T>::WrongBorrowAmounts
+@@ -837,11 +854,12 @@ pub mod pallet {
+         /// - `origin`: The origin of the transaction.
+         /// - `cdp_id`: The ID of the CDP to repay debt for.
+         /// - `amount`: The amount to repay against the CDP's debt.
++        #[transactional]
+         #[pallet::call_index(4)]
+         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
+         pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
+             let who = ensure_signed(origin)?;
+-            let cdp = Self::get_cdp_updated(cdp_id)?;
++            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
+             Self::repay_debt_internal(cdp_id, amount)
+         }
+@@ -856,6 +874,7 @@ pub mod pallet {
+         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
+         pub fn liquidate(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+             ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             // only one liquidation per block
+             ensure!(
+                 Self::check_liquidation_available(),
+@@ -889,6 +908,7 @@ pub mod pallet {
+         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
+         pub fn accrue(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
+             ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             ensure!(
+                 AccruesThisBlock::<T>::get() < T::MaxAccruesPerBlock::get(),
+                 Error::<T>::AccrueLimit
+@@ -1042,6 +1062,7 @@ pub mod pallet {
+             amount: Balance,
+         ) -> DispatchResult {
+             let who = ensure_signed(origin)?;
++            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
+             technical::Pallet::<T>::transfer_in(
+                 &stablecoin_asset_id,
+                 &who,
+@@ -1904,6 +1925,14 @@ pub mod pallet {
+             cdp_id: CdpId,
+         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
+         {
++            if T::RepaymentOnly::get() {
++                let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
++                // Debt-free owners must be able to recover collateral without
++                // accrual calculations or any treasury mint operation.
++                if cdp.debt.is_zero() {
++                    return Ok(cdp);
++                }
++            }
+             let (mut stability_fee, new_coefficient) = Self::calculate_stability_fee(cdp_id)?;
+             let cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
+                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;
+diff --git a/pallets/kensetsu/src/mock.rs b/pallets/kensetsu/src/mock.rs
+index bf6fde025..b2dabdc9f 100644
+--- a/pallets/kensetsu/src/mock.rs
++++ b/pallets/kensetsu/src/mock.rs
+@@ -328,6 +328,7 @@ where
+ }
+ 
+ parameter_types! {
++    pub storage RepaymentOnly: bool = false;
+     pub KensetsuDepositoryTechAccountId: TechAccountId = {
+         TechAccountId::from_generic_pair(
+             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),
+diff --git a/pallets/kensetsu/src/tests.rs b/pallets/kensetsu/src/tests.rs
+index 08edfe608..75eacde03 100644
+--- a/pallets/kensetsu/src/tests.rs
++++ b/pallets/kensetsu/src/tests.rs
+@@ -81,6 +81,7 @@ fn error_indices_are_append_only() {
+         17
+     );
+     assert_eq!(KensetsuError::AccrueLimit.encode()[0], 18);
++    assert_eq!(KensetsuError::RepaymentOnly.encode()[0], 19);
+ }
+ 
+ fn setup_accruable_cdps(count: usize) -> Vec<CdpId> {
+@@ -3790,3 +3791,269 @@ fn keeper_renews_expired_and_old_version_transactions_at_the_same_nonce() {
+         }
+     });
+ }
++
++fn repayment_only_fixture() -> CdpId {
++    configure_kensetsu_dollar_for_xor(
++        Balance::MAX,
++        Perbill::from_percent(50),
++        FixedU128::zero(),
++        balance!(0),
++    );
++    let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
++    crate::mock::RepaymentOnly::set(&true);
++    cdp_id
++}
++
++#[test]
++fn repayment_only_blocks_non_exit_calls_without_changes() {
++    new_test_ext().execute_with(|| {
++        let cdp_id = repayment_only_fixture();
++        assert_noop!(
++            KensetsuPallet::create_cdp(
++                alice(),
++                XOR,
++                balance!(100),
++                KUSD,
++                balance!(10),
++                balance!(10),
++                CdpType::Type2,
++            ),
++            KensetsuError::RepaymentOnly
++        );
++        assert_noop!(
++            KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
++            KensetsuError::RepaymentOnly
++        );
++        assert_noop!(
++            KensetsuPallet::borrow(alice(), cdp_id, balance!(1), balance!(1)),
++            KensetsuError::RepaymentOnly
++        );
++        assert_noop!(
++            KensetsuPallet::liquidate(bob(), cdp_id),
++            KensetsuError::RepaymentOnly
++        );
++        assert_noop!(
++            KensetsuPallet::accrue(bob(), cdp_id),
++            KensetsuError::RepaymentOnly
++        );
++        assert_noop!(
++            KensetsuPallet::donate(alice(), KUSD, balance!(1)),
++            KensetsuError::RepaymentOnly
++        );
++        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(10));
++        assert_eq!(get_total_supply(&KUSD), balance!(10));
++        assert_balance(&depository_tech_account_id(), &XOR, balance!(100));
++    });
++}
++
++#[test]
++fn repayment_only_allows_partial_repayment_and_owner_close() {
++    new_test_ext().execute_with(|| {
++        let cdp_id = repayment_only_fixture();
++        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(4)));
++        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(6));
++        assert_eq!(get_total_supply(&KUSD), balance!(6));
++        assert_balance(&alice_account_id(), &KUSD, balance!(6));
++        assert_balance(&alice_account_id(), &XOR, 0);
++        assert_balance(&depository_tech_account_id(), &XOR, balance!(100));
++
++        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
++        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
++        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
++        assert_eq!(get_total_supply(&KUSD), 0);
++        assert_balance(&alice_account_id(), &KUSD, 0);
++        assert_balance(&alice_account_id(), &XOR, balance!(100));
++        assert_balance(&depository_tech_account_id(), &XOR, 0);
++        let collateral = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
++            collateral_asset_id: XOR,
++            stablecoin_asset_id: KUSD,
++        })
++        .unwrap();
++        assert_eq!(collateral.stablecoin_supply, 0);
++        assert_eq!(collateral.total_collateral, 0);
++    });
++}
++
++#[test]
++fn repayment_only_preserves_interest_and_treasury_accounting_during_owner_exit() {
++    // Exercise the same sequence before and after retirement, including the
++    // existing offset of bad debt before stability fees are minted to treasury.
++    for repayment_only in [false, true] {
++        for bad_debt in [0, balance!(0.5)] {
++            new_test_ext().execute_with(|| {
++                configure_kensetsu_dollar_for_xor(
++                    Balance::MAX,
++                    Perbill::from_percent(50),
++                    FixedU128::from_inner(balance!(0.1)),
++                    0,
++                );
++                let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
++                // Repayment funding comes from an existing stablecoin balance;
++                // retirement does not mint additional borrowing to the owner.
++                add_balance(alice_account_id(), balance!(1.7), KUSD);
++                set_bad_debt(bad_debt);
++                crate::mock::RepaymentOnly::set(&repayment_only);
++                pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
++                assert_noop!(
++                    KensetsuPallet::repay_debt(bob(), cdp_id, balance!(4)),
++                    KensetsuError::OperationNotPermitted
++                );
++                assert_noop!(
++                    KensetsuPallet::close_cdp(bob(), cdp_id),
++                    KensetsuError::OperationNotPermitted
++                );
++                if repayment_only {
++                    assert_noop!(
++                        KensetsuPallet::borrow(alice(), cdp_id, balance!(1), balance!(1)),
++                        KensetsuError::RepaymentOnly
++                    );
++                    assert_noop!(
++                        KensetsuPallet::create_cdp(
++                            alice(),
++                            XOR,
++                            balance!(100),
++                            KUSD,
++                            balance!(1),
++                            balance!(1),
++                            CdpType::Type2,
++                        ),
++                        KensetsuError::RepaymentOnly
++                    );
++                }
++                assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(4)));
++                let remaining = KensetsuPallet::cdp(cdp_id).unwrap();
++                assert_eq!(remaining.debt, balance!(7)); // 10 + 1 interest - 4 repaid
++                assert_eq!(remaining.interest_coefficient.into_inner(), balance!(1.1));
++                assert_balance(&alice_account_id(), &KUSD, balance!(7.7));
++                assert_balance(&alice_account_id(), &XOR, 0);
++                assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1) - bad_debt);
++                assert_eq!(get_total_supply(&KUSD), balance!(8.7) - bad_debt);
++                assert_bad_debt(0);
++                let pair = StablecoinCollateralIdentifier {
++                    collateral_asset_id: XOR,
++                    stablecoin_asset_id: KUSD,
++                };
++                assert_eq!(
++                    KensetsuPallet::collateral_infos(&pair)
++                        .unwrap()
++                        .stablecoin_supply,
++                    balance!(7)
++                );
++
++                pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2000);
++                assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
++                // The second second adds 0.7 interest to the remaining 7 debt.
++                assert_eq!(KensetsuPallet::cdp(cdp_id), None);
++                assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
++                assert_balance(&alice_account_id(), &KUSD, 0);
++                assert_balance(&alice_account_id(), &XOR, balance!(100));
++                assert_balance(&depository_tech_account_id(), &XOR, 0);
++                assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1.7) - bad_debt);
++                assert_eq!(get_total_supply(&KUSD), balance!(1.7) - bad_debt);
++                let collateral = KensetsuPallet::collateral_infos(pair).unwrap();
++                assert_eq!(collateral.stablecoin_supply, 0);
++                assert_eq!(collateral.total_collateral, 0);
++            });
++        }
++    }
++}
++
++#[test]
++fn repayment_only_rejects_non_owner_exit_without_changes() {
++    new_test_ext().execute_with(|| {
++        let cdp_id = repayment_only_fixture();
++        assert_noop!(
++            KensetsuPallet::repay_debt(bob(), cdp_id, balance!(1)),
++            KensetsuError::OperationNotPermitted
++        );
++        assert_noop!(
++            KensetsuPallet::close_cdp(bob(), cdp_id),
++            KensetsuError::OperationNotPermitted
++        );
++        assert_noop!(
++            KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id),
++            BadOrigin
++        );
++        assert_noop!(
++            KensetsuPallet::repay_debt(RuntimeOrigin::root(), cdp_id, balance!(1)),
++            BadOrigin
++        );
++    });
++}
++
++#[test]
++fn repayment_only_failed_close_preserves_repayment_and_collateral() {
++    new_test_ext().execute_with(|| {
++        let cdp_id = repayment_only_fixture();
++        // Force collateral release to fail after the debt burn. The whole exit
++        // must roll back, preserving the owner's stablecoin, debt and CDP.
++        assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
++            RuntimeOrigin::root(),
++            depository_tech_account_id(),
++            XOR,
++            -(balance!(100) as i128),
++        ));
++        frame_support::assert_storage_noop!({
++            assert!(KensetsuPallet::close_cdp(alice(), cdp_id).is_err());
++        });
++        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(10));
++        assert_eq!(get_total_supply(&KUSD), balance!(10));
++        assert_balance(&alice_account_id(), &KUSD, balance!(10));
++        assert_eq!(get_account_cdp_ids(&alice_account_id()), vec![cdp_id]);
++    });
++}
++
++#[test]
++fn repayment_only_hooks_are_idle() {
++    new_test_ext().execute_with(|| {
++        setup_accruable_cdps(3);
++        make_xor_cdps_unsafe_without_disabling_accrue();
++        crate::mock::RepaymentOnly::set(&true);
++        LiquidatedThisBlock::<TestRuntime>::put(true);
++        AccruesThisBlock::<TestRuntime>::put(7);
++        // No offchain host extensions are installed: retirement must return
++        // before scanning candidates, fetching a key or submitting work.
++        frame_support::assert_storage_noop!({
++            assert_eq!(
++                KensetsuPallet::on_initialize(2),
++                frame_support::weights::Weight::zero()
++            );
++            KensetsuPallet::offchain_worker(2);
++        });
++        assert!(KensetsuPallet::liquidated_this_block());
++        assert_eq!(AccruesThisBlock::<TestRuntime>::get(), 7);
++    });
++}
++
++#[test]
++fn repayment_only_debt_free_close_needs_no_accrual_or_mint_permission() {
++    new_test_ext().execute_with(|| {
++        configure_kensetsu_dollar_for_xor(
++            Balance::MAX,
++            Perbill::from_percent(50),
++            FixedU128::from_float(0.1),
++            balance!(0),
++        );
++        let cdp_id = create_cdp_for_xor(alice(), balance!(100), 0);
++        crate::mock::RepaymentOnly::set(&true);
++        // This would make interest calculation fail even when multiplied by
++        // zero debt. Retirement must still let the owner retrieve collateral.
++        CollateralInfos::<TestRuntime>::mutate(
++            StablecoinCollateralIdentifier {
++                collateral_asset_id: XOR,
++                stablecoin_asset_id: KUSD,
++            },
++            |info| info.as_mut().unwrap().last_fee_update_time = u64::MAX,
++        );
++        permissions::Permissions::<TestRuntime>::mutate(
++            treasury_tech_account_id(),
++            permissions::Scope::Unlimited,
++            |permissions| permissions.retain(|permission| *permission != permissions::MINT),
++        );
++        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
++        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
++        assert_eq!(get_total_supply(&KUSD), 0);
++        assert_balance(&treasury_tech_account_id(), &KUSD, 0);
++        assert_balance(&alice_account_id(), &XOR, balance!(100));
++    });
++}
+diff --git a/pallets/xor-fee/src/lib.rs b/pallets/xor-fee/src/lib.rs
+index d7570f43e..fcfb3668d 100644
+--- a/pallets/xor-fee/src/lib.rs
++++ b/pallets/xor-fee/src/lib.rs
+@@ -225,37 +225,6 @@ where
+             }
+             return Ok(LiquidityInfo::NotPaid);
+         }
+-        if let Some(sponsor) = T::CustomFees::get_fee_sponsor(who, call, fee.into(), tip.into()) {
+-            // Keep a live refund account even on a zero-existential-deposit chain.
+-            if T::XorCurrency::free_balance(&sponsor) <= fee {
+-                return Err(InvalidTransaction::Payment.into());
+-            }
+-            // Both the withdrawal and the grant consumption precede dispatch.
+-            // Migration failures roll back neither, while an unfunded sponsor
+-            // cannot consume a grant or admit an unpaid transaction.
+-            return frame_support::storage::transactional::with_transaction_opaque_err(|| {
+-                let result = (|| {
+-                    let paid = T::XorCurrency::withdraw(
+-                        &sponsor,
+-                        fee,
+-                        WithdrawReasons::TRANSACTION_PAYMENT,
+-                        ExistenceRequirement::KeepAlive,
+-                    )
+-                    .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+-                    T::CustomFees::consume_fee_sponsorship(who, call, &sponsor, fee.into())
+-                        .map_err(|_| {
+-                            TransactionValidityError::Invalid(InvalidTransaction::Payment)
+-                        })?;
+-                    Ok(LiquidityInfo::Paid(sponsor, Some(paid), None))
+-                })();
+-                if result.is_ok() {
+-                    frame_support::storage::TransactionOutcome::Commit(result)
+-                } else {
+-                    frame_support::storage::TransactionOutcome::Rollback(result)
+-                }
+-            })
+-            .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+-        }
+         // Not pay fee at all. It's not possible to withdraw fee if it's disabled here.
+         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
+             return Ok((who.clone(), None, None).into());
+@@ -300,23 +269,6 @@ where
+                 Err(InvalidTransaction::Payment.into())
+             };
+         }
+-        if let Some(sponsor) = T::CustomFees::get_fee_sponsor(who, call, fee.into(), tip.into()) {
+-            let balance = T::XorCurrency::free_balance(&sponsor);
+-            if balance <= fee {
+-                return Err(InvalidTransaction::Payment.into());
+-            }
+-            let remaining = balance.saturating_sub(fee);
+-            if remaining < T::XorCurrency::minimum_balance() {
+-                return Err(InvalidTransaction::Payment.into());
+-            }
+-            return T::XorCurrency::ensure_can_withdraw(
+-                &sponsor,
+-                fee,
+-                WithdrawReasons::TRANSACTION_PAYMENT,
+-                remaining,
+-            )
+-            .map_err(|_| InvalidTransaction::Payment.into());
+-        }
+         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
+             return Ok(());
+         }
+@@ -578,27 +530,6 @@ pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
+         Ok(false)
+     }
+ 
+-    /// Optional, explicitly authorized payer for this exact direct call.
+-    /// Implementations must authenticate the claimant and exclude tips.
+-    fn get_fee_sponsor(
+-        _who: &AccountId,
+-        _call: &Call,
+-        _fee: Balance,
+-        _tip: Balance,
+-    ) -> Option<AccountId> {
+-        None
+-    }
+-
+-    /// Consume a bounded authorization atomically with upfront withdrawal.
+-    fn consume_fee_sponsorship(
+-        _who: &AccountId,
+-        _call: &Call,
+-        _sponsor: &AccountId,
+-        _fee: Balance,
+-    ) -> DispatchResult {
+-        Ok(())
+-    }
+-
+     /// Check if the fee payment should be postponed
+     ///
+     /// Parameters:
+diff --git a/runtime/src/lib.rs b/runtime/src/lib.rs
+index 34161f9e3..c08e2ca4c 100644
+--- a/runtime/src/lib.rs
++++ b/runtime/src/lib.rs
+@@ -54,7 +54,6 @@ pub use bridge_multisig_filter::BridgeMultisigCallFilter;
+ pub mod constants;
+ mod impls;
+ mod liveness;
+-mod migration_fees;
+ pub mod migrations;
+ mod xor_fee_impls;
+ 
+@@ -1519,7 +1518,6 @@ impl pallet_multisig::Config for Runtime {
+ }
+ 
+ impl iroha_migration::Config for Runtime {
+-    type FeeCurrency = Balances;
+     type RuntimeEvent = RuntimeEvent;
+     type MigrationGenesisHash = IrohaMigrationGenesisHash;
+     type WeightInfo = iroha_migration::weights::SubstrateWeight<Runtime>;
+@@ -2561,6 +2559,7 @@ parameter_types! {
+ }
+ 
+ impl kensetsu::Config for Runtime {
++    type RepaymentOnly = frame_support::traits::ConstBool<true>;
+     type AuthorityId = kensetsu::crypto::AuthorityId;
+     type RuntimeEvent = RuntimeEvent;
+     type Randomness = RandomnessCollectiveFlip;
+@@ -2592,6 +2591,7 @@ parameter_types! {
+ }
+ 
+ impl apollo_platform::Config for Runtime {
++    type RepaymentOnly = frame_support::traits::ConstBool<true>;
+     type AuthorityId = apollo_platform::crypto::AuthorityId;
+     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
+     type RuntimeEvent = RuntimeEvent;
+diff --git a/runtime/src/migration_fees.rs b/runtime/src/migration_fees.rs
+deleted file mode 100644
+index 0e67da5ee..000000000
+--- a/runtime/src/migration_fees.rs
++++ /dev/null
+@@ -1,68 +0,0 @@
+-// This file is part of the SORA network and Polkaswap app.
+-// SPDX-License-Identifier: BSD-4-Clause
+-
+-use crate::{AccountId, Balance, Balances, Runtime, RuntimeCall};
+-use frame_support::traits::{Currency, WithdrawReasons};
+-use sp_runtime::{DispatchError, DispatchResult};
+-
+-/// Sponsorship covers one authenticated migration call, never a wrapper or tip.
+-pub fn sponsor(
+-    who: &AccountId,
+-    call: &RuntimeCall,
+-    fee: Balance,
+-    tip: Balance,
+-) -> Option<AccountId> {
+-    let sponsor = match call {
+-        RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
+-            iroha_address,
+-            iroha_public_key,
+-            iroha_signature,
+-        }) => iroha_migration::Pallet::<Runtime>::fee_sponsor(
+-            who,
+-            iroha_address,
+-            iroha_public_key,
+-            iroha_signature,
+-            fee,
+-            tip,
+-        ),
+-        _ => None,
+-    }?;
+-    // A third-party promise must never block a claimant who can pay directly.
+-    // Choose the sponsor only while its native balance can actually fund this
+-    // quote and retain a live account for a possible successful refund.
+-    let free = Balances::free_balance(&sponsor);
+-    let remaining = free.checked_sub(fee)?;
+-    if remaining == 0 || remaining < Balances::minimum_balance() {
+-        return None;
+-    }
+-    Balances::ensure_can_withdraw(
+-        &sponsor,
+-        fee,
+-        WithdrawReasons::TRANSACTION_PAYMENT,
+-        remaining,
+-    )
+-    .ok()?;
+-    Some(sponsor)
+-}
+-
+-pub fn consume(
+-    who: &AccountId,
+-    call: &RuntimeCall,
+-    sponsor: &AccountId,
+-    fee: Balance,
+-) -> DispatchResult {
+-    match call {
+-        RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
+-            iroha_address,
+-            iroha_public_key,
+-            ..
+-        }) => iroha_migration::Pallet::<Runtime>::consume_fee_sponsorship(
+-            who,
+-            iroha_address,
+-            iroha_public_key,
+-            sponsor,
+-            fee,
+-        ),
+-        _ => Err(DispatchError::Other("Unsupported sponsored call")),
+-    }
+-}
+diff --git a/runtime/src/tests/liveness.rs b/runtime/src/tests/liveness.rs
+index 2cb846afb..de1d51aa8 100644
+--- a/runtime/src/tests/liveness.rs
++++ b/runtime/src/tests/liveness.rs
+@@ -1013,5 +1013,6 @@ mod equivocation_bridge;
+ mod equivocation_fees;
+ mod feeless_success;
+ mod funded_keepers;
+-mod migration_sponsorship;
++mod migration_fees;
++mod retired_lending;
+ mod session_boundaries;
+diff --git a/runtime/src/tests/liveness/funded_keepers.rs b/runtime/src/tests/liveness/funded_keepers.rs
+index 83df0333f..acbee92dd 100644
+--- a/runtime/src/tests/liveness/funded_keepers.rs
++++ b/runtime/src/tests/liveness/funded_keepers.rs
+@@ -2,7 +2,7 @@
+ // SPDX-License-Identifier: BSD-4-Clause
+ 
+ use super::*;
+-use crate::{Executive, UncheckedExtrinsic, XorFee};
++use crate::{Executive, RuntimeCall, UncheckedExtrinsic, XorFee};
+ use codec::Decode;
+ use common::keeper::{submit, SubmitStatus};
+ use sp_runtime::{generic::Preamble, FixedPointNumber, FixedU128};
+@@ -17,6 +17,8 @@ fn nonce(encoded: &[u8]) -> u32 {
+ 
+ #[test]
+ fn both_keeper_pallets_share_durable_nonces_and_pay_through_executive() {
++    // Exercise the shared submission helper directly. Production pallet OCWs
++    // are disabled in repayment-only mode; their silence is covered separately.
+     let mut externalities = ext();
+     let (offchain, _) = sp_runtime::offchain::testing::TestOffchainExt::new();
+     let (pool, pool_state) = sp_runtime::offchain::testing::TestTransactionPoolExt::new();
+@@ -81,9 +83,19 @@ fn both_keeper_pallets_share_durable_nonces_and_pay_through_executive() {
+             System::reset_events();
+             let before = Balances::free_balance(&who);
+             let tx = UncheckedExtrinsic::decode(&mut &encoded[..]).unwrap();
+-            // The missing CDP/loan deliberately makes dispatch fail, while
+-            // admission, the real signature and payment extension all execute.
+-            assert!(Executive::apply_extrinsic(tx).unwrap().is_err());
++            // Old keeper transactions remain signed, paid failures after
++            // retirement, even if submitted directly through the generic helper.
++            let expected: sp_runtime::DispatchError = match &tx.function {
++                RuntimeCall::Kensetsu(_) => kensetsu::Error::<Runtime>::RepaymentOnly.into(),
++                RuntimeCall::ApolloPlatform(_) => {
++                    apollo_platform::Error::<Runtime>::RepaymentOnly.into()
++                }
++                _ => panic!("unexpected keeper transaction"),
++            };
++            assert_eq!(
++                Executive::apply_extrinsic(tx).unwrap().unwrap_err(),
++                expected
++            );
+             let charged = before - Balances::free_balance(&who);
+             assert!(charged > 0);
+             let recorded = System::events()
+diff --git a/runtime/src/tests/liveness/migration_fees.rs b/runtime/src/tests/liveness/migration_fees.rs
+new file mode 100644
+index 000000000..162d315f1
+--- /dev/null
++++ b/runtime/src/tests/liveness/migration_fees.rs
+@@ -0,0 +1,312 @@
++// This file is part of the SORA network and Polkaswap app.
++// SPDX-License-Identifier: BSD-4-Clause
++
++use super::*;
++use crate::{
++    Assets, EthBridge, Executive, IrohaMigration, RuntimeCall, SignedExtra, UncheckedExtrinsic,
++    XorFee,
++};
++use common::{AssetInfoProvider, VAL};
++use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
++use frame_support::{
++    assert_err,
++    dispatch::{GetDispatchInfo, Pays},
++};
++use sha3::Sha3_256;
++use sp_core::sr25519;
++use sp_runtime::{generic::Era, DispatchResult, FixedPointNumber, FixedU128};
++
++const ADDRESS: &str = "paid-migration@sora";
++const CLAIM: Balance = 300 * UNIT;
++
++fn hex(bytes: &[u8]) -> String {
++    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
++}
++
++fn raw_map(name: &[u8], key: impl Encode, value: impl Encode) {
++    let encoded = key.encode();
++    let mut storage_key = frame_support::storage::storage_prefix(b"IrohaMigration", name).to_vec();
++    storage_key.extend(sp_core::blake2_128(&encoded));
++    storage_key.extend(encoded);
++    sp_io::storage::set(&storage_key, &value.encode());
++}
++
++fn migration_storage() -> Vec<(Vec<u8>, Vec<u8>)> {
++    let prefix = sp_io::hashing::twox_128(b"IrohaMigration").to_vec();
++    let mut key = prefix.clone();
++    let mut state = Vec::new();
++    while let Some(next) = sp_io::storage::next_key(&key) {
++        if !next.starts_with(&prefix) {
++            break;
++        }
++        state.push((next.clone(), sp_io::storage::get(&next).unwrap().to_vec()));
++        key = next;
++    }
++    state
++}
++
++fn val_balance(who: &AccountId) -> Balance {
++    Assets::free_balance(&VAL, who).unwrap()
++}
++
++fn fixture(fail_settlement: bool) -> (sr25519::Pair, AccountId, RuntimeCall) {
++    System::set_block_number(1);
++    assert_ok!(XorFee::update_multiplier(
++        RuntimeOrigin::root(),
++        FixedU128::saturating_from_integer(1)
++    ));
++    let signer = sr25519::Pair::from_seed(&[79; 32]);
++    let who = AccountId::from(signer.public());
++    // Keep the account alive so zero-XOR rejection reaches fee admission,
++    // rather than only failing CheckNonce for a missing account.
++    System::inc_providers(&who);
++    let escrow = EthBridge::bridge_account(0).unwrap();
++    assert_ok!(Assets::update_balance(
++        RuntimeOrigin::root(),
++        escrow.clone(),
++        VAL,
++        CLAIM as i128,
++    ));
++    raw_map(b"Balances", ADDRESS.to_string(), CLAIM);
++    let secret = SecretKey::from_bytes(&[71; 32]).unwrap();
++    let key = Keypair {
++        public: PublicKey::from(&secret),
++        secret,
++    };
++    let public = hex(key.public.as_bytes());
++    raw_map(
++        b"PublicKeys",
++        ADDRESS.to_string(),
++        vec![(false, public.clone())],
++    );
++    let message = format!(
++        "SORA2-IROHA-MIGRATION-V2\ngenesis_hash=0x{}\niroha_address={}\niroha_public_key={}\nsubstrate_account=0x{}",
++        hex(&crate::IrohaMigrationGenesisHash::get().encode()), ADDRESS, public, hex(&who.encode()),
++    );
++    let mut digest = Sha3_256::default();
++    digest.update(message.as_bytes());
++    let signature = hex(&key.sign_prehashed(digest, None).unwrap().to_bytes());
++    let call = RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
++        iroha_address: ADDRESS.to_string(),
++        iroha_public_key: public,
++        iroha_signature: signature,
++    });
++    if fail_settlement {
++        // Ownership and the backed VAL entitlement are valid. The referral
++        // conflict fails after the VAL transfer, exercising atomic rollback.
++        let referrer = AccountId::from([80; 32]);
++        raw_map(
++            b"Referrers",
++            ADDRESS.to_string(),
++            "existing-referrer@sora".to_string(),
++        );
++        raw_map(
++            b"MigratedAccounts",
++            "existing-referrer@sora".to_string(),
++            referrer.clone(),
++        );
++        referrals::Referrers::<Runtime>::insert(&who, referrer);
++    }
++    assert!(IrohaMigration::needs_migration(&ADDRESS.to_string()));
++    assert_eq!(Balances::free_balance(&who), 0);
++    assert_eq!(val_balance(&who), 0);
++    (signer, escrow, call)
++}
++
++fn wire(call: RuntimeCall, signer: &sr25519::Pair) -> UncheckedExtrinsic {
++    let who = AccountId::from(signer.public());
++    let extra: SignedExtra = (
++        frame_system::CheckSpecVersion::new(),
++        frame_system::CheckTxVersion::new(),
++        frame_system::CheckGenesis::new(),
++        frame_system::CheckEra::from(Era::Immortal),
++        frame_system::CheckNonce::from(System::account_nonce(&who)),
++        frame_system::CheckWeight::new(),
++        crate::charge_tx_payment_extension(),
++    );
++    let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
++    let signature = payload.using_encoded(|bytes| signer.sign(bytes));
++    UncheckedExtrinsic::new_signed(call, who, crate::Signature::Sr25519(signature), extra)
++}
++
++fn reset() {
++    frame_system::BlockSize::<Runtime>::kill();
++    frame_system::BlockWeight::<Runtime>::kill();
++    System::reset_events();
++}
++
++fn apply_paid(call: RuntimeCall, signer: &sr25519::Pair) -> DispatchResult {
++    reset();
++    assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
++    let who = AccountId::from(signer.public());
++    let extrinsic = wire(call, signer);
++    let quote = XorFee::query_info(
++        &extrinsic,
++        &extrinsic.function,
++        extrinsic.encoded_size() as u32,
++    )
++    .partial_fee;
++    assert!(quote > 0);
++    let before = Balances::free_balance(&who);
++    let nonce = System::account_nonce(&who);
++    let result = Executive::apply_extrinsic(extrinsic).expect("funded migration is admitted");
++    let charged = before - Balances::free_balance(&who);
++    assert!(
++        charged > 0,
++        "successful migrations must also retain their XOR fee"
++    );
++    assert!(charged <= quote);
++    assert_eq!(System::account_nonce(&who), nonce + 1);
++    let emitted_fee = System::events()
++        .into_iter()
++        .find_map(|record| match record.event {
++            RuntimeEvent::TransactionPayment(
++                pallet_transaction_payment::Event::TransactionFeePaid {
++                    who: fee_payer,
++                    actual_fee,
++                    tip,
++                },
++            ) if fee_payer == who => {
++                assert_eq!(tip, 0);
++                Some(actual_fee)
++            }
++            _ => None,
++        })
++        .expect("the payment extension emits the actual XOR fee");
++    assert_eq!(emitted_fee, charged);
++    result
++}
++
++fn assert_zero_xor_rejected(call: RuntimeCall, signer: &sr25519::Pair, escrow: &AccountId) {
++    let who = AccountId::from(signer.public());
++    let claim_before = migration_storage();
++    let escrow_before = val_balance(escrow);
++    let nonce_before = System::account_nonce(&who);
++    assert_eq!(Balances::free_balance(&who), 0);
++    for source in [
++        TransactionSource::External,
++        TransactionSource::Local,
++        TransactionSource::InBlock,
++    ] {
++        reset();
++        assert_err!(
++            Executive::validate_transaction(source, wire(call.clone(), signer), Default::default()),
++            InvalidTransaction::Payment,
++        );
++        assert_eq!(migration_storage(), claim_before);
++        assert_eq!(val_balance(escrow), escrow_before);
++        assert_eq!(val_balance(&who), 0);
++        assert_eq!(System::account_nonce(&who), nonce_before);
++    }
++    reset();
++    assert_err!(
++        Executive::apply_extrinsic(wire(call, signer)),
++        InvalidTransaction::Payment,
++    );
++    assert_eq!(migration_storage(), claim_before);
++    assert_eq!(val_balance(escrow), escrow_before);
++    assert_eq!(val_balance(&who), 0);
++    assert_eq!(System::account_nonce(&who), nonce_before);
++    assert_eq!(Balances::free_balance(&who), 0);
++    assert!(System::events().is_empty());
++}
++
++#[test]
++fn migration_success_delivers_val_and_keeps_xor_fee() {
++    ext().execute_with(|| {
++        let (signer, escrow, call) = fixture(false);
++        let who = AccountId::from(signer.public());
++        drop(Balances::deposit_creating(&who, 100_000 * UNIT));
++        let escrow_before = val_balance(&escrow);
++        assert_ok!(apply_paid(call, &signer));
++        assert_eq!(val_balance(&who), CLAIM);
++        assert_eq!(val_balance(&escrow), escrow_before - CLAIM);
++        assert!(!IrohaMigration::needs_migration(&ADDRESS.to_string()));
++        assert!(System::events().iter().any(|record| matches!(
++            &record.event,
++            RuntimeEvent::IrohaMigration(iroha_migration::Event::Migrated(address, account))
++                if address == ADDRESS && account == &who
++        )));
++    });
++}
++
++#[test]
++fn migration_settlement_failure_keeps_fee_and_rolls_back_claim() {
++    ext().execute_with(|| {
++        let (signer, escrow, call) = fixture(true);
++        let who = AccountId::from(signer.public());
++        drop(Balances::deposit_creating(&who, 100_000 * UNIT));
++        let claim_before = migration_storage();
++        let escrow_before = val_balance(&escrow);
++        assert_eq!(
++            apply_paid(call, &signer).unwrap_err(),
++            iroha_migration::Error::<Runtime>::ReferralMigrationFailed.into(),
++        );
++        assert_eq!(migration_storage(), claim_before);
++        assert_eq!(val_balance(&escrow), escrow_before);
++        assert_eq!(val_balance(&who), 0);
++        assert!(IrohaMigration::needs_migration(&ADDRESS.to_string()));
++        assert!(!System::events()
++            .iter()
++            .any(|record| matches!(record.event, RuntimeEvent::IrohaMigration(_))));
++    });
++}
++
++#[test]
++fn migration_requires_xor_before_valid_claim_can_execute() {
++    ext().execute_with(|| {
++        let (signer, escrow, call) = fixture(false);
++        assert_zero_xor_rejected(call, &signer, &escrow);
++    });
++}
++
++#[test]
++fn migration_invalid_proof_and_replay_pay_without_duplicate_val() {
++    ext().execute_with(|| {
++        let (signer, escrow, call) = fixture(false);
++        let who = AccountId::from(signer.public());
++        drop(Balances::deposit_creating(&who, 100_000 * UNIT));
++        let claim_before = migration_storage();
++        let escrow_before = val_balance(&escrow);
++        let mut invalid = call.clone();
++        if let RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
++            iroha_signature, ..
++        }) = &mut invalid
++        {
++            *iroha_signature = "00".repeat(64);
++        }
++        assert_eq!(
++            apply_paid(invalid, &signer).unwrap_err(),
++            iroha_migration::Error::<Runtime>::SignatureVerificationFailed.into(),
++        );
++        assert_eq!(migration_storage(), claim_before);
++        assert_eq!(val_balance(&escrow), escrow_before);
++        assert_eq!(val_balance(&who), 0);
++        assert_ok!(apply_paid(call.clone(), &signer));
++        let completed = migration_storage();
++        assert_eq!(
++            apply_paid(call, &signer).unwrap_err(),
++            iroha_migration::Error::<Runtime>::AccountAlreadyMigrated.into(),
++        );
++        assert_eq!(migration_storage(), completed);
++        assert_eq!(val_balance(&who), CLAIM);
++        assert_eq!(val_balance(&escrow), escrow_before - CLAIM);
++        assert_eq!(System::account_nonce(&who), 3);
++    });
++}
++
++#[test]
++fn wrapped_migration_requires_xor_and_keeps_success_fee() {
++    ext().execute_with(|| {
++        let (signer, escrow, call) = fixture(false);
++        let who = AccountId::from(signer.public());
++        let wrapped = RuntimeCall::Utility(pallet_utility::Call::batch_all { calls: vec![call] });
++        assert_zero_xor_rejected(wrapped.clone(), &signer, &escrow);
++        drop(Balances::deposit_creating(&who, 100_000 * UNIT));
++        let escrow_before = val_balance(&escrow);
++        assert_ok!(apply_paid(wrapped, &signer));
++        assert_eq!(val_balance(&who), CLAIM);
++        assert_eq!(val_balance(&escrow), escrow_before - CLAIM);
++        assert!(!IrohaMigration::needs_migration(&ADDRESS.to_string()));
++    });
++}
+diff --git a/runtime/src/tests/liveness/migration_sponsorship.rs b/runtime/src/tests/liveness/migration_sponsorship.rs
+deleted file mode 100644
+index 7463e121d..000000000
+--- a/runtime/src/tests/liveness/migration_sponsorship.rs
++++ /dev/null
+@@ -1,533 +0,0 @@
+-// This file is part of the SORA network and Polkaswap app.
+-// SPDX-License-Identifier: BSD-4-Clause
+-
+-use super::*;
+-use crate::{Executive, IrohaMigration, RuntimeCall, SignedExtra, UncheckedExtrinsic, XorFee};
+-use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
+-use frame_support::{assert_err, dispatch::GetDispatchInfo};
+-use sha3::Sha3_256;
+-use sp_core::sr25519;
+-use sp_runtime::{generic::Era, FixedPointNumber, FixedU128};
+-
+-const ADDRESS: &str = "sponsored-migration@sora";
+-
+-fn hex(bytes: &[u8]) -> String {
+-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+-}
+-
+-fn raw_map(name: &[u8], key: impl Encode, value: impl Encode) {
+-    let encoded = key.encode();
+-    let mut storage_key = frame_support::storage::storage_prefix(b"IrohaMigration", name).to_vec();
+-    storage_key.extend(sp_core::blake2_128(&encoded));
+-    storage_key.extend(encoded);
+-    sp_io::storage::set(&storage_key, &value.encode());
+-}
+-
+-fn fixture(fail: bool) -> (sr25519::Pair, AccountId, RuntimeCall, String) {
+-    System::set_block_number(1);
+-    assert_ok!(XorFee::update_multiplier(
+-        RuntimeOrigin::root(),
+-        FixedU128::saturating_from_integer(1)
+-    ));
+-    let signer = sr25519::Pair::from_seed(&[79; 32]);
+-    let who = AccountId::from(signer.public());
+-    let sponsor = AccountId::from([78; 32]);
+-    let secret = SecretKey::from_bytes(&[71; 32]).unwrap();
+-    let key = Keypair {
+-        public: PublicKey::from(&secret),
+-        secret,
+-    };
+-    let public = hex(key.public.as_bytes());
+-    raw_map(
+-        b"PublicKeys",
+-        ADDRESS.to_string(),
+-        vec![(false, public.clone())],
+-    );
+-    let message = format!(
+-        "SORA2-IROHA-MIGRATION-V2\ngenesis_hash=0x{}\niroha_address={}\niroha_public_key={}\nsubstrate_account=0x{}",
+-        hex(&crate::IrohaMigrationGenesisHash::get().encode()), ADDRESS, public, hex(&who.encode()),
+-    );
+-    let mut digest = Sha3_256::default();
+-    digest.update(message.as_bytes());
+-    let signature = hex(&key.sign_prehashed(digest, None).unwrap().to_bytes());
+-    let call = RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
+-        iroha_address: ADDRESS.to_string(),
+-        iroha_public_key: public.clone(),
+-        iroha_signature: signature,
+-    });
+-    if fail {
+-        // Eligibility and its signature are valid; settlement fails only after
+-        // payment because the recipient already has a different referral.
+-        let referrer = AccountId::from([80; 32]);
+-        raw_map(
+-            b"Referrers",
+-            ADDRESS.to_string(),
+-            "existing-referrer@sora".to_string(),
+-        );
+-        raw_map(
+-            b"MigratedAccounts",
+-            "existing-referrer@sora".to_string(),
+-            referrer.clone(),
+-        );
+-        referrals::Referrers::<Runtime>::insert(&who, referrer);
+-    }
+-    (signer, sponsor, call, public)
+-}
+-
+-fn grant(sponsor: &AccountId, who: &AccountId, public: &str, attempts: u8) {
+-    assert_ok!(IrohaMigration::sponsor_migration(
+-        RuntimeOrigin::signed(sponsor.clone()),
+-        who.clone(),
+-        ADDRESS.into(),
+-        public.into(),
+-        10_000 * UNIT,
+-        attempts,
+-        100,
+-    ));
+-}
+-
+-fn wire(call: RuntimeCall, signer: &sr25519::Pair) -> UncheckedExtrinsic {
+-    let who = AccountId::from(signer.public());
+-    let extra: SignedExtra = (
+-        frame_system::CheckSpecVersion::new(),
+-        frame_system::CheckTxVersion::new(),
+-        frame_system::CheckGenesis::new(),
+-        frame_system::CheckEra::from(Era::Immortal),
+-        frame_system::CheckNonce::from(System::account_nonce(&who)),
+-        frame_system::CheckWeight::new(),
+-        crate::charge_tx_payment_extension(),
+-    );
+-    let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
+-    let signature = payload.using_encoded(|bytes| signer.sign(bytes));
+-    UncheckedExtrinsic::new_signed(call, who, crate::Signature::Sr25519(signature), extra)
+-}
+-
+-fn reset() {
+-    frame_system::BlockSize::<Runtime>::kill();
+-    frame_system::BlockWeight::<Runtime>::kill();
+-    System::reset_events();
+-}
+-
+-#[test]
+-fn zero_xor_migration_uses_sponsor_and_refunds_only_after_success() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(false);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 1);
+-        assert_eq!(Balances::free_balance(&who), 0);
+-        let before = Balances::free_balance(&sponsor);
+-        reset();
+-        assert_ok!(Executive::apply_extrinsic(wire(call.clone(), &signer)).unwrap());
+-        assert_eq!(Balances::free_balance(&sponsor), before);
+-        assert_eq!(Balances::free_balance(&who), 0);
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        assert_eq!(
+-            iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                .unwrap()
+-                .remaining_attempts,
+-            0
+-        );
+-        assert_eq!(System::account_nonce(&who), 1);
+-        reset();
+-        assert_err!(
+-            Executive::apply_extrinsic(wire(call, &signer)),
+-            InvalidTransaction::Payment
+-        );
+-    });
+-}
+-
+-#[test]
+-fn failed_settlement_charges_sponsor_and_consumes_retry_budget_outside_rollback() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(true);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 2);
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        for remaining in [1, 0] {
+-            let before = Balances::free_balance(&sponsor);
+-            reset();
+-            let error = Executive::apply_extrinsic(wire(call.clone(), &signer))
+-                .unwrap()
+-                .unwrap_err();
+-            assert_eq!(
+-                error,
+-                iroha_migration::Error::<Runtime>::ReferralMigrationFailed.into()
+-            );
+-            let charged = before - Balances::free_balance(&sponsor);
+-            assert!(charged > 0);
+-            assert_eq!(Balances::free_balance(&who), 0);
+-            assert_eq!(
+-                iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                    .unwrap()
+-                    .remaining_attempts,
+-                remaining
+-            );
+-            let emitted_fee = System::events()
+-                .iter()
+-                .find_map(|record| match &record.event {
+-                    RuntimeEvent::TransactionPayment(
+-                        pallet_transaction_payment::Event::TransactionFeePaid {
+-                            actual_fee,
+-                            tip,
+-                            ..
+-                        },
+-                    ) => {
+-                        assert_eq!(*tip, 0);
+-                        Some(*actual_fee)
+-                    }
+-                    _ => None,
+-                })
+-                .unwrap();
+-            assert_eq!(emitted_fee, charged);
+-        }
+-        assert_eq!(System::account_nonce(&who), 2);
+-        reset();
+-        assert_err!(
+-            Executive::apply_extrinsic(wire(call, &signer)),
+-            InvalidTransaction::Payment
+-        );
+-    });
+-}
+-
+-#[test]
+-fn unfunded_sponsor_does_not_consume_authorization_or_admit_migration() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(false);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 1);
+-        drop(Balances::make_free_balance_be(&sponsor, 0));
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        reset();
+-        assert_err!(
+-            Executive::apply_extrinsic(wire(call.clone(), &signer)),
+-            InvalidTransaction::Payment
+-        );
+-        assert_eq!(
+-            iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                .unwrap()
+-                .remaining_attempts,
+-            1
+-        );
+-        // Exercise the withdrawal path independently of validation as well.
+-        use pallet_transaction_payment::OnChargeTransaction;
+-        assert!(<XorFee as OnChargeTransaction<Runtime>>::withdraw_fee(
+-            &who,
+-            &call,
+-            &call.get_dispatch_info(),
+-            UNIT,
+-            0,
+-        )
+-        .is_err());
+-        assert_eq!(
+-            iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                .unwrap()
+-                .remaining_attempts,
+-            1
+-        );
+-    });
+-}
+-
+-#[test]
+-fn sponsorship_is_claimant_bound_excludes_tips_and_wrappers_and_can_be_revoked() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(false);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 1);
+-        assert_eq!(
+-            crate::migration_fees::sponsor(&who, &call, UNIT, 0),
+-            Some(sponsor.clone())
+-        );
+-        assert_eq!(crate::migration_fees::sponsor(&who, &call, UNIT, 1), None);
+-        assert_eq!(
+-            crate::migration_fees::sponsor(&AccountId::from([81; 32]), &call, UNIT, 0),
+-            None
+-        );
+-        assert_eq!(
+-            crate::migration_fees::sponsor(&who, &call, 10_001 * UNIT, 0),
+-            None
+-        );
+-        let wrapped = RuntimeCall::Utility(pallet_utility::Call::batch_all {
+-            calls: vec![call.clone()],
+-        });
+-        assert_eq!(
+-            crate::migration_fees::sponsor(&who, &wrapped, UNIT, 0),
+-            None
+-        );
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        assert!(IrohaMigration::revoke_sponsorship(
+-            RuntimeOrigin::signed(AccountId::from([81; 32])),
+-            id
+-        )
+-        .is_err());
+-        assert_ok!(IrohaMigration::revoke_sponsorship(
+-            RuntimeOrigin::signed(sponsor),
+-            id
+-        ));
+-        assert_eq!(crate::migration_fees::sponsor(&who, &call, UNIT, 0), None);
+-        assert!(!iroha_migration::FeeSponsorships::<Runtime>::contains_key(
+-            id
+-        ));
+-    });
+-}
+-
+-#[test]
+-fn unfunded_volunteer_cannot_block_self_payment_or_another_sponsor() {
+-    ext().execute_with(|| {
+-        let (signer, unfunded, call, public) = fixture(true);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&unfunded, 100_000 * UNIT));
+-        grant(&unfunded, &who, &public, 1);
+-        drop(Balances::make_free_balance_be(&unfunded, 0));
+-        drop(Balances::deposit_creating(&who, 100_000 * UNIT));
+-        assert_eq!(crate::migration_fees::sponsor(&who, &call, UNIT, 0), None);
+-        let before = Balances::free_balance(&who);
+-        reset();
+-        assert!(Executive::apply_extrinsic(wire(call.clone(), &signer))
+-            .unwrap()
+-            .is_err());
+-        assert!(Balances::free_balance(&who) < before);
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        assert_eq!(
+-            iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                .unwrap()
+-                .remaining_attempts,
+-            1
+-        );
+-
+-        let replacement = AccountId::from([83; 32]);
+-        drop(Balances::deposit_creating(&replacement, 100_000 * UNIT));
+-        let refs = System::account(&who).sufficients;
+-        grant(&replacement, &who, &public, 2);
+-        assert_eq!(System::account(&who).sufficients, refs);
+-        assert_eq!(
+-            crate::migration_fees::sponsor(&who, &call, UNIT, 0),
+-            Some(replacement)
+-        );
+-        drop(Balances::deposit_creating(&unfunded, 100_000 * UNIT));
+-        assert!(
+-            IrohaMigration::sponsor_migration(
+-                RuntimeOrigin::signed(unfunded),
+-                who.clone(),
+-                ADDRESS.into(),
+-                public.into(),
+-                10_000 * UNIT,
+-                1,
+-                100,
+-            )
+-            .is_err(),
+-            "an active funded grant cannot be overwritten by a third party"
+-        );
+-        assert_ok!(IrohaMigration::revoke_sponsorship(
+-            RuntimeOrigin::signed(who.clone()),
+-            id
+-        ));
+-        assert_eq!(System::account(&who).sufficients, refs - 1);
+-    });
+-}
+-
+-#[test]
+-fn funded_underpriced_grant_can_be_replaced_without_claimant_xor() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(false);
+-        let who = AccountId::from(signer.public());
+-        let attacker = AccountId::from([84; 32]);
+-        drop(Balances::deposit_creating(&attacker, 100_000 * UNIT));
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        assert_ok!(IrohaMigration::sponsor_migration(
+-            RuntimeOrigin::signed(attacker.clone()),
+-            who.clone(),
+-            ADDRESS.into(),
+-            public.clone(),
+-            1,
+-            3,
+-            u32::MAX,
+-        ));
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        let references = System::account(&who).sufficients;
+-        let fee = XorFee::compute_fee(
+-            wire(call.clone(), &signer).encoded_size() as u32,
+-            &call,
+-            &call.get_dispatch_info(),
+-            0,
+-        )
+-        .0;
+-        assert!(fee > 1);
+-        assert_eq!(crate::migration_fees::sponsor(&who, &call, fee, 0), None);
+-        assert_eq!(Balances::free_balance(&who), 0);
+-
+-        // The attacker retains its funding and its maximum-length expiry;
+-        // replacement needs neither its cooperation nor claimant funds.
+-        assert_ok!(IrohaMigration::sponsor_migration(
+-            RuntimeOrigin::signed(sponsor.clone()),
+-            who.clone(),
+-            ADDRESS.into(),
+-            public,
+-            10_000 * UNIT,
+-            3,
+-            u32::MAX,
+-        ));
+-        assert_eq!(System::account(&who).sufficients, references);
+-        assert_eq!(
+-            crate::migration_fees::sponsor(&who, &call, fee, 0),
+-            Some(sponsor.clone())
+-        );
+-        let sponsor_before = Balances::free_balance(&sponsor);
+-        let attacker_before = Balances::free_balance(&attacker);
+-        reset();
+-        assert_ok!(Executive::apply_extrinsic(wire(call, &signer)).unwrap());
+-        assert_eq!(Balances::free_balance(&who), 0);
+-        assert_eq!(Balances::free_balance(&sponsor), sponsor_before);
+-        assert_eq!(Balances::free_balance(&attacker), attacker_before);
+-        let remaining = iroha_migration::FeeSponsorships::<Runtime>::get(id).unwrap();
+-        assert_eq!(remaining.sponsor, sponsor);
+-        assert_eq!(remaining.remaining_attempts, 2);
+-        assert_eq!(System::account_nonce(&who), 1);
+-        assert!(System::events().iter().any(|record| matches!(
+-            &record.event,
+-            RuntimeEvent::IrohaMigration(iroha_migration::Event::Migrated(address, account))
+-                if address == ADDRESS && account == &who
+-        )));
+-    });
+-}
+-
+-#[test]
+-fn replacement_cannot_reduce_a_funded_grants_limits() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(true);
+-        let who = AccountId::from(signer.public());
+-        let replacement = AccountId::from([85; 32]);
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        drop(Balances::deposit_creating(&replacement, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 3);
+-        reset();
+-        assert!(Executive::apply_extrinsic(wire(call.clone(), &signer))
+-            .unwrap()
+-            .is_err());
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        let existing = iroha_migration::FeeSponsorships::<Runtime>::get(id).unwrap();
+-        let references = System::account(&who).sufficients;
+-        assert_eq!(existing.remaining_attempts, 2);
+-        assert!(existing.remaining_budget > 20_002 * UNIT);
+-
+-        for (max_fee, attempts, valid_until) in [
+-            (10_000 * UNIT, 3, 101), // Equal fee cap cannot displace a live grant.
+-            (9_999 * UNIT, 3, 101),  // Lower fee cap despite increased attempts.
+-            (10_001 * UNIT, 2, 101), // Higher cap, but less remaining budget.
+-            (30_001 * UNIT, 1, 101), // More budget, but fewer remaining attempts.
+-            (10_001 * UNIT, 3, 99),  // Better funding, but an earlier expiry.
+-        ] {
+-            assert_err!(
+-                IrohaMigration::sponsor_migration(
+-                    RuntimeOrigin::signed(replacement.clone()),
+-                    who.clone(),
+-                    ADDRESS.into(),
+-                    public.clone(),
+-                    max_fee,
+-                    attempts,
+-                    valid_until,
+-                ),
+-                iroha_migration::Error::<Runtime>::NotFeeSponsor
+-            );
+-            assert_eq!(
+-                iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                    .unwrap()
+-                    .encode(),
+-                existing.encode()
+-            );
+-            assert_eq!(System::account(&who).sufficients, references);
+-        }
+-
+-        assert_ok!(IrohaMigration::sponsor_migration(
+-            RuntimeOrigin::signed(replacement.clone()),
+-            who.clone(),
+-            ADDRESS.into(),
+-            public.clone(),
+-            10_001 * UNIT,
+-            3,
+-            100,
+-        ));
+-        // A stale competing replacement cannot undo the improved fee cap.
+-        assert_err!(
+-            IrohaMigration::sponsor_migration(
+-                RuntimeOrigin::signed(sponsor.clone()),
+-                who.clone(),
+-                ADDRESS.into(),
+-                public,
+-                10_000 * UNIT,
+-                3,
+-                100,
+-            ),
+-            iroha_migration::Error::<Runtime>::NotFeeSponsor
+-        );
+-        assert_eq!(System::account(&who).sufficients, references);
+-        let sponsor_before = Balances::free_balance(&sponsor);
+-        let replacement_before = Balances::free_balance(&replacement);
+-        reset();
+-        assert!(Executive::apply_extrinsic(wire(call, &signer))
+-            .unwrap()
+-            .is_err());
+-        assert_eq!(Balances::free_balance(&sponsor), sponsor_before);
+-        assert!(Balances::free_balance(&replacement) < replacement_before);
+-        let remaining = iroha_migration::FeeSponsorships::<Runtime>::get(id).unwrap();
+-        assert_eq!(remaining.sponsor, replacement);
+-        assert_eq!(remaining.remaining_attempts, 2);
+-        assert_eq!(Balances::free_balance(&who), 0);
+-    });
+-}
+-
+-#[test]
+-fn invalid_proof_cannot_spend_sponsor_and_expired_grant_cannot_admit_zero_xor_claimant() {
+-    ext().execute_with(|| {
+-        let (signer, sponsor, mut call, public) = fixture(false);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        drop(Balances::deposit_creating(&who, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 1);
+-        if let RuntimeCall::IrohaMigration(iroha_migration::Call::migrate {
+-            iroha_signature, ..
+-        }) = &mut call
+-        {
+-            *iroha_signature = "00".repeat(64);
+-        }
+-        let sponsor_before = Balances::free_balance(&sponsor);
+-        let payer_before = Balances::free_balance(&who);
+-        reset();
+-        assert!(Executive::apply_extrinsic(wire(call, &signer))
+-            .unwrap()
+-            .is_err());
+-        assert_eq!(Balances::free_balance(&sponsor), sponsor_before);
+-        assert!(Balances::free_balance(&who) < payer_before);
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        assert_eq!(
+-            iroha_migration::FeeSponsorships::<Runtime>::get(id)
+-                .unwrap()
+-                .remaining_attempts,
+-            1
+-        );
+-    });
+-    ext().execute_with(|| {
+-        let (signer, sponsor, call, public) = fixture(false);
+-        let who = AccountId::from(signer.public());
+-        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+-        grant(&sponsor, &who, &public, 1);
+-        System::set_block_number(101);
+-        assert_eq!(crate::migration_fees::sponsor(&who, &call, UNIT, 0), None);
+-        reset();
+-        assert_err!(
+-            Executive::apply_extrinsic(wire(call, &signer)),
+-            InvalidTransaction::Payment
+-        );
+-        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+-        assert_ok!(IrohaMigration::revoke_sponsorship(
+-            RuntimeOrigin::signed(AccountId::from([82; 32])),
+-            id
+-        ));
+-        assert!(!iroha_migration::FeeSponsorships::<Runtime>::contains_key(
+-            id
+-        ));
+-    });
+-}
+diff --git a/runtime/src/tests/liveness/retired_lending.rs b/runtime/src/tests/liveness/retired_lending.rs
+new file mode 100644
+index 000000000..c0d808ef0
+--- /dev/null
++++ b/runtime/src/tests/liveness/retired_lending.rs
+@@ -0,0 +1,520 @@
++// This file is part of the SORA network and Polkaswap app.
++// SPDX-License-Identifier: BSD-4-Clause
++
++use super::*;
++use crate::{
++    ApolloPlatform, Assets, Executive, Kensetsu, RuntimeCall, SignedExtra, UncheckedExtrinsic,
++    XorFee,
++};
++use common::{AssetInfoProvider, APOLLO_ASSET_ID, KUSD, PSWAP, VAL};
++use frame_support::{
++    dispatch::{GetDispatchInfo, Pays},
++    traits::{Get, Hooks},
++    PalletId,
++};
++use sp_core::sr25519;
++use sp_runtime::{
++    generic::Era, traits::AccountIdConversion, DispatchResult, FixedPointNumber, FixedU128,
++};
++
++fn setup() -> sr25519::Pair {
++    assert!(<<Runtime as kensetsu::Config>::RepaymentOnly as Get<
++        bool,
++    >>::get());
++    assert!(<<Runtime as apollo_platform::Config>::RepaymentOnly as Get<bool>>::get());
++    System::set_block_number(1);
++    assert_ok!(XorFee::update_multiplier(
++        RuntimeOrigin::root(),
++        FixedU128::saturating_from_integer(1),
++    ));
++    let signer = sr25519::Pair::from_seed(&[77; 32]);
++    drop(Balances::deposit_creating(
++        &AccountId::from(signer.public()),
++        1_000_000 * UNIT,
++    ));
++    signer
++}
++
++fn signed(call: RuntimeCall, signer: &sr25519::Pair) -> UncheckedExtrinsic {
++    let who = AccountId::from(signer.public());
++    let extra: SignedExtra = (
++        frame_system::CheckSpecVersion::new(),
++        frame_system::CheckTxVersion::new(),
++        frame_system::CheckGenesis::new(),
++        frame_system::CheckEra::from(Era::Immortal),
++        frame_system::CheckNonce::from(System::account_nonce(&who)),
++        frame_system::CheckWeight::new(),
++        crate::charge_tx_payment_extension(),
++    );
++    let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
++    let signature = payload.using_encoded(|bytes| signer.sign(bytes));
++    UncheckedExtrinsic::new_signed(call, who, crate::Signature::Sr25519(signature), extra)
++}
++
++fn apply_paid(call: RuntimeCall, signer: &sr25519::Pair) -> DispatchResult {
++    frame_system::BlockSize::<Runtime>::kill();
++    frame_system::BlockWeight::<Runtime>::kill();
++    System::reset_events();
++    assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
++    let who = AccountId::from(signer.public());
++    let before = Balances::free_balance(&who);
++    let nonce = System::account_nonce(&who);
++    let result = Executive::apply_extrinsic(signed(call, signer)).expect("funded call admitted");
++    let charged = before - Balances::free_balance(&who);
++    assert!(charged > 0);
++    assert_eq!(System::account_nonce(&who), nonce + 1);
++    let emitted = System::events()
++        .into_iter()
++        .find_map(|record| match record.event {
++            RuntimeEvent::TransactionPayment(
++                pallet_transaction_payment::Event::TransactionFeePaid {
++                    who: payer,
++                    actual_fee,
++                    tip,
++                },
++            ) if payer == who => {
++                assert_eq!(tip, 0);
++                Some(actual_fee)
++            }
++            _ => None,
++        })
++        .expect("payment extension emits retained XOR fee");
++    assert_eq!(emitted, charged);
++    result
++}
++
++fn pallet_state(name: &[u8]) -> Vec<(Vec<u8>, Vec<u8>)> {
++    let prefix = sp_io::hashing::twox_128(name).to_vec();
++    let mut key = prefix.clone();
++    let mut state = Vec::new();
++    while let Some(next) = sp_io::storage::next_key(&key) {
++        if !next.starts_with(&prefix) {
++            break;
++        }
++        state.push((next.clone(), sp_io::storage::get(&next).unwrap().to_vec()));
++        key = next;
++    }
++    state
++}
++
++fn fund_asset(who: &AccountId, asset: crate::AssetId, amount: Balance) {
++    assert_ok!(Assets::update_balance(
++        RuntimeOrigin::root(),
++        who.clone(),
++        asset,
++        amount as i128
++    ));
++}
++
++fn asset_balance(who: &AccountId, asset: crate::AssetId) -> Balance {
++    Assets::free_balance(&asset, who).unwrap()
++}
++
++#[test]
++fn retired_kensetsu_operations_are_paid_failures_even_in_batches() {
++    ext().execute_with(|| {
++        let signer = setup();
++        for call in [
++            kensetsu::Call::create_cdp {
++                collateral_asset_id: PSWAP,
++                collateral_amount: UNIT,
++                stablecoin_asset_id: KUSD,
++                borrow_amount_min: 0,
++                borrow_amount_max: UNIT,
++                cdp_type: kensetsu::CdpType::Type2,
++            },
++            kensetsu::Call::deposit_collateral {
++                cdp_id: 1,
++                collateral_amount: UNIT,
++            },
++            kensetsu::Call::borrow {
++                cdp_id: 1,
++                borrow_amount_min: 0,
++                borrow_amount_max: UNIT,
++            },
++            kensetsu::Call::accrue { cdp_id: 1 },
++            kensetsu::Call::liquidate { cdp_id: 1 },
++            kensetsu::Call::donate {
++                stablecoin_asset_id: KUSD,
++                amount: UNIT,
++            },
++        ] {
++            let direct = RuntimeCall::Kensetsu(call);
++            let wrapped = RuntimeCall::Utility(pallet_utility::Call::batch_all {
++                calls: vec![direct.clone()],
++            });
++            for transaction in [direct, wrapped] {
++                let before = pallet_state(b"Kensetsu");
++                assert_eq!(
++                    apply_paid(transaction, &signer).unwrap_err(),
++                    kensetsu::Error::<Runtime>::RepaymentOnly.into()
++                );
++                assert_eq!(pallet_state(b"Kensetsu"), before);
++            }
++        }
++    });
++}
++
++#[test]
++fn retired_apollo_operations_are_paid_failures_even_in_batches() {
++    ext().execute_with(|| {
++        let signer = setup();
++        for call in [
++            apollo_platform::Call::lend {
++                lending_asset: VAL,
++                lending_amount: UNIT,
++            },
++            apollo_platform::Call::borrow {
++                collateral_asset: VAL,
++                borrowing_asset: PSWAP,
++                borrowing_amount: UNIT,
++                loan_to_value: UNIT,
++            },
++            apollo_platform::Call::add_collateral {
++                collateral_asset: VAL,
++                collateral_amount: UNIT,
++                borrowing_asset: PSWAP,
++            },
++            apollo_platform::Call::liquidate {
++                user: AccountId::from(signer.public()),
++                asset_id: PSWAP,
++            },
++        ] {
++            let direct = RuntimeCall::ApolloPlatform(call);
++            let wrapped = RuntimeCall::Utility(pallet_utility::Call::batch_all {
++                calls: vec![direct.clone()],
++            });
++            for transaction in [direct, wrapped] {
++                let before = pallet_state(b"ApolloPlatform");
++                assert_eq!(
++                    apply_paid(transaction, &signer).unwrap_err(),
++                    apollo_platform::Error::<Runtime>::RepaymentOnly.into()
++                );
++                assert_eq!(pallet_state(b"ApolloPlatform"), before);
++            }
++        }
++    });
++}
++
++fn seed_cdp(who: &AccountId) {
++    // State from before retirement: 200 PSWAP collateral backs 100 KUSD debt.
++    // A zero-rate fixture isolates the exit from the separate interest policy.
++    kensetsu::CDPDepository::<Runtime>::insert(
++        1,
++        kensetsu::CollateralizedDebtPosition {
++            owner: who.clone(),
++            collateral_asset_id: PSWAP,
++            collateral_amount: 200 * UNIT,
++            stablecoin_asset_id: KUSD,
++            debt: 100 * UNIT,
++            interest_coefficient: FixedU128::saturating_from_integer(1),
++        },
++    );
++    kensetsu::CdpOwnerIndex::<Runtime>::insert(
++        who,
++        frame_support::BoundedVec::<_, <Runtime as kensetsu::Config>::MaxCdpsPerOwner>::try_from(
++            vec![1u128],
++        )
++        .unwrap(),
++    );
++    kensetsu::CollateralInfos::<Runtime>::insert(
++        kensetsu::StablecoinCollateralIdentifier {
++            collateral_asset_id: PSWAP,
++            stablecoin_asset_id: KUSD,
++        },
++        kensetsu::CollateralInfo {
++            risk_parameters: kensetsu::CollateralRiskParameters::default(),
++            total_collateral: 200 * UNIT,
++            stablecoin_supply: 100 * UNIT,
++            last_fee_update_time: 0,
++            interest_coefficient: FixedU128::saturating_from_integer(1),
++        },
++    );
++    fund_asset(
++        &crate::KensetsuDepositoryAccountId::get(),
++        PSWAP,
++        200 * UNIT,
++    );
++    fund_asset(who, KUSD, 100 * UNIT);
++}
++
++#[test]
++fn retired_kensetsu_partial_repayment_and_close_unlock_existing_collateral() {
++    ext().execute_with(|| {
++        let signer = setup();
++        let who = AccountId::from(signer.public());
++        seed_cdp(&who);
++        let before = asset_balance(&who, PSWAP);
++        assert_ok!(apply_paid(
++            RuntimeCall::Kensetsu(kensetsu::Call::repay_debt {
++                cdp_id: 1,
++                amount: 40 * UNIT
++            }),
++            &signer
++        ));
++        assert_eq!(Kensetsu::cdp(1).unwrap().debt, 60 * UNIT);
++        assert_eq!(asset_balance(&who, KUSD), 60 * UNIT);
++        assert_eq!(asset_balance(&who, PSWAP), before);
++        assert_ok!(apply_paid(
++            RuntimeCall::Kensetsu(kensetsu::Call::close_cdp { cdp_id: 1 }),
++            &signer
++        ));
++        assert!(Kensetsu::cdp(1).is_none());
++        assert!(Kensetsu::cdp_owner_index(&who).is_none());
++        assert_eq!(asset_balance(&who, KUSD), 0);
++        assert_eq!(asset_balance(&who, PSWAP), before + 200 * UNIT);
++        let collateral = Kensetsu::collateral_infos(kensetsu::StablecoinCollateralIdentifier {
++            collateral_asset_id: PSWAP,
++            stablecoin_asset_id: KUSD,
++        })
++        .unwrap();
++        assert_eq!(collateral.total_collateral, 0);
++        assert_eq!(collateral.stablecoin_supply, 0);
++    });
++}
++
++fn apollo_account() -> AccountId {
++    PalletId(*b"apollolb").into_account_truncating()
++}
++
++fn seed_apollo_borrow(who: &AccountId) {
++    apollo_platform::PoolData::<Runtime>::insert(
++        PSWAP,
++        apollo_platform::PoolInfo {
++            total_borrowed: 100 * UNIT,
++            ..Default::default()
++        },
++    );
++    apollo_platform::PoolData::<Runtime>::insert(
++        VAL,
++        apollo_platform::PoolInfo {
++            total_collateral: 200 * UNIT,
++            ..Default::default()
++        },
++    );
++    apollo_platform::UserBorrowingInfo::<Runtime>::insert(
++        PSWAP,
++        who,
++        std::collections::BTreeMap::from([(
++            VAL,
++            apollo_platform::BorrowingPosition {
++                collateral_amount: 200 * UNIT,
++                borrowing_amount: 100 * UNIT,
++                last_borrowing_block: 1,
++                ..Default::default()
++            },
++        )]),
++    );
++    apollo_platform::UserTotalCollateral::<Runtime>::insert(who, VAL, 200 * UNIT);
++    fund_asset(who, PSWAP, 100 * UNIT);
++    fund_asset(&apollo_account(), VAL, 200 * UNIT);
++}
++
++#[test]
++fn retired_apollo_repayment_unlocks_existing_collateral() {
++    ext().execute_with(|| {
++        let signer = setup();
++        let who = AccountId::from(signer.public());
++        seed_apollo_borrow(&who);
++        let collateral_before = asset_balance(&who, VAL);
++        assert_ok!(apply_paid(
++            RuntimeCall::ApolloPlatform(apollo_platform::Call::repay {
++                collateral_asset: VAL,
++                borrowing_asset: PSWAP,
++                amount_to_repay: 40 * UNIT
++            }),
++            &signer
++        ));
++        assert_eq!(
++            ApolloPlatform::user_borrowing_info(PSWAP, &who).unwrap()[&VAL].borrowing_amount,
++            60 * UNIT
++        );
++        assert_eq!(asset_balance(&who, VAL), collateral_before);
++        assert_ok!(apply_paid(
++            RuntimeCall::ApolloPlatform(apollo_platform::Call::repay {
++                collateral_asset: VAL,
++                borrowing_asset: PSWAP,
++                amount_to_repay: 60 * UNIT
++            }),
++            &signer
++        ));
++        assert!(ApolloPlatform::user_borrowing_info(PSWAP, &who).is_none());
++        assert_eq!(asset_balance(&who, PSWAP), 0);
++        assert_eq!(asset_balance(&who, VAL), collateral_before + 200 * UNIT);
++        assert!(!apollo_platform::UserTotalCollateral::<Runtime>::contains_key(&who, VAL));
++        assert_eq!(ApolloPlatform::pool_info(PSWAP).unwrap().total_borrowed, 0);
++        assert_eq!(
++            ApolloPlatform::pool_info(PSWAP).unwrap().total_liquidity,
++            100 * UNIT
++        );
++        assert_eq!(ApolloPlatform::pool_info(VAL).unwrap().total_collateral, 0);
++    });
++}
++
++#[test]
++fn retired_apollo_last_lender_withdraws_exact_remaining_liquidity() {
++    ext().execute_with(|| {
++        let signer = setup();
++        let who = AccountId::from(signer.public());
++        apollo_platform::PoolData::<Runtime>::insert(
++            VAL,
++            apollo_platform::PoolInfo {
++                total_liquidity: 100 * UNIT,
++                ..Default::default()
++            },
++        );
++        apollo_platform::UserLendingInfo::<Runtime>::insert(
++            VAL,
++            &who,
++            apollo_platform::LendingPosition {
++                lending_amount: 100 * UNIT,
++                last_lending_block: 1,
++                ..Default::default()
++            },
++        );
++        fund_asset(&apollo_account(), VAL, 100 * UNIT);
++        let before = asset_balance(&who, VAL);
++        assert_ok!(apply_paid(
++            RuntimeCall::ApolloPlatform(apollo_platform::Call::withdraw {
++                withdrawn_asset: VAL,
++                withdrawn_amount: 100 * UNIT
++            }),
++            &signer
++        ));
++        assert_eq!(asset_balance(&who, VAL), before + 100 * UNIT);
++        assert!(ApolloPlatform::user_lending_info(VAL, &who).is_none());
++        assert_eq!(ApolloPlatform::pool_info(VAL).unwrap().total_liquidity, 0);
++    });
++}
++
++#[test]
++fn retired_apollo_exit_preserves_unfunded_reward_claims() {
++    ext().execute_with(|| {
++        let signer = setup();
++        let who = AccountId::from(signer.public());
++        seed_apollo_borrow(&who);
++        apollo_platform::UserBorrowingInfo::<Runtime>::mutate(PSWAP, &who, |positions| {
++            positions
++                .as_mut()
++                .unwrap()
++                .get_mut(&VAL)
++                .unwrap()
++                .borrowing_rewards = 7 * UNIT;
++        });
++        apollo_platform::PoolData::<Runtime>::mutate(VAL, |pool| {
++            pool.as_mut().unwrap().total_liquidity = 100 * UNIT;
++        });
++        apollo_platform::UserLendingInfo::<Runtime>::insert(
++            VAL,
++            &who,
++            apollo_platform::LendingPosition {
++                lending_amount: 100 * UNIT,
++                lending_interest: 5 * UNIT,
++                last_lending_block: 1,
++            },
++        );
++        fund_asset(&apollo_account(), VAL, 100 * UNIT);
++        assert_eq!(asset_balance(&apollo_account(), APOLLO_ASSET_ID), 0);
++        let before = asset_balance(&who, VAL);
++        assert_ok!(apply_paid(
++            RuntimeCall::ApolloPlatform(apollo_platform::Call::repay {
++                collateral_asset: VAL,
++                borrowing_asset: PSWAP,
++                amount_to_repay: 100 * UNIT,
++            }),
++            &signer
++        ));
++        assert_ok!(apply_paid(
++            RuntimeCall::ApolloPlatform(apollo_platform::Call::withdraw {
++                withdrawn_asset: VAL,
++                withdrawn_amount: 100 * UNIT,
++            }),
++            &signer
++        ));
++        assert_eq!(asset_balance(&who, VAL), before + 300 * UNIT);
++        let positions = ApolloPlatform::user_borrowing_info(PSWAP, &who).unwrap();
++        assert_eq!(positions[&VAL].borrowing_amount, 0);
++        assert_eq!(positions[&VAL].collateral_amount, 0);
++        assert_eq!(positions[&VAL].borrowing_rewards, 7 * UNIT);
++        let lending = ApolloPlatform::user_lending_info(VAL, &who).unwrap();
++        assert_eq!(lending.lending_amount, 0);
++        assert_eq!(lending.lending_interest, 5 * UNIT);
++        // A missing reward balance must leave both earned claims available;
++        // principal and collateral exit has already completed independently.
++        let claims = pallet_state(b"ApolloPlatform");
++        assert!(apply_paid(
++            RuntimeCall::ApolloPlatform(apollo_platform::Call::get_rewards {
++                asset_id: PSWAP,
++                is_lending: false,
++            }),
++            &signer
++        )
++        .is_err());
++        assert_eq!(pallet_state(b"ApolloPlatform"), claims);
++        fund_asset(&apollo_account(), APOLLO_ASSET_ID, 12 * UNIT);
++        for (asset_id, is_lending) in [(PSWAP, false), (VAL, true)] {
++            assert_ok!(apply_paid(
++                RuntimeCall::ApolloPlatform(apollo_platform::Call::get_rewards {
++                    asset_id,
++                    is_lending,
++                }),
++                &signer
++            ));
++        }
++        assert_eq!(asset_balance(&who, APOLLO_ASSET_ID), 12 * UNIT);
++        assert_eq!(asset_balance(&apollo_account(), APOLLO_ASSET_ID), 0);
++    });
++}
++
++#[test]
++fn retired_lending_workers_submit_nothing_with_funded_keeper_keys() {
++    let mut externalities = ext();
++    let (offchain, _) = sp_runtime::offchain::testing::TestOffchainExt::new();
++    let (pool, pool_state) = sp_runtime::offchain::testing::TestTransactionPoolExt::new();
++    externalities.register_extension(sp_core::offchain::OffchainDbExt::new(offchain.clone()));
++    externalities.register_extension(sp_core::offchain::OffchainWorkerExt::new(offchain));
++    externalities.register_extension(sp_core::offchain::TransactionPoolExt::new(pool));
++    externalities.register_extension(sp_keystore::KeystoreExt::new(
++        sp_keystore::testing::MemoryKeystore::new(),
++    ));
++    externalities.execute_with(|| {
++        let _ = setup();
++        let public =
++            sp_io::crypto::sr25519_generate(kensetsu::crypto::KEY_TYPE, Some(b"//Alice".to_vec()));
++        let keeper = AccountId::from(public);
++        drop(Balances::deposit_creating(&keeper, 1_000_000 * UNIT));
++        assert!(sp_io::crypto::sr25519_public_keys(kensetsu::crypto::KEY_TYPE).contains(&public));
++        seed_cdp(&keeper);
++        seed_apollo_borrow(&keeper);
++        // This debt would accrue well above its threshold in an active worker;
++        // silence must not depend on an empty CDP map or missing signer funds.
++        kensetsu::CollateralInfos::<Runtime>::mutate(
++            kensetsu::StablecoinCollateralIdentifier {
++                collateral_asset_id: PSWAP,
++                stablecoin_asset_id: KUSD,
++            },
++            |info| {
++                info.as_mut().unwrap().risk_parameters.stability_fee_rate =
++                    FixedU128::saturating_from_rational(1, 100)
++            },
++        );
++        kensetsu::StablecoinInfos::<Runtime>::mutate(KUSD, |info| {
++            info.as_mut()
++                .unwrap()
++                .stablecoin_parameters
++                .minimal_stability_fee_accrue = UNIT;
++        });
++        pallet_timestamp::Now::<Runtime>::put(100_000);
++        let kensetsu_before = pallet_state(b"Kensetsu");
++        let apollo_before = pallet_state(b"ApolloPlatform");
++        for block in [1, 2, 1000] {
++            System::set_block_number(block);
++            <Kensetsu as Hooks<crate::BlockNumber>>::offchain_worker(block);
++            <ApolloPlatform as Hooks<crate::BlockNumber>>::offchain_worker(block);
++        }
++        assert!(pool_state.read().transactions.is_empty());
++        assert_eq!(pallet_state(b"Kensetsu"), kensetsu_before);
++        assert_eq!(pallet_state(b"ApolloPlatform"), apollo_before);
++        assert_eq!(System::account_nonce(&keeper), 0);
++    });
++}
+diff --git a/runtime/src/xor_fee_impls.rs b/runtime/src/xor_fee_impls.rs
+index 7d0da73bd..eebf8a7cd 100644
+--- a/runtime/src/xor_fee_impls.rs
++++ b/runtime/src/xor_fee_impls.rs
+@@ -563,24 +563,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
+         validate_bridge_fee_exemption(who, call)
+     }
+ 
+-    fn get_fee_sponsor(
+-        who: &AccountId,
+-        call: &RuntimeCall,
+-        fee: Balance,
+-        tip: Balance,
+-    ) -> Option<AccountId> {
+-        crate::migration_fees::sponsor(who, call, fee, tip)
+-    }
+-
+-    fn consume_fee_sponsorship(
+-        who: &AccountId,
+-        call: &RuntimeCall,
+-        sponsor: &AccountId,
+-        fee: Balance,
+-    ) -> DispatchResult {
+-        crate::migration_fees::consume(who, call, sponsor, fee)
+-    }
+-
+     fn compute_actual_fee(
+         _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
+         _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,

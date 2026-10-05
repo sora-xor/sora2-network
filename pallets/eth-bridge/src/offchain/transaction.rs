@@ -32,10 +32,7 @@ use crate::offchain::get_storage_value_or_clear;
 use crate::requests::{IncomingRequest, LoadIncomingRequest, RequestStatus};
 #[cfg(test)]
 use crate::tests::mock::Mock;
-use crate::{
-    Config, Error, Pallet, Timepoint, OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
-    STORAGE_PENDING_TRANSACTIONS_KEY,
-};
+use crate::{Config, Error, Pallet, Timepoint, STORAGE_PENDING_TRANSACTIONS_KEY};
 use alloc::boxed::Box;
 use codec::{Decode, Encode};
 use frame_support::__private::log::{debug, error};
@@ -224,13 +221,17 @@ impl<T: Config> Pallet<T> {
                 timepoint,
             }
         } else {
-            let vec = <<T as Config>::RuntimeCall>::from(call).encode();
+            let runtime_call = <<T as Config>::RuntimeCall>::from(call);
+            let max_weight =
+                frame_support::dispatch::GetDispatchInfo::get_dispatch_info(&runtime_call)
+                    .total_weight();
+            let vec = runtime_call.encode();
             bridge_multisig::Call::as_multi {
                 id: bridge_account,
                 maybe_timepoint: Some(timepoint),
                 call: vec,
                 store_call: true,
-                max_weight: OFFCHAIN_TRANSACTION_WEIGHT_LIMIT,
+                max_weight,
             }
         };
         Self::send_transaction::<bridge_multisig::Call<T>>(call)

@@ -34,6 +34,7 @@ use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
+use frame_support::derive_impl;
 
 use bridge_types::traits::{OutboundChannel, TimepointProvider};
 use frame_support::traits::Everything;
@@ -41,7 +42,7 @@ use frame_support::{assert_noop, assert_ok, parameter_types, Deserialize, Serial
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
-use sp_keyring::AccountKeyring as Keyring;
+use sp_keyring::sr25519::Keyring;
 
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::{AccountId32, BuildStorage, MultiSignature};
@@ -71,6 +72,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 #[derive(
     Encode,
     Decode,
+    codec::DecodeWithMemTracking,
     PartialEq,
     Eq,
     Debug,
@@ -96,6 +98,7 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
 }
 
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
@@ -132,6 +135,7 @@ parameter_type_with_key! {
     };
 }
 
+#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
     type Balance = Balance;
     type RuntimeEvent = RuntimeEvent;
@@ -144,12 +148,10 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
     type RuntimeHoldReason = ();
     type FreezeIdentifier = ();
-    type MaxHolds = ();
     type MaxFreezes = ();
 }
 
 impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -195,7 +197,6 @@ parameter_types! {
 }
 
 impl bridge_outbound_channel::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MessageStatusNotifier = ();
@@ -231,6 +232,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(bob, 1u32.into())],
+        ..Default::default()
     }
     .assimilate_storage(&mut storage)
     .unwrap();

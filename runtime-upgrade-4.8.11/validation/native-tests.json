@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "sourceCommit": "870df1dbe47507456faff6ab1975efc6493ce56d",
+  "nativeRuntime": {
+    "passed": 200,
+    "failed": 0,
+    "ignored": 4
+  },
+  "nativeStaking": {
+    "passed": 218,
+    "failed": 0,
+    "ignored": 0
+  },
+  "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --locked -p framenode-runtime -p pallet-staking --lib",
+  "log": "native-tests.log",
+  "logSha256": "4ea5ade004e4ec63053dc70b971e4299c279b4e25011db23a2a0ec7a282bcaa9",
+  "cargoFmtAllCheckPassed": true
+}

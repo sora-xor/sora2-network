@@ -369,6 +369,38 @@ impl Dispatchable for DispatchableSubstrateBridgeCall {
     }
 }
 
+impl bridge_types::traits::DispatchWithOutcome for DispatchableSubstrateBridgeCall {
+    fn dispatch_with_outcome(
+        self,
+        origin: Self::RuntimeOrigin,
+    ) -> Result<bridge_types::traits::MessageDispatchOutcome, DispatchError> {
+        use bridge_types::traits::MessageDispatchOutcome;
+        match self.0 {
+            bridge_types::substrate::BridgeCall::SubstrateApp(message) => {
+                let call: substrate_bridge_app::Call<crate::Runtime> = message.try_into()?;
+                match call {
+                    substrate_bridge_app::Call::mint {
+                        asset_id,
+                        sender,
+                        recipient,
+                        amount,
+                    } => crate::SubstrateBridgeApp::mint_with_outcome(
+                        origin, asset_id, sender, recipient, amount,
+                    ),
+                    other => crate::RuntimeCall::from(other)
+                        .dispatch(origin)
+                        .map(|_| MessageDispatchOutcome::Applied)
+                        .map_err(|e| e.error),
+                }
+            }
+            other => Self(other)
+                .dispatch(origin)
+                .map(|_| MessageDispatchOutcome::Applied)
+                .map_err(|e| e.error),
+        }
+    }
+}
+
 impl GetDispatchInfo for DispatchableSubstrateBridgeCall {
     fn get_dispatch_info(&self) -> DispatchInfo {
         match &self.0 {

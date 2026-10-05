@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "archive": "council-runtime-4.8.11.zip",
+  "bytes": 16785597,
+  "sha256": "16d3b7777afe2e106d967e52e8a7104c4988f70de13d519e9765f7958f486a6a",
+  "files": 65,
+  "manifestFiles": 63,
+  "zipCrcPassed": true,
+  "archiveFilesMatchSourcePackage": true,
+  "extractedPackageVerifier": {
+    "status": "passed",
+    "verifiedFiles": 63,
+    "candidateSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+    "proposalHash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+    "unsignedCallsMatchCandidate": true,
+    "exactWasmRehearsalAndCompatibilityPassed": true,
+    "nativeUpgradeRehearsalPassed": true,
+    "unmodifiedUpstreamDeriveAndUnsignedGovernanceCallsVerified": true,
+    "workspaceSourceChecked": false,
+    "networkRequests": 0
+  },
+  "candidateSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
+  "proposalHash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+  "signedTransactions": 0,
+  "submittedTransactions": 0
+}

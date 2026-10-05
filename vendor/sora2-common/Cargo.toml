@@ -40,9 +40,9 @@ wasm-bindgen-test = "0.3.19"
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
 ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
 
-currencies = { version = "1.0.0", package = "orml-currencies", default-features = false }
-tokens = { version = "1.0.0", package = "orml-tokens", default-features = false }
-traits = { version = "1.0.0", package = "orml-traits", default-features = false }
+currencies = { path = "../open-runtime-module-library-v1/currencies", package = "orml-currencies", default-features = false }
+tokens = { path = "../open-runtime-module-library-v1/tokens", package = "orml-tokens", default-features = false }
+traits = { path = "../open-runtime-module-library-v1/traits", package = "orml-traits", default-features = false }
 orml-currencies = { version = "1.0.0", default-features = false }
 orml-tokens = { version = "1.0.0", default-features = false }
 orml-traits = { version = "1.0.0", default-features = false }
