@@ -87,7 +87,12 @@ construct_runtime! {
     }
 }
 
-mock_apollo_platform_config!(Runtime);
+parameter_types! {
+    pub storage RepaymentOnly: bool = false;
+    pub storage ExchangeAvailable: bool = true;
+    pub storage ExchangeCalls: u32 = 0;
+}
+mock_apollo_platform_config!(Runtime, RepaymentOnly);
 mock_assets_config!(Runtime);
 mock_ceres_liquidity_locker_config!(Runtime, PoolXYK);
 mock_common_config!(Runtime);
@@ -257,6 +262,10 @@ impl LiquidityProxyTrait<DEXId, AccountId, AssetId> for MockLiquidityProxy {
         amount: common::prelude::SwapAmount<Balance>,
         _filter: common::LiquiditySourceFilter<DEXId, common::prelude::LiquiditySourceType>,
     ) -> Result<common::prelude::SwapOutcome<Balance, AssetId>, sp_runtime::DispatchError> {
+        ExchangeCalls::set(&ExchangeCalls::get().saturating_add(1));
+        if !ExchangeAvailable::get() {
+            return Err(sp_runtime::DispatchError::Other("NoLiquidity"));
+        }
         // Transfer to exchange account (input asset)
         let _ = Assets::transfer(
             RawOrigin::Signed(sender.clone()).into(),

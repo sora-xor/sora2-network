@@ -1014,4 +1014,5 @@ mod equivocation_fees;
 mod feeless_success;
 mod funded_keepers;
 mod migration_fees;
+mod retired_lending;
 mod session_boundaries;

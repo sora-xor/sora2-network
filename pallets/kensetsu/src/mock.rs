@@ -328,6 +328,7 @@ where
 }
 
 parameter_types! {
+    pub storage RepaymentOnly: bool = false;
     pub KensetsuDepositoryTechAccountId: TechAccountId = {
         TechAccountId::from_generic_pair(
             kensetsu::TECH_ACCOUNT_PREFIX.to_vec(),

@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T07:41:10.945Z",
+  "startedAt": "2026-10-05T09:27:38.260Z",
   "localOnly": true,
   "endpoint": "wss://mof2.sora.org",
   "pinnedBlockHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05",
@@ -1340,15 +1340,15 @@
   },
   "stage": "Verifying timestamp inherent retained normal execution",
   "readCache": {
-    "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/.public-read-cache.json.gz",
+    "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/.public-read-cache.json.gz",
     "content": "Immutable public storage scoped by block hash",
-    "existingValues": 6139,
+    "existingValues": 6155,
     "storageHits": 1232,
     "keyPageHits": 150,
     "fetchedValues": 0,
     "fetchedKeyPages": 0,
-    "savedBytes": 7357888,
-    "sha256": "50cf8e0acaddd386bbf96d8fa6e44632e39a289d38ce2ab0d507d9ef35bd2a4d"
+    "savedBytes": 7358644,
+    "sha256": "0d91c643da7fa69e05b9a531ef7e81ee2ad517e8bab93f4056349c56fae27209"
   },
   "deployedVersion": {
     "specName": "sora-substrate",
@@ -1475,9 +1475,9 @@
   },
   "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
   "candidate": {
-    "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3086444,
-    "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+    "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/framenode-runtime-4.8.12.compact.compressed.wasm",
+    "bytes": 3066913,
+    "sha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -1621,7 +1621,7 @@
     },
     "slot": 298527731,
     "result": "0x01",
-    "storageDiffEntries": 148,
+    "storageDiffEntries": 146,
     "runtimeLogs": [
       {
         "message": "⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
@@ -1758,5 +1758,5 @@
     "consensusRuntimeApisDisableAutomaticUnsignedSubmission": true,
     "transactionVersionRemains131": true
   },
-  "finishedAt": "2026-10-05T07:41:20.813Z"
+  "finishedAt": "2026-10-05T09:27:57.439Z"
 }

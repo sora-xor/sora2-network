@@ -1,9 +1,9 @@
-# SORA 4.8.12 paid-migration validation
+# SORA 4.8.12 fee and lending-retirement validation
 
 Candidate SHA-256: `{{CANDIDATE_SHA256}}` ({{CANDIDATE_BYTES}} bytes).
 Source tree: `{{SOURCE_TREE}}`; reviewed base: `{{SOURCE_BASE}}`.
 Fresh native evidence records **{{NATIVE_PASSED}} passed**, zero failed,
-**{{NATIVE_IGNORED}} existing ignored**, across eleven affected suites, including
+**{{NATIVE_IGNORED}} existing ignored**, across thirteen affected suites, including
 **{{RUNTIME_REGRESSIONS}}** runtime fee-policy regressions.
 
 ## Source and native execution
@@ -15,7 +15,7 @@ and old sponsorship test module are recorded with baseline hashes and checked
 absent. Generated chain-spec blobs are separately bound after their feature
 builds. No clean-commit build is claimed.
 
-The native recorder requires these six regressions by exact name:
+The native recorder retains these six regressions by exact name:
 
 - `outgoing_approval_retains_validation_weight_before_and_at_quorum`
 - `migration_success_delivers_val_and_keeps_xor_fee`
@@ -27,7 +27,15 @@ The native recorder requires these six regressions by exact name:
 Migration tests use real outer and Iroha signatures, backed VAL transfers,
 transaction-fee events and XOR balance/nonce assertions. Pallet tests check
 `Pays::Yes` on successful single claims and multisig approvals. Existing report,
-keeper, order, reward/preimage and bridge-capacity tests remain included.
+order, reward/preimage and bridge-capacity tests remain included. Seven additional
+runtime regressions require paid rejection of retired operations directly and
+through batches, Kensetsu partial repayment and closure, Apollo repayment and
+collateral release, exact-liquidity withdrawal, preserved unpaid rewards and
+silent workers even with funded keys. Fresh Kensetsu and Apollo pallet suites
+exercise ownership, atomic rollback, retirement gates, continued Kensetsu interest
+and treasury accounting, and Apollo reserved interest.
+The generic keeper helper remains covered as inactive library code; production
+Kensetsu/Apollo hooks return before invoking it. No keeper rollout is required.
 Standard transaction-extension weight correction remains in place; successful
 migration has no fee waiver. Original native/format/build/Clippy log bytes are
 retained without rewriting. Mainnet, try-runtime and extended Clippy profiles
@@ -44,7 +52,7 @@ Independent event checks match actual fee events to balance changes.
 
 Fee-policy rehearsal covers useful cancellation/refund and paid replay, empty
 cancellation shapes, unauthorized Rewards, requested-preimage first/replay,
-maintenance fees, bare maintenance rejection, invalid inbound proofs, zero-XOR
+paid rejection of retired maintenance, bare maintenance rejection, invalid inbound proofs, zero-XOR
 authenticated bridge operations and replay rejection. Synthetic bridge-capacity
 cases verify fair 32/33 quota behavior, honest admission, full-queue current-quorum
 cleanup, no payload execution, preserved canonical state/foreign markers and
@@ -63,6 +71,14 @@ inside Wasm; only outer transaction/header signatures use the mocked host.
 No public transaction is submitted. These are local behavioral proofs, not
 execution of a real user's mainnet claim.
 
+The retirement fixture executes the exact candidate against explicit synthetic
+pre-retirement positions. It checks rejected direct/wrapped growth/liquidation,
+paid successful repayment/closure and principal withdrawal, retained reward
+claims and reserved protocol-interest accounting. All overrides are recorded;
+the helper script is independently hashed. A nonzero-rate Kensetsu fixture advances
+time and verifies continued accrual and the existing treasury accounting.
+{{KENSETSU_DEBT_POLICY}}
+
 Final fee-policy counts: **{{POLICY_SIGNED}} signed** cases
 (**{{POLICY_PAID}} paid**, **{{POLICY_FREE}} free**), with fee/balance/nonce checks
 passing. `paidMigrationSuccessAndFailure` and
@@ -75,16 +91,16 @@ indices, SCALE shapes, storage, signed extensions and runtime APIs, allowing the
 reviewed additions and runtime-version constant change. Host interfaces and
 memory compatibility retain their existing executor limitations.
 
-A separate comparison to the sealed `210511d9...` unreleased candidate permits
-only the two sponsorship calls, three sponsorship events, three appended errors
-and `FeeSponsorships` storage to disappear. It rejects index/name reuse and then
-strictly compares all remaining ABI/constants, without additions. Negative
-self-checks cover extra storage deletion, migrate-argument changes, extension
-reordering, additions and constant changes. The legacy `migrate` call remains 0;
-bridge cancellation call 18 and all capacity storage remain present. No deployed
-sponsorship state is claimed or cleared by this revision.
+A separate strict comparison to the paid-migration candidate `98f15204...`
+preserves every existing encoding and constant. Only the declared retirement
+constants, appended errors and reserved-interest storage may be added. Typed
+allowlist checks and negative self-tests reject unrelated additions, removals,
+index reuse, argument changes, signed-extension changes and constant drift.
+Sponsorship remains absent; legacy migration stays at call 0 and bridge
+cancellation stays at call 18. Earlier sponsorship-removal evidence is retained
+as historical context, never claimed as fresh retirement execution.
 
-The offline chain-spec helper verifies exactly the same sponsorship-only removal
+The offline chain-spec helper verifies the same explicit retirement additions
 against each prior feature runtime. Stage/bridge staging use
 `build-wasm-binary,private-net,stage`; test adds `wip,reduced-pswap-reward-periods`.
 None uses `runtime/test`. Spec 134/transaction 131, private-network Sudo, bridge
@@ -116,8 +132,8 @@ Wasm, original logs, native/lint/build evidence, metadata comparisons, chain spe
 governance payloads and generated documentation. It rejects stale hashes,
 missing regressions, restored sponsorship files and document placeholders.
 `finalize-docs.py` renders current values from reports. Production consensus
-execution, operator key/funding rollout and governance enactment are outside
-this local evidence.
+execution, signed-reporter deployment/funding and governance enactment are outside
+this local evidence. Retired Kensetsu/Apollo workers need no keeper deployment.
 
 Fresh feature-runtime regeneration gate: **{{CHAIN_SPEC_STATUS}}**.
 Fresh three-profile Clippy gate: **{{CLIPPY_STATUS}}**.

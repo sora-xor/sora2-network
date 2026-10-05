@@ -155,7 +155,10 @@ def main():
     require(re.fullmatch(r"[0-9a-f]{40}", source_tree), "Invalid source tree hash")
     for name, expected in provenance["files"].items():
         require(digest((root / name).read_bytes()) == expected, "Source input changed: " + name)
-    base_commit = run(["git", "-C", str(root), "rev-parse", "HEAD"]).decode().strip()
+    base_commit = provenance["baseCommit"]
+    chain_spec_base = run(["git", "-C", str(root), "rev-parse", "HEAD"]).decode().strip()
+    require(chain_spec_base == "3b95216336fb4baf419ec4271f97c09e66f3579f", "Chain specs must start at reviewed paid-migration commit")
+    run(["git", "-C", str(root), "merge-base", "--is-ancestor", base_commit, chain_spec_base])
     comparator_path = output.parent / "compare-metadata.py"
     if not comparator_path.is_file():
         comparator_path = root / "runtime-upgrade-4.8.12/validation/compare-metadata.py"
@@ -168,6 +171,7 @@ def main():
         "checkedAt": datetime.now(timezone.utc).isoformat(),
         "sourceTree": source_tree,
         "sourceBaseCommit": base_commit,
+        "chainSpecBaseCommit": chain_spec_base,
         "provenanceSha256": digest(provenance_bytes),
         "scriptSha256": digest(Path(__file__).read_bytes()),
         "subwasmVersion": run(["subwasm", "--version"]).decode().strip(),
@@ -213,6 +217,8 @@ def main():
         for filename in config["specs"]:
             path = root / "node/chain_spec/src/bytes" / filename
             original = path.read_bytes()
+            base_spec = run(["git", "-C", str(root), "show", chain_spec_base + ":" + str(path.relative_to(root))])
+            require(original == base_spec, "Chain spec differs from reviewed paid-migration baseline: " + filename)
             document = parse_json(original)
             matches = list(CODE_VALUE.finditer(original))
             require(len(matches) == 1, "Expected one raw :code string in " + filename)
@@ -223,9 +229,9 @@ def main():
             previous = inspect_wasm(old_blob, cache)
             require(previous["palletIndices"] == runtime["palletIndices"],
                     "Feature pallet indices differ in " + filename)
-            comparison = comparison_module.sponsorship_removal_comparison(previous["model"], runtime["model"])
-            removal_checks = comparison_module.sponsorship_removal_self_checks(previous["model"])
-            require(len(comparison["allowedUndeployedSponsorshipRemovals"]) == 9, "Expected exact sponsorship removals")
+            comparison = comparison_module.retirement_comparison(previous["model"], runtime["model"])
+            retirement_checks = comparison_module.retirement_self_checks(previous["model"])
+            require(comparison["allowedRetirementAdditions"] == comparison_module.RETIREMENT_ADDITIONS, "Expected exact typed retirement additions")
             require(comparison["compatibleExistingScaleEncoding"],
                     "Incompatible metadata in " + filename + ": " + json.dumps(comparison["breakingChanges"]))
             require(not comparison["constantValueChanges"],
@@ -244,6 +250,7 @@ def main():
             require(old_masked == new_masked, "Non-code bytes changed in " + filename)
             candidate["specs"].append({
                 "path": str(path.relative_to(root)), "sourceBaseCommit": base_commit,
+                "chainSpecBaseCommit": chain_spec_base,
                 "sha256": digest(updated), "bytes": len(updated),
                 "previousSha256": digest(original), "previousCodeSha256": digest(old_blob),
                 "codeSha256": digest(blob), "codeBytes": len(blob),
@@ -258,8 +265,8 @@ def main():
                 "constantValuesPreserved": True,
                 "compatibleExistingScaleEncoding": True,
                 "metadataComparison": comparison,
-                "onlyDeclaredUndeployedSponsorshipRemoved": True,
-                "sponsorshipRemovalSelfChecks": removal_checks,
+                "onlyDeclaredRetirementAdditions": True,
+                "retirementSelfChecks": retirement_checks,
             })
             changes.append((path, original, updated, path.stat().st_mode & 0o777))
         report["runtimes"].append(candidate)

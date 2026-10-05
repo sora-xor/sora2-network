@@ -13,7 +13,8 @@ before dispatch; peer identity never makes unrelated calls free.
 | OrderBook single and batch cancellation | Successful cancellation refunded. Failure, replay, empty groups and empty batches charged. Group count and total order IDs are bounded. A failed atomic batch retains the orders. |
 | Legacy EthBridge and BridgeMultisig | Registered peers' authenticated bridge protocol calls are free without XOR, including accepted protocol failures. Read-only admission checks reject invalid/replayed work before execution. Arbitrary peer calls and unrelated wrappers remain paid. The public user load-request call retains its existing fee. |
 | Generic and substrate inbound channels | A verified fresh peer commitment is free, with either the existing bare submission or a signed submission. Invalid proof and replay are rejected before execution. Accepted local application failure remains free as part of the bridge exception; a partially applied batch retains its consumed nonce and successful items, preventing double credit. |
-| Kensetsu accrue/liquidate and Apollo liquidation | Signed funded keeper; fees on success and failure. Bare admission rejected. Both workers use the dedicated `keep` key type and one durable nonce queue per account. |
+| Kensetsu | Repayment and closing existing CDPs remain available and pay normal fees. New CDPs, borrowing, collateral deposits, standalone accrual, donations and liquidation are disabled. Automatic maintenance is off. Existing debt continues accruing interest under the existing terms and treasury accounting; repayment settles that accrued debt. |
+| Apollo | Existing repayment, withdrawal and earned-reward claims remain available and pay normal fees. New pools, deposits, borrowing, added collateral and liquidation are disabled. Automatic liquidation is off. Blocked signed attempts still pay; bare maintenance is rejected. |
 | Iroha migration | The signed claimant funds the normal transaction fee in XOR. Success, invalid proof, replay and failed settlement all pay; there is no success refund or sponsorship. Insufficient XOR rejects admission before execution without consuming the claim. |
 | Rewards UMI NFT receiver update (`add_umi_nft_receivers`) | Root success retains its exemption; a signed unauthorized call is charged. |
 | Requested preimage provision | The first useful signed provision retains its refund. Repeated signed provision is rejected and charged. Internal preimage reference handling remains compatible. |
@@ -90,10 +91,11 @@ estimates, not newly measured throughput benchmarks.
 
 ## Activation prerequisites
 
-1. Install and fund dedicated `keep` accounts for maintenance workers. Test
-   both pallets using the shared account without nonce replacement or gaps.
-   Do not use consensus keys or an account simultaneously controlled by another
-   transaction submitter. See `pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md` in the source checkout.
+1. Confirm retired lending clients expose existing-position exit paths. Kensetsu
+   and Apollo workers are disabled and require no operational keeper account.
+   Verify repayment, collateral return and withdrawal against the candidate.
+   Apollo principal exits preserve unpaid earned rewards for separate claims;
+   received protocol interest is reserved pending a separate distribution policy.
 2. Preserve peer proof and channel nonce handling in inbound relayers. Bridge
    peers and inbound protocol relayers do not need XOR for exempt submissions.
    An accepted extrinsic can report a local application failure; consume its

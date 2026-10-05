@@ -19,6 +19,7 @@ scale-info = { version = "2", default-features = false, features = ["derive"] }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
 frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
 common = { path = "../../common", default-features = false }
+orml-traits = { workspace = true, default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
 sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3", default-features = false }
@@ -70,6 +71,7 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "sp-io/std",
+    "orml-traits/std",
 ]
 
 runtime-benchmarks = [

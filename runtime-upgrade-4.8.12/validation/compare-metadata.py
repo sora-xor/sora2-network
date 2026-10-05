@@ -43,60 +43,84 @@ def bit_sequence_refs(definition):
     raise ValueError("Malformed bit-sequence definition")
 
 
-SPONSORSHIP_REMOVALS = {
-    "calls": {1: "sponsor_migration", 2: "revoke_sponsorship"},
-    "event": {1: "FeeSponsorshipGranted", 2: "FeeSponsorshipUsed", 3: "FeeSponsorshipRevoked"},
-    "error": {10: "InvalidMigrationInput", 11: "InvalidFeeSponsorship", 12: "NotFeeSponsor"},
-}
+RETIREMENT_ERRORS = {"Kensetsu": 19, "ApolloPlatform": 36}
+RETIREMENT_ADDITIONS = [
+    {"path": "Kensetsu.constants.RepaymentOnly", "primitive": "bool", "value": [1]},
+    {"path": "Kensetsu.error", "variant": "RepaymentOnly", "variantIndex": 19},
+    {"path": "ApolloPlatform.constants.RepaymentOnly", "primitive": "bool", "value": [1]},
+    {"path": "ApolloPlatform.error", "variant": "RepaymentOnly", "variantIndex": 36},
+    {"path": "ApolloPlatform.storage.DeferredProtocolInterest", "modifier": "Default",
+     "hashers": ["Identity"], "key": "existing PoolData asset key", "valuePrimitive": "u128",
+     "default": [0] * 16},
+]
 
 
-def without_undeployed_sponsorship(old, new):
-    """Project only the explicitly withdrawn, never-deployed Iroha sponsorship ABI.
+def without_retirement_additions(old, new):
+    """Check exact retirement additions, then compare the remaining candidate unchanged.
 
-    Canonical enum IDs are shared by nested RuntimeCall/RuntimeEvent references,
-    so editing these exact enum definitions also handles recursive references.
-    All remaining types, variants, constants and signed extensions are compared
-    by the unchanged strict comparator, rather than filtering its failures.
+    The old paid-migration ABI has no sponsorship to remove. This projection only
+    strips two bool constants, two empty error variants and one precisely typed
+    zero-default asset map from the NEW metadata. All old encodings remain subject
+    to the strict structural comparison, including recursively shared enum types.
     """
-    projected = copy.deepcopy(old)
-    before = next(p for p in projected["pallets"] if p["name"] == "IrohaMigration")
-    after = next(p for p in new["pallets"] if p["name"] == "IrohaMigration")
-    old_types = {item["id"]: item["type"] for item in projected["types"]["types"]}
-    new_types = {item["id"]: item["type"] for item in new["types"]["types"]}
-    removed = []
-    for category, expected in SPONSORSHIP_REMOVALS.items():
-        variants = old_types[before[category]["ty"]]["def"]["variant"]["variants"]
-        replacements = new_types[after[category]["ty"]]["def"]["variant"]["variants"]
-        by_index = indexed(variants, "index")
-        for index, name in expected.items():
-            if index not in by_index or by_index[index]["name"] != name:
-                raise ValueError("Predecessor lacks exact undeployed sponsor variant: " + category + "." + name)
-            if any(item["index"] == index or item["name"] == name for item in replacements):
-                raise ValueError("Withdrawn sponsor variant remains or its index was reused: " + name)
-            removed.append({"path": "IrohaMigration." + category, "variant": name, "variantIndex": index})
-        old_types[before[category]["ty"]]["def"]["variant"]["variants"] = [
-            item for item in variants if item["index"] not in expected]
-    migrate = new_types[after["calls"]["ty"]]["def"]["variant"]["variants"]
-    if not any(item["name"] == "migrate" and item["index"] == 0 for item in migrate):
-        raise ValueError("Legacy migrate call must remain at index zero")
-    entries = before["storage"]["entries"]
-    if sum(item["name"] == "FeeSponsorships" for item in entries) != 1:
-        raise ValueError("Predecessor must contain exactly one FeeSponsorships entry")
-    if any(item["name"] == "FeeSponsorships" for item in after["storage"]["entries"]):
-        raise ValueError("Withdrawn FeeSponsorships storage remains")
-    before["storage"]["entries"] = [item for item in entries if item["name"] != "FeeSponsorships"]
-    removed.append({"path": "IrohaMigration.storage.FeeSponsorships", "storage": "FeeSponsorships"})
-    return projected, removed
+    projected = copy.deepcopy(new)
+    old_pallets = indexed(old["pallets"], "name")
+    new_pallets = indexed(projected["pallets"], "name")
+    old_types = indexed(old["types"]["types"], "id")
+    new_types = indexed(projected["types"]["types"], "id")
+    for name, index in RETIREMENT_ERRORS.items():
+        before, after = old_pallets[name], new_pallets[name]
+        old_constants = indexed(before.get("constants", []), "name")
+        constants = indexed(after.get("constants", []), "name")
+        if "RepaymentOnly" in old_constants or "RepaymentOnly" not in constants:
+            raise ValueError("RepaymentOnly must be a new constant: " + name)
+        constant = constants["RepaymentOnly"]
+        if new_types[constant["ty"]]["type"]["def"] != {"primitive": "bool"} or constant["value"] != [1]:
+            raise ValueError("RepaymentOnly must be bool true: " + name)
+        after["constants"] = [value for value in after["constants"] if value["name"] != "RepaymentOnly"]
+        previous_errors = old_types[before["error"]["ty"]]["type"]["def"]["variant"]["variants"]
+        errors = new_types[after["error"]["ty"]]["type"]["def"]["variant"]["variants"]
+        indexed(errors, "index")
+        if any(value["index"] == index or value["name"] == "RepaymentOnly" for value in previous_errors):
+            raise ValueError("Retirement error must occupy its unused index: " + name)
+        matches = [value for value in errors if value["index"] == index or value["name"] == "RepaymentOnly"]
+        if len(matches) != 1 or matches[0]["index"] != index or matches[0]["name"] != "RepaymentOnly" or matches[0].get("fields", []):
+            raise ValueError("Retirement error must be the exact empty appended variant: " + name)
+        new_types[after["error"]["ty"]]["type"]["def"]["variant"]["variants"] = [
+            value for value in errors if value["index"] != index]
+    before = old_pallets["ApolloPlatform"]
+    after = new_pallets["ApolloPlatform"]
+    old_entries = indexed(before["storage"]["entries"], "name")
+    entries = indexed(after["storage"]["entries"], "name")
+    if "DeferredProtocolInterest" in old_entries or "DeferredProtocolInterest" not in entries:
+        raise ValueError("DeferredProtocolInterest must be a new storage entry")
+    entry = entries["DeferredProtocolInterest"]
+    if entry["modifier"] != "Default" or entry["default"] != [0] * 16 or set(entry["ty"]) != {"Map"}:
+        raise ValueError("DeferredProtocolInterest must be a zero-default map")
+    mapping = entry["ty"]["Map"]
+    if set(mapping) != {"hashers", "key", "value"} or mapping["hashers"] != ["Identity"]:
+        raise ValueError("DeferredProtocolInterest must use one Identity asset key")
+    if new_types[mapping["value"]]["type"]["def"] != {"primitive": "u128"}:
+        raise ValueError("DeferredProtocolInterest must store u128 balances")
+    key_check = Comparison(old, projected)
+    key_check.type(old_entries["PoolData"]["ty"]["Map"]["key"], mapping["key"], "DeferredProtocolInterest.assetKey")
+    if key_check.breaks or key_check.additions:
+        raise ValueError("DeferredProtocolInterest key differs from the existing Apollo asset key")
+    after["storage"]["entries"] = [value for value in after["storage"]["entries"] if value["name"] != "DeferredProtocolInterest"]
+    return projected
 
 
-def sponsorship_removal_comparison(old, new):
-    projected, removed = without_undeployed_sponsorship(old, new)
-    result = Comparison(projected, new).run()
-    result["allowedUndeployedSponsorshipRemovals"] = removed
-    exact = result["compatibleExistingScaleEncoding"] and not result["additions"] and not result["constantValueChanges"]
+def retirement_comparison(old, new):
+    projected = without_retirement_additions(old, new)
+    remaining = Comparison(old, projected).run()
+    result = Comparison(old, new).run()
+    exact = (remaining["compatibleExistingScaleEncoding"] and not remaining["additions"]
+             and not remaining["constantValueChanges"])
     result["compatibleExistingScaleEncoding"] = exact
-    result["legacyAbiPreservedExceptDeclaredUndeployedSponsorship"] = exact
+    result["onlyDeclaredRetirementAdditions"] = exact
     result["allOtherAbiAndConstantsPreserved"] = exact
+    result["allowedRetirementAdditions"] = copy.deepcopy(RETIREMENT_ADDITIONS)
+    result["unexpectedRemainingAdditions"] = remaining["additions"]
     return result
 
 
@@ -407,45 +431,70 @@ def bit_sequence_self_checks():
     ]
 
 
-def sponsorship_removal_self_checks(metadata):
-    trimmed = copy.deepcopy(metadata)
-    types = {item["id"]: item["type"] for item in trimmed["types"]["types"]}
-    pallet = next(p for p in trimmed["pallets"] if p["name"] == "IrohaMigration")
-    for category, expected in SPONSORSHIP_REMOVALS.items():
-        variants = types[pallet[category]["ty"]]["def"]["variant"]["variants"]
-        types[pallet[category]["ty"]]["def"]["variant"]["variants"] = [item for item in variants if item["index"] not in expected]
-    pallet["storage"]["entries"] = [item for item in pallet["storage"]["entries"] if item["name"] != "FeeSponsorships"]
-    accepted = sponsorship_removal_comparison(metadata, trimmed)
-    assert accepted["compatibleExistingScaleEncoding"] and len(accepted["allowedUndeployedSponsorshipRemovals"]) == 9
-    assert not accepted["additions"] and not accepted["constantValueChanges"]
-    assert not Comparison(metadata, trimmed).run()["compatibleExistingScaleEncoding"], "Default comparison must remain strict"
-    extra = copy.deepcopy(trimmed)
-    iroha = next(p for p in extra["pallets"] if p["name"] == "IrohaMigration")
-    iroha["storage"]["entries"] = [entry for entry in iroha["storage"]["entries"] if entry["name"] != "Balances"]
-    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
-    extra = copy.deepcopy(trimmed)
-    lookup = {item["id"]: item["type"] for item in extra["types"]["types"]}
-    iroha = next(p for p in extra["pallets"] if p["name"] == "IrohaMigration")
-    lookup[iroha["calls"]["ty"]]["def"]["variant"]["variants"][0]["fields"][0]["name"] = "changed_legacy_argument"
-    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
-    extra = copy.deepcopy(trimmed)
-    extra["extrinsic"]["signed_extensions"].reverse()
-    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
-    extra = copy.deepcopy(trimmed)
-    lookup = {item["id"]: item["type"] for item in extra["types"]["types"]}
-    iroha = next(p for p in extra["pallets"] if p["name"] == "IrohaMigration")
-    lookup[iroha["calls"]["ty"]]["def"]["variant"]["variants"].append({"name": "unrequested_call", "index": 42, "fields": []})
-    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
-    extra = copy.deepcopy(trimmed)
-    version = next(item for pallet in extra["pallets"] if pallet["name"] == "System" for item in pallet["constants"] if item["name"] == "Version")
-    version["value"][0] ^= 1
-    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
-    return ["Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
-            "Additional legacy Iroha storage removal rejected",
-            "Changed migrate-zero argument rejected under sponsor-removal mode",
-            "Signed-extension reorder rejected under sponsor-removal mode",
-            "Unrequested ABI addition rejected under sponsor-removal mode",
-            "Constant-byte change rejected under sponsor-removal mode"]
+def retirement_self_checks(metadata):
+    extended = copy.deepcopy(metadata)
+    types = {item["id"]: item["type"] for item in extended["types"]["types"]}
+    primitive = lambda kind: next(index for index, value in types.items() if value["def"] == {"primitive": kind})
+    pallets = indexed(extended["pallets"], "name")
+    for name, index in RETIREMENT_ERRORS.items():
+        pallet = pallets[name]
+        pallet["constants"].append({"name": "RepaymentOnly", "ty": primitive("bool"), "value": [1]})
+        types[pallet["error"]["ty"]]["def"]["variant"]["variants"].append({"name": "RepaymentOnly", "index": index})
+    apollo = pallets["ApolloPlatform"]
+    asset_key = next(value for value in apollo["storage"]["entries"] if value["name"] == "PoolData")["ty"]["Map"]["key"]
+    apollo["storage"]["entries"].append({"name": "DeferredProtocolInterest", "modifier": "Default",
+        "ty": {"Map": {"hashers": ["Identity"], "key": asset_key, "value": primitive("u128")}}, "default": [0] * 16})
+    assert retirement_comparison(metadata, extended)["compatibleExistingScaleEncoding"]
+    checks = ["Exact typed retirement additions accepted with all existing ABI preserved"]
+
+    def rejects(label, mutate):
+        changed = copy.deepcopy(extended)
+        mutate(changed)
+        try:
+            accepted = retirement_comparison(metadata, changed)["compatibleExistingScaleEncoding"]
+        except (ValueError, KeyError):
+            accepted = False
+        assert not accepted, label
+        checks.append(label)
+
+    def pallet(model, name):
+        return next(value for value in model["pallets"] if value["name"] == name)
+
+    def definition(model, type_id):
+        return next(value["type"]["def"] for value in model["types"]["types"] if value["id"] == type_id)
+
+    def variants(model, name, category):
+        return definition(model, pallet(model, name)[category]["ty"])["variant"]["variants"]
+
+    def retirement_constant(model):
+        return next(value for value in pallet(model, "Kensetsu")["constants"] if value["name"] == "RepaymentOnly")
+
+    def deferred(model):
+        return next(value for value in pallet(model, "ApolloPlatform")["storage"]["entries"] if value["name"] == "DeferredProtocolInterest")
+
+    rejects("Legacy storage deletion rejected", lambda model: pallet(model, "IrohaMigration")["storage"]["entries"].pop(0))
+    rejects("Legacy migrate argument drift rejected", lambda model: variants(model, "IrohaMigration", "calls")[0]["fields"][0].update(name="changed_argument"))
+    rejects("Signed-extension reorder rejected", lambda model: model["extrinsic"]["signed_extensions"].reverse())
+    def signature_drift(model):
+        extrinsic = next(value["type"] for value in model["types"]["types"] if value["id"] == model["extrinsic"]["ty"])
+        next(value for value in extrinsic["params"] if value["name"] == "Signature")["type"] = primitive("u128")
+    rejects("Extrinsic signature layout drift rejected", signature_drift)
+    rejects("Existing event index drift rejected", lambda model: variants(model, "Kensetsu", "event")[0].update(index=250))
+    def constant_drift(model):
+        version = next(value for value in pallet(model, "System")["constants"] if value["name"] == "Version")
+        version["value"][0] ^= 1
+    rejects("Existing constant value change rejected", constant_drift)
+    rejects("Unrequested call addition rejected", lambda model: variants(model, "IrohaMigration", "calls").append({"name": "unrequested", "index": 42}))
+    rejects("Retirement constant false rejected", lambda model: retirement_constant(model).update(value=[0]))
+    rejects("Retirement constant wrong type rejected", lambda model: retirement_constant(model).update(ty=primitive("u8")))
+    rejects("Retirement error wrong index rejected", lambda model: variants(model, "ApolloPlatform", "error")[-1].update(index=37))
+    rejects("Retirement error payload rejected", lambda model: variants(model, "Kensetsu", "error")[-1].update(fields=[{"type": primitive("u128")}]))
+    rejects("Deferred interest wrong key rejected", lambda model: deferred(model)["ty"]["Map"].update(key=primitive("u128")))
+    rejects("Deferred interest wrong balance type rejected", lambda model: deferred(model)["ty"]["Map"].update(value=primitive("u64")))
+    rejects("Deferred interest wrong hasher rejected", lambda model: deferred(model)["ty"]["Map"].update(hashers=["Blake2_128Concat"]))
+    rejects("Deferred interest wrong default rejected", lambda model: deferred(model).update(default=[1] + [0] * 15))
+    rejects("Deferred interest optional storage rejected", lambda model: deferred(model).update(modifier="Optional", default=[0]))
+    return checks
 
 
 def main():
@@ -454,10 +503,10 @@ def main():
     parser.add_argument("--old", type=Path, default=here / "reference-runtime-130/framenode-runtime-4.8.8-metadata.json")
     parser.add_argument("--new", type=Path, default=here.parent / "framenode-runtime-4.8.9-metadata.json")
     parser.add_argument("--output", type=Path, default=here / "metadata-compatibility.json")
-    parser.add_argument("--allow-undeployed-sponsorship-removal", action="store_true")
+    parser.add_argument("--allow-retirement-additions", action="store_true")
     args = parser.parse_args()
     old, new = load(args.old), load(args.new)
-    result = sponsorship_removal_comparison(old, new) if args.allow_undeployed_sponsorship_removal else Comparison(old, new).run()
+    result = retirement_comparison(old, new) if args.allow_retirement_additions else Comparison(old, new).run()
     result["checkedAt"] = datetime.now(timezone.utc).isoformat()
     result["metadataVersion"] = 14
     result["inputs"] = {label: {"path": str(path.resolve()), "sha256": sha256(path)}
@@ -472,9 +521,9 @@ def main():
             live = json.loads((here / "live-chain.json").read_text())
             result["capturedMainnetBlock"] = {key: live[key] for key in ("blockHash", "blockNumber", "checkedAt")}
     result["selfChecks"] = self_checks(old)
-    if args.allow_undeployed_sponsorship_removal:
-        result["selfChecks"].extend(sponsorship_removal_self_checks(old))
-    result["comparisonMode"] = "exact-undeployed-Iroha-sponsorship-removal" if args.allow_undeployed_sponsorship_removal else "strict"
+    if args.allow_retirement_additions:
+        result["selfChecks"].extend(retirement_self_checks(old))
+    result["comparisonMode"] = "exact-lending-retirement-additions" if args.allow_retirement_additions else "strict"
     result["limitations"] = [
         "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
         "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",

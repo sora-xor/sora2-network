@@ -9,7 +9,14 @@ settlement retains the fee and restores the claim. All proposed sponsorship
 calls, storage, events, errors and fee-payer hooks are removed. Legacy claim
 records, ownership proofs, referrals and pending multisig behavior remain intact.
 
-BABE/GRANDPA reports and Kensetsu/Apollo maintenance require signed funded payers.
+Kensetsu permits only repayment/closure of existing user positions; new borrowing,
+collateral deposits and liquidation are disabled. {{KENSETSU_DEBT_POLICY}} Apollo
+permits repayment, withdrawal and earned-reward claims; new lending and liquidation
+are disabled. Both automatic maintenance workers are off. Apollo principal exits
+retain unpaid reward claims separately and reserve received protocol interest
+pending authorized distribution.
+
+BABE/GRANDPA reports require signed funded payers.
 Successful useful order cancellations and first requested-preimage provision
 retain refunds; failed/empty/replayed cancellations, unauthorized Rewards calls
 and requested-preimage replay pay. See [FEE_POLICY.md](FEE_POLICY.md).
@@ -27,13 +34,14 @@ Source overlay tree: `{{SOURCE_TREE}}`; reviewed base: `{{SOURCE_BASE}}`.
 Fresh native validation: **{{NATIVE_PASSED}} passed**, zero failed,
 **{{NATIVE_IGNORED}} existing ignored**, including **{{RUNTIME_REGRESSIONS}}**
 runtime fee-policy regressions. Five paid-migration cases and the bridge
-approval-weight case are required by exact name.
+approval-weight case are required by exact name, alongside seven retired-lending
+regressions covering blocked direct/wrapped calls, exits and silent workers.
 
 The exact Wasm verifies paid VAL delivery, paid replay, failed-settlement rollback
 and zero-XOR rejection, in addition to the existing report, bridge and cancellation
 checks. Deployed-baseline compatibility remains strict. Comparisons to the prior
-unreleased candidate permit only nine explicitly enumerated sponsorship ABI
-removals. [VALIDATION.md](VALIDATION.md) discloses fixtures, limitations and historical
+unreleased paid-migration candidate preserve existing encodings and permit only
+the explicitly enumerated lending-retirement additions. [VALIDATION.md](VALIDATION.md) discloses fixtures, limitations and historical
 results; earlier execution is never relabeled as fresh validation.
 
 All three stage/test chain-spec blobs are rebuilt from this source. Only `:code`

@@ -18,7 +18,7 @@
     "prerequisites": [
       "Resolve the existing external proposal through normal governance so NextExternal is clear; never overwrite it.",
       "Refresh finalized baseline, metadata, governance membership and unsigned calls before use. If runtime code or metadata changed, repeat compatibility and exact-Wasm rehearsal against the new deployed baseline.",
-      "Install dedicated sr25519 keep keys and fund keeper XOR accounts before activation; verify signed Kensetsu and Apollo submissions on a test network.",
+      "Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.",
       "Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.",
       "Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.",
       "Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.",
@@ -29,15 +29,15 @@
     "name": "SORA mainnet",
     "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
     "endpoint": "wss://mof2.sora.org",
-    "finalizedBlock": 27910230,
-    "finalizedBlockHash": "0xd05271b3479fdfe8add03bba8f80b00fd3563c9a27985c6272330b00e6a7e3ee",
-    "checkedAt": "2026-10-05T07:47:25.288Z"
+    "finalizedBlock": 27911262,
+    "finalizedBlockHash": "0xe73285457da54fdf851e67217acc9b6555f5cf0b2fe5d62161542f37d22231a3",
+    "checkedAt": "2026-10-05T09:30:48.585Z"
   },
   "runtime": {
     "baselineSpecVersion": 132,
     "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3086444,
-    "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+    "bytes": 3066913,
+    "sha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
     "specVersion": 134,
     "transactionVersion": 131
   },
@@ -45,16 +45,16 @@
     "method": "preimage.notePreimage",
     "bytesArgumentFile": "set-code-call.hex",
     "completeCallFile": "preimage-note-call.hex",
-    "hash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
+    "hash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
     "hashAlgorithm": "BLAKE2-256 of full SCALE system.setCode call",
     "status": null,
-    "bytes": 3086450,
+    "bytes": 3066919,
     "maxBytes": 4194304,
     "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
     "baseDepositBaseUnits": "133546666666663200",
     "byteDepositBaseUnits": "3333333333300",
-    "unrequestedDepositBaseUnits": "10421713333230448200",
-    "unrequestedDepositXor": "10.421713333230448200",
+    "unrequestedDepositBaseUnits": "10356609999897765900",
+    "unrequestedDepositXor": "10.356609999897765900",
     "depositSource": "Captured baseline runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
     "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
   },
@@ -66,7 +66,7 @@
     "innerCallFile": "utility-guarded-external-majority-call.hex",
     "innerCall": "utility.batchAll([democracy.externalPropose(candidate), democracy.externalProposeMajority(candidate)])",
     "proposalLengthBound": 81,
-    "motionHashForVoteAndClose": "0xacc4f8d34a4e12936fc4d71e5f8364d43f82a84053b97e4f8ccd4a8b59866c4f",
+    "motionHashForVoteAndClose": "0xeca8a8b42c1067713e9cad13092408c50238ed10fb650c380ae59baf02d8db74",
     "motionIndex": null,
     "close": {
       "lengthBound": 85,
@@ -87,11 +87,11 @@
     "members": 4,
     "innerCallFile": "democracy-fast-track-call.hex",
     "innerCall": "democracy.fastTrack",
-    "proposalHash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
+    "proposalHash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
     "votingPeriodBlocks": 1800,
     "enactmentDelayBlocks": 0,
     "proposalLengthBound": 42,
-    "motionHashForVoteAndClose": "0x67cd9f4750b7dd5a9f35bb479d6eb4ea78db24de573f487f0f155f5c2246c7d7",
+    "motionHashForVoteAndClose": "0xa3dda94e7245ad3f040444993359160acc7ffe4d7a055c6aadd30d0282be554e",
     "motionIndex": null,
     "close": {
       "lengthBound": 46,
@@ -120,7 +120,7 @@
     "Preimage registration, council approval, technical fast-track, referendum passage and enactment are separate steps."
   ],
   "inputSha256": {
-    "runtime-upgrade-4.8.12-info.json": "69bb2b8e047265ca338a4c370594ac987372f3273059d6d9d02dd87fceeb5c89",
-    "governance-calls.json": "719067df57f68b1eb8c3d7e990347ba4e3e10b78fffc7524e957cafc0e19df8d"
+    "runtime-upgrade-4.8.12-info.json": "390b4c47646115760bdbfcbd1d4312a50d412366c908fdf1118a1f317f45706f",
+    "governance-calls.json": "ec7f5017c90f053918020a12be4f9a0f6906118c7062975d551ec5301ed3bdba"
   }
 }

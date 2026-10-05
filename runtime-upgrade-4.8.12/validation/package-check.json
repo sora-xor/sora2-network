@@ -1,9 +1,9 @@
 {
   "status": "passed",
-  "verifiedFiles": 88,
-  "candidateSha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
-  "proposalHash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-  "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+  "verifiedFiles": 89,
+  "candidateSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+  "proposalHash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+  "sourceTreeAfterPatch": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
   "sourceIsUncommittedOverlay": true,
   "unsignedCallsMatchCandidate": true,
   "activationReady": false,
@@ -11,6 +11,7 @@
   "exactWasmReportFeesAndCompatibilityPassed": true,
   "nativeReportFeeTestsPassed": true,
   "exactWasmFeePolicyAndZeroXorBridgePassed": true,
+  "nativeAndExactWasmLendingRetirementPassed": true,
   "workspaceSourceChecked": true,
   "networkRequests": 0
 }

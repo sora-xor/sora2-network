@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-4-Clause
 
 use super::*;
-use crate::{Executive, UncheckedExtrinsic, XorFee};
+use crate::{Executive, RuntimeCall, UncheckedExtrinsic, XorFee};
 use codec::Decode;
 use common::keeper::{submit, SubmitStatus};
 use sp_runtime::{generic::Preamble, FixedPointNumber, FixedU128};
@@ -17,6 +17,8 @@ fn nonce(encoded: &[u8]) -> u32 {
 
 #[test]
 fn both_keeper_pallets_share_durable_nonces_and_pay_through_executive() {
+    // Exercise the shared submission helper directly. Production pallet OCWs
+    // are disabled in repayment-only mode; their silence is covered separately.
     let mut externalities = ext();
     let (offchain, _) = sp_runtime::offchain::testing::TestOffchainExt::new();
     let (pool, pool_state) = sp_runtime::offchain::testing::TestTransactionPoolExt::new();
@@ -81,9 +83,19 @@ fn both_keeper_pallets_share_durable_nonces_and_pay_through_executive() {
             System::reset_events();
             let before = Balances::free_balance(&who);
             let tx = UncheckedExtrinsic::decode(&mut &encoded[..]).unwrap();
-            // The missing CDP/loan deliberately makes dispatch fail, while
-            // admission, the real signature and payment extension all execute.
-            assert!(Executive::apply_extrinsic(tx).unwrap().is_err());
+            // Old keeper transactions remain signed, paid failures after
+            // retirement, even if submitted directly through the generic helper.
+            let expected: sp_runtime::DispatchError = match &tx.function {
+                RuntimeCall::Kensetsu(_) => kensetsu::Error::<Runtime>::RepaymentOnly.into(),
+                RuntimeCall::ApolloPlatform(_) => {
+                    apollo_platform::Error::<Runtime>::RepaymentOnly.into()
+                }
+                _ => panic!("unexpected keeper transaction"),
+            };
+            assert_eq!(
+                Executive::apply_extrinsic(tx).unwrap().unwrap_err(),
+                expected
+            );
             let charged = before - Balances::free_balance(&who);
             assert!(charged > 0);
             let recorded = System::events()

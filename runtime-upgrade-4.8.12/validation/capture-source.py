@@ -24,6 +24,9 @@ REQUIRED_FOLLOWUP_INPUTS = [
     "pallets/xor-fee/src/lib.rs", "runtime/src/lib.rs", "runtime/src/xor_fee_impls.rs",
     "runtime/src/tests/liveness/bridge_fees.rs", "runtime/src/tests/liveness/migration_fees.rs",
     "runtime/src/tests/liveness.rs", "pallets/iroha-migration/src/tests.rs",
+    "pallets/kensetsu/src/lib.rs", "pallets/kensetsu/src/tests.rs",
+    "pallets/apollo-platform/src/lib.rs", "pallets/apollo-platform/src/tests.rs",
+    "common/src/mock.rs", "runtime/src/tests/liveness/retired_lending.rs",
 ]
 REQUIRED_DELETIONS = ["runtime/src/migration_fees.rs", "runtime/src/tests/liveness/migration_sponsorship.rs"]
 EXPECTED_BASE = "bb38216396835fae45de9c38104e4927a96eb36c"
@@ -38,8 +41,10 @@ def digest(data):
 
 
 def main():
-    base = git("rev-parse", "HEAD").decode().strip()
-    assert base == EXPECTED_BASE, "Paid-migration package must capture the reviewed bb382163 base"
+    base = EXPECTED_BASE
+    # Preserve the cumulative, independently replayable source overlay from the
+    # reviewed sponsorship base, including its explicit source deletions.
+    git("merge-base", "--is-ancestor", base, "HEAD")
     with tempfile.TemporaryDirectory(prefix="sora-4812-source-") as temporary:
         env = {**os.environ, "GIT_INDEX_FILE": str(Path(temporary) / "capture.index")}
         git("read-tree", base, env=env)

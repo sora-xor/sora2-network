@@ -51650,6 +51650,13 @@
                     "docs": [
                       "Accrue limit reached"
                     ]
+                  },
+                  {
+                    "name": "RepaymentOnly",
+                    "index": 19,
+                    "docs": [
+                      "Only repayment and closure of existing CDPs are available."
+                    ]
                   }
                 ]
               }
@@ -54956,6 +54963,13 @@
                     "index": 35,
                     "docs": [
                       "Liquidation limit reached"
+                    ]
+                  },
+                  {
+                    "name": "RepaymentOnly",
+                    "index": 36,
+                    "docs": [
+                      "Apollo is retired; only repayment, withdrawals and earned claims remain available."
                     ]
                   }
                 ]
@@ -71490,6 +71504,16 @@
           "ty": 193
         },
         "constants": [
+          {
+            "name": "RepaymentOnly",
+            "ty": 8,
+            "value": [
+              1
+            ],
+            "docs": [
+              " Retire user-facing activity except repayment and closing existing CDPs."
+            ]
+          },
           {
             "name": "KenIncentiveRemintPercent",
             "ty": 197,
@@ -259509,6 +259533,42 @@
               "docs": []
             },
             {
+              "name": "DeferredProtocolInterest",
+              "modifier": "Default",
+              "ty": {
+                "Map": {
+                  "hashers": [
+                    "Identity"
+                  ],
+                  "key": 67,
+                  "value": 6
+                }
+              },
+              "default": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "docs": [
+                " Repaid interest held in real reserves in its original asset during retirement.",
+                " It is excluded from lending liquidity and cannot fund reward/principal payouts.",
+                " Distribution/unreservation requires a separately reviewed governance change."
+              ]
+            },
+            {
               "name": "PoolsByBlock",
               "modifier": "Optional",
               "ty": {
@@ -259784,6 +259844,16 @@
           "ty": 269
         },
         "constants": [
+          {
+            "name": "RepaymentOnly",
+            "ty": 8,
+            "value": [
+              1
+            ],
+            "docs": [
+              " Retire new lending activity while preserving repayment, withdrawals and earned claims."
+            ]
+          },
           {
             "name": "UnsignedPriority",
             "ty": 12,

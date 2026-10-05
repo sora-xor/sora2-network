@@ -21,12 +21,15 @@ No direct supersession alternative is provided.
 
 ## Operator readiness before activation
 
-1. Install and fund dedicated sr25519 `keep` accounts for Kensetsu/Apollo
-   maintenance. Exercise both workers sharing an account and their durable
-   nonce queue. Avoid independent transaction submitters competing for that
-   account. The recorded base source includes
-   `pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md`; package preparation does not install
-   keys or attest funding/rollout.
+1. Confirm Kensetsu permits repayment/closure and Apollo permits repayment,
+   withdrawal and earned-reward claims. Exercise partial repayment, full collateral
+   return, a last-lender withdrawal and an unfunded reward pot. New deposits,
+   borrowing and liquidation must reject even through wrappers. Both automatic
+   maintenance workers are disabled; no keeper keys, funding or nonce-queue
+   rollout is needed. {{KENSETSU_DEBT_POLICY}} Apollo interest terms are retained;
+   received protocol interest is reserved, excluded from lendable liquidity and
+   recorded for separately authorized distribution. Earned APOLLO rewards remain
+   independently claimable after principal exits.
 2. Switch BABE/GRANDPA equivocation reporters to signed funded submission.
    Legacy report call names/arguments remain available, but bare reports are
    rejected and automatic unsigned submission APIs return no transaction.
@@ -147,7 +150,7 @@ payer balances/fees and actual motion close bounds separately.
    of these chain actions.
 6. After enactment and block initialization, verify spec 134, transaction
    version 131, candidate code hash and the complete fee policy. Check funded
-   reporter/keeper operation, free useful cancellations, zero-XOR authenticated
+   signed reporter operation, retired lending exits, free useful cancellations, zero-XOR authenticated
    bridge handling, pre-execution replay rejection, and XOR-paid legacy migration
    including successful VAL claims. Confirm sponsorship calls/storage are absent.
 

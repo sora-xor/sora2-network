@@ -10,6 +10,7 @@ const { hexToU8a, u8aToHex, compactAddLength } = require('@polkadot/util');
 const { blake2AsHex, cryptoWaitReady, sr25519PairFromSeed, xxhashAsU8a } = require('@polkadot/util-crypto');
 const { setup, BuildBlockMode, Block, destroyWorker } = require('@acala-network/chopsticks-core');
 const { fullOverrideBundle } = require('@sora-substrate/type-definitions');
+const { retiredLendingFixture } = require('./retired-lending-fixture.cjs');
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
 const opts = {
@@ -865,6 +866,10 @@ async function main() {
     progress('Exact Wasm: bare inbound relay rejected ' + section);
     await unsignedCheck(initialized, section + '.submit invalid empty proof', call);
   }
+  const retiredLendingExitsAndGuards = await retiredLendingFixture(initialized, {
+    chain, Block, report, rawQuery, storageKey, signedCheck, unsignedCheck, progress, save,
+    syntheticFixtures: opts.syntheticFixtures,
+  });
   const preimageFirstAndReplay = await requestedPreimageFixture(initialized);
   const paidMigrationSuccessAndFailure = await paidMigrationFixture(initialized);
   const zeroXorLegacyPeerAndReplayRejection = await zeroXorLegacyBridgeFixture(initialized);
@@ -872,11 +877,14 @@ async function main() {
   const successfulCancellationAndPaidReplay = await publicCancellation(initialized);
   assert(successfulCancellationAndPaidReplay, 'Required useful cancellation Wasm coverage needs a real public order or explicit synthetic fixture');
   report.inputs = { candidateSha256: report.candidate.sha256,
-    scriptSha256: sha256(readFileSync(__filename)), snapshotSha256: sha256(readFileSync(opts.snapshot)),
+    scriptSha256: sha256(readFileSync(__filename)),
+    retirementHelperSha256: sha256(readFileSync(resolve(__dirname, 'retired-lending-fixture.cjs'))),
+    snapshotSha256: sha256(readFileSync(opts.snapshot)),
     packageLockSha256: sha256(readFileSync(resolve(__dirname, 'package-lock.json'))) };
   report.checks = { exactCandidateWasmUpgradeExecuted: true,
     allEmptyCancellationShapesRetainFees: true, unauthorizedRewardsRetainsFees: true,
     signedInvalidKensetsuAndApolloRetainFees: true, bareKensetsuAndApolloReject: true,
+    retiredLendingExitsAndGuards,
     invalidInboundProofsReject: true, allCheckedFeeEventsMatchBalances: true,
     requestedPreimageFirstAndReplay: preimageFirstAndReplay,
     paidMigrationSuccessAndFailure,

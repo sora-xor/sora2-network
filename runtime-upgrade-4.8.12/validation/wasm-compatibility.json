@@ -1,16 +1,16 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T07:40:45.279Z",
+  "startedAt": "2026-10-05T09:27:06.244Z",
   "localOnly": true,
   "remoteRequests": 0,
   "inputs": {
     "baseline": {
-      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/live-runtime.compact.compressed.wasm",
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/live-runtime.compact.compressed.wasm",
       "bytes": 3055007,
       "sha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
       "uncompressedBytes": 13265416,
       "uncompressedSha256": "65e19280824ce168bd8d9fad1dae229bdbcbcae5aa03a03fcbb34ee8a20438b0",
-      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/baseline-metadata.json",
+      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/baseline-metadata.json",
       "metadataSha256": "ee445496ff86c4c59d028410838b01c8d2e2773dd828e0edd3fca51bc93059ca",
       "info": {
         "size": 3055007,
@@ -1386,18 +1386,18 @@
       ]
     },
     "candidate": {
-      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-      "bytes": 3086444,
-      "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
-      "uncompressedBytes": 13646637,
-      "uncompressedSha256": "47ffeea4fb25234bd6033ba3277a0ed1555934dd62fd034e6daffa3398c38aab",
-      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
-      "metadataSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/framenode-runtime-4.8.12.compact.compressed.wasm",
+      "bytes": 3066913,
+      "sha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+      "uncompressedBytes": 13517519,
+      "uncompressedSha256": "efecee3c0285c57ebbd7d194726c4f50717d54c491a99e8db577205e67ae636d",
+      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/candidate-metadata.json",
+      "metadataSha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f",
       "info": {
-        "size": 3086444,
+        "size": 3066913,
         "compression": {
-          "size_compressed": 3086444,
-          "size_decompressed": 13646637,
+          "size_compressed": 3066913,
+          "size_decompressed": 13517519,
           "compressed": true
         },
         "reserved_meta": [
@@ -1531,10 +1531,10 @@
           "transactionVersion": 131,
           "stateVersion": 0
         },
-        "proposal_hash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-        "parachain_authorize_upgrade_hash": "0x5ae4713cabcf316761492074a2d5496c55625a433e837330a28eb4d3da1c6530",
-        "ipfs_hash": "QmcFGW7FhAxSVmcUWPMwtnHSQ1qKYhVikXXKki9ZUQhXRV",
-        "blake2_256": "0xdc4537e36a56e6af3ba518a518ca39c20787e685663064f15f4fedfcf387761f"
+        "proposal_hash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+        "parachain_authorize_upgrade_hash": "0x69e1b8fbd988a8a87e4cc5051b89480d9b7bfa176fa1185f28b4f8c126a4997c",
+        "ipfs_hash": "QmTm1RBzDzfVwB6Usp4XYopiTLqyPecVfRxmkkF1KuR8yu",
+        "blake2_256": "0xa92a8b807c6e69ef336b1ea822706b98ad4c5220e9d13b6d8a360e1dad047543"
       },
       "imports": [
         {
@@ -2771,7 +2771,7 @@
     "existingScaleEncodingCompatible": true,
     "metadataAdditionsRecorded": true,
     "previous4812EncodingsPreserved": true,
-    "onlyDeclaredUndeployedSponsorshipRemoved": true,
+    "onlyDeclaredRetirementAdditions": true,
     "allOtherAbiAndConstantsPreserved": true,
     "capacityAbiRetained": true,
     "onlyRuntimeVersionConstantChanged": true,
@@ -2785,12 +2785,12 @@
     "specVersionAdvancedTo134": true,
     "implVersionRemains1": true
   },
-  "scriptSha256": "b095cbffa2d9b9bb8b6a379b3e800e2601723b9e3e533260142a66996e1103da",
+  "scriptSha256": "721b31fe0bdad85e6a662879c45fd9428011a8d567b960eb9cbdd1a1a2a3acae",
   "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
   "tools": {
     "subwasm": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
-    "comparator": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
-    "comparatorSha256": "fe8fde11d3665709cf91c415cc80289aea1d1a1976364e990b6532996f5f3e7c"
+    "comparator": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/compare-metadata.py",
+    "comparatorSha256": "1847d01b9483dc6b8ab486386dfc7923b25bc4936a77bcc9ec3b2cc112144751"
   },
   "metadataComparison": {
     "compatibleExistingScaleEncoding": true,
@@ -2805,70 +2805,121 @@
       "signedExtensions": 7
     },
     "breakingChanges": [],
-    "additions": 24,
+    "additions": 29,
     "constantValueChanges": 1,
     "selfChecks": 9,
-    "output": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/metadata-compatibility.json"
+    "output": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/metadata-compatibility.json"
   },
   "predecessorMetadataComparison": {
     "previousMetadataFile": "previous-candidate-metadata.json",
-    "previousMetadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
-    "previousCandidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
-    "candidateMetadataSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
+    "previousMetadataSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
+    "previousCandidateSha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+    "candidateMetadataSha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f",
     "reportFile": "predecessor-metadata-compatibility.json",
-    "reportSha256": "62881d4929d876a8c1d4e9d5e741ff04d368968596b31d23d0ba7b2f1696dd82",
+    "reportSha256": "632a87e09ad0d1cffb980a3d9a974e8e13ea42bad421d14eaf9ea3d6b92ee65c",
     "existingEncodingsPreserved": true,
-    "onlyDeclaredUndeployedSponsorshipRemoved": true,
+    "onlyDeclaredRetirementAdditions": true,
     "allOtherAbiAndConstantsPreserved": true,
-    "allowedUndeployedSponsorshipRemovals": [
+    "allowedRetirementAdditions": [
       {
-        "path": "IrohaMigration.calls",
-        "variant": "sponsor_migration",
-        "variantIndex": 1
+        "path": "Kensetsu.constants.RepaymentOnly",
+        "primitive": "bool",
+        "value": [
+          1
+        ]
       },
       {
-        "path": "IrohaMigration.calls",
-        "variant": "revoke_sponsorship",
-        "variantIndex": 2
+        "path": "Kensetsu.error",
+        "variant": "RepaymentOnly",
+        "variantIndex": 19
       },
       {
-        "path": "IrohaMigration.event",
-        "variant": "FeeSponsorshipGranted",
-        "variantIndex": 1
+        "path": "ApolloPlatform.constants.RepaymentOnly",
+        "primitive": "bool",
+        "value": [
+          1
+        ]
       },
       {
-        "path": "IrohaMigration.event",
-        "variant": "FeeSponsorshipUsed",
-        "variantIndex": 2
+        "path": "ApolloPlatform.error",
+        "variant": "RepaymentOnly",
+        "variantIndex": 36
       },
       {
-        "path": "IrohaMigration.event",
-        "variant": "FeeSponsorshipRevoked",
-        "variantIndex": 3
-      },
-      {
-        "path": "IrohaMigration.error",
-        "variant": "InvalidMigrationInput",
-        "variantIndex": 10
-      },
-      {
-        "path": "IrohaMigration.error",
-        "variant": "InvalidFeeSponsorship",
-        "variantIndex": 11
-      },
-      {
-        "path": "IrohaMigration.error",
-        "variant": "NotFeeSponsor",
-        "variantIndex": 12
-      },
-      {
-        "path": "IrohaMigration.storage.FeeSponsorships",
-        "storage": "FeeSponsorships"
+        "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+        "modifier": "Default",
+        "hashers": [
+          "Identity"
+        ],
+        "key": "existing PoolData asset key",
+        "valuePrimitive": "u128",
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
       }
     ],
     "capacityAbiRetained": true
   },
   "metadataAdditions": [
+    {
+      "path": "ApolloPlatform.constants.RepaymentOnly",
+      "value": [
+        1
+      ]
+    },
+    {
+      "path": "ApolloPlatform.error",
+      "variant": "RepaymentOnly",
+      "variantIndex": 36
+    },
+    {
+      "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Identity"
+            ],
+            "key": 67,
+            "value": 6
+          }
+        }
+      }
+    },
     {
       "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
@@ -3015,6 +3066,17 @@
       "variantIndex": 95
     },
     {
+      "path": "Kensetsu.constants.RepaymentOnly",
+      "value": [
+        1
+      ]
+    },
+    {
+      "path": "Kensetsu.error",
+      "variant": "RepaymentOnly",
+      "variantIndex": 19
+    },
+    {
       "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
@@ -3098,5 +3160,5 @@
     "Structural metadata comparison covers declared SCALE layouts, indices, storage hashers/defaults and signed extension shapes; it does not execute migrations or prove custom codec behavior.",
     "Import comparison checks names, kinds, order, resolved function parameter/result types and imported memory limits/shared/address type. It does not prove host implementation behavior. Actual report rejection and signed fees are covered by the separate exact-Wasm rehearsal."
   ],
-  "finishedAt": "2026-10-05T07:40:52.453Z"
+  "finishedAt": "2026-10-05T09:27:37.415Z"
 }

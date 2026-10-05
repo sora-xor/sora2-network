@@ -2559,6 +2559,7 @@ parameter_types! {
 }
 
 impl kensetsu::Config for Runtime {
+    type RepaymentOnly = frame_support::traits::ConstBool<true>;
     type AuthorityId = kensetsu::crypto::AuthorityId;
     type RuntimeEvent = RuntimeEvent;
     type Randomness = RandomnessCollectiveFlip;
@@ -2590,6 +2591,7 @@ parameter_types! {
 }
 
 impl apollo_platform::Config for Runtime {
+    type RepaymentOnly = frame_support::traits::ConstBool<true>;
     type AuthorityId = apollo_platform::crypto::AuthorityId;
     const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumber = 15 * MINUTES;
     type RuntimeEvent = RuntimeEvent;

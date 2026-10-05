@@ -81,6 +81,7 @@ fn error_indices_are_append_only() {
         17
     );
     assert_eq!(KensetsuError::AccrueLimit.encode()[0], 18);
+    assert_eq!(KensetsuError::RepaymentOnly.encode()[0], 19);
 }
 
 fn setup_accruable_cdps(count: usize) -> Vec<CdpId> {
@@ -3788,5 +3789,271 @@ fn keeper_renews_expired_and_old_version_transactions_at_the_same_nonce() {
                 sp_runtime::generic::Preamble::Signed(_, 0, _)
             ));
         }
+    });
+}
+
+fn repayment_only_fixture() -> CdpId {
+    configure_kensetsu_dollar_for_xor(
+        Balance::MAX,
+        Perbill::from_percent(50),
+        FixedU128::zero(),
+        balance!(0),
+    );
+    let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+    crate::mock::RepaymentOnly::set(&true);
+    cdp_id
+}
+
+#[test]
+fn repayment_only_blocks_non_exit_calls_without_changes() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        assert_noop!(
+            KensetsuPallet::create_cdp(
+                alice(),
+                XOR,
+                balance!(100),
+                KUSD,
+                balance!(10),
+                balance!(10),
+                CdpType::Type2,
+            ),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::deposit_collateral(alice(), cdp_id, balance!(1)),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::borrow(alice(), cdp_id, balance!(1), balance!(1)),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::liquidate(bob(), cdp_id),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::accrue(bob(), cdp_id),
+            KensetsuError::RepaymentOnly
+        );
+        assert_noop!(
+            KensetsuPallet::donate(alice(), KUSD, balance!(1)),
+            KensetsuError::RepaymentOnly
+        );
+        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(10));
+        assert_eq!(get_total_supply(&KUSD), balance!(10));
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(100));
+    });
+}
+
+#[test]
+fn repayment_only_allows_partial_repayment_and_owner_close() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(4)));
+        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(6));
+        assert_eq!(get_total_supply(&KUSD), balance!(6));
+        assert_balance(&alice_account_id(), &KUSD, balance!(6));
+        assert_balance(&alice_account_id(), &XOR, 0);
+        assert_balance(&depository_tech_account_id(), &XOR, balance!(100));
+
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+        assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+        assert_eq!(get_total_supply(&KUSD), 0);
+        assert_balance(&alice_account_id(), &KUSD, 0);
+        assert_balance(&alice_account_id(), &XOR, balance!(100));
+        assert_balance(&depository_tech_account_id(), &XOR, 0);
+        let collateral = KensetsuPallet::collateral_infos(StablecoinCollateralIdentifier {
+            collateral_asset_id: XOR,
+            stablecoin_asset_id: KUSD,
+        })
+        .unwrap();
+        assert_eq!(collateral.stablecoin_supply, 0);
+        assert_eq!(collateral.total_collateral, 0);
+    });
+}
+
+#[test]
+fn repayment_only_preserves_interest_and_treasury_accounting_during_owner_exit() {
+    // Exercise the same sequence before and after retirement, including the
+    // existing offset of bad debt before stability fees are minted to treasury.
+    for repayment_only in [false, true] {
+        for bad_debt in [0, balance!(0.5)] {
+            new_test_ext().execute_with(|| {
+                configure_kensetsu_dollar_for_xor(
+                    Balance::MAX,
+                    Perbill::from_percent(50),
+                    FixedU128::from_inner(balance!(0.1)),
+                    0,
+                );
+                let cdp_id = create_cdp_for_xor(alice(), balance!(100), balance!(10));
+                // Repayment funding comes from an existing stablecoin balance;
+                // retirement does not mint additional borrowing to the owner.
+                add_balance(alice_account_id(), balance!(1.7), KUSD);
+                set_bad_debt(bad_debt);
+                crate::mock::RepaymentOnly::set(&repayment_only);
+                pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(1000);
+                assert_noop!(
+                    KensetsuPallet::repay_debt(bob(), cdp_id, balance!(4)),
+                    KensetsuError::OperationNotPermitted
+                );
+                assert_noop!(
+                    KensetsuPallet::close_cdp(bob(), cdp_id),
+                    KensetsuError::OperationNotPermitted
+                );
+                if repayment_only {
+                    assert_noop!(
+                        KensetsuPallet::borrow(alice(), cdp_id, balance!(1), balance!(1)),
+                        KensetsuError::RepaymentOnly
+                    );
+                    assert_noop!(
+                        KensetsuPallet::create_cdp(
+                            alice(),
+                            XOR,
+                            balance!(100),
+                            KUSD,
+                            balance!(1),
+                            balance!(1),
+                            CdpType::Type2,
+                        ),
+                        KensetsuError::RepaymentOnly
+                    );
+                }
+                assert_ok!(KensetsuPallet::repay_debt(alice(), cdp_id, balance!(4)));
+                let remaining = KensetsuPallet::cdp(cdp_id).unwrap();
+                assert_eq!(remaining.debt, balance!(7)); // 10 + 1 interest - 4 repaid
+                assert_eq!(remaining.interest_coefficient.into_inner(), balance!(1.1));
+                assert_balance(&alice_account_id(), &KUSD, balance!(7.7));
+                assert_balance(&alice_account_id(), &XOR, 0);
+                assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1) - bad_debt);
+                assert_eq!(get_total_supply(&KUSD), balance!(8.7) - bad_debt);
+                assert_bad_debt(0);
+                let pair = StablecoinCollateralIdentifier {
+                    collateral_asset_id: XOR,
+                    stablecoin_asset_id: KUSD,
+                };
+                assert_eq!(
+                    KensetsuPallet::collateral_infos(&pair)
+                        .unwrap()
+                        .stablecoin_supply,
+                    balance!(7)
+                );
+
+                pallet_timestamp::Pallet::<TestRuntime>::set_timestamp(2000);
+                assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+                // The second second adds 0.7 interest to the remaining 7 debt.
+                assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+                assert_eq!(KensetsuPallet::cdp_owner_index(alice_account_id()), None);
+                assert_balance(&alice_account_id(), &KUSD, 0);
+                assert_balance(&alice_account_id(), &XOR, balance!(100));
+                assert_balance(&depository_tech_account_id(), &XOR, 0);
+                assert_balance(&treasury_tech_account_id(), &KUSD, balance!(1.7) - bad_debt);
+                assert_eq!(get_total_supply(&KUSD), balance!(1.7) - bad_debt);
+                let collateral = KensetsuPallet::collateral_infos(pair).unwrap();
+                assert_eq!(collateral.stablecoin_supply, 0);
+                assert_eq!(collateral.total_collateral, 0);
+            });
+        }
+    }
+}
+
+#[test]
+fn repayment_only_rejects_non_owner_exit_without_changes() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        assert_noop!(
+            KensetsuPallet::repay_debt(bob(), cdp_id, balance!(1)),
+            KensetsuError::OperationNotPermitted
+        );
+        assert_noop!(
+            KensetsuPallet::close_cdp(bob(), cdp_id),
+            KensetsuError::OperationNotPermitted
+        );
+        assert_noop!(
+            KensetsuPallet::close_cdp(RuntimeOrigin::none(), cdp_id),
+            BadOrigin
+        );
+        assert_noop!(
+            KensetsuPallet::repay_debt(RuntimeOrigin::root(), cdp_id, balance!(1)),
+            BadOrigin
+        );
+    });
+}
+
+#[test]
+fn repayment_only_failed_close_preserves_repayment_and_collateral() {
+    new_test_ext().execute_with(|| {
+        let cdp_id = repayment_only_fixture();
+        // Force collateral release to fail after the debt burn. The whole exit
+        // must roll back, preserving the owner's stablecoin, debt and CDP.
+        assert_ok!(assets::Pallet::<TestRuntime>::update_balance(
+            RuntimeOrigin::root(),
+            depository_tech_account_id(),
+            XOR,
+            -(balance!(100) as i128),
+        ));
+        frame_support::assert_storage_noop!({
+            assert!(KensetsuPallet::close_cdp(alice(), cdp_id).is_err());
+        });
+        assert_eq!(KensetsuPallet::cdp(cdp_id).unwrap().debt, balance!(10));
+        assert_eq!(get_total_supply(&KUSD), balance!(10));
+        assert_balance(&alice_account_id(), &KUSD, balance!(10));
+        assert_eq!(get_account_cdp_ids(&alice_account_id()), vec![cdp_id]);
+    });
+}
+
+#[test]
+fn repayment_only_hooks_are_idle() {
+    new_test_ext().execute_with(|| {
+        setup_accruable_cdps(3);
+        make_xor_cdps_unsafe_without_disabling_accrue();
+        crate::mock::RepaymentOnly::set(&true);
+        LiquidatedThisBlock::<TestRuntime>::put(true);
+        AccruesThisBlock::<TestRuntime>::put(7);
+        // No offchain host extensions are installed: retirement must return
+        // before scanning candidates, fetching a key or submitting work.
+        frame_support::assert_storage_noop!({
+            assert_eq!(
+                KensetsuPallet::on_initialize(2),
+                frame_support::weights::Weight::zero()
+            );
+            KensetsuPallet::offchain_worker(2);
+        });
+        assert!(KensetsuPallet::liquidated_this_block());
+        assert_eq!(AccruesThisBlock::<TestRuntime>::get(), 7);
+    });
+}
+
+#[test]
+fn repayment_only_debt_free_close_needs_no_accrual_or_mint_permission() {
+    new_test_ext().execute_with(|| {
+        configure_kensetsu_dollar_for_xor(
+            Balance::MAX,
+            Perbill::from_percent(50),
+            FixedU128::from_float(0.1),
+            balance!(0),
+        );
+        let cdp_id = create_cdp_for_xor(alice(), balance!(100), 0);
+        crate::mock::RepaymentOnly::set(&true);
+        // This would make interest calculation fail even when multiplied by
+        // zero debt. Retirement must still let the owner retrieve collateral.
+        CollateralInfos::<TestRuntime>::mutate(
+            StablecoinCollateralIdentifier {
+                collateral_asset_id: XOR,
+                stablecoin_asset_id: KUSD,
+            },
+            |info| info.as_mut().unwrap().last_fee_update_time = u64::MAX,
+        );
+        permissions::Permissions::<TestRuntime>::mutate(
+            treasury_tech_account_id(),
+            permissions::Scope::Unlimited,
+            |permissions| permissions.retain(|permission| *permission != permissions::MINT),
+        );
+        assert_ok!(KensetsuPallet::close_cdp(alice(), cdp_id));
+        assert_eq!(KensetsuPallet::cdp(cdp_id), None);
+        assert_eq!(get_total_supply(&KUSD), 0);
+        assert_balance(&treasury_tech_account_id(), &KUSD, 0);
+        assert_balance(&alice_account_id(), &XOR, balance!(100));
     });
 }

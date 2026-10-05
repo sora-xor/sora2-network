@@ -214,7 +214,11 @@ pub fn charlie() -> AccountId32 {
 #[macro_export]
 macro_rules! mock_apollo_platform_config {
     ($runtime:ty) => {
+        $crate::mock_apollo_platform_config!($runtime, frame_support::traits::ConstBool<false>);
+    };
+    ($runtime:ty, $repayment_only:ty) => {
         impl apollo_platform::Config for $runtime {
+            type RepaymentOnly = $repayment_only;
             type AuthorityId = apollo_platform::crypto::AuthorityId;
             const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self> = 150;
             type LiquidityProxyPallet = MockLiquidityProxy;
@@ -676,6 +680,7 @@ macro_rules! mock_frame_system_config {
 macro_rules! mock_kensetsu_config {
     ($runtime:ty) => {
         impl kensetsu::Config for TestRuntime {
+            type RepaymentOnly = RepaymentOnly;
             type AuthorityId = kensetsu::crypto::AuthorityId;
             type AssetInfoProvider = Assets;
             type DepositoryTechAccount = KensetsuDepositoryTechAccountId;

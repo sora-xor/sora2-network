@@ -228,6 +228,7 @@ pub mod pallet {
     };
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
+    use frame_support::transactional;
     use frame_system::offchain::{
         AppCrypto, CreateSignedTransaction, CreateTransactionBase, SigningTypes,
     };
@@ -252,6 +253,9 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Resets liquidation flag.
         fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
+            if T::RepaymentOnly::get() {
+                return Weight::zero();
+            }
             LiquidatedThisBlock::<T>::put(false);
             AccruesThisBlock::<T>::put(0);
             T::DbWeight::get().writes(2)
@@ -261,6 +265,9 @@ pub mod pallet {
         ///
         /// Accrues fees and calls liquidations
         fn offchain_worker(block_number: BlockNumberFor<T>) {
+            if T::RepaymentOnly::get() {
+                return;
+            }
             debug!(
                 "Entering off-chain worker, block number is {:?}",
                 block_number
@@ -373,6 +380,9 @@ pub mod pallet {
     {
         /// A funded `keep` sr25519 key; separate from validator consensus keys.
         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+        /// Retire user-facing activity except repayment and closing existing CDPs.
+        #[pallet::constant]
+        type RepaymentOnly: Get<bool>;
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: Randomness<Self::Hash, frame_system::pallet_prelude::BlockNumberFor<Self>>;
@@ -693,6 +703,8 @@ pub mod pallet {
         CollateralNotRegisteredInPriceTools,
         /// Accrue limit reached
         AccrueLimit,
+        /// Only repayment and closure of existing CDPs are available.
+        RepaymentOnly,
     }
 
     #[pallet::call]
@@ -721,6 +733,7 @@ pub mod pallet {
             _cdp_type: CdpType,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
 
             ensure!(
                 borrow_amount_min <= borrow_amount_max,
@@ -775,14 +788,16 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction, only CDP owner is allowed.
         /// - `cdp_id`: The ID of the CDP to be closed.
         ///  will be transferred.
+        #[transactional]
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::close_cdp())]
+        #[pallet::weight(<T as Config>::WeightInfo::close_cdp().saturating_add(T::DbWeight::get().reads(1)))]
         pub fn close_cdp(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
-            let cdp = Self::get_cdp_updated(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
 
+            let cdp = Self::get_cdp_updated(cdp_id)?;
             Self::repay_debt_internal(cdp_id, cdp.debt)?;
             Self::delete_cdp(cdp_id)
         }
@@ -802,6 +817,7 @@ pub mod pallet {
             collateral_amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             Self::deposit_internal(&who, cdp_id, collateral_amount)
         }
 
@@ -823,6 +839,7 @@ pub mod pallet {
             borrow_amount_max: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             ensure!(
                 borrow_amount_min <= borrow_amount_max,
                 Error::<T>::WrongBorrowAmounts
@@ -837,11 +854,12 @@ pub mod pallet {
         /// - `origin`: The origin of the transaction.
         /// - `cdp_id`: The ID of the CDP to repay debt for.
         /// - `amount`: The amount to repay against the CDP's debt.
+        #[transactional]
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::repay_debt())]
         pub fn repay_debt(origin: OriginFor<T>, cdp_id: CdpId, amount: Balance) -> DispatchResult {
             let who = ensure_signed(origin)?;
-            let cdp = Self::get_cdp_updated(cdp_id)?;
+            let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
             ensure!(who == cdp.owner, Error::<T>::OperationNotPermitted);
             Self::repay_debt_internal(cdp_id, amount)
         }
@@ -856,6 +874,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             // only one liquidation per block
             ensure!(
                 Self::check_liquidation_available(),
@@ -889,6 +908,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::accrue())]
         pub fn accrue(origin: OriginFor<T>, cdp_id: CdpId) -> DispatchResult {
             ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             ensure!(
                 AccruesThisBlock::<T>::get() < T::MaxAccruesPerBlock::get(),
                 Error::<T>::AccrueLimit
@@ -1042,6 +1062,7 @@ pub mod pallet {
             amount: Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
+            ensure!(!T::RepaymentOnly::get(), Error::<T>::RepaymentOnly);
             technical::Pallet::<T>::transfer_in(
                 &stablecoin_asset_id,
                 &who,
@@ -1904,6 +1925,14 @@ pub mod pallet {
             cdp_id: CdpId,
         ) -> Result<CollateralizedDebtPosition<AccountIdOf<T>, AssetIdOf<T>>, DispatchError>
         {
+            if T::RepaymentOnly::get() {
+                let cdp = Self::cdp(cdp_id).ok_or(Error::<T>::CDPNotFound)?;
+                // Debt-free owners must be able to recover collateral without
+                // accrual calculations or any treasury mint operation.
+                if cdp.debt.is_zero() {
+                    return Ok(cdp);
+                }
+            }
             let (mut stability_fee, new_coefficient) = Self::calculate_stability_fee(cdp_id)?;
             let cdp = CDPDepository::<T>::try_mutate(cdp_id, |cdp| {
                 let cdp = cdp.as_mut().ok_or(Error::<T>::CDPNotFound)?;

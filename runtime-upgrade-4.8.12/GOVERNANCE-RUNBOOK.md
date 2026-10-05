@@ -1,18 +1,18 @@
 # SORA 4.8.12 governance runbook
 
 This package contains six **unsigned review calls** for runtime spec **134**,
-transaction version **131**. The final Wasm is 3,086,444 bytes:
-`98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4` (SHA-256).
+transaction version **131**. The final Wasm is 3,066,913 bytes:
+`de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221` (SHA-256).
 
-The exact `system.setCode` proposal is 3,086,450 bytes with hash
-`0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d`. All six calls passed independent
+The exact `system.setCode` proposal is 3,066,919 bytes with hash
+`0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313`. All six calls passed independent
 offline decoding and binding to this Wasm. Finalized governance preflight block
-**27,910,230** recorded council threshold **4** and technical committee
+**27,911,262** recorded council threshold **4** and technical committee
 threshold **3**. Use `council-settings.json` for exact current call files,
 lengths, weights and the unrequested-preimage deposit estimate. Obtain a fresh
 signed-account fee/deposit quote before submission.
 
-The finalized external queue at block **27,910,230** contains **4.8.11**. Settings record
+The finalized external queue at block **27,911,262** contains **4.8.11**. Settings record
 `activationReady: false`; the guarded route rejects replacement of an occupied
 queue. Resolve the existing proposal through normal governance, then refresh
 finalized baseline/governance state. If 4.8.11 enacts, repeat metadata and exact
@@ -21,12 +21,15 @@ No direct supersession alternative is provided.
 
 ## Operator readiness before activation
 
-1. Install and fund dedicated sr25519 `keep` accounts for Kensetsu/Apollo
-   maintenance. Exercise both workers sharing an account and their durable
-   nonce queue. Avoid independent transaction submitters competing for that
-   account. The recorded base source includes
-   `pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md`; package preparation does not install
-   keys or attest funding/rollout.
+1. Confirm Kensetsu permits repayment/closure and Apollo permits repayment,
+   withdrawal and earned-reward claims. Exercise partial repayment, full collateral
+   return, a last-lender withdrawal and an unfunded reward pot. New deposits,
+   borrowing and liquidation must reject even through wrappers. Both automatic
+   maintenance workers are disabled; no keeper keys, funding or nonce-queue
+   rollout is needed. Existing Kensetsu debt continues accruing interest under existing terms. Repayment or closure books accrued interest with the existing treasury accounting; no new borrowing is permitted. Apollo interest terms are retained;
+   received protocol interest is reserved, excluded from lendable liquidity and
+   recorded for separately authorized distribution. Earned APOLLO rewards remain
+   independently claimable after principal exits.
 2. Switch BABE/GRANDPA equivocation reporters to signed funded submission.
    Legacy report call names/arguments remain available, but bare reports are
    rejected and automatic unsigned submission APIs return no transaction.
@@ -147,7 +150,7 @@ payer balances/fees and actual motion close bounds separately.
    of these chain actions.
 6. After enactment and block initialization, verify spec 134, transaction
    version 131, candidate code hash and the complete fee policy. Check funded
-   reporter/keeper operation, free useful cancellations, zero-XOR authenticated
+   signed reporter operation, retired lending exits, free useful cancellations, zero-XOR authenticated
    bridge handling, pre-execution replay rejection, and XOR-paid legacy migration
    including successful VAL claims. Confirm sponsorship calls/storage are absent.
 

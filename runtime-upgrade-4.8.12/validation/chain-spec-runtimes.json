@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "status": "passed",
-  "checkedAt": "2026-10-05T07:45:56.109241+00:00",
-  "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+  "checkedAt": "2026-10-05T09:33:15.854119+00:00",
+  "sourceTree": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
   "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
-  "provenanceSha256": "39eaad8082b2a2e7d23ae275b05fe20d0e38b1883a088d4ff5b34802957be278",
-  "scriptSha256": "675ac9c9708f10e3770e78771185c844e5153a471c490691e275b6723920e3b5",
+  "chainSpecBaseCommit": "3b95216336fb4baf419ec4271f97c09e66f3579f",
+  "provenanceSha256": "6313c58a369ce0cbdfd4fc6806c6a210547eb2292b819ce127bbab6d5fe6923f",
+  "scriptSha256": "84f830bb016f4800e029a1616919e5b9f47702f1ad2b34ed56c09a30c1dbe1cb",
   "subwasmVersion": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
-  "comparatorSha256": "fe8fde11d3665709cf91c415cc80289aea1d1a1976364e990b6532996f5f3e7c",
+  "comparatorSha256": "1847d01b9483dc6b8ab486386dfc7923b25bc4936a77bcc9ec3b2cc112144751",
   "metadataHashEncoding": "UTF-8 JSON sorted keys, compact separators, ensure_ascii=false",
   "networkUsed": false,
   "runtimes": [
@@ -18,17 +19,17 @@
         "private-net",
         "stage"
       ],
-      "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+      "sourceTree": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
       "wasm": {
-        "path": "/private/tmp/sora-paid-migration-stage.wasm",
-        "sha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
-        "bytes": 3150966,
+        "path": "/private/tmp/sora-retirement-stage.compact.compressed.wasm",
+        "sha256": "4eb6cec3ef79082f487d3ac24e93fdf6ad1a1f83e61219c1b5baf57f5bf82bba",
+        "bytes": 3136411,
         "specVersion": 134,
         "transactionVersion": 131,
-        "metadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
+        "metadataSha256": "3c60a3594348572024b3cd0feed336b77becce9ace493e59f01a63cedac79b93",
         "compression": {
-          "size_compressed": 3150966,
-          "size_decompressed": 14142332,
+          "size_compressed": 3136411,
+          "size_decompressed": 14066970,
           "compressed": true
         }
       },
@@ -141,14 +142,15 @@
         {
           "path": "node/chain_spec/src/bytes/chain_spec_bridge_staging.json",
           "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
-          "sha256": "5ccca42f56b2fcd6ab69ebc4acdafbec4afab6db32969b174df916ca3bed8ebc",
-          "bytes": 6401734,
-          "previousSha256": "426b80c8607271305a42cae27c228299dc6791df9773476a89cdef31ae410ef1",
-          "previousCodeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
-          "codeSha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
-          "codeBytes": 3150966,
-          "previousMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
-          "currentMetadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
+          "chainSpecBaseCommit": "3b95216336fb4baf419ec4271f97c09e66f3579f",
+          "sha256": "1aee3e3f64f9d3afaca1562dcca5c9aa6e814f63416e6f42743108dfa4f437c2",
+          "bytes": 6372624,
+          "previousSha256": "5ccca42f56b2fcd6ab69ebc4acdafbec4afab6db32969b174df916ca3bed8ebc",
+          "previousCodeSha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
+          "codeSha256": "4eb6cec3ef79082f487d3ac24e93fdf6ad1a1f83e61219c1b5baf57f5bf82bba",
+          "codeBytes": 3136411,
+          "previousMetadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
+          "currentMetadataSha256": "3c60a3594348572024b3cd0feed336b77becce9ace493e59f01a63cedac79b93",
           "previousRuntimeVersion": {
             "specName": "sora-substrate",
             "implName": "sora-substrate",
@@ -176,7 +178,63 @@
               "signedExtensions": 7
             },
             "breakingChanges": [],
-            "additions": [],
+            "additions": [
+              {
+                "path": "ApolloPlatform.constants.RepaymentOnly",
+                "value": [
+                  1
+                ]
+              },
+              {
+                "path": "ApolloPlatform.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 36
+              },
+              {
+                "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+                "storage": {
+                  "default": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "modifier": "Default",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Identity"
+                      ],
+                      "key": 67,
+                      "value": 6
+                    }
+                  }
+                }
+              },
+              {
+                "path": "Kensetsu.constants.RepaymentOnly",
+                "value": [
+                  1
+                ]
+              },
+              {
+                "path": "Kensetsu.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 19
+              }
+            ],
             "constantValueChanges": [],
             "signedExtensionIdentifiers": [
               "CheckSpecVersion",
@@ -187,76 +245,96 @@
               "CheckWeight",
               "ChargeTransactionPayment"
             ],
-            "allowedUndeployedSponsorshipRemovals": [
+            "onlyDeclaredRetirementAdditions": true,
+            "allOtherAbiAndConstantsPreserved": true,
+            "allowedRetirementAdditions": [
               {
-                "path": "IrohaMigration.calls",
-                "variant": "sponsor_migration",
-                "variantIndex": 1
+                "path": "Kensetsu.constants.RepaymentOnly",
+                "primitive": "bool",
+                "value": [
+                  1
+                ]
               },
               {
-                "path": "IrohaMigration.calls",
-                "variant": "revoke_sponsorship",
-                "variantIndex": 2
+                "path": "Kensetsu.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 19
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipGranted",
-                "variantIndex": 1
+                "path": "ApolloPlatform.constants.RepaymentOnly",
+                "primitive": "bool",
+                "value": [
+                  1
+                ]
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipUsed",
-                "variantIndex": 2
+                "path": "ApolloPlatform.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 36
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipRevoked",
-                "variantIndex": 3
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "InvalidMigrationInput",
-                "variantIndex": 10
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "InvalidFeeSponsorship",
-                "variantIndex": 11
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "NotFeeSponsor",
-                "variantIndex": 12
-              },
-              {
-                "path": "IrohaMigration.storage.FeeSponsorships",
-                "storage": "FeeSponsorships"
+                "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+                "modifier": "Default",
+                "hashers": [
+                  "Identity"
+                ],
+                "key": "existing PoolData asset key",
+                "valuePrimitive": "u128",
+                "default": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ]
               }
             ],
-            "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
-            "allOtherAbiAndConstantsPreserved": true
+            "unexpectedRemainingAdditions": []
           },
-          "onlyDeclaredUndeployedSponsorshipRemoved": true,
-          "sponsorshipRemovalSelfChecks": [
-            "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
-            "Additional legacy Iroha storage removal rejected",
-            "Changed migrate-zero argument rejected under sponsor-removal mode",
-            "Signed-extension reorder rejected under sponsor-removal mode",
-            "Unrequested ABI addition rejected under sponsor-removal mode",
-            "Constant-byte change rejected under sponsor-removal mode"
+          "onlyDeclaredRetirementAdditions": true,
+          "retirementSelfChecks": [
+            "Exact typed retirement additions accepted with all existing ABI preserved",
+            "Legacy storage deletion rejected",
+            "Legacy migrate argument drift rejected",
+            "Signed-extension reorder rejected",
+            "Extrinsic signature layout drift rejected",
+            "Existing event index drift rejected",
+            "Existing constant value change rejected",
+            "Unrequested call addition rejected",
+            "Retirement constant false rejected",
+            "Retirement constant wrong type rejected",
+            "Retirement error wrong index rejected",
+            "Retirement error payload rejected",
+            "Deferred interest wrong key rejected",
+            "Deferred interest wrong balance type rejected",
+            "Deferred interest wrong hasher rejected",
+            "Deferred interest wrong default rejected",
+            "Deferred interest optional storage rejected"
           ]
         },
         {
           "path": "node/chain_spec/src/bytes/chain_spec_staging.json",
           "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
-          "sha256": "e05a25d053dd65fefd9f119b71100ec93546e5b57855628298141d459a470a9e",
-          "bytes": 6402929,
-          "previousSha256": "fb74875436075d842af2b3acdfaa4c131a270deef47d77d91a85cbd7b5083739",
-          "previousCodeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
-          "codeSha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
-          "codeBytes": 3150966,
-          "previousMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
-          "currentMetadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
+          "chainSpecBaseCommit": "3b95216336fb4baf419ec4271f97c09e66f3579f",
+          "sha256": "b8b356d627001680199f3dff1f26b3697c15ab6353968a2182450b95dd0249c4",
+          "bytes": 6373819,
+          "previousSha256": "e05a25d053dd65fefd9f119b71100ec93546e5b57855628298141d459a470a9e",
+          "previousCodeSha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
+          "codeSha256": "4eb6cec3ef79082f487d3ac24e93fdf6ad1a1f83e61219c1b5baf57f5bf82bba",
+          "codeBytes": 3136411,
+          "previousMetadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
+          "currentMetadataSha256": "3c60a3594348572024b3cd0feed336b77becce9ace493e59f01a63cedac79b93",
           "previousRuntimeVersion": {
             "specName": "sora-substrate",
             "implName": "sora-substrate",
@@ -284,7 +362,63 @@
               "signedExtensions": 7
             },
             "breakingChanges": [],
-            "additions": [],
+            "additions": [
+              {
+                "path": "ApolloPlatform.constants.RepaymentOnly",
+                "value": [
+                  1
+                ]
+              },
+              {
+                "path": "ApolloPlatform.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 36
+              },
+              {
+                "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+                "storage": {
+                  "default": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "modifier": "Default",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Identity"
+                      ],
+                      "key": 67,
+                      "value": 6
+                    }
+                  }
+                }
+              },
+              {
+                "path": "Kensetsu.constants.RepaymentOnly",
+                "value": [
+                  1
+                ]
+              },
+              {
+                "path": "Kensetsu.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 19
+              }
+            ],
             "constantValueChanges": [],
             "signedExtensionIdentifiers": [
               "CheckSpecVersion",
@@ -295,72 +429,91 @@
               "CheckWeight",
               "ChargeTransactionPayment"
             ],
-            "allowedUndeployedSponsorshipRemovals": [
+            "onlyDeclaredRetirementAdditions": true,
+            "allOtherAbiAndConstantsPreserved": true,
+            "allowedRetirementAdditions": [
               {
-                "path": "IrohaMigration.calls",
-                "variant": "sponsor_migration",
-                "variantIndex": 1
+                "path": "Kensetsu.constants.RepaymentOnly",
+                "primitive": "bool",
+                "value": [
+                  1
+                ]
               },
               {
-                "path": "IrohaMigration.calls",
-                "variant": "revoke_sponsorship",
-                "variantIndex": 2
+                "path": "Kensetsu.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 19
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipGranted",
-                "variantIndex": 1
+                "path": "ApolloPlatform.constants.RepaymentOnly",
+                "primitive": "bool",
+                "value": [
+                  1
+                ]
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipUsed",
-                "variantIndex": 2
+                "path": "ApolloPlatform.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 36
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipRevoked",
-                "variantIndex": 3
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "InvalidMigrationInput",
-                "variantIndex": 10
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "InvalidFeeSponsorship",
-                "variantIndex": 11
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "NotFeeSponsor",
-                "variantIndex": 12
-              },
-              {
-                "path": "IrohaMigration.storage.FeeSponsorships",
-                "storage": "FeeSponsorships"
+                "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+                "modifier": "Default",
+                "hashers": [
+                  "Identity"
+                ],
+                "key": "existing PoolData asset key",
+                "valuePrimitive": "u128",
+                "default": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ]
               }
             ],
-            "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
-            "allOtherAbiAndConstantsPreserved": true
+            "unexpectedRemainingAdditions": []
           },
-          "onlyDeclaredUndeployedSponsorshipRemoved": true,
-          "sponsorshipRemovalSelfChecks": [
-            "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
-            "Additional legacy Iroha storage removal rejected",
-            "Changed migrate-zero argument rejected under sponsor-removal mode",
-            "Signed-extension reorder rejected under sponsor-removal mode",
-            "Unrequested ABI addition rejected under sponsor-removal mode",
-            "Constant-byte change rejected under sponsor-removal mode"
+          "onlyDeclaredRetirementAdditions": true,
+          "retirementSelfChecks": [
+            "Exact typed retirement additions accepted with all existing ABI preserved",
+            "Legacy storage deletion rejected",
+            "Legacy migrate argument drift rejected",
+            "Signed-extension reorder rejected",
+            "Extrinsic signature layout drift rejected",
+            "Existing event index drift rejected",
+            "Existing constant value change rejected",
+            "Unrequested call addition rejected",
+            "Retirement constant false rejected",
+            "Retirement constant wrong type rejected",
+            "Retirement error wrong index rejected",
+            "Retirement error payload rejected",
+            "Deferred interest wrong key rejected",
+            "Deferred interest wrong balance type rejected",
+            "Deferred interest wrong hasher rejected",
+            "Deferred interest wrong default rejected",
+            "Deferred interest optional storage rejected"
           ]
         }
       ],
       "build": {
-        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-paid-migration CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage",
-        "logPath": "/private/tmp/sora-paid-migration-stage-build.log",
-        "logSha256": "000a9806dc55a7ce6d6940b60465b0659e2a502f8d3ea78df7229f6b4e33acee",
+        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-retired-lending CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage",
+        "logPath": "/private/tmp/sora-retirement-final-stage.log",
+        "logSha256": "3be4003ff1e9e1884cde73c01774ddd5777b80d7c188ed531baa12a772e052b4",
         "logBytes": 916,
-        "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078"
+        "sourceTree": "36c466398e3f2760e8ab44fdb89de796f5b0dd99"
       }
     },
     {
@@ -372,17 +525,17 @@
         "wip",
         "reduced-pswap-reward-periods"
       ],
-      "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+      "sourceTree": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
       "wasm": {
-        "path": "/private/tmp/sora-paid-migration-test.wasm",
-        "sha256": "866c1eb47e462d497c7775c4c1af677cd1e76fea7ddd0c23ddb2041f679c3fe8",
-        "bytes": 3240244,
+        "path": "/private/tmp/sora-retirement-test.compact.compressed.wasm",
+        "sha256": "29fcdbd62409cada7aac3a8fc75ee08d47099fb35fc9027763b74e38f878264e",
+        "bytes": 3215327,
         "specVersion": 134,
         "transactionVersion": 131,
-        "metadataSha256": "83febf8880173eaa2db5855051f16123fe2945d73b1dbf7baa0bbea519916288",
+        "metadataSha256": "a4b4d157d22b512b4d56d8bcbfcebe269d4693cd5d7af66e5c08a7633da33485",
         "compression": {
-          "size_compressed": 3240244,
-          "size_decompressed": 14615714,
+          "size_compressed": 3215327,
+          "size_decompressed": 14530863,
           "compressed": true
         }
       },
@@ -499,14 +652,15 @@
         {
           "path": "node/chain_spec/src/bytes/chain_spec_test.json",
           "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
-          "sha256": "881dcaaba35ab863527546b6939084be1ac5ca8c0e1802dccadf20b63bd0ee69",
-          "bytes": 6582137,
-          "previousSha256": "249ae178db945802fe8656d0a343ede1b319df4e866affcdf9f62c46f79cf54b",
-          "previousCodeSha256": "3b225e12db1e94e72188e932624736bb696bf032a562afbfdca067a67bcd8da7",
-          "codeSha256": "866c1eb47e462d497c7775c4c1af677cd1e76fea7ddd0c23ddb2041f679c3fe8",
-          "codeBytes": 3240244,
-          "previousMetadataSha256": "01319606e2235e0f309e9d9cdbe51cb1b5b6694044a722ad819f415990556b29",
-          "currentMetadataSha256": "83febf8880173eaa2db5855051f16123fe2945d73b1dbf7baa0bbea519916288",
+          "chainSpecBaseCommit": "3b95216336fb4baf419ec4271f97c09e66f3579f",
+          "sha256": "7c8b1aa2b7e3117f3f0aa92c30072a8732217a0ad3e48216918beb584df6dbe2",
+          "bytes": 6532303,
+          "previousSha256": "881dcaaba35ab863527546b6939084be1ac5ca8c0e1802dccadf20b63bd0ee69",
+          "previousCodeSha256": "866c1eb47e462d497c7775c4c1af677cd1e76fea7ddd0c23ddb2041f679c3fe8",
+          "codeSha256": "29fcdbd62409cada7aac3a8fc75ee08d47099fb35fc9027763b74e38f878264e",
+          "codeBytes": 3215327,
+          "previousMetadataSha256": "83febf8880173eaa2db5855051f16123fe2945d73b1dbf7baa0bbea519916288",
+          "currentMetadataSha256": "a4b4d157d22b512b4d56d8bcbfcebe269d4693cd5d7af66e5c08a7633da33485",
           "previousRuntimeVersion": {
             "specName": "sora-substrate",
             "implName": "sora-substrate",
@@ -534,7 +688,63 @@
               "signedExtensions": 7
             },
             "breakingChanges": [],
-            "additions": [],
+            "additions": [
+              {
+                "path": "ApolloPlatform.constants.RepaymentOnly",
+                "value": [
+                  1
+                ]
+              },
+              {
+                "path": "ApolloPlatform.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 36
+              },
+              {
+                "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+                "storage": {
+                  "default": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "modifier": "Default",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Identity"
+                      ],
+                      "key": 66,
+                      "value": 6
+                    }
+                  }
+                }
+              },
+              {
+                "path": "Kensetsu.constants.RepaymentOnly",
+                "value": [
+                  1
+                ]
+              },
+              {
+                "path": "Kensetsu.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 19
+              }
+            ],
             "constantValueChanges": [],
             "signedExtensionIdentifiers": [
               "CheckSpecVersion",
@@ -545,72 +755,91 @@
               "CheckWeight",
               "ChargeTransactionPayment"
             ],
-            "allowedUndeployedSponsorshipRemovals": [
+            "onlyDeclaredRetirementAdditions": true,
+            "allOtherAbiAndConstantsPreserved": true,
+            "allowedRetirementAdditions": [
               {
-                "path": "IrohaMigration.calls",
-                "variant": "sponsor_migration",
-                "variantIndex": 1
+                "path": "Kensetsu.constants.RepaymentOnly",
+                "primitive": "bool",
+                "value": [
+                  1
+                ]
               },
               {
-                "path": "IrohaMigration.calls",
-                "variant": "revoke_sponsorship",
-                "variantIndex": 2
+                "path": "Kensetsu.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 19
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipGranted",
-                "variantIndex": 1
+                "path": "ApolloPlatform.constants.RepaymentOnly",
+                "primitive": "bool",
+                "value": [
+                  1
+                ]
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipUsed",
-                "variantIndex": 2
+                "path": "ApolloPlatform.error",
+                "variant": "RepaymentOnly",
+                "variantIndex": 36
               },
               {
-                "path": "IrohaMigration.event",
-                "variant": "FeeSponsorshipRevoked",
-                "variantIndex": 3
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "InvalidMigrationInput",
-                "variantIndex": 10
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "InvalidFeeSponsorship",
-                "variantIndex": 11
-              },
-              {
-                "path": "IrohaMigration.error",
-                "variant": "NotFeeSponsor",
-                "variantIndex": 12
-              },
-              {
-                "path": "IrohaMigration.storage.FeeSponsorships",
-                "storage": "FeeSponsorships"
+                "path": "ApolloPlatform.storage.DeferredProtocolInterest",
+                "modifier": "Default",
+                "hashers": [
+                  "Identity"
+                ],
+                "key": "existing PoolData asset key",
+                "valuePrimitive": "u128",
+                "default": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ]
               }
             ],
-            "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
-            "allOtherAbiAndConstantsPreserved": true
+            "unexpectedRemainingAdditions": []
           },
-          "onlyDeclaredUndeployedSponsorshipRemoved": true,
-          "sponsorshipRemovalSelfChecks": [
-            "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
-            "Additional legacy Iroha storage removal rejected",
-            "Changed migrate-zero argument rejected under sponsor-removal mode",
-            "Signed-extension reorder rejected under sponsor-removal mode",
-            "Unrequested ABI addition rejected under sponsor-removal mode",
-            "Constant-byte change rejected under sponsor-removal mode"
+          "onlyDeclaredRetirementAdditions": true,
+          "retirementSelfChecks": [
+            "Exact typed retirement additions accepted with all existing ABI preserved",
+            "Legacy storage deletion rejected",
+            "Legacy migrate argument drift rejected",
+            "Signed-extension reorder rejected",
+            "Extrinsic signature layout drift rejected",
+            "Existing event index drift rejected",
+            "Existing constant value change rejected",
+            "Unrequested call addition rejected",
+            "Retirement constant false rejected",
+            "Retirement constant wrong type rejected",
+            "Retirement error wrong index rejected",
+            "Retirement error payload rejected",
+            "Deferred interest wrong key rejected",
+            "Deferred interest wrong balance type rejected",
+            "Deferred interest wrong hasher rejected",
+            "Deferred interest wrong default rejected",
+            "Deferred interest optional storage rejected"
           ]
         }
       ],
       "build": {
-        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-paid-migration CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage,wip,reduced-pswap-reward-periods",
-        "logPath": "/private/tmp/sora-paid-migration-test-build.log",
-        "logSha256": "b5ff97d52096f31f610e670b13d6d6d99e28cb0078cf92e1520f1f1a3a3f4350",
+        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-retired-lending CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage,wip,reduced-pswap-reward-periods",
+        "logPath": "/private/tmp/sora-retirement-final-test.log",
+        "logSha256": "54243d2407a059b74b543225e75e506c68ebc734b617245058966510eecc46e8",
         "logBytes": 800,
-        "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078"
+        "sourceTree": "36c466398e3f2760e8ab44fdb89de796f5b0dd99"
       }
     }
   ]

@@ -1,10 +1,16 @@
 {
   "status": "passed",
-  "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
-  "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
+  "sourceTreeAfterPatch": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
+  "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage -p kensetsu -p apollo-platform --lib",
   "log": "native-tests.log",
-  "logSha256": "c4e0f459448fc61786a41e4ab67ea3239ef2714d70aec387f4cb927dcfe081a4",
+  "logSha256": "27f26bd6ca837091dcd43cf2ddac7f43bf729f56cde61255f4c0b3c602ec0db6",
   "suites": [
+    {
+      "crate": "apollo_platform",
+      "passed": 126,
+      "failed": 0,
+      "ignored": 0
+    },
     {
       "crate": "eth_bridge",
       "passed": 288,
@@ -13,13 +19,19 @@
     },
     {
       "crate": "framenode_runtime",
-      "passed": 233,
+      "passed": 240,
       "failed": 0,
       "ignored": 3
     },
     {
       "crate": "iroha_migration",
       "passed": 18,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "kensetsu",
+      "passed": 129,
       "failed": 0,
       "ignored": 0
     },
@@ -74,11 +86,11 @@
   ],
   "baseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
   "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
-  "logSource": "/private/tmp/sora-paid-migration-native.log",
-  "totalPassed": 1151,
+  "logSource": "/private/tmp/sora-retirement-final-native.log",
+  "totalPassed": 1413,
   "totalFailed": 0,
   "totalIgnored": 3,
-  "newRuntimeRegressionsPassed": 32,
+  "newRuntimeRegressionsPassed": 39,
   "capacityExecutiveRegressionsPassed": 2,
   "followupRegressionsPassed": 6,
   "requiredFollowupRegressions": [
@@ -89,6 +101,17 @@
     "tests::liveness::migration_fees::migration_invalid_proof_and_replay_pay_without_duplicate_val",
     "tests::liveness::migration_fees::wrapped_migration_requires_xor_and_keeps_success_fee"
   ],
+  "retirementRegressionsPassed": 7,
+  "requiredRetirementRegressions": [
+    "tests::liveness::retired_lending::retired_kensetsu_operations_are_paid_failures_even_in_batches",
+    "tests::liveness::retired_lending::retired_apollo_operations_are_paid_failures_even_in_batches",
+    "tests::liveness::retired_lending::retired_kensetsu_partial_repayment_and_close_unlock_existing_collateral",
+    "tests::liveness::retired_lending::retired_apollo_repayment_unlocks_existing_collateral",
+    "tests::liveness::retired_lending::retired_apollo_last_lender_withdraws_exact_remaining_liquidity",
+    "tests::liveness::retired_lending::retired_apollo_exit_preserves_unfunded_reward_claims",
+    "tests::liveness::retired_lending::retired_lending_workers_submit_nothing_with_funded_keeper_keys"
+  ],
+  "requiredKensetsuInterestRegression": "tests::repayment_only_preserves_interest_and_treasury_accounting_during_owner_exit",
   "cargoFmtAllCheckPassed": true,
   "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "limitations": [

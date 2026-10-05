@@ -89,7 +89,7 @@ async function main() {
     ready: false,
     status: 'requires-operator-attestation',
     requirements: [
-      'Install dedicated sr25519 keep keys and fund keeper XOR accounts before activation; verify signed Kensetsu and Apollo submissions on a test network.',
+      'Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.',
       'Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.',
       'Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.',
       'Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.',

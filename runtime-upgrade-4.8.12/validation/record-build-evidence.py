@@ -45,10 +45,11 @@ for line in log.splitlines():
         assert suite is not None
         suites.append(dict(zip(['crate', 'passed', 'failed', 'ignored'], [suite, *map(int, found.groups())])))
         suite = None
-assert len(suites) == 11, suites
+assert len(suites) == 13, suites
+assert {row["crate"] for row in suites} >= {"kensetsu", "apollo_platform"}, suites
 assert all(row['failed'] == 0 for row in suites)
-new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_fees|bridge_fees)::.* \.\.\. ok$', log, re.M)
-assert len(new_tests) >= 32, len(new_tests)
+new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_fees|bridge_fees|retired_lending)::.* \.\.\. ok$', log, re.M)
+assert len(new_tests) >= 39, len(new_tests)
 required_followup_tests = [
     'tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum',
     'tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee',
@@ -59,6 +60,19 @@ required_followup_tests = [
 ]
 for name in required_followup_tests:
     assert re.search(r'^test ' + re.escape(name) + r' \.\.\. ok$', log, re.M), 'Missing successful follow-up regression: ' + name
+required_retirement_tests = [
+    'tests::liveness::retired_lending::retired_kensetsu_operations_are_paid_failures_even_in_batches',
+    'tests::liveness::retired_lending::retired_apollo_operations_are_paid_failures_even_in_batches',
+    'tests::liveness::retired_lending::retired_kensetsu_partial_repayment_and_close_unlock_existing_collateral',
+    'tests::liveness::retired_lending::retired_apollo_repayment_unlocks_existing_collateral',
+    'tests::liveness::retired_lending::retired_apollo_last_lender_withdraws_exact_remaining_liquidity',
+    'tests::liveness::retired_lending::retired_apollo_exit_preserves_unfunded_reward_claims',
+    'tests::liveness::retired_lending::retired_lending_workers_submit_nothing_with_funded_keeper_keys',
+]
+for name in required_retirement_tests:
+    assert re.search(r'^test ' + re.escape(name) + r' \.\.\. ok$', log, re.M), 'Missing successful retirement regression: ' + name
+interest_test = 'tests::repayment_only_preserves_interest_and_treasury_accounting_during_owner_exit'
+assert re.search(r'^test ' + re.escape(interest_test) + r' \.\.\. ok$', log, re.M), 'Missing continuing-interest regression'
 capacity_tests = re.findall(r'^test tests::liveness::bridge_fees::(?:one_zero_xor_peer_cannot_exhaust_other_peers_proposal_capacity|current_zero_xor_quorum_cleans_orphaned_proposal_at_full_shared_capacity) \.\.\. ok$', log, re.M)
 assert len(capacity_tests) == 2, 'Both Executive capacity/quorum regressions must pass'
 assert (HERE / 'format-check.log').read_text().strip() == ''
@@ -72,6 +86,9 @@ native = {'status': 'passed', 'sourceTreeAfterPatch': provenance['sourceTreeAfte
           'capacityExecutiveRegressionsPassed': len(capacity_tests),
           'followupRegressionsPassed': len(required_followup_tests),
           'requiredFollowupRegressions': required_followup_tests,
+          'retirementRegressionsPassed': len(required_retirement_tests),
+          'requiredRetirementRegressions': required_retirement_tests,
+          'requiredKensetsuInterestRegression': interest_test,
           'cargoFmtAllCheckPassed': True, 'formatCheckLogSha256': sha((HERE / 'format-check.log').read_bytes()),
           'limitations': ['Existing explicitly ignored runtime tests are retained and counted.',
                           'Native Executive regressions use real cryptographic signatures; execution is local.']}

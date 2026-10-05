@@ -1,6 +1,6 @@
 {
   "status": "prepared",
-  "checkedAt": "2026-10-05T07:47:25.288Z",
+  "checkedAt": "2026-10-05T09:30:48.585Z",
   "endpoint": "wss://mof2.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -22,7 +22,7 @@
     "utility-guarded-external-majority-call": {
       "file": "utility-guarded-external-majority-call.hex",
       "bytes": 81,
-      "hash": "0xacc4f8d34a4e12936fc4d71e5f8364d43f82a84053b97e4f8ccd4a8b59866c4f",
+      "hash": "0xeca8a8b42c1067713e9cad13092408c50238ed10fb650c380ae59baf02d8db74",
       "section": "utility",
       "method": "batchAll",
       "decoded": {
@@ -32,8 +32,8 @@
               "args": {
                 "proposal": {
                   "Lookup": {
-                    "hash_": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-                    "len": "3,086,450"
+                    "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                    "len": "3,066,919"
                   }
                 }
               },
@@ -44,8 +44,8 @@
               "args": {
                 "proposal": {
                   "Lookup": {
-                    "hash_": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-                    "len": "3,086,450"
+                    "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                    "len": "3,066,919"
                   }
                 }
               },
@@ -61,7 +61,7 @@
     "council-propose-guarded-external-majority-threshold-4-call": {
       "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
       "bytes": 86,
-      "hash": "0x2b2d91e8790db2ca993ef6f3334b3c8a85558d4a5c54caa540622e15bb15842f",
+      "hash": "0xb53494684f35cc340ddff58cee34eaf2029a966abec790d24c646e7e42b04b30",
       "section": "council",
       "method": "propose",
       "decoded": {
@@ -74,8 +74,8 @@
                   "args": {
                     "proposal": {
                       "Lookup": {
-                        "hash_": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-                        "len": "3,086,450"
+                        "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                        "len": "3,066,919"
                       }
                     }
                   },
@@ -86,8 +86,8 @@
                   "args": {
                     "proposal": {
                       "Lookup": {
-                        "hash_": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-                        "len": "3,086,450"
+                        "hash_": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+                        "len": "3,066,919"
                       }
                     }
                   },
@@ -108,12 +108,12 @@
     "democracy-fast-track-call": {
       "file": "democracy-fast-track-call.hex",
       "bytes": 42,
-      "hash": "0x67cd9f4750b7dd5a9f35bb479d6eb4ea78db24de573f487f0f155f5c2246c7d7",
+      "hash": "0xa3dda94e7245ad3f040444993359160acc7ffe4d7a055c6aadd30d0282be554e",
       "section": "democracy",
       "method": "fastTrack",
       "decoded": {
         "args": {
-          "proposal_hash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
+          "proposal_hash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
           "voting_period": "1,800",
           "delay": "0"
         },
@@ -124,7 +124,7 @@
     "technical-committee-fast-track-threshold-3-call": {
       "file": "technical-committee-fast-track-threshold-3-call.hex",
       "bytes": 46,
-      "hash": "0x430d3526314952861826152470ad9b360d39aa6ee5e89ab19eb102267389b2b7",
+      "hash": "0x6b2916c9fab24c6b22a2713f2e9d0ca7fadc9f41fda41fdca3e0f2250a5af6dc",
       "section": "technicalCommittee",
       "method": "propose",
       "decoded": {
@@ -132,7 +132,7 @@
           "threshold": "3",
           "proposal": {
             "args": {
-              "proposal_hash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
+              "proposal_hash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
               "voting_period": "1,800",
               "delay": "0"
             },
@@ -147,8 +147,8 @@
     }
   },
   "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-  "blockHash": "0xd05271b3479fdfe8add03bba8f80b00fd3563c9a27985c6272330b00e6a7e3ee",
-  "blockNumber": 27910230,
+  "blockHash": "0xe73285457da54fdf851e67217acc9b6555f5cf0b2fe5d62161542f37d22231a3",
+  "blockNumber": 27911262,
   "runtimeVersion": {
     "specName": "sora-substrate",
     "implName": "sora-substrate",
@@ -272,8 +272,8 @@
     "transactionVersion": 131,
     "stateVersion": 0
   },
-  "setCodeProposalHash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
-  "setCodeProposalBytes": 3086450,
+  "setCodeProposalHash": "0xd853592afec19f9cf49dba93f470bc101261ec08f2aeb9ee8035210880dff313",
+  "setCodeProposalBytes": 3066919,
   "nextExternal": [
     {
       "lookup": {
@@ -334,13 +334,13 @@
   "technicalCommitteeThreshold": 3,
   "preimage": {
     "status": null,
-    "bytes": 3086450,
+    "bytes": 3066919,
     "maxBytes": 4194304,
     "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
     "baseDepositBaseUnits": "133546666666663200",
     "byteDepositBaseUnits": "3333333333300",
-    "unrequestedDepositBaseUnits": "10421713333230448200",
-    "unrequestedDepositXor": "10.421713333230448200",
+    "unrequestedDepositBaseUnits": "10356609999897765900",
+    "unrequestedDepositXor": "10.356609999897765900",
     "depositSource": "Captured baseline runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
     "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
   },
@@ -349,7 +349,7 @@
     "ready": false,
     "status": "requires-operator-attestation",
     "requirements": [
-      "Install dedicated sr25519 keep keys and fund keeper XOR accounts before activation; verify signed Kensetsu and Apollo submissions on a test network.",
+      "Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.",
       "Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.",
       "Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.",
       "Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.",
@@ -372,7 +372,7 @@
     "prerequisites": [
       "Resolve the existing external proposal through normal governance so NextExternal is clear; never overwrite it.",
       "Refresh finalized baseline, metadata, governance membership and unsigned calls before use. If runtime code or metadata changed, repeat compatibility and exact-Wasm rehearsal against the new deployed baseline.",
-      "Install dedicated sr25519 keep keys and fund keeper XOR accounts before activation; verify signed Kensetsu and Apollo submissions on a test network.",
+      "Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.",
       "Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.",
       "Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.",
       "Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.",
@@ -380,8 +380,8 @@
     ]
   },
   "preferredCouncilCall": "council-propose-guarded-external-majority-threshold-4-call.hex",
-  "preferredCouncilMotionHash": "0xacc4f8d34a4e12936fc4d71e5f8364d43f82a84053b97e4f8ccd4a8b59866c4f",
-  "technicalMotionHash": "0x67cd9f4750b7dd5a9f35bb479d6eb4ea78db24de573f487f0f155f5c2246c7d7",
+  "preferredCouncilMotionHash": "0xeca8a8b42c1067713e9cad13092408c50238ed10fb650c380ae59baf02d8db74",
+  "technicalMotionHash": "0xa3dda94e7245ad3f040444993359160acc7ffe4d7a055c6aadd30d0282be554e",
   "reviewOnlySupersessionCalls": [],
   "directSupersessionArtifactsExcluded": true,
   "closeBounds": {

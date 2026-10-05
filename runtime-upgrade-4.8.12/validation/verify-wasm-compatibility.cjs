@@ -139,25 +139,26 @@ try {
     '--new', report.inputs.candidate.metadataPath, '--output', metadataReportPath]));
   const metadata = JSON.parse(readFileSync(metadataReportPath));
   assert.equal(metadata.compatibleExistingScaleEncoding, true, 'Existing SCALE encoding must be compatible');
-  // The paid-migration revision removes only the explicitly undeployed sponsorship ABI.
-  // The sealed210511 candidate already contains the capacity ABI and is the predecessor.
+  // Lending retirement preserves the sealed paid-migration ABI and adds only
+  // the reviewed mode constants, appended errors and deferred-interest balance map.
   const previousMetadataPath = resolve(__dirname, 'previous-candidate-metadata.json');
   const previousMetadataSha256 = sha256(readFileSync(previousMetadataPath));
   assert.equal(previousMetadataSha256,
-    'f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020',
-    'Predecessor metadata must match the sealed210511 4.8.12 candidate');
+    'b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0',
+    'Predecessor metadata must match the sealed98f152 4.8.12 candidate');
   const predecessorMetadataPath = join(outputDir, 'predecessor-metadata-compatibility.json');
   run('python3', [comparator, '--old', previousMetadataPath,
     '--new', report.inputs.candidate.metadataPath, '--output', predecessorMetadataPath,
-    '--allow-undeployed-sponsorship-removal']);
+    '--allow-retirement-additions']);
   const predecessorComparison = JSON.parse(readFileSync(predecessorMetadataPath));
   assert.equal(predecessorComparison.compatibleExistingScaleEncoding, true,
-    'Follow-up must preserve every sealed210511 SCALE encoding');
-  assert.deepEqual(predecessorComparison.additions, [], 'Paid migration must not add an ABI variant or storage entry');
-  assert.equal(predecessorComparison.comparisonMode, 'exact-undeployed-Iroha-sponsorship-removal');
-  assert.equal(predecessorComparison.allowedUndeployedSponsorshipRemovals.length, 9);
+    'Follow-up must preserve every sealed98f152 SCALE encoding');
+  assert.equal(predecessorComparison.comparisonMode, 'exact-lending-retirement-additions');
+  assert.equal(predecessorComparison.allowedRetirementAdditions.length, 5);
+  assert.equal(predecessorComparison.onlyDeclaredRetirementAdditions, true);
+  assert.deepEqual(predecessorComparison.unexpectedRemainingAdditions, []);
   assert.equal(predecessorComparison.allOtherAbiAndConstantsPreserved, true);
-  assert.deepEqual(predecessorComparison.constantValueChanges, [], 'Follow-up must preserve sealed210511 constants');
+  assert.deepEqual(predecessorComparison.constantValueChanges, [], 'Follow-up must preserve sealed98f152 constants');
   const currentModel = JSON.parse(readFileSync(report.inputs.candidate.metadataPath)).V14;
   const variants = (pallet, kind) => {
     const item = currentModel.pallets.find(item => item.name === pallet);
@@ -172,11 +173,11 @@ try {
   }
   report.predecessorMetadataComparison = { previousMetadataFile: 'previous-candidate-metadata.json',
     previousMetadataSha256,
-    previousCandidateSha256: '210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c',
+    previousCandidateSha256: '98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4',
     candidateMetadataSha256: report.inputs.candidate.metadataSha256,
     reportFile: 'predecessor-metadata-compatibility.json', reportSha256: sha256(readFileSync(predecessorMetadataPath)),
-    existingEncodingsPreserved: true, onlyDeclaredUndeployedSponsorshipRemoved: true, allOtherAbiAndConstantsPreserved: true,
-    allowedUndeployedSponsorshipRemovals: predecessorComparison.allowedUndeployedSponsorshipRemovals, capacityAbiRetained: true };
+    existingEncodingsPreserved: true, onlyDeclaredRetirementAdditions: true, allOtherAbiAndConstantsPreserved: true,
+    allowedRetirementAdditions: predecessorComparison.allowedRetirementAdditions, capacityAbiRetained: true };
   // The fee repair retains bridge operation counters and their append-only error,
   // event and call variants. The comparator checks every existing index and
   // encoding recursively; retain every addition for council review.
@@ -215,7 +216,7 @@ try {
     assert.deepEqual(newVersion[key], oldVersion[key], 'Unchanged runtime version field: ' + key);
   }
   report.checks = { existingScaleEncodingCompatible: true, metadataAdditionsRecorded: true,
-    previous4812EncodingsPreserved: true, onlyDeclaredUndeployedSponsorshipRemoved: true, allOtherAbiAndConstantsPreserved: true, capacityAbiRetained: true,
+    previous4812EncodingsPreserved: true, onlyDeclaredRetirementAdditions: true, allOtherAbiAndConstantsPreserved: true, capacityAbiRetained: true,
     onlyRuntimeVersionConstantChanged: true, hostImportNamesKindsAndOrderUnchanged: true,
     hostFunctionSignaturesUnchanged: true, importedMemoryLimitsCompatible: true, memoryGrowthCompatibleWithPinnedSdkDefaultAllocation: true,
     wasmExportsUnchanged: true, runtimeApiVersionsUnchanged: true, transactionVersionRemains131: true,

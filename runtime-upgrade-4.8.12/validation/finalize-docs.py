@@ -28,6 +28,27 @@ for report in [native, build, policy, compatibility, governance]:
 assert native["sourceTreeAfterPatch"] == build["sourceTreeAfterPatch"] == provenance["sourceTreeAfterPatch"]
 assert build["candidateSha256"] == policy["candidate"]["sha256"] == compatibility["inputs"]["candidate"]["sha256"] == governance["candidateSha256"] == candidate["sha256"]
 assert native["totalFailed"] == 0 and native["followupRegressionsPassed"] == 6
+required_retirement_tests = {
+    "tests::liveness::retired_lending::retired_kensetsu_operations_are_paid_failures_even_in_batches",
+    "tests::liveness::retired_lending::retired_apollo_operations_are_paid_failures_even_in_batches",
+    "tests::liveness::retired_lending::retired_kensetsu_partial_repayment_and_close_unlock_existing_collateral",
+    "tests::liveness::retired_lending::retired_apollo_repayment_unlocks_existing_collateral",
+    "tests::liveness::retired_lending::retired_apollo_last_lender_withdraws_exact_remaining_liquidity",
+    "tests::liveness::retired_lending::retired_apollo_exit_preserves_unfunded_reward_claims",
+    "tests::liveness::retired_lending::retired_lending_workers_submit_nothing_with_funded_keeper_keys",
+}
+assert native.get("retirementRegressionsPassed") == 7 and set(native.get("requiredRetirementRegressions", [])) == required_retirement_tests, "Fresh lending retirement regressions must pass before documentation is rendered"
+assert native["newRuntimeRegressionsPassed"] >= 39 and len(native["suites"]) == 13
+assert {"kensetsu", "apollo_platform"} <= {row["crate"] for row in native["suites"]}
+assert all(row["failed"] == 0 for row in native["suites"])
+assert policy.get("checks", {}).get("retiredLendingExitsAndGuards") is True and policy.get("retiredLending", {}).get("passed") is True, "Exact-Wasm lending retirement evidence must pass before documentation is rendered"
+assert policy["retiredLending"]["constantChecks"] == {"kensetsu": True, "apolloPlatform": True}
+assert policy["inputs"]["retirementHelperSha256"] == sha((HERE / "retired-lending-fixture.cjs").read_bytes()), "Exact-Wasm retirement helper changed"
+kensetsu = policy["retiredLending"].get("kensetsu", {})
+assert kensetsu.get("debtPolicy") == "existing-interest-unchanged" and kensetsu.get("nonzeroRateInterestAccrues") is True and kensetsu.get("existingTreasuryAccountingPreserved") is True, "Existing Kensetsu interest and treasury accounting must be proven by the exact Wasm before release documentation"
+kensetsu_policy_descriptions = {
+    "existing-interest-unchanged": "Existing Kensetsu debt continues accruing interest under existing terms. Repayment or closure books accrued interest with the existing treasury accounting; no new borrowing is permitted.",
+}
 chain_path = HERE / "chain-spec-runtimes.json"
 lint_path = HERE / "clippy.json"
 chain = json.loads(chain_path.read_text()) if chain_path.exists() else {}
@@ -50,18 +71,27 @@ values = {
     "TECHNICAL_THRESHOLD": str(settings["technicalCommittee"]["threshold"]),
     "CHAIN_SPEC_STATUS": "passed" if chain_passed else "pending",
     "CLIPPY_STATUS": "passed" if lint_passed else "pending",
+    "KENSETSU_DEBT_POLICY": kensetsu_policy_descriptions[kensetsu["debtPolicy"]],
 }
-documents = {}
+rendered_documents = {}
 for name in ["README.md", "VALIDATION.md", "GOVERNANCE-RUNBOOK.md", "COUNCIL_MESSAGE.md"]:
     text = (HERE / "docs" / (name + ".in")).read_text()
+    unresolved = set(re.findall(r"\{\{([A-Z0-9_]+)\}\}", text)) - values.keys()
+    assert not unresolved, "Unresolved release policy or documentation value in " + name + ": " + ", ".join(sorted(unresolved))
     text = re.sub(r"\{\{([A-Z0-9_]+)\}\}", lambda match: values[match[1]], text)
     assert "{{" not in text, "Unknown documentation placeholder"
+    rendered_documents[name] = text
+
+# No document is overwritten until every template and evidence gate validates.
+documents = {}
+for name, text in rendered_documents.items():
     (ROOT / name).write_text(text)
     documents[name] = sha((ROOT / name).read_bytes())
 inputs = ["runtime-upgrade-4.8.12-info.json", "council-settings.json",
           "validation/source-provenance.json", "validation/native-tests.json", "validation/wasm-build.json",
           "validation/fee-policy-wasm-rehearsal.json", "validation/wasm-compatibility.json",
-          "validation/governance-call-check.json", "validation/clippy.json"]
+          "validation/governance-call-check.json", "validation/clippy.json",
+          "validation/retired-lending-fixture.cjs"]
 if chain_path.exists():
     inputs.append("validation/chain-spec-runtimes.json")
 inputs += ["validation/docs/" + name + ".in" for name in documents]
