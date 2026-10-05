@@ -1209,6 +1209,33 @@ pub mod pallet {
             Self::deposit_event(Event::RequestSignaturesCleared(hash));
             Ok(().into())
         }
+
+        /// Approve cancellation of an existing bridge multisig operation.
+        ///
+        /// The current peer quorum can release abandoned capacity without the
+        /// proposer or execution of the proposed call. This does not create a
+        /// new multisig operation, so it remains available when its queue is full.
+        #[pallet::call_index(18)]
+        #[pallet::weight(bridge_multisig::Pallet::<T>::cancellation_weight().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
+        pub fn cancel_pending_multisig(
+            origin: OriginFor<T>,
+            network_id: BridgeNetworkId<T>,
+            call_hash: [u8; 32],
+            timepoint: Timepoint<T>,
+        ) -> DispatchResultWithPostInfo {
+            let who = ensure_signed(origin)?;
+            let peers = Peers::<T>::get(network_id);
+            ensure!(peers.contains(&who), Error::<T>::Forbidden);
+            let id = BridgeAccount::<T>::get(network_id).ok_or(Error::<T>::UnknownNetwork)?;
+            bridge_multisig::Pallet::<T>::approve_cancellation(
+                &who,
+                &id,
+                timepoint,
+                &call_hash,
+                |peer| peers.contains(peer),
+            )?;
+            Ok(().into())
+        }
     }
 
     #[pallet::event]
@@ -1825,7 +1852,8 @@ impl<T: Config> Pallet<T> {
         match call {
             Call::approve_request { network_id, .. }
             | Call::finalize_incoming_request { network_id, .. }
-            | Call::abort_request { network_id, .. } => Some(*network_id),
+            | Call::abort_request { network_id, .. }
+            | Call::cancel_pending_multisig { network_id, .. } => Some(*network_id),
             Call::register_incoming_request { incoming_request } => {
                 Some(incoming_request.network_id())
             }
@@ -1846,6 +1874,26 @@ impl<T: Config> Pallet<T> {
         let Some(network) = Self::peer_protocol_network(call) else {
             return Ok(false);
         };
+        if let Call::cancel_pending_multisig {
+            call_hash,
+            timepoint,
+            ..
+        } = call
+        {
+            let peers = Peers::<T>::get(network);
+            if !peers.contains(account) {
+                return Ok(false);
+            }
+            let id = BridgeAccount::<T>::get(network).ok_or(Error::<T>::UnknownNetwork)?;
+            bridge_multisig::Pallet::<T>::validate_cancellation(
+                account,
+                &id,
+                *timepoint,
+                call_hash,
+                |peer| peers.contains(peer),
+            )?;
+            return Ok(true);
+        }
         if let Call::approve_request {
             ocw_public,
             hash,

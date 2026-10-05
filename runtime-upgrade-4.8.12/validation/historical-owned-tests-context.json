@@ -1,0 +1,9 @@
+{
+  "status": "retained-historical-evidence",
+  "originalSourceTreeAfterPatch": "a16e9e1ac195575c6008c69434999b2587b81d01",
+  "originalBaseCommit": "a05ecb8de476bcdf0212a1a646a1fbcac2f0b5c5",
+  "testsPassed": 430,
+  "freshCapacityFixExecutionClaimed": false,
+  "evidenceFile": "owned-tests.json",
+  "scope": "Unchanged maintenance/common and generic/Substrate bridge suites retained with their original logs/provenance; fresh 11-suite native and exact-Wasm evidence are recorded separately."
+}

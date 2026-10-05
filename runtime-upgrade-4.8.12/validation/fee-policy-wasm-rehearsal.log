@@ -1,5 +1,5 @@
-2026-10-05T03:17:29.560Z Loading pinned deployed public state
-2026-10-05T03:17:32.077Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+2026-10-05T05:42:33.429Z Loading pinned deployed public state
+2026-10-05T05:42:36.205Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
       runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
       runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
       runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
@@ -9,30 +9,32 @@
       runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
       runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
       runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
-2026-10-05T03:17:33.395Z Exact Wasm: paid cancellation failure empty outer batch
-2026-10-05T03:17:33.876Z Exact Wasm: paid cancellation failure empty inner group
-2026-10-05T03:17:34.181Z Exact Wasm: paid cancellation failure all empty inner groups
-2026-10-05T03:17:34.486Z Exact Wasm: paid cancellation failure mixed real-ID/empty groups
-2026-10-05T03:17:34.792Z Exact Wasm: unauthorized Rewards failure retains fees
-2026-10-05T03:17:35.094Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.accrue missing CDP
-2026-10-05T03:17:36.001Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.liquidate missing CDP
-2026-10-05T03:17:36.900Z Exact Wasm: signed invalid maintenance pays and bare rejects apolloPlatform.liquidate missing position
-2026-10-05T03:17:37.808Z Exact Wasm: bare inbound relay rejected bridgeInboundChannel
+2026-10-05T05:42:37.806Z Exact Wasm: paid cancellation failure empty outer batch
+2026-10-05T05:42:38.226Z Exact Wasm: paid cancellation failure empty inner group
+2026-10-05T05:42:38.530Z Exact Wasm: paid cancellation failure all empty inner groups
+2026-10-05T05:42:38.837Z Exact Wasm: paid cancellation failure mixed real-ID/empty groups
+2026-10-05T05:42:39.144Z Exact Wasm: unauthorized Rewards failure retains fees
+2026-10-05T05:42:39.447Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.accrue missing CDP
+2026-10-05T05:42:40.353Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.liquidate missing CDP
+2026-10-05T05:42:41.262Z Exact Wasm: signed invalid maintenance pays and bare rejects apolloPlatform.liquidate missing position
+2026-10-05T05:42:42.165Z Exact Wasm: bare inbound relay rejected bridgeInboundChannel
    multisig_verifier::pallet  ERROR: [39] verify_signatures: Network Sub(Mainnet) not initialized
    multisig_verifier::pallet  ERROR: [40] verify_signatures: Network Sub(Mainnet) not initialized
    multisig_verifier::pallet  ERROR: [41] verify_signatures: Network Sub(Mainnet) not initialized
    multisig_verifier::pallet  ERROR: [42] verify_signatures: Network Sub(Mainnet) not initialized
-2026-10-05T03:17:38.412Z Exact Wasm: bare inbound relay rejected substrateBridgeInboundChannel
+2026-10-05T05:42:42.770Z Exact Wasm: bare inbound relay rejected substrateBridgeInboundChannel
    multisig_verifier::pallet  ERROR: [43] verify_signatures: Network Sub(Mainnet) not initialized
    multisig_verifier::pallet  ERROR: [44] verify_signatures: Network Sub(Mainnet) not initialized
    multisig_verifier::pallet  ERROR: [45] verify_signatures: Network Sub(Mainnet) not initialized
    multisig_verifier::pallet  ERROR: [46] verify_signatures: Network Sub(Mainnet) not initialized
-2026-10-05T03:17:39.012Z Exact Wasm: first requested preimage provision refunds
-2026-10-05T03:17:39.327Z Exact Wasm: requested preimage replay retains fees
-2026-10-05T03:17:39.662Z Exact Wasm: authenticated legacy peer reports remote failure with zero XOR
-2026-10-05T03:17:39.965Z Exact Wasm: authenticated legacy protocol replay rejects before execution
-2026-10-05T03:17:40.742Z Exact Wasm: place useful synthetic sell order on existing public book
-2026-10-05T03:17:41.225Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrder
-2026-10-05T03:17:41.530Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrder
-2026-10-05T03:17:41.833Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrdersBatch
-2026-10-05T03:17:42.143Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrdersBatch
+2026-10-05T05:42:43.375Z Exact Wasm: first requested preimage provision refunds
+2026-10-05T05:42:43.685Z Exact Wasm: requested preimage replay retains fees
+2026-10-05T05:42:44.018Z Exact Wasm: authenticated legacy peer reports remote failure with zero XOR
+2026-10-05T05:42:44.688Z Exact Wasm: authenticated legacy protocol replay rejects before execution
+2026-10-05T05:42:46.198Z Exact Wasm: one zero-XOR peer opens its 32-operation fair quota
+2026-10-05T05:44:11.598Z Exact Wasm: current zero-XOR quorum releases a full orphaned queue without proposer or payload
+2026-10-05T05:44:14.475Z Exact Wasm: place useful synthetic sell order on existing public book
+2026-10-05T05:44:14.810Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrder
+2026-10-05T05:44:15.137Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrder
+2026-10-05T05:44:15.463Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrdersBatch
+2026-10-05T05:44:15.792Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrdersBatch

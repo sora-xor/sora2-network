@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "sourceTreeAfterPatch": "2fe0bf8887485b2b0ac6f8a2812277bc4433ecd4",
+  "baseCommit": "43a17da80ebc91302680b77185ab4e7607030d2d",
+  "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+  "command": "CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target CARGO_NET_OFFLINE=true scripts/with_llvm_env.sh ./housekeeping/clippy.sh all",
+  "profiles": [
+    "mainnet",
+    "try-runtime",
+    "extended"
+  ],
+  "exitCode": 0,
+  "internalFlags": [
+    "SKIP_WASM_BUILD=1",
+    "--locked",
+    "--all-targets",
+    "-- -D warnings"
+  ],
+  "log": "clippy.log",
+  "logSource": "/tmp/sora-capacity-clippy.log",
+  "logSha256": "478c161fa772c77e78a0f0b5580e55ae5017ab364a27872e45943ff4572dc56b",
+  "networkRequests": 0,
+  "cargoCleanRun": false
+}

@@ -509,6 +509,172 @@ async function zeroXorLegacyBridgeFixture(block) {
   assert.equal((await rawQuery(rejected, 'ethBridge', 'requestStatuses', [0, remoteHash])).toHex(), status.toHex());
   row.passed = true; report.signer = previousSigner; save(); return true;
 }
+async function capacityAccountingBranch(block, label) {
+  const meta = await block.meta;
+  const overrides = [];
+  for (const name of ['blockWeight', 'blockSize']) {
+    const key = storageKey(meta, 'system', name);
+    overrides.push({ pallet: 'system', name, key: key.toHex(), before: await block.get(key.toHex()) ?? null, value: null });
+  }
+  const next = new Block(chain, block.number, block.hash, block, { header: await block.header,
+    extrinsics: [], storage: block.storage });
+  next.pushStorageLayer().setAll(overrides.map(({ key, value }) => [key, value]));
+  report.fixtureOverrides.push({ kind: 'capacityTransactionAccounting', fixtureOnly: true, label,
+    purpose: 'Isolate each exact-Wasm transaction admission from aggregate block assembly while retaining protocol state, balances and nonces; this does not claim all fixture transactions fit one block', overrides });
+  return next;
+}
+async function capacitySignedReject(block, label, call, reason = 'Call') {
+  const registry = await block.registry;
+  const before = await rawQuery(block, 'system', 'account', [report.signer.address]);
+  const tx = signedExtrinsic(registry, call, block, before);
+  const beforeEvents = (await rawQuery(block, 'system', 'events')).toHex();
+  const row = { method: label, signed: tx.isSigned, signer: report.signer.address,
+    callHex: call.toHex(), expectedInvalidReason: reason, sources: {} };
+  (report.capacityRejections ||= []).push(row);
+  for (const source of ['External', 'Local', 'InBlock']) {
+    const response = await block.call('TaggedTransactionQueue_validate_transaction',
+      [registry.createType('TransactionSource', source).toHex(), tx.toHex(), block.hash]);
+    const result = registry.createType('TransactionValidity', response.result);
+    row.sources[source] = result.toJSON();
+    assert(result.isErr && result.asErr.isInvalid && result.asErr.asInvalid.type === reason, label);
+  }
+  const response = await block.call('BlockBuilder_apply_extrinsic', [tx.toHex()]);
+  const result = registry.createType('ApplyExtrinsicResult', response.result);
+  row.apply = result.toJSON();
+  assert(result.isErr && result.asErr.isInvalid && result.asErr.asInvalid.type === reason, label);
+  const rejected = new Block(chain, block.number, block.hash, block, { header: await block.header,
+    extrinsics: [], storage: block.storage, storageDiff: Object.fromEntries(response.storageDiff) });
+  assert.equal((await rawQuery(rejected, 'system', 'account', [report.signer.address])).toHex(), before.toHex());
+  assert.equal((await rawQuery(rejected, 'system', 'events')).toHex(), beforeEvents,
+    'Rejected capacity transaction must emit no fee or protocol events');
+  row.nonceAndZeroXorPreserved = true; row.passed = true; save();
+}
+async function bridgeCapacityFixture(block) {
+  assert(opts.syntheticFixtures, 'Capacity rehearsal requires explicitly recorded synthetic peers/state');
+  const meta = await block.meta;
+  const bridge = await rawQuery(block, 'ethBridge', 'bridgeAccount', [0]); assert(bridge.isSome);
+  const id = bridge.unwrap();
+  const peers = [101, 102, 103, 104].map(seed => meta.registry.createType('AccountId',
+    sr25519PairFromSeed(new Uint8Array(32).fill(seed)).publicKey));
+  const sorted = values => values.map(value => value.toHex()).sort();
+  const overrides = [];
+  const add = async (target, pallet, name, params, json) => {
+    const key = storageKey(meta, pallet, name, params);
+    const value = meta.registry.createType(key.outputType, json);
+    const row = { pallet, name, key: key.toHex(), before: await target.get(key.toHex()) ?? null,
+      value: u8aToHex(value.toU8a()) };
+    return row;
+  };
+  overrides.push(await add(block, 'bridgeMultisig', 'accounts', [id], { signatories: sorted(peers), threshold: 67 }));
+  overrides.push(await add(block, 'ethBridge', 'peers', [0], sorted(peers)));
+  assert.equal((await rawQuery(block, 'bridgeMultisig', 'newPendingOperations', [id])).toNumber(), 0);
+  for (const peer of peers) {
+    const account = await rawQuery(block, 'system', 'account', [peer]);
+    assert.equal(account.data.free.toBigInt(), 0n); assert.equal(account.data.reserved.toBigInt(), 0n);
+    const zero = account.toJSON(); zero.nonce = 0; zero.providers = 1; zero.consumers = 0; zero.sufficients = 0;
+    zero.data.free = '0'; zero.data.reserved = '0'; zero.data.frozen = '0';
+    overrides.push(await add(block, 'system', 'account', [peer], zero));
+  }
+  const fixture = new Block(chain, block.number, block.hash, block, { header: await block.header,
+    extrinsics: [], storage: block.storage });
+  fixture.pushStorageLayer().setAll(overrides.map(({ key, value }) => [key, value]));
+  report.fixtureOverrides.push({ kind: 'capacityFourZeroXorPeers', fixtureOnly: true,
+    purpose: 'Retain the actual initialized legacy network/bridge account; model four current synthetic peers with a three-peer quorum and no XOR',
+    network: 0, bridgeAccount: id.toString(), peers: peers.map(String), quorum: 3, overrides });
+  const previousSigner = report.signer;
+  const usePeer = peer => { report.signer = { address: peer.toString(), syntheticZeroXorPeer: true, free: '0' }; };
+  const protocol = byte => {
+    const remoteHash = '0x' + byte.toString(16).padStart(2, '0').repeat(32);
+    const timepoint = { height: { Sidechain: 10 }, index: byte };
+    const load = { Transaction: { author: peers[0].toHex(), hash: remoteHash, timepoint, kind: 'Transfer', networkId: 0 } };
+    const inner = meta.tx.ethBridge.importIncomingRequest(load, { Err: 'CannotLookup' });
+    const hash = blake2AsHex(inner.toU8a());
+    const outer = meta.tx.bridgeMultisig.asMulti(id, timepoint, inner.toHex(), false, { refTime: 0, proofSize: 0 });
+    return { inner, outer, hash, timepoint, remoteHash };
+  };
+  usePeer(peers[0]); let fair = fixture;
+  progress('Exact Wasm: one zero-XOR peer opens its 32-operation fair quota');
+  for (let byte = 100; byte < 132; byte++) {
+    fair = await capacityAccountingBranch(fair, 'quota opening ' + byte);
+    fair = await signedCheck(fair, 'capacity.asMulti opening ' + byte, protocol(byte).outer, true, true);
+    assert.equal((await rawQuery(fair, 'bridgeMultisig', 'newPendingOperations', [id])).toNumber(), byte - 99);
+    assert.equal((await rawQuery(fair, 'bridgeMultisig', 'pendingOperationsByProposer', [id, peers[0]])).toNumber(), byte - 99);
+  }
+  assert.equal((await rawQuery(fair, 'system', 'account', [peers[0]])).nonce.toNumber(), 32);
+  fair = await capacityAccountingBranch(fair, '33rd proposal rejection');
+  await capacitySignedReject(fair, 'capacity.asMulti same-peer 33rd opening rejects', protocol(132).outer);
+  usePeer(peers[1]); fair = await capacityAccountingBranch(fair, 'honest peer admission');
+  fair = await signedCheck(fair, 'capacity.asMulti another zero-XOR peer retains capacity', protocol(200).outer, true, true);
+  assert.equal((await rawQuery(fair, 'bridgeMultisig', 'newPendingOperations', [id])).toNumber(), 33);
+  assert.equal((await rawQuery(fair, 'bridgeMultisig', 'pendingOperationsByProposer', [id, peers[1]])).toNumber(), 1);
+  report.capacityFairQuota = { peerQuota: 32, actualCandidateOpenings: 32, rejectedSamePeerOpening: 33,
+    honestPeerAdmitted: true, globalCountAfterHonestAdmission: 33, passed: true };
+  // Independent full-queue branch: create the target through Wasm, then model a
+  // pre-fix counted backlog, stale protocol state and a removed proposer.
+  const target = protocol(211); usePeer(peers[0]);
+  let full = await capacityAccountingBranch(fixture, 'orphan target creation');
+  full = await signedCheck(full, 'capacity.asMulti orphan target creation', target.outer, true, true);
+  assert((await rawQuery(full, 'bridgeMultisig', 'calls', [target.hash])).isNone);
+  const backlog = [];
+  for (let byte = 0; byte < 127; byte++) {
+    const hash = '0x' + byte.toString(16).padStart(2, '0').repeat(32); assert.notEqual(hash, target.hash);
+    backlog.push(await add(full, 'bridgeMultisig', 'multisigs', [id, hash], {
+      when: target.timepoint, deposit: 999, depositor: peers[0].toHex(), approvals: [peers[0].toHex()] }));
+    backlog.push(await add(full, 'bridgeMultisig', 'countedNewOperations', [id, hash], null));
+  }
+  backlog.push(await add(full, 'bridgeMultisig', 'newPendingOperations', [id], 128));
+  backlog.push(await add(full, 'bridgeMultisig', 'dispatchedCalls', [target.hash, target.timepoint], null));
+  const canonicalHash = '0x' + 'ab'.repeat(32);
+  backlog.push(await add(full, 'ethBridge', 'loadToIncomingRequestHash', [0, target.remoteHash], canonicalHash));
+  backlog.push(await add(full, 'ethBridge', 'requestStatuses', [0, canonicalHash], { Failed: 'CannotLookup' }));
+  backlog.push(await add(full, 'bridgeMultisig', 'accounts', [id], { signatories: sorted(peers.slice(1)), threshold: 67 }));
+  backlog.push(await add(full, 'ethBridge', 'peers', [0], sorted(peers.slice(1))));
+  const filled = new Block(chain, full.number, full.hash, full, { header: await full.header,
+    extrinsics: [], storage: full.storage });
+  filled.pushStorageLayer().setAll(backlog.map(({ key, value }) => [key, value])); full = filled;
+  report.fixtureOverrides.push({ kind: 'capacityFullOrphanedQueue', fixtureOnly: true,
+    purpose: 'Model 127 legacy counted operations plus the candidate-created target, absent stored call bytes, stale canonical protocol state, a global tombstone from an unrelated multisig, and removal of the proposer; remaining three peers form the current quorum',
+    targetCallHash: target.hash, targetTimepoint: target.timepoint, canonicalHash, overrides: backlog });
+  usePeer(peers[1]); full = await capacityAccountingBranch(full, 'full-queue new-opening rejection');
+  await capacitySignedReject(full, 'capacity.asMulti full shared queue rejects a new proposal', protocol(212).outer);
+  const cancel = meta.tx.ethBridge.cancelPendingMultisig(0, target.hash, target.timepoint);
+  usePeer(peers[0]); full = await capacityAccountingBranch(full, 'removed proposer rejection');
+  await capacitySignedReject(full, 'ethBridge.cancelPendingMultisig removed proposer rejects', cancel, 'Payment');
+  usePeer(peers[1]); full = await capacityAccountingBranch(full, 'wrong timepoint rejection');
+  await capacitySignedReject(full, 'ethBridge.cancelPendingMultisig wrong timepoint rejects',
+    meta.tx.ethBridge.cancelPendingMultisig(0, target.hash, { height: { Sidechain: 10 }, index: 212 }));
+  const protocolBefore = (await rawQuery(full, 'ethBridge', 'requestStatuses', [0, canonicalHash])).toHex();
+  progress('Exact Wasm: current zero-XOR quorum releases a full orphaned queue without proposer or payload');
+  for (let index = 1; index < 4; index++) {
+    usePeer(peers[index]); full = await capacityAccountingBranch(full, 'quorum cancellation vote ' + index);
+    full = await signedCheck(full, 'ethBridge.cancelPendingMultisig current zero-XOR vote ' + index, cancel, true, true);
+    assert(!report.signedChecks.at(-1).events.some(event => event.section === 'bridgeMultisig' && event.method === 'MultisigExecuted'));
+    assert.equal((await rawQuery(full, 'bridgeMultisig', 'newPendingOperations', [id])).toNumber(), index < 3 ? 128 : 127);
+    assert.equal((await rawQuery(full, 'bridgeMultisig', 'pendingOperationsByProposer', [id, peers[0]])).toNumber(), index < 3 ? 1 : 0);
+    assert.equal((await rawQuery(full, 'bridgeMultisig', 'multisigs', [id, target.hash])).isSome, index < 3);
+    if (index === 1) await capacitySignedReject(full, 'ethBridge.cancelPendingMultisig duplicate partial vote rejects', cancel);
+  }
+  for (const name of ['calls', 'countedNewOperations', 'proposerCountedOperations', 'cancellationApprovals']) {
+    const params = name === 'calls' ? [target.hash] : [id, target.hash];
+    assert((await rawQuery(full, 'bridgeMultisig', name, params)).isNone, 'Quorum must clear ' + name);
+  }
+  assert.equal((await rawQuery(full, 'ethBridge', 'requestStatuses', [0, canonicalHash])).toHex(), protocolBefore);
+  assert.equal((await rawQuery(full, 'ethBridge', 'loadToIncomingRequestHash', [0, target.remoteHash])).toHex(), canonicalHash);
+  const tombstoneKey = storageKey(meta, 'bridgeMultisig', 'dispatchedCalls', [target.hash, target.timepoint]);
+  assert.equal(await full.get(tombstoneKey.toHex()), '0x',
+    'Quorum cleanup must preserve the unrelated global execution tombstone, including its empty Unit bytes');
+  await capacitySignedReject(full, 'ethBridge.cancelPendingMultisig completed cleanup replay rejects', cancel);
+  usePeer(peers[1]); full = await capacityAccountingBranch(full, 'released capacity reuse');
+  full = await signedCheck(full, 'capacity.asMulti released slot admits honest zero-XOR peer', protocol(212).outer, true, true);
+  assert.equal((await rawQuery(full, 'bridgeMultisig', 'newPendingOperations', [id])).toNumber(), 128);
+  for (const peer of peers) assert.equal((await rawQuery(full, 'system', 'account', [peer])).data.free.toBigInt(), 0n);
+  report.capacityQuorumCleanup = { initialGlobalCount: 128, finalCountAfterCleanup: 127,
+    countAfterHonestReuse: 128, quorum: 3, proposerExcluded: true, noStoredCallBytes: true,
+    targetCallNotExecuted: true, protocolStatusAndCanonicalHashPreserved: true,
+    unrelatedGlobalTombstonePreserved: true,
+    replayRejected: true, zeroXorAllPeersPreserved: true, passed: true };
+  report.signer = previousSigner; save(); return true;
+}
 async function main() {
   assert.equal(snapshot.status, 'passed'); assert(existsSync(opts.wasm));
   const manifest = JSON.parse(readFileSync(resolve(__dirname, 'package.json')));
@@ -585,6 +751,7 @@ async function main() {
   }
   const preimageFirstAndReplay = await requestedPreimageFixture(initialized);
   const zeroXorLegacyPeerAndReplayRejection = await zeroXorLegacyBridgeFixture(initialized);
+  const bridgeCapacityQuotaAndQuorumCleanup = await bridgeCapacityFixture(initialized);
   const successfulCancellationAndPaidReplay = await publicCancellation(initialized);
   assert(successfulCancellationAndPaidReplay, 'Required useful cancellation Wasm coverage needs a real public order or explicit synthetic fixture');
   report.inputs = { candidateSha256: report.candidate.sha256,
@@ -596,6 +763,9 @@ async function main() {
     invalidInboundProofsReject: true, allCheckedFeeEventsMatchBalances: true,
     requestedPreimageFirstAndReplay: preimageFirstAndReplay,
     successfulCancellationAndPaidReplay, zeroXorLegacyPeerAndReplayRejection,
+    bridgeCapacityFairQuotaProtectsHonestPeers: bridgeCapacityQuotaAndQuorumCleanup,
+    bridgeCapacityFullQueueQuorumCleanup: bridgeCapacityQuotaAndQuorumCleanup,
+    bridgeCapacityCleanupPreservesProtocolAndRejectsReplay: bridgeCapacityQuotaAndQuorumCleanup,
     protectedStakingStateAndXorIssuancePreservedByUpgrade: true,
     noPublicTransactionSubmission: true };
   report.status = 'passed';

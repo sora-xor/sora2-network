@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "checkedAt": "2026-10-05T02:42:08.298Z",
+  "checkedAt": "2026-10-05T05:49:19.696Z",
   "endpoint": "wss://mof2.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -14,12 +14,13 @@
       "account": "cnTQ1kbv7PBNNQrEb1tZpmK7m6B1ToDe2qJbdz7aQw8F3W1CK",
       "pendingOperationsObserved": 129,
       "pendingScanComplete": false,
-      "atOrAboveNewOperationCap": true,
+      "legacyBacklogAtOrAboveSharedLimit": true,
       "peerCount": 3,
+      "perProposerQuotaAfterUpgrade": 42,
       "peers": [
         {
           "account": "cnSRgH9n7hKJHqgLUubsPZ18CQgJCkprnMZwjNGFY7NBbbmpG",
-          "nonce": "877452",
+          "nonce": "877453",
           "providers": 6,
           "consumers": 0,
           "sufficients": 0,
@@ -29,7 +30,7 @@
         },
         {
           "account": "cnTgsL4SGJBTMvQo8eoorUj8GyJSXdaeDLwnqHYPbnawuAjj3",
-          "nonce": "180858",
+          "nonce": "180859",
           "providers": 3,
           "consumers": 1,
           "sufficients": 0,
@@ -39,7 +40,7 @@
         },
         {
           "account": "cnVByMHQrfhbz81zioyZhP5YQmt5VGcpJY7bg3S5z5WcMVQNJ",
-          "nonce": "928726",
+          "nonce": "928727",
           "providers": 6,
           "consumers": 0,
           "sufficients": 0,
@@ -697,8 +698,8 @@
       ]
     }
   ],
-  "blockHash": "0xdc16285025b5bf6bfb71ba3e89f14f18b81a21482a2c9a902ce048e8e71f0e41",
-  "blockNumber": 27907184,
+  "blockHash": "0x4d8421dfbf668bc2db17f744ea642f266e23c680b43e6a4875a73116c6122509",
+  "blockNumber": 27909053,
   "runtimeVersion": {
     "specName": "sora-substrate",
     "implName": "sora-substrate",
@@ -824,11 +825,16 @@
   },
   "legacyBacklogGrandfathered": true,
   "newOperationLimitUsesAdditiveTracking": true,
+  "fairPerProposerQuotaConfigured": true,
+  "currentPeerQuorumCancellationConfigured": true,
+  "cancellationCall": "ethBridge.cancelPendingMultisig(networkId, callHash, timepoint)",
+  "capacityRecoveryScope": "Current peer quorum releases only the pending multisig operation/capacity; incoming status, canonical hash and unrelated execution tombstones are not retried or reset.",
   "sampledStoredCallsWithinLimit": true,
   "operatorReadinessConfirmed": false,
   "limitations": [
     "Bridge peers have no XOR funding requirement for authenticated exempt protocol calls. Balances and account references are public observations only.",
     "The legacy backlog is grandfathered and does not consume the additive new-operation limit. The bounded 129-operation sample does not prove the size of every stored call when the scan is incomplete.",
+    "The per-proposer quota is a source-derived preview max(1,floor(128/current_signatories)); this public-state read does not execute the candidate. Exact-Wasm synthetic fixtures cover quota admission and quorum recovery separately.",
     "Only currently configured EthBridge accounts are inspected; arbitrary standalone BridgeMultisig accounts are outside bridge operator readiness.",
     "An unstored hash-only operation has no observable call length. Its submitting client must respect the new bound.",
     "Refresh before activation; pending operations and balances can change."
@@ -847,6 +853,6 @@
     "state_queryStorageAt": 2,
     "state_getStorage": 133
   },
-  "scriptSha256": "1156b06e988393841e43ec35c147d7f20e2595fd74395966ae0f63b6046ea716",
+  "scriptSha256": "727c389d24d650c2c5b4e090ff4a8f62debaf8a3ed5fca7ff81a204050b48aeb",
   "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f"
 }

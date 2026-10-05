@@ -41,8 +41,9 @@ async function main() {
     const account = await at.query.bridgeMultisig.accounts(id);
     const peers = account.unwrap().signatories;
     const row = { network: key.args[0].toJSON(), account: id, pendingOperationsObserved: pending.length,
-      pendingScanComplete: pending.length < 129, atOrAboveNewOperationCap: pending.length >= 128,
-      peerCount: peers.length, peers: [], operations: [] };
+      pendingScanComplete: pending.length < 129, legacyBacklogAtOrAboveSharedLimit: pending.length >= 128,
+      peerCount: peers.length, perProposerQuotaAfterUpgrade: Math.max(1, Math.floor(128 / peers.length)),
+      peers: [], operations: [] };
     for (const peer of peers) {
       const balance = await at.query.system.account(peer);
       row.peers.push({ account: peer.toString(), nonce: balance.nonce.toString(),
@@ -60,11 +61,16 @@ async function main() {
   }
   report.legacyBacklogGrandfathered = true;
   report.newOperationLimitUsesAdditiveTracking = true;
+  report.fairPerProposerQuotaConfigured = true;
+  report.currentPeerQuorumCancellationConfigured = true;
+  report.cancellationCall = 'ethBridge.cancelPendingMultisig(networkId, callHash, timepoint)';
+  report.capacityRecoveryScope = 'Current peer quorum releases only the pending multisig operation/capacity; incoming status, canonical hash and unrelated execution tombstones are not retried or reset.';
   report.sampledStoredCallsWithinLimit = report.accounts.every(row => row.operations.every(op => !op.exceedsNewCallLimit));
   report.operatorReadinessConfirmed = false;
   report.limitations = [
     'Bridge peers have no XOR funding requirement for authenticated exempt protocol calls. Balances and account references are public observations only.',
     'The legacy backlog is grandfathered and does not consume the additive new-operation limit. The bounded 129-operation sample does not prove the size of every stored call when the scan is incomplete.',
+    'The per-proposer quota is a source-derived preview max(1,floor(128/current_signatories)); this public-state read does not execute the candidate. Exact-Wasm synthetic fixtures cover quota admission and quorum recovery separately.',
     'Only currently configured EthBridge accounts are inspected; arbitrary standalone BridgeMultisig accounts are outside bridge operator readiness.',
     'An unstored hash-only operation has no observable call length. Its submitting client must respect the new bound.',
     'Refresh before activation; pending operations and balances can change.',

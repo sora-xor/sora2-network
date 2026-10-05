@@ -1,9 +1,9 @@
 {
   "status": "passed",
-  "sourceTreeAfterPatch": "a16e9e1ac195575c6008c69434999b2587b81d01",
+  "sourceTreeAfterPatch": "2fe0bf8887485b2b0ac6f8a2812277bc4433ecd4",
   "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
   "log": "native-tests.log",
-  "logSha256": "8855b1c4a6d4cf90419f72c3e612671d8066039294793b64d8bb204580d86d1f",
+  "logSha256": "5282c94bb85ba3e4924691cbe2f6b17e0e8e6e9a799d731789cd9fb796dc2d65",
   "suites": [
     {
       "crate": "eth_bridge",
@@ -13,7 +13,7 @@
     },
     {
       "crate": "framenode_runtime",
-      "passed": 229,
+      "passed": 233,
       "failed": 0,
       "ignored": 3
     },
@@ -43,7 +43,7 @@
     },
     {
       "crate": "pallet_multisig",
-      "passed": 35,
+      "passed": 42,
       "failed": 0,
       "ignored": 0
     },
@@ -72,10 +72,14 @@
       "ignored": 0
     }
   ],
-  "totalPassed": 1140,
+  "baseCommit": "43a17da80ebc91302680b77185ab4e7607030d2d",
+  "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+  "logSource": "/private/tmp/sora-capacity-native-tests.log",
+  "totalPassed": 1151,
   "totalFailed": 0,
   "totalIgnored": 3,
-  "newRuntimeRegressionsPassed": 28,
+  "newRuntimeRegressionsPassed": 32,
+  "capacityExecutiveRegressionsPassed": 2,
   "cargoFmtAllCheckPassed": true,
   "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "limitations": [

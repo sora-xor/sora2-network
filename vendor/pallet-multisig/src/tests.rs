@@ -1773,7 +1773,7 @@ fn legacy_backlog_is_grandfathered_and_new_admission_slots_are_bounded() {
                 RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: n })
                     .encode();
             assert_ok!(Multisig::as_multi(
-                RuntimeOrigin::signed(1),
+                RuntimeOrigin::signed(n % 2 + 1),
                 multi,
                 Some(now()),
                 call,
@@ -1824,6 +1824,519 @@ fn legacy_backlog_is_grandfathered_and_new_admission_slots_are_bounded() {
             Weight::zero()
         ));
         assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+    });
+}
+
+#[test]
+fn proposer_quota_preserves_capacity_for_other_members() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2, 3, 4]
+        ));
+        let call =
+            |value| RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value });
+        for value in 0..32 {
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                multi,
+                Some(now()),
+                call(value).encode(),
+                true,
+                Weight::zero()
+            ));
+        }
+        assert_eq!(
+            crate::PendingOperationsByProposer::<Test>::get(multi, 1),
+            32
+        );
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 32);
+        let extra = call(32);
+        let hash = blake2_256(&extra.encode());
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        assert_err!(
+            Multisig::validate_protocol_operation(
+                &1,
+                &multi,
+                Some(now()),
+                &hash,
+                &extra,
+                true,
+                Weight::zero(),
+                false
+            ),
+            Error::<Test>::TooManyPendingOperationsByProposer
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+        assert_err!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                multi,
+                Some(now()),
+                extra.encode(),
+                true,
+                Weight::zero()
+            ),
+            Error::<Test>::TooManyPendingOperationsByProposer
+        );
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(2),
+            multi,
+            Some(now()),
+            extra.encode(),
+            true,
+            Weight::zero()
+        ));
+        assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 2), 1);
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 33);
+        let first_hash = blake2_256(&call(0).encode());
+        assert_ok!(Multisig::cancel_as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            now(),
+            first_hash
+        ));
+        assert_eq!(
+            crate::PendingOperationsByProposer::<Test>::get(multi, 1),
+            31
+        );
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            call(33).encode(),
+            true,
+            Weight::zero()
+        ));
+        assert_eq!(
+            crate::PendingOperationsByProposer::<Test>::get(multi, 1),
+            32
+        );
+    });
+}
+
+#[test]
+fn quorum_cancellation_frees_full_capacity_without_depositor_or_call_bytes() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2, 3, 4]
+        ));
+        for value in 0..128u64 {
+            let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value });
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(value % 4 + 1),
+                multi,
+                Some(now()),
+                call.encode(),
+                true,
+                Weight::zero()
+            ));
+        }
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 0 });
+        let hash = blake2_256(&call.encode());
+        // A different account can dispatch the same payload/timepoint, removing
+        // shared call bytes and recording a global marker while our entry stays.
+        let foreign = Multisig::multi_account_id(&5, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(5),
+            vec![5, 6]
+        ));
+        for signer in [5, 6] {
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(signer),
+                foreign,
+                Some(now()),
+                call.encode(),
+                false,
+                call.get_dispatch_info().total_weight()
+            ));
+        }
+        assert!(crate::DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
+        assert!(!crate::Calls::<Test>::contains_key(hash));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+        assert_ok!(Multisig::validate_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_eq!(
+            crate::CancellationApprovals::<Test>::get(multi, hash)
+                .unwrap()
+                .1
+                .as_slice(),
+            &[2]
+        );
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+        let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        assert_err!(
+            Multisig::validate_cancellation(&2, &multi, now(), &hash, |_| true),
+            Error::<Test>::AlreadyApproved
+        );
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+        assert_err!(
+            Multisig::approve_cancellation(&2, &multi, now(), &hash, |_| true),
+            Error::<Test>::AlreadyApproved
+        );
+        assert_err!(
+            Multisig::validate_cancellation(&5, &multi, now(), &hash, |_| true),
+            Error::<Test>::NotInSignatories
+        );
+        assert_err!(
+            Multisig::validate_cancellation(&3, &multi, now(), &hash, |_| false),
+            Error::<Test>::NotInSignatories
+        );
+        let mut wrong_timepoint = now();
+        wrong_timepoint.index = wrong_timepoint.index.saturating_add(1);
+        assert_err!(
+            Multisig::validate_cancellation(&3, &multi, wrong_timepoint, &hash, |_| true),
+            Error::<Test>::WrongTimepoint
+        );
+        assert_ok!(Multisig::approve_cancellation(
+            &3,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+        assert_ok!(Multisig::approve_cancellation(
+            &4,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 127);
+        assert_eq!(
+            crate::PendingOperationsByProposer::<Test>::get(multi, 1),
+            31
+        );
+        for peer in 2..=4 {
+            assert_eq!(
+                crate::PendingOperationsByProposer::<Test>::get(multi, peer),
+                32
+            );
+        }
+        assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
+        assert!(!crate::Calls::<Test>::contains_key(hash));
+        assert!(!crate::CancellationApprovals::<Test>::contains_key(
+            multi, hash
+        ));
+        assert!(!crate::CountedNewOperations::<Test>::contains_key(
+            multi, hash
+        ));
+        assert!(!crate::ProposerCountedOperations::<Test>::contains_key(
+            multi, hash
+        ));
+        assert_eq!(Balances::free_balance(6), 0);
+        assert!(crate::DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert_err!(
+            Multisig::approve_cancellation(&4, &multi, now(), &hash, |_| true),
+            Error::<Test>::NotFound
+        );
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 127);
+    });
+}
+
+#[test]
+fn cancellation_prunes_peers_removed_from_the_bridge_membership() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2, 3, 4]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            call.encode(),
+            false,
+            Weight::zero()
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &3,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        let eligible = |peer: &u64| *peer != 3;
+        assert_ok!(Multisig::approve_cancellation(
+            &4,
+            &multi,
+            now(),
+            &hash,
+            eligible
+        ));
+        assert_eq!(
+            crate::CancellationApprovals::<Test>::get(multi, hash)
+                .unwrap()
+                .1
+                .as_slice(),
+            &[2, 4]
+        );
+        assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
+        assert_ok!(Multisig::approve_cancellation(
+            &1,
+            &multi,
+            now(),
+            &hash,
+            eligible
+        ));
+        assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
+    });
+}
+
+#[test]
+fn cancellation_prunes_signatories_and_finishes_after_threshold_reduction() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2, 3, 4]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(4),
+            multi,
+            Some(now()),
+            call.encode(),
+            false,
+            Weight::zero()
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &1,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 1));
+        assert_ok!(Multisig::approve_cancellation(
+            &3,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_eq!(
+            crate::CancellationApprovals::<Test>::get(multi, hash)
+                .unwrap()
+                .1
+                .as_slice(),
+            &[2, 3]
+        );
+        assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 4));
+        assert_ok!(Multisig::validate_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 4), 0);
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+        assert!(!crate::CancellationApprovals::<Test>::contains_key(
+            multi, hash
+        ));
+    });
+}
+
+#[test]
+fn cancellation_completes_an_orphan_after_threshold_drops_to_one() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            call.encode(),
+            false,
+            Weight::zero()
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 1));
+        assert_ok!(Multisig::validate_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_ok!(Multisig::approve_cancellation(
+            &2,
+            &multi,
+            now(),
+            &hash,
+            |_| true
+        ));
+        assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 1), 0);
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+        assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
+    });
+}
+
+#[test]
+fn normal_dispatch_and_owner_cancel_clear_pending_cancellation_votes() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let _ = Balances::make_free_balance_be(&multi, 10);
+        for value in 1..=2 {
+            let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value });
+            let hash = blake2_256(&call.encode());
+            let weight = call.get_dispatch_info().total_weight();
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                multi,
+                Some(now()),
+                call.encode(),
+                true,
+                weight
+            ));
+            assert_ok!(Multisig::approve_cancellation(
+                &2,
+                &multi,
+                now(),
+                &hash,
+                |_| true
+            ));
+            assert!(crate::CancellationApprovals::<Test>::contains_key(
+                multi, hash
+            ));
+            if value == 1 {
+                assert_ok!(Multisig::as_multi(
+                    RuntimeOrigin::signed(2),
+                    multi,
+                    Some(now()),
+                    call.encode(),
+                    true,
+                    weight
+                ));
+            } else {
+                assert_ok!(Multisig::cancel_as_multi(
+                    RuntimeOrigin::signed(1),
+                    multi,
+                    now(),
+                    hash
+                ));
+            }
+            assert!(!crate::CancellationApprovals::<Test>::contains_key(
+                multi, hash
+            ));
+            assert!(!crate::ProposerCountedOperations::<Test>::contains_key(
+                multi, hash
+            ));
+            assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 1), 0);
+            assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+        }
+        assert_eq!(Balances::free_balance(6), 1);
+    });
+}
+
+#[test]
+fn cancelling_legacy_operations_does_not_debit_unrecorded_proposer_counts() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            call.encode(),
+            true,
+            Weight::zero()
+        ));
+        for counted in [false, true] {
+            let hash = [u8::from(counted) + 10; 32];
+            crate::Multisigs::<Test>::insert(
+                multi,
+                hash,
+                crate::Multisig {
+                    when: now(),
+                    deposit: 999,
+                    depositor: 1,
+                    approvals: vec![1],
+                },
+            );
+            if counted {
+                crate::CountedNewOperations::<Test>::insert(multi, hash, ());
+                crate::NewPendingOperations::<Test>::mutate(multi, |count| *count += 1);
+            }
+            assert_ok!(Multisig::approve_cancellation(
+                &1,
+                &multi,
+                now(),
+                &hash,
+                |_| true
+            ));
+            assert_ok!(Multisig::approve_cancellation(
+                &2,
+                &multi,
+                now(),
+                &hash,
+                |_| true
+            ));
+            assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 1);
+            assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 1), 1);
+        }
     });
 }
 

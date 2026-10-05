@@ -1,12 +1,15 @@
 {
   "status": "passed",
-  "sourceTreeAfterPatch": "a16e9e1ac195575c6008c69434999b2587b81d01",
-  "candidateSha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
-  "candidateBytes": 3086396,
+  "sourceTreeAfterPatch": "2fe0bf8887485b2b0ac6f8a2812277bc4433ecd4",
+  "baseCommit": "43a17da80ebc91302680b77185ab4e7607030d2d",
+  "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
+  "candidateSha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
+  "candidateBytes": 3089114,
   "cargoLockSha256": "206c00afce9062930f87f30729d65422a23d1b3b9462cae1013e958f8669225e",
-  "wasmCargoLockSha256": "3bc13206247fea4cbe78cd067c1034040862577c6fed930fbb0e0b08f73c1b0b",
+  "wasmCargoLockSha256": "1b71b8aebcd02d5f51a13a5b9a3e81ec45ea6ad631e491c2f10da849df97399b",
   "wasmDependencyPackages": 599,
   "wasmPackagesMatchSourceLock": true,
+  "dependencyNamesVersionsSourcesAndChecksumsChecked": true,
   "onlyGeneratedWrapperPackageAdded": [
     [
       "framenode-runtime-blob",
@@ -14,9 +17,10 @@
       ""
     ]
   ],
-  "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/dev/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-zero-xor-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary",
+  "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-capacity-recovery-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary",
+  "logSource": "/private/tmp/sora-capacity-wasm-build.log",
   "log": "wasm-build.log",
-  "logSha256": "a146661252afe8e2905972de685a5afa4f704928146aceb929c69343dba5e1f0",
+  "logSha256": "068f1ce2d1ee7c8d241204d7184e7719c26235aeb35975cf6e9c72538966104a",
   "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
   "cargoCleanRun": false
 }

@@ -76,7 +76,7 @@ use frame_support::{
         Weight,
     },
 };
-use frame_support::{ensure, Parameter};
+use frame_support::{ensure, BoundedVec, Parameter};
 use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::{self as system, ensure_signed, RawOrigin};
 use scale_info::prelude::vec;
@@ -101,6 +101,15 @@ pub use pallet::*;
 const WEIGHT_PER_MICROS: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_MICROS, 0);
 const WEIGHT_PER_NANOS: Weight = Weight::from_parts(WEIGHT_REF_TIME_PER_NANOS, 0);
 const MAX_CALL_DECODE_DEPTH: u32 = 32;
+
+/// Adapt the existing u16 membership limit to the bounded cancellation vote vector.
+pub struct CancellationVoteBound<T>(core::marker::PhantomData<T>);
+
+impl<T: Config> Get<u32> for CancellationVoteBound<T> {
+    fn get() -> u32 {
+        T::MaxSignatories::get() as u32
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -531,6 +540,13 @@ pub mod pallet {
             T::AccountId,
             [u8; 32],
         ),
+        /// A current member approved cancellation of an existing operation.
+        MultisigCancellationApproval(
+            T::AccountId,
+            BridgeTimepoint<BlockNumberFor<T>>,
+            T::AccountId,
+            [u8; 32],
+        ),
     }
 
     #[pallet::error]
@@ -579,6 +595,7 @@ pub mod pallet {
         AlreadyDispatched,
         CallTooLarge,
         TooManyPendingOperations,
+        TooManyPendingOperationsByProposer,
     }
 
     /// Multisignature accounts.
@@ -606,6 +623,36 @@ pub mod pallet {
     #[pallet::storage]
     pub type CountedNewOperations<T: Config> =
         StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, [u8; 32], ()>;
+
+    /// Fair admission accounting for operations created after proposer quotas were added.
+    /// Earlier operations have no proposer marker and never debit this counter on removal.
+    #[pallet::storage]
+    pub type PendingOperationsByProposer<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::AccountId,
+        Twox64Concat,
+        T::AccountId,
+        u32,
+        ValueQuery,
+    >;
+    #[pallet::storage]
+    pub type ProposerCountedOperations<T: Config> =
+        StorageDoubleMap<_, Twox64Concat, T::AccountId, Blake2_128Concat, [u8; 32], ()>;
+
+    /// Votes are bounded by current membership and attached to an existing operation's timepoint.
+    #[pallet::storage]
+    pub type CancellationApprovals<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        T::AccountId,
+        Blake2_128Concat,
+        [u8; 32],
+        (
+            BridgeTimepoint<BlockNumberFor<T>>,
+            BoundedVec<T::AccountId, CancellationVoteBound<T>>,
+        ),
+    >;
 
     #[pallet::storage]
     pub type Calls<T: Config> =
@@ -790,7 +837,7 @@ enum CallOrHash {
 impl<T: Config> Pallet<T> {
     pub fn protocol_validation_weight() -> Weight {
         T::DbWeight::get()
-            .reads(32)
+            .reads_writes(40, 5)
             .saturating_add(Weight::from_parts(
                 5_000_000_000,
                 T::MaxCallBytes::get() as u64 + 262_144,
@@ -974,6 +1021,7 @@ impl<T: Config> Pallet<T> {
                 NewPendingOperations::<T>::get(&id) < T::MaxPendingOperations::get(),
                 Error::<T>::TooManyPendingOperations
             );
+            Self::ensure_proposer_capacity(&id, &who, signatories_len)?;
             let timepoint = maybe_timepoint.unwrap_or_else(|| Self::thischain_timepoint());
             ensure!(
                 !DispatchedCalls::<T>::contains_key(&call_hash, timepoint),
@@ -1007,6 +1055,10 @@ impl<T: Config> Pallet<T> {
             );
             CountedNewOperations::<T>::insert(&id, call_hash, ());
             NewPendingOperations::<T>::mutate(&id, |count| *count = count.saturating_add(1));
+            ProposerCountedOperations::<T>::insert(&id, call_hash, ());
+            PendingOperationsByProposer::<T>::mutate(&id, &who, |count| {
+                *count = count.saturating_add(1)
+            });
             Self::deposit_event(Event::NewMultisig(who, id, call_hash));
             // Call is not made, so we can return that weight
             return Ok((
@@ -1095,10 +1147,128 @@ impl<T: Config> Pallet<T> {
     }
 
     fn remove_pending_operation(id: &T::AccountId, hash: &[u8; 32]) {
-        Multisigs::<T>::remove(id, hash);
+        let operation = Multisigs::<T>::take(id, hash);
+        CancellationApprovals::<T>::remove(id, hash);
         if CountedNewOperations::<T>::take(id, hash).is_some() {
             NewPendingOperations::<T>::mutate(id, |count| *count = count.saturating_sub(1));
         }
+        if ProposerCountedOperations::<T>::take(id, hash).is_some() {
+            if let Some(operation) = operation {
+                PendingOperationsByProposer::<T>::mutate(id, operation.depositor, |count| {
+                    *count = count.saturating_sub(1)
+                });
+            }
+        }
+    }
+
+    fn ensure_proposer_capacity(
+        id: &T::AccountId,
+        who: &T::AccountId,
+        signatories_len: usize,
+    ) -> Result<(), DispatchError> {
+        let quota = T::MaxPendingOperations::get()
+            .checked_div(signatories_len as u32)
+            .unwrap_or(0)
+            .max(1);
+        ensure!(
+            PendingOperationsByProposer::<T>::get(id, who) < quota,
+            Error::<T>::TooManyPendingOperationsByProposer
+        );
+        Ok(())
+    }
+
+    /// Conservative bound for repeated admission checks, current-member votes and final cleanup.
+    /// Cancellation neither decodes nor executes the target call and bypasses creation quotas.
+    pub fn cancellation_weight() -> Weight {
+        Self::protocol_validation_weight()
+            .saturating_mul(3)
+            .saturating_add(
+                T::DbWeight::get()
+                    .reads_writes(3u64.saturating_mul(T::MaxSignatories::get() as u64 + 5), 7),
+            )
+    }
+
+    /// Validate a cancellation vote without writing storage. The additional predicate lets
+    /// the bridge require its own current peer membership as well as multisig membership.
+    pub fn validate_cancellation(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+        hash: &[u8; 32],
+        is_eligible: impl Fn(&T::AccountId) -> bool,
+    ) -> Result<(), DispatchError> {
+        Self::cancellation_votes(who, id, timepoint, hash, &is_eligible).map(drop)
+    }
+
+    /// Current members may cancel an orphaned or invalid proposal by quorum without
+    /// the depositor's cooperation, stored call bytes, or execution of its payload.
+    pub fn approve_cancellation(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+        hash: &[u8; 32],
+        is_eligible: impl Fn(&T::AccountId) -> bool,
+    ) -> Result<(), DispatchError> {
+        let (votes, threshold) = Self::cancellation_votes(who, id, timepoint, hash, &is_eligible)?;
+        if votes.len() >= threshold as usize {
+            Self::remove_pending_operation(id, hash);
+            Self::clear_call(hash);
+            Self::deposit_event(Event::MultisigCancelled(
+                who.clone(),
+                timepoint,
+                id.clone(),
+                *hash,
+            ));
+        } else {
+            CancellationApprovals::<T>::insert(id, hash, (timepoint, votes));
+            Self::deposit_event(Event::MultisigCancellationApproval(
+                who.clone(),
+                timepoint,
+                id.clone(),
+                *hash,
+            ));
+        }
+        Ok(())
+    }
+
+    fn cancellation_votes(
+        who: &T::AccountId,
+        id: &T::AccountId,
+        timepoint: BridgeTimepoint<BlockNumberFor<T>>,
+        hash: &[u8; 32],
+        is_eligible: &impl Fn(&T::AccountId) -> bool,
+    ) -> Result<(BoundedVec<T::AccountId, CancellationVoteBound<T>>, u16), DispatchError> {
+        let account = Accounts::<T>::get(id).ok_or(Error::<T>::UnknownMultisigAccount)?;
+        ensure!(
+            !account.signatories.is_empty(),
+            Error::<T>::TooFewSignatories
+        );
+        ensure!(
+            account.is_signatory(who) && is_eligible(who),
+            Error::<T>::NotInSignatories
+        );
+        let operation = Multisigs::<T>::get(id, hash).ok_or(Error::<T>::NotFound)?;
+        ensure!(operation.when == timepoint, Error::<T>::WrongTimepoint);
+        // Dispatch markers are shared across multisig accounts. Another account
+        // may have dispatched this hash while this account's proposal remains
+        // pending. Cleanup must still work; it never executes the call or clears
+        // the marker. A completed target itself is already rejected as NotFound.
+        let mut votes = CancellationApprovals::<T>::get(id, hash)
+            .filter(|(when, _)| *when == timepoint)
+            .map(|(_, votes)| votes)
+            .unwrap_or_default();
+        votes.retain(|voter| account.is_signatory(voter) && is_eligible(voter));
+        let threshold = account.threshold_num();
+        match votes.binary_search(who) {
+            Ok(_) => ensure!(
+                votes.len() >= threshold as usize,
+                Error::<T>::AlreadyApproved
+            ),
+            Err(pos) => votes
+                .try_insert(pos, who.clone())
+                .map_err(|_| Error::<T>::TooManySignatories)?,
+        }
+        Ok((votes, threshold))
     }
 
     /// Place a call's encoded data in storage, reserving funds as appropriate.
@@ -1205,6 +1375,7 @@ impl<T: Config> Pallet<T> {
                 NewPendingOperations::<T>::get(id) < T::MaxPendingOperations::get(),
                 Error::<T>::TooManyPendingOperations
             );
+            Self::ensure_proposer_capacity(id, who, account.signatories.len())?;
             let timepoint = timepoint.unwrap_or_else(Self::thischain_timepoint);
             ensure!(
                 !DispatchedCalls::<T>::contains_key(hash, timepoint),
@@ -1234,7 +1405,7 @@ impl<T: Config> Pallet<T> {
 
     /// Attempt to remove a call from storage, returning any deposit on it to the owner.
     fn clear_call(hash: &[u8; 32]) {
-        let _ = Calls::<T>::take(hash);
+        Calls::<T>::remove(hash);
     }
 
     /// The current `BridgeTimepoint` at Thischain.

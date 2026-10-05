@@ -1,16 +1,16 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T03:07:45.900Z",
+  "startedAt": "2026-10-05T05:42:32.899Z",
   "localOnly": true,
   "remoteRequests": 0,
   "inputs": {
     "baseline": {
-      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/live-runtime.compact.compressed.wasm",
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/live-runtime.compact.compressed.wasm",
       "bytes": 3055007,
       "sha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
       "uncompressedBytes": 13265416,
       "uncompressedSha256": "65e19280824ce168bd8d9fad1dae229bdbcbcae5aa03a03fcbb34ee8a20438b0",
-      "metadataPath": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/baseline-metadata.json",
+      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/baseline-metadata.json",
       "metadataSha256": "ee445496ff86c4c59d028410838b01c8d2e2773dd828e0edd3fca51bc93059ca",
       "info": {
         "size": 3055007,
@@ -1386,18 +1386,18 @@
       ]
     },
     "candidate": {
-      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/framenode-runtime-4.8.12.compact.compressed.wasm",
-      "bytes": 3086396,
-      "sha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
-      "uncompressedBytes": 13628288,
-      "uncompressedSha256": "8df3175445148499e750d89f8d98ee609f43b556447ca7bfb0477b6553825e52",
-      "metadataPath": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/candidate-metadata.json",
-      "metadataSha256": "7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82",
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
+      "bytes": 3089114,
+      "sha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
+      "uncompressedBytes": 13656158,
+      "uncompressedSha256": "476dbcbe1fdb1440f51051efae6e1ad3ca94ce215aabf33bfb3c83ec5b3b3eca",
+      "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
+      "metadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
       "info": {
-        "size": 3086396,
+        "size": 3089114,
         "compression": {
-          "size_compressed": 3086396,
-          "size_decompressed": 13628288,
+          "size_compressed": 3089114,
+          "size_decompressed": 13656158,
           "compressed": true
         },
         "reserved_meta": [
@@ -1531,10 +1531,10 @@
           "transactionVersion": 131,
           "stateVersion": 0
         },
-        "proposal_hash": "0x2ed47f947903c423083bb8cc796e121d6eb5cb7dfd7de9bcb18127be7867d16a",
-        "parachain_authorize_upgrade_hash": "0x055b2370fc9ab60b19139a6d647743f0f61cf183f0ddb9e729b1b9c0fde96d48",
-        "ipfs_hash": "QmUb8CxYv1yU6r3YhXZ4bzFXPm1sheHuj4CtcsScLwx8Ht",
-        "blake2_256": "0x7f61daf97da489e0620dc8e6ab8210eb4ac2e4f55c81b6a7c969b69ff956750c"
+        "proposal_hash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
+        "parachain_authorize_upgrade_hash": "0x5ed43a621a68400bf2aa8ca871106c86dedea9db7f758d04d1e8545d30f505db",
+        "ipfs_hash": "QmfZXDqcuyQxRm7Dgpo2X7kFLcP2oBfvmpmysjgs69jFfW",
+        "blake2_256": "0xb4ae55a09565461f04bdca7726978e7d580fe5dcb247acd4b5c434df310d52ad"
       },
       "imports": [
         {
@@ -2770,6 +2770,8 @@
   "checks": {
     "existingScaleEncodingCompatible": true,
     "metadataAdditionsRecorded": true,
+    "previous4812EncodingsPreserved": true,
+    "onlyDeclaredCapacityAbiAdditions": true,
     "onlyRuntimeVersionConstantChanged": true,
     "hostImportNamesKindsAndOrderUnchanged": true,
     "hostFunctionSignaturesUnchanged": true,
@@ -2781,11 +2783,11 @@
     "specVersionAdvancedTo134": true,
     "implVersionRemains1": true
   },
-  "scriptSha256": "65d1e63a1eb7998dba990cd0f3b1490df5e56b96be2ef818b3037f008a5d6a40",
+  "scriptSha256": "b1e945dc327ea2f8447f8dda95dddf816bce55a7191fe8350b2c1d6c131fc1be",
   "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
   "tools": {
     "subwasm": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
-    "comparator": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/compare-metadata.py",
+    "comparator": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
     "comparatorSha256": "033a4dfd3be69b85f433f71db7c52b04c9832fe3f7068e3f764440a5ed005858"
   },
   "metadataComparison": {
@@ -2801,12 +2803,35 @@
       "signedExtensions": 7
     },
     "breakingChanges": [],
-    "additions": 39,
+    "additions": 56,
     "constantValueChanges": 1,
     "selfChecks": 5,
-    "output": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/metadata-compatibility.json"
+    "output": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/metadata-compatibility.json"
+  },
+  "capacityMetadataComparison": {
+    "previousMetadataFile": "previous-candidate-metadata.json",
+    "previousMetadataSha256": "7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82",
+    "previousCandidateSha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
+    "candidateMetadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
+    "reportFile": "capacity-metadata-compatibility.json",
+    "reportSha256": "96ec1c947ebd4099fdca0535a28af69f53652ccb88ca44f55bc5a80829569e47",
+    "existingEncodingsPreserved": true,
+    "onlyDeclaredCapacityAdditions": true,
+    "declaredChanges": [
+      "BridgeMultisig.error.TooManyPendingOperationsByProposer",
+      "BridgeMultisig.event.MultisigCancellationApproval",
+      "BridgeMultisig.storage.CancellationApprovals",
+      "BridgeMultisig.storage.PendingOperationsByProposer",
+      "BridgeMultisig.storage.ProposerCountedOperations",
+      "EthBridge.calls.cancel_pending_multisig"
+    ]
   },
   "metadataAdditions": [
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
     {
       "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
@@ -2826,6 +2851,35 @@
       "path": "BridgeMultisig.error",
       "variant": "TooManyPendingOperations",
       "variantIndex": 22
+    },
+    {
+      "path": "BridgeMultisig.error",
+      "variant": "TooManyPendingOperationsByProposer",
+      "variantIndex": 23
+    },
+    {
+      "path": "BridgeMultisig.event",
+      "variant": "MultisigCancellationApproval",
+      "variantIndex": 5
+    },
+    {
+      "path": "BridgeMultisig.storage.CancellationApprovals",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Blake2_128Concat"
+            ],
+            "key": 689,
+            "value": 692
+          }
+        }
+      }
     },
     {
       "path": "BridgeMultisig.storage.CountedNewOperations",
@@ -2868,6 +2922,52 @@
       }
     },
     {
+      "path": "BridgeMultisig.storage.PendingOperationsByProposer",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Twox64Concat"
+            ],
+            "key": 691,
+            "value": 4
+          }
+        }
+      }
+    },
+    {
+      "path": "BridgeMultisig.storage.ProposerCountedOperations",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Blake2_128Concat"
+            ],
+            "key": 689,
+            "value": 62
+          }
+        }
+      }
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
       "path": "Council.calls.variant[1].fields[0].type.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
       "variantIndex": 2
@@ -2878,6 +2978,11 @@
       "variantIndex": 1
     },
     {
+      "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
       "path": "Council.storage.ProposalOf.value.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
       "variantIndex": 2
@@ -2886,6 +2991,11 @@
       "path": "Council.storage.ProposalOf.value.variant[35].fields[0].type",
       "variant": "sponsor_migration",
       "variantIndex": 1
+    },
+    {
+      "path": "EthBridge.calls",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
     },
     {
       "path": "EthBridge.error",
@@ -2945,10 +3055,15 @@
               "Blake2_128Concat"
             ],
             "key": 13,
-            "value": 821
+            "value": 823
           }
         }
       }
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
     },
     {
       "path": "Multisig.calls.variant[0].fields[1].type.variant[35].fields[0].type",
@@ -2971,6 +3086,11 @@
       "variantIndex": 46
     },
     {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
       "path": "Scheduler.calls.variant[0].fields[3].type.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
       "variantIndex": 2
@@ -2979,6 +3099,11 @@
       "path": "Scheduler.calls.variant[0].fields[3].type.variant[35].fields[0].type",
       "variant": "sponsor_migration",
       "variantIndex": 1
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
+      "variant": "MultisigCancellationApproval",
+      "variantIndex": 5
     },
     {
       "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
@@ -2996,6 +3121,11 @@
       "variantIndex": 2
     },
     {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
       "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
       "variantIndex": 2
@@ -3004,6 +3134,11 @@
       "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[35].fields[0].type",
       "variant": "sponsor_migration",
       "variantIndex": 1
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
     },
     {
       "path": "TechnicalCommittee.storage.ProposalOf.value.variant[35].fields[0].type",
@@ -3016,6 +3151,11 @@
       "variantIndex": 1
     },
     {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
       "path": "Utility.calls.variant[0].fields[0].type.element.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
       "variantIndex": 2
@@ -3026,6 +3166,11 @@
       "variantIndex": 1
     },
     {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
+    },
+    {
       "path": "XorFee.calls.variant[3].fields[0].type.variant[35].fields[0].type",
       "variant": "revoke_sponsorship",
       "variantIndex": 2
@@ -3034,6 +3179,11 @@
       "path": "XorFee.calls.variant[3].fields[0].type.variant[35].fields[0].type",
       "variant": "sponsor_migration",
       "variantIndex": 1
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
+      "variant": "cancel_pending_multisig",
+      "variantIndex": 18
     },
     {
       "path": "extrinsic.parameter.Call.variant[35].fields[0].type",
@@ -3079,5 +3229,5 @@
     "Structural metadata comparison covers declared SCALE layouts, indices, storage hashers/defaults and signed extension shapes; it does not execute migrations or prove custom codec behavior.",
     "Import comparison checks names, kinds, order, resolved function parameter/result types and imported memory limits/shared/address type. It does not prove host implementation behavior. Actual report rejection and signed fees are covered by the separate exact-Wasm rehearsal."
   ],
-  "finishedAt": "2026-10-05T03:07:54.369Z"
+  "finishedAt": "2026-10-05T05:42:39.066Z"
 }

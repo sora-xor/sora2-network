@@ -18,6 +18,7 @@ PATHS = [
     "pallets/apollo-platform", "pallets/eth-bridge", "pallets/iroha-migration",
     "pallets/kensetsu", "pallets/order-book", "pallets/rewards", "pallets/xor-fee",
 ]
+REQUIRED_BUILD_INPUTS = ["Cargo.toml", "Cargo.lock", "vendor/sora2-common/Cargo.toml", "vendor/sora2-common/Cargo.lock"]
 
 
 def git(*args, env=None):
@@ -46,7 +47,11 @@ def main():
         verified_tree = git("write-tree", env=verify_env).decode().strip()
         assert verified_tree == tree, "Clean-base patch replay changed the source tree"
     files = {}
-    for path in changed.decode().strip("\0").split("\0"):
+    # An incremental patch may leave both lockfiles unchanged. Bind them anyway:
+    # build/dependency evidence must describe this captured source, not rely on
+    # the previous package's file-hash list.
+    captured_paths = set(changed.decode().strip("\0").split("\0")) | set(REQUIRED_BUILD_INPUTS)
+    for path in sorted(captured_paths):
         if path and (ROOT / path).is_file():
             files[path] = digest((ROOT / path).read_bytes())
     report = {
@@ -57,6 +62,7 @@ def main():
         "userIndexModified": False, "preexisting4811PackageChangesIncluded": False,
         "sdkCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
         "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
+        "requiredBuildInputs": REQUIRED_BUILD_INPUTS,
         "files": files,
     }
     (PACKAGE / "validation/source-provenance.json").write_text(json.dumps(report, indent=2) + "\n")

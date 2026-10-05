@@ -100,6 +100,18 @@ def verify():
         require(rehearsal["inputs"][field] == sha256((ROOT / "validation" / name).read_bytes()), "Rehearsal input changed: " + name)
     require(compatibility["inputs"]["candidate"]["sha256"] == digest, "Compatibility used another Wasm")
     require(compatibility["scriptSha256"] == sha256((ROOT / "validation/verify-wasm-compatibility.cjs").read_bytes()), "Compatibility script changed")
+    capacity_abi = compatibility["capacityMetadataComparison"]
+    require(capacity_abi["previousCandidateSha256"] == "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037" and
+            capacity_abi["previousMetadataSha256"] == "7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82",
+            "Capacity ABI comparison must use original sealed 4.8.12 metadata")
+    require(capacity_abi["existingEncodingsPreserved"] and capacity_abi["onlyDeclaredCapacityAdditions"],
+            "Previous 4.8.12 ABI was not preserved by capacity fix")
+    require(capacity_abi["previousMetadataSha256"] == sha256((ROOT / "validation/previous-candidate-metadata.json").read_bytes()),
+            "Previous sealed candidate metadata changed")
+    require(capacity_abi["candidateMetadataSha256"] == sha256((ROOT / "validation/candidate-metadata.json").read_bytes()),
+            "Capacity comparison used another candidate metadata")
+    require(capacity_abi["reportSha256"] == sha256((ROOT / "validation/capacity-metadata-compatibility.json").read_bytes()),
+            "Capacity ABI comparison report changed")
     require(compatibility["snapshotSha256"] == sha256((ROOT / "validation/snapshot.json").read_bytes()), "Compatibility snapshot changed")
     require(compatibility["tools"]["comparatorSha256"] == sha256((ROOT / "validation/compare-metadata.py").read_bytes()), "Metadata comparator changed")
     require(compatibility["inputs"]["baseline"]["sha256"] == snapshot["code"]["sha256"] == info["preflight"]["deployedSha256"], "Baseline mismatch")
@@ -123,6 +135,8 @@ def verify():
         "bareKensetsuAndApolloReject", "invalidInboundProofsReject",
         "allCheckedFeeEventsMatchBalances", "requestedPreimageFirstAndReplay",
         "successfulCancellationAndPaidReplay", "zeroXorLegacyPeerAndReplayRejection",
+        "bridgeCapacityFairQuotaProtectsHonestPeers", "bridgeCapacityFullQueueQuorumCleanup",
+        "bridgeCapacityCleanupPreservesProtocolAndRejectsReplay",
         "protectedStakingStateAndXorIssuancePreservedByUpgrade", "noPublicTransactionSubmission",
     }
     require(required_policy_checks <= set(policy["checks"]), "Missing required fee policy coverage")
@@ -134,7 +148,8 @@ def verify():
 
     bridge = load("validation/bridge-readiness.json")
     require(bridge["status"] == "passed" and bridge["submittedTransactions"] == 0
-            and bridge["legacyBacklogGrandfathered"] and bridge["newOperationLimitUsesAdditiveTracking"],
+            and bridge["legacyBacklogGrandfathered"] and bridge["newOperationLimitUsesAdditiveTracking"]
+            and bridge["fairPerProposerQuotaConfigured"] and bridge["currentPeerQuorumCancellationConfigured"],
             "Bridge readiness inspection incomplete")
     require(bridge["scriptSha256"] == sha256((ROOT / "validation/check-bridge-readiness.cjs").read_bytes()),
             "Bridge readiness script changed")
@@ -158,8 +173,17 @@ def verify():
     require(sha256((ROOT / safe_relative(provenance["patch"])).read_bytes()) == provenance["patchSha256"], "Source patch changed")
     native = evidence("native-tests", provenance)
     build = evidence("wasm-build", provenance)
-    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 28, "Native fee policy regressions incomplete")
+    lint = evidence("clippy", provenance)
+    require(lint["exitCode"] == 0 and lint["profiles"] == ["mainnet", "try-runtime", "extended"],
+            "Fresh three-profile Clippy evidence incomplete")
+    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 32, "Native fee policy regressions incomplete")
+    require(native["capacityExecutiveRegressionsPassed"] == 2, "Capacity/quorum Executive regressions incomplete")
     owned = load("validation/owned-tests.json")
+    historical_owned = load("validation/historical-owned-tests-context.json")
+    require(historical_owned["status"] == "retained-historical-evidence" and
+            historical_owned["freshCapacityFixExecutionClaimed"] is False and
+            historical_owned["originalSourceTreeAfterPatch"] == "a16e9e1ac195575c6008c69434999b2587b81d01",
+            "Historical owned-test evidence was relabeled as fresh capacity execution")
     require(owned["status"] == "passed" and owned["tests_failed"] == 0 and owned["tests_passed"] >= 430,
             "Maintenance and inbound bridge unit evidence incomplete")
     for name, expected in owned["validation_files"].items():

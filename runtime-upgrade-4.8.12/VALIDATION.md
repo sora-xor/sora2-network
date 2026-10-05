@@ -1,11 +1,12 @@
 # SORA 4.8.12 validation
 
-Wasm SHA-256: `9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037` (3,086,396 bytes).
-Source overlay tree: `a16e9e1ac195575c6008c69434999b2587b81d01`. The 11 affected native
-suites passed **1,140 tests**, with zero failures and three existing ignored
-tests; another **430** maintenance/common/inbound bridge tests passed. All
-**28** new runtime fee-policy regressions passed. The exact packaged Wasm passed
-report-fee, broader fee-policy and metadata/host-interface compatibility checks.
+Wasm SHA-256: `faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59` (3,089,114 bytes).
+Source overlay tree: `2fe0bf8887485b2b0ac6f8a2812277bc4433ecd4`. The 11 affected native
+suites passed **1,151 tests**, with zero failures and three existing ignored
+tests. Earlier **430** maintenance/common/inbound bridge results retain their
+original historical provenance and are not claimed as a fresh run. All
+**32** new runtime fee-policy regressions passed. The exact packaged Wasm passed
+report-fee, broader fee-policy, bridge-capacity recovery and metadata/host-interface compatibility checks.
 
 The offline verifier binds the final Wasm, source patch, logs, scripts, inputs,
 unsigned call payloads and checksum manifest.
@@ -14,8 +15,10 @@ unsigned call payloads and checksum manifest.
 
 `validation/source-provenance.json` records a base Git commit and explicitly
 uncommitted source overlay. `source.patch` must reconstruct its recorded tree
-from that base; source-file hashes bind the authorized fee fixes, pinned SDK
-patches, runtime/version changes and lockfile. No clean source commit is claimed
+from base commit `43a17da80ebc91302680b77185ab4e7607030d2d`. That base
+contains the preceding fee fixes, runtime/version changes and pinned SDK patches.
+The new patch adds the capacity fix and its tests. File hashes bind those four
+changed files plus the root and nested Cargo manifests and locks. No clean source commit is claimed
 for a working-tree build. Native/Wasm build reports bind their exact logs and
 source tree.
 
@@ -26,9 +29,14 @@ paid replay and manager/internal compatibility; funded keeper signing and shared
 durable nonce allocation; sponsored zero-XOR migration and paid settlement
 failure; and bridge authentication, progress, failed application, replay,
 bounded pending operations and stored-call handling. Native signature tests use
-real cryptography. The final 11-suite gate passed 1,140 tests, zero failures and three existing
-ignored tests; `cargo fmt --all -- --check` passed. The separate 430-test gate
-also passed without failures or ignored tests. The three retained ignores are
+real cryptography. The final 11-suite gate passed 1,151 tests, zero failures and three existing
+ignored tests; `cargo fmt --all -- --check` and mainnet, try-runtime and extended
+Clippy profiles passed. Seven new multisig unit tests and four new runtime
+regressions cover per-proposer fairness, full-queue cleanup, legacy counters,
+removed voters/proposers, changing thresholds, replay, and shared dispatch
+markers created by another multisig. Cleanup preserves those markers. The separate 430-test
+results are retained historical evidence from the preceding source tree; see
+`validation/historical-owned-tests-context.json`. The three retained ignores are
 the two chameleon-pool swap tests and `reminting_for_sora_parliament_works`.
 
 ## Exact Wasm checks
@@ -64,8 +72,18 @@ The independent event verifier matched all nine charges to balances.
   accepted remote-failure reporting remains free, advances its nonce and
   consumes request state. Changed-timepoint replay rejects before execution,
   without charging XOR or advancing the nonce.
+- A recorded four-peer zero-XOR fixture executes 32 proposal openings by one
+  peer, rejects its 33rd in External/Local/InBlock admission and direct block
+  application, then admits an honest peer. A separate full 128-entry queue has
+  a removed proposer, absent call bytes, stale incoming status and a shared
+  dispatch marker. Three current peers cancel the target without executing it,
+  preserving incoming status, canonical hash and the shared marker. Counters
+  drop only when quorum is reached, replay is rejected, and an honest peer
+  reuses the freed slot. Every accepted peer call has a zero fee. These fixtures
+  reset and record block-weight/size accounting between transactions; they do
+  not claim that all test transactions fit one block.
 
-The requested-preimage, sell-order funding and zero-XOR legacy peer fixtures
+The requested-preimage, sell-order funding and zero-XOR legacy peer/capacity fixtures
 override local storage only. Every fixture key/value is recorded; these checks prove candidate behavior
 under those fixtures, not execution of a live mainnet request. A bounded scan of
 256 recent finalized blocks found no usable direct legacy peer call and does not
@@ -78,9 +96,11 @@ Headers and transaction signatures use Chopsticks' mock signature host. Native
 checks separately cover real signing/proof behavior. No local branch is
 submitted. This rehearsal does not prove production consensus authoring,
 operator key installation/funding, relayer rollout or governance enactment.
-All additional checks passed: 16 signed cases (12 paid, four free), five
-invalid bare cases, and changed-timepoint legacy protocol replay rejection.
-Every signed fee event matched the payer balance change and nonce increment.
+All additional checks passed: 54 signed cases (12 paid, 42 free), five invalid
+bare cases, six capacity/cancellation rejection cases across all three admission
+sources plus direct block application, and changed-timepoint legacy protocol
+replay rejection. Every accepted signed fee event matched the payer balance
+change and nonce increment.
 The pinned state had no open orders; successful cancellation was verified
 using the disclosed candidate-placed synthetic sell order on a public book.
 
@@ -88,7 +108,10 @@ using the disclosed candidate-placed synthetic sell order on a public book.
 
 The metadata comparison must preserve existing call indices/arguments, storage
 encodings, signed extensions and runtime APIs while allowing the append-only
-sponsorship and bounded-tracking additions. Spec advances to 134; transaction
+sponsorship, bounded-tracking, fair-quota and quorum-cancellation additions.
+A separate comparison to the preceding 4.8.12 candidate requires exactly three
+new storage items, appended cancellation call index 18, one appended event and
+one appended error, including their recursive metadata references. Spec advances to 134; transaction
 version stays 131. Import/export signatures, local Wasm instantiation and memory
 shape are checked against the pinned SDK executor. This is not an attestation of
 every operator's heap configuration. All structural compatibility checks passed. Existing SCALE encodings,
@@ -99,7 +122,8 @@ all append-only metadata additions are retained for review.
 pending operations and stored call sizes. Its scan limitations are material;
 it does not attest complete backlog enumeration or operator rollout. Registered
 protocol peers require no XOR. New pending operations are bounded at 128 per
-multisig account and stored calls at 16,384 bytes; additive tracking preserves
+multisig account, with a fair per-proposer share based on current membership,
+and stored calls at 16,384 bytes; additive tracking preserves
 legacy operations without a full-backlog migration. Old numeric deposit fields
 are not currency reserves. No incoming fee escrow/bond is introduced.
 
@@ -107,8 +131,11 @@ Grandfathering covers operation counts, not the 16,384-byte decode cap. Old
 oversized calls remain stored but normal decode/approval execution rejects
 them. The bounded sample cannot prove that every legacy entry fits; complete
 size inspection and any required recovery remain activation prerequisites.
-New admission allowances and 3× protocol weight reservations use conservative
-engineering estimates over existing benchmark weights. These behavioral tests
+Current peers can cancel abandoned proposals by quorum without decoding their
+stored bytes, including at a full queue and after the proposer leaves. Cleanup
+does not execute the proposal or reset consumed incoming request state.
+Protocol weight multipliers and bounded admission/cancellation allowances use
+conservative engineering estimates over existing benchmark weights. These behavioral tests
 do not establish freshly measured worst-case execution throughput.
 
 ## Governance evidence and remaining prerequisites
@@ -117,11 +144,11 @@ A fresh finalized preflight must check deployed code/metadata, memberships,
 external queue, blacklist, preimage status and close bounds. Six unsigned calls
 are decoded offline from the deployed metadata and matched to the final Wasm.
 All six calls passed offline decoding at finalized preflight block
-**27,907,565**. Council threshold is **4**, technical committee threshold
+**27,909,040**. Council threshold is **4**, technical committee threshold
 **3**, and the candidate is not blacklisted. The setCode proposal hash is
-`0x2ed47f947903c423083bb8cc796e121d6eb5cb7dfd7de9bcb18127be7867d16a` (3,086,402 bytes).
+`0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066` (3,089,120 bytes).
 The source-calculated unrequested-preimage deposit is
-**10.421553333230449800 XOR**, additional to transaction fees;
+**10.430613333230359200 XOR**, additional to transaction fees;
 this is not a signed-account fee quote. Exact bounds and payloads are recorded
 in `council-settings.json` and the governance reports.
 

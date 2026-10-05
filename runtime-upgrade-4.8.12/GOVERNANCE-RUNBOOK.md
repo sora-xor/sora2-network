@@ -1,18 +1,18 @@
 # SORA 4.8.12 governance runbook
 
 This package contains six **unsigned review calls** for runtime spec **134**,
-transaction version **131**. The final Wasm is 3,086,396 bytes:
-`9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037` (SHA-256).
+transaction version **131**. The final Wasm is 3,089,114 bytes:
+`faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59` (SHA-256).
 
-The exact `system.setCode` proposal is 3,086,402 bytes with hash
-`0x2ed47f947903c423083bb8cc796e121d6eb5cb7dfd7de9bcb18127be7867d16a`. All six calls passed independent
+The exact `system.setCode` proposal is 3,089,120 bytes with hash
+`0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066`. All six calls passed independent
 offline decoding and binding to this Wasm. Finalized governance preflight block
-**27,907,565** recorded council threshold **4** and technical committee
+**27,909,040** recorded council threshold **4** and technical committee
 threshold **3**. Use `council-settings.json` for exact current call files,
 lengths, weights and the unrequested-preimage deposit estimate. Obtain a fresh
 signed-account fee/deposit quote before submission.
 
-The finalized external queue at block **27,907,565** contains **4.8.11**. Settings record
+The finalized external queue at block **27,909,040** contains **4.8.11**. Settings record
 `activationReady: false`; the guarded route rejects replacement of an occupied
 queue. Resolve the existing proposal through normal governance, then refresh
 finalized baseline/governance state. If 4.8.11 enacts, repeat metadata and exact
@@ -24,7 +24,7 @@ No direct supersession alternative is provided.
 1. Install and fund dedicated sr25519 `keep` accounts for Kensetsu/Apollo
    maintenance. Exercise both workers sharing an account and their durable
    nonce queue. Avoid independent transaction submitters competing for that
-   account. The source patch includes
+   account. The recorded base source includes
    `pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md`; package preparation does not install
    keys or attest funding/rollout.
 2. Switch BABE/GRANDPA equivocation reporters to signed funded submission.
@@ -37,12 +37,16 @@ No direct supersession alternative is provided.
    failed or partially applied work consumes its protocol nonce; use recovery
    rather than replaying it. Arbitrary peer calls remain paid.
 4. Review bounded pending/stored-call readiness. New pending multisig operations
-   are capped at 128 per account and stored calls at 16,384 bytes. Legacy
+   are capped at 128 per account. Each proposer has
+   `max(1, floor(128 / current multisig member count))` slots (32 with four
+   members); stored calls are capped at 16,384 bytes. Legacy
    operation counts are grandfathered through additive tracking; the decode
    cap also applies to old calls. Inspect the complete backlog and arrange
    recovery for any oversized entry, which normal approval/execution rejects.
-   Membership removal
-   requires explicit weighted dispatch for stored calls. Numeric old deposit
+   Current peer quorum can cancel abandoned entries without decoding them,
+   even at full capacity and after the proposer leaves; see the procedure below.
+   Membership removal requires explicit weighted dispatch for stored calls.
+   Numeric old deposit
    fields are not currency reserves; no incoming fee escrow/bond is introduced.
    The public readiness scan is bounded and is not complete backlog or operator
    attestation.
@@ -53,6 +57,26 @@ No direct supersession alternative is provided.
 
 These prerequisites and the occupied queue keep the package review-only until
 fresh finalized checks and operator readiness are established.
+
+## Cancel an abandoned bridge multisig proposal
+
+1. Resolve the network's current bridge account and inspect its
+   `BridgeMultisig.Multisigs(bridgeAccount, callHash)` entry. Use the stored
+   `when` timepoint exactly. `callHash` is the multisig payload hash, not the
+   external transaction hash.
+2. Current bridge peers submit
+   `ethBridge.cancelPendingMultisig(networkId, callHash, timepoint)` directly.
+   These authenticated calls need no XOR. A voter must also be a current
+   signatory of that multisig account. Votes from removed members are discarded.
+3. Collect the current multisig quorum and verify `MultisigCancelled` and removal
+   of the pending entry. This works while all new-operation slots are occupied
+   and does not require the original proposer or stored call bytes. A dispatch
+   marker left by another multisig cannot block cleanup; the marker is preserved.
+4. Verify released counters before admitting replacement work. Cancellation
+   never executes the original payload. It does not clear a consumed canonical
+   incoming transaction hash, reset failed incoming status, retry a transfer or
+   establish external-chain inclusion. Use the bridge's separate recovery
+   procedure where needed. Duplicate or stale cancellation votes are rejected.
 
 ## Verify and refresh evidence
 

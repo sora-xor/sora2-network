@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T03:17:58.505Z",
+  "startedAt": "2026-10-05T05:42:33.418Z",
   "localOnly": true,
   "endpoint": "wss://mof2.sora.org",
   "pinnedBlockHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05",
@@ -1340,7 +1340,7 @@
   },
   "stage": "Verifying timestamp inherent retained normal execution",
   "readCache": {
-    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/.public-read-cache.json.gz",
+    "path": "/tmp/sora-capacity-equivocation-public-read-cache.json.gz",
     "content": "Immutable public storage scoped by block hash",
     "existingValues": 5732,
     "storageHits": 1232,
@@ -1475,9 +1475,9 @@
   },
   "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
   "candidate": {
-    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3086396,
-    "sha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
+    "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
+    "bytes": 3089114,
+    "sha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -1758,5 +1758,5 @@
     "consensusRuntimeApisDisableAutomaticUnsignedSubmission": true,
     "transactionVersionRemains131": true
   },
-  "finishedAt": "2026-10-05T03:18:07.723Z"
+  "finishedAt": "2026-10-05T05:42:43.444Z"
 }

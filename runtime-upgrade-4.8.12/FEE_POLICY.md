@@ -43,11 +43,28 @@ accepted exempt calls, including a local application failure. It does not
 authorize free calls nested in arbitrary utility wrappers.
 
 The mainnet configuration bounds new pending multisig operations per account
-at 128 and stored call bytes at 16,384. Additive tracking preserves existing
-operations without scanning the full legacy backlog. Membership removal no
+at 128 and stored call bytes at 16,384. Each proposer may open at most
+`max(1, floor(128 / current multisig member count))` pending operations, so one
+member cannot consume every current member's share. Existing proposals can
+still receive approvals at either admission limit. Additive tracking preserves
+existing operations without scanning the full legacy backlog; a legacy entry
+without a proposer marker never decrements the new proposer counter. Membership removal no
 longer dispatches an unbounded set of stored calls; explicit weighted dispatch
 is required. Old numeric multisig `deposit` fields are not treated as currency
 reserves. No incoming fee escrow or bond is introduced.
+
+Current peers may vote directly with
+`ethBridge.cancelPendingMultisig(networkId, callHash, timepoint)`. The current
+multisig quorum releases the target's capacity without executing it; voters must
+belong to both current membership sets. This lane bypasses creation limits and
+does not need the original proposer, call bytes, or a still-fresh inner request.
+A shared dispatch marker from another multisig does not prevent cleanup, and
+cleanup preserves that marker.
+Wrong timepoints, duplicate votes, removed voters and completed-operation
+replays cannot receive a free successful execution. Normal dispatch and either
+cancellation route clear pending cancellation votes and release marked counts
+once. Cancellation does not reset incoming request status or a consumed
+canonical transaction hash and does not retry a failed transfer.
 
 Grandfathering applies to the pending-operation count. The 16,384-byte decode
 limit also applies to old stored calls: oversized entries remain stored but
@@ -64,7 +81,7 @@ estimates, not newly measured throughput benchmarks.
 1. Install and fund dedicated `keep` accounts for maintenance workers. Test
    both pallets using the shared account without nonce replacement or gaps.
    Do not use consensus keys or an account simultaneously controlled by another
-   transaction submitter. See `FUNDED-KEEPER-ROLLOUT.md` in the source patch.
+   transaction submitter. See `pallets/kensetsu/FUNDED-KEEPER-ROLLOUT.md` in the source checkout.
 2. Preserve peer proof and channel nonce handling in inbound relayers. Bridge
    peers and inbound protocol relayers do not need XOR for exempt submissions.
    An accepted extrinsic can report a local application failure; consume its
@@ -72,6 +89,9 @@ estimates, not newly measured throughput benchmarks.
 3. Check finalized stored call sizes against the new limits and exercise
    zero-XOR approval, completion, failure and replay rejection. Existing pending
    operations are grandfathered and do not consume the new-operation limit.
+   Exercise current-quorum cancellation of an abandoned proposal, including
+   recovery while admission is full. The proposer quota applies to new entries;
+   current quorum cleanup also handles old entries without proposer markers.
 4. Switch consensus reporters to signed funded submission. The automatic
    unsigned report API returns no submitted transaction in this release.
 5. Update zero-XOR migration onboarding to obtain a bounded sponsor grant.
