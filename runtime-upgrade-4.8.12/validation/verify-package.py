@@ -101,11 +101,24 @@ def verify():
     require(compatibility["inputs"]["candidate"]["sha256"] == digest, "Compatibility used another Wasm")
     require(compatibility["scriptSha256"] == sha256((ROOT / "validation/verify-wasm-compatibility.cjs").read_bytes()), "Compatibility script changed")
     predecessor_abi = compatibility["predecessorMetadataComparison"]
-    require(predecessor_abi["previousCandidateSha256"] == "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59" and
+    require(predecessor_abi["previousCandidateSha256"] == "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c" and
             predecessor_abi["previousMetadataSha256"] == "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
-            "Follow-up ABI comparison must use the sealed faf9ab candidate")
-    require(predecessor_abi["existingEncodingsPreserved"] and predecessor_abi["noAbiOrConstantChanges"] and
+            "Follow-up ABI comparison must use the sealed210511 candidate")
+    require(predecessor_abi["existingEncodingsPreserved"] and predecessor_abi["onlyDeclaredUndeployedSponsorshipRemoved"] and predecessor_abi["allOtherAbiAndConstantsPreserved"] and
             predecessor_abi["capacityAbiRetained"], "Follow-up changed the predecessor ABI or constants")
+    expected_removals = [
+        {"path": "IrohaMigration.calls", "variant": "sponsor_migration", "variantIndex": 1},
+        {"path": "IrohaMigration.calls", "variant": "revoke_sponsorship", "variantIndex": 2},
+        {"path": "IrohaMigration.event", "variant": "FeeSponsorshipGranted", "variantIndex": 1},
+        {"path": "IrohaMigration.event", "variant": "FeeSponsorshipUsed", "variantIndex": 2},
+        {"path": "IrohaMigration.event", "variant": "FeeSponsorshipRevoked", "variantIndex": 3},
+        {"path": "IrohaMigration.error", "variant": "InvalidMigrationInput", "variantIndex": 10},
+        {"path": "IrohaMigration.error", "variant": "InvalidFeeSponsorship", "variantIndex": 11},
+        {"path": "IrohaMigration.error", "variant": "NotFeeSponsor", "variantIndex": 12},
+        {"path": "IrohaMigration.storage.FeeSponsorships", "storage": "FeeSponsorships"},
+    ]
+    require(predecessor_abi["allowedUndeployedSponsorshipRemovals"] == expected_removals,
+            "Undeployed sponsorship removals differ from the exact allowlist")
     require(predecessor_abi["previousMetadataSha256"] == sha256((ROOT / "validation/previous-candidate-metadata.json").read_bytes()),
             "Predecessor metadata changed")
     require(predecessor_abi["candidateMetadataSha256"] == sha256((ROOT / "validation/candidate-metadata.json").read_bytes()),
@@ -144,6 +157,7 @@ def verify():
         "successfulCancellationAndPaidReplay", "zeroXorLegacyPeerAndReplayRejection",
         "bridgeCapacityFairQuotaProtectsHonestPeers", "bridgeCapacityFullQueueQuorumCleanup",
         "bridgeCapacityCleanupPreservesProtocolAndRejectsReplay",
+        "paidMigrationSuccessAndFailure", "zeroXorMigrationRejectsBeforeExecution",
         "protectedStakingStateAndXorIssuancePreservedByUpgrade", "noPublicTransactionSubmission",
     }
     require(required_policy_checks <= set(policy["checks"]), "Missing required fee policy coverage")
@@ -153,6 +167,19 @@ def verify():
         require(policy["inputs"][field] == sha256((ROOT / "validation" / name).read_bytes()),
                 "Fee policy rehearsal input changed: " + name)
 
+    paid_migration = policy["paidMigration"]
+    require(paid_migration["passed"] and paid_migration["ownershipProofVerifiedByWasm"] and
+            paid_migration["successRetainsXorFee"] and paid_migration["failureRetainsXorFee"] and
+            paid_migration["failureRollsBackValAndClaim"] and paid_migration["replayPaidWithoutDuplicateVal"] and
+            paid_migration["sponsorshipAbiAbsent"], "Exact Wasm paid migration incomplete")
+    require(paid_migration["syntheticProofSha256"] == sha256((ROOT / "validation/migration-proof-fixture.json").read_bytes()) and
+            paid_migration["proofGeneratorSha256"] == sha256((ROOT / "validation/migration-proof-fixture.rs").read_bytes()),
+            "Paid migration ownership-proof inputs changed")
+    zero_migration = policy["zeroXorMigration"]
+    require(zero_migration["passed"] and zero_migration["claimBalancesAndNoncePreserved"] and
+            set(zero_migration["sources"]) == {"External", "Local", "InBlock"} and
+            all(row == {"err": {"invalid": {"payment": None}}} for row in zero_migration["sources"].values()) and
+            zero_migration["apply"] == {"err": {"invalid": {"payment": None}}}, "Zero-XOR migration admission was not rejected before dispatch")
     bridge = load("validation/bridge-readiness.json")
     require(bridge["status"] == "passed" and bridge["submittedTransactions"] == 0
             and bridge["legacyBacklogGrandfathered"] and bridge["newOperationLimitUsesAdditiveTracking"]
@@ -183,20 +210,31 @@ def verify():
     lint = evidence("clippy", provenance)
     require(lint["exitCode"] == 0 and lint["profiles"] == ["mainnet", "try-runtime", "extended"],
             "Fresh three-profile Clippy evidence incomplete")
-    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 35, "Native fee policy regressions incomplete")
+    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 32, "Native fee policy regressions incomplete")
     require(native["capacityExecutiveRegressionsPassed"] == 2, "Capacity/quorum Executive regressions incomplete")
     required_followup_tests = {
         "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
-        "tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor",
-        "tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits",
+        "tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee",
+        "tests::liveness::migration_fees::migration_settlement_failure_keeps_fee_and_rolls_back_claim",
+        "tests::liveness::migration_fees::migration_requires_xor_before_valid_claim_can_execute",
+        "tests::liveness::migration_fees::migration_invalid_proof_and_replay_pay_without_duplicate_val",
+        "tests::liveness::migration_fees::wrapped_migration_requires_xor_and_keeps_success_fee",
     }
-    require(native["followupRegressionsPassed"] == 3 and
+    require(native["followupRegressionsPassed"] == 6 and
             set(native["requiredFollowupRegressions"]) == required_followup_tests,
-            "Bridge weight and sponsorship replacement regressions incomplete")
-    require(provenance["baseCommit"] == "802298f120edfe6b9c71bec39d2544c58c1391b2",
-            "Follow-up source does not use the reviewed 802298f base")
+            "Bridge weight and paid migration regressions incomplete")
+    require(provenance["baseCommit"] == "bb38216396835fae45de9c38104e4927a96eb36c",
+            "Follow-up source does not use the reviewed bb382163 base")
     require(set(provenance["requiredFollowupInputs"]) <= set(provenance["files"]),
             "Follow-up production and regression sources are not bound")
+    required_deletions = {"runtime/src/migration_fees.rs", "runtime/src/tests/liveness/migration_sponsorship.rs"}
+    require(set(provenance["requiredDeletions"]) == required_deletions and
+            required_deletions <= set(provenance["deletedFiles"]), "Sponsorship source deletions not captured")
+    if "--check-workspace-source" in sys.argv[1:]:
+        for name, before_sha in provenance["deletedFiles"].items():
+            require(not (ROOT.parent / safe_relative(name)).exists(), "Deleted source restored: " + name)
+            before = subprocess.check_output(["git", "show", provenance["baseCommit"] + ":" + name], cwd=ROOT.parent)
+            require(sha256(before) == before_sha, "Deleted-source baseline hash differs: " + name)
     chain_specs = load("validation/chain-spec-runtimes.json")
     require(chain_specs["schemaVersion"] == 1 and chain_specs["status"] == "passed" and
             chain_specs["sourceTree"] == provenance["sourceTreeAfterPatch"] and
@@ -235,6 +273,11 @@ def verify():
                     spec["lastRuntimeUpgradeUnchanged"] and spec["palletIndicesPreserved"] and
                     spec["compatibleExistingScaleEncoding"] and spec["constantValuesPreserved"],
                     "Chain-spec content/ABI preservation failed")
+            require(spec["onlyDeclaredUndeployedSponsorshipRemoved"] and
+                    spec["metadataComparison"]["allowedUndeployedSponsorshipRemovals"] == expected_removals and
+                    spec["metadataComparison"]["allOtherAbiAndConstantsPreserved"] and
+                    len(spec["sponsorshipRemovalSelfChecks"]) >= 6,
+                    "Feature ABI lost more than undeployed sponsorship")
             require(spec["currentMetadataSha256"] == wasm_info["metadataSha256"], "Chain-spec metadata fingerprint differs")
             if "--check-workspace-source" in sys.argv[1:]:
                 path = ROOT.parent / safe_relative(spec["path"])

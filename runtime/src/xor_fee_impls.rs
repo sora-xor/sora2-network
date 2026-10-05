@@ -563,24 +563,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
         validate_bridge_fee_exemption(who, call)
     }
 
-    fn get_fee_sponsor(
-        who: &AccountId,
-        call: &RuntimeCall,
-        fee: Balance,
-        tip: Balance,
-    ) -> Option<AccountId> {
-        crate::migration_fees::sponsor(who, call, fee, tip)
-    }
-
-    fn consume_fee_sponsorship(
-        who: &AccountId,
-        call: &RuntimeCall,
-        sponsor: &AccountId,
-        fee: Balance,
-    ) -> DispatchResult {
-        crate::migration_fees::consume(who, call, sponsor, fee)
-    }
-
     fn compute_actual_fee(
         _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
         _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,

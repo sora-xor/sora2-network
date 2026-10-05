@@ -1,36 +1,36 @@
 Running Clippy (mainnet)
-    Checking eth-bridge v0.2.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/eth-bridge)
-warning: framenode-runtime@4.8.12: Failed to create '.git/hooks' dir (skipping hook install): Not a directory (os error 20)
-   Compiling framenode v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node)
     Checking iroha-migration v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/iroha-migration)
+warning: framenode-runtime@4.8.12: Failed to create '.git/hooks' dir (skipping hook install): Not a directory (os error 20)
+    Checking xor-fee v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/xor-fee)
+   Compiling framenode v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node)
     Checking framenode-runtime v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime)
     Checking framenode-chain-spec v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node/chain_spec)
-    Finished `dev` profile [unoptimized] target(s) in 13.11s
+    Finished `dev` profile [unoptimized] target(s) in 13.40s
 Running Clippy (try-runtime)
-    Checking eth-bridge v0.2.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/eth-bridge)
-warning: framenode-runtime@4.8.12: Failed to create '.git/hooks' dir (skipping hook install): Not a directory (os error 20)
-   Compiling framenode v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node)
     Checking iroha-migration v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/iroha-migration)
+warning: framenode-runtime@4.8.12: Failed to create '.git/hooks' dir (skipping hook install): Not a directory (os error 20)
+    Checking xor-fee v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/xor-fee)
+   Compiling framenode v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node)
     Checking framenode-runtime v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime)
     Checking framenode-chain-spec v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node/chain_spec)
-    Finished `dev` profile [unoptimized] target(s) in 11.31s
+    Finished `dev` profile [unoptimized] target(s) in 12.41s
 Running Clippy (extended)
-    Checking eth-bridge v0.2.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/eth-bridge)
+    Checking iroha-migration v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/iroha-migration)
 warning: framenode-runtime@4.8.12: Failed to create '.git/hooks' dir (skipping hook install): Not a directory (os error 20)
+    Checking xor-fee v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/xor-fee)
 ⚡ Found 4 strongly connected components which includes at least one cycle each
 cycle(001) ∈ α: DisputeCoordinator ~~{"DisputeDistributionMessage"}~~> DisputeDistribution ~~{"DisputeCoordinatorMessage"}~~>  *
 cycle(002) ∈ β: ApprovalVoting ~~{"ApprovalDistributionMessage"}~~> ApprovalDistribution ~~{"ApprovalVotingMessage"}~~>  *
 cycle(003) ∈ γ: CandidateBacking ~~{"CollatorProtocolMessage"}~~> CollatorProtocol ~~{"CandidateBackingMessage"}~~>  *
 cycle(004) ∈ δ: NetworkBridgeRx ~~{"GossipSupportMessage"}~~> GossipSupport ~~{"NetworkBridgeRxMessage"}~~>  *
    Compiling framenode v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node)
-    Checking iroha-migration v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/iroha-migration)
     Checking framenode-runtime v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime)
     Checking framenode-chain-spec v4.8.12 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/node/chain_spec)
     Checking generate-bags v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/utils/generate-bags)
-    Checking parse v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/utils/parse)
     Checking remote-ext v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/utils/remote-ext)
-    Checking order-book v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/order-book)
+    Checking parse v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/utils/parse)
     Checking order-book-benchmarking v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/order-book/benchmarking)
     Checking liquidity-proxy v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/liquidity-proxy)
+    Checking order-book v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/order-book)
     Checking qa-tools v0.1.0 (/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/pallets/qa-tools)
-    Finished `dev` profile [unoptimized] target(s) in 11.34s
+    Finished `dev` profile [unoptimized] target(s) in 12.95s

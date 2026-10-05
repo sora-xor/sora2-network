@@ -16,6 +16,8 @@ sha = lambda data: hashlib.sha256(data).hexdigest()
 provenance = json.loads((HERE / "source-provenance.json").read_text())
 for name, expected in provenance["files"].items():
     assert sha((ROOT / name).read_bytes()) == expected, "Source changed: " + name
+for name in provenance["deletedFiles"]:
+    assert not (ROOT / name).exists(), "Deleted source restored: " + name
 data = args.log.read_bytes()
 text = data.decode()
 profiles = ["mainnet", "try-runtime", "extended"]

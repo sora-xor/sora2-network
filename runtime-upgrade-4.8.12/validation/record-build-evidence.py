@@ -25,6 +25,8 @@ sha = lambda b: hashlib.sha256(b).hexdigest()
 provenance = json.loads((HERE / 'source-provenance.json').read_text())
 for name, expected in provenance['files'].items():
     assert sha((ROOT / name).read_bytes()) == expected, f'Source changed: {name}'
+for name in provenance['deletedFiles']:
+    assert not (ROOT / name).exists(), f'Deleted source restored: {name}'
 for source, name in [(args.native_log, 'native-tests.log'),
                      (args.format_log, 'format-check.log'),
                      (args.wasm_log, 'wasm-build.log')]:
@@ -45,12 +47,15 @@ for line in log.splitlines():
         suite = None
 assert len(suites) == 11, suites
 assert all(row['failed'] == 0 for row in suites)
-new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_sponsorship|bridge_fees)::.* \.\.\. ok$', log, re.M)
-assert len(new_tests) >= 35, len(new_tests)
+new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_fees|bridge_fees)::.* \.\.\. ok$', log, re.M)
+assert len(new_tests) >= 32, len(new_tests)
 required_followup_tests = [
     'tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum',
-    'tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor',
-    'tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits',
+    'tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee',
+    'tests::liveness::migration_fees::migration_settlement_failure_keeps_fee_and_rolls_back_claim',
+    'tests::liveness::migration_fees::migration_requires_xor_before_valid_claim_can_execute',
+    'tests::liveness::migration_fees::migration_invalid_proof_and_replay_pay_without_duplicate_val',
+    'tests::liveness::migration_fees::wrapped_migration_requires_xor_and_keeps_success_fee',
 ]
 for name in required_followup_tests:
     assert re.search(r'^test ' + re.escape(name) + r' \.\.\. ok$', log, re.M), 'Missing successful follow-up regression: ' + name

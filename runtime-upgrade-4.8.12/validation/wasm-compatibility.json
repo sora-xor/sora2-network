@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T06:49:26.107Z",
+  "startedAt": "2026-10-05T07:40:45.279Z",
   "localOnly": true,
   "remoteRequests": 0,
   "inputs": {
@@ -1387,17 +1387,17 @@
     },
     "candidate": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-      "bytes": 3092259,
-      "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
-      "uncompressedBytes": 13643617,
-      "uncompressedSha256": "103f2f3838fddeacb31a892451ae91586d556f3042f4692515258540382306dd",
+      "bytes": 3086444,
+      "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+      "uncompressedBytes": 13646637,
+      "uncompressedSha256": "47ffeea4fb25234bd6033ba3277a0ed1555934dd62fd034e6daffa3398c38aab",
       "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
-      "metadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
+      "metadataSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
       "info": {
-        "size": 3092259,
+        "size": 3086444,
         "compression": {
-          "size_compressed": 3092259,
-          "size_decompressed": 13643617,
+          "size_compressed": 3086444,
+          "size_decompressed": 13646637,
           "compressed": true
         },
         "reserved_meta": [
@@ -1531,10 +1531,10 @@
           "transactionVersion": 131,
           "stateVersion": 0
         },
-        "proposal_hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
-        "parachain_authorize_upgrade_hash": "0xb15c6392bf4d72a2434298697072909000722ded1736feb8bf4f22635aca2d39",
-        "ipfs_hash": "QmeUqs3cdbkfiwkBJFVpL6tCUr1M9rdsrBbsrRpDmEgFcZ",
-        "blake2_256": "0x06da5a296325e18e17289ec005a797ea862e37e68883e45e7ea6ad8f6e0ba91b"
+        "proposal_hash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
+        "parachain_authorize_upgrade_hash": "0x5ae4713cabcf316761492074a2d5496c55625a433e837330a28eb4d3da1c6530",
+        "ipfs_hash": "QmcFGW7FhAxSVmcUWPMwtnHSQ1qKYhVikXXKki9ZUQhXRV",
+        "blake2_256": "0xdc4537e36a56e6af3ba518a518ca39c20787e685663064f15f4fedfcf387761f"
       },
       "imports": [
         {
@@ -2771,7 +2771,8 @@
     "existingScaleEncodingCompatible": true,
     "metadataAdditionsRecorded": true,
     "previous4812EncodingsPreserved": true,
-    "noFollowupAbiOrConstantChanges": true,
+    "onlyDeclaredUndeployedSponsorshipRemoved": true,
+    "allOtherAbiAndConstantsPreserved": true,
     "capacityAbiRetained": true,
     "onlyRuntimeVersionConstantChanged": true,
     "hostImportNamesKindsAndOrderUnchanged": true,
@@ -2784,12 +2785,12 @@
     "specVersionAdvancedTo134": true,
     "implVersionRemains1": true
   },
-  "scriptSha256": "0fac6482164959e72367872f38f835f452ebccde12f3694d76b60131dc599ea9",
+  "scriptSha256": "b095cbffa2d9b9bb8b6a379b3e800e2601723b9e3e533260142a66996e1103da",
   "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
   "tools": {
     "subwasm": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
     "comparator": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
-    "comparatorSha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d"
+    "comparatorSha256": "fe8fde11d3665709cf91c415cc80289aea1d1a1976364e990b6532996f5f3e7c"
   },
   "metadataComparison": {
     "compatibleExistingScaleEncoding": true,
@@ -2804,7 +2805,7 @@
       "signedExtensions": 7
     },
     "breakingChanges": [],
-    "additions": 56,
+    "additions": 24,
     "constantValueChanges": 1,
     "selfChecks": 9,
     "output": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/metadata-compatibility.json"
@@ -2812,12 +2813,59 @@
   "predecessorMetadataComparison": {
     "previousMetadataFile": "previous-candidate-metadata.json",
     "previousMetadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
-    "previousCandidateSha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
-    "candidateMetadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
+    "previousCandidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+    "candidateMetadataSha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0",
     "reportFile": "predecessor-metadata-compatibility.json",
-    "reportSha256": "82e04056a123f581321d326b01aa3fd56a8ecb28dd3bdb33700788613df2841c",
+    "reportSha256": "62881d4929d876a8c1d4e9d5e741ff04d368968596b31d23d0ba7b2f1696dd82",
     "existingEncodingsPreserved": true,
-    "noAbiOrConstantChanges": true,
+    "onlyDeclaredUndeployedSponsorshipRemoved": true,
+    "allOtherAbiAndConstantsPreserved": true,
+    "allowedUndeployedSponsorshipRemovals": [
+      {
+        "path": "IrohaMigration.calls",
+        "variant": "sponsor_migration",
+        "variantIndex": 1
+      },
+      {
+        "path": "IrohaMigration.calls",
+        "variant": "revoke_sponsorship",
+        "variantIndex": 2
+      },
+      {
+        "path": "IrohaMigration.event",
+        "variant": "FeeSponsorshipGranted",
+        "variantIndex": 1
+      },
+      {
+        "path": "IrohaMigration.event",
+        "variant": "FeeSponsorshipUsed",
+        "variantIndex": 2
+      },
+      {
+        "path": "IrohaMigration.event",
+        "variant": "FeeSponsorshipRevoked",
+        "variantIndex": 3
+      },
+      {
+        "path": "IrohaMigration.error",
+        "variant": "InvalidMigrationInput",
+        "variantIndex": 10
+      },
+      {
+        "path": "IrohaMigration.error",
+        "variant": "InvalidFeeSponsorship",
+        "variantIndex": 11
+      },
+      {
+        "path": "IrohaMigration.error",
+        "variant": "NotFeeSponsor",
+        "variantIndex": 12
+      },
+      {
+        "path": "IrohaMigration.storage.FeeSponsorships",
+        "storage": "FeeSponsorships"
+      }
+    ],
     "capacityAbiRetained": true
   },
   "metadataAdditions": [
@@ -2825,16 +2873,6 @@
       "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "BridgeMultisig.error",
@@ -2962,29 +3000,9 @@
       "variantIndex": 18
     },
     {
-      "path": "Council.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Council.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "Council.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Council.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "EthBridge.calls",
@@ -2997,77 +3015,9 @@
       "variantIndex": 95
     },
     {
-      "path": "IrohaMigration.calls",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "IrohaMigration.calls",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
-      "path": "IrohaMigration.error",
-      "variant": "InvalidFeeSponsorship",
-      "variantIndex": 11
-    },
-    {
-      "path": "IrohaMigration.error",
-      "variant": "InvalidMigrationInput",
-      "variantIndex": 10
-    },
-    {
-      "path": "IrohaMigration.error",
-      "variant": "NotFeeSponsor",
-      "variantIndex": 12
-    },
-    {
-      "path": "IrohaMigration.event",
-      "variant": "FeeSponsorshipGranted",
-      "variantIndex": 1
-    },
-    {
-      "path": "IrohaMigration.event",
-      "variant": "FeeSponsorshipRevoked",
-      "variantIndex": 3
-    },
-    {
-      "path": "IrohaMigration.event",
-      "variant": "FeeSponsorshipUsed",
-      "variantIndex": 2
-    },
-    {
-      "path": "IrohaMigration.storage.FeeSponsorships",
-      "storage": {
-        "default": [
-          0
-        ],
-        "modifier": "Optional",
-        "ty": {
-          "Map": {
-            "hashers": [
-              "Blake2_128Concat"
-            ],
-            "key": 13,
-            "value": 823
-          }
-        }
-      }
-    },
-    {
       "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "Multisig.calls.variant[0].fields[1].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Multisig.calls.variant[0].fields[1].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "OrderBook.error",
@@ -3085,34 +3035,9 @@
       "variantIndex": 18
     },
     {
-      "path": "Scheduler.calls.variant[0].fields[3].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Scheduler.calls.variant[0].fields[3].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
       "variant": "MultisigCancellationApproval",
       "variantIndex": 5
-    },
-    {
-      "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
-      "variant": "FeeSponsorshipGranted",
-      "variantIndex": 1
-    },
-    {
-      "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
-      "variant": "FeeSponsorshipRevoked",
-      "variantIndex": 3
-    },
-    {
-      "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
-      "variant": "FeeSponsorshipUsed",
-      "variantIndex": 2
     },
     {
       "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
@@ -3120,29 +3045,9 @@
       "variantIndex": 18
     },
     {
-      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
@@ -3150,44 +3055,14 @@
       "variantIndex": 18
     },
     {
-      "path": "Utility.calls.variant[0].fields[0].type.element.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Utility.calls.variant[0].fields[0].type.element.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
     },
     {
-      "path": "XorFee.calls.variant[3].fields[0].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "XorFee.calls.variant[3].fields[0].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "extrinsic.parameter.Call.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "extrinsic.parameter.Call.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     }
   ],
   "memoryCompatibility": {
@@ -3223,5 +3098,5 @@
     "Structural metadata comparison covers declared SCALE layouts, indices, storage hashers/defaults and signed extension shapes; it does not execute migrations or prove custom codec behavior.",
     "Import comparison checks names, kinds, order, resolved function parameter/result types and imported memory limits/shared/address type. It does not prove host implementation behavior. Actual report rejection and signed fees are covered by the separate exact-Wasm rehearsal."
   ],
-  "finishedAt": "2026-10-05T06:49:35.567Z"
+  "finishedAt": "2026-10-05T07:40:52.453Z"
 }

@@ -1,18 +1,18 @@
 # SORA 4.8.12 governance runbook
 
 This package contains six **unsigned review calls** for runtime spec **134**,
-transaction version **131**. The final Wasm is 3,092,259 bytes:
-`210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c` (SHA-256).
+transaction version **131**. The final Wasm is 3,086,444 bytes:
+`98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4` (SHA-256).
 
-The exact `system.setCode` proposal is 3,092,265 bytes with hash
-`0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed`. All six calls passed independent
+The exact `system.setCode` proposal is 3,086,450 bytes with hash
+`0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d`. All six calls passed independent
 offline decoding and binding to this Wasm. Finalized governance preflight block
-**27,909,600** recorded council threshold **4** and technical committee
+**27,910,230** recorded council threshold **4** and technical committee
 threshold **3**. Use `council-settings.json` for exact current call files,
 lengths, weights and the unrequested-preimage deposit estimate. Obtain a fresh
 signed-account fee/deposit quote before submission.
 
-The finalized external queue at block **27,909,600** contains **4.8.11**. Settings record
+The finalized external queue at block **27,910,230** contains **4.8.11**. Settings record
 `activationReady: false`; the guarded route rejects replacement of an occupied
 queue. Resolve the existing proposal through normal governance, then refresh
 finalized baseline/governance state. If 4.8.11 enacts, repeat metadata and exact
@@ -50,12 +50,12 @@ No direct supersession alternative is provided.
    fields are not currency reserves; no incoming fee escrow/bond is introduced.
    The public readiness scan is bounded and is not complete backlog or operator
    attestation.
-5. Prepare sponsor-grant onboarding for zero-XOR Iroha claimants. A volunteer
-   sponsor authorizes its own funds with a cap/budget, expiry and at most three
-   attempts; failed settlement consumes an attempt and retains a fee. A funded
-   but underpriced grant can be replaced with an adequate grant without lowering
-   its funded limits. Funded
-   claimants can pay directly. No automatic sponsor exists.
+5. Tell legacy Iroha claimants to fund their signing account with enough XOR for
+   the quoted transaction fee before claiming VAL. Successful and failed attempts
+   both pay; a successful claim does not waive the fee. Zero-XOR submissions are
+   rejected before execution. The undeployed sponsorship calls, grants and payer
+   hooks are removed. Existing claim records, ownership checks and pending
+   multisig completion behavior remain intact.
 
 These prerequisites and the occupied queue keep the package review-only until
 fresh finalized checks and operator readiness are established.
@@ -148,7 +148,8 @@ payer balances/fees and actual motion close bounds separately.
 6. After enactment and block initialization, verify spec 134, transaction
    version 131, candidate code hash and the complete fee policy. Check funded
    reporter/keeper operation, free useful cancellations, zero-XOR authenticated
-   bridge handling, pre-execution replay rejection and migration sponsorship.
+   bridge handling, pre-execution replay rejection, and XOR-paid legacy migration
+   including successful VAL claims. Confirm sponsorship calls/storage are absent.
 
 The preceding 4.8.11 reward publication migration is included. From captured
 spec 132, verify retained completed-era VAL budgets are published to standard

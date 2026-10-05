@@ -18,16 +18,6 @@
       "variantIndex": 18
     },
     {
-      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "BridgeMultisig.error",
       "variant": "CallTooLarge",
       "variantIndex": 21
@@ -153,29 +143,9 @@
       "variantIndex": 18
     },
     {
-      "path": "Council.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Council.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "Council.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Council.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "EthBridge.calls",
@@ -188,77 +158,9 @@
       "variantIndex": 95
     },
     {
-      "path": "IrohaMigration.calls",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "IrohaMigration.calls",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
-      "path": "IrohaMigration.error",
-      "variant": "InvalidFeeSponsorship",
-      "variantIndex": 11
-    },
-    {
-      "path": "IrohaMigration.error",
-      "variant": "InvalidMigrationInput",
-      "variantIndex": 10
-    },
-    {
-      "path": "IrohaMigration.error",
-      "variant": "NotFeeSponsor",
-      "variantIndex": 12
-    },
-    {
-      "path": "IrohaMigration.event",
-      "variant": "FeeSponsorshipGranted",
-      "variantIndex": 1
-    },
-    {
-      "path": "IrohaMigration.event",
-      "variant": "FeeSponsorshipRevoked",
-      "variantIndex": 3
-    },
-    {
-      "path": "IrohaMigration.event",
-      "variant": "FeeSponsorshipUsed",
-      "variantIndex": 2
-    },
-    {
-      "path": "IrohaMigration.storage.FeeSponsorships",
-      "storage": {
-        "default": [
-          0
-        ],
-        "modifier": "Optional",
-        "ty": {
-          "Map": {
-            "hashers": [
-              "Blake2_128Concat"
-            ],
-            "key": 13,
-            "value": 823
-          }
-        }
-      }
-    },
-    {
       "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "Multisig.calls.variant[0].fields[1].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Multisig.calls.variant[0].fields[1].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "OrderBook.error",
@@ -276,34 +178,9 @@
       "variantIndex": 18
     },
     {
-      "path": "Scheduler.calls.variant[0].fields[3].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Scheduler.calls.variant[0].fields[3].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
       "variant": "MultisigCancellationApproval",
       "variantIndex": 5
-    },
-    {
-      "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
-      "variant": "FeeSponsorshipGranted",
-      "variantIndex": 1
-    },
-    {
-      "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
-      "variant": "FeeSponsorshipRevoked",
-      "variantIndex": 3
-    },
-    {
-      "path": "System.storage.Events.value.element.fields[1].type.variant[35].fields[0].type",
-      "variant": "FeeSponsorshipUsed",
-      "variantIndex": 2
     },
     {
       "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
@@ -311,29 +188,9 @@
       "variantIndex": 18
     },
     {
-      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     },
     {
       "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
@@ -341,44 +198,14 @@
       "variantIndex": 18
     },
     {
-      "path": "Utility.calls.variant[0].fields[0].type.element.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "Utility.calls.variant[0].fields[0].type.element.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
     },
     {
-      "path": "XorFee.calls.variant[3].fields[0].type.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "XorFee.calls.variant[3].fields[0].type.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
-    },
-    {
       "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
       "variant": "cancel_pending_multisig",
       "variantIndex": 18
-    },
-    {
-      "path": "extrinsic.parameter.Call.variant[35].fields[0].type",
-      "variant": "revoke_sponsorship",
-      "variantIndex": 2
-    },
-    {
-      "path": "extrinsic.parameter.Call.variant[35].fields[0].type",
-      "variant": "sponsor_migration",
-      "variantIndex": 1
     }
   ],
   "constantValueChanges": [
@@ -1167,7 +994,7 @@
     "CheckWeight",
     "ChargeTransactionPayment"
   ],
-  "checkedAt": "2026-10-05T06:49:34.929924+00:00",
+  "checkedAt": "2026-10-05T07:40:51.467520+00:00",
   "metadataVersion": 14,
   "inputs": {
     "baselineMetadata": {
@@ -1176,11 +1003,11 @@
     },
     "candidateMetadata": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
-      "sha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020"
+      "sha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0"
     },
     "comparisonScript": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
-      "sha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d"
+      "sha256": "fe8fde11d3665709cf91c415cc80289aea1d1a1976364e990b6532996f5f3e7c"
     }
   },
   "selfChecks": [
@@ -1194,6 +1021,7 @@
     "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
     "Changed bit-order marker layout rejected despite unchanged identity path"
   ],
+  "comparisonMode": "strict",
   "limitations": [
     "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
     "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",

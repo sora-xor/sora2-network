@@ -1,24 +1,24 @@
 {
-  "preparedAt": "2026-10-05T06:44:18.976Z",
+  "preparedAt": "2026-10-05T07:47:23.241Z",
   "release": "4.8.12",
   "candidate": {
     "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3092259,
-    "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+    "bytes": 3086444,
+    "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
     "specVersion": 134,
     "transactionVersion": 131
   },
   "proposal": {
     "method": "system.setCode",
-    "hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
-    "bytes": 3092265,
+    "hash": "0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d",
+    "bytes": 3086450,
     "signed": false
   },
   "preflight": {
     "endpoint": "wss://mof2.sora.org",
     "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-    "hash": "0xa9d2bd459829692b88aa1738c3245052675673ee57259ab1c8bd40a0d37a4fb9",
-    "block": 27909598,
+    "hash": "0x2281fa6db4b6541cb60d2e6306491f8adb5c58ebdb679794070eb9f6d378e49d",
+    "block": 27910228,
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -163,14 +163,14 @@
     "metadataAndHostInterfaceCompatibilityPassed": true,
     "rehearsalPinnedBlockHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05"
   },
-  "activation": "After governance enacts code, the next block initializes spec 134. Consensus reports and maintenance calls require funded signed submission. Successful order cancellation remains free. Bridge peers retain zero-XOR authenticated protocol operations, including accepted failures; invalid and replayed requests are rejected before execution. Unrelated peer calls remain paid. Zero-XOR Iroha migration requires an explicitly authorized bounded sponsor. Complete keeper/reporter rollout and bridge compatibility checks before activation.",
+  "activation": "After governance enacts code, the next block initializes spec 134. Consensus reports and maintenance calls require funded signed submission. Successful order cancellation remains free. Bridge peers retain zero-XOR authenticated protocol operations, including accepted failures; invalid and replayed requests are rejected before execution. Unrelated peer calls remain paid. Iroha migration requires the signed claimant to fund its own normal transaction fee; success and failure both pay, and no sponsorship is available. Complete keeper/reporter rollout and bridge compatibility checks before activation.",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
   "limitations": [
     "Preparation encodes unsigned review artifacts only; it does not submit a proposal or enact code.",
     "Repeat the read-only live preflight immediately before use when baseline or governance state changes.",
     "Protocol inherents and bounded validator/election/bridge-signature submissions retain their protocol-specific admission controls; this is not a blanket fee on every unsigned protocol message.",
-    "Operator readiness is not inferred from the Wasm build. Keepers, inbound relayers, legacy bridge peers, reporters and migration onboarding must satisfy the rollout requirements in the governance preflight.",
+    "Operator readiness is not inferred from the Wasm build. Keepers, inbound relayers, legacy bridge peers, reporters and XOR-funded migration onboarding must satisfy the rollout requirements in the governance preflight.",
     "The candidate contains the prior 4.8.11 staking reward repair; upgrading from deployed spec 132 also executes its bounded one-time reward publication migration."
   ]
 }

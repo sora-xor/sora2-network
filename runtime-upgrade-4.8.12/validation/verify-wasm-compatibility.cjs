@@ -139,21 +139,25 @@ try {
     '--new', report.inputs.candidate.metadataPath, '--output', metadataReportPath]));
   const metadata = JSON.parse(readFileSync(metadataReportPath));
   assert.equal(metadata.compatibleExistingScaleEncoding, true, 'Existing SCALE encoding must be compatible');
-  // The follow-up changes fee reservation and sponsorship admission only.
-  // The current sealed faf9ab candidate already contains the capacity ABI.
+  // The paid-migration revision removes only the explicitly undeployed sponsorship ABI.
+  // The sealed210511 candidate already contains the capacity ABI and is the predecessor.
   const previousMetadataPath = resolve(__dirname, 'previous-candidate-metadata.json');
   const previousMetadataSha256 = sha256(readFileSync(previousMetadataPath));
   assert.equal(previousMetadataSha256,
     'f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020',
-    'Predecessor metadata must match the sealed faf9ab 4.8.12 candidate');
+    'Predecessor metadata must match the sealed210511 4.8.12 candidate');
   const predecessorMetadataPath = join(outputDir, 'predecessor-metadata-compatibility.json');
   run('python3', [comparator, '--old', previousMetadataPath,
-    '--new', report.inputs.candidate.metadataPath, '--output', predecessorMetadataPath]);
+    '--new', report.inputs.candidate.metadataPath, '--output', predecessorMetadataPath,
+    '--allow-undeployed-sponsorship-removal']);
   const predecessorComparison = JSON.parse(readFileSync(predecessorMetadataPath));
   assert.equal(predecessorComparison.compatibleExistingScaleEncoding, true,
-    'Follow-up must preserve every sealed faf9ab SCALE encoding');
-  assert.deepEqual(predecessorComparison.additions, [], 'Follow-up must not add an ABI variant or storage entry');
-  assert.deepEqual(predecessorComparison.constantValueChanges, [], 'Follow-up must preserve sealed faf9ab constants');
+    'Follow-up must preserve every sealed210511 SCALE encoding');
+  assert.deepEqual(predecessorComparison.additions, [], 'Paid migration must not add an ABI variant or storage entry');
+  assert.equal(predecessorComparison.comparisonMode, 'exact-undeployed-Iroha-sponsorship-removal');
+  assert.equal(predecessorComparison.allowedUndeployedSponsorshipRemovals.length, 9);
+  assert.equal(predecessorComparison.allOtherAbiAndConstantsPreserved, true);
+  assert.deepEqual(predecessorComparison.constantValueChanges, [], 'Follow-up must preserve sealed210511 constants');
   const currentModel = JSON.parse(readFileSync(report.inputs.candidate.metadataPath)).V14;
   const variants = (pallet, kind) => {
     const item = currentModel.pallets.find(item => item.name === pallet);
@@ -168,11 +172,12 @@ try {
   }
   report.predecessorMetadataComparison = { previousMetadataFile: 'previous-candidate-metadata.json',
     previousMetadataSha256,
-    previousCandidateSha256: 'faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59',
+    previousCandidateSha256: '210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c',
     candidateMetadataSha256: report.inputs.candidate.metadataSha256,
     reportFile: 'predecessor-metadata-compatibility.json', reportSha256: sha256(readFileSync(predecessorMetadataPath)),
-    existingEncodingsPreserved: true, noAbiOrConstantChanges: true, capacityAbiRetained: true };
-  // The fee repair adds sponsorship and bridge operation counters, plus append-only error,
+    existingEncodingsPreserved: true, onlyDeclaredUndeployedSponsorshipRemoved: true, allOtherAbiAndConstantsPreserved: true,
+    allowedUndeployedSponsorshipRemovals: predecessorComparison.allowedUndeployedSponsorshipRemovals, capacityAbiRetained: true };
+  // The fee repair retains bridge operation counters and their append-only error,
   // event and call variants. The comparator checks every existing index and
   // encoding recursively; retain every addition for council review.
   report.metadataAdditions = metadata.additions;
@@ -210,7 +215,7 @@ try {
     assert.deepEqual(newVersion[key], oldVersion[key], 'Unchanged runtime version field: ' + key);
   }
   report.checks = { existingScaleEncodingCompatible: true, metadataAdditionsRecorded: true,
-    previous4812EncodingsPreserved: true, noFollowupAbiOrConstantChanges: true, capacityAbiRetained: true,
+    previous4812EncodingsPreserved: true, onlyDeclaredUndeployedSponsorshipRemoved: true, allOtherAbiAndConstantsPreserved: true, capacityAbiRetained: true,
     onlyRuntimeVersionConstantChanged: true, hostImportNamesKindsAndOrderUnchanged: true,
     hostFunctionSignaturesUnchanged: true, importedMemoryLimitsCompatible: true, memoryGrowthCompatibleWithPinnedSdkDefaultAllocation: true,
     wasmExportsUnchanged: true, runtimeApiVersionsUnchanged: true, transactionVersionRemains131: true,

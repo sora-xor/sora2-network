@@ -109,7 +109,6 @@ parameter_types! {
 }
 
 impl Config for Runtime {
-    type FeeCurrency = Balances;
     type RuntimeEvent = RuntimeEvent;
     type MigrationGenesisHash = MigrationGenesisHash;
     type WeightInfo = ();

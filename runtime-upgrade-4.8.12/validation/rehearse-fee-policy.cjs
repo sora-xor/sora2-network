@@ -7,7 +7,7 @@ const { createHash } = require('node:crypto');
 const { gunzipSync, gzipSync } = require('node:zlib');
 const { StorageKey, GenericExtrinsic } = require('@polkadot/types');
 const { hexToU8a, u8aToHex, compactAddLength } = require('@polkadot/util');
-const { blake2AsHex, cryptoWaitReady, sr25519PairFromSeed } = require('@polkadot/util-crypto');
+const { blake2AsHex, cryptoWaitReady, sr25519PairFromSeed, xxhashAsU8a } = require('@polkadot/util-crypto');
 const { setup, BuildBlockMode, Block, destroyWorker } = require('@acala-network/chopsticks-core');
 const { fullOverrideBundle } = require('@sora-substrate/type-definitions');
 const args = process.argv.slice(2);
@@ -34,6 +34,7 @@ const report = { status: 'running', startedAt: new Date().toISOString(), localOn
     'Main branches replace only :code locally. Explicit --synthetic-fixtures branches additionally record every fixture key/value override; these do not claim mainnet-state coverage.',
     'Synthetic headers and extrinsics use the mocked signature host. Real cryptography is covered by native tests; consensus validity and governance enactment are outside this rehearsal.',
     'Independent fee cases branch from initialized local state; replay checks retain prior local execution. No transactions are submitted to the public network.',
+    'Migration ownership proofs use deterministic synthetic ed25519/SHA3 keys and real Wasm verification; only transaction/header signatures use the mocked host.',
   ] };
 let chain, cache;
 const save = () => writeFileSync(opts.output, JSON.stringify(report, null, 2) + '\n');
@@ -200,7 +201,7 @@ async function signedCheck(block, label, call, expectSuccess, expectFree, expect
   }
   assert.equal(after.nonce.toBigInt(), before.nonce.toBigInt() + 1n);
   if (expectFree) assert.equal(charged, 0n, label + ' successful useful execution must refund');
-  else assert(charged > 0n, label + ' failed execution must keep a positive fee');
+  else assert(charged > 0n, label + ' execution must keep a positive fee');
   const paid = events.filter(event => event.section === 'transactionPayment' && event.method === 'TransactionFeePaid');
   assert.equal(paid.length, 1, label + ' must emit one actual fee event');
   assert(registry.createType('AccountId', paid[0].data[0]).eq(registry.createType('AccountId', report.signer.address)));
@@ -262,6 +263,121 @@ async function requestedPreimageFixture(block) {
   const replayed = await signedCheck(supplied, 'preimage.notePreimage synthetic requested replay', call, false, false, 'AlreadyNoted');
   assert.equal((await rawQuery(replayed, 'preimage', 'requestStatusFor', [hash])).toHex(), status);
   return true;
+}
+async function paidMigrationFixture(block) {
+  assert(opts.syntheticFixtures, 'Paid migration coverage requires --synthetic-fixtures');
+  const proofPath = resolve(__dirname, 'migration-proof-fixture.json');
+  const proof = JSON.parse(readFileSync(proofPath));
+  assert(proof.synthetic);
+  const meta = await block.meta;
+  const signer = meta.registry.createType('AccountId', proof.account);
+  const previousSigner = report.signer;
+  report.signer = { address: signer.toString(), synthetic: true };
+  const val = '0x0200040000000000000000000000000000000000000000000000000000000000';
+  const claim = 300n * 10n ** 18n;
+  // The legacy claim pallet transfers from Generic("bridge", "main"), which
+  // need not equal the currently configured bridge peer multisig account.
+  const technicalType = meta.registry.createLookupType(meta.query.technical.techAccounts.meta.type.asMap.value);
+  const technical = meta.registry.createType(technicalType, { Generic: [u8aToHex(Buffer.from('bridge')), u8aToHex(Buffer.from('main'))] });
+  const escrow = meta.registry.createType('AccountId', Buffer.concat([
+    Buffer.from([84, 115, 79, 144, 249, 113, 160, 44, 96, 155, 45, 104, 78, 97, 181, 87]),
+    Buffer.from(xxhashAsU8a(technical.toU8a(), 128)),
+  ]));
+  assert.equal((await rawQuery(block, 'technical', 'techAccounts', [escrow])).unwrap().toHex(), technical.toHex());
+  const escrowBefore = (await rawQuery(block, 'tokens', 'accounts', [escrow, val])).free.toBigInt();
+  assert(escrowBefore >= claim, 'Pinned bridge escrow must back the synthetic VAL claim');
+  assert.equal((await rawQuery(block, 'tokens', 'accounts', [signer, val])).free.toBigInt(), 0n);
+  for (const name of ['balances', 'publicKeys', 'migratedAccounts', 'referrers']) {
+    assert(!(await block.get(storageKey(meta, 'irohaMigration', name, [proof.address]).toHex())),
+      'Synthetic migration address must not collide with public state');
+  }
+  assert(!meta.tx.irohaMigration.sponsorMigration && !meta.tx.irohaMigration.revokeSponsorship);
+  assert(!meta.query.irohaMigration.feeSponsorships);
+  const override = async (parent, label, rows) => {
+    const values = [];
+    for (const [pallet, name, params, json] of rows) {
+      const key = storageKey(meta, pallet, name, params);
+      const value = meta.registry.createType(key.outputType, json);
+      const encoded = u8aToHex(value.toU8a());
+      const before = await parent.get(key.toHex());
+      values.push([key.toHex(), encoded]);
+      report.fixtureOverrides.push({ kind: 'paidMigration', fixtureOnly: true, label,
+        pallet, name, key: key.toHex(), value: encoded, parentStateBefore: before ?? null });
+    }
+    const branch = new Block(chain, parent.number, parent.hash, parent, {
+      header: await parent.header, extrinsics: [], storage: parent.storage });
+    branch.pushStorageLayer().setAll(values); return branch;
+  };
+  const account = (await rawQuery(block, 'system', 'account', [signer])).toJSON();
+  assert.equal(BigInt(account.data.free), 0n);
+  account.providers = 1; account.nonce = 0;
+  const zero = await override(block, 'backed claim and existing zero-XOR recipient', [
+    ['system', 'account', [signer], account],
+    ['irohaMigration', 'balances', [proof.address], claim.toString()],
+    ['irohaMigration', 'publicKeys', [proof.address], [[false, proof.publicKey]]],
+  ]);
+  const call = meta.tx.irohaMigration.migrate(proof.address, proof.publicKey, proof.signature);
+  const tx = signedExtrinsic(meta.registry, call, zero, await rawQuery(zero, 'system', 'account', [signer]));
+  const rejectedRow = { method: 'irohaMigration.migrate zero-XOR valid VAL claim', sources: {},
+    account: signer.toString(), proofIsSynthetic: true };
+  report.zeroXorMigration = rejectedRow;
+  progress('Exact Wasm: migration requires XOR before a valid VAL claim can execute');
+  for (const source of ['External', 'Local', 'InBlock']) {
+    const response = await zero.call('TaggedTransactionQueue_validate_transaction',
+      [meta.registry.createType('TransactionSource', source).toHex(), tx.toHex(), zero.hash]);
+    const validity = meta.registry.createType('TransactionValidity', response.result);
+    rejectedRow.sources[source] = validity.toJSON();
+    assert(validity.isErr && validity.asErr.isInvalid && validity.asErr.asInvalid.isPayment);
+  }
+  const rejected = await zero.call('BlockBuilder_apply_extrinsic', [tx.toHex()]);
+  const rejectedResult = meta.registry.createType('ApplyExtrinsicResult', rejected.result);
+  rejectedRow.apply = rejectedResult.toJSON();
+  assert(rejectedResult.isErr && rejectedResult.asErr.isInvalid && rejectedResult.asErr.asInvalid.isPayment);
+  const rejectedBlock = new Block(chain, zero.number, zero.hash, zero, {
+    header: await zero.header, extrinsics: [], storage: zero.storage,
+    storageDiff: Object.fromEntries(rejected.storageDiff) });
+  for (const [pallet, name, params] of [['system', 'account', [signer]],
+    ['tokens', 'accounts', [signer, val]], ['tokens', 'accounts', [escrow, val]],
+    ['irohaMigration', 'balances', [proof.address]], ['irohaMigration', 'publicKeys', [proof.address]],
+    ['irohaMigration', 'migratedAccounts', [proof.address]]]) {
+    assert.equal((await rawQuery(rejectedBlock, pallet, name, params)).toHex(),
+      (await rawQuery(zero, pallet, name, params)).toHex());
+  }
+  rejectedRow.claimBalancesAndNoncePreserved = true; rejectedRow.passed = true;
+  const funding = 10n ** 30n;
+  const fundedAccount = structuredClone(account); fundedAccount.data.free = funding.toString();
+  const funded = await override(zero, 'XOR-funded claimant and matching native issuance', [
+    ['system', 'account', [signer], fundedAccount],
+    ['balances', 'totalIssuance', [], ((await rawQuery(zero, 'balances', 'totalIssuance')).toBigInt() + funding).toString()],
+  ]);
+  progress('Exact Wasm: successful migration delivers VAL and retains the XOR fee');
+  const success = await signedCheck(funded, 'irohaMigration.migrate paid success', call, true, false);
+  assert.equal((await rawQuery(success, 'tokens', 'accounts', [signer, val])).free.toBigInt(), claim);
+  assert.equal((await rawQuery(success, 'tokens', 'accounts', [escrow, val])).free.toBigInt(), escrowBefore - claim);
+  assert((await rawQuery(success, 'irohaMigration', 'migratedAccounts', [proof.address])).unwrap().eq(signer));
+  assert((await rawQuery(success, 'irohaMigration', 'balances', [proof.address])).isNone);
+  const replay = await signedCheck(success, 'irohaMigration.migrate paid replay', call, false, false, 'AccountAlreadyMigrated');
+  assert.equal((await rawQuery(replay, 'tokens', 'accounts', [signer, val])).free.toBigInt(), claim);
+  const referrer = '0x' + '50'.repeat(32);
+  const failure = await override(funded, 'referral conflict after valid ownership and VAL transfer', [
+    ['irohaMigration', 'referrers', [proof.address], 'paid-wasm-referrer@sora'],
+    ['irohaMigration', 'migratedAccounts', ['paid-wasm-referrer@sora'], referrer],
+    ['referrals', 'referrers', [signer], referrer],
+  ]);
+  progress('Exact Wasm: failed migration keeps its fee and rolls back the VAL claim');
+  const failed = await signedCheck(failure, 'irohaMigration.migrate paid settlement failure', call, false, false, 'ReferralMigrationFailed');
+  for (const [pallet, name, params] of [['tokens', 'accounts', [signer, val]],
+    ['tokens', 'accounts', [escrow, val]], ['irohaMigration', 'balances', [proof.address]],
+    ['irohaMigration', 'publicKeys', [proof.address]], ['irohaMigration', 'migratedAccounts', [proof.address]]]) {
+    assert.equal((await rawQuery(failed, pallet, name, params)).toHex(),
+      (await rawQuery(failure, pallet, name, params)).toHex());
+  }
+  report.paidMigration = { passed: true, claimVal: '300', ownershipProofVerifiedByWasm: true,
+    syntheticProofSha256: sha256(readFileSync(proofPath)),
+    proofGeneratorSha256: sha256(readFileSync(resolve(__dirname, 'migration-proof-fixture.rs'))),
+    successRetainsXorFee: true, failureRetainsXorFee: true, failureRollsBackValAndClaim: true,
+    replayPaidWithoutDuplicateVal: true, sponsorshipAbiAbsent: true };
+  report.signer = previousSigner; save(); return true;
 }
 async function publicCancellation(block) {
   const meta = await block.meta;
@@ -750,6 +866,7 @@ async function main() {
     await unsignedCheck(initialized, section + '.submit invalid empty proof', call);
   }
   const preimageFirstAndReplay = await requestedPreimageFixture(initialized);
+  const paidMigrationSuccessAndFailure = await paidMigrationFixture(initialized);
   const zeroXorLegacyPeerAndReplayRejection = await zeroXorLegacyBridgeFixture(initialized);
   const bridgeCapacityQuotaAndQuorumCleanup = await bridgeCapacityFixture(initialized);
   const successfulCancellationAndPaidReplay = await publicCancellation(initialized);
@@ -762,6 +879,8 @@ async function main() {
     signedInvalidKensetsuAndApolloRetainFees: true, bareKensetsuAndApolloReject: true,
     invalidInboundProofsReject: true, allCheckedFeeEventsMatchBalances: true,
     requestedPreimageFirstAndReplay: preimageFirstAndReplay,
+    paidMigrationSuccessAndFailure,
+    zeroXorMigrationRejectsBeforeExecution: paidMigrationSuccessAndFailure,
     successfulCancellationAndPaidReplay, zeroXorLegacyPeerAndReplayRejection,
     bridgeCapacityFairQuotaProtectsHonestPeers: bridgeCapacityQuotaAndQuorumCleanup,
     bridgeCapacityFullQueueQuorumCleanup: bridgeCapacityQuotaAndQuorumCleanup,

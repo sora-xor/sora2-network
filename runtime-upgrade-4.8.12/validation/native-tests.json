@@ -1,9 +1,9 @@
 {
   "status": "passed",
-  "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+  "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
   "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
   "log": "native-tests.log",
-  "logSha256": "95c4f4b3be738faa656c373800ad652afd1f4c5addf1748c9788636056d06628",
+  "logSha256": "c4e0f459448fc61786a41e4ab67ea3239ef2714d70aec387f4cb927dcfe081a4",
   "suites": [
     {
       "crate": "eth_bridge",
@@ -13,7 +13,7 @@
     },
     {
       "crate": "framenode_runtime",
-      "passed": 236,
+      "passed": 233,
       "failed": 0,
       "ignored": 3
     },
@@ -72,19 +72,22 @@
       "ignored": 0
     }
   ],
-  "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+  "baseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
   "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
-  "logSource": "/private/tmp/sora-followup-native-tests.log",
-  "totalPassed": 1154,
+  "logSource": "/private/tmp/sora-paid-migration-native.log",
+  "totalPassed": 1151,
   "totalFailed": 0,
   "totalIgnored": 3,
-  "newRuntimeRegressionsPassed": 35,
+  "newRuntimeRegressionsPassed": 32,
   "capacityExecutiveRegressionsPassed": 2,
-  "followupRegressionsPassed": 3,
+  "followupRegressionsPassed": 6,
   "requiredFollowupRegressions": [
     "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
-    "tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor",
-    "tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits"
+    "tests::liveness::migration_fees::migration_success_delivers_val_and_keeps_xor_fee",
+    "tests::liveness::migration_fees::migration_settlement_failure_keeps_fee_and_rolls_back_claim",
+    "tests::liveness::migration_fees::migration_requires_xor_before_valid_claim_can_execute",
+    "tests::liveness::migration_fees::migration_invalid_proof_and_replay_pay_without_duplicate_val",
+    "tests::liveness::migration_fees::wrapped_migration_requires_xor_and_keeps_success_fee"
   ],
   "cargoFmtAllCheckPassed": true,
   "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

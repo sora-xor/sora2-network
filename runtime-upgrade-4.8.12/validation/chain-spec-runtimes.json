@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "status": "passed",
-  "checkedAt": "2026-10-05T06:55:01.113821+00:00",
-  "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
-  "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
-  "provenanceSha256": "b6bcb8a1864cc373436d31ba2d0cf2fd378fe2b7c61160ee48e1bee1fc44a958",
-  "scriptSha256": "bebb5bb857f21d54827bd07d73c285d8d68ed9ecabaa6d1527f3a7d1ec22bb96",
+  "checkedAt": "2026-10-05T07:45:56.109241+00:00",
+  "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
+  "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+  "provenanceSha256": "39eaad8082b2a2e7d23ae275b05fe20d0e38b1883a088d4ff5b34802957be278",
+  "scriptSha256": "675ac9c9708f10e3770e78771185c844e5153a471c490691e275b6723920e3b5",
   "subwasmVersion": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
-  "comparatorSha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d",
+  "comparatorSha256": "fe8fde11d3665709cf91c415cc80289aea1d1a1976364e990b6532996f5f3e7c",
   "metadataHashEncoding": "UTF-8 JSON sorted keys, compact separators, ensure_ascii=false",
   "networkUsed": false,
   "runtimes": [
@@ -18,17 +18,17 @@
         "private-net",
         "stage"
       ],
-      "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
       "wasm": {
-        "path": "/private/tmp/sora-followup-stage.wasm",
-        "sha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
-        "bytes": 3160941,
+        "path": "/private/tmp/sora-paid-migration-stage.wasm",
+        "sha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
+        "bytes": 3150966,
         "specVersion": 134,
         "transactionVersion": 131,
-        "metadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+        "metadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
         "compression": {
-          "size_compressed": 3160941,
-          "size_decompressed": 14173026,
+          "size_compressed": 3150966,
+          "size_decompressed": 14142332,
           "compressed": true
         }
       },
@@ -140,15 +140,15 @@
       "specs": [
         {
           "path": "node/chain_spec/src/bytes/chain_spec_bridge_staging.json",
-          "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
-          "sha256": "426b80c8607271305a42cae27c228299dc6791df9773476a89cdef31ae410ef1",
-          "bytes": 6421684,
-          "previousSha256": "90e419dc3a666a6a81fb426c019438950ef9d70ecbea89e7c82f8dafbbd71e11",
-          "previousCodeSha256": "b397ac4ffda7780fab25ec4ecffa2007b71cb28926d5cf108e7180fe656a5cd7",
-          "codeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
-          "codeBytes": 3160941,
-          "previousMetadataSha256": "42c1ea35fadf4830ea47db71779e68768793533215decd6a227571b9583534f1",
-          "currentMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+          "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+          "sha256": "5ccca42f56b2fcd6ab69ebc4acdafbec4afab6db32969b174df916ca3bed8ebc",
+          "bytes": 6401734,
+          "previousSha256": "426b80c8607271305a42cae27c228299dc6791df9773476a89cdef31ae410ef1",
+          "previousCodeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
+          "codeSha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
+          "codeBytes": 3150966,
+          "previousMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+          "currentMetadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
           "previousRuntimeVersion": {
             "specName": "sora-substrate",
             "implName": "sora-substrate",
@@ -167,152 +167,16 @@
             "compatibleExistingScaleEncoding": true,
             "counts": {
               "existingPallets": 85,
-              "existingCalls": 446,
-              "nestedTypePairsVisited": 11633,
-              "existingEvent": 471,
-              "existingError": 1027,
-              "existingStorageEntries": 501,
+              "existingCalls": 445,
+              "nestedTypePairsVisited": 11640,
+              "existingEvent": 469,
+              "existingError": 1025,
+              "existingStorageEntries": 503,
               "existingConstants": 165,
               "signedExtensions": 7
             },
             "breakingChanges": [],
-            "additions": [
-              {
-                "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "BridgeMultisig.error",
-                "variant": "TooManyPendingOperationsByProposer",
-                "variantIndex": 23
-              },
-              {
-                "path": "BridgeMultisig.event",
-                "variant": "MultisigCancellationApproval",
-                "variantIndex": 5
-              },
-              {
-                "path": "BridgeMultisig.storage.CancellationApprovals",
-                "storage": {
-                  "default": [
-                    0
-                  ],
-                  "modifier": "Optional",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Blake2_128Concat"
-                      ],
-                      "key": 743,
-                      "value": 746
-                    }
-                  }
-                }
-              },
-              {
-                "path": "BridgeMultisig.storage.PendingOperationsByProposer",
-                "storage": {
-                  "default": [
-                    0,
-                    0,
-                    0,
-                    0
-                  ],
-                  "modifier": "Default",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Twox64Concat"
-                      ],
-                      "key": 745,
-                      "value": 4
-                    }
-                  }
-                }
-              },
-              {
-                "path": "BridgeMultisig.storage.ProposerCountedOperations",
-                "storage": {
-                  "default": [
-                    0
-                  ],
-                  "modifier": "Optional",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Blake2_128Concat"
-                      ],
-                      "key": 743,
-                      "value": 62
-                    }
-                  }
-                }
-              },
-              {
-                "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "EthBridge.calls",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Sudo.calls.variant[0].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
-                "variant": "MultisigCancellationApproval",
-                "variantIndex": 5
-              },
-              {
-                "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              }
-            ],
+            "additions": [],
             "constantValueChanges": [],
             "signedExtensionIdentifiers": [
               "CheckSpecVersion",
@@ -322,20 +186,77 @@
               "CheckNonce",
               "CheckWeight",
               "ChargeTransactionPayment"
-            ]
-          }
+            ],
+            "allowedUndeployedSponsorshipRemovals": [
+              {
+                "path": "IrohaMigration.calls",
+                "variant": "sponsor_migration",
+                "variantIndex": 1
+              },
+              {
+                "path": "IrohaMigration.calls",
+                "variant": "revoke_sponsorship",
+                "variantIndex": 2
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipGranted",
+                "variantIndex": 1
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipUsed",
+                "variantIndex": 2
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipRevoked",
+                "variantIndex": 3
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "InvalidMigrationInput",
+                "variantIndex": 10
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "InvalidFeeSponsorship",
+                "variantIndex": 11
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "NotFeeSponsor",
+                "variantIndex": 12
+              },
+              {
+                "path": "IrohaMigration.storage.FeeSponsorships",
+                "storage": "FeeSponsorships"
+              }
+            ],
+            "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
+            "allOtherAbiAndConstantsPreserved": true
+          },
+          "onlyDeclaredUndeployedSponsorshipRemoved": true,
+          "sponsorshipRemovalSelfChecks": [
+            "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
+            "Additional legacy Iroha storage removal rejected",
+            "Changed migrate-zero argument rejected under sponsor-removal mode",
+            "Signed-extension reorder rejected under sponsor-removal mode",
+            "Unrequested ABI addition rejected under sponsor-removal mode",
+            "Constant-byte change rejected under sponsor-removal mode"
+          ]
         },
         {
           "path": "node/chain_spec/src/bytes/chain_spec_staging.json",
-          "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
-          "sha256": "fb74875436075d842af2b3acdfaa4c131a270deef47d77d91a85cbd7b5083739",
-          "bytes": 6422879,
-          "previousSha256": "0052beea42bbd3d63f496b93d0b88ed6c87da3d6e787c554c0c393d0c4e79c8e",
-          "previousCodeSha256": "b397ac4ffda7780fab25ec4ecffa2007b71cb28926d5cf108e7180fe656a5cd7",
-          "codeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
-          "codeBytes": 3160941,
-          "previousMetadataSha256": "42c1ea35fadf4830ea47db71779e68768793533215decd6a227571b9583534f1",
-          "currentMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+          "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+          "sha256": "e05a25d053dd65fefd9f119b71100ec93546e5b57855628298141d459a470a9e",
+          "bytes": 6402929,
+          "previousSha256": "fb74875436075d842af2b3acdfaa4c131a270deef47d77d91a85cbd7b5083739",
+          "previousCodeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
+          "codeSha256": "bf6e2e13254fcb6253deddbb6f2f24720e1de48abf0329751f27801b64909c36",
+          "codeBytes": 3150966,
+          "previousMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+          "currentMetadataSha256": "285d452fc4cb38ebeaf3ebfee7ac663770eaa48c6796e44225ac4e350eab2f26",
           "previousRuntimeVersion": {
             "specName": "sora-substrate",
             "implName": "sora-substrate",
@@ -354,152 +275,16 @@
             "compatibleExistingScaleEncoding": true,
             "counts": {
               "existingPallets": 85,
-              "existingCalls": 446,
-              "nestedTypePairsVisited": 11633,
-              "existingEvent": 471,
-              "existingError": 1027,
-              "existingStorageEntries": 501,
+              "existingCalls": 445,
+              "nestedTypePairsVisited": 11640,
+              "existingEvent": 469,
+              "existingError": 1025,
+              "existingStorageEntries": 503,
               "existingConstants": 165,
               "signedExtensions": 7
             },
             "breakingChanges": [],
-            "additions": [
-              {
-                "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "BridgeMultisig.error",
-                "variant": "TooManyPendingOperationsByProposer",
-                "variantIndex": 23
-              },
-              {
-                "path": "BridgeMultisig.event",
-                "variant": "MultisigCancellationApproval",
-                "variantIndex": 5
-              },
-              {
-                "path": "BridgeMultisig.storage.CancellationApprovals",
-                "storage": {
-                  "default": [
-                    0
-                  ],
-                  "modifier": "Optional",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Blake2_128Concat"
-                      ],
-                      "key": 743,
-                      "value": 746
-                    }
-                  }
-                }
-              },
-              {
-                "path": "BridgeMultisig.storage.PendingOperationsByProposer",
-                "storage": {
-                  "default": [
-                    0,
-                    0,
-                    0,
-                    0
-                  ],
-                  "modifier": "Default",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Twox64Concat"
-                      ],
-                      "key": 745,
-                      "value": 4
-                    }
-                  }
-                }
-              },
-              {
-                "path": "BridgeMultisig.storage.ProposerCountedOperations",
-                "storage": {
-                  "default": [
-                    0
-                  ],
-                  "modifier": "Optional",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Blake2_128Concat"
-                      ],
-                      "key": 743,
-                      "value": 62
-                    }
-                  }
-                }
-              },
-              {
-                "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "EthBridge.calls",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Sudo.calls.variant[0].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
-                "variant": "MultisigCancellationApproval",
-                "variantIndex": 5
-              },
-              {
-                "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              }
-            ],
+            "additions": [],
             "constantValueChanges": [],
             "signedExtensionIdentifiers": [
               "CheckSpecVersion",
@@ -509,16 +294,73 @@
               "CheckNonce",
               "CheckWeight",
               "ChargeTransactionPayment"
-            ]
-          }
+            ],
+            "allowedUndeployedSponsorshipRemovals": [
+              {
+                "path": "IrohaMigration.calls",
+                "variant": "sponsor_migration",
+                "variantIndex": 1
+              },
+              {
+                "path": "IrohaMigration.calls",
+                "variant": "revoke_sponsorship",
+                "variantIndex": 2
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipGranted",
+                "variantIndex": 1
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipUsed",
+                "variantIndex": 2
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipRevoked",
+                "variantIndex": 3
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "InvalidMigrationInput",
+                "variantIndex": 10
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "InvalidFeeSponsorship",
+                "variantIndex": 11
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "NotFeeSponsor",
+                "variantIndex": 12
+              },
+              {
+                "path": "IrohaMigration.storage.FeeSponsorships",
+                "storage": "FeeSponsorships"
+              }
+            ],
+            "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
+            "allOtherAbiAndConstantsPreserved": true
+          },
+          "onlyDeclaredUndeployedSponsorshipRemoved": true,
+          "sponsorshipRemovalSelfChecks": [
+            "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
+            "Additional legacy Iroha storage removal rejected",
+            "Changed migrate-zero argument rejected under sponsor-removal mode",
+            "Signed-extension reorder rejected under sponsor-removal mode",
+            "Unrequested ABI addition rejected under sponsor-removal mode",
+            "Constant-byte change rejected under sponsor-removal mode"
+          ]
         }
       ],
       "build": {
-        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-followup-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage",
-        "logPath": "/private/tmp/sora-followup-stage-build.log",
-        "logSha256": "5fb56af79691111e24d0fc34a844cd791df5330b21ec9d5bb8b57872da89c794",
+        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-paid-migration CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage",
+        "logPath": "/private/tmp/sora-paid-migration-stage-build.log",
+        "logSha256": "000a9806dc55a7ce6d6940b60465b0659e2a502f8d3ea78df7229f6b4e33acee",
         "logBytes": 916,
-        "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d"
+        "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078"
       }
     },
     {
@@ -530,17 +372,17 @@
         "wip",
         "reduced-pswap-reward-periods"
       ],
-      "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
       "wasm": {
-        "path": "/private/tmp/sora-followup-test.wasm",
-        "sha256": "3b225e12db1e94e72188e932624736bb696bf032a562afbfdca067a67bcd8da7",
-        "bytes": 3238929,
+        "path": "/private/tmp/sora-paid-migration-test.wasm",
+        "sha256": "866c1eb47e462d497c7775c4c1af677cd1e76fea7ddd0c23ddb2041f679c3fe8",
+        "bytes": 3240244,
         "specVersion": 134,
         "transactionVersion": 131,
-        "metadataSha256": "01319606e2235e0f309e9d9cdbe51cb1b5b6694044a722ad819f415990556b29",
+        "metadataSha256": "83febf8880173eaa2db5855051f16123fe2945d73b1dbf7baa0bbea519916288",
         "compression": {
-          "size_compressed": 3238929,
-          "size_decompressed": 14639127,
+          "size_compressed": 3240244,
+          "size_decompressed": 14615714,
           "compressed": true
         }
       },
@@ -656,15 +498,15 @@
       "specs": [
         {
           "path": "node/chain_spec/src/bytes/chain_spec_test.json",
-          "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
-          "sha256": "249ae178db945802fe8656d0a343ede1b319df4e866affcdf9f62c46f79cf54b",
-          "bytes": 6579507,
-          "previousSha256": "c6d8a70409f7540f761c340b3f585bc36af375dd5bf3c32e95e66bb664d9f1f0",
-          "previousCodeSha256": "a953e83cef12607adbc668f601a43e52ea0e8e9011af14d575cef2d046dcafed",
-          "codeSha256": "3b225e12db1e94e72188e932624736bb696bf032a562afbfdca067a67bcd8da7",
-          "codeBytes": 3238929,
-          "previousMetadataSha256": "62f8c6b99131ac4b43a2ca4cd749385a9ba9915b2707e07e4bc1735c36768c5e",
-          "currentMetadataSha256": "01319606e2235e0f309e9d9cdbe51cb1b5b6694044a722ad819f415990556b29",
+          "sourceBaseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+          "sha256": "881dcaaba35ab863527546b6939084be1ac5ca8c0e1802dccadf20b63bd0ee69",
+          "bytes": 6582137,
+          "previousSha256": "249ae178db945802fe8656d0a343ede1b319df4e866affcdf9f62c46f79cf54b",
+          "previousCodeSha256": "3b225e12db1e94e72188e932624736bb696bf032a562afbfdca067a67bcd8da7",
+          "codeSha256": "866c1eb47e462d497c7775c4c1af677cd1e76fea7ddd0c23ddb2041f679c3fe8",
+          "codeBytes": 3240244,
+          "previousMetadataSha256": "01319606e2235e0f309e9d9cdbe51cb1b5b6694044a722ad819f415990556b29",
+          "currentMetadataSha256": "83febf8880173eaa2db5855051f16123fe2945d73b1dbf7baa0bbea519916288",
           "previousRuntimeVersion": {
             "specName": "sora-substrate",
             "implName": "sora-substrate",
@@ -683,152 +525,16 @@
             "compatibleExistingScaleEncoding": true,
             "counts": {
               "existingPallets": 89,
-              "existingCalls": 457,
-              "nestedTypePairsVisited": 12039,
-              "existingEvent": 481,
-              "existingError": 1064,
-              "existingStorageEntries": 525,
+              "existingCalls": 456,
+              "nestedTypePairsVisited": 12046,
+              "existingEvent": 479,
+              "existingError": 1062,
+              "existingStorageEntries": 527,
               "existingConstants": 167,
               "signedExtensions": 7
             },
             "breakingChanges": [],
-            "additions": [
-              {
-                "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "BridgeMultisig.error",
-                "variant": "TooManyPendingOperationsByProposer",
-                "variantIndex": 23
-              },
-              {
-                "path": "BridgeMultisig.event",
-                "variant": "MultisigCancellationApproval",
-                "variantIndex": 5
-              },
-              {
-                "path": "BridgeMultisig.storage.CancellationApprovals",
-                "storage": {
-                  "default": [
-                    0
-                  ],
-                  "modifier": "Optional",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Blake2_128Concat"
-                      ],
-                      "key": 765,
-                      "value": 768
-                    }
-                  }
-                }
-              },
-              {
-                "path": "BridgeMultisig.storage.PendingOperationsByProposer",
-                "storage": {
-                  "default": [
-                    0,
-                    0,
-                    0,
-                    0
-                  ],
-                  "modifier": "Default",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Twox64Concat"
-                      ],
-                      "key": 767,
-                      "value": 4
-                    }
-                  }
-                }
-              },
-              {
-                "path": "BridgeMultisig.storage.ProposerCountedOperations",
-                "storage": {
-                  "default": [
-                    0
-                  ],
-                  "modifier": "Optional",
-                  "ty": {
-                    "Map": {
-                      "hashers": [
-                        "Twox64Concat",
-                        "Blake2_128Concat"
-                      ],
-                      "key": 765,
-                      "value": 62
-                    }
-                  }
-                }
-              },
-              {
-                "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "EthBridge.calls",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Sudo.calls.variant[0].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
-                "variant": "MultisigCancellationApproval",
-                "variantIndex": 5
-              },
-              {
-                "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              },
-              {
-                "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
-                "variant": "cancel_pending_multisig",
-                "variantIndex": 18
-              }
-            ],
+            "additions": [],
             "constantValueChanges": [],
             "signedExtensionIdentifiers": [
               "CheckSpecVersion",
@@ -838,16 +544,73 @@
               "CheckNonce",
               "CheckWeight",
               "ChargeTransactionPayment"
-            ]
-          }
+            ],
+            "allowedUndeployedSponsorshipRemovals": [
+              {
+                "path": "IrohaMigration.calls",
+                "variant": "sponsor_migration",
+                "variantIndex": 1
+              },
+              {
+                "path": "IrohaMigration.calls",
+                "variant": "revoke_sponsorship",
+                "variantIndex": 2
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipGranted",
+                "variantIndex": 1
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipUsed",
+                "variantIndex": 2
+              },
+              {
+                "path": "IrohaMigration.event",
+                "variant": "FeeSponsorshipRevoked",
+                "variantIndex": 3
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "InvalidMigrationInput",
+                "variantIndex": 10
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "InvalidFeeSponsorship",
+                "variantIndex": 11
+              },
+              {
+                "path": "IrohaMigration.error",
+                "variant": "NotFeeSponsor",
+                "variantIndex": 12
+              },
+              {
+                "path": "IrohaMigration.storage.FeeSponsorships",
+                "storage": "FeeSponsorships"
+              }
+            ],
+            "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
+            "allOtherAbiAndConstantsPreserved": true
+          },
+          "onlyDeclaredUndeployedSponsorshipRemoved": true,
+          "sponsorshipRemovalSelfChecks": [
+            "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
+            "Additional legacy Iroha storage removal rejected",
+            "Changed migrate-zero argument rejected under sponsor-removal mode",
+            "Signed-extension reorder rejected under sponsor-removal mode",
+            "Unrequested ABI addition rejected under sponsor-removal mode",
+            "Constant-byte change rejected under sponsor-removal mode"
+          ]
         }
       ],
       "build": {
-        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-followup-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage,wip,reduced-pswap-reward-periods",
-        "logPath": "/private/tmp/sora-followup-test-build.log",
-        "logSha256": "8cf4dcae55603ce11330baeb5c517686ca9d9d65b9ee49052cf2dbdddf938077",
+        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-paid-migration CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage,wip,reduced-pswap-reward-periods",
+        "logPath": "/private/tmp/sora-paid-migration-test-build.log",
+        "logSha256": "b5ff97d52096f31f610e670b13d6d6d99e28cb0078cf92e1520f1f1a3a3f4350",
         "logBytes": 800,
-        "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d"
+        "sourceTree": "086a0444ac493f5e60896051fa4dc1fbb9f8e078"
       }
     }
   ]

@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T06:42:47.307Z",
+  "startedAt": "2026-10-05T07:45:18.984Z",
   "localOnly": true,
   "syntheticFixturesEnabled": true,
   "endpoint": "wss://mof2.sora.org",
@@ -13,7 +13,9 @@
   "submittedTransactions": 0,
   "privateKeysRead": 0,
   "realSignatures": 0,
-  "remoteRpcMethods": {},
+  "remoteRpcMethods": {
+    "state_getStorage": 4
+  },
   "unsignedChecks": [
     {
       "method": "kensetsu.accrue missing CDP",
@@ -1450,6 +1452,451 @@
       ],
       "storageDiffEntries": 12,
       "decodedError": "AlreadyNoted",
+      "actualFeeEventVerified": true,
+      "passed": true
+    },
+    {
+      "method": "irohaMigration.migrate paid success",
+      "expectSuccess": true,
+      "expectFree": false,
+      "expectedError": null,
+      "payer": "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+      "callHex": "0x230060706169642d7761736d2d6d6967726174696f6e40736f726101016436386663323634316633353761666366396531363539613162303437393731343036316239646266636663396531396636643864626637643231353434653901023733646165613732383734313863663435623234363435656130336438653762363436643634313963623736353531366438383362383539316534626233376565336365653831303637343336363037376331373432346566383365653738373832656561313161636263646631626437353833653037366639653262653032",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "quotedFee": "1998064855474884671",
+      "xorCharged": "1998064855474884671",
+      "before": {
+        "nonce": 0,
+        "consumers": 0,
+        "providers": 1,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000c9f2c9cd04674edea40000000",
+          "reserved": 0,
+          "frozen": 0,
+          "flags": 0
+        }
+      },
+      "after": {
+        "nonce": 1,
+        "consumers": 0,
+        "providers": 2,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000c9f2c9cd02aba6083e33a2fc1",
+          "reserved": 0,
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Upgraded",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Endowed",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x000000000000001043561a8829300000"
+          ]
+        },
+        {
+          "section": "tokens",
+          "method": "Transfer",
+          "data": [
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "cnTQ1kbv7PBNNQrEb1tZpmK7m6B1ToDe2qJbdz7aQw8F3W1CK",
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x000000000000001043561a8829300000"
+          ]
+        },
+        {
+          "section": "assets",
+          "method": "Transfer",
+          "data": [
+            "cnTQ1kbv7PBNNQrEb1tZpmK7m6B1ToDe2qJbdz7aQw8F3W1CK",
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            {
+              "code": "0x0200040000000000000000000000000000000000000000000000000000000000"
+            },
+            "0x000000000000001043561a8829300000"
+          ]
+        },
+        {
+          "section": "irohaMigration",
+          "method": "Migrated",
+          "data": [
+            "paid-wasm-migration@sora",
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000b6aeeede9f71984"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000d0c7ec6c23ef896"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000003431fb1b08fbe25"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 1998036000,
+                "proofSize": 375890
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 19,
+      "actualFeeEventVerified": true,
+      "passed": true
+    },
+    {
+      "method": "irohaMigration.migrate paid replay",
+      "expectSuccess": false,
+      "expectFree": false,
+      "expectedError": "AccountAlreadyMigrated",
+      "payer": "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+      "callHex": "0x230060706169642d7761736d2d6d6967726174696f6e40736f726101016436386663323634316633353761666366396531363539613162303437393731343036316239646266636663396531396636643864626637643231353434653901023733646165613732383734313863663435623234363435656130336438653762363436643634313963623736353531366438383362383539316534626233376565336365653831303637343336363037376331373432346566383365653738373832656561313161636263646631626437353833653037366639653262653032",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 35,
+              "error": "0x06000000"
+            }
+          }
+        }
+      },
+      "quotedFee": "1998064855474884671",
+      "xorCharged": "1998064855474884671",
+      "before": {
+        "nonce": 1,
+        "consumers": 0,
+        "providers": 2,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000c9f2c9cd02aba6083e33a2fc1",
+          "reserved": 0,
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "after": {
+        "nonce": 2,
+        "consumers": 0,
+        "providers": 2,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000c9f2c9cd00effd31d86745f82",
+          "reserved": 0,
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000b6aeeede9f71984"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000d0c7ec6c23ef896"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000003431fb1b08fbe25"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 35,
+                "error": "0x06000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 1998036000,
+                "proofSize": 375890
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 12,
+      "decodedError": "AccountAlreadyMigrated",
+      "actualFeeEventVerified": true,
+      "passed": true
+    },
+    {
+      "method": "irohaMigration.migrate paid settlement failure",
+      "expectSuccess": false,
+      "expectFree": false,
+      "expectedError": "ReferralMigrationFailed",
+      "payer": "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+      "callHex": "0x230060706169642d7761736d2d6d6967726174696f6e40736f726101016436386663323634316633353761666366396531363539613162303437393731343036316239646266636663396531396636643864626637643231353434653901023733646165613732383734313863663435623234363435656130336438653762363436643634313963623736353531366438383362383539316534626233376565336365653831303637343336363037376331373432346566383365653738373832656561313161636263646631626437353833653037366639653262653032",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 35,
+              "error": "0x07000000"
+            }
+          }
+        }
+      },
+      "quotedFee": "1998064855474884671",
+      "xorCharged": "1998064855474884671",
+      "before": {
+        "nonce": 0,
+        "consumers": 0,
+        "providers": 1,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000c9f2c9cd04674edea40000000",
+          "reserved": 0,
+          "frozen": 0,
+          "flags": 0
+        }
+      },
+      "after": {
+        "nonce": 1,
+        "consumers": 0,
+        "providers": 1,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000c9f2c9cd02aba6083e33a2fc1",
+          "reserved": 0,
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Upgraded",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Deposit",
+          "data": [
+            "cnTJbAWQqasMjtA5WXrykaJhxopFKwMG8w6KS7b5te2DYDrGm",
+            "0x000000000000000003431fb1b08fbe25"
+          ]
+        },
+        {
+          "section": "system",
+          "method": "NewAccount",
+          "data": [
+            "cnTJbAWQqasMjtA5WXrykaJhxopFKwMG8w6KS7b5te2DYDrGm"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Endowed",
+          "data": [
+            "cnTJbAWQqasMjtA5WXrykaJhxopFKwMG8w6KS7b5te2DYDrGm",
+            "0x000000000000000003431fb1b08fbe25"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "ReferrerRewarded",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "cnTJbAWQqasMjtA5WXrykaJhxopFKwMG8w6KS7b5te2DYDrGm",
+            "0x000000000000000003431fb1b08fbe25"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000b6aeeede9f71984"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000000d0c7ec6c23ef896"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+            "0x00000000000000001bba8d665cc5d03f",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 35,
+                "error": "0x07000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 1998036000,
+                "proofSize": 375890
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 15,
+      "decodedError": "ReferralMigrationFailed",
       "actualFeeEventVerified": true,
       "passed": true
     },
@@ -5223,6 +5670,86 @@
       "publicStateBefore": null
     },
     {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "backed claim and existing zero-XOR recipient",
+      "pallet": "system",
+      "name": "account",
+      "key": "0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9235aa2923aacff2bab0568192069a9114d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+      "value": "0x0000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "parentStateBefore": null
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "backed claim and existing zero-XOR recipient",
+      "pallet": "irohaMigration",
+      "name": "balances",
+      "key": "0x45b03a13ad75ff33b53f663f5462a975c2261276cc9d1f8598ea4b6a74b15c2f414bb7e3196b846f5c5c3f07a760200460706169642d7761736d2d6d6967726174696f6e40736f7261",
+      "value": "0x00003029881a56431000000000000000",
+      "parentStateBefore": null
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "backed claim and existing zero-XOR recipient",
+      "pallet": "irohaMigration",
+      "name": "publicKeys",
+      "key": "0x45b03a13ad75ff33b53f663f5462a9756d040e3e3609f532fbf04aef49caaebb414bb7e3196b846f5c5c3f07a760200460706169642d7761736d2d6d6967726174696f6e40736f7261",
+      "value": "0x0400010164363866633236343166333537616663663965313635396131623034373937313430363162396462666366633965313966366438646266376432313534346539",
+      "parentStateBefore": null
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "XOR-funded claimant and matching native issuance",
+      "pallet": "system",
+      "name": "account",
+      "key": "0x26aa394eea5630e07c48ae0c9558cef7b99d880ec681799c0cf30e8886371da9235aa2923aacff2bab0568192069a9114d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+      "value": "0x0000000000000000010000000000000000000040eaed7446d09c2c9f0c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "parentStateBefore": "0x0000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "XOR-funded claimant and matching native issuance",
+      "pallet": "balances",
+      "name": "totalIssuance",
+      "key": "0xc2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80",
+      "value": "0xa2f657b0042e41d7238b499f0c000000",
+      "parentStateBefore": "0xa2f657701a40cc9053ee1c0000000000"
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "referral conflict after valid ownership and VAL transfer",
+      "pallet": "irohaMigration",
+      "name": "referrers",
+      "key": "0x45b03a13ad75ff33b53f663f5462a975c515c65cd3572b74595f74033f80e0fa414bb7e3196b846f5c5c3f07a760200460706169642d7761736d2d6d6967726174696f6e40736f7261",
+      "value": "0x5c706169642d7761736d2d726566657272657240736f7261",
+      "parentStateBefore": null
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "referral conflict after valid ownership and VAL transfer",
+      "pallet": "irohaMigration",
+      "name": "migratedAccounts",
+      "key": "0x45b03a13ad75ff33b53f663f5462a975604dbd5b173d09db7c12fdd35b757624b27690a51a0662a92ec1423a992c23915c706169642d7761736d2d726566657272657240736f7261",
+      "value": "0x5050505050505050505050505050505050505050505050505050505050505050",
+      "parentStateBefore": null
+    },
+    {
+      "kind": "paidMigration",
+      "fixtureOnly": true,
+      "label": "referral conflict after valid ownership and VAL transfer",
+      "pallet": "referrals",
+      "name": "referrers",
+      "key": "0xbbb9c4ab5a720bf6916b37a4f9a6d95fc515c65cd3572b74595f74033f80e0fa235aa2923aacff2bab0568192069a9114d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d",
+      "value": "0x5050505050505050505050505050505050505050505050505050505050505050",
+      "parentStateBefore": null
+    },
+    {
       "kind": "zeroXorLegacyBridgePeer",
       "fixtureOnly": true,
       "purpose": "Synthetic single-peer quorum accepts an authenticated protocol report of a remote failure; real public network/bridge account retained",
@@ -8150,7 +8677,8 @@
     "Only enumerated read-only public RPC supplies block-hash-pinned state.",
     "Main branches replace only :code locally. Explicit --synthetic-fixtures branches additionally record every fixture key/value override; these do not claim mainnet-state coverage.",
     "Synthetic headers and extrinsics use the mocked signature host. Real cryptography is covered by native tests; consensus validity and governance enactment are outside this rehearsal.",
-    "Independent fee cases branch from initialized local state; replay checks retain prior local execution. No transactions are submitted to the public network."
+    "Independent fee cases branch from initialized local state; replay checks retain prior local execution. No transactions are submitted to the public network.",
+    "Migration ownership proofs use deterministic synthetic ed25519/SHA3 keys and real Wasm verification; only transaction/header signatures use the mocked host."
   ],
   "dependencies": {
     "manifest": {
@@ -8179,13 +8707,13 @@
   "readCache": {
     "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/.public-read-cache.json.gz",
     "content": "Immutable public storage scoped by block hash",
-    "existingValues": 6139,
-    "storageHits": 1598,
+    "existingValues": 6151,
+    "storageHits": 1609,
     "keyPageHits": 152,
-    "fetchedValues": 0,
+    "fetchedValues": 4,
     "fetchedKeyPages": 0,
-    "savedBytes": 7357888,
-    "sha256": "50cf8e0acaddd386bbf96d8fa6e44632e39a289d38ce2ab0d507d9ef35bd2a4d"
+    "savedBytes": 7358644,
+    "sha256": "0d91c643da7fa69e05b9a531ef7e81ee2ad517e8bab93f4056349c56fae27209"
   },
   "deployedVersion": {
     "specName": "sora-substrate",
@@ -8313,8 +8841,8 @@
   "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
   "candidate": {
     "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3092259,
-    "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+    "bytes": 3086444,
+    "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -8528,6 +9056,55 @@
     "largestFixtureFee": "3984925431857261593",
     "minimumSpendable": "8969850863714523186",
     "fixtureQuotes": 6
+  },
+  "zeroXorMigration": {
+    "method": "irohaMigration.migrate zero-XOR valid VAL claim",
+    "sources": {
+      "External": {
+        "err": {
+          "invalid": {
+            "payment": null
+          }
+        }
+      },
+      "Local": {
+        "err": {
+          "invalid": {
+            "payment": null
+          }
+        }
+      },
+      "InBlock": {
+        "err": {
+          "invalid": {
+            "payment": null
+          }
+        }
+      }
+    },
+    "account": "cnTEe8HTCTnPBzsfMM1VB87ren1WvY7VMYSq5Z6eCrfqypTmp",
+    "proofIsSynthetic": true,
+    "apply": {
+      "err": {
+        "invalid": {
+          "payment": null
+        }
+      }
+    },
+    "claimBalancesAndNoncePreserved": true,
+    "passed": true
+  },
+  "paidMigration": {
+    "passed": true,
+    "claimVal": "300",
+    "ownershipProofVerifiedByWasm": true,
+    "syntheticProofSha256": "94396ebc78d2d72de8d599bf4883bf710f2fe7dcbbe066fe420a832417d22a56",
+    "proofGeneratorSha256": "3f2fb9bb5335b950895a7bf9f58110c50de0c6fb5d2f17e0c4ac1edd038e90b1",
+    "successRetainsXorFee": true,
+    "failureRetainsXorFee": true,
+    "failureRollsBackValAndClaim": true,
+    "replayPaidWithoutDuplicateVal": true,
+    "sponsorshipAbiAbsent": true
   },
   "bridgeProtocolReplay": {
     "method": "bridgeMultisig.asMultiThreshold1 consumed load replay with changed outer timepoint",
@@ -8879,8 +9456,8 @@
     ]
   },
   "inputs": {
-    "candidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
-    "scriptSha256": "6739a5933049c85becfccd4d59e59a7f7cb1184079c4a6a6680842520dc0f900",
+    "candidateSha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
+    "scriptSha256": "4a1d660a39886f6ce264647d4e3a10a72c9b1ae7f3b2bf5a0e7502803757cba4",
     "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
     "packageLockSha256": "d3e676fd0ef61c0ce9c54df8541c0b5d26c92196e32ac5d541230be3b7bba6f7"
   },
@@ -8893,6 +9470,8 @@
     "invalidInboundProofsReject": true,
     "allCheckedFeeEventsMatchBalances": true,
     "requestedPreimageFirstAndReplay": true,
+    "paidMigrationSuccessAndFailure": true,
+    "zeroXorMigrationRejectsBeforeExecution": true,
     "successfulCancellationAndPaidReplay": true,
     "zeroXorLegacyPeerAndReplayRejection": true,
     "bridgeCapacityFairQuotaProtectsHonestPeers": true,
@@ -8901,5 +9480,5 @@
     "protectedStakingStateAndXorIssuancePreservedByUpgrade": true,
     "noPublicTransactionSubmission": true
   },
-  "finishedAt": "2026-10-05T06:43:21.931Z"
+  "finishedAt": "2026-10-05T07:45:49.306Z"
 }

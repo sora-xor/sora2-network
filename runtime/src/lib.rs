@@ -54,7 +54,6 @@ pub use bridge_multisig_filter::BridgeMultisigCallFilter;
 pub mod constants;
 mod impls;
 mod liveness;
-mod migration_fees;
 pub mod migrations;
 mod xor_fee_impls;
 
@@ -1519,7 +1518,6 @@ impl pallet_multisig::Config for Runtime {
 }
 
 impl iroha_migration::Config for Runtime {
-    type FeeCurrency = Balances;
     type RuntimeEvent = RuntimeEvent;
     type MigrationGenesisHash = IrohaMigrationGenesisHash;
     type WeightInfo = iroha_migration::weights::SubstrateWeight<Runtime>;

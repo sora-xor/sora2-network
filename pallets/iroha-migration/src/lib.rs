@@ -54,15 +54,15 @@ mod tests;
 
 pub mod weights;
 
-use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
+use codec::{Decode, Encode};
 use common::prelude::Balance;
 use common::{FromGenericPair, VAL};
 use ed25519_dalek_iroha::{Digest, PublicKey, Signature, SIGNATURE_LENGTH};
 use frame_support::dispatch::Pays;
 use frame_support::ensure;
-use frame_support::sp_runtime::traits::{Hash, Zero};
+use frame_support::sp_runtime::traits::Zero;
 use frame_support::sp_runtime::DispatchError;
-use frame_support::traits::{Currency, Get, WithdrawReasons};
+use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -78,21 +78,6 @@ pub use weights::WeightInfo;
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"iroha-migration";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 const MIGRATION_SIGNING_PAYLOAD_PREFIX: &str = "SORA2-IROHA-MIGRATION-V2";
-
-/// A voluntary authorization, never a claim on another account's funds.
-/// The payment extension withdraws XOR before consuming an attempt, outside
-/// the migration call's rollback layer. Quoted fees bound total exposure.
-#[derive(
-    Clone, Debug, Encode, Decode, DecodeWithMemTracking, MaxEncodedLen, scale_info::TypeInfo,
-)]
-pub struct FeeSponsorship<AccountId, BlockNumber> {
-    pub sponsor: AccountId,
-    pub beneficiary: AccountId,
-    pub max_fee: Balance,
-    pub remaining_budget: Balance,
-    pub remaining_attempts: u8,
-    pub valid_until: BlockNumber,
-}
 
 fn blocks_till_migration<T>() -> BlockNumberFor<T>
 where
@@ -126,21 +111,6 @@ where
 }
 
 impl<T: Config> Pallet<T> {
-    fn can_fund_sponsorship(sponsor: &T::AccountId, budget: Balance) -> bool {
-        let Some(remaining) = T::FeeCurrency::free_balance(sponsor).checked_sub(budget) else {
-            return false;
-        };
-        remaining > 0
-            && remaining >= T::FeeCurrency::minimum_balance()
-            && T::FeeCurrency::ensure_can_withdraw(
-                sponsor,
-                budget,
-                WithdrawReasons::TRANSACTION_PAYMENT,
-                remaining,
-            )
-            .is_ok()
-    }
-
     pub fn needs_migration(iroha_address: &String) -> bool {
         Balances::<T>::contains_key(iroha_address)
             && !MigratedAccounts::<T>::contains_key(iroha_address)
@@ -190,73 +160,6 @@ impl<T: Config> Pallet<T> {
         ensure!(!already_migrated, Error::<T>::PublicKeyAlreadyUsed);
         Self::verify_signature(&iroha_address, &iroha_public_key, &iroha_signature, account)?;
         Ok(())
-    }
-
-    pub fn sponsorship_id(
-        account: &T::AccountId,
-        iroha_address: &String,
-        iroha_public_key: &String,
-    ) -> T::Hash {
-        T::Hashing::hash_of(&(account, iroha_address, iroha_public_key.to_lowercase()))
-    }
-
-    pub fn fee_sponsor(
-        account: &T::AccountId,
-        iroha_address: &String,
-        iroha_public_key: &String,
-        iroha_signature: &String,
-        fee: Balance,
-        tip: Balance,
-    ) -> Option<T::AccountId> {
-        if !tip.is_zero()
-            || fee.is_zero()
-            || iroha_address.len() > 128
-            || iroha_public_key.len() != 64
-            || iroha_signature.len() != 128
-        {
-            return None;
-        }
-        Self::check_migrate(iroha_address, iroha_public_key, iroha_signature, account).ok()?;
-        let id = Self::sponsorship_id(account, iroha_address, iroha_public_key);
-        let grant = FeeSponsorships::<T>::get(id)?;
-        (grant.remaining_attempts > 0
-            && fee <= grant.max_fee
-            && fee <= grant.remaining_budget
-            && frame_system::Pallet::<T>::block_number() <= grant.valid_until)
-            .then_some(grant.sponsor)
-    }
-
-    /// Called only after a matching sponsored fee has been withdrawn atomically.
-    pub fn consume_fee_sponsorship(
-        account: &T::AccountId,
-        iroha_address: &String,
-        iroha_public_key: &String,
-        sponsor: &T::AccountId,
-        fee: Balance,
-    ) -> Result<(), DispatchError> {
-        let id = Self::sponsorship_id(account, iroha_address, iroha_public_key);
-        FeeSponsorships::<T>::try_mutate_exists(id, |stored| {
-            let grant = stored.as_mut().ok_or(Error::<T>::InvalidFeeSponsorship)?;
-            ensure!(
-                &grant.sponsor == sponsor
-                    && grant.remaining_attempts > 0
-                    && fee <= grant.max_fee
-                    && fee <= grant.remaining_budget
-                    && frame_system::Pallet::<T>::block_number() <= grant.valid_until,
-                Error::<T>::InvalidFeeSponsorship
-            );
-            grant.remaining_attempts -= 1;
-            grant.remaining_budget -= fee;
-            // Keep the bounded exhausted grant until explicitly cleaned up. Its
-            // sufficient reference preserves the claimant's nonce through a
-            // failed final attempt; revocation releases that reference.
-            Self::deposit_event(Event::FeeSponsorshipUsed {
-                claim: id,
-                sponsor: sponsor.clone(),
-                maximum_fee: fee,
-            });
-            Ok(())
-        })
     }
 
     fn parse_public_key(iroha_public_key: &str) -> Result<PublicKey, DispatchError> {
@@ -426,7 +329,6 @@ pub mod pallet {
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type MigrationGenesisHash: Get<Self::Hash>;
-        type FeeCurrency: Currency<Self::AccountId, Balance = Balance>;
         type WeightInfo: WeightInfo;
     }
 
@@ -437,15 +339,6 @@ pub mod pallet {
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
-
-    #[pallet::storage]
-    pub type FeeSponsorships<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::Hash,
-        FeeSponsorship<T::AccountId, BlockNumberFor<T>>,
-        OptionQuery,
-    >;
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
@@ -476,8 +369,8 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        // Cover ownership checks in payment admission as well as dispatch.
-        #[pallet::weight((WeightInfoOf::<T>::migrate().saturating_mul(3), Pays::Yes))]
+        // Ownership is checked once in dispatch, with the claimant paying the fee.
+        #[pallet::weight((WeightInfoOf::<T>::migrate(), Pays::Yes))]
         pub fn migrate(
             origin: OriginFor<T>,
             iroha_address: String,
@@ -501,120 +394,12 @@ pub mod pallet {
                         key_count,
                     )?;
                 }
-                // The user doesn't have to pay fees if the migration is succeeded
+                // A successful claim pays the same transaction fee as a failed attempt.
                 Ok(PostDispatchInfo {
                     actual_weight: None,
-                    pays_fee: Pays::No,
+                    pays_fee: Pays::Yes,
                 })
             })
-        }
-
-        /// Authorize up to three fee-funded migration attempts for one claimant.
-        /// The sponsor's available XOR is checked and withdrawn at execution;
-        /// an unfunded authorization never admits an unpaid migration.
-        #[pallet::call_index(1)]
-        #[pallet::weight(WeightInfoOf::<T>::migrate())]
-        pub fn sponsor_migration(
-            origin: OriginFor<T>,
-            beneficiary: T::AccountId,
-            iroha_address: String,
-            iroha_public_key: String,
-            max_fee: Balance,
-            attempts: u8,
-            valid_until: BlockNumberFor<T>,
-        ) -> DispatchResult {
-            let sponsor = ensure_signed(origin)?;
-            ensure!(
-                iroha_address.len() <= 128 && iroha_public_key.len() == 64,
-                Error::<T>::InvalidMigrationInput
-            );
-            ensure!(
-                attempts > 0 && attempts <= 3 && max_fee > 0,
-                Error::<T>::InvalidFeeSponsorship
-            );
-            ensure!(
-                valid_until > frame_system::Pallet::<T>::block_number(),
-                Error::<T>::InvalidFeeSponsorship
-            );
-            let key = iroha_public_key.to_lowercase();
-            ensure!(
-                PublicKeys::<T>::get(&iroha_address)
-                    .iter()
-                    .any(|(used, public)| !used && public == &key),
-                Error::<T>::AccountNotFound
-            );
-            ensure!(
-                !MigratedAccounts::<T>::contains_key(&iroha_address),
-                Error::<T>::AccountAlreadyMigrated
-            );
-            let claim = Self::sponsorship_id(&beneficiary, &iroha_address, &key);
-            let remaining_budget = max_fee
-                .checked_mul(attempts as Balance)
-                .ok_or(Error::<T>::InvalidFeeSponsorship)?;
-            ensure!(
-                Self::can_fund_sponsorship(&sponsor, remaining_budget),
-                Error::<T>::InvalidFeeSponsorship
-            );
-            // A volunteer can replace an underpriced grant without requiring
-            // the zero-XOR claimant to pay for revocation. A stranger may only
-            // replace a live funded grant with a strictly higher fee cap and no lower
-            // budget, attempt allowance or expiry, backed by the new sponsor's
-            // own funds. Check current storage so stale replacements cannot
-            // degrade a grant that was improved while they were pending.
-            if let Some(existing) = FeeSponsorships::<T>::get(claim) {
-                ensure!(
-                    existing.sponsor == sponsor
-                        || existing.remaining_attempts == 0
-                        || existing.valid_until < frame_system::Pallet::<T>::block_number()
-                        || !Self::can_fund_sponsorship(
-                            &existing.sponsor,
-                            existing.remaining_budget
-                        )
-                        || (max_fee > existing.max_fee
-                            && remaining_budget >= existing.remaining_budget
-                            && attempts >= existing.remaining_attempts
-                            && valid_until >= existing.valid_until),
-                    Error::<T>::NotFeeSponsor
-                );
-            } else {
-                frame_system::Pallet::<T>::inc_sufficients(&beneficiary);
-            }
-            FeeSponsorships::<T>::insert(
-                claim,
-                FeeSponsorship {
-                    sponsor: sponsor.clone(),
-                    beneficiary: beneficiary.clone(),
-                    max_fee,
-                    remaining_budget,
-                    remaining_attempts: attempts,
-                    valid_until,
-                },
-            );
-            Self::deposit_event(Event::FeeSponsorshipGranted {
-                claim,
-                sponsor,
-                beneficiary,
-            });
-            Ok(())
-        }
-
-        /// Revoke a grant, or remove an expired grant without spending its funds.
-        #[pallet::call_index(2)]
-        #[pallet::weight(WeightInfoOf::<T>::migrate())]
-        pub fn revoke_sponsorship(origin: OriginFor<T>, claim: T::Hash) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let grant =
-                FeeSponsorships::<T>::get(claim).ok_or(Error::<T>::InvalidFeeSponsorship)?;
-            ensure!(
-                grant.sponsor == who
-                    || grant.beneficiary == who
-                    || grant.valid_until < frame_system::Pallet::<T>::block_number(),
-                Error::<T>::NotFeeSponsor
-            );
-            FeeSponsorships::<T>::remove(claim);
-            frame_system::Pallet::<T>::dec_sufficients(&grant.beneficiary);
-            Self::deposit_event(Event::FeeSponsorshipRevoked { claim });
-            Ok(())
         }
     }
 
@@ -623,19 +408,6 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// Migrated. [source, target]
         Migrated(String, AccountIdOf<T>),
-        FeeSponsorshipGranted {
-            claim: T::Hash,
-            sponsor: T::AccountId,
-            beneficiary: T::AccountId,
-        },
-        FeeSponsorshipUsed {
-            claim: T::Hash,
-            sponsor: T::AccountId,
-            maximum_fee: Balance,
-        },
-        FeeSponsorshipRevoked {
-            claim: T::Hash,
-        },
     }
 
     #[pallet::error]
@@ -660,9 +432,6 @@ pub mod pallet {
         MultiSigCreationFailed,
         /// Signatory addition to multi-signature account failed
         SignatoryAdditionFailed,
-        InvalidMigrationInput,
-        InvalidFeeSponsorship,
-        NotFeeSponsor,
     }
 
     #[pallet::storage]

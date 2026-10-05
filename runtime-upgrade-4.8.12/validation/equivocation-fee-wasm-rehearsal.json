@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T06:42:37.018Z",
+  "startedAt": "2026-10-05T07:41:10.945Z",
   "localOnly": true,
   "endpoint": "wss://mof2.sora.org",
   "pinnedBlockHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05",
@@ -1476,8 +1476,8 @@
   "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
   "candidate": {
     "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3092259,
-    "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+    "bytes": 3086444,
+    "sha256": "98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4",
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -1758,5 +1758,5 @@
     "consensusRuntimeApisDisableAutomaticUnsignedSubmission": true,
     "transactionVersionRemains131": true
   },
-  "finishedAt": "2026-10-05T06:42:46.751Z"
+  "finishedAt": "2026-10-05T07:41:20.813Z"
 }

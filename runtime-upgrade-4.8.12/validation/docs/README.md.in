@@ -1,53 +1,51 @@
 # SORA 4.8.12 runtime upgrade
 
-Runtime spec **134**, transaction version **131**, preserves the reviewed fee
-policy and adds two follow-up fixes. Successful outgoing bridge approvals retain
-all declared admission/validation weight. A funded but underpriced migration
-sponsor grant can be replaced by an adequate grant for a zero-XOR claimant;
-replacement cannot reduce a funded grant's existing limits.
+Runtime spec **134**, transaction version **131**, closes transaction-fee bypasses
+while preserving useful order-cancellation refunds and zero-XOR bridge operation.
 
-BABE/GRANDPA reports and Kensetsu/Apollo maintenance require funded signed
-submission. Successful order cancellation and first useful requested-preimage
-provision retain refunds; invalid/replayed cancellation, unauthorized Rewards
-calls and requested-preimage replay retain fees. See [FEE_POLICY.md](FEE_POLICY.md).
+**Legacy Iroha migration requires the claimant to pay XOR, including successful
+VAL claims.** Insufficient XOR rejects admission before execution. Failed
+settlement retains the fee and restores the claim. All proposed sponsorship
+calls, storage, events, errors and fee-payer hooks are removed. Legacy claim
+records, ownership proofs, referrals and pending multisig behavior remain intact.
 
-Registered bridge peers require **zero XOR** for authenticated protocol
-operations, including accepted local failures. Invalid/replayed work is rejected
-before execution. New bridge proposals have a fair per-proposer quota inside
-the shared 128-operation limit. Current peers can cancel orphaned proposals by
-quorum at a full queue without the proposer or execution of their payload.
-Cleanup preserves incoming state and shared dispatch markers. It does not retry
-an already consumed incoming transaction.
+BABE/GRANDPA reports and Kensetsu/Apollo maintenance require signed funded payers.
+Successful useful order cancellations and first requested-preimage provision
+retain refunds; failed/empty/replayed cancellations, unauthorized Rewards calls
+and requested-preimage replay pay. See [FEE_POLICY.md](FEE_POLICY.md).
 
-Migration sponsorship remains voluntary, claimant-bound and bounded by fee,
-budget, expiry and at most three attempts. Failed settlement is paid; success
-retains its refund. No automatic sponsor, peer escrow or bridge bond is added.
-The preceding VAL staking compatibility repair remains included.
+Registered bridge peers require **zero XOR** for authenticated protocol work,
+including accepted local failures. Invalid/replayed requests reject before
+execution. Successful outgoing approvals retain their full validation weight.
+New bridge proposals have a fair per-proposer quota within the shared 128-operation
+limit. Current quorum can cancel abandoned proposals at full capacity without
+executing their payload or changing consumed incoming state. The preceding VAL
+staking repair remains included.
 
 Final Wasm SHA-256: `{{CANDIDATE_SHA256}}` ({{CANDIDATE_BYTES}} bytes).
-Source overlay tree: `{{SOURCE_TREE}}`, reapplied to reviewed base
-`{{SOURCE_BASE}}`. Fresh native evidence records **{{NATIVE_PASSED}} passed**,
-zero failures, **{{NATIVE_IGNORED}} existing ignores**, and **{{RUNTIME_REGRESSIONS}}**
-runtime regressions. All three follow-up regressions are required explicitly.
-The previous `faf9ab84...` package and older 430-test evidence are historical
-context, not fresh execution. [VALIDATION.md](VALIDATION.md) records the final gates.
+Source overlay tree: `{{SOURCE_TREE}}`; reviewed base: `{{SOURCE_BASE}}`.
+Fresh native validation: **{{NATIVE_PASSED}} passed**, zero failed,
+**{{NATIVE_IGNORED}} existing ignored**, including **{{RUNTIME_REGRESSIONS}}**
+runtime fee-policy regressions. Five paid-migration cases and the bridge
+approval-weight case are required by exact name.
 
-The corrected stage/test genesis blobs are separately bound to the same source,
-the exact feature profiles and current runtime metadata. Only `:code` changes
-from the reviewed 802298f chain specs; all other values and bytes are preserved.
-Feature binaries and large feature metadata are not duplicated in the package.
-The optional workspace verification checks each actual JSON and embedded blob.
+The exact Wasm verifies paid VAL delivery, paid replay, failed-settlement rollback
+and zero-XOR rejection, in addition to the existing report, bridge and cancellation
+checks. Deployed-baseline compatibility remains strict. Comparisons to the prior
+unreleased candidate permit only nine explicitly enumerated sponsorship ABI
+removals. [VALIDATION.md](VALIDATION.md) discloses fixtures, limitations and historical
+results; earlier execution is never relabeled as fresh validation.
 
-Six unsigned governance review calls are bound to the final Wasm and finalized
-preflight block **{{PREFLIGHT_BLOCK}}**. Follow [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md)
-after verifying the ZIP companion hash and extracted `SHA256SUMS`. The guarded
-route preserves an occupied external queue; it does not supersede another
-proposal. Refresh the deployed baseline/preflight before activation, and repeat
-compatibility and Wasm checks if that baseline changes.
+All three stage/test chain-spec blobs are rebuilt from this source. Only `:code`
+changes; all other JSON values and bytes remain intact. Feature-runtime binaries
+and metadata are not duplicated in this package; workspace verification checks
+the actual embedded blobs.
 
-Preparation does not install/fund operator keys, attest rollout, sign or submit
-a governance transaction, or enact code. All report-generated fingerprints in
-this document must be finalized before the package can pass verification.
+Six unsigned governance review calls match this Wasm and finalized preflight
+block **{{PREFLIGHT_BLOCK}}**. Verify the ZIP companion checksum and extracted
+`SHA256SUMS`, then follow [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md). The guarded
+route preserves an occupied external queue. Refresh baseline/state/operator
+readiness before signing. Preparation does not submit or enact transactions.
 
 Fresh feature-runtime regeneration gate: **{{CHAIN_SPEC_STATUS}}**.
 Fresh three-profile Clippy gate: **{{CLIPPY_STATUS}}**.

@@ -14,21 +14,21 @@ before dispatch; peer identity never makes unrelated calls free.
 | Legacy EthBridge and BridgeMultisig | Registered peers' authenticated bridge protocol calls are free without XOR, including accepted protocol failures. Read-only admission checks reject invalid/replayed work before execution. Arbitrary peer calls and unrelated wrappers remain paid. The public user load-request call retains its existing fee. |
 | Generic and substrate inbound channels | A verified fresh peer commitment is free, with either the existing bare submission or a signed submission. Invalid proof and replay are rejected before execution. Accepted local application failure remains free as part of the bridge exception; a partially applied batch retains its consumed nonce and successful items, preventing double credit. |
 | Kensetsu accrue/liquidate and Apollo liquidation | Signed funded keeper; fees on success and failure. Bare admission rejected. Both workers use the dedicated `keep` key type and one durable nonce queue per account. |
-| Iroha migration | A successful valid migration is refunded. Failed settlement remains paid. A zero-XOR claimant needs a voluntary claim-bound sponsor grant with a fee cap, budget, expiry and at most three attempts. Sponsor withdrawal and attempt consumption occur before dispatch and survive migration rollback. No sponsor is configured automatically. |
+| Iroha migration | The signed claimant funds the normal transaction fee in XOR. Success, invalid proof, replay and failed settlement all pay; there is no success refund or sponsorship. Insufficient XOR rejects admission before execution without consuming the claim. |
 | Rewards UMI NFT receiver update (`add_umi_nft_receivers`) | Root success retains its exemption; a signed unauthorized call is charged. |
 | Requested preimage provision | The first useful signed provision retains its refund. Repeated signed provision is rejected and charged. Internal preimage reference handling remains compatible. |
 
-## Follow-up weight and sponsorship repair
+## Paid migration and retained bridge reservation
 
-Successful outgoing bridge approvals keep the full declared admission/validation
-reservation instead of refunding it to the older processing-only weight. This
-covers the fee-exemption checks as well as evidence processing before and at quorum.
+Iroha migration requires the claimant to fund its transaction. The migration-zero
+call and all legacy storage/events/errors retain their SCALE encodings. Only the
+undeployed sponsor calls, FeeSponsorships storage and their appended events/errors
+are withdrawn. Successful migration delivers VAL while retaining the normal XOR
+fee; settlement failure retains that fee and rolls back the claim and VAL changes.
 
-A funded grant that cannot cover the current declared migration fee may be
-replaced by a usable authorization for a zero-XOR claimant. Replacing a funded
-grant cannot lower its existing maximum fee, remaining budget or attempts; the
-normal sponsor authorization, funding and withdrawal rules remain in force.
-The named Executive regressions cover these rules with real signatures.
+Outgoing bridge approvals continue to retain their full declared validation
+reservation. This weight repair and the existing zero-XOR authenticated bridge
+exception remain in effect.
 
 ## Remaining protocol exemptions
 
@@ -106,8 +106,8 @@ estimates, not newly measured throughput benchmarks.
    current quorum cleanup also handles old entries without proposer markers.
 4. Switch consensus reporters to signed funded submission. The automatic
    unsigned report API returns no submitted transaction in this release.
-5. Update zero-XOR migration onboarding to obtain a bounded sponsor grant.
-   Sponsorship is optional for a claimant who can pay their own fees.
+5. Fund each migration claimant with enough XOR for the normal transaction fee.
+   Validate both success and failure fees and rejection before execution when XOR is insufficient.
 6. Resolve the existing external governance queue normally, repeat the
    finalized-state preflight and confirm client readiness before enactment.
    A compiled Wasm is not evidence that operators have completed these steps.

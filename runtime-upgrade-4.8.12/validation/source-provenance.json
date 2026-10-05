@@ -1,10 +1,10 @@
 {
   "status": "passed",
-  "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
-  "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+  "baseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
+  "sourceTreeAfterPatch": "086a0444ac493f5e60896051fa4dc1fbb9f8e078",
   "sourceIsUncommittedOverlay": true,
   "patch": "source.patch",
-  "patchSha256": "3d9ae5f96afb8f3b229f44485e8d33a8dd573ab9cf4a31a40d9cb9ddf2ca8cd0",
+  "patchSha256": "f569f53a81a57a0b359c7cd820ecb51e38ab33640c2fdd8ab3e418e9a4492b2b",
   "patchAppliesToCleanBase": true,
   "replayedTreeMatches": true,
   "userIndexModified": false,
@@ -20,22 +20,36 @@
   "requiredFollowupInputs": [
     "pallets/eth-bridge/src/lib.rs",
     "pallets/iroha-migration/src/lib.rs",
-    "runtime/src/migration_fees.rs",
+    "pallets/xor-fee/src/lib.rs",
+    "runtime/src/lib.rs",
+    "runtime/src/xor_fee_impls.rs",
     "runtime/src/tests/liveness/bridge_fees.rs",
-    "runtime/src/tests/liveness/migration_sponsorship.rs",
+    "runtime/src/tests/liveness/migration_fees.rs",
+    "runtime/src/tests/liveness.rs",
     "pallets/iroha-migration/src/tests.rs"
   ],
+  "requiredDeletions": [
+    "runtime/src/migration_fees.rs",
+    "runtime/src/tests/liveness/migration_sponsorship.rs"
+  ],
+  "deletedFiles": {
+    "runtime/src/migration_fees.rs": "cfde4ec5c650f7d5e9b03b850402563855f60da7708efa62156988d0db1021a6",
+    "runtime/src/tests/liveness/migration_sponsorship.rs": "138c149edf0238494fb50557c928639feae8d4fb1c65a56b7ae692f2750848a1"
+  },
   "buildInputScope": "Runtime compilation inputs; regenerated chain-spec blobs are bound separately in validation/chain-spec-runtimes.json.",
   "files": {
     "Cargo.lock": "206c00afce9062930f87f30729d65422a23d1b3b9462cae1013e958f8669225e",
     "Cargo.toml": "0e8ebd29f773fdd708a32e78c8da9cb53bad00046d2342a20e124ad80ad27ff0",
     "pallets/eth-bridge/src/lib.rs": "0754dd01d4600360ec5ee7338a8a98ab691e0ec6f1c3e76997fd53b81d18bca4",
-    "pallets/eth-bridge/src/tests/outgoing_tranfser.rs": "044dd26282537f4df90d2a438ee17fb65229c8c2173cb552eb8f2704cc608e60",
-    "pallets/iroha-migration/src/lib.rs": "6e67dae20087771931d1b526ac6fe62ba186e6ca822b0a0628ce24d1c8a3ac7e",
-    "pallets/iroha-migration/src/tests.rs": "182d09f37515a5835292b925de577d13c7a5981eda329a3e4776f0c26dcacd22",
-    "runtime/src/migration_fees.rs": "cfde4ec5c650f7d5e9b03b850402563855f60da7708efa62156988d0db1021a6",
+    "pallets/iroha-migration/src/lib.rs": "682261eb587fbce0a063d04e14094c169053e0aa2d33da1d7f0bb92ae3dde43b",
+    "pallets/iroha-migration/src/mock.rs": "938e6c75bd675a36a24d7be9a7e60f5be5cc65716ab5ad776a8144f030342b53",
+    "pallets/iroha-migration/src/tests.rs": "d1055a27cc00120b065c76e837e7068b7e75acbf47c8cb707eda49b81a4c0cf1",
+    "pallets/xor-fee/src/lib.rs": "36c8ba1d133789cb795bc0d77875121ef327e0f02a545d77d5bb3b144aaef1d2",
+    "runtime/src/lib.rs": "b09008c49ac99f63db5d5620d3b9491268a85fe0ceaf5ab2d46687e8a9383470",
+    "runtime/src/tests/liveness.rs": "3024d3649ca8d2b0b14df8e8384680cdf2c36678fc252d45bc68d7141b78894e",
     "runtime/src/tests/liveness/bridge_fees.rs": "2b72b2696b18922633bb9f74e5fea7d778c154324920c51ebd642526c476ac71",
-    "runtime/src/tests/liveness/migration_sponsorship.rs": "138c149edf0238494fb50557c928639feae8d4fb1c65a56b7ae692f2750848a1",
+    "runtime/src/tests/liveness/migration_fees.rs": "2960d710d51c7b82a67f1360a16bf435644e5272d1e56f55d7b3ebf997e03762",
+    "runtime/src/xor_fee_impls.rs": "cffa28997a73445b568864605819f9e9ac6ad1e9c2d394270c408f45a68aafa7",
     "vendor/sora2-common/Cargo.lock": "cbbfd58735ac1c191e6146037fc854f70c7b76f1c2e581db774fb05cef4b1e87",
     "vendor/sora2-common/Cargo.toml": "76a90cb1d4d7b6ee8876616655961cdc46f9345dbb468e034a600b46cb81351a"
   }

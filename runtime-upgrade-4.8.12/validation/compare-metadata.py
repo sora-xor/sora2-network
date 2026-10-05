@@ -43,6 +43,63 @@ def bit_sequence_refs(definition):
     raise ValueError("Malformed bit-sequence definition")
 
 
+SPONSORSHIP_REMOVALS = {
+    "calls": {1: "sponsor_migration", 2: "revoke_sponsorship"},
+    "event": {1: "FeeSponsorshipGranted", 2: "FeeSponsorshipUsed", 3: "FeeSponsorshipRevoked"},
+    "error": {10: "InvalidMigrationInput", 11: "InvalidFeeSponsorship", 12: "NotFeeSponsor"},
+}
+
+
+def without_undeployed_sponsorship(old, new):
+    """Project only the explicitly withdrawn, never-deployed Iroha sponsorship ABI.
+
+    Canonical enum IDs are shared by nested RuntimeCall/RuntimeEvent references,
+    so editing these exact enum definitions also handles recursive references.
+    All remaining types, variants, constants and signed extensions are compared
+    by the unchanged strict comparator, rather than filtering its failures.
+    """
+    projected = copy.deepcopy(old)
+    before = next(p for p in projected["pallets"] if p["name"] == "IrohaMigration")
+    after = next(p for p in new["pallets"] if p["name"] == "IrohaMigration")
+    old_types = {item["id"]: item["type"] for item in projected["types"]["types"]}
+    new_types = {item["id"]: item["type"] for item in new["types"]["types"]}
+    removed = []
+    for category, expected in SPONSORSHIP_REMOVALS.items():
+        variants = old_types[before[category]["ty"]]["def"]["variant"]["variants"]
+        replacements = new_types[after[category]["ty"]]["def"]["variant"]["variants"]
+        by_index = indexed(variants, "index")
+        for index, name in expected.items():
+            if index not in by_index or by_index[index]["name"] != name:
+                raise ValueError("Predecessor lacks exact undeployed sponsor variant: " + category + "." + name)
+            if any(item["index"] == index or item["name"] == name for item in replacements):
+                raise ValueError("Withdrawn sponsor variant remains or its index was reused: " + name)
+            removed.append({"path": "IrohaMigration." + category, "variant": name, "variantIndex": index})
+        old_types[before[category]["ty"]]["def"]["variant"]["variants"] = [
+            item for item in variants if item["index"] not in expected]
+    migrate = new_types[after["calls"]["ty"]]["def"]["variant"]["variants"]
+    if not any(item["name"] == "migrate" and item["index"] == 0 for item in migrate):
+        raise ValueError("Legacy migrate call must remain at index zero")
+    entries = before["storage"]["entries"]
+    if sum(item["name"] == "FeeSponsorships" for item in entries) != 1:
+        raise ValueError("Predecessor must contain exactly one FeeSponsorships entry")
+    if any(item["name"] == "FeeSponsorships" for item in after["storage"]["entries"]):
+        raise ValueError("Withdrawn FeeSponsorships storage remains")
+    before["storage"]["entries"] = [item for item in entries if item["name"] != "FeeSponsorships"]
+    removed.append({"path": "IrohaMigration.storage.FeeSponsorships", "storage": "FeeSponsorships"})
+    return projected, removed
+
+
+def sponsorship_removal_comparison(old, new):
+    projected, removed = without_undeployed_sponsorship(old, new)
+    result = Comparison(projected, new).run()
+    result["allowedUndeployedSponsorshipRemovals"] = removed
+    exact = result["compatibleExistingScaleEncoding"] and not result["additions"] and not result["constantValueChanges"]
+    result["compatibleExistingScaleEncoding"] = exact
+    result["legacyAbiPreservedExceptDeclaredUndeployedSponsorship"] = exact
+    result["allOtherAbiAndConstantsPreserved"] = exact
+    return result
+
+
 class Comparison:
     def __init__(self, old, new):
         self.old, self.new = old, new
@@ -350,15 +407,57 @@ def bit_sequence_self_checks():
     ]
 
 
+def sponsorship_removal_self_checks(metadata):
+    trimmed = copy.deepcopy(metadata)
+    types = {item["id"]: item["type"] for item in trimmed["types"]["types"]}
+    pallet = next(p for p in trimmed["pallets"] if p["name"] == "IrohaMigration")
+    for category, expected in SPONSORSHIP_REMOVALS.items():
+        variants = types[pallet[category]["ty"]]["def"]["variant"]["variants"]
+        types[pallet[category]["ty"]]["def"]["variant"]["variants"] = [item for item in variants if item["index"] not in expected]
+    pallet["storage"]["entries"] = [item for item in pallet["storage"]["entries"] if item["name"] != "FeeSponsorships"]
+    accepted = sponsorship_removal_comparison(metadata, trimmed)
+    assert accepted["compatibleExistingScaleEncoding"] and len(accepted["allowedUndeployedSponsorshipRemovals"]) == 9
+    assert not accepted["additions"] and not accepted["constantValueChanges"]
+    assert not Comparison(metadata, trimmed).run()["compatibleExistingScaleEncoding"], "Default comparison must remain strict"
+    extra = copy.deepcopy(trimmed)
+    iroha = next(p for p in extra["pallets"] if p["name"] == "IrohaMigration")
+    iroha["storage"]["entries"] = [entry for entry in iroha["storage"]["entries"] if entry["name"] != "Balances"]
+    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
+    extra = copy.deepcopy(trimmed)
+    lookup = {item["id"]: item["type"] for item in extra["types"]["types"]}
+    iroha = next(p for p in extra["pallets"] if p["name"] == "IrohaMigration")
+    lookup[iroha["calls"]["ty"]]["def"]["variant"]["variants"][0]["fields"][0]["name"] = "changed_legacy_argument"
+    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
+    extra = copy.deepcopy(trimmed)
+    extra["extrinsic"]["signed_extensions"].reverse()
+    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
+    extra = copy.deepcopy(trimmed)
+    lookup = {item["id"]: item["type"] for item in extra["types"]["types"]}
+    iroha = next(p for p in extra["pallets"] if p["name"] == "IrohaMigration")
+    lookup[iroha["calls"]["ty"]]["def"]["variant"]["variants"].append({"name": "unrequested_call", "index": 42, "fields": []})
+    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
+    extra = copy.deepcopy(trimmed)
+    version = next(item for pallet in extra["pallets"] if pallet["name"] == "System" for item in pallet["constants"] if item["name"] == "Version")
+    version["value"][0] ^= 1
+    assert not sponsorship_removal_comparison(metadata, extra)["compatibleExistingScaleEncoding"]
+    return ["Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
+            "Additional legacy Iroha storage removal rejected",
+            "Changed migrate-zero argument rejected under sponsor-removal mode",
+            "Signed-extension reorder rejected under sponsor-removal mode",
+            "Unrequested ABI addition rejected under sponsor-removal mode",
+            "Constant-byte change rejected under sponsor-removal mode"]
+
+
 def main():
     here = Path(__file__).resolve().parent
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--old", type=Path, default=here / "reference-runtime-130/framenode-runtime-4.8.8-metadata.json")
     parser.add_argument("--new", type=Path, default=here.parent / "framenode-runtime-4.8.9-metadata.json")
     parser.add_argument("--output", type=Path, default=here / "metadata-compatibility.json")
+    parser.add_argument("--allow-undeployed-sponsorship-removal", action="store_true")
     args = parser.parse_args()
     old, new = load(args.old), load(args.new)
-    result = Comparison(old, new).run()
+    result = sponsorship_removal_comparison(old, new) if args.allow_undeployed_sponsorship_removal else Comparison(old, new).run()
     result["checkedAt"] = datetime.now(timezone.utc).isoformat()
     result["metadataVersion"] = 14
     result["inputs"] = {label: {"path": str(path.resolve()), "sha256": sha256(path)}
@@ -373,6 +472,9 @@ def main():
             live = json.loads((here / "live-chain.json").read_text())
             result["capturedMainnetBlock"] = {key: live[key] for key in ("blockHash", "blockNumber", "checkedAt")}
     result["selfChecks"] = self_checks(old)
+    if args.allow_undeployed_sponsorship_removal:
+        result["selfChecks"].extend(sponsorship_removal_self_checks(old))
+    result["comparisonMode"] = "exact-undeployed-Iroha-sponsorship-removal" if args.allow_undeployed_sponsorship_removal else "strict"
     result["limitations"] = [
         "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
         "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",

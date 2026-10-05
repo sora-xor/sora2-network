@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "checkedAt": "2026-10-05T06:43:18.598Z",
+  "checkedAt": "2026-10-05T07:45:57.552Z",
   "endpoint": "wss://mof2.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -698,8 +698,8 @@
       ]
     }
   ],
-  "blockHash": "0x248e93faf2c6df718f62ca04b2e80b420899d9cb509a61a1ed2973a6ce2796bb",
-  "blockNumber": 27909590,
+  "blockHash": "0xf101530cdd5b1264f3be9f34a4ec02d95e18dd0671077e8cbcb8a02e6647b648",
+  "blockNumber": 27910215,
   "runtimeVersion": {
     "specName": "sora-substrate",
     "implName": "sora-substrate",

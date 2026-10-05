@@ -93,7 +93,7 @@ async function main() {
       'Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.',
       'Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.',
       'Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.',
-      'For zero-XOR Iroha migration onboarding, obtain a voluntary bounded sponsor grant and verify sponsor funds; never assume a shared unlimited sponsor.',
+      'For Iroha migration onboarding, fund the signed claimant with enough XOR for normal fees on success and failure; no sponsor or success refund is available.',
     ],
   };
   report.activationReady = report.governanceQueueReady && report.operatorReadiness.ready;

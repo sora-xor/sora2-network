@@ -1,112 +1,123 @@
-# SORA 4.8.12 follow-up validation
+# SORA 4.8.12 paid-migration validation
 
-Candidate SHA-256: `210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c` (3,092,259 bytes).
-Source tree: `0d8d3623d8dafcf699dad11bb75f5937e8dbb46d`; reviewed base: `802298f120edfe6b9c71bec39d2544c58c1391b2`.
-Fresh evidence records **1,154 passed**, zero failed,
-**3 existing ignored** tests across eleven affected native suites.
-**35** runtime regressions and all three named follow-up
-regressions passed. The predecessor's 1,151-test/32-regression results and source
-`2fe0bf...` remain historical context in `validation/predecessor-context.json`.
-The older 430 maintenance/common/inbound results retain their original logs and
-source provenance in `validation/historical-owned-tests-context.json`.
+Candidate SHA-256: `98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4` (3,086,444 bytes).
+Source tree: `086a0444ac493f5e60896051fa4dc1fbb9f8e078`; reviewed base: `bb38216396835fae45de9c38104e4927a96eb36c`.
+Fresh native evidence records **1,151 passed**, zero failed,
+**3 existing ignored**, across eleven affected suites, including
+**32** runtime fee-policy regressions.
 
-## Source and fresh local checks
+## Source and native execution
 
-`source.patch` reconstructs the recorded runtime compilation source overlay
-from base 802298f. `capture-source.py` hashes changed files plus both manifests
-and lockfiles, the bridge/migration production code, runtime sponsorship helper,
-and regression files. Generated chain-spec blobs are separately bound because
-they are produced after the feature builds. No clean-commit build is claimed.
+`source.patch` reapplies to the reviewed base and reconstructs the runtime source
+overlay used by native tests and builds. Manifests, locks, modified production
+code and regression files are hashed. The removed runtime sponsorship helper
+and old sponsorship test module are recorded with baseline hashes and checked
+absent. Generated chain-spec blobs are separately bound after their feature
+builds. No clean-commit build is claimed.
 
-`record-build-evidence.py` binds original native/format/mainnet-build log bytes
-and locked Wasm dependency packages. It requires these successful real-signature
-Executive regressions by exact name:
+The native recorder requires these six regressions by exact name:
 
 - `outgoing_approval_retains_validation_weight_before_and_at_quorum`
-- `funded_underpriced_grant_can_be_replaced_without_claimant_xor`
-- `replacement_cannot_reduce_a_funded_grants_limits`
+- `migration_success_delivers_val_and_keeps_xor_fee`
+- `migration_settlement_failure_keeps_fee_and_rolls_back_claim`
+- `migration_requires_xor_before_valid_claim_can_execute`
+- `migration_invalid_proof_and_replay_pay_without_duplicate_val`
+- `wrapped_migration_requires_xor_and_keeps_success_fee`
 
-These cover the two new behavior changes. Existing report-fee, cancellation,
-Rewards, requested-preimage, keeper, sponsorship and bridge-capacity suites remain
-mandatory. `record-clippy-evidence.py` separately binds fresh mainnet, try-runtime
-and extended Clippy logs without rereading Wasm output overwritten by later
-feature builds. Neither recorder rewrites a log's contents.
+Migration tests use real outer and Iroha signatures, backed VAL transfers,
+transaction-fee events and XOR balance/nonce assertions. Pallet tests check
+`Pays::Yes` on successful single claims and multisig approvals. Existing report,
+keeper, order, reward/preimage and bridge-capacity tests remain included.
+Standard transaction-extension weight correction remains in place; successful
+migration has no fee waiver. Original native/format/build/Clippy log bytes are
+retained without rewriting. Mainnet, try-runtime and extended Clippy profiles
+must all finish successfully.
 
-## Exact mainnet Wasm checks
+## Exact candidate Wasm
 
 The pinned public snapshot supplies deployed code, metadata and state. Local
-Chopsticks replaces only the runtime code, executes upgrade initialization and
-a timestamp, and checks staking claims/ledgers and native XOR issuance. Report
-rehearsal covers all four signed/legacy report methods, paid duplicate failures,
-paid wrappers, bare admission/application rejection and disabled unsigned
-submission APIs. An independent event check matches actual charges to balances.
+Chopsticks installs only the candidate code before upgrade initialization and
+a timestamp. Checks preserve staking claims/ledgers and native XOR issuance.
+Report rehearsal covers all four report methods, paid duplicate/wrapped failures,
+unsigned admission/application rejection and disabled unsigned submission APIs.
+Independent event checks match actual fee events to balance changes.
 
-The broader fee rehearsal requires useful cancellation/refund and paid replay,
-charged empty/no-op cancellation shapes, unauthorized Rewards, requested-preimage
-first/replay, signed invalid maintenance, bare maintenance rejection, and invalid
-inbound proof rejection. Existing fresh authenticated bare bridge submissions
-remain supported. Synthetic zero-XOR legacy peer and capacity cases cover
-accepted failures, consumed state, 32/33 quota fairness, honest admission,
-full-queue orphan cleanup, current quorum, absence of payload execution,
-preserved canonical state and foreign dispatch markers, rejected stale/duplicate
-votes and reuse of capacity. Every local key/value override is disclosed. The
-capacity cases isolate and record block weight/size accounting; they do not claim
-that all fixture transactions fit one block.
+Fee-policy rehearsal covers useful cancellation/refund and paid replay, empty
+cancellation shapes, unauthorized Rewards, requested-preimage first/replay,
+maintenance fees, bare maintenance rejection, invalid inbound proofs, zero-XOR
+authenticated bridge operations and replay rejection. Synthetic bridge-capacity
+cases verify fair 32/33 quota behavior, honest admission, full-queue current-quorum
+cleanup, no payload execution, preserved canonical state/foreign markers and
+rejected stale/duplicate votes. Block weight/size accounting is isolated and
+recorded; fixtures do not claim every transaction fits a single block.
 
-Final fee-policy counts: **54 signed** cases
-(**12 paid**, **42 free**), with all balance/fee/nonce
-assertions passing. Report signatures and headers use the mock signature host;
-native tests separately cover real cryptography. No transaction is submitted.
-These fixtures prove candidate behavior, not execution of a live bridge request.
-New bridge-weight/sponsor-replacement behavior is covered by the named native
-regressions; it is not mislabeled as a new exact-Wasm fixture.
+New paid-migration fixtures verify all three transaction-validation sources and
+block application reject an unfunded valid claim without changing its claim,
+VAL or nonce. A funded claim transfers 300 VAL from the registered legacy
+`Generic("bridge", "main")` technical account and retains the XOR fee. Replay
+also pays without a second transfer. A referral conflict after the transfer
+retains the fee while rolling back VAL and claim state. All key/value overrides
+and synthetic funding are recorded. The deterministic proof fixture and its
+Rust generator are hashed: Iroha ed25519/SHA3 ownership verification executes
+inside Wasm; only outer transaction/header signatures use the mocked host.
+No public transaction is submitted. These are local behavioral proofs, not
+execution of a real user's mainnet claim.
 
-## Compatibility and regenerated chain specs
+Final fee-policy counts: **57 signed** cases
+(**15 paid**, **42 free**), with fee/balance/nonce checks
+passing. `paidMigrationSuccessAndFailure` and
+`zeroXorMigrationRejectsBeforeExecution` are mandatory verifier gates.
 
-The deployed-baseline comparator preserves existing SCALE shapes, indices,
-storage, signed extensions and runtime APIs. A separate predecessor comparison
-uses sealed `faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59`
-and requires **no ABI or constant additions/changes**. Existing call 18 and all
-three capacity storage items must remain present. Historical comparison with the
-original pre-capacity 4.8.12 candidate is retained separately and never replaces
-this new check. Host imports/signatures/exports and memory compatibility retain
-all preceding gates and stated executor limitations.
+## Compatibility and chain specs
 
-`validation/refresh-chain-specs.py` runs offline. Its report binds the source
-provenance, helper/comparator bytes, feature Wasm hashes and all three JSONs.
-Stage and bridge staging use `build-wasm-binary,private-net,stage`; test also uses
-`wip,reduced-pswap-reward-periods`. None uses `runtime/test`. Both variants must
-advertise 134/131, include private-network Sudo, call 18 and all three capacity
-storage items, and preserve old pallet indices/SCALE encodings. The helper
-replaces only `:code`, preserving all remaining JSON values/bytes and the existing
-LastRuntimeUpgrade value. No feature Wasm or large metadata is duplicated in ZIP;
-`verify-package.py --check-workspace-source` additionally hashes each real JSON
-and its embedded code against the report.
+Deployed spec 132 comparison strictly preserves existing pallet/call/event/error
+indices, SCALE shapes, storage, signed extensions and runtime APIs, allowing the
+reviewed additions and runtime-version constant change. Host interfaces and
+memory compatibility retain their existing executor limitations.
 
-The bounded bridge-readiness report remains an inspection with incomplete scan
-coverage, not operator attestation. Registered peers need no XOR. Admission caps
-and call-size bounds remain in effect; quorum cleanup needs no stored call bytes.
-Weight multipliers/allowances are conservative engineering estimates over old
-benchmarks, not newly measured worst-case throughput.
+A separate comparison to the sealed `210511d9...` unreleased candidate permits
+only the two sponsorship calls, three sponsorship events, three appended errors
+and `FeeSponsorships` storage to disappear. It rejects index/name reuse and then
+strictly compares all remaining ABI/constants, without additions. Negative
+self-checks cover extra storage deletion, migrate-argument changes, extension
+reordering, additions and constant changes. The legacy `migrate` call remains 0;
+bridge cancellation call 18 and all capacity storage remain present. No deployed
+sponsorship state is claimed or cleared by this revision.
 
-## Governance and final integrity gate
+The offline chain-spec helper verifies exactly the same sponsorship-only removal
+against each prior feature runtime. Stage/bridge staging use
+`build-wasm-binary,private-net,stage`; test adds `wip,reduced-pswap-reward-periods`.
+None uses `runtime/test`. Spec 134/transaction 131, private-network Sudo, bridge
+capacity ABI, pallet indices and other SCALE encodings/constants are checked.
+Only `:code` changes; all remaining JSON bytes/values and LastRuntimeUpgrade stay
+unchanged. The report binds source, helper/comparator, feature build commands/log
+hashes, metadata and blob hashes. Feature binaries/metadata are not duplicated
+in the ZIP. `verify-package.py --check-workspace-source` checks actual JSON/blob
+bytes in the checkout as well as all source hashes and deleted-file absence.
 
-Fresh finalized preflight block: **27,909,600**.
-Final setCode proposal: `0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed` (3,092,265 bytes).
-Offline governance verification decodes all six review calls against the checked
-baseline metadata and matches them to the final Wasm and guarded council settings.
-An occupied external queue is preserved; this package does not enact or supersede
-another proposal. Refresh the preflight and repeat baseline-sensitive checks
-before governance use.
+## Governance, history and limits
 
-The manifest verifier binds every distributable file, current scripts/reports,
-exact Wasm, source overlay, native/lint/build evidence, predecessor metadata,
-chain-spec report, governance payloads and original logs. It rejects placeholders
-in README/VALIDATION, stale source trees, missing new regressions and mismatched
-fingerprints. Final documentation is generated from passed reports by
-`validation/finalize-docs.py`; no former success totals are carried forward as
-fresh results. Operator key installation/funding, relayer readiness, production
-consensus authoring and governance enactment remain outside local evidence.
+Finalized preflight block: **27,910,230**.
+Set-code proposal: `0x0688cda5b9ff2d440fa06b43cced3597a140dbecc3858d392208d53042e05a3d` (3,086,450 bytes).
+All six unsigned review calls are decoded against checked deployed metadata and
+matched to the candidate and guarded settings. The occupied external queue is
+preserved. Refresh finalized state before governance use; repeat baseline-sensitive
+checks if the deployed code changes.
+
+The previous candidate's evidence is historical in `predecessor-context.json`.
+The older 430 maintenance/common/inbound results retain their original provenance
+in `historical-owned-tests-context.json`; they are not fresh execution of this
+revision. Readiness inspection is bounded and is not operator attestation or
+complete bridge-backlog coverage. Bridge weight allowances remain conservative
+estimates over old benchmarks, not newly measured worst-case throughput.
+
+The manifest verifier binds distributable files, current reports/scripts, source,
+Wasm, original logs, native/lint/build evidence, metadata comparisons, chain specs,
+governance payloads and generated documentation. It rejects stale hashes,
+missing regressions, restored sponsorship files and document placeholders.
+`finalize-docs.py` renders current values from reports. Production consensus
+execution, operator key/funding rollout and governance enactment are outside
+this local evidence.
 
 Fresh feature-runtime regeneration gate: **passed**.
 Fresh three-profile Clippy gate: **passed**.

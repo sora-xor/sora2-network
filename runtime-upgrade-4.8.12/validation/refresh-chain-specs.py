@@ -223,7 +223,9 @@ def main():
             previous = inspect_wasm(old_blob, cache)
             require(previous["palletIndices"] == runtime["palletIndices"],
                     "Feature pallet indices differ in " + filename)
-            comparison = comparison_module.Comparison(previous["model"], runtime["model"]).run()
+            comparison = comparison_module.sponsorship_removal_comparison(previous["model"], runtime["model"])
+            removal_checks = comparison_module.sponsorship_removal_self_checks(previous["model"])
+            require(len(comparison["allowedUndeployedSponsorshipRemovals"]) == 9, "Expected exact sponsorship removals")
             require(comparison["compatibleExistingScaleEncoding"],
                     "Incompatible metadata in " + filename + ": " + json.dumps(comparison["breakingChanges"]))
             require(not comparison["constantValueChanges"],
@@ -256,6 +258,8 @@ def main():
                 "constantValuesPreserved": True,
                 "compatibleExistingScaleEncoding": True,
                 "metadataComparison": comparison,
+                "onlyDeclaredUndeployedSponsorshipRemoved": True,
+                "sponsorshipRemovalSelfChecks": removal_checks,
             })
             changes.append((path, original, updated, path.stat().st_mode & 0o777))
         report["runtimes"].append(candidate)

@@ -21,10 +21,12 @@ PATHS = [
 REQUIRED_BUILD_INPUTS = ["Cargo.toml", "Cargo.lock", "vendor/sora2-common/Cargo.toml", "vendor/sora2-common/Cargo.lock"]
 REQUIRED_FOLLOWUP_INPUTS = [
     "pallets/eth-bridge/src/lib.rs", "pallets/iroha-migration/src/lib.rs",
-    "runtime/src/migration_fees.rs", "runtime/src/tests/liveness/bridge_fees.rs",
-    "runtime/src/tests/liveness/migration_sponsorship.rs", "pallets/iroha-migration/src/tests.rs",
+    "pallets/xor-fee/src/lib.rs", "runtime/src/lib.rs", "runtime/src/xor_fee_impls.rs",
+    "runtime/src/tests/liveness/bridge_fees.rs", "runtime/src/tests/liveness/migration_fees.rs",
+    "runtime/src/tests/liveness.rs", "pallets/iroha-migration/src/tests.rs",
 ]
-EXPECTED_BASE = "802298f120edfe6b9c71bec39d2544c58c1391b2"
+REQUIRED_DELETIONS = ["runtime/src/migration_fees.rs", "runtime/src/tests/liveness/migration_sponsorship.rs"]
+EXPECTED_BASE = "bb38216396835fae45de9c38104e4927a96eb36c"
 
 
 def git(*args, env=None):
@@ -37,7 +39,7 @@ def digest(data):
 
 def main():
     base = git("rev-parse", "HEAD").decode().strip()
-    assert base == EXPECTED_BASE, "Follow-up package must capture the reviewed 802298f base"
+    assert base == EXPECTED_BASE, "Paid-migration package must capture the reviewed bb382163 base"
     with tempfile.TemporaryDirectory(prefix="sora-4812-source-") as temporary:
         env = {**os.environ, "GIT_INDEX_FILE": str(Path(temporary) / "capture.index")}
         git("read-tree", base, env=env)
@@ -45,6 +47,7 @@ def main():
         patch = git("diff", "--cached", "--binary", base, "--", *PATHS, env=env)
         tree = git("write-tree", env=env).decode().strip()
         changed = git("diff", "--cached", "--name-only", "-z", base, env=env)
+        deleted_paths = git("diff", "--cached", "--name-only", "--diff-filter=D", "-z", base, env=env)
         (PACKAGE / "source.patch").write_bytes(patch)
         verify_env = {**os.environ, "GIT_INDEX_FILE": str(Path(temporary) / "verify.index")}
         git("read-tree", base, env=verify_env)
@@ -61,6 +64,11 @@ def main():
     for path in sorted(captured_paths):
         if path and (ROOT / path).is_file():
             files[path] = digest((ROOT / path).read_bytes())
+    deleted_files = {path: digest(git("show", base + ":" + path))
+                     for path in deleted_paths.decode().strip("\0").split("\0") if path}
+    assert set(REQUIRED_DELETIONS) <= set(deleted_files), "Sponsorship helper/test deletions must be captured"
+    assert all(not (ROOT / path).exists() for path in deleted_files), "Deleted source unexpectedly exists"
+    assert set(REQUIRED_FOLLOWUP_INPUTS) <= set(files), "Required paid-migration sources must exist"
     report = {
         "status": "passed", "baseCommit": base,
         "sourceTreeAfterPatch": tree, "sourceIsUncommittedOverlay": True,
@@ -71,6 +79,8 @@ def main():
         "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
         "requiredBuildInputs": REQUIRED_BUILD_INPUTS,
         "requiredFollowupInputs": REQUIRED_FOLLOWUP_INPUTS,
+        "requiredDeletions": REQUIRED_DELETIONS,
+        "deletedFiles": deleted_files,
         "buildInputScope": "Runtime compilation inputs; regenerated chain-spec blobs are bound separately in validation/chain-spec-runtimes.json.",
         "files": files,
     }

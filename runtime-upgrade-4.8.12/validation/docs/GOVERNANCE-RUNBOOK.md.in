@@ -50,12 +50,12 @@ No direct supersession alternative is provided.
    fields are not currency reserves; no incoming fee escrow/bond is introduced.
    The public readiness scan is bounded and is not complete backlog or operator
    attestation.
-5. Prepare sponsor-grant onboarding for zero-XOR Iroha claimants. A volunteer
-   sponsor authorizes its own funds with a cap/budget, expiry and at most three
-   attempts; failed settlement consumes an attempt and retains a fee. A funded
-   but underpriced grant can be replaced with an adequate grant without lowering
-   its funded limits. Funded
-   claimants can pay directly. No automatic sponsor exists.
+5. Tell legacy Iroha claimants to fund their signing account with enough XOR for
+   the quoted transaction fee before claiming VAL. Successful and failed attempts
+   both pay; a successful claim does not waive the fee. Zero-XOR submissions are
+   rejected before execution. The undeployed sponsorship calls, grants and payer
+   hooks are removed. Existing claim records, ownership checks and pending
+   multisig completion behavior remain intact.
 
 These prerequisites and the occupied queue keep the package review-only until
 fresh finalized checks and operator readiness are established.
@@ -148,7 +148,8 @@ payer balances/fees and actual motion close bounds separately.
 6. After enactment and block initialization, verify spec 134, transaction
    version 131, candidate code hash and the complete fee policy. Check funded
    reporter/keeper operation, free useful cancellations, zero-XOR authenticated
-   bridge handling, pre-execution replay rejection and migration sponsorship.
+   bridge handling, pre-execution replay rejection, and XOR-paid legacy migration
+   including successful VAL claims. Confirm sponsorship calls/storage are absent.
 
 The preceding 4.8.11 reward publication migration is included. From captured
 spec 132, verify retained completed-era VAL budgets are published to standard

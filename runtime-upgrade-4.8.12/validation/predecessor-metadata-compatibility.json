@@ -2,11 +2,11 @@
   "compatibleExistingScaleEncoding": true,
   "counts": {
     "existingPallets": 81,
-    "existingCalls": 408,
-    "nestedTypePairsVisited": 10416,
-    "existingEvent": 446,
-    "existingError": 976,
-    "existingStorageEntries": 491,
+    "existingCalls": 406,
+    "nestedTypePairsVisited": 10399,
+    "existingEvent": 443,
+    "existingError": 973,
+    "existingStorageEntries": 490,
     "existingConstants": 155,
     "signedExtensions": 7
   },
@@ -22,7 +22,55 @@
     "CheckWeight",
     "ChargeTransactionPayment"
   ],
-  "checkedAt": "2026-10-05T06:49:35.290088+00:00",
+  "allowedUndeployedSponsorshipRemovals": [
+    {
+      "path": "IrohaMigration.calls",
+      "variant": "sponsor_migration",
+      "variantIndex": 1
+    },
+    {
+      "path": "IrohaMigration.calls",
+      "variant": "revoke_sponsorship",
+      "variantIndex": 2
+    },
+    {
+      "path": "IrohaMigration.event",
+      "variant": "FeeSponsorshipGranted",
+      "variantIndex": 1
+    },
+    {
+      "path": "IrohaMigration.event",
+      "variant": "FeeSponsorshipUsed",
+      "variantIndex": 2
+    },
+    {
+      "path": "IrohaMigration.event",
+      "variant": "FeeSponsorshipRevoked",
+      "variantIndex": 3
+    },
+    {
+      "path": "IrohaMigration.error",
+      "variant": "InvalidMigrationInput",
+      "variantIndex": 10
+    },
+    {
+      "path": "IrohaMigration.error",
+      "variant": "InvalidFeeSponsorship",
+      "variantIndex": 11
+    },
+    {
+      "path": "IrohaMigration.error",
+      "variant": "NotFeeSponsor",
+      "variantIndex": 12
+    },
+    {
+      "path": "IrohaMigration.storage.FeeSponsorships",
+      "storage": "FeeSponsorships"
+    }
+  ],
+  "legacyAbiPreservedExceptDeclaredUndeployedSponsorship": true,
+  "allOtherAbiAndConstantsPreserved": true,
+  "checkedAt": "2026-10-05T07:40:51.821884+00:00",
   "metadataVersion": 14,
   "inputs": {
     "baselineMetadata": {
@@ -31,11 +79,11 @@
     },
     "candidateMetadata": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
-      "sha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020"
+      "sha256": "b4c21e38685bfff6614e8ca94b2102b002c0eed859573169c3a0a68fb29902b0"
     },
     "comparisonScript": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
-      "sha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d"
+      "sha256": "fe8fde11d3665709cf91c415cc80289aea1d1a1976364e990b6532996f5f3e7c"
     }
   },
   "selfChecks": [
@@ -47,8 +95,15 @@
     "Identical bit-sequence storage/order and equivalent serde spellings accepted",
     "Bit-sequence storage width u8-to-u16 rejected",
     "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
-    "Changed bit-order marker layout rejected despite unchanged identity path"
+    "Changed bit-order marker layout rejected despite unchanged identity path",
+    "Exact nine undeployed Iroha sponsor removals accepted only in explicit mode",
+    "Additional legacy Iroha storage removal rejected",
+    "Changed migrate-zero argument rejected under sponsor-removal mode",
+    "Signed-extension reorder rejected under sponsor-removal mode",
+    "Unrequested ABI addition rejected under sponsor-removal mode",
+    "Constant-byte change rejected under sponsor-removal mode"
   ],
+  "comparisonMode": "exact-undeployed-Iroha-sponsorship-removal",
   "limitations": [
     "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
     "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",

@@ -1013,5 +1013,5 @@ mod equivocation_bridge;
 mod equivocation_fees;
 mod feeless_success;
 mod funded_keepers;
-mod migration_sponsorship;
+mod migration_fees;
 mod session_boundaries;

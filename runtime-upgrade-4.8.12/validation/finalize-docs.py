@@ -27,7 +27,7 @@ for report in [native, build, policy, compatibility, governance]:
     assert report["status"] == "passed"
 assert native["sourceTreeAfterPatch"] == build["sourceTreeAfterPatch"] == provenance["sourceTreeAfterPatch"]
 assert build["candidateSha256"] == policy["candidate"]["sha256"] == compatibility["inputs"]["candidate"]["sha256"] == governance["candidateSha256"] == candidate["sha256"]
-assert native["totalFailed"] == 0 and native["followupRegressionsPassed"] == 3
+assert native["totalFailed"] == 0 and native["followupRegressionsPassed"] == 6
 chain_path = HERE / "chain-spec-runtimes.json"
 lint_path = HERE / "clippy.json"
 chain = json.loads(chain_path.read_text()) if chain_path.exists() else {}
