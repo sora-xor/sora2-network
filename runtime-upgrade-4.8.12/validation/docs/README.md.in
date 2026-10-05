@@ -24,10 +24,10 @@ budget, expiry and at most three attempts. Failed settlement is paid; success
 retains its refund. No automatic sponsor, peer escrow or bridge bond is added.
 The preceding VAL staking compatibility repair remains included.
 
-Final Wasm SHA-256: `210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c` (3,092,259 bytes).
-Source overlay tree: `0d8d3623d8dafcf699dad11bb75f5937e8dbb46d`, reapplied to reviewed base
-`802298f120edfe6b9c71bec39d2544c58c1391b2`. Fresh native evidence records **1,154 passed**,
-zero failures, **3 existing ignores**, and **35**
+Final Wasm SHA-256: `{{CANDIDATE_SHA256}}` ({{CANDIDATE_BYTES}} bytes).
+Source overlay tree: `{{SOURCE_TREE}}`, reapplied to reviewed base
+`{{SOURCE_BASE}}`. Fresh native evidence records **{{NATIVE_PASSED}} passed**,
+zero failures, **{{NATIVE_IGNORED}} existing ignores**, and **{{RUNTIME_REGRESSIONS}}**
 runtime regressions. All three follow-up regressions are required explicitly.
 The previous `faf9ab84...` package and older 430-test evidence are historical
 context, not fresh execution. [VALIDATION.md](VALIDATION.md) records the final gates.
@@ -39,7 +39,7 @@ Feature binaries and large feature metadata are not duplicated in the package.
 The optional workspace verification checks each actual JSON and embedded blob.
 
 Six unsigned governance review calls are bound to the final Wasm and finalized
-preflight block **27,909,600**. Follow [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md)
+preflight block **{{PREFLIGHT_BLOCK}}**. Follow [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md)
 after verifying the ZIP companion hash and extracted `SHA256SUMS`. The guarded
 route preserves an occupied external queue; it does not supersede another
 proposal. Refresh the deployed baseline/preflight before activation, and repeat
@@ -49,5 +49,5 @@ Preparation does not install/fund operator keys, attest rollout, sign or submit
 a governance transaction, or enact code. All report-generated fingerprints in
 this document must be finalized before the package can pass verification.
 
-Fresh feature-runtime regeneration gate: **passed**.
-Fresh three-profile Clippy gate: **passed**.
+Fresh feature-runtime regeneration gate: **{{CHAIN_SPEC_STATUS}}**.
+Fresh three-profile Clippy gate: **{{CLIPPY_STATUS}}**.

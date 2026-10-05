@@ -1167,7 +1167,7 @@
     "CheckWeight",
     "ChargeTransactionPayment"
   ],
-  "checkedAt": "2026-10-05T05:42:38.495036+00:00",
+  "checkedAt": "2026-10-05T06:49:34.929924+00:00",
   "metadataVersion": 14,
   "inputs": {
     "baselineMetadata": {
@@ -1180,7 +1180,7 @@
     },
     "comparisonScript": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
-      "sha256": "033a4dfd3be69b85f433f71db7c52b04c9832fe3f7068e3f764440a5ed005858"
+      "sha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d"
     }
   },
   "selfChecks": [
@@ -1188,7 +1188,11 @@
     "Nested u32-to-u64 mutation rejected for staking calls, storage and CheckNonce",
     "Changed payout_stakers call index rejected",
     "Signed-extension reorder rejected",
-    "Storage hasher mutation rejected"
+    "Storage hasher mutation rejected",
+    "Identical bit-sequence storage/order and equivalent serde spellings accepted",
+    "Bit-sequence storage width u8-to-u16 rejected",
+    "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
+    "Changed bit-order marker layout rejected despite unchanged identity path"
   ],
   "limitations": [
     "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",

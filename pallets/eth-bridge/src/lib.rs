@@ -1047,7 +1047,10 @@ pub mod pallet {
             let net_id = network_id;
             Self::ensure_peer(&author, net_id)?;
             Self::inner_approve_request(ocw_public, hash, signature_params, author, net_id)
-                .map(|weight| (weight, Pays::Yes).into())
+                // The declared weight also covers fee-exemption validation in both
+                // transaction-extension phases. The inner weight accounts only for
+                // dispatch, so refunding to it would discard that validation work.
+                .map(|_| Pays::Yes.into())
                 .map_err(Into::into)
         }
 

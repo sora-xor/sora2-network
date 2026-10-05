@@ -1,6 +1,6 @@
 {
   "status": "prepared",
-  "checkedAt": "2026-10-05T05:48:03.050Z",
+  "checkedAt": "2026-10-05T06:44:21.032Z",
   "endpoint": "wss://mof2.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -22,7 +22,7 @@
     "utility-guarded-external-majority-call": {
       "file": "utility-guarded-external-majority-call.hex",
       "bytes": 81,
-      "hash": "0x80e1be082f5f5fc52549faaed92d081288be51976fb15598b92c71d53be34fdc",
+      "hash": "0xe8145d7e7d3b3713f30b194782c3122bbe6e60f9a6afdb6f33b9459dfc69a2f4",
       "section": "utility",
       "method": "batchAll",
       "decoded": {
@@ -32,8 +32,8 @@
               "args": {
                 "proposal": {
                   "Lookup": {
-                    "hash_": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-                    "len": "3,089,120"
+                    "hash_": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+                    "len": "3,092,265"
                   }
                 }
               },
@@ -44,8 +44,8 @@
               "args": {
                 "proposal": {
                   "Lookup": {
-                    "hash_": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-                    "len": "3,089,120"
+                    "hash_": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+                    "len": "3,092,265"
                   }
                 }
               },
@@ -61,7 +61,7 @@
     "council-propose-guarded-external-majority-threshold-4-call": {
       "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
       "bytes": 86,
-      "hash": "0xfeaf59fb543cec78343832089f67fe32e518e36506bd18be17e67ffd4944ad08",
+      "hash": "0x7ef4810d4f334ce515cac63dddd17232df28d25e26bdb4ba990bc9e08422f34e",
       "section": "council",
       "method": "propose",
       "decoded": {
@@ -74,8 +74,8 @@
                   "args": {
                     "proposal": {
                       "Lookup": {
-                        "hash_": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-                        "len": "3,089,120"
+                        "hash_": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+                        "len": "3,092,265"
                       }
                     }
                   },
@@ -86,8 +86,8 @@
                   "args": {
                     "proposal": {
                       "Lookup": {
-                        "hash_": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-                        "len": "3,089,120"
+                        "hash_": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+                        "len": "3,092,265"
                       }
                     }
                   },
@@ -108,12 +108,12 @@
     "democracy-fast-track-call": {
       "file": "democracy-fast-track-call.hex",
       "bytes": 42,
-      "hash": "0x0388d5cd9ffc77869bc7669f7620e755524f31c4593816d5d92ac891e493e30d",
+      "hash": "0x0d02328307a622e4667d4e293080a72a34b5409e178a3d459a9ce770710fc897",
       "section": "democracy",
       "method": "fastTrack",
       "decoded": {
         "args": {
-          "proposal_hash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
+          "proposal_hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
           "voting_period": "1,800",
           "delay": "0"
         },
@@ -124,7 +124,7 @@
     "technical-committee-fast-track-threshold-3-call": {
       "file": "technical-committee-fast-track-threshold-3-call.hex",
       "bytes": 46,
-      "hash": "0xecb7504601f94ac8371efb4c93874afc5fca73835fdb9a4d72492b73e8675976",
+      "hash": "0x9d4e859faff20fc79cb0158caf3ee97cd6efd4d934e4fe6ede759504ff786722",
       "section": "technicalCommittee",
       "method": "propose",
       "decoded": {
@@ -132,7 +132,7 @@
           "threshold": "3",
           "proposal": {
             "args": {
-              "proposal_hash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
+              "proposal_hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
               "voting_period": "1,800",
               "delay": "0"
             },
@@ -147,8 +147,8 @@
     }
   },
   "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-  "blockHash": "0x120baceb01d514c6bd8364ea64acdb3fb5c5db88ad324cb7c2908c64849277d6",
-  "blockNumber": 27909040,
+  "blockHash": "0xef695bcefc1e420ed0bb9d5fa28de7ec8e4e3b0f3b9a95fffb7c98b6c7d677d2",
+  "blockNumber": 27909600,
   "runtimeVersion": {
     "specName": "sora-substrate",
     "implName": "sora-substrate",
@@ -272,8 +272,8 @@
     "transactionVersion": 131,
     "stateVersion": 0
   },
-  "setCodeProposalHash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-  "setCodeProposalBytes": 3089120,
+  "setCodeProposalHash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+  "setCodeProposalBytes": 3092265,
   "nextExternal": [
     {
       "lookup": {
@@ -334,13 +334,13 @@
   "technicalCommitteeThreshold": 3,
   "preimage": {
     "status": null,
-    "bytes": 3089120,
+    "bytes": 3092265,
     "maxBytes": 4194304,
     "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
     "baseDepositBaseUnits": "133546666666663200",
     "byteDepositBaseUnits": "3333333333300",
-    "unrequestedDepositBaseUnits": "10430613333230359200",
-    "unrequestedDepositXor": "10.430613333230359200",
+    "unrequestedDepositBaseUnits": "10441096666563587700",
+    "unrequestedDepositXor": "10.441096666563587700",
     "depositSource": "Captured baseline runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
     "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
   },
@@ -380,8 +380,8 @@
     ]
   },
   "preferredCouncilCall": "council-propose-guarded-external-majority-threshold-4-call.hex",
-  "preferredCouncilMotionHash": "0x80e1be082f5f5fc52549faaed92d081288be51976fb15598b92c71d53be34fdc",
-  "technicalMotionHash": "0x0388d5cd9ffc77869bc7669f7620e755524f31c4593816d5d92ac891e493e30d",
+  "preferredCouncilMotionHash": "0xe8145d7e7d3b3713f30b194782c3122bbe6e60f9a6afdb6f33b9459dfc69a2f4",
+  "technicalMotionHash": "0x0d02328307a622e4667d4e293080a72a34b5409e178a3d459a9ce770710fc897",
   "reviewOnlySupersessionCalls": [],
   "directSupersessionArtifactsExcluded": true,
   "closeBounds": {

@@ -33,6 +33,16 @@ def indexed(items, key):
     return result
 
 
+def bit_sequence_refs(definition):
+    # subwasm's Rust serde JSON uses snake_case; some metadata producers use
+    # scale-info's camelCase representation. Both reference portable type IDs.
+    for store_key, order_key in (("bit_store_type", "bit_order_type"),
+                                 ("bitStoreType", "bitOrderType")):
+        if set(definition) == {store_key, order_key}:
+            return definition[store_key], definition[order_key]
+    raise ValueError("Malformed bit-sequence definition")
+
+
 class Comparison:
     def __init__(self, old, new):
         self.old, self.new = old, new
@@ -71,10 +81,12 @@ class Comparison:
         old_def, new_def = old["def"], new["def"]
         if len(old_def) != 1 or len(new_def) != 1:
             raise ValueError("Malformed type definition")
-        kind = next(iter(old_def))
-        if not self.same(kind, next(iter(new_def)), path + ".kind"):
+        old_kind, new_kind = next(iter(old_def)), next(iter(new_def))
+        normalize_kind = lambda name: "bitSequence" if name == "bitsequence" else name
+        kind = normalize_kind(old_kind)
+        if not self.same(kind, normalize_kind(new_kind), path + ".kind"):
             return
-        left, right = old_def[kind], new_def[kind]
+        left, right = old_def[old_kind], new_def[new_kind]
         if kind == "primitive":
             self.same(left, right, path + ".primitive")
         elif kind in ("sequence", "compact", "array"):
@@ -101,11 +113,15 @@ class Comparison:
             for index in new_variants.keys() - old_variants.keys():
                 self.additions.append({"path": path, "variantIndex": index, "variant": new_variants[index]["name"]})
         elif kind == "bitSequence":
-            for key in ("bitStoreType", "bitOrderType"):
-                self.type(left[key], right[key], path + "." + key, seen)
+            old_store, old_order = bit_sequence_refs(left)
+            new_store, new_order = bit_sequence_refs(right)
+            self.type(old_store, new_store, path + ".bitStoreType", seen)
+            self.type(old_order, new_order, path + ".bitOrderType", seen)
             # The order marker may be a zero-field type whose identity matters.
-            self.same(self.types[0][left["bitOrderType"]].get("path"),
-                      self.types[1][right["bitOrderType"]].get("path"), path + ".bitOrderPath")
+            old_path, new_path = self.types[0][old_order].get("path"), self.types[1][new_order].get("path")
+            if not old_path or not new_path:
+                raise ValueError("Bit order marker must have an identity path")
+            self.same(old_path, new_path, path + ".bitOrderPath")
         else:
             raise ValueError(f"Unsupported portable type kind: {kind}")
 
@@ -235,8 +251,9 @@ def self_checks(metadata):
                 for field in variant.get("fields", []): field["type"] += shift
         elif kind == "tuple":
             ty["def"][kind] = [x + shift for x in value]
-        elif kind == "bitSequence":
-            for key in ("bitStoreType", "bitOrderType"): value[key] += shift
+        elif kind in ("bitSequence", "bitsequence"):
+            bit_sequence_refs(value)  # Validate the exact schema before rewriting IDs.
+            for key in value: value[key] += shift
         elif kind != "primitive":
             raise ValueError(kind)
     for pallet in shifted["pallets"]:
@@ -287,7 +304,50 @@ def self_checks(metadata):
     entry["ty"]["Map"]["hashers"] = ["Identity"]
     assert not Comparison(metadata, mutated).run()["compatibleExistingScaleEncoding"]
     checks.append("Storage hasher mutation rejected")
+    checks.extend(bit_sequence_self_checks())
     return checks
+
+
+def bit_sequence_self_checks():
+    """Always exercise bit-vector encoding, including on mainnet without BitVec roots."""
+    model = {"types": {"types": [
+        {"id": 0, "type": {"def": {"primitive": "u8"}}},
+        {"id": 1, "type": {"def": {"primitive": "u16"}}},
+        {"id": 2, "type": {"path": ["bitvec", "order", "Msb0"], "def": {"composite": {}}}},
+        {"id": 3, "type": {"path": ["bitvec", "order", "Lsb0"], "def": {"composite": {}}}},
+        {"id": 4, "type": {"def": {"bitsequence": {"bit_store_type": 0, "bit_order_type": 2}}}},
+    ]}}
+
+    def compare(other):
+        comparison = Comparison(model, other)
+        comparison.type(4, 4, "BitVector")
+        return comparison.breaks
+
+    assert not compare(copy.deepcopy(model))
+    camel_case = copy.deepcopy(model)
+    camel_case["types"]["types"][4]["type"]["def"] = {
+        "bitSequence": {"bitStoreType": 0, "bitOrderType": 2}}
+    assert not compare(camel_case)
+
+    changed_store = copy.deepcopy(model)
+    changed_store["types"]["types"][4]["type"]["def"]["bitsequence"]["bit_store_type"] = 1
+    assert any(item["path"] == "BitVector.bitStoreType.primitive" for item in compare(changed_store))
+
+    changed_order = copy.deepcopy(model)
+    changed_order["types"]["types"][4]["type"]["def"]["bitsequence"]["bit_order_type"] = 3
+    assert any(item["path"] == "BitVector.bitOrderPath" for item in compare(changed_order))
+
+    changed_marker_shape = copy.deepcopy(model)
+    changed_marker_shape["types"]["types"][2]["type"]["def"] = {
+        "composite": {"fields": [{"type": 0}]}}
+    assert any(item["path"] == "BitVector.bitOrderType.fields.length"
+               for item in compare(changed_marker_shape))
+    return [
+        "Identical bit-sequence storage/order and equivalent serde spellings accepted",
+        "Bit-sequence storage width u8-to-u16 rejected",
+        "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
+        "Changed bit-order marker layout rejected despite unchanged identity path",
+    ]
 
 
 def main():

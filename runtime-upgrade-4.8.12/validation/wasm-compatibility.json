@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T05:42:32.899Z",
+  "startedAt": "2026-10-05T06:49:26.107Z",
   "localOnly": true,
   "remoteRequests": 0,
   "inputs": {
@@ -1387,17 +1387,17 @@
     },
     "candidate": {
       "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-      "bytes": 3089114,
-      "sha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
-      "uncompressedBytes": 13656158,
-      "uncompressedSha256": "476dbcbe1fdb1440f51051efae6e1ad3ca94ce215aabf33bfb3c83ec5b3b3eca",
+      "bytes": 3092259,
+      "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+      "uncompressedBytes": 13643617,
+      "uncompressedSha256": "103f2f3838fddeacb31a892451ae91586d556f3042f4692515258540382306dd",
       "metadataPath": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
       "metadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
       "info": {
-        "size": 3089114,
+        "size": 3092259,
         "compression": {
-          "size_compressed": 3089114,
-          "size_decompressed": 13656158,
+          "size_compressed": 3092259,
+          "size_decompressed": 13643617,
           "compressed": true
         },
         "reserved_meta": [
@@ -1531,10 +1531,10 @@
           "transactionVersion": 131,
           "stateVersion": 0
         },
-        "proposal_hash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-        "parachain_authorize_upgrade_hash": "0x5ed43a621a68400bf2aa8ca871106c86dedea9db7f758d04d1e8545d30f505db",
-        "ipfs_hash": "QmfZXDqcuyQxRm7Dgpo2X7kFLcP2oBfvmpmysjgs69jFfW",
-        "blake2_256": "0xb4ae55a09565461f04bdca7726978e7d580fe5dcb247acd4b5c434df310d52ad"
+        "proposal_hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+        "parachain_authorize_upgrade_hash": "0xb15c6392bf4d72a2434298697072909000722ded1736feb8bf4f22635aca2d39",
+        "ipfs_hash": "QmeUqs3cdbkfiwkBJFVpL6tCUr1M9rdsrBbsrRpDmEgFcZ",
+        "blake2_256": "0x06da5a296325e18e17289ec005a797ea862e37e68883e45e7ea6ad8f6e0ba91b"
       },
       "imports": [
         {
@@ -2771,7 +2771,8 @@
     "existingScaleEncodingCompatible": true,
     "metadataAdditionsRecorded": true,
     "previous4812EncodingsPreserved": true,
-    "onlyDeclaredCapacityAbiAdditions": true,
+    "noFollowupAbiOrConstantChanges": true,
+    "capacityAbiRetained": true,
     "onlyRuntimeVersionConstantChanged": true,
     "hostImportNamesKindsAndOrderUnchanged": true,
     "hostFunctionSignaturesUnchanged": true,
@@ -2783,12 +2784,12 @@
     "specVersionAdvancedTo134": true,
     "implVersionRemains1": true
   },
-  "scriptSha256": "b1e945dc327ea2f8447f8dda95dddf816bce55a7191fe8350b2c1d6c131fc1be",
+  "scriptSha256": "0fac6482164959e72367872f38f835f452ebccde12f3694d76b60131dc599ea9",
   "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
   "tools": {
     "subwasm": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
     "comparator": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
-    "comparatorSha256": "033a4dfd3be69b85f433f71db7c52b04c9832fe3f7068e3f764440a5ed005858"
+    "comparatorSha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d"
   },
   "metadataComparison": {
     "compatibleExistingScaleEncoding": true,
@@ -2805,26 +2806,19 @@
     "breakingChanges": [],
     "additions": 56,
     "constantValueChanges": 1,
-    "selfChecks": 5,
+    "selfChecks": 9,
     "output": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/metadata-compatibility.json"
   },
-  "capacityMetadataComparison": {
+  "predecessorMetadataComparison": {
     "previousMetadataFile": "previous-candidate-metadata.json",
-    "previousMetadataSha256": "7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82",
-    "previousCandidateSha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
+    "previousMetadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
+    "previousCandidateSha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
     "candidateMetadataSha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
-    "reportFile": "capacity-metadata-compatibility.json",
-    "reportSha256": "96ec1c947ebd4099fdca0535a28af69f53652ccb88ca44f55bc5a80829569e47",
+    "reportFile": "predecessor-metadata-compatibility.json",
+    "reportSha256": "82e04056a123f581321d326b01aa3fd56a8ecb28dd3bdb33700788613df2841c",
     "existingEncodingsPreserved": true,
-    "onlyDeclaredCapacityAdditions": true,
-    "declaredChanges": [
-      "BridgeMultisig.error.TooManyPendingOperationsByProposer",
-      "BridgeMultisig.event.MultisigCancellationApproval",
-      "BridgeMultisig.storage.CancellationApprovals",
-      "BridgeMultisig.storage.PendingOperationsByProposer",
-      "BridgeMultisig.storage.ProposerCountedOperations",
-      "EthBridge.calls.cancel_pending_multisig"
-    ]
+    "noAbiOrConstantChanges": true,
+    "capacityAbiRetained": true
   },
   "metadataAdditions": [
     {
@@ -3229,5 +3223,5 @@
     "Structural metadata comparison covers declared SCALE layouts, indices, storage hashers/defaults and signed extension shapes; it does not execute migrations or prove custom codec behavior.",
     "Import comparison checks names, kinds, order, resolved function parameter/result types and imported memory limits/shared/address type. It does not prove host implementation behavior. Actual report rejection and signed fees are covered by the separate exact-Wasm rehearsal."
   ],
-  "finishedAt": "2026-10-05T05:42:39.066Z"
+  "finishedAt": "2026-10-05T06:49:35.567Z"
 }

@@ -555,9 +555,12 @@ pub mod pallet {
                 Self::can_fund_sponsorship(&sponsor, remaining_budget),
                 Error::<T>::InvalidFeeSponsorship
             );
-            // A funded live grant cannot be displaced by a stranger. If its
-            // sponsor withdraws its funding, another volunteer may replace the
-            // unusable promise with an authorization backed by its own funds.
+            // A volunteer can replace an underpriced grant without requiring
+            // the zero-XOR claimant to pay for revocation. A stranger may only
+            // replace a live funded grant with a strictly higher fee cap and no lower
+            // budget, attempt allowance or expiry, backed by the new sponsor's
+            // own funds. Check current storage so stale replacements cannot
+            // degrade a grant that was improved while they were pending.
             if let Some(existing) = FeeSponsorships::<T>::get(claim) {
                 ensure!(
                     existing.sponsor == sponsor
@@ -566,7 +569,11 @@ pub mod pallet {
                         || !Self::can_fund_sponsorship(
                             &existing.sponsor,
                             existing.remaining_budget
-                        ),
+                        )
+                        || (max_fee > existing.max_fee
+                            && remaining_budget >= existing.remaining_budget
+                            && attempts >= existing.remaining_attempts
+                            && valid_until >= existing.valid_until),
                     Error::<T>::NotFeeSponsor
                 );
             } else {

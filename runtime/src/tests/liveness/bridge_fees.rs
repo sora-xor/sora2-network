@@ -433,6 +433,128 @@ fn zero_xor_outgoing_peer_approval_checks_real_signature_and_rejects_replay() {
     });
 }
 
+#[test]
+fn outgoing_approval_retains_validation_weight_before_and_at_quorum() {
+    use eth_bridge::requests::{
+        AssetKind, OffchainRequest, OutgoingRequest, OutgoingTransfer, RequestStatus,
+    };
+    use sp_runtime::{traits::IdentifyAccount, MultiSigner};
+
+    ext().execute_with(|| {
+        System::set_block_number(1);
+        let peers = [
+            sp_core::ecdsa::Pair::from_seed(&[81; 32]),
+            sp_core::ecdsa::Pair::from_seed(&[82; 32]),
+        ];
+        let accounts = peers
+            .iter()
+            .map(|peer| MultiSigner::Ecdsa(peer.public()).into_account())
+            .collect::<Vec<AccountId>>();
+        for who in &accounts {
+            System::inc_providers(who);
+            assert_eq!(Balances::total_balance(who), 0);
+        }
+        eth_bridge::Peers::<Runtime>::insert(
+            0,
+            accounts.iter().cloned().collect::<std::collections::BTreeSet<_>>(),
+        );
+        assert!(EthBridge::pending_peer(0).is_none());
+        assert_ok!(EthBridge::register_existing_sidechain_asset(
+            RuntimeOrigin::root(), PSWAP, H160::repeat_byte(2), 0
+        ));
+        // Back a native-asset outgoing transfer so the second approval completes it.
+        let mut asset_key = frame_support::storage::storage_prefix(
+            b"EthBridge", b"RegisteredAsset",
+        ).to_vec();
+        asset_key.extend(<frame_support::Twox64Concat as frame_support::StorageHasher>::hash(
+            &0u32.encode(),
+        ));
+        asset_key.extend(PSWAP.encode());
+        sp_io::storage::set(&asset_key, &AssetKind::Thischain.encode());
+        assert_eq!(EthBridge::registered_asset(0, PSWAP), Some(AssetKind::Thischain));
+        let bridge = EthBridge::bridge_account(0).unwrap();
+        assert_ok!(Assets::update_balance(
+            RuntimeOrigin::root(), bridge.clone(), PSWAP, balance!(1) as i128
+        ));
+        assert_ok!(Assets::reserve(&PSWAP, &bridge, balance!(1)));
+        let request = OutgoingRequest::Transfer(OutgoingTransfer::<Runtime> {
+            from: AccountId::from([83; 32]),
+            to: H160::repeat_byte(1),
+            asset_id: PSWAP,
+            amount: balance!(1),
+            nonce: 0,
+            network_id: 0,
+            timepoint: Default::default(),
+        });
+        let stored = OffchainRequest::outgoing(request.clone());
+        let hash = stored.hash();
+        eth_bridge::Requests::<Runtime>::insert(0, hash, stored);
+        eth_bridge::RequestStatuses::<Runtime>::insert(0, hash, RequestStatus::Pending);
+        eth_bridge::RequestsQueue::<Runtime>::insert(0, vec![hash]);
+        let eth_bridge::requests::OutgoingRequestEncoded::Transfer(encoded) =
+            request.to_eth_abi(hash).unwrap()
+        else {
+            panic!("transfer fixture")
+        };
+
+        for (index, (peer, who)) in peers.iter().zip(&accounts).enumerate() {
+            let signature = peer.sign_prehashed(
+                &common::eth::prepare_message(&encoded.raw).serialize(),
+            );
+            let mut r = [0; 32];
+            r.copy_from_slice(&signature.0[..32]);
+            let mut s = [0; 32];
+            s.copy_from_slice(&signature.0[32..64]);
+            let call = RuntimeCall::EthBridge(eth_bridge::Call::approve_request {
+                ocw_public: peer.public(),
+                hash,
+                signature_params: eth_bridge::offchain::SignatureParams {
+                    r, s, v: signature.0[64],
+                },
+                network_id: 0,
+            });
+            let declared_weight = call.get_dispatch_info().call_weight;
+            let class = call.get_dispatch_info().class;
+            let extra: SignedExtra = (
+                frame_system::CheckSpecVersion::<Runtime>::new(),
+                frame_system::CheckTxVersion::<Runtime>::new(),
+                frame_system::CheckGenesis::<Runtime>::new(),
+                frame_system::CheckEra::<Runtime>::from(Era::Immortal),
+                frame_system::CheckNonce::<Runtime>::from(System::account_nonce(who)),
+                frame_system::CheckWeight::<Runtime>::new(),
+                crate::charge_tx_payment_extension(),
+            );
+            let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
+            let signature = payload.using_encoded(|payload| peer.sign(payload));
+            let transaction = UncheckedExtrinsic::new_signed(
+                call, who.clone(), Signature::Ecdsa(signature), extra,
+            );
+            frame_system::BlockWeight::<Runtime>::kill();
+            frame_system::BlockSize::<Runtime>::kill();
+            System::reset_events();
+            assert_ok!(Executive::apply_extrinsic(transaction).unwrap());
+            assert!(
+                System::block_weight().get(class).all_gte(declared_weight),
+                "successful approval must retain its admission-validation allowance"
+            );
+            assert_eq!(Balances::total_balance(who), 0);
+            assert_eq!(System::account_nonce(who), 1);
+            assert_eq!(eth_bridge::RequestApprovers::<Runtime>::get(0, hash).len(), index + 1);
+            assert_eq!(
+                eth_bridge::RequestStatuses::<Runtime>::get(0, hash),
+                Some(if index == 0 { RequestStatus::Pending } else { RequestStatus::ApprovalsReady })
+            );
+            assert!(System::events().iter().any(|record| matches!(
+                &record.event,
+                RuntimeEvent::TransactionPayment(pallet_transaction_payment::Event::TransactionFeePaid {
+                    who: paid, actual_fee: 0, tip: 0,
+                }) if paid == who
+            )));
+        }
+        assert!(eth_bridge::RequestsQueue::<Runtime>::get(0).is_empty());
+    });
+}
+
 fn setup_four_peers() -> (Vec<sr25519::Pair>, AccountId) {
     let (_, id) = setup();
     let pairs = (101..105)

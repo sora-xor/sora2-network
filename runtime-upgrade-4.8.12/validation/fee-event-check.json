@@ -1,8 +1,8 @@
 {
   "status": "passed",
   "checkedSignedReports": 9,
-  "candidateSha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
-  "rehearsalSha256": "25314f6ba8111319037e3f5b4ac45649c2624bf2f89e1bac7682ca814b161a44",
+  "candidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+  "rehearsalSha256": "f7b91f2ac979a8c5477b21b3ee14cb719a81842c54c226753f5282c6e76b1492",
   "scriptSha256": "fcfa12a99dfd34fff942d7a189f274853451a2293bb7a2d181d37fcf9ed955fe",
   "allFeeEventsMatchPayerBalanceDecrease": true,
   "allFailedReportsAreDuplicateOffenceReport": true,

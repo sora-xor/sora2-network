@@ -330,6 +330,156 @@ fn unfunded_volunteer_cannot_block_self_payment_or_another_sponsor() {
 }
 
 #[test]
+fn funded_underpriced_grant_can_be_replaced_without_claimant_xor() {
+    ext().execute_with(|| {
+        let (signer, sponsor, call, public) = fixture(false);
+        let who = AccountId::from(signer.public());
+        let attacker = AccountId::from([84; 32]);
+        drop(Balances::deposit_creating(&attacker, 100_000 * UNIT));
+        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+        assert_ok!(IrohaMigration::sponsor_migration(
+            RuntimeOrigin::signed(attacker.clone()),
+            who.clone(),
+            ADDRESS.into(),
+            public.clone(),
+            1,
+            3,
+            u32::MAX,
+        ));
+        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+        let references = System::account(&who).sufficients;
+        let fee = XorFee::compute_fee(
+            wire(call.clone(), &signer).encoded_size() as u32,
+            &call,
+            &call.get_dispatch_info(),
+            0,
+        )
+        .0;
+        assert!(fee > 1);
+        assert_eq!(crate::migration_fees::sponsor(&who, &call, fee, 0), None);
+        assert_eq!(Balances::free_balance(&who), 0);
+
+        // The attacker retains its funding and its maximum-length expiry;
+        // replacement needs neither its cooperation nor claimant funds.
+        assert_ok!(IrohaMigration::sponsor_migration(
+            RuntimeOrigin::signed(sponsor.clone()),
+            who.clone(),
+            ADDRESS.into(),
+            public,
+            10_000 * UNIT,
+            3,
+            u32::MAX,
+        ));
+        assert_eq!(System::account(&who).sufficients, references);
+        assert_eq!(
+            crate::migration_fees::sponsor(&who, &call, fee, 0),
+            Some(sponsor.clone())
+        );
+        let sponsor_before = Balances::free_balance(&sponsor);
+        let attacker_before = Balances::free_balance(&attacker);
+        reset();
+        assert_ok!(Executive::apply_extrinsic(wire(call, &signer)).unwrap());
+        assert_eq!(Balances::free_balance(&who), 0);
+        assert_eq!(Balances::free_balance(&sponsor), sponsor_before);
+        assert_eq!(Balances::free_balance(&attacker), attacker_before);
+        let remaining = iroha_migration::FeeSponsorships::<Runtime>::get(id).unwrap();
+        assert_eq!(remaining.sponsor, sponsor);
+        assert_eq!(remaining.remaining_attempts, 2);
+        assert_eq!(System::account_nonce(&who), 1);
+        assert!(System::events().iter().any(|record| matches!(
+            &record.event,
+            RuntimeEvent::IrohaMigration(iroha_migration::Event::Migrated(address, account))
+                if address == ADDRESS && account == &who
+        )));
+    });
+}
+
+#[test]
+fn replacement_cannot_reduce_a_funded_grants_limits() {
+    ext().execute_with(|| {
+        let (signer, sponsor, call, public) = fixture(true);
+        let who = AccountId::from(signer.public());
+        let replacement = AccountId::from([85; 32]);
+        drop(Balances::deposit_creating(&sponsor, 100_000 * UNIT));
+        drop(Balances::deposit_creating(&replacement, 100_000 * UNIT));
+        grant(&sponsor, &who, &public, 3);
+        reset();
+        assert!(Executive::apply_extrinsic(wire(call.clone(), &signer))
+            .unwrap()
+            .is_err());
+        let id = IrohaMigration::sponsorship_id(&who, &ADDRESS.into(), &public);
+        let existing = iroha_migration::FeeSponsorships::<Runtime>::get(id).unwrap();
+        let references = System::account(&who).sufficients;
+        assert_eq!(existing.remaining_attempts, 2);
+        assert!(existing.remaining_budget > 20_002 * UNIT);
+
+        for (max_fee, attempts, valid_until) in [
+            (10_000 * UNIT, 3, 101), // Equal fee cap cannot displace a live grant.
+            (9_999 * UNIT, 3, 101),  // Lower fee cap despite increased attempts.
+            (10_001 * UNIT, 2, 101), // Higher cap, but less remaining budget.
+            (30_001 * UNIT, 1, 101), // More budget, but fewer remaining attempts.
+            (10_001 * UNIT, 3, 99),  // Better funding, but an earlier expiry.
+        ] {
+            assert_err!(
+                IrohaMigration::sponsor_migration(
+                    RuntimeOrigin::signed(replacement.clone()),
+                    who.clone(),
+                    ADDRESS.into(),
+                    public.clone(),
+                    max_fee,
+                    attempts,
+                    valid_until,
+                ),
+                iroha_migration::Error::<Runtime>::NotFeeSponsor
+            );
+            assert_eq!(
+                iroha_migration::FeeSponsorships::<Runtime>::get(id)
+                    .unwrap()
+                    .encode(),
+                existing.encode()
+            );
+            assert_eq!(System::account(&who).sufficients, references);
+        }
+
+        assert_ok!(IrohaMigration::sponsor_migration(
+            RuntimeOrigin::signed(replacement.clone()),
+            who.clone(),
+            ADDRESS.into(),
+            public.clone(),
+            10_001 * UNIT,
+            3,
+            100,
+        ));
+        // A stale competing replacement cannot undo the improved fee cap.
+        assert_err!(
+            IrohaMigration::sponsor_migration(
+                RuntimeOrigin::signed(sponsor.clone()),
+                who.clone(),
+                ADDRESS.into(),
+                public,
+                10_000 * UNIT,
+                3,
+                100,
+            ),
+            iroha_migration::Error::<Runtime>::NotFeeSponsor
+        );
+        assert_eq!(System::account(&who).sufficients, references);
+        let sponsor_before = Balances::free_balance(&sponsor);
+        let replacement_before = Balances::free_balance(&replacement);
+        reset();
+        assert!(Executive::apply_extrinsic(wire(call, &signer))
+            .unwrap()
+            .is_err());
+        assert_eq!(Balances::free_balance(&sponsor), sponsor_before);
+        assert!(Balances::free_balance(&replacement) < replacement_before);
+        let remaining = iroha_migration::FeeSponsorships::<Runtime>::get(id).unwrap();
+        assert_eq!(remaining.sponsor, replacement);
+        assert_eq!(remaining.remaining_attempts, 2);
+        assert_eq!(Balances::free_balance(&who), 0);
+    });
+}
+
+#[test]
 fn invalid_proof_cannot_spend_sponsor_and_expired_grant_cannot_admit_zero_xor_claimant() {
     ext().execute_with(|| {
         let (signer, sponsor, mut call, public) = fixture(false);

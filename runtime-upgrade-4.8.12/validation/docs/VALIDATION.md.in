@@ -1,10 +1,10 @@
 # SORA 4.8.12 follow-up validation
 
-Candidate SHA-256: `210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c` (3,092,259 bytes).
-Source tree: `0d8d3623d8dafcf699dad11bb75f5937e8dbb46d`; reviewed base: `802298f120edfe6b9c71bec39d2544c58c1391b2`.
-Fresh evidence records **1,154 passed**, zero failed,
-**3 existing ignored** tests across eleven affected native suites.
-**35** runtime regressions and all three named follow-up
+Candidate SHA-256: `{{CANDIDATE_SHA256}}` ({{CANDIDATE_BYTES}} bytes).
+Source tree: `{{SOURCE_TREE}}`; reviewed base: `{{SOURCE_BASE}}`.
+Fresh evidence records **{{NATIVE_PASSED}} passed**, zero failed,
+**{{NATIVE_IGNORED}} existing ignored** tests across eleven affected native suites.
+**{{RUNTIME_REGRESSIONS}}** runtime regressions and all three named follow-up
 regressions passed. The predecessor's 1,151-test/32-regression results and source
 `2fe0bf...` remain historical context in `validation/predecessor-context.json`.
 The older 430 maintenance/common/inbound results retain their original logs and
@@ -53,8 +53,8 @@ votes and reuse of capacity. Every local key/value override is disclosed. The
 capacity cases isolate and record block weight/size accounting; they do not claim
 that all fixture transactions fit one block.
 
-Final fee-policy counts: **54 signed** cases
-(**12 paid**, **42 free**), with all balance/fee/nonce
+Final fee-policy counts: **{{POLICY_SIGNED}} signed** cases
+(**{{POLICY_PAID}} paid**, **{{POLICY_FREE}} free**), with all balance/fee/nonce
 assertions passing. Report signatures and headers use the mock signature host;
 native tests separately cover real cryptography. No transaction is submitted.
 These fixtures prove candidate behavior, not execution of a live bridge request.
@@ -91,8 +91,8 @@ benchmarks, not newly measured worst-case throughput.
 
 ## Governance and final integrity gate
 
-Fresh finalized preflight block: **27,909,600**.
-Final setCode proposal: `0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed` (3,092,265 bytes).
+Fresh finalized preflight block: **{{PREFLIGHT_BLOCK}}**.
+Final setCode proposal: `{{PROPOSAL_HASH}}` ({{PROPOSAL_BYTES}} bytes).
 Offline governance verification decodes all six review calls against the checked
 baseline metadata and matches them to the final Wasm and guarded council settings.
 An occupied external queue is preserved; this package does not enact or supersede
@@ -108,5 +108,5 @@ fingerprints. Final documentation is generated from passed reports by
 fresh results. Operator key installation/funding, relayer readiness, production
 consensus authoring and governance enactment remain outside local evidence.
 
-Fresh feature-runtime regeneration gate: **passed**.
-Fresh three-profile Clippy gate: **passed**.
+Fresh feature-runtime regeneration gate: **{{CHAIN_SPEC_STATUS}}**.
+Fresh three-profile Clippy gate: **{{CLIPPY_STATUS}}**.

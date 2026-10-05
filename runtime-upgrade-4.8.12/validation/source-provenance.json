@@ -1,10 +1,10 @@
 {
   "status": "passed",
-  "baseCommit": "43a17da80ebc91302680b77185ab4e7607030d2d",
-  "sourceTreeAfterPatch": "2fe0bf8887485b2b0ac6f8a2812277bc4433ecd4",
+  "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+  "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
   "sourceIsUncommittedOverlay": true,
   "patch": "source.patch",
-  "patchSha256": "1999b81579e6f5300d0c484ce4696724c1f4f6d52f4d3736e1321bf5f7f25f4b",
+  "patchSha256": "3d9ae5f96afb8f3b229f44485e8d33a8dd573ab9cf4a31a40d9cb9ddf2ca8cd0",
   "patchAppliesToCleanBase": true,
   "replayedTreeMatches": true,
   "userIndexModified": false,
@@ -17,13 +17,25 @@
     "vendor/sora2-common/Cargo.toml",
     "vendor/sora2-common/Cargo.lock"
   ],
+  "requiredFollowupInputs": [
+    "pallets/eth-bridge/src/lib.rs",
+    "pallets/iroha-migration/src/lib.rs",
+    "runtime/src/migration_fees.rs",
+    "runtime/src/tests/liveness/bridge_fees.rs",
+    "runtime/src/tests/liveness/migration_sponsorship.rs",
+    "pallets/iroha-migration/src/tests.rs"
+  ],
+  "buildInputScope": "Runtime compilation inputs; regenerated chain-spec blobs are bound separately in validation/chain-spec-runtimes.json.",
   "files": {
     "Cargo.lock": "206c00afce9062930f87f30729d65422a23d1b3b9462cae1013e958f8669225e",
     "Cargo.toml": "0e8ebd29f773fdd708a32e78c8da9cb53bad00046d2342a20e124ad80ad27ff0",
-    "pallets/eth-bridge/src/lib.rs": "ef9a597d3dbff7c5c7e9e04fb33bbf833cd0e4ae851cbae3f0900ef192b49561",
-    "runtime/src/tests/liveness/bridge_fees.rs": "77e0bfecfb1bba1c9f7665a1b630aae06650f3c74b602a3b850de9ddfca7aded",
-    "vendor/pallet-multisig/src/lib.rs": "1c4c88d8b3207e4fad44ed15de3bddc2f6b246544cb8ea74e05c9107600ba4af",
-    "vendor/pallet-multisig/src/tests.rs": "426a1347f06e8031a5bbb5b9ab0049d10a00e56be195a89a73b310771c154658",
+    "pallets/eth-bridge/src/lib.rs": "0754dd01d4600360ec5ee7338a8a98ab691e0ec6f1c3e76997fd53b81d18bca4",
+    "pallets/eth-bridge/src/tests/outgoing_tranfser.rs": "044dd26282537f4df90d2a438ee17fb65229c8c2173cb552eb8f2704cc608e60",
+    "pallets/iroha-migration/src/lib.rs": "6e67dae20087771931d1b526ac6fe62ba186e6ca822b0a0628ce24d1c8a3ac7e",
+    "pallets/iroha-migration/src/tests.rs": "182d09f37515a5835292b925de577d13c7a5981eda329a3e4776f0c26dcacd22",
+    "runtime/src/migration_fees.rs": "cfde4ec5c650f7d5e9b03b850402563855f60da7708efa62156988d0db1021a6",
+    "runtime/src/tests/liveness/bridge_fees.rs": "2b72b2696b18922633bb9f74e5fea7d778c154324920c51ebd642526c476ac71",
+    "runtime/src/tests/liveness/migration_sponsorship.rs": "138c149edf0238494fb50557c928639feae8d4fb1c65a56b7ae692f2750848a1",
     "vendor/sora2-common/Cargo.lock": "cbbfd58735ac1c191e6146037fc854f70c7b76f1c2e581db774fb05cef4b1e87",
     "vendor/sora2-common/Cargo.toml": "76a90cb1d4d7b6ee8876616655961cdc46f9345dbb468e034a600b46cb81351a"
   }

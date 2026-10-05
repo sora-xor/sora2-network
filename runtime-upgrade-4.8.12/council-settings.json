@@ -29,15 +29,15 @@
     "name": "SORA mainnet",
     "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
     "endpoint": "wss://mof2.sora.org",
-    "finalizedBlock": 27909040,
-    "finalizedBlockHash": "0x120baceb01d514c6bd8364ea64acdb3fb5c5db88ad324cb7c2908c64849277d6",
-    "checkedAt": "2026-10-05T05:48:03.050Z"
+    "finalizedBlock": 27909600,
+    "finalizedBlockHash": "0xef695bcefc1e420ed0bb9d5fa28de7ec8e4e3b0f3b9a95fffb7c98b6c7d677d2",
+    "checkedAt": "2026-10-05T06:44:21.032Z"
   },
   "runtime": {
     "baselineSpecVersion": 132,
     "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3089114,
-    "sha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
+    "bytes": 3092259,
+    "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
     "specVersion": 134,
     "transactionVersion": 131
   },
@@ -45,16 +45,16 @@
     "method": "preimage.notePreimage",
     "bytesArgumentFile": "set-code-call.hex",
     "completeCallFile": "preimage-note-call.hex",
-    "hash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
+    "hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
     "hashAlgorithm": "BLAKE2-256 of full SCALE system.setCode call",
     "status": null,
-    "bytes": 3089120,
+    "bytes": 3092265,
     "maxBytes": 4194304,
     "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
     "baseDepositBaseUnits": "133546666666663200",
     "byteDepositBaseUnits": "3333333333300",
-    "unrequestedDepositBaseUnits": "10430613333230359200",
-    "unrequestedDepositXor": "10.430613333230359200",
+    "unrequestedDepositBaseUnits": "10441096666563587700",
+    "unrequestedDepositXor": "10.441096666563587700",
     "depositSource": "Captured baseline runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
     "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
   },
@@ -66,7 +66,7 @@
     "innerCallFile": "utility-guarded-external-majority-call.hex",
     "innerCall": "utility.batchAll([democracy.externalPropose(candidate), democracy.externalProposeMajority(candidate)])",
     "proposalLengthBound": 81,
-    "motionHashForVoteAndClose": "0x80e1be082f5f5fc52549faaed92d081288be51976fb15598b92c71d53be34fdc",
+    "motionHashForVoteAndClose": "0xe8145d7e7d3b3713f30b194782c3122bbe6e60f9a6afdb6f33b9459dfc69a2f4",
     "motionIndex": null,
     "close": {
       "lengthBound": 85,
@@ -87,11 +87,11 @@
     "members": 4,
     "innerCallFile": "democracy-fast-track-call.hex",
     "innerCall": "democracy.fastTrack",
-    "proposalHash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
+    "proposalHash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
     "votingPeriodBlocks": 1800,
     "enactmentDelayBlocks": 0,
     "proposalLengthBound": 42,
-    "motionHashForVoteAndClose": "0x0388d5cd9ffc77869bc7669f7620e755524f31c4593816d5d92ac891e493e30d",
+    "motionHashForVoteAndClose": "0x0d02328307a622e4667d4e293080a72a34b5409e178a3d459a9ce770710fc897",
     "motionIndex": null,
     "close": {
       "lengthBound": 46,
@@ -120,7 +120,7 @@
     "Preimage registration, council approval, technical fast-track, referendum passage and enactment are separate steps."
   ],
   "inputSha256": {
-    "runtime-upgrade-4.8.12-info.json": "1b35026fbf3c0ccb65b7afe98f2c1869adb6e716dd423bd384e207ab577568d5",
-    "governance-calls.json": "dfaab6f53c0f4e98dee136f1458a99774f220b331d0494e7401968144c05cdc8"
+    "runtime-upgrade-4.8.12-info.json": "27e5e745532aa3a263fc6f791c99333bd03df17aea2ce18295de8e35adbc20a1",
+    "governance-calls.json": "9a41b069124783e9a6718b92501dae926aab018564b17c589585e03cc5658c50"
   }
 }

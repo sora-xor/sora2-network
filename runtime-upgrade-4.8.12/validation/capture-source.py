@@ -19,6 +19,12 @@ PATHS = [
     "pallets/kensetsu", "pallets/order-book", "pallets/rewards", "pallets/xor-fee",
 ]
 REQUIRED_BUILD_INPUTS = ["Cargo.toml", "Cargo.lock", "vendor/sora2-common/Cargo.toml", "vendor/sora2-common/Cargo.lock"]
+REQUIRED_FOLLOWUP_INPUTS = [
+    "pallets/eth-bridge/src/lib.rs", "pallets/iroha-migration/src/lib.rs",
+    "runtime/src/migration_fees.rs", "runtime/src/tests/liveness/bridge_fees.rs",
+    "runtime/src/tests/liveness/migration_sponsorship.rs", "pallets/iroha-migration/src/tests.rs",
+]
+EXPECTED_BASE = "802298f120edfe6b9c71bec39d2544c58c1391b2"
 
 
 def git(*args, env=None):
@@ -31,6 +37,7 @@ def digest(data):
 
 def main():
     base = git("rev-parse", "HEAD").decode().strip()
+    assert base == EXPECTED_BASE, "Follow-up package must capture the reviewed 802298f base"
     with tempfile.TemporaryDirectory(prefix="sora-4812-source-") as temporary:
         env = {**os.environ, "GIT_INDEX_FILE": str(Path(temporary) / "capture.index")}
         git("read-tree", base, env=env)
@@ -50,7 +57,7 @@ def main():
     # An incremental patch may leave both lockfiles unchanged. Bind them anyway:
     # build/dependency evidence must describe this captured source, not rely on
     # the previous package's file-hash list.
-    captured_paths = set(changed.decode().strip("\0").split("\0")) | set(REQUIRED_BUILD_INPUTS)
+    captured_paths = set(changed.decode().strip("\0").split("\0")) | set(REQUIRED_BUILD_INPUTS) | set(REQUIRED_FOLLOWUP_INPUTS)
     for path in sorted(captured_paths):
         if path and (ROOT / path).is_file():
             files[path] = digest((ROOT / path).read_bytes())
@@ -63,6 +70,8 @@ def main():
         "sdkCommit": "e3737178ec726cffe506c907263aaaa417893fd0",
         "cargoTargetDirectory": "/Users/takemiyamakoto/dev/.sora2-pr1366-target",
         "requiredBuildInputs": REQUIRED_BUILD_INPUTS,
+        "requiredFollowupInputs": REQUIRED_FOLLOWUP_INPUTS,
+        "buildInputScope": "Runtime compilation inputs; regenerated chain-spec blobs are bound separately in validation/chain-spec-runtimes.json.",
         "files": files,
     }
     (PACKAGE / "validation/source-provenance.json").write_text(json.dumps(report, indent=2) + "\n")

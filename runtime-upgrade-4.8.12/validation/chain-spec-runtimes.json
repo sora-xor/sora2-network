@@ -1,0 +1,854 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "checkedAt": "2026-10-05T06:55:01.113821+00:00",
+  "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+  "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+  "provenanceSha256": "b6bcb8a1864cc373436d31ba2d0cf2fd378fe2b7c61160ee48e1bee1fc44a958",
+  "scriptSha256": "bebb5bb857f21d54827bd07d73c285d8d68ed9ecabaa6d1527f3a7d1ec22bb96",
+  "subwasmVersion": "subwasm v0.21.3-aa8acb6fdfb built 2026-05-28T19:11:11Z",
+  "comparatorSha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d",
+  "metadataHashEncoding": "UTF-8 JSON sorted keys, compact separators, ensure_ascii=false",
+  "networkUsed": false,
+  "runtimes": [
+    {
+      "profile": "stage",
+      "features": [
+        "build-wasm-binary",
+        "private-net",
+        "stage"
+      ],
+      "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "wasm": {
+        "path": "/private/tmp/sora-followup-stage.wasm",
+        "sha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
+        "bytes": 3160941,
+        "specVersion": 134,
+        "transactionVersion": 131,
+        "metadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+        "compression": {
+          "size_compressed": 3160941,
+          "size_decompressed": 14173026,
+          "compressed": true
+        }
+      },
+      "checks": {
+        "runtimeVersion134131": true,
+        "privateNetworkSudoPresent": true,
+        "cancelPendingMultisigCall18": true,
+        "capacityStoragePresent": true,
+        "metadataSelfChecksPassed": true
+      },
+      "metadataSelfChecks": [
+        "All portable IDs shifted by10000: unchanged semantics accepted",
+        "Nested u32-to-u64 mutation rejected for staking calls, storage and CheckNonce",
+        "Changed payout_stakers call index rejected",
+        "Signed-extension reorder rejected",
+        "Storage hasher mutation rejected",
+        "Identical bit-sequence storage/order and equivalent serde spellings accepted",
+        "Bit-sequence storage width u8-to-u16 rejected",
+        "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
+        "Changed bit-order marker layout rejected despite unchanged identity path"
+      ],
+      "palletIndices": {
+        "System": 0,
+        "Babe": 14,
+        "Timestamp": 1,
+        "Balances": 2,
+        "RandomnessCollectiveFlip": 4,
+        "TransactionPayment": 5,
+        "SkipFeelessPayment": 119,
+        "Permissions": 6,
+        "Referrals": 7,
+        "Rewards": 8,
+        "XorFee": 9,
+        "BridgeMultisig": 10,
+        "Utility": 11,
+        "Staking": 17,
+        "Offences": 37,
+        "Historical": 13,
+        "Session": 12,
+        "Authorship": 16,
+        "Grandpa": 15,
+        "ImOnline": 36,
+        "Liveness": 120,
+        "Tokens": 18,
+        "Currencies": 19,
+        "TradingPair": 20,
+        "Assets": 21,
+        "DEXManager": 22,
+        "MulticollateralBondingCurvePool": 23,
+        "Technical": 24,
+        "PoolXYK": 25,
+        "LiquidityProxy": 26,
+        "Council": 27,
+        "TechnicalCommittee": 28,
+        "Democracy": 29,
+        "DEXAPI": 30,
+        "EthBridge": 31,
+        "PswapDistribution": 32,
+        "Multisig": 33,
+        "Scheduler": 34,
+        "IrohaMigration": 35,
+        "TechnicalMembership": 38,
+        "ElectionsPhragmen": 39,
+        "VestedRewards": 40,
+        "Identity": 41,
+        "Farming": 42,
+        "XSTPool": 43,
+        "PriceTools": 44,
+        "CeresStaking": 45,
+        "CeresLiquidityLocker": 46,
+        "CeresTokenLocker": 47,
+        "CeresGovernancePlatform": 48,
+        "CeresLaunchpad": 49,
+        "DemeterFarmingPlatform": 50,
+        "BagsList": 51,
+        "ElectionProviderMultiPhase": 52,
+        "Band": 53,
+        "OracleProxy": 54,
+        "HermesGovernancePlatform": 55,
+        "Preimage": 56,
+        "OrderBook": 57,
+        "Kensetsu": 58,
+        "Presto": 59,
+        "Denomination": 60,
+        "Polkamarkt": 61,
+        "LeafProvider": 99,
+        "BridgeProxy": 103,
+        "BridgeInboundChannel": 96,
+        "BridgeOutboundChannel": 97,
+        "Dispatch": 98,
+        "JettonApp": 101,
+        "SubstrateBridgeInboundChannel": 106,
+        "SubstrateBridgeOutboundChannel": 107,
+        "SubstrateDispatch": 108,
+        "ParachainBridgeApp": 109,
+        "BridgeDataSigner": 110,
+        "MultisigVerifier": 111,
+        "SubstrateBridgeApp": 113,
+        "MultiBlockMigrations": 117,
+        "EthereumBeaconClient": 118,
+        "Beefy": 91,
+        "Sudo": 3,
+        "Faucet": 80,
+        "QaTools": 112,
+        "ApolloPlatform": 114,
+        "ExtendedAssets": 115,
+        "Soratopia": 116
+      },
+      "specs": [
+        {
+          "path": "node/chain_spec/src/bytes/chain_spec_bridge_staging.json",
+          "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+          "sha256": "426b80c8607271305a42cae27c228299dc6791df9773476a89cdef31ae410ef1",
+          "bytes": 6421684,
+          "previousSha256": "90e419dc3a666a6a81fb426c019438950ef9d70ecbea89e7c82f8dafbbd71e11",
+          "previousCodeSha256": "b397ac4ffda7780fab25ec4ecffa2007b71cb28926d5cf108e7180fe656a5cd7",
+          "codeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
+          "codeBytes": 3160941,
+          "previousMetadataSha256": "42c1ea35fadf4830ea47db71779e68768793533215decd6a227571b9583534f1",
+          "currentMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+          "previousRuntimeVersion": {
+            "specName": "sora-substrate",
+            "implName": "sora-substrate",
+            "specVersion": 134,
+            "transactionVersion": 131
+          },
+          "nonCodeJsonSha256": "8265d1682baf8d6430e16ffdc30be7c14bcc04869df9f339ecea652ec8011916",
+          "nonCodeBytesSha256": "9140d137b4d496adcabbbcfdf8fb569842ba8ce6c291a8283228533f66895ff3",
+          "nonCodeValuesUnchanged": true,
+          "nonCodeBytesUnchanged": true,
+          "lastRuntimeUpgradeUnchanged": true,
+          "palletIndicesPreserved": true,
+          "constantValuesPreserved": true,
+          "compatibleExistingScaleEncoding": true,
+          "metadataComparison": {
+            "compatibleExistingScaleEncoding": true,
+            "counts": {
+              "existingPallets": 85,
+              "existingCalls": 446,
+              "nestedTypePairsVisited": 11633,
+              "existingEvent": 471,
+              "existingError": 1027,
+              "existingStorageEntries": 501,
+              "existingConstants": 165,
+              "signedExtensions": 7
+            },
+            "breakingChanges": [],
+            "additions": [
+              {
+                "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "BridgeMultisig.error",
+                "variant": "TooManyPendingOperationsByProposer",
+                "variantIndex": 23
+              },
+              {
+                "path": "BridgeMultisig.event",
+                "variant": "MultisigCancellationApproval",
+                "variantIndex": 5
+              },
+              {
+                "path": "BridgeMultisig.storage.CancellationApprovals",
+                "storage": {
+                  "default": [
+                    0
+                  ],
+                  "modifier": "Optional",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Blake2_128Concat"
+                      ],
+                      "key": 743,
+                      "value": 746
+                    }
+                  }
+                }
+              },
+              {
+                "path": "BridgeMultisig.storage.PendingOperationsByProposer",
+                "storage": {
+                  "default": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "modifier": "Default",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Twox64Concat"
+                      ],
+                      "key": 745,
+                      "value": 4
+                    }
+                  }
+                }
+              },
+              {
+                "path": "BridgeMultisig.storage.ProposerCountedOperations",
+                "storage": {
+                  "default": [
+                    0
+                  ],
+                  "modifier": "Optional",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Blake2_128Concat"
+                      ],
+                      "key": 743,
+                      "value": 62
+                    }
+                  }
+                }
+              },
+              {
+                "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "EthBridge.calls",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Sudo.calls.variant[0].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
+                "variant": "MultisigCancellationApproval",
+                "variantIndex": 5
+              },
+              {
+                "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              }
+            ],
+            "constantValueChanges": [],
+            "signedExtensionIdentifiers": [
+              "CheckSpecVersion",
+              "CheckTxVersion",
+              "CheckGenesis",
+              "CheckMortality",
+              "CheckNonce",
+              "CheckWeight",
+              "ChargeTransactionPayment"
+            ]
+          }
+        },
+        {
+          "path": "node/chain_spec/src/bytes/chain_spec_staging.json",
+          "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+          "sha256": "fb74875436075d842af2b3acdfaa4c131a270deef47d77d91a85cbd7b5083739",
+          "bytes": 6422879,
+          "previousSha256": "0052beea42bbd3d63f496b93d0b88ed6c87da3d6e787c554c0c393d0c4e79c8e",
+          "previousCodeSha256": "b397ac4ffda7780fab25ec4ecffa2007b71cb28926d5cf108e7180fe656a5cd7",
+          "codeSha256": "d9b85503d45b8ee4a34d19be48cdf70157252ed2682681efcf1096ced9b0a410",
+          "codeBytes": 3160941,
+          "previousMetadataSha256": "42c1ea35fadf4830ea47db71779e68768793533215decd6a227571b9583534f1",
+          "currentMetadataSha256": "c6b417aa2a6b6b3c29c4eefae519adec90fb054143087fe825c634c6b963ec2d",
+          "previousRuntimeVersion": {
+            "specName": "sora-substrate",
+            "implName": "sora-substrate",
+            "specVersion": 134,
+            "transactionVersion": 131
+          },
+          "nonCodeJsonSha256": "0158dc5215a51c87e2e26ff14d00145a1c7ca02ba95f90c9d73b656025d033dc",
+          "nonCodeBytesSha256": "56df17d1dcbff6f4e3650912aa085afb080dd40c9bd86a4ea742d53fe50dc03d",
+          "nonCodeValuesUnchanged": true,
+          "nonCodeBytesUnchanged": true,
+          "lastRuntimeUpgradeUnchanged": true,
+          "palletIndicesPreserved": true,
+          "constantValuesPreserved": true,
+          "compatibleExistingScaleEncoding": true,
+          "metadataComparison": {
+            "compatibleExistingScaleEncoding": true,
+            "counts": {
+              "existingPallets": 85,
+              "existingCalls": 446,
+              "nestedTypePairsVisited": 11633,
+              "existingEvent": 471,
+              "existingError": 1027,
+              "existingStorageEntries": 501,
+              "existingConstants": 165,
+              "signedExtensions": 7
+            },
+            "breakingChanges": [],
+            "additions": [
+              {
+                "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "BridgeMultisig.error",
+                "variant": "TooManyPendingOperationsByProposer",
+                "variantIndex": 23
+              },
+              {
+                "path": "BridgeMultisig.event",
+                "variant": "MultisigCancellationApproval",
+                "variantIndex": 5
+              },
+              {
+                "path": "BridgeMultisig.storage.CancellationApprovals",
+                "storage": {
+                  "default": [
+                    0
+                  ],
+                  "modifier": "Optional",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Blake2_128Concat"
+                      ],
+                      "key": 743,
+                      "value": 746
+                    }
+                  }
+                }
+              },
+              {
+                "path": "BridgeMultisig.storage.PendingOperationsByProposer",
+                "storage": {
+                  "default": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "modifier": "Default",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Twox64Concat"
+                      ],
+                      "key": 745,
+                      "value": 4
+                    }
+                  }
+                }
+              },
+              {
+                "path": "BridgeMultisig.storage.ProposerCountedOperations",
+                "storage": {
+                  "default": [
+                    0
+                  ],
+                  "modifier": "Optional",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Blake2_128Concat"
+                      ],
+                      "key": 743,
+                      "value": 62
+                    }
+                  }
+                }
+              },
+              {
+                "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "EthBridge.calls",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Sudo.calls.variant[0].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
+                "variant": "MultisigCancellationApproval",
+                "variantIndex": 5
+              },
+              {
+                "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              }
+            ],
+            "constantValueChanges": [],
+            "signedExtensionIdentifiers": [
+              "CheckSpecVersion",
+              "CheckTxVersion",
+              "CheckGenesis",
+              "CheckMortality",
+              "CheckNonce",
+              "CheckWeight",
+              "ChargeTransactionPayment"
+            ]
+          }
+        }
+      ],
+      "build": {
+        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-followup-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage",
+        "logPath": "/private/tmp/sora-followup-stage-build.log",
+        "logSha256": "5fb56af79691111e24d0fc34a844cd791df5330b21ec9d5bb8b57872da89c794",
+        "logBytes": 916,
+        "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d"
+      }
+    },
+    {
+      "profile": "test",
+      "features": [
+        "build-wasm-binary",
+        "private-net",
+        "stage",
+        "wip",
+        "reduced-pswap-reward-periods"
+      ],
+      "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+      "wasm": {
+        "path": "/private/tmp/sora-followup-test.wasm",
+        "sha256": "3b225e12db1e94e72188e932624736bb696bf032a562afbfdca067a67bcd8da7",
+        "bytes": 3238929,
+        "specVersion": 134,
+        "transactionVersion": 131,
+        "metadataSha256": "01319606e2235e0f309e9d9cdbe51cb1b5b6694044a722ad819f415990556b29",
+        "compression": {
+          "size_compressed": 3238929,
+          "size_decompressed": 14639127,
+          "compressed": true
+        }
+      },
+      "checks": {
+        "runtimeVersion134131": true,
+        "privateNetworkSudoPresent": true,
+        "cancelPendingMultisigCall18": true,
+        "capacityStoragePresent": true,
+        "metadataSelfChecksPassed": true
+      },
+      "metadataSelfChecks": [
+        "All portable IDs shifted by10000: unchanged semantics accepted",
+        "Nested u32-to-u64 mutation rejected for staking calls, storage and CheckNonce",
+        "Changed payout_stakers call index rejected",
+        "Signed-extension reorder rejected",
+        "Storage hasher mutation rejected",
+        "Identical bit-sequence storage/order and equivalent serde spellings accepted",
+        "Bit-sequence storage width u8-to-u16 rejected",
+        "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
+        "Changed bit-order marker layout rejected despite unchanged identity path"
+      ],
+      "palletIndices": {
+        "System": 0,
+        "Babe": 14,
+        "Timestamp": 1,
+        "Balances": 2,
+        "RandomnessCollectiveFlip": 4,
+        "TransactionPayment": 5,
+        "SkipFeelessPayment": 119,
+        "Permissions": 6,
+        "Referrals": 7,
+        "Rewards": 8,
+        "XorFee": 9,
+        "BridgeMultisig": 10,
+        "Utility": 11,
+        "Staking": 17,
+        "Offences": 37,
+        "Historical": 13,
+        "Session": 12,
+        "Authorship": 16,
+        "Grandpa": 15,
+        "ImOnline": 36,
+        "Liveness": 120,
+        "Tokens": 18,
+        "Currencies": 19,
+        "TradingPair": 20,
+        "Assets": 21,
+        "DEXManager": 22,
+        "MulticollateralBondingCurvePool": 23,
+        "Technical": 24,
+        "PoolXYK": 25,
+        "LiquidityProxy": 26,
+        "Council": 27,
+        "TechnicalCommittee": 28,
+        "Democracy": 29,
+        "DEXAPI": 30,
+        "EthBridge": 31,
+        "PswapDistribution": 32,
+        "Multisig": 33,
+        "Scheduler": 34,
+        "IrohaMigration": 35,
+        "TechnicalMembership": 38,
+        "ElectionsPhragmen": 39,
+        "VestedRewards": 40,
+        "Identity": 41,
+        "Farming": 42,
+        "XSTPool": 43,
+        "PriceTools": 44,
+        "CeresStaking": 45,
+        "CeresLiquidityLocker": 46,
+        "CeresTokenLocker": 47,
+        "CeresGovernancePlatform": 48,
+        "CeresLaunchpad": 49,
+        "DemeterFarmingPlatform": 50,
+        "BagsList": 51,
+        "ElectionProviderMultiPhase": 52,
+        "Band": 53,
+        "OracleProxy": 54,
+        "HermesGovernancePlatform": 55,
+        "Preimage": 56,
+        "OrderBook": 57,
+        "Kensetsu": 58,
+        "Presto": 59,
+        "Denomination": 60,
+        "Polkamarkt": 61,
+        "LeafProvider": 99,
+        "BridgeProxy": 103,
+        "BridgeInboundChannel": 96,
+        "BridgeOutboundChannel": 97,
+        "Dispatch": 98,
+        "EVMFungibleApp": 100,
+        "JettonApp": 101,
+        "BeefyLightClient": 104,
+        "SubstrateBridgeInboundChannel": 106,
+        "SubstrateBridgeOutboundChannel": 107,
+        "SubstrateDispatch": 108,
+        "ParachainBridgeApp": 109,
+        "BridgeDataSigner": 110,
+        "MultisigVerifier": 111,
+        "SubstrateBridgeApp": 113,
+        "MultiBlockMigrations": 117,
+        "EthereumBeaconClient": 118,
+        "Mmr": 90,
+        "Beefy": 91,
+        "MmrLeaf": 92,
+        "Sudo": 3,
+        "Faucet": 80,
+        "QaTools": 112,
+        "ApolloPlatform": 114,
+        "ExtendedAssets": 115,
+        "Soratopia": 116
+      },
+      "specs": [
+        {
+          "path": "node/chain_spec/src/bytes/chain_spec_test.json",
+          "sourceBaseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
+          "sha256": "249ae178db945802fe8656d0a343ede1b319df4e866affcdf9f62c46f79cf54b",
+          "bytes": 6579507,
+          "previousSha256": "c6d8a70409f7540f761c340b3f585bc36af375dd5bf3c32e95e66bb664d9f1f0",
+          "previousCodeSha256": "a953e83cef12607adbc668f601a43e52ea0e8e9011af14d575cef2d046dcafed",
+          "codeSha256": "3b225e12db1e94e72188e932624736bb696bf032a562afbfdca067a67bcd8da7",
+          "codeBytes": 3238929,
+          "previousMetadataSha256": "62f8c6b99131ac4b43a2ca4cd749385a9ba9915b2707e07e4bc1735c36768c5e",
+          "currentMetadataSha256": "01319606e2235e0f309e9d9cdbe51cb1b5b6694044a722ad819f415990556b29",
+          "previousRuntimeVersion": {
+            "specName": "sora-substrate",
+            "implName": "sora-substrate",
+            "specVersion": 134,
+            "transactionVersion": 131
+          },
+          "nonCodeJsonSha256": "d6f4b66345f349ac7205b7124092a5fc3bb136a3a396231e61a00fdf356ffafe",
+          "nonCodeBytesSha256": "07f07af2fe85eaa05964ba14e7e6542053baf5bbc373eb6d0b84858e98dea215",
+          "nonCodeValuesUnchanged": true,
+          "nonCodeBytesUnchanged": true,
+          "lastRuntimeUpgradeUnchanged": true,
+          "palletIndicesPreserved": true,
+          "constantValuesPreserved": true,
+          "compatibleExistingScaleEncoding": true,
+          "metadataComparison": {
+            "compatibleExistingScaleEncoding": true,
+            "counts": {
+              "existingPallets": 89,
+              "existingCalls": 457,
+              "nestedTypePairsVisited": 12039,
+              "existingEvent": 481,
+              "existingError": 1064,
+              "existingStorageEntries": 525,
+              "existingConstants": 167,
+              "signedExtensions": 7
+            },
+            "breakingChanges": [],
+            "additions": [
+              {
+                "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "BridgeMultisig.error",
+                "variant": "TooManyPendingOperationsByProposer",
+                "variantIndex": 23
+              },
+              {
+                "path": "BridgeMultisig.event",
+                "variant": "MultisigCancellationApproval",
+                "variantIndex": 5
+              },
+              {
+                "path": "BridgeMultisig.storage.CancellationApprovals",
+                "storage": {
+                  "default": [
+                    0
+                  ],
+                  "modifier": "Optional",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Blake2_128Concat"
+                      ],
+                      "key": 765,
+                      "value": 768
+                    }
+                  }
+                }
+              },
+              {
+                "path": "BridgeMultisig.storage.PendingOperationsByProposer",
+                "storage": {
+                  "default": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "modifier": "Default",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Twox64Concat"
+                      ],
+                      "key": 767,
+                      "value": 4
+                    }
+                  }
+                }
+              },
+              {
+                "path": "BridgeMultisig.storage.ProposerCountedOperations",
+                "storage": {
+                  "default": [
+                    0
+                  ],
+                  "modifier": "Optional",
+                  "ty": {
+                    "Map": {
+                      "hashers": [
+                        "Twox64Concat",
+                        "Blake2_128Concat"
+                      ],
+                      "key": 765,
+                      "value": 62
+                    }
+                  }
+                }
+              },
+              {
+                "path": "Council.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Council.storage.ProposalOf.value.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "EthBridge.calls",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Multisig.calls.variant[0].fields[1].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Scheduler.calls.variant[0].fields[3].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Sudo.calls.variant[0].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "System.storage.Events.value.element.fields[1].type.variant[10].fields[0].type",
+                "variant": "MultisigCancellationApproval",
+                "variantIndex": 5
+              },
+              {
+                "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "TechnicalCommittee.storage.ProposalOf.value.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "Utility.calls.variant[0].fields[0].type.element.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "XorFee.calls.variant[3].fields[0].type.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              },
+              {
+                "path": "extrinsic.parameter.Call.variant[31].fields[0].type",
+                "variant": "cancel_pending_multisig",
+                "variantIndex": 18
+              }
+            ],
+            "constantValueChanges": [],
+            "signedExtensionIdentifiers": [
+              "CheckSpecVersion",
+              "CheckTxVersion",
+              "CheckGenesis",
+              "CheckMortality",
+              "CheckNonce",
+              "CheckWeight",
+              "ChargeTransactionPayment"
+            ]
+          }
+        }
+      ],
+      "build": {
+        "command": "env -u SKIP_WASM_BUILD CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target WASM_BUILD_WORKSPACE_HINT=/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network WASM_BUILD_CARGO_ARGS=--offline FORCE_WASM_BUILD=4.8.12-followup-final CC_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/clang AR_wasm32_unknown_unknown=/opt/homebrew/opt/llvm@21/bin/llvm-ar LIBCLANG_PATH=/opt/homebrew/opt/llvm@21/lib LLVM_CONFIG_PATH=/opt/homebrew/opt/llvm@21/bin/llvm-config scripts/with_llvm_env.sh cargo build --release --offline --locked -p framenode-runtime --features build-wasm-binary,private-net,stage,wip,reduced-pswap-reward-periods",
+        "logPath": "/private/tmp/sora-followup-test-build.log",
+        "logSha256": "8cf4dcae55603ce11330baeb5c517686ca9d9d65b9ee49052cf2dbdddf938077",
+        "logBytes": 800,
+        "sourceTree": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d"
+      }
+    }
+  ]
+}

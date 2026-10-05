@@ -100,18 +100,25 @@ def verify():
         require(rehearsal["inputs"][field] == sha256((ROOT / "validation" / name).read_bytes()), "Rehearsal input changed: " + name)
     require(compatibility["inputs"]["candidate"]["sha256"] == digest, "Compatibility used another Wasm")
     require(compatibility["scriptSha256"] == sha256((ROOT / "validation/verify-wasm-compatibility.cjs").read_bytes()), "Compatibility script changed")
-    capacity_abi = compatibility["capacityMetadataComparison"]
-    require(capacity_abi["previousCandidateSha256"] == "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037" and
-            capacity_abi["previousMetadataSha256"] == "7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82",
-            "Capacity ABI comparison must use original sealed 4.8.12 metadata")
-    require(capacity_abi["existingEncodingsPreserved"] and capacity_abi["onlyDeclaredCapacityAdditions"],
-            "Previous 4.8.12 ABI was not preserved by capacity fix")
-    require(capacity_abi["previousMetadataSha256"] == sha256((ROOT / "validation/previous-candidate-metadata.json").read_bytes()),
-            "Previous sealed candidate metadata changed")
-    require(capacity_abi["candidateMetadataSha256"] == sha256((ROOT / "validation/candidate-metadata.json").read_bytes()),
-            "Capacity comparison used another candidate metadata")
-    require(capacity_abi["reportSha256"] == sha256((ROOT / "validation/capacity-metadata-compatibility.json").read_bytes()),
-            "Capacity ABI comparison report changed")
+    predecessor_abi = compatibility["predecessorMetadataComparison"]
+    require(predecessor_abi["previousCandidateSha256"] == "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59" and
+            predecessor_abi["previousMetadataSha256"] == "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020",
+            "Follow-up ABI comparison must use the sealed faf9ab candidate")
+    require(predecessor_abi["existingEncodingsPreserved"] and predecessor_abi["noAbiOrConstantChanges"] and
+            predecessor_abi["capacityAbiRetained"], "Follow-up changed the predecessor ABI or constants")
+    require(predecessor_abi["previousMetadataSha256"] == sha256((ROOT / "validation/previous-candidate-metadata.json").read_bytes()),
+            "Predecessor metadata changed")
+    require(predecessor_abi["candidateMetadataSha256"] == sha256((ROOT / "validation/candidate-metadata.json").read_bytes()),
+            "Predecessor comparison used another candidate metadata")
+    require(predecessor_abi["reportSha256"] == sha256((ROOT / "validation/predecessor-metadata-compatibility.json").read_bytes()),
+            "Predecessor ABI comparison report changed")
+    predecessor = load("validation/predecessor-context.json")
+    require(predecessor["status"] == "retained-historical-evidence" and not predecessor["freshFollowupExecutionClaimed"] and
+            predecessor["candidate"]["sha256"] == predecessor_abi["previousCandidateSha256"] and
+            predecessor["metadataSha256"] == predecessor_abi["previousMetadataSha256"], "Predecessor context mismatch")
+    require(predecessor["historicalCapacityComparisonSha256"] ==
+            sha256((ROOT / "validation/historical-capacity-metadata-compatibility.json").read_bytes()),
+            "Historical capacity comparison changed")
     require(compatibility["snapshotSha256"] == sha256((ROOT / "validation/snapshot.json").read_bytes()), "Compatibility snapshot changed")
     require(compatibility["tools"]["comparatorSha256"] == sha256((ROOT / "validation/compare-metadata.py").read_bytes()), "Metadata comparator changed")
     require(compatibility["inputs"]["baseline"]["sha256"] == snapshot["code"]["sha256"] == info["preflight"]["deployedSha256"], "Baseline mismatch")
@@ -176,8 +183,65 @@ def verify():
     lint = evidence("clippy", provenance)
     require(lint["exitCode"] == 0 and lint["profiles"] == ["mainnet", "try-runtime", "extended"],
             "Fresh three-profile Clippy evidence incomplete")
-    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 32, "Native fee policy regressions incomplete")
+    require(native["totalFailed"] == 0 and native["newRuntimeRegressionsPassed"] >= 35, "Native fee policy regressions incomplete")
     require(native["capacityExecutiveRegressionsPassed"] == 2, "Capacity/quorum Executive regressions incomplete")
+    required_followup_tests = {
+        "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
+        "tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor",
+        "tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits",
+    }
+    require(native["followupRegressionsPassed"] == 3 and
+            set(native["requiredFollowupRegressions"]) == required_followup_tests,
+            "Bridge weight and sponsorship replacement regressions incomplete")
+    require(provenance["baseCommit"] == "802298f120edfe6b9c71bec39d2544c58c1391b2",
+            "Follow-up source does not use the reviewed 802298f base")
+    require(set(provenance["requiredFollowupInputs"]) <= set(provenance["files"]),
+            "Follow-up production and regression sources are not bound")
+    chain_specs = load("validation/chain-spec-runtimes.json")
+    require(chain_specs["schemaVersion"] == 1 and chain_specs["status"] == "passed" and
+            chain_specs["sourceTree"] == provenance["sourceTreeAfterPatch"] and
+            chain_specs["sourceBaseCommit"] == provenance["baseCommit"] and not chain_specs["networkUsed"],
+            "Regenerated chain specs used another source or a network service")
+    require(chain_specs["provenanceSha256"] == sha256((ROOT / "validation/source-provenance.json").read_bytes()) and
+            chain_specs["scriptSha256"] == sha256((ROOT / "validation/refresh-chain-specs.py").read_bytes()) and
+            chain_specs["comparatorSha256"] == sha256((ROOT / "validation/compare-metadata.py").read_bytes()),
+            "Chain-spec regeneration inputs changed")
+    expected_profiles = {
+        "stage": {"build-wasm-binary", "private-net", "stage"},
+        "test": {"build-wasm-binary", "private-net", "stage", "wip", "reduced-pswap-reward-periods"},
+    }
+    expected_specs = {
+        "stage": {"node/chain_spec/src/bytes/chain_spec_staging.json", "node/chain_spec/src/bytes/chain_spec_bridge_staging.json"},
+        "test": {"node/chain_spec/src/bytes/chain_spec_test.json"},
+    }
+    require({row["profile"] for row in chain_specs["runtimes"]} == set(expected_profiles) and
+            len(chain_specs["runtimes"]) == 2, "Chain-spec runtime profiles differ")
+    for runtime in chain_specs["runtimes"]:
+        profile = runtime["profile"]
+        require(set(runtime["features"]) == expected_profiles[profile] and
+                runtime["sourceTree"] == provenance["sourceTreeAfterPatch"], "Chain-spec feature/source mismatch")
+        wasm_info = runtime["wasm"]
+        require(wasm_info["specVersion"] == 134 and wasm_info["transactionVersion"] == 131 and
+                len(wasm_info["sha256"]) == 64 and wasm_info["bytes"] > 0,
+                "Chain-spec runtime version or fingerprint differs")
+        require(all(runtime["checks"].values()) and runtime["checks"]["cancelPendingMultisigCall18"] and
+                runtime["checks"]["capacityStoragePresent"] and runtime["checks"]["metadataSelfChecksPassed"] and
+                len(runtime["metadataSelfChecks"]) >= 9, "Chain-spec runtime lacks current capacity ABI or strict comparator checks")
+        require({row["path"] for row in runtime["specs"]} == expected_specs[profile], "Chain-spec set differs")
+        for spec in runtime["specs"]:
+            require(spec["sourceBaseCommit"] == provenance["baseCommit"] and
+                    spec["codeSha256"] == wasm_info["sha256"] and spec["codeBytes"] == wasm_info["bytes"] and
+                    spec["nonCodeValuesUnchanged"] and spec["nonCodeBytesUnchanged"] and
+                    spec["lastRuntimeUpgradeUnchanged"] and spec["palletIndicesPreserved"] and
+                    spec["compatibleExistingScaleEncoding"] and spec["constantValuesPreserved"],
+                    "Chain-spec content/ABI preservation failed")
+            require(spec["currentMetadataSha256"] == wasm_info["metadataSha256"], "Chain-spec metadata fingerprint differs")
+            if "--check-workspace-source" in sys.argv[1:]:
+                path = ROOT.parent / safe_relative(spec["path"])
+                raw = path.read_bytes()
+                require(sha256(raw) == spec["sha256"] and len(raw) == spec["bytes"], "Workspace chain spec changed: " + spec["path"])
+                code = bytes.fromhex(json.loads(raw)["genesis"]["raw"]["top"]["0x3a636f6465"][2:])
+                require(sha256(code) == spec["codeSha256"] and len(code) == spec["codeBytes"], "Workspace embedded runtime changed: " + spec["path"])
     owned = load("validation/owned-tests.json")
     historical_owned = load("validation/historical-owned-tests-context.json")
     require(historical_owned["status"] == "retained-historical-evidence" and
@@ -205,6 +269,17 @@ def verify():
             git("read-tree", provenance["baseCommit"])
             git("apply", "--cached", "--whitespace=nowarn", str(ROOT / provenance["patch"]))
             require(git("write-tree") == provenance["sourceTreeAfterPatch"], "Source replay produced another tree")
+
+    docs = load("validation/docs-evidence.json")
+    require(docs["status"] == "passed" and docs["candidateSha256"] == digest and
+            docs["sourceTreeAfterPatch"] == provenance["sourceTreeAfterPatch"], "Final documentation used stale evidence")
+    require(docs["scriptSha256"] == sha256((ROOT / "validation/finalize-docs.py").read_bytes()), "Documentation generator changed")
+    require(set(docs["documents"]) == {"README.md", "VALIDATION.md", "GOVERNANCE-RUNBOOK.md", "COUNCIL_MESSAGE.md"}, "Required documentation missing")
+    for name, expected in docs["documents"].items():
+        data = (ROOT / safe_relative(name)).read_bytes()
+        require(sha256(data) == expected and b"{{" not in data, "Stale or unrendered documentation: " + name)
+    for name, expected in docs["inputSha256"].items():
+        require(sha256((ROOT / safe_relative(name)).read_bytes()) == expected, "Documentation input changed: " + name)
 
     metadata = load("validation/baseline-metadata.json")["V14"]
     encoded = call_index(metadata, "System", "set_code") + compact(len(wasm)) + wasm

@@ -4,14 +4,14 @@ This upgrade closes the identified fee bypasses. Successful outgoing bridge appr
 
 **Bridge peers do not need XOR.** Authenticated protocol calls remain free, including accepted local failures. Invalid proofs and replays are rejected before execution; unrelated peer calls remain paid. There is no incoming fee escrow or bond. Each proposer has a fair share of the 128 new pending multisig slots (32 with four members). Current peers can cancel abandoned proposals by quorum even when the queue is full or the proposer has left, without executing their payloads. Existing incoming failure/consumed-hash behavior is preserved.
 
-Fresh validation passed **1,154 native tests**, with three existing ignored tests, including the quota/cancellation regressions and all three follow-up approval-weight/sponsor-replacement regressions. The earlier 430 maintenance/common/inbound test results retain their historical provenance. The exact Wasm passed fee/refund/replay, fair-quota/full-queue recovery and compatibility checks. The package includes the exact source patch, evidence and six unsigned governance calls. Synthetic fixtures, conservative weight estimates and operator-readiness limits are disclosed in [VALIDATION.md](VALIDATION.md).
+Fresh validation passed **{{NATIVE_PASSED}} native tests**, with three existing ignored tests, including the quota/cancellation regressions and all three follow-up approval-weight/sponsor-replacement regressions. The earlier 430 maintenance/common/inbound test results retain their historical provenance. The exact Wasm passed fee/refund/replay, fair-quota/full-queue recovery and compatibility checks. The package includes the exact source patch, evidence and six unsigned governance calls. Synthetic fixtures, conservative weight estimates and operator-readiness limits are disclosed in [VALIDATION.md](VALIDATION.md).
 
-Wasm SHA-256 (3,092,259 bytes):
-`210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c`
+Wasm SHA-256 ({{CANDIDATE_BYTES}} bytes):
+`{{CANDIDATE_SHA256}}`
 
-`system.setCode` proposal hash (3,092,265 bytes):
-`0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed`
+`system.setCode` proposal hash ({{PROPOSAL_BYTES}} bytes):
+`{{PROPOSAL_HASH}}`
 
-At finalized block **27,909,600**, **4.8.11 remains queued**. Resolve that proposal normally, confirm funded keeper/reporter readiness, and refresh the baseline before activation. The guarded council call cannot overwrite the queue. If 4.8.11 enacts, repeat the exact-Wasm checks against its deployed runtime. Bridge peers remain exempt from XOR funding.
+At finalized block **{{PREFLIGHT_BLOCK}}**, **4.8.11 remains queued**. Resolve that proposal normally, confirm funded keeper/reporter readiness, and refresh the baseline before activation. The guarded council call cannot overwrite the queue. If 4.8.11 enacts, repeat the exact-Wasm checks against its deployed runtime. Bridge peers remain exempt from XOR funding.
 
 Verify the ZIP checksum and follow [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md). This candidate includes the prior staking reward repair. **No governance transaction has been submitted.**

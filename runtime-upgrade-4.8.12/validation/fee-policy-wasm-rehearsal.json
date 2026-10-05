@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "startedAt": "2026-10-05T05:42:33.418Z",
+  "startedAt": "2026-10-05T06:42:47.307Z",
   "localOnly": true,
   "syntheticFixturesEnabled": true,
   "endpoint": "wss://mof2.sora.org",
@@ -13,9 +13,7 @@
   "submittedTransactions": 0,
   "privateKeysRead": 0,
   "realSignatures": 0,
-  "remoteRpcMethods": {
-    "state_getStorage": 407
-  },
+  "remoteRpcMethods": {},
   "unsignedChecks": [
     {
       "method": "kensetsu.accrue missing CDP",
@@ -8181,10 +8179,10 @@
   "readCache": {
     "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/.public-read-cache.json.gz",
     "content": "Immutable public storage scoped by block hash",
-    "existingValues": 5732,
-    "storageHits": 1191,
+    "existingValues": 6139,
+    "storageHits": 1598,
     "keyPageHits": 152,
-    "fetchedValues": 407,
+    "fetchedValues": 0,
     "fetchedKeyPages": 0,
     "savedBytes": 7357888,
     "sha256": "50cf8e0acaddd386bbf96d8fa6e44632e39a289d38ce2ab0d507d9ef35bd2a4d"
@@ -8315,8 +8313,8 @@
   "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
   "candidate": {
     "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3089114,
-    "sha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
+    "bytes": 3092259,
+    "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -8881,7 +8879,7 @@
     ]
   },
   "inputs": {
-    "candidateSha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
+    "candidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
     "scriptSha256": "6739a5933049c85becfccd4d59e59a7f7cb1184079c4a6a6680842520dc0f900",
     "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
     "packageLockSha256": "d3e676fd0ef61c0ce9c54df8541c0b5d26c92196e32ac5d541230be3b7bba6f7"
@@ -8903,5 +8901,5 @@
     "protectedStakingStateAndXorIssuancePreservedByUpgrade": true,
     "noPublicTransactionSubmission": true
   },
-  "finishedAt": "2026-10-05T05:44:16.430Z"
+  "finishedAt": "2026-10-05T06:43:21.931Z"
 }

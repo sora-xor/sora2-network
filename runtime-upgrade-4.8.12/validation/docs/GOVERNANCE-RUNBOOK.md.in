@@ -1,18 +1,18 @@
 # SORA 4.8.12 governance runbook
 
 This package contains six **unsigned review calls** for runtime spec **134**,
-transaction version **131**. The final Wasm is 3,092,259 bytes:
-`210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c` (SHA-256).
+transaction version **131**. The final Wasm is {{CANDIDATE_BYTES}} bytes:
+`{{CANDIDATE_SHA256}}` (SHA-256).
 
-The exact `system.setCode` proposal is 3,092,265 bytes with hash
-`0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed`. All six calls passed independent
+The exact `system.setCode` proposal is {{PROPOSAL_BYTES}} bytes with hash
+`{{PROPOSAL_HASH}}`. All six calls passed independent
 offline decoding and binding to this Wasm. Finalized governance preflight block
-**27,909,600** recorded council threshold **4** and technical committee
-threshold **3**. Use `council-settings.json` for exact current call files,
+**{{PREFLIGHT_BLOCK}}** recorded council threshold **{{COUNCIL_THRESHOLD}}** and technical committee
+threshold **{{TECHNICAL_THRESHOLD}}**. Use `council-settings.json` for exact current call files,
 lengths, weights and the unrequested-preimage deposit estimate. Obtain a fresh
 signed-account fee/deposit quote before submission.
 
-The finalized external queue at block **27,909,600** contains **4.8.11**. Settings record
+The finalized external queue at block **{{PREFLIGHT_BLOCK}}** contains **4.8.11**. Settings record
 `activationReady: false`; the guarded route rejects replacement of an occupied
 queue. Resolve the existing proposal through normal governance, then refresh
 finalized baseline/governance state. If 4.8.11 enacts, repeat metadata and exact

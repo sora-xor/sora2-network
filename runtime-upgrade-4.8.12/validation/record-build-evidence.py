@@ -16,6 +16,8 @@ parser.add_argument('--format-log', type=Path, required=True)
 parser.add_argument('--wasm-log', type=Path, required=True)
 parser.add_argument('--native-command', required=True)
 parser.add_argument('--wasm-command', required=True)
+parser.add_argument('--clippy-log', type=Path)
+parser.add_argument('--clippy-command')
 parser.add_argument('--target', type=Path, default=Path('/Users/takemiyamakoto/dev/.sora2-pr1366-target'))
 args = parser.parse_args()
 TARGET = args.target.resolve()
@@ -44,7 +46,14 @@ for line in log.splitlines():
 assert len(suites) == 11, suites
 assert all(row['failed'] == 0 for row in suites)
 new_tests = re.findall(r'^test tests::liveness::(?:equivocation_fees|equivocation_bridge|feeless_success|funded_keepers|migration_sponsorship|bridge_fees)::.* \.\.\. ok$', log, re.M)
-assert len(new_tests) >= 32, len(new_tests)
+assert len(new_tests) >= 35, len(new_tests)
+required_followup_tests = [
+    'tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum',
+    'tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor',
+    'tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits',
+]
+for name in required_followup_tests:
+    assert re.search(r'^test ' + re.escape(name) + r' \.\.\. ok$', log, re.M), 'Missing successful follow-up regression: ' + name
 capacity_tests = re.findall(r'^test tests::liveness::bridge_fees::(?:one_zero_xor_peer_cannot_exhaust_other_peers_proposal_capacity|current_zero_xor_quorum_cleans_orphaned_proposal_at_full_shared_capacity) \.\.\. ok$', log, re.M)
 assert len(capacity_tests) == 2, 'Both Executive capacity/quorum regressions must pass'
 assert (HERE / 'format-check.log').read_text().strip() == ''
@@ -56,6 +65,8 @@ native = {'status': 'passed', 'sourceTreeAfterPatch': provenance['sourceTreeAfte
           'totalPassed': sum(row['passed'] for row in suites), 'totalFailed': 0,
           'totalIgnored': sum(row['ignored'] for row in suites), 'newRuntimeRegressionsPassed': len(new_tests),
           'capacityExecutiveRegressionsPassed': len(capacity_tests),
+          'followupRegressionsPassed': len(required_followup_tests),
+          'requiredFollowupRegressions': required_followup_tests,
           'cargoFmtAllCheckPassed': True, 'formatCheckLogSha256': sha((HERE / 'format-check.log').read_bytes()),
           'limitations': ['Existing explicitly ignored runtime tests are retained and counted.',
                           'Native Executive regressions use real cryptographic signatures; execution is local.']}
@@ -83,6 +94,23 @@ build = {'status': 'passed', 'sourceTreeAfterPatch': provenance['sourceTreeAfter
          'log': 'wasm-build.log', 'logSha256': sha((HERE / 'wasm-build.log').read_bytes()),
          'cargoTargetDirectory': str(TARGET), 'cargoCleanRun': False}
 (HERE / 'wasm-build.json').write_text(json.dumps(build, indent=2) + '\n')
+if args.clippy_log is not None:
+    assert args.clippy_command, '--clippy-command is required with --clippy-log'
+    assert args.clippy_log.is_file(), 'Missing fresh Clippy log'
+    shutil.copyfile(args.clippy_log, HERE / 'clippy.log')
+    lint_log = (HERE / 'clippy.log').read_text()
+    profiles = ['mainnet', 'try-runtime', 'extended']
+    assert all('Running Clippy (' + profile + ')' in lint_log for profile in profiles)
+    assert 'could not compile' not in lint_log and 'failed with exit status' not in lint_log
+    assert lint_log.count('Finished `dev` profile') >= 3, 'All three Clippy profiles must complete'
+    lint = {'status': 'passed', 'sourceTreeAfterPatch': provenance['sourceTreeAfterPatch'],
+            'baseCommit': provenance['baseCommit'], 'checkout': str(ROOT),
+            'command': args.clippy_command, 'profiles': profiles, 'exitCode': 0,
+            'internalFlags': ['SKIP_WASM_BUILD=1', '--locked', '--all-targets', '-- -D warnings'],
+            'log': 'clippy.log', 'logSource': str(args.clippy_log.resolve()),
+            'logSha256': sha((HERE / 'clippy.log').read_bytes()),
+            'networkRequests': 0, 'cargoCleanRun': False}
+    (HERE / 'clippy.json').write_text(json.dumps(lint, indent=2) + '\n')
 print(json.dumps({'nativePassed': native['totalPassed'], 'nativeIgnored': native['totalIgnored'],
                   'newRuntimeRegressions': len(new_tests), 'wasmSha256': sha(wasm),
                   'capacityExecutiveRegressions': len(capacity_tests),

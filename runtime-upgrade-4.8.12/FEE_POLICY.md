@@ -18,6 +18,18 @@ before dispatch; peer identity never makes unrelated calls free.
 | Rewards UMI NFT receiver update (`add_umi_nft_receivers`) | Root success retains its exemption; a signed unauthorized call is charged. |
 | Requested preimage provision | The first useful signed provision retains its refund. Repeated signed provision is rejected and charged. Internal preimage reference handling remains compatible. |
 
+## Follow-up weight and sponsorship repair
+
+Successful outgoing bridge approvals keep the full declared admission/validation
+reservation instead of refunding it to the older processing-only weight. This
+covers the fee-exemption checks as well as evidence processing before and at quorum.
+
+A funded grant that cannot cover the current declared migration fee may be
+replaced by a usable authorization for a zero-XOR claimant. Replacing a funded
+grant cannot lower its existing maximum fee, remaining budget or attempts; the
+normal sponsor authorization, funding and withdrawal rules remain in force.
+The named Executive regressions cover these rules with real signatures.
+
 ## Remaining protocol exemptions
 
 Timestamp and consensus inherents remain block-author operations. ImOnline

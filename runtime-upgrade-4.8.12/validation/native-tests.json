@@ -1,9 +1,9 @@
 {
   "status": "passed",
-  "sourceTreeAfterPatch": "2fe0bf8887485b2b0ac6f8a2812277bc4433ecd4",
+  "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
   "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
   "log": "native-tests.log",
-  "logSha256": "5282c94bb85ba3e4924691cbe2f6b17e0e8e6e9a799d731789cd9fb796dc2d65",
+  "logSha256": "95c4f4b3be738faa656c373800ad652afd1f4c5addf1748c9788636056d06628",
   "suites": [
     {
       "crate": "eth_bridge",
@@ -13,7 +13,7 @@
     },
     {
       "crate": "framenode_runtime",
-      "passed": 233,
+      "passed": 236,
       "failed": 0,
       "ignored": 3
     },
@@ -72,14 +72,20 @@
       "ignored": 0
     }
   ],
-  "baseCommit": "43a17da80ebc91302680b77185ab4e7607030d2d",
+  "baseCommit": "802298f120edfe6b9c71bec39d2544c58c1391b2",
   "checkout": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network",
-  "logSource": "/private/tmp/sora-capacity-native-tests.log",
-  "totalPassed": 1151,
+  "logSource": "/private/tmp/sora-followup-native-tests.log",
+  "totalPassed": 1154,
   "totalFailed": 0,
   "totalIgnored": 3,
-  "newRuntimeRegressionsPassed": 32,
+  "newRuntimeRegressionsPassed": 35,
   "capacityExecutiveRegressionsPassed": 2,
+  "followupRegressionsPassed": 3,
+  "requiredFollowupRegressions": [
+    "tests::liveness::bridge_fees::outgoing_approval_retains_validation_weight_before_and_at_quorum",
+    "tests::liveness::migration_sponsorship::funded_underpriced_grant_can_be_replaced_without_claimant_xor",
+    "tests::liveness::migration_sponsorship::replacement_cannot_reduce_a_funded_grants_limits"
+  ],
   "cargoFmtAllCheckPassed": true,
   "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "limitations": [

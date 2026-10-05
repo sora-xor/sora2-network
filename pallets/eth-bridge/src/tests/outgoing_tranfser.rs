@@ -135,7 +135,7 @@ fn should_approve_outgoing_transfer() {
 }
 
 #[test]
-fn approve_request_is_paid_and_rejects_duplicate_approvals() {
+fn approve_request_retains_paid_metadata_and_rejects_duplicate_approvals() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -153,8 +153,6 @@ fn approve_request_is_paid_and_rejects_duplicate_approvals() {
         let (request, hash) = last_outgoing_request(net_id).expect("outgoing request exists");
         let (_signer, account_id, seed) = &state.networks[&net_id].ocw_keypairs[0];
         let (ocw_public, signature_params) = approval_params(&request, hash, seed);
-        let expected_weight = <() as crate::WeightInfo>::approve_request();
-
         assert_ok!(
             EthBridge::approve_request(
                 RuntimeOrigin::signed(account_id.clone()),
@@ -165,7 +163,7 @@ fn approve_request_is_paid_and_rejects_duplicate_approvals() {
             ),
             PostDispatchInfo {
                 pays_fee: Pays::Yes.into(),
-                actual_weight: Some(expected_weight),
+                actual_weight: None,
             }
         );
         assert_err!(
@@ -182,7 +180,7 @@ fn approve_request_is_paid_and_rejects_duplicate_approvals() {
 }
 
 #[test]
-fn approve_request_reports_finalizing_weight_when_quorum_reached() {
+fn approve_request_retains_declared_weight_before_and_at_quorum() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -208,24 +206,38 @@ fn approve_request_reports_finalizing_weight_when_quorum_reached() {
 
         for (i, (_signer, account_id, seed)) in keypairs.iter().take(sigs_needed).enumerate() {
             let (ocw_public, signature_params) = approval_params(&request, hash, seed);
-            let actual_weight = if i + 1 == sigs_needed {
-                <() as crate::WeightInfo>::approve_request_finalize()
-            } else {
-                <() as crate::WeightInfo>::approve_request()
-            };
-
-            assert_ok!(
-                EthBridge::approve_request(
-                    RuntimeOrigin::signed(account_id.clone()),
-                    ocw_public,
-                    hash,
-                    signature_params,
-                    net_id,
-                ),
+            let info = crate::Call::<Runtime>::approve_request {
+                ocw_public: ocw_public.clone(),
+                hash,
+                signature_params: signature_params.clone(),
+                network_id: net_id,
+            }
+            .get_dispatch_info();
+            let post_info = EthBridge::approve_request(
+                RuntimeOrigin::signed(account_id.clone()),
+                ocw_public,
+                hash,
+                signature_params,
+                net_id,
+            )
+            .expect("valid peer approval succeeds");
+            assert_eq!(
+                post_info,
                 PostDispatchInfo {
                     pays_fee: Pays::Yes.into(),
-                    actual_weight: Some(actual_weight),
+                    actual_weight: None,
                 }
+            );
+            // Both branches retain the admission-validation work included in
+            // the declaration instead of refunding to dispatch-only weights.
+            assert_eq!(post_info.calc_actual_weight(&info), info.total_weight());
+            assert_eq!(
+                crate::RequestStatuses::<Runtime>::get(net_id, hash),
+                Some(if i + 1 == sigs_needed {
+                    RequestStatus::ApprovalsReady
+                } else {
+                    RequestStatus::Pending
+                })
             );
         }
     });
@@ -263,7 +275,7 @@ fn pending_peer_requires_one_additional_signature_before_finalizing() {
                 ),
                 PostDispatchInfo {
                     pays_fee: Pays::Yes.into(),
-                    actual_weight: Some(<() as crate::WeightInfo>::approve_request()),
+                    actual_weight: None,
                 }
             );
         }
@@ -285,7 +297,7 @@ fn pending_peer_requires_one_additional_signature_before_finalizing() {
             ),
             PostDispatchInfo {
                 pays_fee: Pays::Yes.into(),
-                actual_weight: Some(<() as crate::WeightInfo>::approve_request_finalize()),
+                actual_weight: None,
             }
         );
         assert_eq!(
@@ -297,7 +309,7 @@ fn pending_peer_requires_one_additional_signature_before_finalizing() {
 }
 
 #[test]
-fn approve_request_reports_non_finalizing_weight_after_quorum_is_already_reached() {
+fn approve_request_retains_declared_weight_after_quorum_is_already_reached() {
     let (mut ext, state) = ExtBuilder::default().build();
 
     ext.execute_with(|| {
@@ -370,7 +382,7 @@ fn approve_request_reports_non_finalizing_weight_after_quorum_is_already_reached
             ),
             PostDispatchInfo {
                 pays_fee: Pays::Yes.into(),
-                actual_weight: Some(<() as crate::WeightInfo>::approve_request()),
+                actual_weight: None,
             }
         );
         assert!(last_event().is_none());

@@ -139,76 +139,39 @@ try {
     '--new', report.inputs.candidate.metadataPath, '--output', metadataReportPath]));
   const metadata = JSON.parse(readFileSync(metadataReportPath));
   assert.equal(metadata.compatibleExistingScaleEncoding, true, 'Existing SCALE encoding must be compatible');
-  // Independently restrict the delta from the previously sealed 4.8.12 ABI.
-  // The broader deployed-baseline comparison above remains mandatory.
+  // The follow-up changes fee reservation and sponsorship admission only.
+  // The current sealed faf9ab candidate already contains the capacity ABI.
   const previousMetadataPath = resolve(__dirname, 'previous-candidate-metadata.json');
-  assert.equal(sha256(readFileSync(previousMetadataPath)),
-    '7f0eaf2c3899cacd3d643dcdc3d75440e95bd95f14102864fed0275b1d17dc82',
-    'Previous metadata must match the original sealed 4.8.12 candidate');
-  const capacityMetadataPath = join(outputDir, 'capacity-metadata-compatibility.json');
+  const previousMetadataSha256 = sha256(readFileSync(previousMetadataPath));
+  assert.equal(previousMetadataSha256,
+    'f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020',
+    'Predecessor metadata must match the sealed faf9ab 4.8.12 candidate');
+  const predecessorMetadataPath = join(outputDir, 'predecessor-metadata-compatibility.json');
   run('python3', [comparator, '--old', previousMetadataPath,
-    '--new', report.inputs.candidate.metadataPath, '--output', capacityMetadataPath]);
-  const capacityComparison = JSON.parse(readFileSync(capacityMetadataPath));
-  assert.equal(capacityComparison.compatibleExistingScaleEncoding, true,
-    'Capacity fix must preserve every previous 4.8.12 SCALE encoding');
-  assert.deepEqual(capacityComparison.constantValueChanges, [],
-    'Capacity fix must preserve previous 4.8.12 constants');
-  const permittedStorage = new Set(['BridgeMultisig.storage.PendingOperationsByProposer',
-    'BridgeMultisig.storage.ProposerCountedOperations', 'BridgeMultisig.storage.CancellationApprovals']);
-  const previousModel = JSON.parse(readFileSync(previousMetadataPath)).V14;
+    '--new', report.inputs.candidate.metadataPath, '--output', predecessorMetadataPath]);
+  const predecessorComparison = JSON.parse(readFileSync(predecessorMetadataPath));
+  assert.equal(predecessorComparison.compatibleExistingScaleEncoding, true,
+    'Follow-up must preserve every sealed faf9ab SCALE encoding');
+  assert.deepEqual(predecessorComparison.additions, [], 'Follow-up must not add an ABI variant or storage entry');
+  assert.deepEqual(predecessorComparison.constantValueChanges, [], 'Follow-up must preserve sealed faf9ab constants');
   const currentModel = JSON.parse(readFileSync(report.inputs.candidate.metadataPath)).V14;
-  const variants = (model, pallet, kind) => {
-    const item = model.pallets.find(item => item.name === pallet);
-    const type = model.types.types.find(type => type.id === item[kind].ty);
-    return type.type.def.variant.variants;
+  const variants = (pallet, kind) => {
+    const item = currentModel.pallets.find(item => item.name === pallet);
+    return currentModel.types.types.find(type => type.id === item[kind].ty).type.def.variant.variants;
   };
-  const declaredVariants = [
-    ['EthBridge', 'calls', 'cancel_pending_multisig', 18],
-    ['BridgeMultisig', 'event', 'MultisigCancellationApproval', 5],
-    ['BridgeMultisig', 'error', 'TooManyPendingOperationsByProposer', 23],
-  ];
-  // Validate canonical pallet enums directly; the recursive comparator may
-  // encounter shared event types first through System.Events storage.
-  for (const [pallet, kind, name, index] of declaredVariants) {
-    const oldVariants = variants(previousModel, pallet, kind);
-    const nextVariants = variants(currentModel, pallet, kind);
-    assert.equal(index, Math.max(...oldVariants.map(value => value.index)) + 1);
-    assert.deepEqual(nextVariants.filter(value => !oldVariants.some(old => old.name === value.name))
-      .map(({ name, index }) => ({ name, index })), [{ name, index }]);
+  const cancellation = variants('EthBridge', 'calls').find(value => value.name === 'cancel_pending_multisig');
+  assert.equal(cancellation.index, 18);
+  assert.deepEqual(cancellation.fields.map(field => field.name), ['network_id', 'call_hash', 'timepoint']);
+  const multisig = currentModel.pallets.find(item => item.name === 'BridgeMultisig');
+  for (const name of ['PendingOperationsByProposer', 'ProposerCountedOperations', 'CancellationApprovals']) {
+    assert(multisig.storage.entries.some(entry => entry.name === name), 'Capacity storage must remain present: ' + name);
   }
-  const cancellationCall = variants(currentModel, 'EthBridge', 'calls').find(value => value.name === 'cancel_pending_multisig');
-  assert.deepEqual(cancellationCall.fields.map(field => field.name), ['network_id', 'call_hash', 'timepoint']);
-  const currentMultisigEvents = variants(currentModel, 'BridgeMultisig', 'event');
-  assert.deepEqual(currentMultisigEvents.find(value => value.name === 'MultisigCancellationApproval').fields.map(field => field.type),
-    currentMultisigEvents.find(value => value.name === 'MultisigCancelled').fields.map(field => field.type));
-  const seenCapacityChanges = new Set();
-  for (const addition of capacityComparison.additions) {
-    if (Object.hasOwn(addition, 'storage')) {
-      assert(permittedStorage.has(addition.path), 'Unexpected capacity storage addition: ' + addition.path);
-      seenCapacityChanges.add(addition.path);
-    } else if (addition.variant === 'cancel_pending_multisig') {
-      assert.equal(addition.variantIndex, 18, 'New EthBridge call must append at index 18');
-      seenCapacityChanges.add('EthBridge.calls.cancel_pending_multisig');
-    } else if (addition.variant === 'MultisigCancellationApproval') {
-      assert.equal(addition.variantIndex, 5);
-      seenCapacityChanges.add('BridgeMultisig.event.MultisigCancellationApproval');
-    } else if (addition.variant === 'TooManyPendingOperationsByProposer') {
-      assert.equal(addition.variantIndex, 23);
-      seenCapacityChanges.add('BridgeMultisig.error.TooManyPendingOperationsByProposer');
-    } else {
-      throw new Error('Unexpected capacity ABI addition: ' + JSON.stringify(addition));
-    }
-  }
-  assert.deepEqual([...seenCapacityChanges].sort(), [...permittedStorage,
-    'EthBridge.calls.cancel_pending_multisig', 'BridgeMultisig.event.MultisigCancellationApproval',
-    'BridgeMultisig.error.TooManyPendingOperationsByProposer'].sort());
-  report.capacityMetadataComparison = { previousMetadataFile: 'previous-candidate-metadata.json',
-    previousMetadataSha256: sha256(readFileSync(previousMetadataPath)),
-    previousCandidateSha256: '9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037',
+  report.predecessorMetadataComparison = { previousMetadataFile: 'previous-candidate-metadata.json',
+    previousMetadataSha256,
+    previousCandidateSha256: 'faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59',
     candidateMetadataSha256: report.inputs.candidate.metadataSha256,
-    reportFile: 'capacity-metadata-compatibility.json', reportSha256: sha256(readFileSync(capacityMetadataPath)),
-    existingEncodingsPreserved: true, onlyDeclaredCapacityAdditions: true,
-    declaredChanges: [...seenCapacityChanges].sort() };
+    reportFile: 'predecessor-metadata-compatibility.json', reportSha256: sha256(readFileSync(predecessorMetadataPath)),
+    existingEncodingsPreserved: true, noAbiOrConstantChanges: true, capacityAbiRetained: true };
   // The fee repair adds sponsorship and bridge operation counters, plus append-only error,
   // event and call variants. The comparator checks every existing index and
   // encoding recursively; retain every addition for council review.
@@ -247,7 +210,7 @@ try {
     assert.deepEqual(newVersion[key], oldVersion[key], 'Unchanged runtime version field: ' + key);
   }
   report.checks = { existingScaleEncodingCompatible: true, metadataAdditionsRecorded: true,
-    previous4812EncodingsPreserved: true, onlyDeclaredCapacityAbiAdditions: true,
+    previous4812EncodingsPreserved: true, noFollowupAbiOrConstantChanges: true, capacityAbiRetained: true,
     onlyRuntimeVersionConstantChanged: true, hostImportNamesKindsAndOrderUnchanged: true,
     hostFunctionSignaturesUnchanged: true, importedMemoryLimitsCompatible: true, memoryGrowthCompatibleWithPinnedSdkDefaultAllocation: true,
     wasmExportsUnchanged: true, runtimeApiVersionsUnchanged: true, transactionVersionRemains131: true,

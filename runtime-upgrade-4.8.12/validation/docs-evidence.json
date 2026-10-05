@@ -1,0 +1,28 @@
+{
+  "status": "passed",
+  "sourceTreeAfterPatch": "0d8d3623d8dafcf699dad11bb75f5937e8dbb46d",
+  "candidateSha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
+  "scriptSha256": "7041a27f1255e67ce75577074a7b00b6b6c62d495bb633b09b94d7320665b625",
+  "documents": {
+    "README.md": "56ac849e39d92a5e1a0957481fdb47a29dcb60988db8c38c201329acd6aafc8c",
+    "VALIDATION.md": "e783054b74ec99402162b528109c0789642536317963b0662bb2206ab59e567c",
+    "GOVERNANCE-RUNBOOK.md": "9742ce89f70433a331a769a205ebcf3df5d1f9dcf90a85c78ce89224ac9e7de5",
+    "COUNCIL_MESSAGE.md": "c3853d53610419a257ea0df4d0608dc6bada7dfd48e2e3d0e932041acafe3b6f"
+  },
+  "inputSha256": {
+    "runtime-upgrade-4.8.12-info.json": "27e5e745532aa3a263fc6f791c99333bd03df17aea2ce18295de8e35adbc20a1",
+    "council-settings.json": "42a20597ab2b40b44432eb027416c3de6ae56e749eb57158405af0e57bdbe8cc",
+    "validation/source-provenance.json": "b6bcb8a1864cc373436d31ba2d0cf2fd378fe2b7c61160ee48e1bee1fc44a958",
+    "validation/native-tests.json": "0c8e0d6cb34e6b1b9552909951535701704467e2a100202ba8ff9510cc2ebcbd",
+    "validation/wasm-build.json": "a66d66152107f67dd805aba769d0656c19ee973db14029d186291a4bf37fa8d1",
+    "validation/fee-policy-wasm-rehearsal.json": "97ce9b04d2dc4d2924197d9598c69c1cbf8f68b23b06f8e3e47e4dcbe1bc651f",
+    "validation/wasm-compatibility.json": "9ee6c4890b9b8ee33489efeff0c4376a475b1de58aecc6d1d4d04beabd182d04",
+    "validation/governance-call-check.json": "af80f614d2d922fd7b67ba2611268a6399a1c3cf358693e649e28c83912a04e6",
+    "validation/clippy.json": "700f8430b3bbd80688c014781e043ba70445a6b91cedee421f5142b9a11ed904",
+    "validation/chain-spec-runtimes.json": "13134a85aa9d6eb7d17774ea98d297cd019a29b3d04007543e80034e49bfb4c1",
+    "validation/docs/README.md.in": "426474b00d25a7528a1b85ce8caf77b86e65f7fc3a79607f837e82a85716b03f",
+    "validation/docs/VALIDATION.md.in": "d084a015b9bc7ec3f75af6e5ea7919ebb32fdfd6f98f9edd9bb24b3fa0adf9bf",
+    "validation/docs/GOVERNANCE-RUNBOOK.md.in": "c980f860b17885bc02d5168d050fdec7ccbc9f8d83b24169814b5a16ff58a75d",
+    "validation/docs/COUNCIL_MESSAGE.md.in": "76f7915bfb66e0edb533850bd881145aee0117bdca84b2ba41c605277fc0ebd7"
+  }
+}

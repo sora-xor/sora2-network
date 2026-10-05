@@ -1,0 +1,58 @@
+{
+  "compatibleExistingScaleEncoding": true,
+  "counts": {
+    "existingPallets": 81,
+    "existingCalls": 408,
+    "nestedTypePairsVisited": 10416,
+    "existingEvent": 446,
+    "existingError": 976,
+    "existingStorageEntries": 491,
+    "existingConstants": 155,
+    "signedExtensions": 7
+  },
+  "breakingChanges": [],
+  "additions": [],
+  "constantValueChanges": [],
+  "signedExtensionIdentifiers": [
+    "CheckSpecVersion",
+    "CheckTxVersion",
+    "CheckGenesis",
+    "CheckMortality",
+    "CheckNonce",
+    "CheckWeight",
+    "ChargeTransactionPayment"
+  ],
+  "checkedAt": "2026-10-05T06:49:35.290088+00:00",
+  "metadataVersion": 14,
+  "inputs": {
+    "baselineMetadata": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/previous-candidate-metadata.json",
+      "sha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020"
+    },
+    "candidateMetadata": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/candidate-metadata.json",
+      "sha256": "f610de2e428a46bca43c8756b04f0decd18efb56d5e898102503aefa04c1e020"
+    },
+    "comparisonScript": {
+      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/.runtime-upgrade-4.8.12-next/validation/compare-metadata.py",
+      "sha256": "0c5f6bd0994f675f51ac6fdfea3a40f72ac3846238e5d8f1478e1c69e2edb57d"
+    }
+  },
+  "selfChecks": [
+    "All portable IDs shifted by10000: unchanged semantics accepted",
+    "Nested u32-to-u64 mutation rejected for staking calls, storage and CheckNonce",
+    "Changed payout_stakers call index rejected",
+    "Signed-extension reorder rejected",
+    "Storage hasher mutation rejected",
+    "Identical bit-sequence storage/order and equivalent serde spellings accepted",
+    "Bit-sequence storage width u8-to-u16 rejected",
+    "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
+    "Changed bit-order marker layout rejected despite unchanged identity path"
+  ],
+  "limitations": [
+    "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
+    "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",
+    "Source paths, documentation, generic type IDs and typeName aliases are ignored; extrinsic Address/Call/Signature/Extra generic parameters are explicitly traversed.",
+    "Constant values may intentionally change. Their encoded types are checked and changed bytes are reported separately."
+  ]
+}

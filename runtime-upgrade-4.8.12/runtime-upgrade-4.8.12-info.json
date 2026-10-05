@@ -1,24 +1,24 @@
 {
-  "preparedAt": "2026-10-05T05:46:34.258Z",
+  "preparedAt": "2026-10-05T06:44:18.976Z",
   "release": "4.8.12",
   "candidate": {
     "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
-    "bytes": 3089114,
-    "sha256": "faf9ab84f3087639c4913ada9e17ea055fffc913b936b3c366fa2791ccd5ea59",
+    "bytes": 3092259,
+    "sha256": "210511d91f41e406119aa020a32e95864ba95ddd20b860b233231abc06de7d8c",
     "specVersion": 134,
     "transactionVersion": 131
   },
   "proposal": {
     "method": "system.setCode",
-    "hash": "0xb9da4b9666d8b38b92622f6da6a97d3db783f9f1f53c9544e4f964a8c1812066",
-    "bytes": 3089120,
+    "hash": "0x42b0bb28bb2d5e6f8107ec48ed6cf0bca3db1d8620a350fae550b6889d4fe9ed",
+    "bytes": 3092265,
     "signed": false
   },
   "preflight": {
     "endpoint": "wss://mof2.sora.org",
     "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-    "hash": "0x4fdc68323d010e91947e6403ff5eb495cdffc685694182ab5040724b5e2eab6a",
-    "block": 27909024,
+    "hash": "0xa9d2bd459829692b88aa1738c3245052675673ee57259ab1c8bd40a0d37a4fb9",
+    "block": 27909598,
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
