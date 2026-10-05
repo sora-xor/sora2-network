@@ -384,6 +384,7 @@ dependencies = [
  "scale-info",
  "sp-core",
  "sp-io",
+ "sp-keystore",
  "sp-runtime",
  "sp-std",
  "technical",
@@ -4920,7 +4921,7 @@ dependencies = [
 
 [[package]]
 name = "framenode"
-version = "4.8.11"
+version = "4.8.12"
 dependencies = [
  "assets",
  "assets-rpc",
@@ -5014,7 +5015,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-chain-spec"
-version = "4.8.11"
+version = "4.8.12"
 dependencies = [
  "band",
  "common",
@@ -5047,7 +5048,7 @@ dependencies = [
 
 [[package]]
 name = "framenode-runtime"
-version = "4.8.11"
+version = "4.8.12"
 dependencies = [
  "apollo-platform",
  "assets",
@@ -5075,6 +5076,7 @@ dependencies = [
  "dex-manager-runtime-api",
  "dex-runtime-api",
  "dispatch",
+ "ed25519-dalek-iroha",
  "env_logger 0.10.2",
  "eth-bridge",
  "eth-bridge-runtime-api",
@@ -5167,6 +5169,7 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
+ "sha3 0.9.1",
  "snowbridge-beacon-primitives",
  "snowbridge-pallet-ethereum-client",
  "soratopia",
@@ -5178,6 +5181,7 @@ dependencies = [
  "sp-genesis-builder",
  "sp-inherents",
  "sp-io",
+ "sp-keystore",
  "sp-mmr-primitives",
  "sp-npos-elections",
  "sp-offchain",
@@ -6902,6 +6906,7 @@ dependencies = [
  "sp-arithmetic",
  "sp-core",
  "sp-io",
+ "sp-keystore",
  "sp-runtime",
  "sp-std",
  "technical",
@@ -8888,14 +8893,18 @@ dependencies = [
 [[package]]
 name = "pallet-babe"
 version = "46.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
 dependencies = [
  "frame-benchmarking",
+ "frame-election-provider-support",
  "frame-support",
  "frame-system",
  "log",
  "pallet-authorship",
+ "pallet-balances",
+ "pallet-offences",
  "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
  "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
@@ -8906,6 +8915,7 @@ dependencies = [
  "sp-runtime",
  "sp-session",
  "sp-staking",
+ "sp-tracing",
 ]
 
 [[package]]
@@ -9080,23 +9090,31 @@ dependencies = [
 [[package]]
 name = "pallet-grandpa"
 version = "46.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
 dependencies = [
+ "finality-grandpa",
  "frame-benchmarking",
+ "frame-election-provider-support",
  "frame-support",
  "frame-system",
  "log",
  "pallet-authorship",
+ "pallet-balances",
+ "pallet-offences",
  "pallet-session",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
+ "pallet-timestamp",
  "parity-scale-codec",
  "scale-info",
  "sp-application-crypto",
  "sp-consensus-grandpa",
  "sp-core",
  "sp-io",
+ "sp-keyring",
  "sp-runtime",
  "sp-session",
  "sp-staking",
+ "sp-tracing",
 ]
 
 [[package]]
@@ -9278,12 +9296,12 @@ dependencies = [
 [[package]]
 name = "pallet-preimage"
 version = "46.0.0"
-source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-3#e3737178ec726cffe506c907263aaaa417893fd0"
 dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "log",
+ "pallet-balances",
  "parity-scale-codec",
  "scale-info",
  "sp-core",

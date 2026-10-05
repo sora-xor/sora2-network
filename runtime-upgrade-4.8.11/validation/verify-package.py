@@ -77,8 +77,10 @@ def verify():
     governance = load("validation/governance-call-check.json")
     require(governance["status"] == "passed", "Unsigned governance call verification did not pass")
     require(governance["candidateSha256"] == digest and governance["setCodeProposalHash"] == info["proposal"]["hash"], "Governance calls refer to another candidate")
-    require(governance["verifiedCalls"] == 6 and governance["networkRequests"] == 0,
-            "Six governance calls were not verified offline")
+    require(governance["verifiedCalls"] == 8 and governance["networkRequests"] == 0 and
+            governance["guardedCouncilExactTwoCallOrderThresholdLengthAndHashChecked"] and
+            governance["councilSettingsMatchDecodedCallsAndFinalizedPreflight"],
+            "Eight governance calls, including the guarded council route, were not verified offline")
     for name, expected in governance["inputSha256"].items():
         relative = Path(name)
         require(not relative.is_absolute() and ".." not in relative.parts,
@@ -88,6 +90,14 @@ def verify():
     provenance = load("validation/source-provenance.json")
     require(sha256((ROOT / provenance["patch"]).read_bytes()) == provenance["patchSha256"], "Source patch mismatch")
     require(provenance["patchAppliesToCleanBase"] is True, "Clean-base source patch was not verified")
+    review = load("validation/current-source-review.json")
+    require(review["status"] == "passed" and
+            review["originalBuild"]["sourceCommit"] == provenance["sourceCommit"] and
+            review["currentSourceEquivalence"]["recordedRuntimeInputsMatchHead"] and
+            review["currentSourceEquivalence"]["recordedRuntimeInputsMatchWorkingTree"] and
+            review["sourcePatch"]["matchesRecordedSourceTree"] and
+            review["candidate"]["sha256"] == digest,
+            "Current source review does not match candidate provenance")
     native = load("validation/native-tests.json")
     require(native["status"] == "passed" and native["sourceCommit"] == provenance["sourceCommit"],
             "Native tests did not cover the recorded source")

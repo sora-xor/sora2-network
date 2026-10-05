@@ -25,6 +25,18 @@ mod test {
     use sp_runtime::{offchain::testing::TestTransactionPoolExt, traits::AccountIdConversion};
     use std::collections::BTreeMap;
 
+    fn install_keeper_key(ext: &mut sp_io::TestExternalities) {
+        let (offchain, _) = sp_runtime::offchain::testing::TestOffchainExt::new();
+        ext.register_extension(sp_core::offchain::OffchainDbExt::new(offchain.clone()));
+        ext.register_extension(sp_core::offchain::OffchainWorkerExt::new(offchain));
+        ext.register_extension(sp_keystore::KeystoreExt::new(
+            sp_keystore::testing::MemoryKeystore::new(),
+        ));
+        ext.execute_with(|| {
+            sp_io::crypto::sr25519_generate(crate::crypto::KEY_TYPE, Some(b"//Alice".to_vec()));
+        });
+    }
+
     #[test]
     fn error_indices_are_append_only() {
         assert_eq!(Error::<Runtime>::Unauthorized.encode()[0], 0);
@@ -6009,7 +6021,7 @@ mod test {
     }
 
     #[test]
-    fn liquidation_quota_does_not_reject_next_block_pool_admission() {
+    fn unsigned_liquidation_is_rejected_regardless_of_quota() {
         let mut ext = ExtBuilder::default().build();
         ext.execute_with(|| {
             insert_active_pool(XOR, balance!(1));
@@ -6026,7 +6038,7 @@ mod test {
                     sp_runtime::transaction_validity::TransactionSource::Local,
                     &call,
                 )
-                .is_ok()
+                .is_err()
             );
             assert!(
                 <ApolloPlatform as frame_support::unsigned::ValidateUnsigned>::validate_unsigned(
@@ -6043,6 +6055,7 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         ext.register_extension(TransactionPoolExt::new(pool));
+        install_keeper_key(&mut ext);
 
         ext.execute_with(|| {
             insert_active_pool(XOR, balance!(1));
@@ -6061,6 +6074,7 @@ mod test {
         let mut ext = ExtBuilder::default().build();
         let (pool, pool_state) = TestTransactionPoolExt::new();
         ext.register_extension(TransactionPoolExt::new(pool));
+        install_keeper_key(&mut ext);
 
         ext.execute_with(|| {
             insert_active_pool(XOR, balance!(1));
@@ -6077,10 +6091,14 @@ mod test {
                 .iter()
                 .map(|encoded| {
                     let extrinsic =
-                        frame_system::mocking::MockUncheckedExtrinsic::<Runtime>::decode(
+                        frame_system::mocking::MockUncheckedExtrinsic::<Runtime, u64>::decode(
                             &mut &encoded[..],
                         )
                         .expect("submitted liquidation should decode");
+                    assert!(matches!(
+                        extrinsic.preamble,
+                        sp_runtime::generic::Preamble::Signed(..)
+                    ));
                     match extrinsic.function {
                         RuntimeCall::ApolloPlatform(pallet::Call::liquidate { user, .. }) => user,
                         call => panic!("unexpected offchain call: {call:?}"),
@@ -7707,6 +7725,38 @@ mod test {
             assert_eq!(
                 total_migrated_entries, 1,
                 "Expected one migrated entry for user total collateral"
+            );
+        });
+    }
+    #[test]
+    fn funded_liquidation_rejects_unsigned_and_root_origins_without_side_effects() {
+        ExtBuilder::default().build().execute_with(|| {
+            use frame_support::dispatch::{GetDispatchInfo, Pays};
+            use sp_runtime::traits::ValidateUnsigned;
+            let call = pallet::Call::<Runtime>::liquidate {
+                user: alice(),
+                asset_id: XOR,
+            };
+            let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+            for source in [
+                sp_runtime::transaction_validity::TransactionSource::External,
+                sp_runtime::transaction_validity::TransactionSource::Local,
+                sp_runtime::transaction_validity::TransactionSource::InBlock,
+            ] {
+                assert!(
+                    <ApolloPlatform as ValidateUnsigned>::validate_unsigned(source, &call).is_err()
+                );
+            }
+            assert!(<ApolloPlatform as ValidateUnsigned>::pre_dispatch(&call).is_err());
+            assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+            assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
+            assert_err!(
+                ApolloPlatform::liquidate(RuntimeOrigin::none(), alice(), XOR),
+                sp_runtime::DispatchError::BadOrigin
+            );
+            assert_err!(
+                ApolloPlatform::liquidate(RuntimeOrigin::root(), alice(), XOR),
+                sp_runtime::DispatchError::BadOrigin
             );
         });
     }

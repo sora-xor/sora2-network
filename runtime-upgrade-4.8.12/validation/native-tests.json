@@ -1,0 +1,85 @@
+{
+  "status": "passed",
+  "sourceTreeAfterPatch": "a16e9e1ac195575c6008c69434999b2587b81d01",
+  "command": "SKIP_WASM_BUILD=1 CARGO_TARGET_DIR=/Users/takemiyamakoto/dev/.sora2-pr1366-target scripts/with_llvm_env.sh cargo test --release --offline --locked -p framenode-runtime -p pallet-babe -p pallet-grandpa -p pallet-staking -p pallet-multisig -p eth-bridge -p iroha-migration -p xor-fee -p order-book -p rewards -p pallet-preimage --lib",
+  "log": "native-tests.log",
+  "logSha256": "8855b1c4a6d4cf90419f72c3e612671d8066039294793b64d8bb204580d86d1f",
+  "suites": [
+    {
+      "crate": "eth_bridge",
+      "passed": 288,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "framenode_runtime",
+      "passed": 229,
+      "failed": 0,
+      "ignored": 3
+    },
+    {
+      "crate": "iroha_migration",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "order_book",
+      "passed": 203,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "pallet_babe",
+      "passed": 31,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "pallet_grandpa",
+      "passed": 27,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "pallet_multisig",
+      "passed": 35,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "pallet_preimage",
+      "passed": 24,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "pallet_staking",
+      "passed": 218,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "rewards",
+      "passed": 18,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "crate": "xor_fee",
+      "passed": 49,
+      "failed": 0,
+      "ignored": 0
+    }
+  ],
+  "totalPassed": 1140,
+  "totalFailed": 0,
+  "totalIgnored": 3,
+  "newRuntimeRegressionsPassed": 28,
+  "cargoFmtAllCheckPassed": true,
+  "formatCheckLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "limitations": [
+    "Existing explicitly ignored runtime tests are retained and counted.",
+    "Native Executive regressions use real cryptographic signatures; execution is local."
+  ]
+}

@@ -1,0 +1,1762 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-05T03:17:58.505Z",
+  "localOnly": true,
+  "endpoint": "wss://mof2.sora.org",
+  "pinnedBlockHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05",
+  "pinnedBlockNumber": 27906905,
+  "executor": "@acala-network/chopsticks-core@1.5.1",
+  "mockSignatureHost": true,
+  "allowUnresolvedImports": true,
+  "offchainWorker": false,
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "realSignatures": 0,
+  "remoteRpcMethods": {},
+  "unsignedChecks": [
+    {
+      "method": "babe.reportEquivocation",
+      "callHex": "0x0e0044c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "call": null
+          }
+        }
+      },
+      "storageDiffEntries": 6,
+      "passed": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned",
+      "callHex": "0x0e0144c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "call": null
+          }
+        }
+      },
+      "storageDiffEntries": 6,
+      "passed": true
+    },
+    {
+      "method": "grandpa.reportEquivocation",
+      "callHex": "0x0f00c21e0000000000000059d3a9010000000076034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec01010101010101010101010101010101010101010101010101010101010101015ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd02020202020202020202020202020202020202020202020202020202020202025ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba000020a0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000947d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000150180012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11150180400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb0915018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3c1048872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b0f000000",
+      "signed": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "call": null
+          }
+        }
+      },
+      "storageDiffEntries": 6,
+      "passed": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned",
+      "callHex": "0x0f01c21e0000000000000059d3a9010000000076034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec01010101010101010101010101010101010101010101010101010101010101015ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd02020202020202020202020202020202020202020202020202020202020202025ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba000020a0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000947d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000150180012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11150180400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb0915018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3c1048872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b0f000000",
+      "signed": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "call": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "call": null
+          }
+        }
+      },
+      "storageDiffEntries": 6,
+      "passed": true
+    }
+  ],
+  "signedChecks": [
+    {
+      "method": "babe.reportEquivocation",
+      "expectSuccess": true,
+      "callHex": "0x0e0044c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "estimatedFee": "362387991946668400714",
+      "xorCharged": "362387991946668400714",
+      "signerBefore": {
+        "nonce": 4,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000372730d1e065d6cd59",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000000000023820c0b37058ced0f",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a524c6a96049e04a"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "SlashReported",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
+            40000000,
+            7728
+          ]
+        },
+        {
+          "section": "offences",
+          "method": "Offence",
+          "data": [
+            "0x626162653a65717569766f636174696f",
+            "0xf32bcb1100000000"
+          ]
+        },
+        {
+          "section": "session",
+          "method": "ValidatorDisabled",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a524c6a96049e04a"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000816d2e863dc5aa7a6"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000093ea7e504698c2d50"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000024fa9f9411a630b54"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a524c6a96049e04a",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 362388491000,
+                "proofSize": 178770
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 28,
+      "passed": true
+    },
+    {
+      "method": "babe.reportEquivocation duplicate",
+      "expectSuccess": false,
+      "callHex": "0x0e0044c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 14,
+              "error": "0x02000000"
+            }
+          }
+        }
+      },
+      "estimatedFee": "362501916733161224785",
+      "xorCharged": "362501916733161224785",
+      "signerBefore": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000000000023820c0b37058ced0f",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 6,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x000000000000000fdb528690473eb2be",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a6b984a6be4e3a51"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a6b984a6be4e3a51"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x0000000000000008177990f95d6b816d"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000093f665c8ab3e893ea"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000024fd99722acfa24fa"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a6b984a6be4e3a51",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 14,
+                "error": "0x02000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 362502416000,
+                "proofSize": 178917
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 12,
+      "passed": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned",
+      "expectSuccess": true,
+      "callHex": "0x0e0144c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "estimatedFee": "362387991946668400714",
+      "xorCharged": "362387991946668400714",
+      "signerBefore": {
+        "nonce": 4,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000372730d1e065d6cd59",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000000000023820c0b37058ced0f",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a524c6a96049e04a"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "SlashReported",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
+            40000000,
+            7728
+          ]
+        },
+        {
+          "section": "offences",
+          "method": "Offence",
+          "data": [
+            "0x626162653a65717569766f636174696f",
+            "0xf32bcb1100000000"
+          ]
+        },
+        {
+          "section": "session",
+          "method": "ValidatorDisabled",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a524c6a96049e04a"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000816d2e863dc5aa7a6"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000093ea7e504698c2d50"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000024fa9f9411a630b54"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a524c6a96049e04a",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 362388491000,
+                "proofSize": 178770
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 28,
+      "passed": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned duplicate",
+      "expectSuccess": false,
+      "callHex": "0x0e0144c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 14,
+              "error": "0x02000000"
+            }
+          }
+        }
+      },
+      "estimatedFee": "362501916733161224785",
+      "xorCharged": "362501916733161224785",
+      "signerBefore": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000000000023820c0b37058ced0f",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 6,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x000000000000000fdb528690473eb2be",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a6b984a6be4e3a51"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a6b984a6be4e3a51"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x0000000000000008177990f95d6b816d"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000093f665c8ab3e893ea"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000024fd99722acfa24fa"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a6b984a6be4e3a51",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 14,
+                "error": "0x02000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 362502416000,
+                "proofSize": 178917
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 12,
+      "passed": true
+    },
+    {
+      "method": "grandpa.reportEquivocation",
+      "expectSuccess": true,
+      "callHex": "0x0f00c21e0000000000000059d3a9010000000076034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec01010101010101010101010101010101010101010101010101010101010101015ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd02020202020202020202020202020202020202020202020202020202020202025ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba000020a0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000947d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000150180012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11150180400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb0915018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3c1048872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b0f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "estimatedFee": "362912967362764364176",
+      "xorCharged": "362912967362764364176",
+      "signerBefore": {
+        "nonce": 4,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000372730d1e065d6cd59",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000237ac2f4dafd5673c9",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ac6ddd0568805990"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "SlashReported",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
+            40000000,
+            7728
+          ]
+        },
+        {
+          "section": "offences",
+          "method": "Offence",
+          "data": [
+            "0x6772616e6470613a65717569766f6361",
+            "0xc21e00000000000059d3a90100000000"
+          ]
+        },
+        {
+          "section": "session",
+          "method": "ValidatorDisabled",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ac6ddd0568805990"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000819d2e289c19e4300"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000094215952fb8b4deda"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000025085654bee2d37b6"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ac6ddd0568805990",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 362913491000,
+                "proofSize": 178770
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 28,
+      "passed": true
+    },
+    {
+      "method": "grandpa.reportEquivocation duplicate",
+      "expectSuccess": false,
+      "callHex": "0x0f00c21e0000000000000059d3a9010000000076034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec01010101010101010101010101010101010101010101010101010101010101015ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd02020202020202020202020202020202020202020202020202020202020202025ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba000020a0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000947d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000150180012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11150180400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb0915018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3c1048872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b0f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 15,
+              "error": "0x06000000"
+            }
+          }
+        }
+      },
+      "estimatedFee": "363026892149257188248",
+      "xorCharged": "363026892149257188248",
+      "signerBefore": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000237ac2f4dafd5673c9",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 6,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x000000000000000fccc059d836d1c031",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ae029b02c684b398"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ae029b02c684b398"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000081a798b1f42af1cc7"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000942d40cb603114574"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000250b5032d80c4515d"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ae029b02c684b398",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 15,
+                "error": "0x06000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 363027416000,
+                "proofSize": 178917
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 12,
+      "passed": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned",
+      "expectSuccess": true,
+      "callHex": "0x0f01c21e0000000000000059d3a9010000000076034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec01010101010101010101010101010101010101010101010101010101010101015ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd02020202020202020202020202020202020202020202020202020202020202025ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba000020a0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000947d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000150180012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11150180400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb0915018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3c1048872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b0f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "estimatedFee": "362912967362764364176",
+      "xorCharged": "362912967362764364176",
+      "signerBefore": {
+        "nonce": 4,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000372730d1e065d6cd59",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000237ac2f4dafd5673c9",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ac6ddd0568805990"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "SlashReported",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
+            40000000,
+            7728
+          ]
+        },
+        {
+          "section": "offences",
+          "method": "Offence",
+          "data": [
+            "0x6772616e6470613a65717569766f6361",
+            "0xc21e00000000000059d3a90100000000"
+          ]
+        },
+        {
+          "section": "session",
+          "method": "ValidatorDisabled",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ac6ddd0568805990"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000819d2e289c19e4300"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000094215952fb8b4deda"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000025085654bee2d37b6"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ac6ddd0568805990",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 362913491000,
+                "proofSize": 178770
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 28,
+      "passed": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned duplicate",
+      "expectSuccess": false,
+      "callHex": "0x0f01c21e0000000000000059d3a9010000000076034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec01010101010101010101010101010101010101010101010101010101010101015ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd02020202020202020202020202020202020202020202020202020202020202025ad3a901deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba000020a0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000947d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000150180012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11150180400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb0915018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3c1048872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b0f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "module": {
+              "index": 15,
+              "error": "0x06000000"
+            }
+          }
+        }
+      },
+      "estimatedFee": "363026892149257188248",
+      "xorCharged": "363026892149257188248",
+      "signerBefore": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000237ac2f4dafd5673c9",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 6,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x000000000000000fccc059d836d1c031",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ae029b02c684b398"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ae029b02c684b398"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000081a798b1f42af1cc7"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000942d40cb603114574"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000250b5032d80c4515d"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013ae029b02c684b398",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "module": {
+                "index": 15,
+                "error": "0x06000000"
+              }
+            },
+            {
+              "weight": {
+                "refTime": 363027416000,
+                "proofSize": 178917
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 12,
+      "passed": true
+    },
+    {
+      "method": "utility.batchAll([babe.reportEquivocationUnsigned])",
+      "expectSuccess": true,
+      "callHex": "0x0b02040e0144c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5df32bcb1100000000806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70601010101010101010101010101010101010101010101010101010101010101010000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd806d3269e748b86b6bd8fe1ab53e29f9ea826763c3bbf9e67908d36ecd04a6c96a4da70602020202020202020202020202020202020202020202020202020202020202020000000000000000000000000000000000000000000000000000000000000000080642414245340200000000f32bcb110000000005424142450101deadbeefcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd39ba00001ca0460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb1320000009c7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d100000000015018041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd739901808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6c90780ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa319018106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46cd06866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c150f000000",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "estimatedFee": "362447194398717266356",
+      "xorCharged": "362447194398717266356",
+      "signerBefore": {
+        "nonce": 4,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000372730d1e065d6cd59",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "signerAfter": {
+        "nonce": 5,
+        "consumers": 4,
+        "providers": 3,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000238139b6e6015883a5",
+          "reserved": "0x00000000000001e7e4171bf4d3a00000",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "multiBlockMigrations",
+          "method": "MigrationSkipped",
+          "data": [
+            0
+          ]
+        },
+        {
+          "section": "multiBlockMigrations",
+          "method": "UpgradeCompleted",
+          "data": []
+        },
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a5f71afa647e49b4"
+          ]
+        },
+        {
+          "section": "staking",
+          "method": "SlashReported",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
+            40000000,
+            7728
+          ]
+        },
+        {
+          "section": "offences",
+          "method": "Offence",
+          "data": [
+            "0x626162653a65717569766f636174696f",
+            "0xf32bcb1100000000"
+          ]
+        },
+        {
+          "section": "session",
+          "method": "ValidatorDisabled",
+          "data": [
+            "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4"
+          ]
+        },
+        {
+          "section": "utility",
+          "method": "ItemCompleted",
+          "data": []
+        },
+        {
+          "section": "utility",
+          "method": "BatchCompleted",
+          "data": []
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a5f71afa647e49b4"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000817298394477f4b87"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000093f0adf84e3ff31be"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x00000000000000024fc2b7e138ffcc6f"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+            "0x0000000000000013a5f71afa647e49b4",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 362447693263,
+                "proofSize": 182767
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 28,
+      "passed": true
+    }
+  ],
+  "localOnlySyntheticEvidence": true,
+  "constraints": [
+    "Only enumerated read-only public RPC supplies block-hash-pinned state.",
+    "Only :code is replaced locally. Upgrade hooks and report fees execute the exact candidate Wasm.",
+    "Synthetic headers, reports, and extrinsics use the mocked signature host. Real cryptographic verification is covered by native tests; consensus block validity and governance enactment are outside this rehearsal.",
+    "Every transaction branch starts from the same initialized local state; slashing/offence changes remain inside its local branch."
+  ],
+  "dependencies": {
+    "manifest": {
+      "private": true,
+      "description": "Read-only pinned public state and local exact-Wasm equivocation report fee validation",
+      "dependencies": {
+        "@acala-network/chopsticks-core": "1.5.1",
+        "@babel/runtime": "7.28.4",
+        "@polkadot/api": "16.5.6",
+        "@polkadot/keyring": "14.0.3",
+        "@sora-substrate/type-definitions": "1.27.7"
+      },
+      "name": "sora-equivocation-report-fee-validation",
+      "version": "4.8.12"
+    },
+    "installed": {
+      "@acala-network/chopsticks-core": "1.5.1",
+      "@babel/runtime": "7.28.4",
+      "@polkadot/api": "16.5.6",
+      "@polkadot/keyring": "14.0.3",
+      "@sora-substrate/type-definitions": "1.27.7"
+    },
+    "lockSha256": "d3e676fd0ef61c0ce9c54df8541c0b5d26c92196e32ac5d541230be3b7bba6f7"
+  },
+  "stage": "Verifying timestamp inherent retained normal execution",
+  "readCache": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/.public-read-cache.json.gz",
+    "content": "Immutable public storage scoped by block hash",
+    "existingValues": 5732,
+    "storageHits": 1232,
+    "keyPageHits": 150,
+    "fetchedValues": 0,
+    "fetchedKeyPages": 0,
+    "savedBytes": 7349371,
+    "sha256": "41eabde5b00b303e424a72f74841785dfd2fd19f84ea086a26408750e80fd603"
+  },
+  "deployedVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 132,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "stateVersion": 0
+  },
+  "deployedWasmSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/framenode-runtime-4.8.12.compact.compressed.wasm",
+    "bytes": 3086396,
+    "sha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 134,
+      "implVersion": 1,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    }
+  },
+  "initialize": {
+    "header": {
+      "parentHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05",
+      "number": 27906906,
+      "stateRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "extrinsicsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": {
+        "logs": [
+          {
+            "preRuntime": [
+              "0x42414245",
+              "0x0201000000f32bcb1100000000"
+            ]
+          }
+        ]
+      }
+    },
+    "slot": 298527731,
+    "result": "0x01",
+    "storageDiffEntries": 148,
+    "runtimeLogs": [
+      {
+        "message": "⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      }
+    ],
+    "stakingClaimAndLedgerWrites": 0,
+    "nativeXorIssuancePreserved": true
+  },
+  "timestamp": {
+    "value": 1791166386000,
+    "outcome": {
+      "ok": {
+        "ok": []
+      }
+    }
+  },
+  "fixtures": {
+    "babe": {
+      "offender": "0x44c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d",
+      "slot": "298527731",
+      "membership": {
+        "session": 47673,
+        "trieNodes": [
+          "0x460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000",
+          "0x7f0004c60da08968b800fe65b9056e74d20a6f126be0fcfae2ec8338b3100e1fec5d1000000000",
+          "0x8041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd73",
+          "0x808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6",
+          "0x80ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3",
+          "0x8106220080fb50ec08407214c7ce03c2a0c4538281c3ac39e5dcf1d0770d84be12c5e5429a801df39a556cdbce593380ca1ec33557a59e9ade7b49a1f9490c29d2650d5f7d46",
+          "0x866265807bfb801742f980dd7dd0b60eb090352ed26251445ce248437e6a5c459c14baba7fe0848093c28700a545bfcf63c5fe19ef1deebad516473c61eb41c800cc819cc76740348036b05028ed797421df3870b97d223017abba408cdcf910f2573672aa242cdd53803876384dda77507e45666623bd71675f56b63dcb789f50639158f56f8de8b869805ecb98194bcd04391bfd8061db4a11e3f2fc3c5f7c537a851f65f9bb0364368f80aa8796a5b703fb1f7e34e705932dabeafffb3d5f5f41fa4e1efd07f201e268f380b8de7528cf6377a18fbb7076b05f5a80c6eb5ea4f945a1968589bb01feadf2ed80e4ceb4a7a063217580093661387da56eeaa08a5c1e8c6f37fc95f1b2ce19ad0980daa08dac17ea14dfb79b5064384dfde7d780c55232b9e1dd6bca7ea822a330eb8081dade3aa5c87a9941a01bf4c5e012d6e11a6312354e344ace8a01543de4ee1b80713a7210f5ed04b21500cde1fc55fb247c47020ba0280953dadf83327889420180b3bc7936d9e1aa0173152a8a3855f5e2fc7c55d0e9c8e56d210da4cf9a6d7bf980cc2bf8373f0a1b13c430e4b597664e98c0f874e8e07bd05adb72c677eac36c15"
+        ],
+        "validatorCount": 15
+      }
+    },
+    "grandpa": {
+      "offender": "0x76034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec",
+      "setId": "7874",
+      "membership": {
+        "session": 47673,
+        "trieNodes": [
+          "0x460000008c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132000000",
+          "0x7d034a6785dc87425e0ee159fb0ca80435f1a511ca86bcf97b87bc5f1996b6ec1000000000",
+          "0x80012080918df2cb85817dda52b819a8e5e6647045ac4e2c4826208618922d1850557b4580df237fabd260036e357db27f38a8903065afc2d374c2485aff82e73ff54ecf11",
+          "0x80400180c070c68d63eb4c6fcd191157b828ab7e4d6cd4bc233db02ec83267c1b59c3e5280957856fe3edda1375b015034179370cd6c27b25a5054dcf70d21d915c243cb09",
+          "0x8041008025e4fb0d53d7cf9864704dc2eb565ff127955680ece3a33067bb0db3c883bb898077ebf71cef407c1b8451b1e0916cef9a8a9c94152452feb49756b1bdc9ccbd73",
+          "0x808402808d6bbad6149efadceeb165d41f0c2b0a7e7341072080157fd220025fc49ed7f880b3c9705dd8f7dab80c9f75cea66039557c020d4e5ea353d115c0f3f06fe5e9528008b6a6257fc9d0e53ad3906c5d22453b1d9f6f18111d2ca16b46d0210fb6f7b6",
+          "0x80ff7f80d688569bffb64bb043990840e805160867b8c5e8cae5bb21dda39c4eafa9fbe98098c85f798ebe3f33a4c5f2a515bc26b76bdbaa5e0a0d784329406944795a632680b9563bf369875b5ea2ba336b669cb149798354175e336ed79e24b83efaa7452b8061628c21f8ba36097266c86ca9e06f775b881449b6fbed16c59e0311a7001fa880e15702a5afa8ea721a6cc360b80208e54811fb5aa5ae4a8e26b540d1edd62fdf803f3a55475834b48b70852cb4a0a4ec7b87235496942e0ece6374a776abc43b02806a3a70fab79cf07853bcac54d73163cd0a71a13851862fd93301b7996681e75080a90eda52a3d2de11fd0b8a4d334cfaa2c4a355e4197a6f0d8a16728951511f13807615b9c498c89d97171af1a32a555a3ff9d4b9e6d239ea944304e16487767a7580997e1ef5713426bd52d1e5dbf2e82dcb6f1e29cab2f46d29707c6af30b587c8280c94cdbc5221e8d30fb9df025d716609208d084e92f4e8c76873f9d734b8ae97380339da66ee707f8c44eb6d90d0f3b244a806d612d26391aa99ffc86a6faed3e8580796b0dd72b22b5713bceaa11f8ed241b9a0d1a360a92776d65162877dd28b4c3801f0c8f77d94f02c63652c0ff3c562ad4abbde7c2b19f1e3fe5738fec93f36c3a80122e63a7180193d2870d83acc832caa08aa0622b93e35f6fd5a59baae15a9aa3",
+          "0x8872616e80ec6a80909356803f941e6786cb0d9e9933908e100596d9ff1ad36cd01fd16f9f5dd828804fd905e24325e4b51738e7b6eccb69d763c27b9d627935726c6cff02dbc95c1e804f380cb3a3cd7e7f4f9bd2c659665f3d3069d7dcb9fc28f35a75764b8f7c3acb801b9e66cbfff4a014bb85ffab2e1ba9d14c4e2b9076275b959765c67c57db12d1806d4badf2d67e3928d95ddc2187d4fe5acdd73adba339831bcf3fbeb46dfe204480d5472f334dbcf7700de6cc8977d4c1ba06893e44e0feb00e3525b656faf10c1b80cecb11718f329ff36d98c049e2d629883ddde456794b088560661a4ed0dc354a8079dc2ae9329019835695bf38c539d1edb0827c9c127d1fd00182ae4a2b2923ae80ab5992730f2e3e64e9cb4572bfa8a4665e5acca8a3cf0d7d68e574d22410281b"
+        ],
+        "validatorCount": 15
+      }
+    },
+    "syntheticSignatures": true
+  },
+  "automaticUnsignedSubmission": {
+    "BabeApi_submit_report_equivocation_unsigned_extrinsic": {
+      "result": "0x00",
+      "storageDiffEntries": 0,
+      "returnsNone": true
+    },
+    "GrandpaApi_submit_report_equivocation_unsigned_extrinsic": {
+      "result": "0x00",
+      "storageDiffEntries": 0,
+      "returnsNone": true
+    }
+  },
+  "signer": {
+    "address": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+    "free": "1017394911782098095449",
+    "minimumFree": "725775983893336801428",
+    "selectedFromPublicAccounts": true,
+    "storageOverrides": []
+  },
+  "signerSelection": {
+    "estimatedReportFee": "362387991946668400714",
+    "minimumFree": "725775983893336801428"
+  },
+  "inputs": {
+    "scriptSha256": "0c9f8b9d711cd476d491717a66bbcb5812db58168934ee3a58ae5be055083e89",
+    "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f",
+    "packageLockSha256": "d3e676fd0ef61c0ce9c54df8541c0b5d26c92196e32ac5d541230be3b7bba6f7"
+  },
+  "checks": {
+    "exactCandidateWasmUpgradeExecuted": true,
+    "allFourUnsignedReportCallsRejectedByAllSources": true,
+    "allFourUnsignedReportCallsRejectedByBlockApplication": true,
+    "allFourSignedReportsSucceededAndRetainedPositiveFees": true,
+    "allFourDuplicateReportsFailedAndRetainedPositiveFees": true,
+    "signedUtilityWrappedLegacyReportCharged": true,
+    "timestampInherentRetained": true,
+    "upgradePreservesStakingClaimsLedgersAndXorIssuance": true,
+    "consensusRuntimeApisDisableAutomaticUnsignedSubmission": true,
+    "transactionVersionRemains131": true
+  },
+  "finishedAt": "2026-10-05T03:18:07.723Z"
+}

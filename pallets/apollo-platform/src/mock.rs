@@ -23,7 +23,7 @@ use {
     frame_support::{construct_runtime, pallet_prelude::Weight, parameter_types, traits::Hooks},
     frame_system::{
         self,
-        offchain::{CreateBare, CreateTransactionBase},
+        offchain::{CreateBare, CreateSignedTransaction, CreateTransactionBase, SigningTypes},
         pallet_prelude::BlockNumberFor,
         RawOrigin,
     },
@@ -31,7 +31,7 @@ use {
     sp_runtime::{traits::Zero, AccountId32, BuildStorage, Perbill},
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime>;
+type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Runtime, u64>;
 type Block = frame_system::mocking::MockBlock<Runtime>;
 
 pub type AccountId = AccountId32;
@@ -123,6 +123,28 @@ where
 {
     fn create_bare(call: RuntimeCall) -> Self::Extrinsic {
         UncheckedExtrinsic::new_bare(call)
+    }
+}
+
+impl SigningTypes for Runtime {
+    type Public = sp_runtime::MultiSigner;
+    type Signature = sp_runtime::MultiSignature;
+}
+
+impl<LocalCall> CreateSignedTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_signed_transaction<
+        C: frame_system::offchain::AppCrypto<Self::Public, Self::Signature>,
+    >(
+        call: RuntimeCall,
+        public: Self::Public,
+        account: Self::AccountId,
+        nonce: Self::Nonce,
+    ) -> Option<Self::Extrinsic> {
+        C::sign(&codec::Encode::encode(&call), public)?;
+        Some(UncheckedExtrinsic::new_signed(call, account, nonce, ()))
     }
 }
 

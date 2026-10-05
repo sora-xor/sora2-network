@@ -217,8 +217,45 @@ where
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: BalanceOf<T>,
-        _tip: BalanceOf<T>,
+        tip: BalanceOf<T>,
     ) -> Result<Self::LiquidityInfo, TransactionValidityError> {
+        if T::CustomFees::validate_fee_exemption(who, call)? {
+            if !tip.is_zero() {
+                return Err(InvalidTransaction::Payment.into());
+            }
+            return Ok(LiquidityInfo::NotPaid);
+        }
+        if let Some(sponsor) = T::CustomFees::get_fee_sponsor(who, call, fee.into(), tip.into()) {
+            // Keep a live refund account even on a zero-existential-deposit chain.
+            if T::XorCurrency::free_balance(&sponsor) <= fee {
+                return Err(InvalidTransaction::Payment.into());
+            }
+            // Both the withdrawal and the grant consumption precede dispatch.
+            // Migration failures roll back neither, while an unfunded sponsor
+            // cannot consume a grant or admit an unpaid transaction.
+            return frame_support::storage::transactional::with_transaction_opaque_err(|| {
+                let result = (|| {
+                    let paid = T::XorCurrency::withdraw(
+                        &sponsor,
+                        fee,
+                        WithdrawReasons::TRANSACTION_PAYMENT,
+                        ExistenceRequirement::KeepAlive,
+                    )
+                    .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+                    T::CustomFees::consume_fee_sponsorship(who, call, &sponsor, fee.into())
+                        .map_err(|_| {
+                            TransactionValidityError::Invalid(InvalidTransaction::Payment)
+                        })?;
+                    Ok(LiquidityInfo::Paid(sponsor, Some(paid), None))
+                })();
+                if result.is_ok() {
+                    frame_support::storage::TransactionOutcome::Commit(result)
+                } else {
+                    frame_support::storage::TransactionOutcome::Rollback(result)
+                }
+            })
+            .map_err(|_| TransactionValidityError::Invalid(InvalidTransaction::Payment))?;
+        }
         // Not pay fee at all. It's not possible to withdraw fee if it's disabled here.
         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
             return Ok((who.clone(), None, None).into());
@@ -254,8 +291,32 @@ where
         call: &CallOf<T>,
         _dispatch_info: &DispatchInfoOf<CallOf<T>>,
         fee: BalanceOf<T>,
-        _tip: BalanceOf<T>,
+        tip: BalanceOf<T>,
     ) -> Result<(), TransactionValidityError> {
+        if T::CustomFees::validate_fee_exemption(who, call)? {
+            return if tip.is_zero() {
+                Ok(())
+            } else {
+                Err(InvalidTransaction::Payment.into())
+            };
+        }
+        if let Some(sponsor) = T::CustomFees::get_fee_sponsor(who, call, fee.into(), tip.into()) {
+            let balance = T::XorCurrency::free_balance(&sponsor);
+            if balance <= fee {
+                return Err(InvalidTransaction::Payment.into());
+            }
+            let remaining = balance.saturating_sub(fee);
+            if remaining < T::XorCurrency::minimum_balance() {
+                return Err(InvalidTransaction::Payment.into());
+            }
+            return T::XorCurrency::ensure_can_withdraw(
+                &sponsor,
+                fee,
+                WithdrawReasons::TRANSACTION_PAYMENT,
+                remaining,
+            )
+            .map_err(|_| InvalidTransaction::Payment.into());
+        }
         if fee.is_zero() || !T::CustomFees::should_be_paid(who, call) {
             return Ok(());
         }
@@ -506,6 +567,37 @@ impl<Call, AccountId> StakingValPayout<Call, AccountId> for () {
 pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
     /// Additinal information to be passed between `Self::compute_fee` and `Self::compute_actual_fee`
     type FeeDetails;
+
+    /// Authenticate a narrow protocol exemption and reject invalid/replayed
+    /// requests before execution. Called read-only in validation and again at
+    /// withdrawal, so a pool-valid request cannot bypass changed chain state.
+    fn validate_fee_exemption(
+        _who: &AccountId,
+        _call: &Call,
+    ) -> Result<bool, TransactionValidityError> {
+        Ok(false)
+    }
+
+    /// Optional, explicitly authorized payer for this exact direct call.
+    /// Implementations must authenticate the claimant and exclude tips.
+    fn get_fee_sponsor(
+        _who: &AccountId,
+        _call: &Call,
+        _fee: Balance,
+        _tip: Balance,
+    ) -> Option<AccountId> {
+        None
+    }
+
+    /// Consume a bounded authorization atomically with upfront withdrawal.
+    fn consume_fee_sponsorship(
+        _who: &AccountId,
+        _call: &Call,
+        _sponsor: &AccountId,
+        _fee: Balance,
+    ) -> DispatchResult {
+        Ok(())
+    }
 
     /// Check if the fee payment should be postponed
     ///
@@ -776,7 +868,9 @@ where
                 }),
                 tip,
             },
-            None => pallet_transaction_payment::Pallet::<T>::compute_fee_details(len, info, tip),
+            None => pallet_transaction_payment::Pallet::<T>::compute_actual_fee_details(
+                len, info, post_info, tip,
+            ),
         };
         Self::multiplied_fee(fee)
     }

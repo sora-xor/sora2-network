@@ -178,7 +178,6 @@ pub mod pallet {
 
     #[pallet::config]
     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
-
         type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
 
         type CallOrigin: EnsureOrigin<
@@ -293,42 +292,7 @@ pub mod pallet {
             recipient: AccountIdOf<T>,
             amount: GenericBalance,
         ) -> DispatchResult {
-            let CallOriginOutput {
-                network_id,
-                message_id,
-                timepoint,
-                ..
-            } = T::CallOrigin::ensure_origin(origin.clone())?;
-
-            // Here we need a logic that does not fail the extrinic
-            if let Err(error) = Self::mint_inner(
-                asset_id, sender, recipient, amount, network_id, message_id, timepoint,
-            ) {
-                Self::deposit_event(Event::FailedToMint(message_id, error));
-                T::OutboundChannel::submit(
-                    network_id,
-                    &RawOrigin::Root,
-                    &SubstrateAppCall::ReportTransferResult {
-                        message_id,
-                        message_status: MessageStatus::Failed,
-                    }
-                    .prepare_message(),
-                    (),
-                )?;
-            } else {
-                T::OutboundChannel::submit(
-                    network_id,
-                    &RawOrigin::Root,
-                    &SubstrateAppCall::ReportTransferResult {
-                        message_id,
-                        message_status: MessageStatus::Done,
-                    }
-                    .prepare_message(),
-                    (),
-                )?;
-            }
-
-            Ok(())
+            Self::mint_with_outcome(origin, asset_id, sender, recipient, amount).map(drop)
         }
 
         /// Function used to finalize asset registration if everything went well on the sidechain
@@ -478,6 +442,51 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Preserve authenticated delivery while exposing whether value was credited locally.
+        pub fn mint_with_outcome(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            sender: GenericAccount,
+            recipient: AccountIdOf<T>,
+            amount: GenericBalance,
+        ) -> Result<bridge_types::traits::MessageDispatchOutcome, DispatchError> {
+            frame_support::storage::with_storage_layer(|| {
+                let CallOriginOutput {
+                    network_id,
+                    message_id,
+                    timepoint,
+                    ..
+                } = T::CallOrigin::ensure_origin(origin)?;
+                // A caught mint error must not commit any partial mint/unlock mutations.
+                let outcome = match frame_support::storage::with_storage_layer(|| {
+                    Self::mint_inner(
+                        asset_id, sender, recipient, amount, network_id, message_id, timepoint,
+                    )
+                }) {
+                    Ok(()) => bridge_types::traits::MessageDispatchOutcome::Applied,
+                    Err(error) => {
+                        Self::deposit_event(Event::FailedToMint(message_id, error));
+                        bridge_types::traits::MessageDispatchOutcome::Failed
+                    }
+                };
+                let message_status = match outcome {
+                    bridge_types::traits::MessageDispatchOutcome::Applied => MessageStatus::Done,
+                    bridge_types::traits::MessageDispatchOutcome::Failed => MessageStatus::Failed,
+                };
+                T::OutboundChannel::submit(
+                    network_id,
+                    &RawOrigin::Root,
+                    &SubstrateAppCall::ReportTransferResult {
+                        message_id,
+                        message_status,
+                    }
+                    .prepare_message(),
+                    (),
+                )?;
+                Ok(outcome)
+            })
+        }
+
         pub fn mint_inner(
             asset_id: AssetIdOf<T>,
             sender: GenericAccount,

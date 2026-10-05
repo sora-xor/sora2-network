@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "checkedAt": "2026-09-30T00:39:20.638Z",
+  "checkedAt": "2026-09-30T01:30:21.780Z",
   "endpoint": "wss://ws.mof.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -11,11 +11,11 @@
     "system_chain": 1,
     "system_properties": 1,
     "rpc_methods": 1,
-    "state_call": 2,
+    "state_call": 4,
     "state_subscribeRuntimeVersion": 1,
     "chain_getFinalizedHead": 1,
     "chain_getHeader": 2,
-    "state_getStorage": 10,
+    "state_getStorage": 12,
     "state_getMetadata": 1
   },
   "calls": {
@@ -65,6 +65,92 @@
         "section": "council"
       }
     },
+    "utility-guarded-external-majority-call": {
+      "file": "utility-guarded-external-majority-call.hex",
+      "bytes": 81,
+      "hash": "0x44d4bd9f8ea23612bfa609b09445b724e3f7d4504c4b51fa80b84453b0fd09ed",
+      "section": "utility",
+      "method": "batchAll",
+      "decoded": {
+        "args": {
+          "calls": [
+            {
+              "args": {
+                "proposal": {
+                  "Lookup": {
+                    "hash_": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+                    "len": "3,055,449"
+                  }
+                }
+              },
+              "method": "externalPropose",
+              "section": "democracy"
+            },
+            {
+              "args": {
+                "proposal": {
+                  "Lookup": {
+                    "hash_": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+                    "len": "3,055,449"
+                  }
+                }
+              },
+              "method": "externalProposeMajority",
+              "section": "democracy"
+            }
+          ]
+        },
+        "method": "batchAll",
+        "section": "utility"
+      }
+    },
+    "council-propose-guarded-external-majority-threshold-4-call": {
+      "file": "council-propose-guarded-external-majority-threshold-4-call.hex",
+      "bytes": 86,
+      "hash": "0x29c40f3aa41d904ec6e2e55a6ebcbe228f0006eaf5d29a006a4ba5968d488086",
+      "section": "council",
+      "method": "propose",
+      "decoded": {
+        "args": {
+          "threshold": "4",
+          "proposal": {
+            "args": {
+              "calls": [
+                {
+                  "args": {
+                    "proposal": {
+                      "Lookup": {
+                        "hash_": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+                        "len": "3,055,449"
+                      }
+                    }
+                  },
+                  "method": "externalPropose",
+                  "section": "democracy"
+                },
+                {
+                  "args": {
+                    "proposal": {
+                      "Lookup": {
+                        "hash_": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+                        "len": "3,055,449"
+                      }
+                    }
+                  },
+                  "method": "externalProposeMajority",
+                  "section": "democracy"
+                }
+              ]
+            },
+            "method": "batchAll",
+            "section": "utility"
+          },
+          "length_bound": "81"
+        },
+        "method": "propose",
+        "section": "council"
+      }
+    },
     "democracy-fast-track-call": {
       "file": "democracy-fast-track-call.hex",
       "bytes": 42,
@@ -107,8 +193,8 @@
     }
   },
   "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-  "blockHash": "0x040ec3f6418e06b5e5f8d00f19ab9952de90cdd31e62c1eeb8c94fec7caae16f",
-  "blockNumber": 27834330,
+  "blockHash": "0xeeb86cfbfe19ef39cc295f8a790460133be8b775269060ebe92b8e76ea016951",
+  "blockNumber": 27834839,
   "runtimeVersion": {
     "specName": "sora-substrate",
     "implName": "sora-substrate",
@@ -265,10 +351,57 @@
   "enactmentDelay": 0,
   "minimumCouncilThreshold": 4,
   "technicalCommitteeThreshold": 3,
+  "preimage": {
+    "status": null,
+    "bytes": 3055449,
+    "maxBytes": 4194304,
+    "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
+    "baseDepositBaseUnits": "133546666666663200",
+    "byteDepositBaseUnits": "3333333333300",
+    "unrequestedDepositBaseUnits": "10318376666564814900",
+    "unrequestedDepositXor": "10.318376666564814900",
+    "depositSource": "Tested spec-132 runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
+    "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
+  },
+  "preferredCouncilCall": "council-propose-guarded-external-majority-threshold-4-call.hex",
+  "preferredCouncilMotionHash": "0x44d4bd9f8ea23612bfa609b09445b724e3f7d4504c4b51fa80b84453b0fd09ed",
+  "technicalMotionHash": "0x677291b7185f43a3f52864d8569a3a020f7437f3178ff4e008fc916e88a91ee0",
+  "reviewOnlySupersessionCalls": [
+    "democracy-external-propose-majority-call.hex",
+    "council-propose-external-majority-threshold-4-call.hex"
+  ],
+  "closeBounds": {
+    "council": {
+      "lengthBound": 85,
+      "weightBound": {
+        "refTime": "325460526",
+        "proofSize": "10700"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    },
+    "technicalCommittee": {
+      "lengthBound": 46,
+      "weightBound": {
+        "refTime": "595041000",
+        "proofSize": "3518"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    },
+    "weightSource": "Read-only TransactionPaymentApi.query_info of the exact inner call wrapped as an unsigned extrinsic at the finalized preflight block. This weight covers dispatch; its fee is not a signed-account fee quote. Requery for actual stored motion and live runtime before close.",
+    "source": "Pinned collective validate_and_get_proposal documents storage::read length overhead of four bytes; motion indices must come from Proposed events."
+  },
   "instructions": [
     "These are unsigned review artifacts. No governance action has been submitted.",
     "Repeat finalized governance-state inspection immediately before use. Existing unrelated motions are recorded and remain untouched.",
     "Council majority proposal needs at least half the current council. Technical fast-track needs more than half the current committee.",
+    "Use the preferred guarded council call: atomic batchAll([externalPropose(target), externalProposeMajority(target)]). It rejects an occupied queue at execution and rolls back on failure.",
+    "The two direct external-majority files are review-only supersession alternatives: they overwrite any queued proposal at execution and bypass its blacklist. They are not the default submission route.",
     "Proposers must cast explicit aye votes. Generate vote and close calls only after the actual motion index, votes and live weight bounds are known.",
     "Before executing technical fast-track, confirm the council inner execution succeeded and NextExternal contains this exact setCode proposal hash.",
     "Use Democracy.Started to obtain the actual referendum index. Encoding these calls neither approves nor enacts the runtime."

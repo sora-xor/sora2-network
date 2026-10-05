@@ -406,3 +406,22 @@ fn val_vesting_distribution_handles_large_totals() {
         assert_eq!(TotalClaimableVal::get(), balance!(1));
     });
 }
+
+#[test]
+fn umi_nft_receiver_update_only_refunds_after_root_authorization() {
+    use frame_support::dispatch::{GetDispatchInfo, Pays};
+    ExtBuilder::with_rewards(true).build().execute_with(|| {
+        let receivers = vec![EthAddress::repeat_byte(11)];
+        let call = crate::Call::<Runtime>::add_umi_nft_receivers {
+            receivers: receivers.clone(),
+        };
+        assert_eq!(call.get_dispatch_info().pays_fee, Pays::Yes);
+        for receivers in [Vec::new(), receivers.clone()] {
+            let err = Pallet::add_umi_nft_receivers(origin(), receivers).unwrap_err();
+            assert_eq!(err.error, frame_support::error::BadOrigin.into());
+            assert_eq!(err.post_info.pays_fee, Pays::Yes);
+        }
+        let success = Pallet::add_umi_nft_receivers(RuntimeOrigin::root(), receivers).unwrap();
+        assert_eq!(success.pays_fee, Pays::No);
+    });
+}

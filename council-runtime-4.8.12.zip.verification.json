@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "release": "4.8.12",
+  "archive": "council-runtime-4.8.12.zip",
+  "sha256": "c6b9f9430f7dc0d6affa114428fa9bbb3563189adc4acab3e77d9276798deb53",
+  "bytes": 17127504,
+  "files": 72,
+  "zipCrcAndExactEntriesChecked": true,
+  "allArchivedBytesMatchVerifiedPackage": true,
+  "submittedTransactions": 0,
+  "privateKeysRead": 0
+}

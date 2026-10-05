@@ -104,9 +104,33 @@ found no external proposal or candidate blacklist entry. The unsigned
 `system.setCode` call is **3,055,449 bytes**, proposal hash
 `0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348`.
 
-The offline governance verifier decoded all six prepared calls using the exact
+The original offline governance verifier decoded six prepared calls using the exact
 captured deployed metadata, checked the embedded Wasm and preimage byte for
 byte, and checked collective thresholds and inner proposals. The global
 package verifier checks the complete hash manifest, source patch and execution
 reports. Re-run live preflight immediately before governance use. This package
 has not enacted an upgrade or restarted any production node.
+
+## Refreshed council handoff on 30 September 2026
+
+The current source audit at HEAD `a05ecb8de476bcdf0212a1a646a1fbcac2f0b5c5`
+found identical runtime build inputs and all 17 provenance hashes matching.
+The clean-base source patch was independently reapplied using an isolated Git
+index and reproduced the original source tree. The persistent build output
+matches the packaged candidate byte for byte. See `validation/current-source-review.json`.
+The original native build and test evidence retains its source attribution;
+no new Cargo build or native test run was performed for this handoff.
+
+Fresh package preflight at block **27,834,683** and governance preflight at
+block **27,834,839** confirmed the exact deployed spec-132 baseline. The latter
+found eight council and four technical committee members, no external proposal,
+no candidate blacklist entry, no candidate preimage, and no collective motions.
+
+The default council route is now an atomic two-call guard that rejects an
+occupied queue before queuing the same candidate with simple-majority voting.
+The updated offline verifier checks **eight** calls, including both new guard
+encodings, their order, collective thresholds, lengths, and distinct motion
+hashes. Runtime API queries at the finalized checkpoint supplied the inner-call
+weights used for close bounds. See `governance-calls.json` and the runbook.
+This verifies encoding, pinned source semantics and weight queries; it does
+not claim execution of a real council motion.

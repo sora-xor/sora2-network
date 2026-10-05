@@ -1,0 +1,126 @@
+{
+  "release": "4.8.12",
+  "signed": false,
+  "submittedTransactions": 0,
+  "activationReady": false,
+  "activation": {
+    "ready": false,
+    "existingQueuedProposal": [
+      {
+        "lookup": {
+          "hash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
+          "len": 3055449
+        }
+      },
+      "SimpleMajority"
+    ],
+    "reason": "An existing external proposal is queued and operator readiness is unconfirmed; the guarded route rejects replacing the queue.",
+    "prerequisites": [
+      "Resolve the existing external proposal through normal governance so NextExternal is clear; never overwrite it.",
+      "Refresh finalized baseline, metadata, governance membership and unsigned calls before use. If runtime code or metadata changed, repeat compatibility and exact-Wasm rehearsal against the new deployed baseline.",
+      "Install dedicated sr25519 keep keys and fund keeper XOR accounts before activation; verify signed Kensetsu and Apollo submissions on a test network.",
+      "Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.",
+      "Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.",
+      "Update equivocation reporters to submit signed funded reports; automatic unsigned report submission is disabled.",
+      "For zero-XOR Iroha migration onboarding, obtain a voluntary bounded sponsor grant and verify sponsor funds; never assume a shared unlimited sponsor."
+    ]
+  },
+  "network": {
+    "name": "SORA mainnet",
+    "genesisHash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+    "endpoint": "wss://mof2.sora.org",
+    "finalizedBlock": 27907565,
+    "finalizedBlockHash": "0x4917e0bef23880a6bda6210fda5462ed4668c5ab38df261c0da9330532ba990c",
+    "checkedAt": "2026-10-05T03:20:13.575Z"
+  },
+  "runtime": {
+    "baselineSpecVersion": 132,
+    "file": "framenode-runtime-4.8.12.compact.compressed.wasm",
+    "bytes": 3086396,
+    "sha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
+    "specVersion": 134,
+    "transactionVersion": 131
+  },
+  "preimage": {
+    "method": "preimage.notePreimage",
+    "bytesArgumentFile": "set-code-call.hex",
+    "completeCallFile": "preimage-note-call.hex",
+    "hash": "0x2ed47f947903c423083bb8cc796e121d6eb5cb7dfd7de9bcb18127be7867d16a",
+    "hashAlgorithm": "BLAKE2-256 of full SCALE system.setCode call",
+    "status": null,
+    "bytes": 3086402,
+    "maxBytes": 4194304,
+    "limitSource": "Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit",
+    "baseDepositBaseUnits": "133546666666663200",
+    "byteDepositBaseUnits": "3333333333300",
+    "unrequestedDepositBaseUnits": "10421553333230449800",
+    "unrequestedDepositXor": "10.421553333230449800",
+    "depositSource": "Captured baseline runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote",
+    "feeInstruction": "Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status."
+  },
+  "council": {
+    "method": "council.propose",
+    "callFile": "council-propose-guarded-external-majority-threshold-4-call.hex",
+    "threshold": 4,
+    "members": 8,
+    "innerCallFile": "utility-guarded-external-majority-call.hex",
+    "innerCall": "utility.batchAll([democracy.externalPropose(candidate), democracy.externalProposeMajority(candidate)])",
+    "proposalLengthBound": 81,
+    "motionHashForVoteAndClose": "0xb1d5d035a82a98f4f3e95c41db4359354fbb8e2dc7af2210c61df44b91ba4d43",
+    "motionIndex": null,
+    "close": {
+      "lengthBound": 85,
+      "weightBound": {
+        "refTime": "325460526",
+        "proofSize": "10700"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    }
+  },
+  "technicalCommittee": {
+    "method": "technicalCommittee.propose",
+    "callFile": "technical-committee-fast-track-threshold-3-call.hex",
+    "threshold": 3,
+    "members": 4,
+    "innerCallFile": "democracy-fast-track-call.hex",
+    "innerCall": "democracy.fastTrack",
+    "proposalHash": "0x2ed47f947903c423083bb8cc796e121d6eb5cb7dfd7de9bcb18127be7867d16a",
+    "votingPeriodBlocks": 1800,
+    "enactmentDelayBlocks": 0,
+    "proposalLengthBound": 42,
+    "motionHashForVoteAndClose": "0x7be1ac580944be281447b9407d8fce29d066462ff6511f6d6fcd953262e6c331",
+    "motionIndex": null,
+    "close": {
+      "lengthBound": 46,
+      "weightBound": {
+        "refTime": "595041000",
+        "proofSize": "3518"
+      },
+      "maxProposalWeight": {
+        "refTime": "1000000000000",
+        "proofSize": "9223372036854775807"
+      }
+    }
+  },
+  "referendumIndex": null,
+  "instructions": [
+    "These are unsigned review artifacts. No governance action has been submitted.",
+    "Repeat finalized governance-state inspection immediately before use. Existing unrelated motions are recorded and remain untouched.",
+    "Council majority proposal needs at least half the current council. Technical fast-track needs more than half the current committee.",
+    "Use the preferred guarded council call: atomic batchAll([externalPropose(target), externalProposeMajority(target)]). It rejects an occupied queue at execution and rolls back on failure.",
+    "Direct supersession alternatives are excluded. An occupied external queue requires resolution and baseline refresh before this upgrade is activated.",
+    "Proposers must cast explicit aye votes. Generate vote and close calls only after the actual motion index, votes and live weight bounds are known.",
+    "Before executing technical fast-track, confirm the council inner execution succeeded and NextExternal contains this exact setCode proposal hash.",
+    "Use Democracy.Started to obtain the actual referendum index. Encoding these calls neither approves nor enacts the runtime.",
+    "Null motion/referendum indices are intentionally unset. Read actual Proposed/Started events; never submit null or guessed indices.",
+    "Requery live stored-motion weights and membership before signing vote/close calls.",
+    "Preimage registration, council approval, technical fast-track, referendum passage and enactment are separate steps."
+  ],
+  "inputSha256": {
+    "runtime-upgrade-4.8.12-info.json": "799d3993787a03277259a2cddd07ad74194508fa0ce4cb11f52bf4f4718c4208",
+    "governance-calls.json": "a7e5c64dc2995921e1bdc5333c897cd429513c0f7031197039176952fef0c466"
+  }
+}

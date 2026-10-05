@@ -1,5 +1,5 @@
 {
-  "preparedAt": "2026-09-30T00:38:47.059Z",
+  "preparedAt": "2026-09-30T01:14:53.048Z",
   "release": "4.8.11",
   "candidate": {
     "file": "framenode-runtime-4.8.11.compact.compressed.wasm",
@@ -17,8 +17,8 @@
   "preflight": {
     "endpoint": "wss://ws.mof.sora.org",
     "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-    "hash": "0x4c829dd9767081bc6e34e27d9ae51aecbfd3eaac3ce213f40ddd4ea6d40da902",
-    "block": 27834322,
+    "hash": "0xf0177777930865e94be04f9fbcbb917f05c8cd5ee3574d324d5628d2900457a4",
+    "block": 27834683,
     "runtimeVersion": {
       "specName": "sora-substrate",
       "implName": "sora-substrate",
@@ -145,12 +145,17 @@
     "deployedSha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3",
     "publicationMarkerAbsent": true,
     "active": {
-      "index": 7707,
-      "start": 1790707860010
+      "index": 7708,
+      "start": 1790729460010
     },
     "current": 7708,
     "historyDepth": 84,
     "latestBudgets": [
+      {
+        "era": 7707,
+        "standard": "0",
+        "val": "190163450304489721759"
+      },
       {
         "era": 7706,
         "standard": "0",
@@ -170,11 +175,6 @@
         "era": 7703,
         "standard": "0",
         "val": "411105715915872753602"
-      },
-      {
-        "era": 7702,
-        "standard": "0",
-        "val": "1312755878672869119399"
       }
     ],
     "remoteRpcMethods": {

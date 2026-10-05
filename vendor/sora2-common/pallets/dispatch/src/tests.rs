@@ -108,3 +108,33 @@ fn test_message_rejected() {
         );
     })
 }
+
+#[test]
+fn trailing_payload_is_a_failed_application() {
+    new_test_ext().execute_with(|| {
+        let id = types::MessageId::batched(
+            SubNetworkId::Mainnet.into(),
+            SubNetworkId::Rococo.into(),
+            1,
+            0,
+        );
+        let mut message =
+            RuntimeCall::System(frame_system::Call::<Test>::remark { remark: vec![] }).encode();
+        message.push(0);
+        System::set_block_number(1);
+        assert_eq!(
+            Dispatch::dispatch(
+                H256::from_low_u64_be(2).into(),
+                id,
+                Default::default(),
+                &message,
+                AdditionalEVMInboundData {
+                    source: H160::repeat_byte(7)
+                }
+                .into(),
+            ),
+            bridge_types::traits::MessageDispatchOutcome::Failed,
+        );
+        System::assert_last_event(crate::Event::<Test>::MessageDecodeFailed(id).into());
+    });
+}

@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "verifiedFiles": 70,
+  "candidateSha256": "9cdc615875e0664304c50bfc09350660388e4c015543fbb4d827995af9ad9037",
+  "proposalHash": "0x2ed47f947903c423083bb8cc796e121d6eb5cb7dfd7de9bcb18127be7867d16a",
+  "sourceTreeAfterPatch": "a16e9e1ac195575c6008c69434999b2587b81d01",
+  "sourceIsUncommittedOverlay": true,
+  "unsignedCallsMatchCandidate": true,
+  "activationReady": false,
+  "existingExternalQueuePreserved": true,
+  "exactWasmReportFeesAndCompatibilityPassed": true,
+  "nativeReportFeeTestsPassed": true,
+  "exactWasmFeePolicyAndZeroXorBridgePassed": true,
+  "workspaceSourceChecked": true,
+  "networkRequests": 0
+}

@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "verifiedFiles": 56,
+  "verifiedFiles": 63,
   "candidateSha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a",
   "proposalHash": "0xc1d1b2e68fae6166a911f595ca2abc157afc97a12b14221191f9f6bfba6a9348",
   "unsignedCallsMatchCandidate": true,

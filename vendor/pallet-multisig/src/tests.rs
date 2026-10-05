@@ -28,7 +28,7 @@ use frame_support::{
 use sp_core::H256;
 use sp_runtime::{
     traits::{BlakeTwo256, IdentityLookup},
-    BuildStorage, DispatchError, ModuleError, Perbill,
+    BuildStorage, Perbill,
 };
 
 // For testing the pallet, we construct most of a mock runtime. This means
@@ -115,6 +115,11 @@ impl Contains<RuntimeCall> for TestBaseCallFilter {
 }
 
 impl Config for Test {
+    type CallFilter = frame_support::traits::Everything;
+
+    type MaxPendingOperations = frame_support::traits::ConstU32<128>;
+    type MaxCallBytes = frame_support::traits::ConstU32<16384>;
+
     type RuntimeEvent = RuntimeEvent;
     type RuntimeCall = RuntimeCall;
     type Currency = Balances;
@@ -434,7 +439,7 @@ fn already_dispatched_checking_works() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::AlreadyDispatched.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             },
         );
     });
@@ -475,7 +480,7 @@ fn already_dispatched_checking_works_for_threshold_1() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::AlreadyDispatched.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
     });
@@ -542,7 +547,7 @@ fn timepoint_checking_works() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::NoTimepoint.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
         let later = BridgeTimepoint { index: 1, ..now() };
@@ -557,7 +562,7 @@ fn timepoint_checking_works() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::WrongTimepoint.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
     });
@@ -743,7 +748,7 @@ fn multisig_only_multisig_can_add_or_remove_signatory() {
 }
 
 #[test]
-fn multisig_signatory_approve_removes_with_the_signatory() {
+fn multisig_removed_signatory_votes_are_pruned_on_next_approval() {
     new_test_ext().execute_with(|| {
         let multi = Multisig::multi_account_id(&1, 1, 0);
         assert_ok!(Multisig::register_multisig(
@@ -768,7 +773,18 @@ fn multisig_signatory_approve_removes_with_the_signatory() {
         assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 4));
 
         let operation = <Multisigs<Test>>::get(&multi, &hash).unwrap();
-        assert!(operation.approvals.is_empty());
+        assert_eq!(operation.approvals, vec![4]);
+        assert_ok!(Multisig::approve_as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(operation.when),
+            hash,
+            Weight::zero()
+        ));
+        assert_eq!(
+            Multisigs::<Test>::get(&multi, &hash).unwrap().approvals,
+            vec![1]
+        );
     });
 }
 
@@ -1262,7 +1278,7 @@ fn multisig_3_of_4_cannot_reissue_same_call() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::AlreadyDispatched.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
     });
@@ -1307,7 +1323,7 @@ fn duplicate_approvals_are_ignored() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::AlreadyApproved.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
         assert_ok!(Multisig::approve_as_multi(
@@ -1327,7 +1343,7 @@ fn duplicate_approvals_are_ignored() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::AlreadyApproved.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
     });
@@ -1345,17 +1361,15 @@ fn multisig_filters() {
         let call = Box::new(RuntimeCall::System(frame_system::Call::set_code {
             code: vec![],
         }));
-        assert_err!(
-            Multisig::as_multi_threshold_1(RuntimeOrigin::signed(1), multi, call.clone(), now()),
-            DispatchErrorWithPostInfo {
-                error: DispatchError::Module(ModuleError {
-                    index: 0,
-                    error: 5i32.to_le_bytes(),
-                    message: Some("CallFiltered")
-                }),
-                post_info: Pays::No.into()
-            }
+        let result =
+            Multisig::as_multi_threshold_1(RuntimeOrigin::signed(1), multi, call.clone(), now())
+                .unwrap_err();
+        assert_eq!(
+            result.error,
+            frame_system::Error::<Test>::CallFiltered.into()
         );
+        assert_eq!(result.post_info.pays_fee, Pays::Yes);
+        assert!(result.post_info.actual_weight.is_some());
     });
 }
 
@@ -1425,7 +1439,7 @@ fn weight_check_works() {
             ),
             DispatchErrorWithPostInfo {
                 error: Error::<Test>::WeightTooLow.into(),
-                post_info: Pays::No.into()
+                post_info: Pays::Yes.into()
             }
         );
     });
@@ -1501,7 +1515,7 @@ fn multisig_handles_no_preimage_after_all_approve() {
 }
 
 #[test]
-fn executes_call_on_peer_remove() {
+fn peer_removal_defers_execution_to_a_weighted_approval() {
     new_test_ext().execute_with(|| {
         let multi = Multisig::multi_account_id(&1, 1, 0);
         assert_ok!(Multisig::register_multisig(
@@ -1533,6 +1547,19 @@ fn executes_call_on_peer_remove() {
             hash, timepoint
         ));
         assert_ok!(Multisig::remove_signatory(RuntimeOrigin::signed(multi), 3));
+        assert!(!crate::DispatchedCalls::<Test>::contains_key(
+            hash, timepoint
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let weight = call.get_dispatch_info().total_weight();
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(timepoint),
+            call.encode(),
+            true,
+            weight
+        ));
         assert!(crate::DispatchedCalls::<Test>::contains_key(
             hash, timepoint
         ));
@@ -1628,5 +1655,235 @@ fn does_not_execute_call_on_peer_remove() {
             hash, timepoint
         ));
         assert!(crate::Multisigs::<Test>::contains_key(multi, hash));
+    });
+}
+
+#[test]
+fn legacy_numeric_deposits_never_unreserve_currency() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 })
+            .encode();
+        let hash = blake2_256(&call);
+        crate::Calls::<Test>::insert(hash, (call, 1, 999));
+        crate::Multisigs::<Test>::insert(
+            multi,
+            hash,
+            crate::Multisig {
+                when: now(),
+                deposit: 999,
+                depositor: 1,
+                approvals: vec![1],
+            },
+        );
+        assert_ok!(Balances::reserve(&1, 2)); // an unrelated legitimate reserve
+        assert_ok!(Multisig::cancel_as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            now(),
+            hash
+        ));
+        assert_eq!(Balances::reserved_balance(1), 2);
+        assert_eq!(Balances::free_balance(1), 8);
+    });
+}
+
+#[test]
+fn ordinary_bridge_dispatch_and_inner_failure_remain_paid() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 15 });
+        let data = call.encode();
+        let weight = call.get_dispatch_info().total_weight();
+        let first = Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            data.clone(),
+            true,
+            weight,
+        )
+        .unwrap();
+        assert_eq!(first.pays_fee, Pays::Yes);
+        assert_err!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                multi,
+                Some(now()),
+                data.clone(),
+                true,
+                weight
+            ),
+            DispatchErrorWithPostInfo {
+                post_info: Pays::Yes.into(),
+                error: Error::<Test>::AlreadyApproved.into()
+            }
+        );
+        let final_approval = Multisig::as_multi(
+            RuntimeOrigin::signed(2),
+            multi,
+            Some(now()),
+            data,
+            true,
+            weight,
+        )
+        .unwrap();
+        assert_eq!(final_approval.pays_fee, Pays::Yes);
+        assert!(System::events().iter().any(|record| matches!(
+            record.event,
+            RuntimeEvent::Multisig(Event::MultisigExecuted(_, _, _, _, Some(_)))
+        )));
+        assert_eq!(Balances::free_balance(6), 0);
+    });
+}
+
+#[test]
+fn legacy_backlog_is_grandfathered_and_new_admission_slots_are_bounded() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        for n in 0..129u16 {
+            let mut hash = [0u8; 32];
+            hash[..2].copy_from_slice(&n.to_le_bytes());
+            crate::Multisigs::<Test>::insert(
+                multi,
+                hash,
+                crate::Multisig {
+                    when: now(),
+                    deposit: 999,
+                    depositor: 1,
+                    approvals: vec![1],
+                },
+            );
+        }
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+        for n in 0..128u64 {
+            let call =
+                RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: n })
+                    .encode();
+            assert_ok!(Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                multi,
+                Some(now()),
+                call,
+                true,
+                Weight::zero()
+            ));
+        }
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+        let extra = RuntimeCall::Balances(BalancesCall::transfer_allow_death {
+            dest: 6,
+            value: 128,
+        })
+        .encode();
+        assert_err!(
+            Multisig::as_multi(
+                RuntimeOrigin::signed(1),
+                multi,
+                Some(now()),
+                extra.clone(),
+                true,
+                Weight::zero()
+            ),
+            Error::<Test>::TooManyPendingOperations
+        );
+        // Removing a grandfathered operation neither frees a new slot nor underflows.
+        assert_ok!(Multisig::cancel_as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            now(),
+            [0; 32]
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+        let first = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 0 })
+            .encode();
+        assert_ok!(Multisig::cancel_as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            now(),
+            blake2_256(&first)
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 127);
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            extra,
+            true,
+            Weight::zero()
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 128);
+    });
+}
+
+#[test]
+fn dispatch_only_decrements_marked_new_operations() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let _ = Balances::make_free_balance_be(&multi, 10);
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let weight = call.get_dispatch_info().total_weight();
+        let encoded = call.encode();
+        let hash = blake2_256(&encoded);
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            encoded.clone(),
+            true,
+            weight
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 1);
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(2),
+            multi,
+            Some(now()),
+            encoded,
+            true,
+            weight
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+        assert!(!crate::CountedNewOperations::<Test>::contains_key(
+            multi, hash
+        ));
+        // A legacy operation dispatch has no corresponding currency hold or counter marker.
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 2 });
+        let encoded = call.encode();
+        let hash = blake2_256(&encoded);
+        crate::Calls::<Test>::insert(hash, (encoded.clone(), 1, 999));
+        crate::Multisigs::<Test>::insert(
+            multi,
+            hash,
+            crate::Multisig {
+                when: now(),
+                deposit: 999,
+                depositor: 1,
+                approvals: vec![1],
+            },
+        );
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(2),
+            multi,
+            Some(now()),
+            encoded,
+            true,
+            call.get_dispatch_info().total_weight()
+        ));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
     });
 }

@@ -1005,7 +1005,13 @@ fn runtime_upgrade_rebuilds_the_known_exposure_budget_with_charged_bounded_work(
     });
 }
 
+mod bridge_fees;
 #[cfg(not(feature = "private-net"))]
 mod deferred_slashes;
 mod equivocation_admission;
+mod equivocation_bridge;
+mod equivocation_fees;
+mod feeless_success;
+mod funded_keepers;
+mod migration_sponsorship;
 mod session_boundaries;

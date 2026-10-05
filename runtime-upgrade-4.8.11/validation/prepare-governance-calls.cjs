@@ -6,9 +6,10 @@ const { readFileSync, writeFileSync } = require('node:fs');
 const { resolve } = require('node:path');
 const { createHash } = require('node:crypto');
 const { ApiPromise, WsProvider } = require('@polkadot/api');
+const { GenericExtrinsic } = require('@polkadot/types');
 const { fullOverrideBundle } = require('@sora-substrate/type-definitions');
 const { blake2AsHex } = require('@polkadot/util-crypto');
-const { hexToU8a } = require('@polkadot/util');
+const { hexToU8a, stringToHex } = require('@polkadot/util');
 const dir = resolve(__dirname, '..');
 const info = JSON.parse(readFileSync(resolve(dir, 'runtime-upgrade-4.8.11-info.json')));
 const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -48,6 +49,7 @@ async function main() {
   const snapshot = JSON.parse(readFileSync(resolve(__dirname, 'snapshot.json')));
   assert.equal(sha256((await api.rpc.state.getMetadata(hash)).toU8a()), snapshot.metadata.sha256, 'Finalized V14 metadata differs from captured baseline');
   assert.equal(sha256(hexToU8a(code.unwrap().toHex())), info.preflight.deployedSha256);
+  assert.equal((await api.rpc.state.getStorage(stringToHex('runtime:migrations:val_staking_rewards_published'), hash)).toJSON(), null, 'Publication migration already ran; review live state');
   report.genesis = api.genesisHash.toHex(); report.blockHash = hash.toHex(); report.blockNumber = header.number.toNumber();
   report.runtimeVersion = version.toJSON(); report.setCodeProposalHash = info.proposal.hash; report.setCodeProposalBytes = setCode.length;
   report.nextExternal = nextExternal.toJSON(); report.candidateBlacklist = blacklist.toJSON(); report.publicProposals = publicProps.toJSON();
@@ -56,6 +58,25 @@ async function main() {
   report.enactmentDelay = 0;
   report.minimumCouncilThreshold = Math.ceil(council.members.length / 2);
   report.technicalCommitteeThreshold = Math.floor(technicalCommittee.members.length / 2) + 1;
+  const units = 10n ** 18n;
+  const cents = units / 30000n;
+  const millicents = cents / 1000n;
+  const preimageBaseDeposit = 2n * 2000n * cents + 64n * 100n * millicents;
+  const preimageByteDeposit = 100n * millicents;
+  const preimageDeposit = preimageBaseDeposit + BigInt(setCode.length) * preimageByteDeposit;
+  report.preimage = {
+    status: (await at.query.preimage.requestStatusFor(info.proposal.hash)).toJSON(),
+    bytes: setCode.length,
+    maxBytes: 4 * 1024 * 1024,
+    limitSource: 'Pinned SDK e3737178ec726cffe506c907263aaaa417893fd0 pallet-preimage MAX_SIZE; the custom weight cap is not the storage limit',
+    baseDepositBaseUnits: preimageBaseDeposit.toString(),
+    byteDepositBaseUnits: preimageByteDeposit.toString(),
+    unrequestedDepositBaseUnits: preimageDeposit.toString(),
+    unrequestedDepositXor: `${preimageDeposit / units}.${(preimageDeposit % units).toString().padStart(18, '0')}`,
+    depositSource: 'Tested spec-132 runtime: deposit(2,64) + encoded preimage bytes * deposit(0,1); source-calculated, not an account fee quote',
+    feeInstruction: 'Obtain a fresh signed-account fee/balance quote before noting the preimage; this deposit is additional to transaction fees and depends on request status.',
+  };
+  assert(setCode.length <= report.preimage.maxBytes, 'Preimage exceeds pinned pallet storage limit');
   assert(council.members.length > 0 && technicalCommittee.members.length > 0, 'Empty governance collective');
   // A new majority proposal may overwrite NextExternal in this pallet. Refuse to
   // package an executable replacement while another proposal is queued.
@@ -64,11 +85,15 @@ async function main() {
     report.reason = nextExternal.isSome ? 'NextExternal is already occupied. No external-majority or fast-track calls were written.' : 'Candidate proposal hash has blacklist storage. No governance calls were written.';
     save(); throw new Error(report.reason);
   }
-  const external = api.tx.democracy.externalProposeMajority({ Lookup: { hash: info.proposal.hash, len: setCode.length } }).method;
+  const target = { Lookup: { hash: info.proposal.hash, len: setCode.length } };
+  const external = api.tx.democracy.externalProposeMajority(target).method;
+  const guarded = api.tx.utility.batchAll([api.tx.democracy.externalPropose(target), api.tx.democracy.externalProposeMajority(target)]).method;
   const fast = api.tx.democracy.fastTrack(info.proposal.hash, report.fastTrackVotingPeriod, report.enactmentDelay).method;
   const calls = {
     'democracy-external-propose-majority-call': external,
     [`council-propose-external-majority-threshold-${report.minimumCouncilThreshold}-call`]: api.tx.council.propose(report.minimumCouncilThreshold, external, external.encodedLength).method,
+    'utility-guarded-external-majority-call': guarded,
+    [`council-propose-guarded-external-majority-threshold-${report.minimumCouncilThreshold}-call`]: api.tx.council.propose(report.minimumCouncilThreshold, guarded, guarded.encodedLength).method,
     'democracy-fast-track-call': fast,
     [`technical-committee-fast-track-threshold-${report.technicalCommitteeThreshold}-call`]: api.tx.technicalCommittee.propose(report.technicalCommitteeThreshold, fast, fast.encodedLength).method,
   };
@@ -78,10 +103,36 @@ async function main() {
     writeFileSync(resolve(dir, name + '.hex'), call.toHex() + '\n');
     report.calls[name] = { file: name + '.hex', bytes: call.encodedLength, hash: blake2AsHex(call.toU8a()), section: call.section, method: call.method, decoded: call.toHuman() };
   }
+  report.preferredCouncilCall = `council-propose-guarded-external-majority-threshold-${report.minimumCouncilThreshold}-call.hex`;
+  report.preferredCouncilMotionHash = blake2AsHex(guarded.toU8a());
+  report.technicalMotionHash = blake2AsHex(fast.toU8a());
+  report.reviewOnlySupersessionCalls = [
+    'democracy-external-propose-majority-call.hex',
+    `council-propose-external-majority-threshold-${report.minimumCouncilThreshold}-call.hex`,
+  ];
+  const weightJson = weight => ({ refTime: weight.refTime.toString(), proofSize: weight.proofSize.toString() });
+  const queryWeight = async method => {
+    const tx = new GenericExtrinsic(at.registry, method, { version: 4 });
+    // The runtime takes SCALE Extrinsic directly, not a Bytes wrapper. Use the
+    // same raw API encoding as the exact-Wasm execution rehearsal.
+    const input = tx.toHex() + at.registry.createType('u32', tx.encodedLength).toHex().slice(2);
+    const raw = await api.rpc.state.call('TransactionPaymentApi_query_info', input, hash);
+    const result = at.registry.createType('RuntimeDispatchInfo', raw.toHex());
+    return weightJson(result.weight);
+  };
+  const [councilWeight, technicalWeight] = await Promise.all([queryWeight(guarded), queryWeight(fast)]);
+  report.closeBounds = {
+    council: { lengthBound: guarded.encodedLength + 4, weightBound: councilWeight, maxProposalWeight: weightJson(at.consts.council.maxProposalWeight) },
+    technicalCommittee: { lengthBound: fast.encodedLength + 4, weightBound: technicalWeight, maxProposalWeight: weightJson(at.consts.technicalCommittee.maxProposalWeight) },
+    weightSource: 'Read-only TransactionPaymentApi.query_info of the exact inner call wrapped as an unsigned extrinsic at the finalized preflight block. This weight covers dispatch; its fee is not a signed-account fee quote. Requery for actual stored motion and live runtime before close.',
+    source: 'Pinned collective validate_and_get_proposal documents storage::read length overhead of four bytes; motion indices must come from Proposed events.',
+  };
   report.instructions = [
     'These are unsigned review artifacts. No governance action has been submitted.',
     'Repeat finalized governance-state inspection immediately before use. Existing unrelated motions are recorded and remain untouched.',
     'Council majority proposal needs at least half the current council. Technical fast-track needs more than half the current committee.',
+    'Use the preferred guarded council call: atomic batchAll([externalPropose(target), externalProposeMajority(target)]). It rejects an occupied queue at execution and rolls back on failure.',
+    'The two direct external-majority files are review-only supersession alternatives: they overwrite any queued proposal at execution and bypass its blacklist. They are not the default submission route.',
     'Proposers must cast explicit aye votes. Generate vote and close calls only after the actual motion index, votes and live weight bounds are known.',
     'Before executing technical fast-track, confirm the council inner execution succeeded and NextExternal contains this exact setCode proposal hash.',
     'Use Democracy.Started to obtain the actual referendum index. Encoding these calls neither approves nor enacts the runtime.',

@@ -36,3 +36,16 @@ The exact candidate Wasm and ordinary payout path passed the pinned mainnet-stat
 rehearsal. See [VALIDATION.md](VALIDATION.md) for evidence and limits, and
 [GOVERNANCE-RUNBOOK.md](GOVERNANCE-RUNBOOK.md) for the prepared activation calls.
 No governance transaction has been signed or submitted by preparing this candidate.
+
+## Council handoff
+
+Send the complete `council-runtime-4.8.11.zip` with
+[COUNCIL_MESSAGE.md](COUNCIL_MESSAGE.md). The package includes the exact WASM,
+unsigned calls, [council-settings.json](council-settings.json), the governance
+runbook, and validation evidence. Verify the ZIP's companion SHA-256 and then
+the extracted `SHA256SUMS` before use.
+
+The [review since 4.8.10](REVIEW-4.8.10-to-4.8.11.md) confirms current runtime
+source equivalence to the original validated build. The preferred council
+motion now guards against replacing an external proposal queued before it
+executes; the runtime WASM and preimage hash are unchanged.

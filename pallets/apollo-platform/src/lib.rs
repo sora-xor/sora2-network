@@ -54,6 +54,21 @@ pub struct PoolInfo {
     pub is_removed: bool,
 }
 
+/// Funded keeper workers share the dedicated `keep` key with Kensetsu.
+pub mod crypto {
+    use sp_core::crypto::KeyTypeId;
+    use sp_runtime::app_crypto::{app_crypto, sr25519};
+    use sp_runtime::{MultiSignature, MultiSigner};
+    pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"keep");
+    app_crypto!(sr25519, KEY_TYPE);
+    pub struct AuthorityId;
+    impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for AuthorityId {
+        type RuntimeAppPublic = Public;
+        type GenericSignature = sp_core::sr25519::Signature;
+        type GenericPublic = sp_core::sr25519::Public;
+    }
+}
+
 pub use pallet::*;
 pub mod migrations;
 
@@ -72,7 +87,9 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_support::transactional;
     use frame_support::PalletId;
-    use frame_system::offchain::{CreateBare, SubmitTransaction};
+    use frame_system::offchain::{
+        AppCrypto, CreateSignedTransaction, CreateTransactionBase, SigningTypes,
+    };
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use hex_literal::hex;
@@ -80,17 +97,17 @@ pub mod pallet {
     use sp_std::collections::btree_map::BTreeMap;
     use sp_std::vec::Vec;
     const PALLET_ID: PalletId = PalletId(*b"apollolb");
-    /// Custom errors for unsigned tx validation, InvalidTransaction::Custom(u8)
-    const VALIDATION_ERROR_LIQUIDATION_LIMIT: u8 = 1;
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config
+    pub trait Config: frame_system::Config<RuntimeCall: From<Call<Self>>>
         + liquidity_proxy::Config
         + trading_pair::Config
         + common::Config
-        + CreateBare<Call<Self>>
+        + SigningTypes
+        + CreateSignedTransaction<Call<Self>>
+        + CreateTransactionBase<Call<Self>, RuntimeCall = <Self as frame_system::Config>::RuntimeCall>
     {
+        type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
         const BLOCKS_PER_FIFTEEN_MINUTES: BlockNumberFor<Self>;
         #[allow(deprecated)]
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -1137,10 +1154,11 @@ pub mod pallet {
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::liquidate())]
         pub fn liquidate(
-            _origin: OriginFor<T>,
+            origin: OriginFor<T>,
             user: AccountIdOf<T>,
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
+            ensure_signed(origin)?;
             ensure!(
                 LiquidationsThisBlock::<T>::get() < T::MaxLiquidationsPerBlock::get(),
                 Error::<T>::LiquidationLimit
@@ -1486,35 +1504,11 @@ pub mod pallet {
     impl<T: Config> ValidateUnsigned for Pallet<T> {
         type Call = Call<T>;
 
-        /// It is allowed to call only liquidate() and only if it fulfills conditions.
-        fn validate_unsigned(source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-            match call {
-                Call::liquidate { user, asset_id } => {
-                    if matches!(source, TransactionSource::InBlock)
-                        && LiquidationsThisBlock::<T>::get() >= T::MaxLiquidationsPerBlock::get()
-                    {
-                        return InvalidTransaction::Custom(VALIDATION_ERROR_LIQUIDATION_LIMIT)
-                            .into();
-                    }
-
-                    let user_infos =
-                        UserBorrowingInfo::<T>::get(asset_id, user.clone()).unwrap_or_default();
-                    if Self::check_liquidation(&user_infos, *asset_id) {
-                        ValidTransaction::with_tag_prefix("Apollo::liquidate")
-                            .priority(T::UnsignedPriority::get())
-                            .longevity(T::UnsignedLongevity::get())
-                            .and_provides((user, asset_id))
-                            .propagate(true)
-                            .build()
-                    } else {
-                        InvalidTransaction::Call.into()
-                    }
-                }
-                _ => {
-                    warn!("Unknown unsigned call {:?}", call);
-                    InvalidTransaction::Call.into()
-                }
-            }
+        fn validate_unsigned(
+            _source: TransactionSource,
+            _call: &Self::Call,
+        ) -> TransactionValidity {
+            InvalidTransaction::Call.into()
         }
     }
 
@@ -1589,12 +1583,8 @@ pub mod pallet {
                     user: user.clone(),
                     asset_id,
                 };
-                let tx = T::create_bare(call.into());
-                if let Err(err) = SubmitTransaction::<T, Call<T>>::submit_transaction(tx) {
-                    warn!(
-                        "Failed in offchain_worker send liquidate(user: {:?}): {:?}",
-                        user, err
-                    );
+                if let Err(error) = common::keeper::submit::<T, _, T::AuthorityId>(call) {
+                    warn!("Funded keeper transaction submission failed: {:?}", error);
                 }
             };
 

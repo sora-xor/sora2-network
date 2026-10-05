@@ -132,14 +132,14 @@ fn signing_message_uses_configured_genesis_hash() {
 }
 
 #[test]
-fn valid_migration_call_is_feeless_before_dispatch() {
+fn valid_migration_requires_fee_funding_before_dispatch() {
     new_test_ext().execute_with(|| {
         let key = test_keypair(1);
         let iroha_address = "did_sora_balance@sora";
         install_public_keys(iroha_address, &[&key]);
 
         let call = migrate_call_with_key(ALICE, iroha_address, &key);
-        assert!(call.is_feeless(&RuntimeOrigin::signed(ALICE)));
+        assert!(!call.is_feeless(&RuntimeOrigin::signed(ALICE)));
         assert!(!call.is_feeless(&RuntimeOrigin::signed(BOB)));
 
         let bad_call = RuntimeCall::IrohaMigration(crate::Call::<Runtime>::migrate {
@@ -159,7 +159,7 @@ fn migrated_account_is_not_feeless_again() {
         install_public_keys(iroha_address, &[&key]);
 
         let call = migrate_call_with_key(ALICE, iroha_address, &key);
-        assert!(call.is_feeless(&RuntimeOrigin::signed(ALICE)));
+        assert!(!call.is_feeless(&RuntimeOrigin::signed(ALICE)));
 
         assert_ok!(migrate_with_key(ALICE, iroha_address, &key));
 

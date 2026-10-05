@@ -34,6 +34,7 @@ liquidity-proxy = { path = "../liquidity-proxy", default-features = false }
 pool-xyk = { path = "../pool-xyk", default-features = false }
 
 [dev-dependencies]
+sp-keystore = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2603-3" }
 assets = { path = "../assets" }
 common = { path = "../../common", features = ["test"] }
 ceres-liquidity-locker = { path = "../ceres-liquidity-locker", default-features = false }
