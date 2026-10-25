@@ -1,0 +1,278 @@
+--- /dev/null
++++ b/.rustfmt.toml
+@@ -0,0 +1,26 @@
++# Basic
++edition = "2021"
++hard_tabs = true
++max_width = 100
++use_small_heuristics = "Max"
++# Imports
++imports_granularity = "Crate"
++reorder_imports = true
++# Consistency
++newline_style = "Unix"
++normalize_comments = true
++normalize_doc_attributes = true
++# Misc
++chain_width = 80
++spaces_around_ranges = false
++binop_separator = "Back"
++reorder_impl_items = false
++match_arm_leading_pipes = "Never"
++match_arm_blocks = true
++match_block_trailing_comma = true
++trailing_comma = "Vertical"
++trailing_semicolon = true
++use_field_init_shorthand = true
++# Format comments
++comment_width = 100
++wrap_comments = true
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -1,44 +1,165 @@
+-[package]
+-name = "pallet-multisig"
+-version = "50.0.0"
+-authors.workspace = true
+-edition.workspace = true
+-license = "Apache-2.0"
+-homepage.workspace = true
+-repository.workspace = true
+-description = "FRAME multi-signature dispatch pallet"
+-readme = "README.md"
++# Vendored from polkadot-stable2609; see SORA-PATCH.md.
+ 
+-[lints]
+-workspace = true
++["package"]
++"name" = "pallet-multisig-upstream"
++"version" = "50.0.0"
++"authors" = ["Parity Technologies <admin@parity.io>"]
++"edition" = "2021"
++"license" = "Apache-2.0"
++"homepage" = "https://paritytech.github.io/polkadot-sdk/"
++"repository" = "https://github.com/paritytech/polkadot-sdk.git"
++"description" = "FRAME multi-signature dispatch pallet"
++"readme" = "README.md"
+ 
+-[package.metadata.docs.rs]
+-targets = ["x86_64-unknown-linux-gnu"]
++["package"."metadata"]
+ 
+-[dependencies]
+-codec = { workspace = true }
+-frame = { workspace = true, features = ["runtime"] }
+-scale-info = { features = ["derive"], workspace = true }
++["package"."metadata"."docs"]
+ 
+-# third party
+-log = { workspace = true }
++["package"."metadata"."docs"."rs"]
++"targets" = ["x86_64-unknown-linux-gnu"]
+ 
+-[dev-dependencies]
+-pallet-balances = { workspace = true, default-features = true }
++["lints"]
+ 
+-[features]
+-default = ["std"]
+-std = [
+-	"codec/std",
+-	"frame/std",
+-	"log/std",
+-	"scale-info/std",
+-]
+-runtime-benchmarks = [
+-	"frame/runtime-benchmarks",
+-	"pallet-balances/runtime-benchmarks",
+-]
+-try-runtime = [
+-	"frame/try-runtime",
+-	"pallet-balances/try-runtime",
+-]
++["lints"."rust"]
++
++["lints"."rust"."suspicious_double_ref_op"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."rust"."unexpected_cfgs"]
++"level" = "warn"
++"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
++
++["lints"."clippy"]
++
++["lints"."clippy"."all"]
++"level" = "allow"
++"priority" = 0
++
++["lints"."clippy"."bind_instead_of_map"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."borrowed-box"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."complexity"]
++"level" = "warn"
++"priority" = 1
++
++["lints"."clippy"."correctness"]
++"level" = "warn"
++"priority" = 1
++
++["lints"."clippy"."default_constructed_unit_structs"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."derivable_impls"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."eq_op"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."erasing_op"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."extra-unused-type-parameters"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."identity-op"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."if-same-then-else"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."needless-lifetimes"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."needless_option_as_deref"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."nonminimal-bool"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."option-map-unit-fn"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."stable_sort_primitive"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."too-many-arguments"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."type_complexity"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."unit_arg"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."unnecessary_cast"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."useless_conversion"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."while_immutable_condition"]
++"level" = "allow"
++"priority" = 2
++
++["lints"."clippy"."zero-prefixed-literal"]
++"level" = "allow"
++"priority" = 2
++
++["dependencies"]
++
++["dependencies"."codec"]
++"version" = "3.7.5"
++"default-features" = false
++"package" = "parity-scale-codec"
++
++["dependencies"."frame"]
++"default-features" = false
++"package" = "polkadot-sdk-frame"
++"features" = ["runtime"]
++"git" = "https://github.com/paritytech/polkadot-sdk.git"
++"tag" = "polkadot-stable2609"
++
++["dependencies"."scale-info"]
++"version" = "2.11.6"
++"default-features" = false
++"features" = ["derive"]
++
++["dependencies"."log"]
++"version" = "0.4.22"
++"default-features" = false
++
++["dev-dependencies"]
++
++["dev-dependencies"."pallet-balances"]
++"default-features" = true
++"git" = "https://github.com/paritytech/polkadot-sdk.git"
++"tag" = "polkadot-stable2609"
++
++["features"]
++"default" = ["std"]
++"std" = ["codec/std", "frame/std", "log/std", "scale-info/std"]
++"runtime-benchmarks" = ["frame/runtime-benchmarks", "pallet-balances/runtime-benchmarks"]
++"try-runtime" = ["frame/try-runtime", "pallet-balances/try-runtime"]
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -61,14 +61,14 @@
+ pub use pallet::*;
+ 
+ /// The log target of this pallet.
+-pub const LOG_TARGET: &'static str = "runtime::multisig";
++pub const LOG_TARGET: &str = "runtime::multisig";
+ 
+ // syntactic sugar for logging.
+ #[macro_export]
+ macro_rules! log {
+ 	($level:tt, $patter:expr $(, $values:expr)* $(,)?) => {
+ 		log::$level!(
+-			target: crate::LOG_TARGET,
++			target: $crate::LOG_TARGET,
+ 			concat!("[{:?}] ✍️ ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
+ 		)
+ 	};
+@@ -221,6 +221,23 @@
+ 		[u8; 32],
+ 		Multisig<BlockNumberFor<T>, BalanceOf<T>, T::AccountId, T::MaxSignatories>,
+ 	>;
++
++	// Preserve the existing runtime genesis JSON shape for this separately named pallet.
++	#[pallet::genesis_config]
++	pub struct GenesisConfig<T> {
++		pub _config: core::marker::PhantomData<T>,
++	}
++
++	impl<T> Default for GenesisConfig<T> {
++		fn default() -> Self {
++			Self { _config: Default::default() }
++		}
++	}
++
++	#[pallet::genesis_build]
++	impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
++		fn build(&self) {}
++	}
+ 
+ 	#[pallet::error]
+ 	pub enum Error<T> {

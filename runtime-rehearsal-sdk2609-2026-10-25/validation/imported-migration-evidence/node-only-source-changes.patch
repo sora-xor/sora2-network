@@ -1,0 +1,84 @@
+--- /tmp/sora2-stable2609-migration/before/node/chain_spec/src/lib.rs
++++ /Users/takemiyamakoto/dev/sora2-network/node/chain_spec/src/lib.rs
+@@ -3569,11 +3569,11 @@
+     #[cfg(not(feature = "private-net"))]
+     use serde_json::Value;
+     #[cfg(not(feature = "private-net"))]
+-    use sp_core::blake2_256;
+-    #[cfg(not(feature = "private-net"))]
+     use sp_core::traits::RuntimeCode;
+     #[cfg(not(feature = "private-net"))]
+     use sp_core::traits::WrappedRuntimeCode;
++    #[cfg(not(feature = "private-net"))]
++    use sp_io::hashing::blake2_256;
+     #[cfg(not(feature = "private-net"))]
+     use sp_version::RuntimeVersion;
+ 
+--- /tmp/sora2-stable2609-migration/before/node/src/babe_epoch_repair.rs
++++ /Users/takemiyamakoto/dev/sora2-network/node/src/babe_epoch_repair.rs
+@@ -604,7 +604,7 @@
+             "schema": 3,
+             "matched_entries": self.matched,
+             "changed_entries": self.changed,
+-            "replacement_blake2_256": hex(&sp_core::hashing::blake2_256(&self.replacement)),
++            "replacement_blake2_256": hex(&sp_io::hashing::blake2_256(&self.replacement)),
+         })
+     }
+ }
+--- /tmp/sora2-stable2609-migration/before/node/src/benchmarking.rs
++++ /Users/takemiyamakoto/dev/sora2-network/node/src/benchmarking.rs
+@@ -120,6 +120,7 @@
+     let period = runtime::BlockHashCount::get() as u64;
+     let charge_tx_payment = runtime::charge_tx_payment_extension();
+     let extra: runtime::SignedExtra = (
++        frame_system::AuthorizeCall::<runtime::Runtime>::new(),
+         frame_system::CheckSpecVersion::<runtime::Runtime>::new(),
+         frame_system::CheckTxVersion::<runtime::Runtime>::new(),
+         frame_system::CheckGenesis::<runtime::Runtime>::new(),
+@@ -135,6 +136,7 @@
+         call.clone(),
+         extra.clone(),
+         (
++            (),
+             runtime::VERSION.spec_version,
+             runtime::VERSION.transaction_version,
+             genesis_hash,
+--- /tmp/sora2-stable2609-migration/before/node/src/fork_off.rs
++++ /Users/takemiyamakoto/dev/sora2-network/node/src/fork_off.rs
+@@ -72,14 +72,14 @@
+ 
+ fn get_storage_prefix(pallet: &str, storage: &str) -> Vec<u8> {
+     [
+-        sp_core::twox_128(pallet.as_bytes()),
+-        sp_core::twox_128(storage.as_bytes()),
++        sp_io::hashing::twox_128(pallet.as_bytes()),
++        sp_io::hashing::twox_128(storage.as_bytes()),
+     ]
+     .concat()
+ }
+ 
+ fn get_pallet_prefix(pallet: &str) -> Vec<u8> {
+-    sp_core::twox_128(pallet.as_bytes()).to_vec()
++    sp_io::hashing::twox_128(pallet.as_bytes()).to_vec()
+ }
+ 
+ impl ForkOffCmd {
+--- /tmp/sora2-stable2609-migration/before/node/src/service.rs
++++ /Users/takemiyamakoto/dev/sora2-network/node/src/service.rs
+@@ -761,7 +761,7 @@
+         vec![],
+     ));
+ 
+-    let (network, system_rpc_tx, tx_handler_controller, sync_service) =
++    let (network, system_rpc_tx, tx_handler_controller, sync_service, _bitswap_handle) =
+         sc_service::build_network(sc_service::BuildNetworkParams {
+             config: &config,
+             net_config,
+@@ -774,6 +774,7 @@
+             warp_sync_config: Some(WarpSyncConfig::WithProvider(warp_sync)),
+             block_relay: None,
+             metrics,
++            gap_sync_body_policy: None,
+         })?;
+ 
+     if config.offchain_worker.enabled {

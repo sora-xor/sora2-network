@@ -1,0 +1,45 @@
+[package]
+name = "tikv-jemalloc-ctl"
+version = "0.6.1"
+authors = [
+    "Steven Fackler <sfackler@gmail.com>",
+    "Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>",
+    "The TiKV Project Developers",
+]
+license = "MIT/Apache-2.0"
+readme = "README.md"
+categories = ["memory-management", "api-bindings", "development-tools" ]
+keywords = ["allocator", "jemalloc"]
+repository = "https://github.com/tikv/jemallocator"
+homepage = "https://github.com/tikv/jemallocator"
+documentation = "https://docs.rs/tikv-jemalloc-ctl"
+description = """
+A safe wrapper over jemalloc's control and introspection APIs
+"""
+edition = "2018"
+
+[badges]
+travis-ci = { repository = "tikv/jemallocator" }
+codecov = { repository = "tikv/jemallocator" }
+is-it-maintained-issue-resolution = { repository = "tikv/jemallocator" }
+is-it-maintained-open-issues = { repository = "tikv/jemallocator" }
+maintenance = { status = "actively-developed" }
+
+[dependencies]
+tikv-jemalloc-sys = { path = "../jemalloc-sys", version = "0.6.1" }
+libc = { version = "0.2", default-features = false }
+paste = "1"
+
+[dev-dependencies]
+tikv-jemallocator = { path = "../jemallocator", version = "0.6.0" }
+
+[features]
+default = []
+stats = ["tikv-jemalloc-sys/stats"]
+profiling = ["tikv-jemalloc-sys/profiling"]
+use_std = [ "libc/use_std" ]
+disable_initial_exec_tls = ["tikv-jemalloc-sys/disable_initial_exec_tls"]
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--cfg", "jemallocator_docs" ]
+features = ["stats", "profiling", "use_std"]

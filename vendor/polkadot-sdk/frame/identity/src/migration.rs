@@ -154,7 +154,7 @@ pub mod v1 {
 						translated
 					);
 					interrupted = true;
-					break
+					break;
 				}
 			}
 			if !interrupted {
@@ -274,47 +274,55 @@ pub mod v2 {
 					// At first, migrate any authorities.
 					None => Self::authority_step(None),
 					// Migrate any remaining authorities.
-					Some(MigrationState::Authority(maybe_last_authority)) =>
-						Self::authority_step(Some(maybe_last_authority)),
+					Some(MigrationState::Authority(maybe_last_authority)) => {
+						Self::authority_step(Some(maybe_last_authority))
+					},
 					// After the last authority was migrated, start migrating usernames from
 					// the former `AccountOfUsername` into `UsernameInfoOf`.
 					Some(MigrationState::FinishedAuthorities) => Self::username_step(None),
 					// Keep migrating usernames.
-					Some(MigrationState::Username(maybe_last_username)) =>
-						Self::username_step(Some(maybe_last_username)),
+					Some(MigrationState::Username(maybe_last_username)) => {
+						Self::username_step(Some(maybe_last_username))
+					},
 					// After the last username was migrated, start migrating all identities in
 					// `IdentityOf`, which currently hold the primary username of the owner account
 					// as well as any associated identity. Accounts which set a username but not an
 					// identity also have a zero deposit identity stored, which will be removed.
 					Some(MigrationState::FinishedUsernames) => Self::identity_step(None),
 					// Keep migrating identities.
-					Some(MigrationState::Identity(last_key)) =>
-						Self::identity_step(Some(last_key.clone())),
+					Some(MigrationState::Identity(last_key)) => {
+						Self::identity_step(Some(last_key.clone()))
+					},
 					// After the last identity was migrated, start migrating usernames pending
 					// approval from `PendingUsernames`.
 					Some(MigrationState::FinishedIdentities) => Self::pending_username_step(None),
 					// Keep migrating pending usernames.
-					Some(MigrationState::PendingUsername(last_key)) =>
-						Self::pending_username_step(Some(last_key.clone())),
+					Some(MigrationState::PendingUsername(last_key)) => {
+						Self::pending_username_step(Some(last_key.clone()))
+					},
 					// After the last pending username was migrated, start clearing the storage
 					// previously associated with authorities in `UsernameAuthority`.
-					Some(MigrationState::FinishedPendingUsernames) =>
-						Self::cleanup_authority_step(None),
+					Some(MigrationState::FinishedPendingUsernames) => {
+						Self::cleanup_authority_step(None)
+					},
 					// Keep clearing the obsolete authority storage.
-					Some(MigrationState::CleanupAuthorities(maybe_last_username)) =>
-						Self::cleanup_authority_step(Some(maybe_last_username)),
+					Some(MigrationState::CleanupAuthorities(maybe_last_username)) => {
+						Self::cleanup_authority_step(Some(maybe_last_username))
+					},
 					// After the last obsolete authority was cleared from storage, start clearing
 					// the storage previously associated with usernames in `AccountOfUsername`.
-					Some(MigrationState::FinishedCleanupAuthorities) =>
-						Self::cleanup_username_step(None),
+					Some(MigrationState::FinishedCleanupAuthorities) => {
+						Self::cleanup_username_step(None)
+					},
 					// Keep clearing the obsolete username storage.
-					Some(MigrationState::CleanupUsernames(maybe_last_username)) =>
-						Self::cleanup_username_step(Some(maybe_last_username)),
+					Some(MigrationState::CleanupUsernames(maybe_last_username)) => {
+						Self::cleanup_username_step(Some(maybe_last_username))
+					},
 					// After the last obsolete username was cleared from storage, the migration is
 					// done.
 					Some(MigrationState::Finished) => {
 						StorageVersion::new(Self::id().version_to as u16).put::<Pallet<T>>();
-						return Ok(None)
+						return Ok(None);
 					},
 				};
 
@@ -385,10 +393,7 @@ pub mod v2 {
 
 			for (account, free_identity) in prev_state.identities.iter() {
 				assert_eq!(free_identity.deposit, 0u32.into());
-				assert_eq!(
-					UsernameOf::<T>::contains_key(&account),
-					prev_state.primary_usernames.contains_key(account)
-				);
+				assert!(UsernameOf::<T>::contains_key(&account));
 			}
 			prev_state.identities.clear();
 
@@ -399,7 +404,6 @@ pub mod v2 {
 					.expect("should have primary username in previous state");
 				assert_eq!(prev_primary_username, primary_username);
 			}
-			assert!(prev_state.primary_usernames.is_empty());
 
 			for (username, username_info) in UsernameInfoOf::<T>::iter() {
 				let prev_account = prev_state
@@ -432,12 +436,15 @@ pub mod v2 {
 		) -> Weight {
 			match step {
 				MigrationState::Authority(_) => T::WeightInfo::migration_v2_authority_step(),
-				MigrationState::FinishedAuthorities | MigrationState::Username(_) =>
-					T::WeightInfo::migration_v2_username_step(),
-				MigrationState::FinishedUsernames | MigrationState::Identity(_) =>
-					T::WeightInfo::migration_v2_identity_step(),
-				MigrationState::FinishedIdentities | MigrationState::PendingUsername(_) =>
-					T::WeightInfo::migration_v2_pending_username_step(),
+				MigrationState::FinishedAuthorities | MigrationState::Username(_) => {
+					T::WeightInfo::migration_v2_username_step()
+				},
+				MigrationState::FinishedUsernames | MigrationState::Identity(_) => {
+					T::WeightInfo::migration_v2_identity_step()
+				},
+				MigrationState::FinishedIdentities | MigrationState::PendingUsername(_) => {
+					T::WeightInfo::migration_v2_pending_username_step()
+				},
 				MigrationState::FinishedPendingUsernames |
 				MigrationState::CleanupAuthorities(_) => T::WeightInfo::migration_v2_cleanup_authority_step(),
 				MigrationState::FinishedCleanupAuthorities |
@@ -493,18 +500,19 @@ pub mod v2 {
 		// Migrate one entry from `IdentityOf` to `UsernameOf`, if it has a username associated with
 		// it. Remove the entry if there was no real identity associated with the account.
 		pub(crate) fn identity_step(maybe_last_key: Option<HashedKey>) -> StepResultOf<T> {
-			if let Some(mut last_key) =
-				IdentityOf::<T>::translate_next::<
-					(
-						Registration<
-							BalanceOf<T>,
-							<T as pallet::Config>::MaxRegistrars,
-							<T as pallet::Config>::IdentityInformation,
-						>,
-						Option<Username<T>>,
-					),
-					_,
-				>(maybe_last_key.map(|b| b.to_vec()), |account, (identity, maybe_username)| {
+			if let Some(mut last_key) = IdentityOf::<T>::translate_next::<
+				(
+					Registration<
+						BalanceOf<T>,
+						<T as pallet::Config>::MaxRegistrars,
+						<T as pallet::Config>::IdentityInformation,
+					>,
+					Option<Username<T>>,
+				),
+				_,
+			>(
+				maybe_last_key.map(|b| b.to_vec()),
+				|account, (identity, maybe_username)| {
 					if let Some(primary_username) = maybe_username {
 						UsernameOf::<T>::insert(&account, primary_username);
 					}
@@ -513,7 +521,8 @@ pub mod v2 {
 					} else {
 						None
 					}
-				}) {
+				},
+			) {
 				last_key.truncate(HashedKey::bound());
 				MigrationState::Identity(
 					HashedKey::try_from(last_key)

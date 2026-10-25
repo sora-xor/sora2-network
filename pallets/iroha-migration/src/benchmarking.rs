@@ -30,15 +30,14 @@
 
 use alloc::string::{String, ToString};
 
+use crate::iroha_crypto::TestKeypair as Keypair;
 use codec::Decode;
 use common::AssetInfoProvider;
-use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_support::traits::OnInitialize;
 use frame_system::{EventRecord, RawOrigin};
 use hex_literal::hex;
-use sha3::Sha3_256;
 use sp_std::prelude::*;
 
 use common::VAL;
@@ -58,9 +57,7 @@ fn bob<T: Config>() -> T::AccountId {
 }
 
 fn test_keypair(seed: u8) -> Keypair {
-    let secret = SecretKey::from_bytes(&[seed; 32]).expect("benchmark secret key must be valid");
-    let public = PublicKey::from(&secret);
-    Keypair { secret, public }
+    Keypair::from_seed([seed; 32])
 }
 
 fn public_key_hex(keypair: &Keypair) -> String {
@@ -75,11 +72,7 @@ fn signature_for<T: Config>(
     let public_key = public_key_hex(keypair);
     let iroha_address = iroha_address.to_string();
     let message = Pallet::<T>::migration_signing_message(&iroha_address, &public_key, account);
-    let mut prehashed_message = Sha3_256::default();
-    prehashed_message.update(message.as_bytes());
-    let signature = keypair
-        .sign_prehashed(prehashed_message, None)
-        .expect("benchmark signature should be produced");
+    let signature = keypair.sign(message.as_bytes());
     hex::encode(signature.to_bytes())
 }
 

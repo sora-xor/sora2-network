@@ -1,0 +1,198 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-25T02:13:51.215948+00:00",
+  "sourceFingerprintSha256": "a1e4e03f9e718faf055cf2a792e31bb3500c40bcb33da0e7d14ba9a329fe482f",
+  "scope": "Diagnostic remaining suites after legacy YAML fixture failure; not final source-bound verification",
+  "steps": [
+    {
+      "name": "executor-memory-and-stack-regressions",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "sc-executor-common",
+        "--lib"
+      ],
+      "startedAt": "2026-10-25T02:13:51.220041+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:13:58.743492+00:00",
+      "log": "diagnostic-native-tail-logs/executor-memory-and-stack-regressions.log",
+      "logSha256": "338e0a9dc2ae7e7e5560266b3722b8add943eac49c6b5b1a2efdb0040f90f3ea",
+      "testResults": [
+        {
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "executor-instance-memory-limits",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "sc-executor-wasmtime",
+        "--lib",
+        "test_max_memory_pages"
+      ],
+      "startedAt": "2026-10-25T02:13:58.744295+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:14:25.924143+00:00",
+      "log": "diagnostic-native-tail-logs/executor-instance-memory-limits.log",
+      "logSha256": "0071718b38048fd51b4e5760ed7851dfb994ad420adbad6bf23ddf0c2022cd41",
+      "testResults": [
+        {
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "tracing-ansi-security-regression",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "sc-tracing",
+        "--test",
+        "ansi_escape"
+      ],
+      "startedAt": "2026-10-25T02:14:25.924753+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:15:37.897557+00:00",
+      "log": "diagnostic-native-tail-logs/tracing-ansi-security-regression.log",
+      "logSha256": "92d3af028701e98e44aed880af3ee9d6b70ba73e1b72763e18ff16ac8500f434",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "network-webrtc-certificates",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "/tmp/sora2-stable2609-migration/network-harness/Cargo.toml",
+        "--lib",
+        "webrtc::tests"
+      ],
+      "startedAt": "2026-10-25T02:15:37.898166+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:17:23.194091+00:00",
+      "log": "diagnostic-native-tail-logs/network-webrtc-certificates.log",
+      "logSha256": "7df39d5c7648dd60f2511791b77a873e6570ce061965dfeffa8b7a4b9239845f",
+      "testResults": [
+        {
+          "passed": 25,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "subxt-signer-rustcrypto-wallet-vectors",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "--manifest-path",
+        "/tmp/sora2-stable2609-migration/signer-harness/Cargo.toml",
+        "--test",
+        "rustcrypto_migration"
+      ],
+      "startedAt": "2026-10-25T02:17:23.194687+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:17:49.455760+00:00",
+      "log": "diagnostic-native-tail-logs/subxt-signer-rustcrypto-wallet-vectors.log",
+      "logSha256": "99b3b393aec3806fd06625b5b71d03260984640ebc467b32d652430bc7736a65",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "subxt-macro-codegen-and-diagnostics",
+      "command": [
+        "python3",
+        "/tmp/sora2-stable2609-migration/run-macro-regressions.py"
+      ],
+      "startedAt": "2026-10-25T02:17:49.456168+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:18:56.465060+00:00",
+      "log": "diagnostic-native-tail-logs/subxt-macro-codegen-and-diagnostics.log",
+      "logSha256": "58c340eb57da79ccec882ce81c16dd87d6bfeb408dedc9deb43938d4a31c6dd7",
+      "testResults": []
+    },
+    {
+      "name": "node-bridge-bootstrap-and-rpc",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "framenode",
+        "--bin",
+        "framenode",
+        "service::tests"
+      ],
+      "startedAt": "2026-10-25T02:18:56.465866+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:18:59.841715+00:00",
+      "log": "diagnostic-native-tail-logs/node-bridge-bootstrap-and-rpc.log",
+      "logSha256": "296d4ca92eacc2b1d414742f3450acd37cd00b74139acb4f7270e4cf38006a08",
+      "testResults": [
+        {
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "node-babe-cache-repair",
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "framenode",
+        "--bin",
+        "framenode",
+        "babe_epoch_repair::tests"
+      ],
+      "startedAt": "2026-10-25T02:18:59.842290+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T02:20:56.205637+00:00",
+      "log": "diagnostic-native-tail-logs/node-babe-cache-repair.log",
+      "logSha256": "4df3330add9823ca05d2569223b378e0a43541fb14ad26fc56b4e17419f7cd71",
+      "testResults": [
+        {
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    }
+  ],
+  "finishedAt": "2026-10-25T02:20:56.206223+00:00"
+}

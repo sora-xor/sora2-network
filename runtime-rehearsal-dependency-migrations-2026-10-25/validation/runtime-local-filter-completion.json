@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "sourceFingerprintSha256": "03f97fccba459fff14b01877d7d61f98e97d2de5d4514a078f2b2d0e09cadaac",
+  "binary": "/Users/takemiyamakoto/dev/sora2-network/target/debug/build/framenode-runtime/4b3bb113b2757368/out/framenode_runtime-4b3bb113b2757368",
+  "binarySha256": "01f1b705c13565a6632b2d4d35abda5da6743ac51eb3af74d330e4a2e37148ea",
+  "builtByLogSha256": "3d9d8e9ca0052eca9b95ea7c5dc2756483fa85e28a5194470771e1470abffb1f",
+  "reason": "Two local tests matched the broad remote_ exclusion; run them from the exact runtime binary already built for the production-feature suite.",
+  "results": [
+    {
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/target/debug/build/framenode-runtime/4b3bb113b2757368/out/framenode_runtime-4b3bb113b2757368",
+        "--exact",
+        "tests::liveness::bridge_fees::accepted_remote_failure_is_free_and_consumes_canonical_request",
+        "--nocapture"
+      ],
+      "exitCode": 0,
+      "log": "regression-logs/runtime-local-remote-name-0.log",
+      "logSha256": "45cd8b73fb97ab35e1906fc3f4263d1a54c99b23218ba97f96f7453426a3ff21"
+    },
+    {
+      "command": [
+        "/Users/takemiyamakoto/dev/sora2-network/target/debug/build/framenode-runtime/4b3bb113b2757368/out/framenode_runtime-4b3bb113b2757368",
+        "--exact",
+        "tests::remote::tests::remote_mode_pins_online_and_snapshot_fallback_to_requested_block",
+        "--nocapture"
+      ],
+      "exitCode": 0,
+      "log": "regression-logs/runtime-local-remote-name-1.log",
+      "logSha256": "d79442805f20bf6ea9558020a27e6da229c1f73a58d0ec34c8d5fdc71107ecef"
+    }
+  ],
+  "finishedAt": "2026-10-24T17:57:23.817232+00:00"
+}

@@ -1,0 +1,78 @@
+--- a/src/no_bound/clone.rs
++++ b/src/no_bound/clone.rs
+@@ -24,12 +24,31 @@
+ 	let name = &input.ident;
+ 	let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+ 
++	// Field types may be Copy or non-Copy, and a proc macro cannot resolve that
++	// property. Clone them through one generic operation without adding bounds
++	// to the containing type's generic parameters.
++	let has_fields = match &input.data {
++		syn::Data::Struct(data) => !data.fields.is_empty(),
++		syn::Data::Enum(data) => data.variants.iter().any(|variant| !variant.fields.is_empty()),
++		syn::Data::Union(_) => false,
++	};
++	let clone_field_name =
++		syn::Ident::new("__clone_no_bound_field", proc_macro2::Span::mixed_site());
++	let clone_field = has_fields.then(|| {
++		quote::quote! {
++			#[inline]
++			fn #clone_field_name<Field: ::core::clone::Clone>(field: &Field) -> Field {
++				::core::clone::Clone::clone(field)
++			}
++		}
++	});
++
+ 	let impl_ = match input.data {
+ 		syn::Data::Struct(struct_) => match struct_.fields {
+ 			syn::Fields::Named(named) => {
+ 				let fields = named.named.iter().map(|i| &i.ident).map(|i| {
+ 					quote::quote_spanned!(i.span() =>
+-						#i: ::core::clone::Clone::clone(&self.#i)
++						#i: #clone_field_name(&self.#i)
+ 					)
+ 				});
+ 
+@@ -39,7 +58,7 @@
+ 				let fields =
+ 					unnamed.unnamed.iter().enumerate().map(|(i, _)| syn::Index::from(i)).map(|i| {
+ 						quote::quote_spanned!(i.span() =>
+-							::core::clone::Clone::clone(&self.#i)
++							#clone_field_name(&self.#i)
+ 						)
+ 					});
+ 
+@@ -49,6 +68,7 @@
+ 				quote::quote!(Self)
+ 			},
+ 		},
++		syn::Data::Enum(enum_) if enum_.variants.is_empty() => quote::quote!(match *self {}),
+ 		syn::Data::Enum(enum_) => {
+ 			let variants = enum_.variants.iter().map(|variant| {
+ 				let ident = &variant.ident;
+@@ -57,7 +77,7 @@
+ 						let captured = named.named.iter().map(|i| &i.ident);
+ 						let cloned = captured.clone().map(|i| {
+ 							::quote::quote_spanned!(i.span() =>
+-								#i: ::core::clone::Clone::clone(#i)
++								#i: #clone_field_name(#i)
+ 							)
+ 						});
+ 						quote::quote!(
+@@ -72,7 +92,7 @@
+ 							.map(|(i, f)| syn::Ident::new(&format!("_{}", i), f.span()));
+ 						let cloned = captured.clone().map(|i| {
+ 							quote::quote_spanned!(i.span() =>
+-								::core::clone::Clone::clone(#i)
++								#clone_field_name(#i)
+ 							)
+ 						});
+ 						quote::quote!(
+@@ -99,6 +119,7 @@
+ 			#[allow(deprecated)]
+ 			impl #impl_generics ::core::clone::Clone for #name #ty_generics #where_clause {
+ 				fn clone(&self) -> Self {
++					#clone_field
+ 					#impl_
+ 				}
+ 			}

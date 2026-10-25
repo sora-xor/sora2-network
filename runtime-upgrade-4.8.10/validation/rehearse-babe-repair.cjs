@@ -13,10 +13,10 @@ const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name)
 const repositoryRoot = resolve(__dirname, '../..');
 const localManifest = resolve(__dirname, 'package.json');
 const dependencyManifest = resolve(option('--dependencies', process.env.SORA_REPAIR_DEPENDENCIES
-  || (existsSync(localManifest) ? localManifest : '/tmp/sora-author-replay-20260922/package.json')));
+  || localManifest));
 const deps = createRequire(dependencyManifest);
 const expectedDependencies = {
-  '@acala-network/chopsticks-core': '1.5.1',
+  '@acala-network/chopsticks-core': '1.5.2',
   '@babel/runtime': '7.28.4',
   '@polkadot/api': '16.5.6',
   '@polkadot/keyring': '14.0.3',
@@ -48,7 +48,7 @@ const PLAIN = 'PrimaryAndSecondaryPlainSlots';
 const report = {
   startedAt: new Date().toISOString(), status: 'running', localOnly: true,
   endpoint: opts.endpoint, pinnedBlockHash: snapshot.blockHash, pinnedBlockNumber: snapshot.blockNumber,
-  executor: '@acala-network/chopsticks-core@1.5.1', dependencyManifest,
+  executor: '@acala-network/chopsticks-core@1.5.2', dependencyManifest,
   mockSignatureHost: true, allowUnresolvedImports: true, offchainWorker: false,
   submittedTransactions: 0, privateKeysRead: 0, signedExtrinsics: 0, remoteRpcMethods: {},
   constraints: [

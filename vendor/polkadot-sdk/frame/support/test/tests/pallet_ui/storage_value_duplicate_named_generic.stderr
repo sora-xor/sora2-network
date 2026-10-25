@@ -1,0 +1,11 @@
+error: Invalid pallet::storage, Duplicated named generic
+  --> tests/pallet_ui/storage_value_duplicate_named_generic.rs:36:42
+   |
+36 |     type Foo<T> = StorageValue<Value = u32, Value = u32>;
+   |                                             ^^^^^
+
+error: Invalid pallet::storage, Duplicated named generic
+  --> tests/pallet_ui/storage_value_duplicate_named_generic.rs:36:29
+   |
+36 |     type Foo<T> = StorageValue<Value = u32, Value = u32>;
+   |                                ^^^^^

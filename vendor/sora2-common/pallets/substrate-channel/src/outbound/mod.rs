@@ -31,10 +31,10 @@
 //! Channel for passing messages from substrate to ethereum.
 
 use bridge_types::substrate::BridgeMessage;
+use bridge_types::H256;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use bridge_types::H256;
 
 use bridge_types::types::MessageNonce;
 use bridge_types::SubNetworkId;
@@ -80,7 +80,6 @@ pub mod pallet {
     pub trait Config:
         frame_system::Config<RuntimeEvent: From<Event<Self>>> + pallet_timestamp::Config
     {
-
         /// Max bytes in a message payload
         type MaxMessagePayloadSize: Get<u32>;
 

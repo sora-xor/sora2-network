@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::iroha_crypto::TestKeypair as Keypair;
 use crate::mock::*;
 use crate::{
     Account, Balances as IrohaBalances, Error, MigratedAccounts, Pallet, PendingMultiSigAccounts,
@@ -36,21 +37,17 @@ use crate::{
 use codec::Encode;
 use common::prelude::Balance;
 use common::{AssetInfoProvider, VAL};
-use ed25519_dalek_iroha::{Digest, Keypair, PublicKey, SecretKey};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use frame_support::dispatch::{CheckIfFeeless, GetDispatchInfo, Pays, PostDispatchInfo};
 use frame_support::traits::OnInitialize;
 use referrals::Referrers;
-use sha3::Sha3_256;
 use sp_core::crypto::AccountId32;
 
 type Assets = assets::Pallet<Runtime>;
 
 fn test_keypair(seed: u8) -> Keypair {
-    let secret = SecretKey::from_bytes(&[seed; 32]).expect("test secret key must be valid");
-    let public = PublicKey::from(&secret);
-    Keypair { secret, public }
+    Keypair::from_seed([seed; 32])
 }
 
 fn public_key_hex(keypair: &Keypair) -> String {
@@ -62,11 +59,7 @@ fn signature_for(iroha_address: &str, account: &AccountId32, keypair: &Keypair) 
     let iroha_address = iroha_address.to_string();
     let message =
         Pallet::<Runtime>::migration_signing_message(&iroha_address, &public_key, account);
-    let mut prehashed_message = Sha3_256::default();
-    prehashed_message.update(message.as_bytes());
-    let signature = keypair
-        .sign_prehashed(prehashed_message, None)
-        .expect("test signature should be produced");
+    let signature = keypair.sign(message.as_bytes());
     hex::encode(signature.to_bytes())
 }
 

@@ -1,0 +1,1223 @@
+{
+  "status": "preflight-passed-scope-prepared",
+  "createdAt": "2026-10-24T17:24:40.047Z",
+  "endpoint": "wss://mof2.sora.org",
+  "sourceBlockNumber": 28179122,
+  "sourceBlockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+  "sourceRuntimeSpecVersion": 134,
+  "sourceTransactionVersion": 131,
+  "preflight": {
+    "readOnly": true,
+    "submittedTransactions": 0,
+    "privateKeysRead": 0,
+    "remoteRpcMethods": {
+      "chain_getBlockHash": 2,
+      "chain_getHeader": 2,
+      "chain_getFinalizedHead": 1,
+      "state_getRuntimeVersion": 1,
+      "state_getStorage": 1,
+      "state_queryStorageAt": 1
+    },
+    "frameStorageVersions": [
+      {
+        "pallet": "System",
+        "prefix": "System",
+        "key": "0x26aa394eea5630e07c48ae0c9558cef74e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Babe",
+        "prefix": "Babe",
+        "key": "0x1cb6f36e027abb2091cfb5110ab5087f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Timestamp",
+        "prefix": "Timestamp",
+        "key": "0xf0c365c3cf59d671eb72da0e7a4113c44e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Balances",
+        "prefix": "Balances",
+        "key": "0xc2261276cc9d1f8598ea4b6a74b15c2f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "RandomnessCollectiveFlip",
+        "prefix": "RandomnessCollectiveFlip",
+        "key": "0xbd2a529379475088d3e29a918cd478724e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "TransactionPayment",
+        "prefix": "TransactionPayment",
+        "key": "0x3f1467a096bcd71a5b6a0c8155e208104e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Permissions",
+        "prefix": "Permissions",
+        "key": "0xc2b6ac49ee131be4de5527a2ccab4a674e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Referrals",
+        "prefix": "Referrals",
+        "key": "0xbbb9c4ab5a720bf6916b37a4f9a6d95f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Rewards",
+        "prefix": "Rewards",
+        "key": "0x540a4f8754aa5298a3d6e9aa09e93f974e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "XorFee",
+        "prefix": "XorFee",
+        "key": "0xc9283f367dbf74c668ae6ee5f45c97b04e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0300",
+        "decodedVersion": 3,
+        "expectedVersion": 3
+      },
+      {
+        "pallet": "BridgeMultisig",
+        "prefix": "BridgeMultisig",
+        "key": "0x3da7ce6fe5eefe72f8748ad4944424a04e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Staking",
+        "prefix": "Staking",
+        "key": "0x5f3e4907f716ac89b6347d15ececedca4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x1000",
+        "decodedVersion": 16,
+        "expectedVersion": 16
+      },
+      {
+        "pallet": "Offences",
+        "prefix": "Offences",
+        "key": "0xd5c41b52a371aa36c9254ce34324f2a54e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "Session",
+        "prefix": "Session",
+        "key": "0xcec5070d609dd3497f72bde07fc96ba04e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "Authorship",
+        "prefix": "Authorship",
+        "key": "0xd57bce545fb382c34570e5dfbf338f5e4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Grandpa",
+        "prefix": "Grandpa",
+        "key": "0x5f9cc45b7a00c5899361e1c6099678dc4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0500",
+        "decodedVersion": 5,
+        "expectedVersion": 5
+      },
+      {
+        "pallet": "ImOnline",
+        "prefix": "ImOnline",
+        "key": "0x2b06af9719ac64d755623cda8ddd9b944e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "Liveness",
+        "prefix": "Liveness",
+        "key": "0x32043c84b325af065c49460d044256ef4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Tokens",
+        "prefix": "Tokens",
+        "key": "0x99971b5749ac43e0235e41b0d37869184e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "TradingPair",
+        "prefix": "TradingPair",
+        "key": "0xf61d0276af90e372e9c7d5aad5fd728b4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Assets",
+        "prefix": "Assets",
+        "key": "0x682a59d51ab9e48a8c8cc418ff9708d24e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "DEXManager",
+        "prefix": "DEXManager",
+        "key": "0xa1bd2c8b755a708aa525cd47c8e225fd4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2
+      },
+      {
+        "pallet": "MulticollateralBondingCurvePool",
+        "prefix": "MulticollateralBondingCurvePool",
+        "key": "0x2886c4c3a26c668dc74d973c73fb481f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4
+      },
+      {
+        "pallet": "Technical",
+        "prefix": "Technical",
+        "key": "0x5ddba5854553f3cf91d9bbbfb19135ce4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "PoolXYK",
+        "prefix": "PoolXYK",
+        "key": "0x7c2f67164deafeedd91e34da0331ade44e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0300",
+        "decodedVersion": 3,
+        "expectedVersion": 3
+      },
+      {
+        "pallet": "Council",
+        "prefix": "Council",
+        "key": "0xaebd463ed9925c488c112434d61debc04e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4
+      },
+      {
+        "pallet": "TechnicalCommittee",
+        "prefix": "TechnicalCommittee",
+        "key": "0xed25f63942de25ac5253ba64b5eb64d14e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4
+      },
+      {
+        "pallet": "Democracy",
+        "prefix": "Democracy",
+        "key": "0xf2794c22e353e9a839f12faab03a911b4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "DEXAPI",
+        "prefix": "DEXAPI",
+        "key": "0xf0440e0b42c8a54c0d4e6592058cacfe4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "EthBridge",
+        "prefix": "EthBridge",
+        "key": "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4,
+        "expectedVersion": 4
+      },
+      {
+        "pallet": "PswapDistribution",
+        "prefix": "PswapDistribution",
+        "key": "0x31f6b7a64c19140023b52070f65fc2e34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "Multisig",
+        "prefix": "Multisig",
+        "key": "0x7474449cca95dc5d0c00e71735a6d17d4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Scheduler",
+        "prefix": "Scheduler",
+        "key": "0x3db7a24cfdc9de785974746c14a99df94e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4
+      },
+      {
+        "pallet": "IrohaMigration",
+        "prefix": "IrohaMigration",
+        "key": "0x45b03a13ad75ff33b53f663f5462a9754e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "TechnicalMembership",
+        "prefix": "TechnicalMembership",
+        "key": "0x3a2d6c9353500637d8f8e3e0fa0bb1c54e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4
+      },
+      {
+        "pallet": "ElectionsPhragmen",
+        "prefix": "ElectionsPhragmen",
+        "key": "0x4d45a146e2a002ba470f48b9ed9a3e234e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4
+      },
+      {
+        "pallet": "VestedRewards",
+        "prefix": "VestedRewards",
+        "key": "0xe41c5e75812adf5bb00364f58d835bf34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0400",
+        "decodedVersion": 4,
+        "expectedVersion": 4
+      },
+      {
+        "pallet": "Identity",
+        "prefix": "Identity",
+        "key": "0x2aeddc77fe58c98d50bd37f1b90840f94e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "Farming",
+        "prefix": "Farming",
+        "key": "0x9caa03c08d70516a1d9a23659da86bff4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "XSTPool",
+        "prefix": "XSTPool",
+        "key": "0x94106571e04fc4fb4133da54a111ec644e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2
+      },
+      {
+        "pallet": "PriceTools",
+        "prefix": "PriceTools",
+        "key": "0x291067c17b185728495ff51c966b1feb4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0300",
+        "decodedVersion": 3
+      },
+      {
+        "pallet": "CeresStaking",
+        "prefix": "CeresStaking",
+        "key": "0x4f613a6997d0d04d17c59ab33633f2c64e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "CeresLiquidityLocker",
+        "prefix": "CeresLiquidityLocker",
+        "key": "0xf73544dd7fd8ed678dbe240c8267b3264e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "CeresTokenLocker",
+        "prefix": "CeresTokenLocker",
+        "key": "0xed68da8f0472e9ece6e248dfe5e44a924e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "CeresGovernancePlatform",
+        "prefix": "CeresGovernancePlatform",
+        "key": "0x856dcaf407bfed6ffc84ad25f280a0724e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "CeresLaunchpad",
+        "prefix": "CeresLaunchpad",
+        "key": "0x77ad6649604e0dbdfa2e7f82ffa5ca084e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "DemeterFarmingPlatform",
+        "prefix": "DemeterFarmingPlatform",
+        "key": "0x270c102199328d18305885706f3f591a4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "BagsList",
+        "prefix": "BagsList",
+        "key": "0xdf66cf37cde77d2a63889732a23c685e4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "ElectionProviderMultiPhase",
+        "prefix": "ElectionProviderMultiPhase",
+        "key": "0xede8e4fdc3c8b556f0ce2f77fc2575e34e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Band",
+        "prefix": "Band",
+        "key": "0x20e20c48df300e3b1a7e08f0f0e750c94e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2,
+        "expectedVersion": 2
+      },
+      {
+        "pallet": "OracleProxy",
+        "prefix": "OracleProxy",
+        "key": "0x6e95e8ab162d1e5278846592690a69904e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "HermesGovernancePlatform",
+        "prefix": "HermesGovernancePlatform",
+        "key": "0xa420a1e69ffb5aa3cb8eca7d0bedf7d54e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Preimage",
+        "prefix": "Preimage",
+        "key": "0xd8f314b7f4e6b095f0f8ee4656a448254e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "OrderBook",
+        "prefix": "OrderBook",
+        "key": "0x4e04d9c3cc1e5a471e23399df978ca144e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Kensetsu",
+        "prefix": "Kensetsu",
+        "key": "0xf7f560e8952aa82606c54229c1cc23234e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0600",
+        "decodedVersion": 6,
+        "expectedVersion": 6
+      },
+      {
+        "pallet": "Denomination",
+        "prefix": "Denomination",
+        "key": "0x349246788a5a1a2b4c7f5025f3620fdf4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Polkamarkt",
+        "prefix": "Polkamarkt",
+        "key": "0x7c9df7ef418f869f0ab365233bda527f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0700",
+        "decodedVersion": 7,
+        "expectedVersion": 7
+      },
+      {
+        "pallet": "LeafProvider",
+        "prefix": "LeafProvider",
+        "key": "0x9d36bbde60f9d07916b00d68c84b8a9b4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "BridgeProxy",
+        "prefix": "BridgeProxy",
+        "key": "0x36a5ab3d4eb3724ea97d04d19e77d1ff4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0200",
+        "decodedVersion": 2
+      },
+      {
+        "pallet": "BridgeInboundChannel",
+        "prefix": "BridgeInboundChannel",
+        "key": "0xdcc431f707e57df466d3df30245684754e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "BridgeOutboundChannel",
+        "prefix": "BridgeOutboundChannel",
+        "key": "0xbd25c1be7b397b9fbdb95fdb2a189bbb4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Dispatch",
+        "prefix": "Dispatch",
+        "key": "0xd6adaadda4f35834d63903b8a1f1d6c74e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "JettonApp",
+        "prefix": "JettonApp",
+        "key": "0x02a6019e0a03a41ed89bde8e3916c3b24e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "SubstrateBridgeInboundChannel",
+        "prefix": "SubstrateBridgeInboundChannel",
+        "key": "0x2b37b6c7d56c1ecfd9944e8c4aaaa72f4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "SubstrateBridgeOutboundChannel",
+        "prefix": "SubstrateBridgeOutboundChannel",
+        "key": "0xc1332d01afb161d79c4c0965aa569c634e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1,
+        "expectedVersion": 1
+      },
+      {
+        "pallet": "SubstrateDispatch",
+        "prefix": "SubstrateDispatch",
+        "key": "0x9d29e04ad622b9697a993527d253be544e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "ParachainBridgeApp",
+        "prefix": "ParachainBridgeApp",
+        "key": "0x6f11150aa88578b0c5397f21a73911614e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "BridgeDataSigner",
+        "prefix": "BridgeDataSigner",
+        "key": "0xa766221833d9d017dceb3cd4397690034e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "MultisigVerifier",
+        "prefix": "MultisigVerifier",
+        "key": "0xd7a149fe65342c76ee8bee94c387053e4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "SubstrateBridgeApp",
+        "prefix": "SubstrateBridgeApp",
+        "key": "0x4526e711b452bca168ee3f29b94c53c54e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": null,
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "MultiBlockMigrations",
+        "prefix": "MultiBlockMigrations",
+        "key": "0x0b20199ace3564d0964e2c4d4a9ba4694e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "EthereumBeaconClient",
+        "prefix": "EthereumBeaconClient",
+        "key": "0xada12a87b9ccce83f328569cf9934e834e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "Beefy",
+        "prefix": "Beefy",
+        "key": "0x08c41974a97dbf15cfbec28365bea2da4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0000",
+        "decodedVersion": 0
+      },
+      {
+        "pallet": "ApolloPlatform",
+        "prefix": "ApolloPlatform",
+        "key": "0x684810714b5c6e51c0951304c31fbfe14e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "ExtendedAssets",
+        "prefix": "ExtendedAssets",
+        "key": "0x57f850a10922854802b1f65b564e48304e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      },
+      {
+        "pallet": "Soratopia",
+        "prefix": "Soratopia",
+        "key": "0xfab33b398301492afb4ed40827a2419d4e7b9012096b41c4eb3aaf947f6ea429",
+        "raw": "0x0100",
+        "decodedVersion": 1
+      }
+    ],
+    "customVersionGuards": [
+      {
+        "pallet": "DemeterFarmingPlatform",
+        "key": "0x270c102199328d18305885706f3f591a1601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x02",
+        "decodedVersion": "V3",
+        "expectedHook": "No-op on the freshly checked live guard."
+      },
+      {
+        "pallet": "CeresGovernancePlatform",
+        "key": "0x856dcaf407bfed6ffc84ad25f280a0721601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x02",
+        "decodedVersion": "V3",
+        "expectedHook": "No-op on the freshly checked live guard."
+      },
+      {
+        "pallet": "CeresTokenLocker",
+        "key": "0xed68da8f0472e9ece6e248dfe5e44a921601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x01",
+        "decodedVersion": "V2",
+        "expectedHook": "No-op on the freshly checked live guard."
+      },
+      {
+        "pallet": "CeresLiquidityLocker",
+        "key": "0xf73544dd7fd8ed678dbe240c8267b3261601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x01",
+        "decodedVersion": "V2",
+        "expectedHook": "No-op on the freshly checked live guard."
+      },
+      {
+        "pallet": "HermesGovernancePlatform",
+        "key": "0xa420a1e69ffb5aa3cb8eca7d0bedf7d51601562ebcdff856cb2f34e65f3b2659",
+        "raw": "0x01",
+        "decodedVersion": "V2",
+        "expectedHook": "No-op on the freshly checked live guard."
+      }
+    ],
+    "markers": [
+      {
+        "label": "Reward points remapped",
+        "key": "0x72756e74696d653a6d6967726174696f6e733a7374616b696e675f7265776172645f706f696e74735f73746173685f72656d6170706564",
+        "raw": "0x01",
+        "interpretation": "Already applied; guarded migration is a no-op."
+      },
+      {
+        "label": "VAL reward publication",
+        "key": "0x72756e74696d653a6d6967726174696f6e733a76616c5f7374616b696e675f726577617264735f7075626c6973686564",
+        "raw": "0x01",
+        "interpretation": "Already applied; guarded migration is a no-op."
+      },
+      {
+        "label": "BABE mainnet configuration repair",
+        "key": "0x1cb6f36e027abb2091cfb5110ab5087f69d646ed62163e7bbeec206d356c550f",
+        "raw": "0x01",
+        "interpretation": "Already applied; guarded migration is a no-op."
+      }
+    ],
+    "canonicality": {
+      "selectedHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+      "selectedNumber": 28179122,
+      "latestFinalizedHash": "0xa846f2e118c379642d592c4dd7381e9de12d765813030e3d3790b5cf308353f9",
+      "latestFinalizedNumber": 28179553,
+      "checkedAt": "2026-10-24T17:24:44.867Z"
+    }
+  },
+  "dependencies": {
+    "installed": {
+      "@acala-network/chopsticks-core": "1.5.2",
+      "@babel/runtime": "7.28.4",
+      "@polkadot/api": "16.5.6",
+      "@polkadot/keyring": "14.0.3",
+      "@sora-substrate/type-definitions": "1.27.7",
+      "@polkadot/wasm-crypto": "7.5.4",
+      "@polkadot/rpc-provider": "16.5.6",
+      "fetch-blob": "3.2.0"
+    },
+    "localSources": {
+      "@acala-network/chopsticks-core": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/chopsticks-core",
+        "version": "1.5.2",
+        "manifestSha256": "0423fce6a4cb8b36e4449cd324cb83dbae43bc68d6473a37f3578b731fd2eb99"
+      },
+      "@polkadot/wasm-crypto": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-wasm-crypto-js",
+        "version": "7.5.4",
+        "manifestSha256": "fc0ad4e653666d3c882d9eed28301128f5615d4cf6cc60ee9dcdcbcb019537ee"
+      },
+      "@polkadot/rpc-provider": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-rpc-provider",
+        "version": "16.5.6",
+        "manifestSha256": "7a5b430aa8735f4d8253223a9fcc3af57ab38a5a6c8644622b9d963c59a6aead"
+      },
+      "fetch-blob": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/fetch-blob",
+        "version": "3.2.0",
+        "manifestSha256": "5f3627367f6c9f7c64490abd5cdefe912cd13c6318c4b0be961aa1b4e6341076"
+      }
+    },
+    "nativeArtifacts": {
+      "@acala-network/chopsticks-executor": {
+        "wasmSha256": "e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966",
+        "wasmBytes": 2723362,
+        "canonicalHost": "x86_64-unknown-linux-gnu",
+        "assetsChecked": 14,
+        "provenanceSha256": "22bc3445aa13b338500246218d55b8785217b48957def2f6cd31cf051af475b2"
+      },
+      "@polkadot/wasm-crypto-wasm": {
+        "wasmSha256": "7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f",
+        "wasmBytes": 676030,
+        "canonicalHost": "x86_64-unknown-linux-gnu",
+        "assetsChecked": 18,
+        "provenanceSha256": "300b5b6ecb33d4d3df736edadc5b4585101f7bbb41c10682fcafb849c3d1388c"
+      }
+    },
+    "lockSha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760"
+  },
+  "scope": {
+    "pallets": [
+      "MultiBlockMigrations",
+      "XorFee",
+      "Staking",
+      "Offences",
+      "Session",
+      "Grandpa",
+      "ImOnline",
+      "PoolXYK",
+      "PswapDistribution",
+      "VestedRewards",
+      "Identity",
+      "Farming",
+      "Kensetsu",
+      "Band",
+      "Polkamarkt",
+      "OracleProxy",
+      "BridgeInboundChannel",
+      "SubstrateBridgeInboundChannel",
+      "SubstrateBridgeOutboundChannel",
+      "Babe",
+      "Liveness",
+      "EthBridge",
+      "Timestamp"
+    ],
+    "hashedPrefixes": [
+      {
+        "key": "0x72756e74696d653a",
+        "label": "Raw runtime: prefix",
+        "reason": "Retains one-shot raw runtime migration markers, including the already-applied reward-point remap and new VAL publication marker."
+      }
+    ],
+    "hashedKeys": [
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef7f9cce9c888469bb1a0dceaa129672ef8",
+        "label": "System.LastRuntimeUpgrade",
+        "reason": "Retains live runtime upgrade provenance without scraping System.Account."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef7a44704b568d21667356a5a050c118746b4def25cfda6ef3a00000000",
+        "label": "System.BlockHash(0)",
+        "reason": "Retains mainnet genesis identity for the BABE repair guard; runtime BlockNumber encodes as u32."
+      },
+      {
+        "key": "0x270c102199328d18305885706f3f591a1601562ebcdff856cb2f34e65f3b2659",
+        "label": "DemeterFarmingPlatform.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0x856dcaf407bfed6ffc84ad25f280a0721601562ebcdff856cb2f34e65f3b2659",
+        "label": "CeresGovernancePlatform.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0xed68da8f0472e9ece6e248dfe5e44a921601562ebcdff856cb2f34e65f3b2659",
+        "label": "CeresTokenLocker.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0xf73544dd7fd8ed678dbe240c8267b3261601562ebcdff856cb2f34e65f3b2659",
+        "label": "CeresLiquidityLocker.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0xa420a1e69ffb5aa3cb8eca7d0bedf7d51601562ebcdff856cb2f34e65f3b2659",
+        "label": "HermesGovernancePlatform.PalletStorageVersion",
+        "reason": "Preserves the legacy custom version guard read by the pallet on_runtime_upgrade hook; an omitted guard could spuriously rerun an older migration."
+      },
+      {
+        "key": "0x3a636f6465",
+        "label": ":code",
+        "reason": "Retains pinned on-chain runtime code in the remote externalities input."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef74e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "System FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x1cb6f36e027abb2091cfb5110ab5087f4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Babe FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xf0c365c3cf59d671eb72da0e7a4113c44e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Timestamp FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xc2261276cc9d1f8598ea4b6a74b15c2f4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Balances FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xbd2a529379475088d3e29a918cd478724e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "RandomnessCollectiveFlip FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x3f1467a096bcd71a5b6a0c8155e208104e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "TransactionPayment FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xc2b6ac49ee131be4de5527a2ccab4a674e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Permissions FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xbbb9c4ab5a720bf6916b37a4f9a6d95f4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Referrals FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x540a4f8754aa5298a3d6e9aa09e93f974e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Rewards FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xc9283f367dbf74c668ae6ee5f45c97b04e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "XorFee FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x3da7ce6fe5eefe72f8748ad4944424a04e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "BridgeMultisig FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x5f3e4907f716ac89b6347d15ececedca4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Staking FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xd5c41b52a371aa36c9254ce34324f2a54e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Offences FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xcec5070d609dd3497f72bde07fc96ba04e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Session FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xd57bce545fb382c34570e5dfbf338f5e4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Authorship FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x5f9cc45b7a00c5899361e1c6099678dc4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Grandpa FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x2b06af9719ac64d755623cda8ddd9b944e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "ImOnline FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x32043c84b325af065c49460d044256ef4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Liveness FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x99971b5749ac43e0235e41b0d37869184e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Tokens FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xf61d0276af90e372e9c7d5aad5fd728b4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "TradingPair FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x682a59d51ab9e48a8c8cc418ff9708d24e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Assets FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xa1bd2c8b755a708aa525cd47c8e225fd4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "DEXManager FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x2886c4c3a26c668dc74d973c73fb481f4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "MulticollateralBondingCurvePool FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x5ddba5854553f3cf91d9bbbfb19135ce4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Technical FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x7c2f67164deafeedd91e34da0331ade44e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "PoolXYK FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xaebd463ed9925c488c112434d61debc04e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Council FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xed25f63942de25ac5253ba64b5eb64d14e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "TechnicalCommittee FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xf2794c22e353e9a839f12faab03a911b4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Democracy FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xf0440e0b42c8a54c0d4e6592058cacfe4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "DEXAPI FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "EthBridge FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x31f6b7a64c19140023b52070f65fc2e34e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "PswapDistribution FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x7474449cca95dc5d0c00e71735a6d17d4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Multisig FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x3db7a24cfdc9de785974746c14a99df94e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Scheduler FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x45b03a13ad75ff33b53f663f5462a9754e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "IrohaMigration FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x3a2d6c9353500637d8f8e3e0fa0bb1c54e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "TechnicalMembership FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x4d45a146e2a002ba470f48b9ed9a3e234e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "ElectionsPhragmen FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xe41c5e75812adf5bb00364f58d835bf34e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "VestedRewards FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x2aeddc77fe58c98d50bd37f1b90840f94e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Identity FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x9caa03c08d70516a1d9a23659da86bff4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Farming FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x94106571e04fc4fb4133da54a111ec644e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "XSTPool FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x291067c17b185728495ff51c966b1feb4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "PriceTools FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x4f613a6997d0d04d17c59ab33633f2c64e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "CeresStaking FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xf73544dd7fd8ed678dbe240c8267b3264e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "CeresLiquidityLocker FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xed68da8f0472e9ece6e248dfe5e44a924e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "CeresTokenLocker FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x856dcaf407bfed6ffc84ad25f280a0724e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "CeresGovernancePlatform FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x77ad6649604e0dbdfa2e7f82ffa5ca084e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "CeresLaunchpad FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x270c102199328d18305885706f3f591a4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "DemeterFarmingPlatform FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xdf66cf37cde77d2a63889732a23c685e4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "BagsList FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xede8e4fdc3c8b556f0ce2f77fc2575e34e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "ElectionProviderMultiPhase FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x20e20c48df300e3b1a7e08f0f0e750c94e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Band FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x6e95e8ab162d1e5278846592690a69904e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "OracleProxy FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xa420a1e69ffb5aa3cb8eca7d0bedf7d54e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "HermesGovernancePlatform FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xd8f314b7f4e6b095f0f8ee4656a448254e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Preimage FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x4e04d9c3cc1e5a471e23399df978ca144e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "OrderBook FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xf7f560e8952aa82606c54229c1cc23234e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Kensetsu FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x349246788a5a1a2b4c7f5025f3620fdf4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Denomination FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x7c9df7ef418f869f0ab365233bda527f4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Polkamarkt FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x9d36bbde60f9d07916b00d68c84b8a9b4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "LeafProvider FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x36a5ab3d4eb3724ea97d04d19e77d1ff4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "BridgeProxy FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xdcc431f707e57df466d3df30245684754e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "BridgeInboundChannel FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xbd25c1be7b397b9fbdb95fdb2a189bbb4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "BridgeOutboundChannel FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xd6adaadda4f35834d63903b8a1f1d6c74e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Dispatch FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x02a6019e0a03a41ed89bde8e3916c3b24e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "JettonApp FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x2b37b6c7d56c1ecfd9944e8c4aaaa72f4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "SubstrateBridgeInboundChannel FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xc1332d01afb161d79c4c0965aa569c634e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "SubstrateBridgeOutboundChannel FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x9d29e04ad622b9697a993527d253be544e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "SubstrateDispatch FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x6f11150aa88578b0c5397f21a73911614e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "ParachainBridgeApp FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xa766221833d9d017dceb3cd4397690034e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "BridgeDataSigner FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xd7a149fe65342c76ee8bee94c387053e4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "MultisigVerifier FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x4526e711b452bca168ee3f29b94c53c54e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "SubstrateBridgeApp FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x0b20199ace3564d0964e2c4d4a9ba4694e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "MultiBlockMigrations FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xada12a87b9ccce83f328569cf9934e834e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "EthereumBeaconClient FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x08c41974a97dbf15cfbec28365bea2da4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Beefy FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x684810714b5c6e51c0951304c31fbfe14e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "ApolloPlatform FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x57f850a10922854802b1f65b564e48304e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "ExtendedAssets FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0xfab33b398301492afb4ed40827a2419d4e7b9012096b41c4eb3aaf947f6ea429",
+        "label": "Soratopia FRAME storage version",
+        "reason": "Retain every metadata-visible version guard, including pallets outside the full-prefix scope."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac",
+        "label": "System.Number",
+        "reason": "Preserve execution context without importing all System.Account entries."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef78a42f33323cb5ced3b44dd825fda9fcc",
+        "label": "System.ParentHash",
+        "reason": "Preserve execution context without importing all System.Account entries."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef799e7f93fc6a98f0874fd057f111c4d2d",
+        "label": "System.Digest",
+        "reason": "Preserve execution context without importing all System.Account entries."
+      },
+      {
+        "key": "0x26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a",
+        "label": "System.ExecutionPhase",
+        "reason": "Preserve execution context without importing all System.Account entries."
+      },
+      {
+        "key": "0xc2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80",
+        "label": "Balances.TotalIssuance",
+        "reason": "Retain native issuance; this does not import account balances or enable global balance invariants."
+      }
+    ],
+    "childTrie": false,
+    "explanation": "Retains full configured migration-state pallets, complete EthBridge state for bridge audits, all FRAME/custom version guards and raw migration markers. It is a scoped snapshot; every exclusion is explicit below."
+  },
+  "environment": {
+    "REQUIRE_REMOTE": "1",
+    "REMOTE_RPC_URL": "wss://mof2.sora.org",
+    "REMOTE_BLOCK_HASH": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+    "REMOTE_UPGRADE_CHECKS": "pre-and-post",
+    "REMOTE_STATE_VERSION": "0",
+    "REMOTE_CHILD_TRIE": "0",
+    "REMOTE_PALLETS": "MultiBlockMigrations,XorFee,Staking,Offences,Session,Grandpa,ImOnline,PoolXYK,PswapDistribution,VestedRewards,Identity,Farming,Kensetsu,Band,Polkamarkt,OracleProxy,BridgeInboundChannel,SubstrateBridgeInboundChannel,SubstrateBridgeOutboundChannel,Babe,Liveness,EthBridge,Timestamp",
+    "REMOTE_HASHED_PREFIXES": "0x72756e74696d653a",
+    "REMOTE_HASHED_KEYS": "0x26aa394eea5630e07c48ae0c9558cef7f9cce9c888469bb1a0dceaa129672ef8,0x26aa394eea5630e07c48ae0c9558cef7a44704b568d21667356a5a050c118746b4def25cfda6ef3a00000000,0x270c102199328d18305885706f3f591a1601562ebcdff856cb2f34e65f3b2659,0x856dcaf407bfed6ffc84ad25f280a0721601562ebcdff856cb2f34e65f3b2659,0xed68da8f0472e9ece6e248dfe5e44a921601562ebcdff856cb2f34e65f3b2659,0xf73544dd7fd8ed678dbe240c8267b3261601562ebcdff856cb2f34e65f3b2659,0xa420a1e69ffb5aa3cb8eca7d0bedf7d51601562ebcdff856cb2f34e65f3b2659,0x3a636f6465,0x26aa394eea5630e07c48ae0c9558cef74e7b9012096b41c4eb3aaf947f6ea429,0x1cb6f36e027abb2091cfb5110ab5087f4e7b9012096b41c4eb3aaf947f6ea429,0xf0c365c3cf59d671eb72da0e7a4113c44e7b9012096b41c4eb3aaf947f6ea429,0xc2261276cc9d1f8598ea4b6a74b15c2f4e7b9012096b41c4eb3aaf947f6ea429,0xbd2a529379475088d3e29a918cd478724e7b9012096b41c4eb3aaf947f6ea429,0x3f1467a096bcd71a5b6a0c8155e208104e7b9012096b41c4eb3aaf947f6ea429,0xc2b6ac49ee131be4de5527a2ccab4a674e7b9012096b41c4eb3aaf947f6ea429,0xbbb9c4ab5a720bf6916b37a4f9a6d95f4e7b9012096b41c4eb3aaf947f6ea429,0x540a4f8754aa5298a3d6e9aa09e93f974e7b9012096b41c4eb3aaf947f6ea429,0xc9283f367dbf74c668ae6ee5f45c97b04e7b9012096b41c4eb3aaf947f6ea429,0x3da7ce6fe5eefe72f8748ad4944424a04e7b9012096b41c4eb3aaf947f6ea429,0x5f3e4907f716ac89b6347d15ececedca4e7b9012096b41c4eb3aaf947f6ea429,0xd5c41b52a371aa36c9254ce34324f2a54e7b9012096b41c4eb3aaf947f6ea429,0xcec5070d609dd3497f72bde07fc96ba04e7b9012096b41c4eb3aaf947f6ea429,0xd57bce545fb382c34570e5dfbf338f5e4e7b9012096b41c4eb3aaf947f6ea429,0x5f9cc45b7a00c5899361e1c6099678dc4e7b9012096b41c4eb3aaf947f6ea429,0x2b06af9719ac64d755623cda8ddd9b944e7b9012096b41c4eb3aaf947f6ea429,0x32043c84b325af065c49460d044256ef4e7b9012096b41c4eb3aaf947f6ea429,0x99971b5749ac43e0235e41b0d37869184e7b9012096b41c4eb3aaf947f6ea429,0xf61d0276af90e372e9c7d5aad5fd728b4e7b9012096b41c4eb3aaf947f6ea429,0x682a59d51ab9e48a8c8cc418ff9708d24e7b9012096b41c4eb3aaf947f6ea429,0xa1bd2c8b755a708aa525cd47c8e225fd4e7b9012096b41c4eb3aaf947f6ea429,0x2886c4c3a26c668dc74d973c73fb481f4e7b9012096b41c4eb3aaf947f6ea429,0x5ddba5854553f3cf91d9bbbfb19135ce4e7b9012096b41c4eb3aaf947f6ea429,0x7c2f67164deafeedd91e34da0331ade44e7b9012096b41c4eb3aaf947f6ea429,0xaebd463ed9925c488c112434d61debc04e7b9012096b41c4eb3aaf947f6ea429,0xed25f63942de25ac5253ba64b5eb64d14e7b9012096b41c4eb3aaf947f6ea429,0xf2794c22e353e9a839f12faab03a911b4e7b9012096b41c4eb3aaf947f6ea429,0xf0440e0b42c8a54c0d4e6592058cacfe4e7b9012096b41c4eb3aaf947f6ea429,0x8e8f4d4777099074419cbb4597dac1d34e7b9012096b41c4eb3aaf947f6ea429,0x31f6b7a64c19140023b52070f65fc2e34e7b9012096b41c4eb3aaf947f6ea429,0x7474449cca95dc5d0c00e71735a6d17d4e7b9012096b41c4eb3aaf947f6ea429,0x3db7a24cfdc9de785974746c14a99df94e7b9012096b41c4eb3aaf947f6ea429,0x45b03a13ad75ff33b53f663f5462a9754e7b9012096b41c4eb3aaf947f6ea429,0x3a2d6c9353500637d8f8e3e0fa0bb1c54e7b9012096b41c4eb3aaf947f6ea429,0x4d45a146e2a002ba470f48b9ed9a3e234e7b9012096b41c4eb3aaf947f6ea429,0xe41c5e75812adf5bb00364f58d835bf34e7b9012096b41c4eb3aaf947f6ea429,0x2aeddc77fe58c98d50bd37f1b90840f94e7b9012096b41c4eb3aaf947f6ea429,0x9caa03c08d70516a1d9a23659da86bff4e7b9012096b41c4eb3aaf947f6ea429,0x94106571e04fc4fb4133da54a111ec644e7b9012096b41c4eb3aaf947f6ea429,0x291067c17b185728495ff51c966b1feb4e7b9012096b41c4eb3aaf947f6ea429,0x4f613a6997d0d04d17c59ab33633f2c64e7b9012096b41c4eb3aaf947f6ea429,0xf73544dd7fd8ed678dbe240c8267b3264e7b9012096b41c4eb3aaf947f6ea429,0xed68da8f0472e9ece6e248dfe5e44a924e7b9012096b41c4eb3aaf947f6ea429,0x856dcaf407bfed6ffc84ad25f280a0724e7b9012096b41c4eb3aaf947f6ea429,0x77ad6649604e0dbdfa2e7f82ffa5ca084e7b9012096b41c4eb3aaf947f6ea429,0x270c102199328d18305885706f3f591a4e7b9012096b41c4eb3aaf947f6ea429,0xdf66cf37cde77d2a63889732a23c685e4e7b9012096b41c4eb3aaf947f6ea429,0xede8e4fdc3c8b556f0ce2f77fc2575e34e7b9012096b41c4eb3aaf947f6ea429,0x20e20c48df300e3b1a7e08f0f0e750c94e7b9012096b41c4eb3aaf947f6ea429,0x6e95e8ab162d1e5278846592690a69904e7b9012096b41c4eb3aaf947f6ea429,0xa420a1e69ffb5aa3cb8eca7d0bedf7d54e7b9012096b41c4eb3aaf947f6ea429,0xd8f314b7f4e6b095f0f8ee4656a448254e7b9012096b41c4eb3aaf947f6ea429,0x4e04d9c3cc1e5a471e23399df978ca144e7b9012096b41c4eb3aaf947f6ea429,0xf7f560e8952aa82606c54229c1cc23234e7b9012096b41c4eb3aaf947f6ea429,0x349246788a5a1a2b4c7f5025f3620fdf4e7b9012096b41c4eb3aaf947f6ea429,0x7c9df7ef418f869f0ab365233bda527f4e7b9012096b41c4eb3aaf947f6ea429,0x9d36bbde60f9d07916b00d68c84b8a9b4e7b9012096b41c4eb3aaf947f6ea429,0x36a5ab3d4eb3724ea97d04d19e77d1ff4e7b9012096b41c4eb3aaf947f6ea429,0xdcc431f707e57df466d3df30245684754e7b9012096b41c4eb3aaf947f6ea429,0xbd25c1be7b397b9fbdb95fdb2a189bbb4e7b9012096b41c4eb3aaf947f6ea429,0xd6adaadda4f35834d63903b8a1f1d6c74e7b9012096b41c4eb3aaf947f6ea429,0x02a6019e0a03a41ed89bde8e3916c3b24e7b9012096b41c4eb3aaf947f6ea429,0x2b37b6c7d56c1ecfd9944e8c4aaaa72f4e7b9012096b41c4eb3aaf947f6ea429,0xc1332d01afb161d79c4c0965aa569c634e7b9012096b41c4eb3aaf947f6ea429,0x9d29e04ad622b9697a993527d253be544e7b9012096b41c4eb3aaf947f6ea429,0x6f11150aa88578b0c5397f21a73911614e7b9012096b41c4eb3aaf947f6ea429,0xa766221833d9d017dceb3cd4397690034e7b9012096b41c4eb3aaf947f6ea429,0xd7a149fe65342c76ee8bee94c387053e4e7b9012096b41c4eb3aaf947f6ea429,0x4526e711b452bca168ee3f29b94c53c54e7b9012096b41c4eb3aaf947f6ea429,0x0b20199ace3564d0964e2c4d4a9ba4694e7b9012096b41c4eb3aaf947f6ea429,0xada12a87b9ccce83f328569cf9934e834e7b9012096b41c4eb3aaf947f6ea429,0x08c41974a97dbf15cfbec28365bea2da4e7b9012096b41c4eb3aaf947f6ea429,0x684810714b5c6e51c0951304c31fbfe14e7b9012096b41c4eb3aaf947f6ea429,0x57f850a10922854802b1f65b564e48304e7b9012096b41c4eb3aaf947f6ea429,0xfab33b398301492afb4ed40827a2419d4e7b9012096b41c4eb3aaf947f6ea429,0x26aa394eea5630e07c48ae0c9558cef702a5c1b19ab7a04f536c519aca4983ac,0x26aa394eea5630e07c48ae0c9558cef78a42f33323cb5ced3b44dd825fda9fcc,0x26aa394eea5630e07c48ae0c9558cef799e7f93fc6a98f0874fd057f111c4d2d,0x26aa394eea5630e07c48ae0c9558cef7ff553b5a9862a516939d82b3d3d8661a,0xc2261276cc9d1f8598ea4b6a74b15c2f57c875e4cff74148e4628f264b974c80"
+  },
+  "execution": {
+    "status": "not-run",
+    "package": "framenode-runtime",
+    "defaultFeatures": false,
+    "features": [
+      "std",
+      "try-runtime"
+    ],
+    "featureClassification": "Production chain feature selection plus common/test instrumentation from the chain-spec development dependency; not byte-identical production dependency behavior.",
+    "test": "remote_try_runtime_upgrade_rehearsal",
+    "checks": "Configured pre/post upgrade hooks, retained-state decoding, audited storage versions, complete bridge replay/index/bounds checks, and multi-block migration completion.",
+    "forbiddenFeatures": [
+      "private-net",
+      "wip",
+      "stage",
+      "runtime-benchmarks",
+      "reduced-pswap-reward-periods"
+    ],
+    "candidateBinding": "Native source execution; pair with the separately hashed exact-Wasm fork rehearsal. This is not a deployment eligibility decision."
+  },
+  "inputs": {
+    "snapshotSha256": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+    "metadataSha256": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+    "deployedCodeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+    "scriptSha256": "46880ff8ad8b2882fd8ecbf6568fc1e6d5085edb7bb8d56570c5fef35684d626",
+    "priorScopeTemplateSha256": "097ebab9dfddee4c53190f5f4802fd9f937fd8d48d24cbb03fd3e613cf6c32b0",
+    "providerRdapSha256": "05fb3eb7afc6858cc6f0ddb74dc731f3e985f8fdd2e9adab25d04d4e7034556f"
+  },
+  "limitations": [
+    "Native unit-test dependency unification enables common/test: FixedWrapper balance conversion uses stricter unwrap/checked behavior, and common include macros use test fallbacks. This is production chain feature selection with test instrumentation. Exact default-production Wasm fork execution establishes production runtime semantics.",
+    "No global try_state claim: System.Account, account balances/tokens, assets and unrelated pallets are omitted. Full Staking/XorFee retains real reward budgets, exposures and claims for migration hooks; it does not execute real user payouts.",
+    "Child tries are omitted because the selected migration paths use ordinary pallet/raw storage. This is not a complete chain-state snapshot or cryptographic state proof.",
+    "Legacy custom pallet data is omitted only after current pinned preflight verifies its no-op guard. Any guard/version mismatch aborts preparation and requires source/scope review.",
+    "Already-applied migration markers mean current-state replay exercises their idempotent no-op branch. Synthetic/native fixture tests separately cover active historical migrations.",
+    "The native runner uses a fresh scope-specific snapshot and rejects pre-existing cache files; a matching block hash alone does not prove filter completeness.",
+    "Public RPC responses are trusted for this diagnostic rehearsal. Finality/canonicality are provider assertions, not independent consensus verification.",
+    "No signed transactions, governance enactment, offchain-worker execution, full block consensus execution or validator deployment occurs."
+  ],
+  "finishedAt": "2026-10-24T17:24:44.868Z"
+}

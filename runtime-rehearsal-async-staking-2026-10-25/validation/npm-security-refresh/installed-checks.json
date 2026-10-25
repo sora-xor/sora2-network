@@ -1,0 +1,145 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "name": "executor-source-provenance",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/vendor/chopsticks-executor/scripts/verify-artifacts.py"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/executor-source-provenance.log",
+      "log_sha256": "66727451ec76fcf944d679656091032c75caed10cebe410b5990ff4432c670c7",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/executor-source-provenance.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "crypto-source-provenance",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-wasm-crypto/scripts/verify-artifacts.py"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/crypto-source-provenance.log",
+      "log_sha256": "1e2c068d77707c879184862d2cc005261000d9058f4c77a3fe01b30b42e85200",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/crypto-source-provenance.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "isolated-install",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/npm",
+        "ci",
+        "--ignore-scripts",
+        "--install-links",
+        "--no-audit"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/isolated-install.log",
+      "log_sha256": "8e78f1510401500519c8c476e134fe5be7971464fd2e0c0203538210f2ee05e2",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/isolated-install.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "native-integration",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/misc/dependency_security/test_js_native_integration.cjs",
+        "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/native-integration.log",
+      "log_sha256": "bc77169d7cb94102ec9bbd85c0168c9d7fd8b1c140ed6bfe89fe7d69843e9ce7",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/native-integration.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "schema",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/vendor/chopsticks-core/tests/zod-migration.cjs",
+        "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation/node_modules/@acala-network/chopsticks-core"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/schema.log",
+      "log_sha256": "16b435aec3aac3a0f77e0705e2a82b77eb80ddc1fd6292e76e9b01117f0bdc1b",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/schema.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "fetch-blob",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/vendor/fetch-blob/tests/native-domexception.mjs",
+        "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation/node_modules/fetch-blob"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/fetch-blob.log",
+      "log_sha256": "a32a8991c23c24820c9a5fb2a1eb17eb9e0018cff555502fa898334f8a193b69",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/fetch-blob.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "executor",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/vendor/chopsticks-executor/scripts/smoke.cjs",
+        "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation/node_modules/@acala-network/chopsticks-executor/dist/cjs/index.js"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/executor.log",
+      "log_sha256": "debdafbceb3fb9bdc0e90dbef5a0b7676a507abc6bcf96f166d605aca770e1f8",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/executor.stderr.log",
+      "stderr_sha256": "2657ac033b0c9fb2527efdf12a933604d15c928774be080979ad9966eca09897"
+    },
+    {
+      "name": "crypto",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-wasm-crypto/tests/compatibility.cjs",
+        "--candidate",
+        "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation/node_modules/@polkadot/wasm-crypto",
+        "--security-regressions",
+        "true"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/crypto.log",
+      "log_sha256": "dd310276e65f21496d75b32fee864e8f72ef05d0a14ca0740170bbc067d2599e",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/crypto.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "isolated-dependency-validation",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "-e",
+        "const v=require(process.argv[1]); console.log(JSON.stringify(v.validateDependencies(process.argv[2]),null,2));",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/validate-dependencies.cjs",
+        "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/isolated-dependency-validation.log",
+      "log_sha256": "c12ea05f776d35ca3fdfcb15e9156f9c18f2246b43fc93a5b5ea08474e968072",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/isolated-dependency-validation.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "rehearsal-dependency-validation",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "-e",
+        "const v=require(process.argv[1]); console.log(JSON.stringify(v.validateDependencies(process.argv[2]),null,2));",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/validate-dependencies.cjs",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation"
+      ],
+      "exit": 0,
+      "log": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/rehearsal-dependency-validation.log",
+      "log_sha256": "2429ded06d822a0dc3880fc448bf5bd9c60f952946dd050a3aa98cdf78bc3c87",
+      "stderr": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/rehearsal-dependency-validation.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "native_rebuilt": false,
+  "scope": "Fresh isolated npm install and native artifact/compatibility tests; Rust artifacts verified from their recorded source provenance.",
+  "isolated_installed_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-async-npm-n1hsopve/runtime-rehearsal-async-staking-2026-10-25/validation"
+}

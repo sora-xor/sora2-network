@@ -47,7 +47,7 @@ use crate::{
     STORAGE_PENDING_TRANSACTIONS_KEY, SUBSTRATE_HANDLE_BLOCK_COUNT_PER_BLOCK,
     SUBSTRATE_MAX_BLOCK_NUM_EXPECTING_UNTIL_FINALIZATION, ZERO_APPROVAL_OUTGOING_RETRY_PERIOD,
 };
-use codec::Encode;
+use codec::{Decode, Encode};
 use common::{DEFAULT_BALANCE_PRECISION, VAL, XOR};
 use frame_support::{assert_err, assert_ok};
 use hex_literal::hex;
@@ -146,6 +146,223 @@ fn handle_substrate_at_finalized_height(height: BlockNumber) {
         digest: (),
     });
     assert_ok!(EthBridge::handle_substrate(), height);
+}
+
+fn multiple_local_bridge_accounts() -> Vec<frame_system::offchain::Account<Runtime>> {
+    sp_io::crypto::ecdsa_generate(
+        crate::KEY_TYPE,
+        Some(b"//bridge-signer-selection-a".to_vec()),
+    );
+    sp_io::crypto::ecdsa_generate(
+        crate::KEY_TYPE,
+        Some(b"//bridge-signer-selection-b".to_vec()),
+    );
+    let accounts = frame_system::offchain::Signer::<
+        Runtime,
+        crate::offchain::crypto::TestAuthId,
+    >::keystore_accounts()
+    .collect::<Vec<_>>();
+    assert!(accounts.len() >= 3);
+    accounts
+}
+
+#[test]
+fn ocw_multisig_submission_selects_current_network_peer_and_signatory() {
+    for threshold_one in [false, true] {
+        for first_key_is_peer in [false, true] {
+            let (mut ext, state) = ExtBuilder::default().build();
+            ext.execute_with(|| {
+                let accounts = multiple_local_bridge_accounts();
+                let first = &accounts[0];
+                let selected = accounts.last().unwrap();
+                let bridge = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+                let mut peers = std::collections::BTreeSet::from([selected.id.clone()]);
+                if first_key_is_peer {
+                    // Peer membership alone is insufficient while multisig membership differs.
+                    peers.insert(first.id.clone());
+                }
+                crate::Peers::<Runtime>::insert(ETH_NETWORK_ID, peers);
+                let mut signatories = vec![selected.id.clone()];
+                if !threshold_one {
+                    signatories.push(get_account_id_from_seed::<sr25519::Public>("Bob"));
+                }
+                bridge_multisig::Accounts::<Runtime>::insert(
+                    &bridge,
+                    bridge_multisig::MultisigAccount::new(signatories),
+                );
+                let nonce = System::account_nonce(&selected.id);
+                let first_nonce = System::account_nonce(&first.id);
+                assert_ok!(EthBridge::send_multisig_transaction(
+                    crate::Call::<Runtime>::finalize_incoming_request {
+                        hash: H256::repeat_byte(0x51),
+                        network_id: ETH_NETWORK_ID,
+                    },
+                    bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(7, 0),
+                    ETH_NETWORK_ID,
+                ));
+                let transactions = state.pool_state.read().transactions.clone();
+                assert_eq!(transactions.len(), 1);
+                let submitted = TestExtrinsic::decode(&mut &transactions[0][..]).unwrap();
+                assert_eq!(submitted.preamble.to_signed().unwrap().0, selected.id);
+                assert_eq!(System::account_nonce(&selected.id), nonce + 1);
+                assert_eq!(System::account_nonce(&first.id), first_nonce);
+                let pending = state.pending_txs();
+                assert_eq!(pending.len(), 1);
+                assert!(pending.contains_key(&H256(sp_io::hashing::blake2_256(&transactions[0]))));
+            });
+        }
+    }
+}
+
+#[test]
+fn ocw_multisig_retry_reselects_current_network_peer_after_rotation() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let accounts = multiple_local_bridge_accounts();
+        let first = &accounts[0];
+        let selected = accounts.last().unwrap();
+        let bridge = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        crate::Peers::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            std::collections::BTreeSet::from([selected.id.clone()]),
+        );
+        bridge_multisig::Accounts::<Runtime>::insert(
+            &bridge,
+            bridge_multisig::MultisigAccount::new(vec![selected.id.clone()]),
+        );
+        let inner: RuntimeCall = crate::Call::<Runtime>::finalize_incoming_request {
+            hash: H256::repeat_byte(0x52),
+            network_id: ETH_NETWORK_ID,
+        }
+        .into();
+        let call = bridge_multisig::Call::<Runtime>::as_multi_threshold_1 {
+            id: bridge.clone(),
+            call: Box::new(inner),
+            timepoint: bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(8, 0),
+        };
+        let mut pending =
+            crate::offchain::SignedTransactionData::<Runtime>::new(H256::zero(), None, call);
+        let fallback = EthBridge::get_signer().unwrap();
+        let nonce = System::account_nonce(&selected.id);
+        assert!(pending.resend(&fallback));
+        assert_eq!(System::account_nonce(&selected.id), nonce + 1);
+        assert_eq!(pending.submitted_at, Some(System::block_number()));
+        let transactions = state.pool_state.read().transactions.clone();
+        let submitted = TestExtrinsic::decode(&mut &transactions[0][..]).unwrap();
+        assert_eq!(submitted.preamble.to_signed().unwrap().0, selected.id);
+        assert_eq!(
+            pending.extrinsic_hash,
+            H256(sp_io::hashing::blake2_256(&transactions[0]))
+        );
+
+        // The cached call's authorized signer changes with current membership, not its old origin.
+        crate::Peers::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            std::collections::BTreeSet::from([first.id.clone()]),
+        );
+        bridge_multisig::Accounts::<Runtime>::insert(
+            &bridge,
+            bridge_multisig::MultisigAccount::new(vec![first.id.clone()]),
+        );
+        let nonce = System::account_nonce(&first.id);
+        assert!(pending.resend(&fallback));
+        assert_eq!(System::account_nonce(&first.id), nonce + 1);
+        let transactions = state.pool_state.read().transactions.clone();
+        let submitted = TestExtrinsic::decode(&mut &transactions[1][..]).unwrap();
+        assert_eq!(submitted.preamble.to_signed().unwrap().0, first.id);
+        assert_eq!(
+            pending.extrinsic_hash,
+            H256(sp_io::hashing::blake2_256(&transactions[1]))
+        );
+    });
+}
+
+#[test]
+fn ocw_outgoing_retry_keeps_payload_key_and_rejects_removed_peer() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let accounts = multiple_local_bridge_accounts();
+        let first = &accounts[0];
+        let selected = accounts.last().unwrap();
+        crate::Peers::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            std::collections::BTreeSet::from([first.id.clone(), selected.id.clone()]),
+        );
+        let sp_runtime::MultiSigner::Ecdsa(ocw_public) = selected.public.clone() else {
+            panic!("bridge test key is ECDSA");
+        };
+        let call = crate::Call::<Runtime>::approve_request {
+            ocw_public,
+            hash: H256::repeat_byte(0x53),
+            signature_params: crate::offchain::SignatureParams {
+                r: [0; 32],
+                s: [0; 32],
+                v: 27,
+            },
+            network_id: ETH_NETWORK_ID,
+        };
+        let mut pending =
+            crate::offchain::SignedTransactionData::<Runtime>::new(H256::zero(), None, call);
+        let fallback = EthBridge::get_signer().unwrap();
+        assert!(pending.resend(&fallback));
+        let transactions = state.pool_state.read().transactions.clone();
+        let submitted = TestExtrinsic::decode(&mut &transactions[0][..]).unwrap();
+        assert_eq!(submitted.preamble.to_signed().unwrap().0, selected.id);
+        let hash = pending.extrinsic_hash;
+        let nonce = System::account_nonce(&first.id);
+        crate::Peers::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            std::collections::BTreeSet::from([first.id.clone()]),
+        );
+        assert!(!pending.resend(&fallback));
+        assert_eq!(pending.extrinsic_hash, hash);
+        assert_eq!(System::account_nonce(&first.id), nonce);
+        assert_eq!(state.pool_state.read().transactions.len(), 1);
+    });
+}
+
+#[test]
+fn ocw_cancellation_selects_current_network_peer_and_signatory() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let accounts = multiple_local_bridge_accounts();
+        let first = &accounts[0];
+        let selected = accounts.last().unwrap();
+        let bridge = crate::BridgeAccount::<Runtime>::get(ETH_NETWORK_ID).unwrap();
+        crate::Peers::<Runtime>::insert(
+            ETH_NETWORK_ID,
+            std::collections::BTreeSet::from([first.id.clone(), selected.id.clone()]),
+        );
+        bridge_multisig::Accounts::<Runtime>::insert(
+            &bridge,
+            bridge_multisig::MultisigAccount::new(vec![selected.id.clone()]),
+        );
+        assert_ok!(EthBridge::send_transaction(
+            crate::Call::<Runtime>::cancel_pending_multisig {
+                network_id: ETH_NETWORK_ID,
+                call_hash: [0x54; 32],
+                timepoint: bridge_multisig::Pallet::<Runtime>::sidechain_timepoint(9, 0),
+            }
+        ));
+        let transactions = state.pool_state.read().transactions.clone();
+        let submitted = TestExtrinsic::decode(&mut &transactions[0][..]).unwrap();
+        assert_eq!(submitted.preamble.to_signed().unwrap().0, selected.id);
+    });
+}
+
+#[test]
+fn ocw_generic_transaction_keeps_unfiltered_signer() {
+    let (mut ext, state) = ExtBuilder::default().build();
+    ext.execute_with(|| {
+        let accounts = multiple_local_bridge_accounts();
+        crate::Peers::<Runtime>::remove(ETH_NETWORK_ID);
+        assert_ok!(EthBridge::send_transaction(
+            frame_system::Call::<Runtime>::remark { remark: vec![1] }
+        ));
+        let transactions = state.pool_state.read().transactions.clone();
+        let submitted = TestExtrinsic::decode(&mut &transactions[0][..]).unwrap();
+        assert_eq!(submitted.preamble.to_signed().unwrap().0, accounts[0].id);
+    });
 }
 
 #[test]
@@ -1903,9 +2120,36 @@ fn failed_import_recovery_ignores_status_from_another_network() {
 
         handle_substrate_at_finalized_height(RE_HANDLE_TXS_PERIOD.into());
 
+        // The builder installs only network 0's key. Its completed status must neither
+        // discard this network's request nor authorize signing on this network's behalf.
+        assert_eq!(state.failed_pending_txs().len(), 1);
+        assert!(state.pending_txs().is_empty());
+        assert!(state.pool_state.read().transactions.is_empty());
+        let (public, peer, seed) = &state.networks[&network_id].ocw_keypairs[0];
+        let local_public = sp_io::crypto::ecdsa_generate(
+            crate::KEY_TYPE,
+            Some(format!("0x{}", seed.to_hex::<String>()).into_bytes()),
+        );
+        assert_eq!(sp_runtime::MultiSigner::from(local_public), public.clone());
+
+        handle_substrate_at_finalized_height((2 * RE_HANDLE_TXS_PERIOD).into());
+
         assert_eq!(state.failed_pending_txs().len(), 1);
         assert_eq!(state.pending_txs().len(), 1);
-        assert_eq!(state.pool_state.read().transactions.len(), 1);
+        let transactions = state.pool_state.read().transactions.clone();
+        assert_eq!(transactions.len(), 1);
+        let submitted = TestExtrinsic::decode(&mut &transactions[0][..]).unwrap();
+        assert_eq!(submitted.preamble.to_signed().unwrap().0, peer.clone());
+        let RuntimeCall::Multisig(bridge_multisig::Call::as_multi_threshold_1 { id, .. }) =
+            submitted.function
+        else {
+            panic!("recovery submits a bridge multisig import");
+        };
+        assert_eq!(crate::BridgeAccount::<Runtime>::get(network_id), Some(id));
+        assert_eq!(
+            crate::RequestStatuses::<Runtime>::get(network_id, tx_hash),
+            None
+        );
     });
 }
 

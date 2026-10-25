@@ -1,0 +1,44 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/utils/wasm-builder",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "parity-wasm"
+      ],
+      "upstream": {
+        "version": "0.45.0"
+      },
+      "local": null
+    },
+    {
+      "path": [
+        "dependencies",
+        "wasm-encoder"
+      ],
+      "upstream": null,
+      "local": {
+        "version": "0.262.0",
+        "features": [
+          "wasmparser"
+        ]
+      }
+    },
+    {
+      "path": [
+        "dependencies",
+        "wasmparser"
+      ],
+      "upstream": null,
+      "local": {
+        "version": "0.262.0",
+        "default-features": false,
+        "features": [
+          "std",
+          "features"
+        ]
+      }
+    }
+  ]
+}

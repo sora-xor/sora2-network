@@ -89,6 +89,7 @@ async function main() {
     ready: false,
     status: 'requires-operator-attestation',
     requirements: [
+      'Quote and execute representative validator payout batches on a test network: eligible flat payout-only batches receive the resource-fee discount while mixed/nested/empty/XOR-less wrappers retain normal pricing and full block weights remain enforced.',
       'Verify Kensetsu repayment/collateral exits and Apollo repayment/withdrawals on a test network; no new lending, liquidation or automatic keeper submissions may occur. Keeper keys and funding are not required.',
       'Verify zero-XOR authenticated bridge submissions, replay rejection and channel nonce recovery. Bridge peers and protocol relayers have no XOR funding requirement.',
       'Review finalized legacy pending call sizes and explicit weighted dispatch after membership changes; existing pending operations are grandfathered by the new-operation bound.',
@@ -101,7 +102,7 @@ async function main() {
     existingQueuedProposal: nextExternal.toJSON(),
     reason: nextExternal.isSome
       ? 'An existing external proposal is queued and operator readiness is unconfirmed; the guarded route rejects replacing the queue.'
-      : 'Operator readiness for funded keepers/reporters and bridge compatibility checks is unconfirmed.',
+      : 'Operator readiness for signed funded reporters, existing-position exits and bridge compatibility checks is unconfirmed.',
     prerequisites: [
       'Resolve the existing external proposal through normal governance so NextExternal is clear; never overwrite it.',
       'Refresh finalized baseline, metadata, governance membership and unsigned calls before use. If runtime code or metadata changed, repeat compatibility and exact-Wasm rehearsal against the new deployed baseline.',

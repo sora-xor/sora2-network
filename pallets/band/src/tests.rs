@@ -31,10 +31,11 @@
 use codec::alloc::collections::HashSet;
 use common::{fixed, DataFeed, Rate};
 use common::{prelude::FixedWrapper, Balance, Fixed};
+use frame_support::assert_noop;
 use frame_support::traits::Hooks;
-use frame_support::{assert_noop, error::BadOrigin};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_core::TryCollect;
+use sp_runtime::traits::BadOrigin;
 use sp_std::collections::btree_set::BTreeSet;
 
 use crate::{mock::*, BandRate, Error, FeeCalculationParameters, SymbolCheckBlock};

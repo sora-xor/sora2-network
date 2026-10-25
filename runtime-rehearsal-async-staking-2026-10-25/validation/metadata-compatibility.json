@@ -1,0 +1,2368 @@
+{
+  "compatibleExistingScaleEncoding": false,
+  "counts": {
+    "existingPallets": 81,
+    "existingCalls": 406,
+    "nestedTypePairsVisited": 10405,
+    "existingEvent": 443,
+    "existingError": 975,
+    "existingStorageEntries": 491,
+    "existingConstants": 157,
+    "signedExtensions": 7
+  },
+  "breakingChanges": [],
+  "additions": [],
+  "constantValueChanges": [
+    {
+      "path": "System.constants.Version",
+      "oldValue": [
+        56,
+        115,
+        111,
+        114,
+        97,
+        45,
+        115,
+        117,
+        98,
+        115,
+        116,
+        114,
+        97,
+        116,
+        101,
+        56,
+        115,
+        111,
+        114,
+        97,
+        45,
+        115,
+        117,
+        98,
+        115,
+        116,
+        114,
+        97,
+        116,
+        101,
+        1,
+        0,
+        0,
+        0,
+        134,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        112,
+        223,
+        106,
+        203,
+        104,
+        153,
+        7,
+        96,
+        155,
+        5,
+        0,
+        0,
+        0,
+        55,
+        227,
+        151,
+        252,
+        124,
+        145,
+        245,
+        228,
+        2,
+        0,
+        0,
+        0,
+        64,
+        254,
+        58,
+        212,
+        1,
+        248,
+        149,
+        154,
+        6,
+        0,
+        0,
+        0,
+        210,
+        188,
+        152,
+        151,
+        238,
+        208,
+        143,
+        21,
+        3,
+        0,
+        0,
+        0,
+        247,
+        139,
+        39,
+        139,
+        229,
+        63,
+        69,
+        76,
+        2,
+        0,
+        0,
+        0,
+        171,
+        60,
+        5,
+        114,
+        41,
+        31,
+        235,
+        139,
+        2,
+        0,
+        0,
+        0,
+        55,
+        200,
+        187,
+        19,
+        80,
+        169,
+        162,
+        168,
+        4,
+        0,
+        0,
+        0,
+        73,
+        161,
+        81,
+        4,
+        209,
+        77,
+        228,
+        51,
+        1,
+        0,
+        0,
+        0,
+        60,
+        23,
+        77,
+        119,
+        100,
+        6,
+        158,
+        97,
+        2,
+        0,
+        0,
+        0,
+        15,
+        52,
+        137,
+        147,
+        125,
+        28,
+        32,
+        100,
+        1,
+        0,
+        0,
+        0,
+        123,
+        8,
+        218,
+        169,
+        209,
+        23,
+        200,
+        155,
+        1,
+        0,
+        0,
+        0,
+        216,
+        61,
+        197,
+        30,
+        22,
+        168,
+        19,
+        252,
+        1,
+        0,
+        0,
+        0,
+        248,
+        224,
+        194,
+        82,
+        0,
+        196,
+        102,
+        204,
+        1,
+        0,
+        0,
+        0,
+        119,
+        20,
+        174,
+        113,
+        151,
+        176,
+        70,
+        116,
+        1,
+        0,
+        0,
+        0,
+        250,
+        93,
+        193,
+        21,
+        232,
+        221,
+        117,
+        155,
+        3,
+        0,
+        0,
+        0,
+        143,
+        216,
+        159,
+        212,
+        31,
+        174,
+        248,
+        118,
+        1,
+        0,
+        0,
+        0,
+        200,
+        144,
+        184,
+        131,
+        115,
+        149,
+        215,
+        3,
+        1,
+        0,
+        0,
+        0,
+        92,
+        185,
+        40,
+        244,
+        65,
+        15,
+        65,
+        252,
+        1,
+        0,
+        0,
+        0,
+        203,
+        202,
+        37,
+        227,
+        159,
+        20,
+        35,
+        135,
+        2,
+        0,
+        0,
+        0,
+        188,
+        157,
+        137,
+        144,
+        79,
+        91,
+        146,
+        63,
+        1,
+        0,
+        0,
+        0,
+        73,
+        234,
+        175,
+        27,
+        84,
+        138,
+        12,
+        176,
+        6,
+        0,
+        0,
+        0,
+        145,
+        213,
+        223,
+        24,
+        176,
+        210,
+        207,
+        88,
+        3,
+        0,
+        0,
+        0,
+        237,
+        153,
+        197,
+        172,
+        178,
+        94,
+        237,
+        245,
+        3,
+        0,
+        0,
+        0,
+        235,
+        77,
+        72,
+        90,
+        232,
+        159,
+        188,
+        181,
+        1,
+        0,
+        0,
+        0,
+        142,
+        104,
+        143,
+        233,
+        69,
+        74,
+        201,
+        112,
+        1,
+        0,
+        0,
+        0,
+        78,
+        230,
+        249,
+        116,
+        205,
+        61,
+        67,
+        249,
+        2,
+        0,
+        0,
+        0,
+        152,
+        222,
+        174,
+        215,
+        101,
+        42,
+        239,
+        249,
+        1,
+        0,
+        0,
+        0,
+        251,
+        197,
+        119,
+        185,
+        215,
+        71,
+        239,
+        214,
+        1,
+        0,
+        0,
+        0,
+        131,
+        0,
+        0,
+        0,
+        0
+      ],
+      "newValue": [
+        56,
+        115,
+        111,
+        114,
+        97,
+        45,
+        115,
+        117,
+        98,
+        115,
+        116,
+        114,
+        97,
+        116,
+        101,
+        56,
+        115,
+        111,
+        114,
+        97,
+        45,
+        115,
+        117,
+        98,
+        115,
+        116,
+        114,
+        97,
+        116,
+        101,
+        1,
+        0,
+        0,
+        0,
+        137,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        112,
+        223,
+        106,
+        203,
+        104,
+        153,
+        7,
+        96,
+        155,
+        5,
+        0,
+        0,
+        0,
+        55,
+        227,
+        151,
+        252,
+        124,
+        145,
+        245,
+        228,
+        2,
+        0,
+        0,
+        0,
+        64,
+        254,
+        58,
+        212,
+        1,
+        248,
+        149,
+        154,
+        6,
+        0,
+        0,
+        0,
+        210,
+        188,
+        152,
+        151,
+        238,
+        208,
+        143,
+        21,
+        3,
+        0,
+        0,
+        0,
+        247,
+        139,
+        39,
+        139,
+        229,
+        63,
+        69,
+        76,
+        2,
+        0,
+        0,
+        0,
+        171,
+        60,
+        5,
+        114,
+        41,
+        31,
+        235,
+        139,
+        2,
+        0,
+        0,
+        0,
+        55,
+        200,
+        187,
+        19,
+        80,
+        169,
+        162,
+        168,
+        4,
+        0,
+        0,
+        0,
+        73,
+        161,
+        81,
+        4,
+        209,
+        77,
+        228,
+        51,
+        1,
+        0,
+        0,
+        0,
+        60,
+        23,
+        77,
+        119,
+        100,
+        6,
+        158,
+        97,
+        2,
+        0,
+        0,
+        0,
+        15,
+        52,
+        137,
+        147,
+        125,
+        28,
+        32,
+        100,
+        1,
+        0,
+        0,
+        0,
+        123,
+        8,
+        218,
+        169,
+        209,
+        23,
+        200,
+        155,
+        1,
+        0,
+        0,
+        0,
+        216,
+        61,
+        197,
+        30,
+        22,
+        168,
+        19,
+        252,
+        1,
+        0,
+        0,
+        0,
+        248,
+        224,
+        194,
+        82,
+        0,
+        196,
+        102,
+        204,
+        1,
+        0,
+        0,
+        0,
+        119,
+        20,
+        174,
+        113,
+        151,
+        176,
+        70,
+        116,
+        1,
+        0,
+        0,
+        0,
+        250,
+        93,
+        193,
+        21,
+        232,
+        221,
+        117,
+        155,
+        3,
+        0,
+        0,
+        0,
+        143,
+        216,
+        159,
+        212,
+        31,
+        174,
+        248,
+        118,
+        1,
+        0,
+        0,
+        0,
+        200,
+        144,
+        184,
+        131,
+        115,
+        149,
+        215,
+        3,
+        1,
+        0,
+        0,
+        0,
+        92,
+        185,
+        40,
+        244,
+        65,
+        15,
+        65,
+        252,
+        1,
+        0,
+        0,
+        0,
+        203,
+        202,
+        37,
+        227,
+        159,
+        20,
+        35,
+        135,
+        2,
+        0,
+        0,
+        0,
+        188,
+        157,
+        137,
+        144,
+        79,
+        91,
+        146,
+        63,
+        1,
+        0,
+        0,
+        0,
+        73,
+        234,
+        175,
+        27,
+        84,
+        138,
+        12,
+        176,
+        6,
+        0,
+        0,
+        0,
+        145,
+        213,
+        223,
+        24,
+        176,
+        210,
+        207,
+        88,
+        3,
+        0,
+        0,
+        0,
+        237,
+        153,
+        197,
+        172,
+        178,
+        94,
+        237,
+        245,
+        3,
+        0,
+        0,
+        0,
+        235,
+        77,
+        72,
+        90,
+        232,
+        159,
+        188,
+        181,
+        1,
+        0,
+        0,
+        0,
+        142,
+        104,
+        143,
+        233,
+        69,
+        74,
+        201,
+        112,
+        1,
+        0,
+        0,
+        0,
+        78,
+        230,
+        249,
+        116,
+        205,
+        61,
+        67,
+        249,
+        2,
+        0,
+        0,
+        0,
+        152,
+        222,
+        174,
+        215,
+        101,
+        42,
+        239,
+        249,
+        1,
+        0,
+        0,
+        0,
+        251,
+        197,
+        119,
+        185,
+        215,
+        71,
+        239,
+        214,
+        1,
+        0,
+        0,
+        0,
+        133,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "signedExtensionIdentifiers": [
+    "CheckSpecVersion",
+    "CheckTxVersion",
+    "CheckGenesis",
+    "CheckMortality",
+    "CheckNonce",
+    "CheckWeight",
+    "ChargeTransactionPayment"
+  ],
+  "reviewedSdkMigrationCompatible": true,
+  "rawBreakingChanges": [
+    {
+      "new": "composite",
+      "old": "sequence",
+      "path": "Staking.storage.BondedEras.value.kind"
+    },
+    {
+      "new": "composite",
+      "old": "sequence",
+      "path": "Staking.storage.ClaimedRewards.value.kind"
+    },
+    {
+      "new": "composite",
+      "old": "sequence",
+      "path": "Staking.storage.ErasRewardPoints.value.fields[1].type.fields[0].type.kind"
+    },
+    {
+      "new": "composite",
+      "old": "tuple",
+      "path": "signedExtensions.CheckNonce.additional_signed.kind"
+    },
+    {
+      "new": "primitive",
+      "old": "composite",
+      "path": "signedExtensions.CheckGenesis.additional_signed.kind"
+    },
+    {
+      "new": "slot",
+      "old": "timeslot",
+      "path": "Offences.event.variant[0].fields[1].name"
+    },
+    {
+      "new": "slot",
+      "old": "timeslot",
+      "path": "System.storage.Events.value.element.fields[1].type.variant[37].fields[0].type.variant[0].fields[1].name"
+    },
+    {
+      "new": "tuple",
+      "old": "primitive",
+      "path": "signedExtensions.CheckSpecVersion.additional_signed.kind"
+    },
+    {
+      "new": "variant",
+      "old": "compact",
+      "path": "extrinsic.parameter.Extra.tuple[4].fields[0].type.kind"
+    },
+    {
+      "new": "variant",
+      "old": "compact",
+      "path": "signedExtensions.CheckNonce.ty.fields[0].type.kind"
+    },
+    {
+      "new": 0,
+      "old": 1,
+      "path": "extrinsic.parameter.Extra.tuple[3].fields.length"
+    },
+    {
+      "new": 0,
+      "old": 1,
+      "path": "extrinsic.parameter.Extra.tuple[6].fields.length"
+    },
+    {
+      "new": 0,
+      "old": 1,
+      "path": "signedExtensions.ChargeTransactionPayment.ty.fields.length"
+    },
+    {
+      "new": 0,
+      "old": 1,
+      "path": "signedExtensions.CheckMortality.ty.fields.length"
+    },
+    {
+      "new": 1,
+      "old": 0,
+      "path": "System.event.variant[2].fields.length"
+    },
+    {
+      "new": 1,
+      "old": 0,
+      "path": "System.storage.Events.value.element.fields[1].type.variant[0].fields[0].type.variant[2].fields.length"
+    },
+    {
+      "new": 1,
+      "old": 0,
+      "path": "extrinsic.parameter.Extra.tuple[5].fields.length"
+    },
+    {
+      "new": 1,
+      "old": 0,
+      "path": "signedExtensions.CheckWeight.ty.fields.length"
+    },
+    {
+      "new": 8,
+      "old": 7,
+      "path": "extrinsic.parameter.Extra.tuple.length"
+    },
+    {
+      "new": [
+        "AuthorizeCall",
+        "CheckSpecVersion",
+        "CheckTxVersion",
+        "CheckGenesis",
+        "CheckMortality",
+        "CheckNonce",
+        "CheckWeight",
+        "ChargeTransactionPayment"
+      ],
+      "old": [
+        "CheckSpecVersion",
+        "CheckTxVersion",
+        "CheckGenesis",
+        "CheckMortality",
+        "CheckNonce",
+        "CheckWeight",
+        "ChargeTransactionPayment"
+      ],
+      "path": "extrinsic.signedExtensionOrder"
+    }
+  ],
+  "rawAdditions": [
+    {
+      "palletIndex": 121,
+      "path": "StakingAsyncBridge"
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "BridgeMultisig.calls.variant[3].fields[1].type.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "Council.calls.variant[1].fields[0].type.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "Council.storage.ProposalOf.value.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Identity.calls",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Identity.event",
+      "variant": "RegistrarRemoved",
+      "variantIndex": 22
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "Multisig.calls.variant[0].fields[1].type.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "Scheduler.calls.variant[0].fields[3].type.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "Staking.calls",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "Staking.constants.DisableMinting",
+      "value": [
+        0
+      ]
+    },
+    {
+      "path": "Staking.constants.MaxEraDuration",
+      "value": [
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255,
+        255
+      ]
+    },
+    {
+      "path": "Staking.constants.MaxPruningItems",
+      "value": [
+        100,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "Staking.constants.NominatorFastUnbondDuration",
+      "value": [
+        28,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "Staking.constants.PlanningEraOffset",
+      "value": [
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "Staking.constants.SlashDeferOffset",
+      "value": [
+        1,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "path": "Staking.error",
+      "variant": "CancelledSlash",
+      "variantIndex": 38
+    },
+    {
+      "path": "Staking.error",
+      "variant": "CommissionTooHigh",
+      "variantIndex": 39
+    },
+    {
+      "path": "Staking.error",
+      "variant": "EraNotPrunable",
+      "variantIndex": 37
+    },
+    {
+      "path": "Staking.error",
+      "variant": "EraNotStarted",
+      "variantIndex": 35
+    },
+    {
+      "path": "Staking.error",
+      "variant": "InvalidChillInactiveThreshold",
+      "variantIndex": 42
+    },
+    {
+      "path": "Staking.error",
+      "variant": "InvalidInactivityProof",
+      "variantIndex": 41
+    },
+    {
+      "path": "Staking.error",
+      "variant": "InvalidSlashRecord",
+      "variantIndex": 34
+    },
+    {
+      "path": "Staking.error",
+      "variant": "OptimumGreaterThanCap",
+      "variantIndex": 40
+    },
+    {
+      "path": "Staking.error",
+      "variant": "UnappliedSlashesInPreviousEra",
+      "variantIndex": 36
+    },
+    {
+      "path": "Staking.event",
+      "variant": "EraPruned",
+      "variantIndex": 27
+    },
+    {
+      "path": "Staking.event",
+      "variant": "OffenceReported",
+      "variantIndex": 21
+    },
+    {
+      "path": "Staking.event",
+      "variant": "OffenceTooOld",
+      "variantIndex": 26
+    },
+    {
+      "path": "Staking.event",
+      "variant": "PagedElectionProceeded",
+      "variantIndex": 20
+    },
+    {
+      "path": "Staking.event",
+      "variant": "SessionRotated",
+      "variantIndex": 24
+    },
+    {
+      "path": "Staking.event",
+      "variant": "SlashCancelled",
+      "variantIndex": 23
+    },
+    {
+      "path": "Staking.event",
+      "variant": "SlashComputed",
+      "variantIndex": 22
+    },
+    {
+      "path": "Staking.event",
+      "variant": "StakerRemoved",
+      "variantIndex": 19
+    },
+    {
+      "path": "Staking.event",
+      "variant": "Unexpected",
+      "variantIndex": 25
+    },
+    {
+      "path": "Staking.event",
+      "variant": "ValidatorIncentiveConfigSet",
+      "variantIndex": 29
+    },
+    {
+      "path": "Staking.event",
+      "variant": "ValidatorIncentivePaid",
+      "variantIndex": 28
+    },
+    {
+      "path": "Staking.storage.AreNominatorsSlashable",
+      "storage": {
+        "default": [
+          1
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 8
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.AsyncUnappliedSlashes",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Twox64Concat"
+            ],
+            "key": 723,
+            "value": 724
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.CancelledSlashes",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 4,
+            "value": 730
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ChillInactiveThreshold",
+      "storage": {
+        "default": [
+          84,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 4
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.DisableMintingGuard",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Plain": 4
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ElectableStashes",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 733
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.EraPruningState",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 4,
+            "value": 735
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ErasNominatorsSlashable",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 4,
+            "value": 8
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ErasSumValidatorIncentiveWeight",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 4,
+            "value": 6
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ErasSumWeightedPoints",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 4,
+            "value": 6
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ErasValidatorIncentiveBudget",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 4,
+            "value": 6
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ErasValidatorIncentiveWeight",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Twox64Concat"
+            ],
+            "key": 705,
+            "value": 6
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.HardCapSelfStake",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 6
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.LastValidatorEra",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat"
+            ],
+            "key": 0,
+            "value": 4
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.MaxCommission",
+      "storage": {
+        "default": [
+          0,
+          202,
+          154,
+          59
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 80
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.NextDeferredSlashEra",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Plain": 4
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.NextElectionPage",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Plain": 4
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.OffenceQueue",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Map": {
+            "hashers": [
+              "Twox64Concat",
+              "Twox64Concat"
+            ],
+            "key": 705,
+            "value": 720
+          }
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.OffenceQueueEras",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Plain": 721
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.OptimumSelfStake",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 6
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.ProcessingOffence",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Plain": 722
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.SelfStakeSlopeFactor",
+      "storage": {
+        "default": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 80
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.VoterSnapshotStatus",
+      "storage": {
+        "default": [
+          2
+        ],
+        "modifier": "Default",
+        "ty": {
+          "Plain": 732
+        }
+      }
+    },
+    {
+      "path": "Staking.storage.WeightedPointsFormulaStartEra",
+      "storage": {
+        "default": [
+          0
+        ],
+        "modifier": "Optional",
+        "ty": {
+          "Plain": 4
+        }
+      }
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "EraPruned",
+      "variantIndex": 27
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "OffenceReported",
+      "variantIndex": 21
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "OffenceTooOld",
+      "variantIndex": 26
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "PagedElectionProceeded",
+      "variantIndex": 20
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "SessionRotated",
+      "variantIndex": 24
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "SlashCancelled",
+      "variantIndex": 23
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "SlashComputed",
+      "variantIndex": 22
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "StakerRemoved",
+      "variantIndex": 19
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "Unexpected",
+      "variantIndex": 25
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "ValidatorIncentiveConfigSet",
+      "variantIndex": 29
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[17].fields[0].type",
+      "variant": "ValidatorIncentivePaid",
+      "variantIndex": 28
+    },
+    {
+      "path": "System.storage.Events.value.element.fields[1].type.variant[41].fields[0].type",
+      "variant": "RegistrarRemoved",
+      "variantIndex": 22
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "TechnicalCommittee.calls.variant[1].fields[0].type.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "TechnicalCommittee.storage.ProposalOf.value.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "Utility.calls.variant[0].fields[0].type.element.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "XorFee.calls.variant[3].fields[0].type.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "apply_slash",
+      "variantIndex": 31
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "cancel_async_deferred_slash",
+      "variantIndex": 36
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "chill_inactive",
+      "variantIndex": 35
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "prune_era_step",
+      "variantIndex": 32
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "set_async_staking_configs",
+      "variantIndex": 38
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "set_max_commission",
+      "variantIndex": 37
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[17].fields[0].type",
+      "variant": "set_validator_self_stake_incentive_config",
+      "variantIndex": 34
+    },
+    {
+      "path": "extrinsic.parameter.Call.variant[41].fields[0].type",
+      "variant": "remove_registrar",
+      "variantIndex": 24
+    }
+  ],
+  "reviewedAdditions": [
+    {
+      "path": "Identity.calls",
+      "variant": "remove_registrar",
+      "variantIndex": 24,
+      "field": "index",
+      "fieldEncoding": "Compact<u32>"
+    },
+    {
+      "path": "Identity.event",
+      "variant": "RegistrarRemoved",
+      "variantIndex": 22,
+      "field": "registrar_index",
+      "fieldEncoding": "u32"
+    }
+  ],
+  "reviewedEventChanges": [
+    {
+      "event": "System.CodeUpdated",
+      "index": 2,
+      "change": "unit to {hash: runtime Hash}",
+      "binaryCompatible": false,
+      "requiresMetadataRefresh": true
+    },
+    {
+      "event": "Offences.Offence",
+      "index": 0,
+      "change": "timeslot field renamed slot with unchanged type",
+      "binaryCompatible": true,
+      "requiresMetadataRefresh": true
+    }
+  ],
+  "reviewedSignedExtensionChange": {
+    "added": "AuthorizeCall",
+    "position": 0,
+    "explicitEncodedBytes": 0,
+    "implicitEncodedBytes": 0,
+    "existingOrderAndTypesPreserved": true,
+    "candidateIdentifiers": [
+      "AuthorizeCall",
+      "CheckSpecVersion",
+      "CheckTxVersion",
+      "CheckGenesis",
+      "CheckMortality",
+      "CheckNonce",
+      "CheckWeight",
+      "ChargeTransactionPayment"
+    ],
+    "requiresTransactionVersion": 133
+  },
+  "reviewedAsyncStakingMigrationCompatible": true,
+  "reviewedAsyncAdditions": [
+    {
+      "path": "Staking.calls.cancel_async_deferred_slash",
+      "shapeSha256": "e07318bead66c4bfdd9432ed37560fe51fb1e30e813982b6329c3e509845058f"
+    },
+    {
+      "path": "Staking.calls.set_async_staking_configs",
+      "shapeSha256": "97568081a5f65e92f5b26fd7e66e6aad0afd21b7e7be4a43ade6cc2e1ae9b222"
+    },
+    {
+      "path": "Staking.calls.apply_slash",
+      "shapeSha256": "dc2fd8db65fc2b3692a0922dc5850f8049dd6a9fb3cd00d64fda4592bbbaa4d7"
+    },
+    {
+      "path": "Staking.calls.prune_era_step",
+      "shapeSha256": "35c3a998bb90b98d375550460e10420c44b6de718583dcdca10bf0992cb8131c"
+    },
+    {
+      "path": "Staking.calls.set_max_commission",
+      "shapeSha256": "760f339facb2cef4f81f6de88ba7caa6af0282976a04bbaa82d15629474bf223"
+    },
+    {
+      "path": "Staking.calls.set_validator_self_stake_incentive_config",
+      "shapeSha256": "788308370ca3efddb2b7160eec406969b18d4d411b00aafa1d7af44a04de5de6"
+    },
+    {
+      "path": "Staking.calls.chill_inactive",
+      "shapeSha256": "62ca6aece80a31ca53397794014c39223b31e7337a07b97f0d0c519fe4ca8c91"
+    },
+    {
+      "path": "Staking.event.StakerRemoved",
+      "shapeSha256": "b49c419e2225db4635eba2b23fe022fd137b8dc17c0779367a7a925f1d4d1e53"
+    },
+    {
+      "path": "Staking.event.PagedElectionProceeded",
+      "shapeSha256": "52344f15968baeac59fdc5fc11809700a2b4d46699e2c567c013d79579020dfd"
+    },
+    {
+      "path": "Staking.event.OffenceReported",
+      "shapeSha256": "4b5960fa3bd4a822901431c89876730f4c9230c3453d7af7326f9c74cc1eaed7"
+    },
+    {
+      "path": "Staking.event.SlashComputed",
+      "shapeSha256": "419af5753f6b956b6ccf717e39ca3de5e6e62c7f4ac3f1d6d655fdf96912077b"
+    },
+    {
+      "path": "Staking.event.SlashCancelled",
+      "shapeSha256": "c9badc284327be20a43e5abe71ff25954731a1b793a50c3abb9fbf6b4332333e"
+    },
+    {
+      "path": "Staking.event.SessionRotated",
+      "shapeSha256": "bef453821788e9a6c1a47f70defaeefe484e984f98c651c94a966970cabf89d3"
+    },
+    {
+      "path": "Staking.event.Unexpected",
+      "shapeSha256": "d914b9fc2eef9cbdd8b7d91afbf43c16b760054ba2c598c2e86895cb66f622e5"
+    },
+    {
+      "path": "Staking.event.OffenceTooOld",
+      "shapeSha256": "2ac69bba1bfb42e7559a5eacd5391f66bfe0b95ba022314b0850249ba903acb5"
+    },
+    {
+      "path": "Staking.event.EraPruned",
+      "shapeSha256": "50ac6103f38a5a6baa61ad8b823a285eb14e10d5cd5b68f6695285b944cf1fea"
+    },
+    {
+      "path": "Staking.event.ValidatorIncentivePaid",
+      "shapeSha256": "566840d13785a13e530b05b9128cbc34aa85beb9a898c3ef1a505e36fbd1f7ef"
+    },
+    {
+      "path": "Staking.event.ValidatorIncentiveConfigSet",
+      "shapeSha256": "d962f5097267ac5afacea5dd32e4afa08b78107286352cf55872aab5df0f94b3"
+    },
+    {
+      "path": "Staking.error.InvalidSlashRecord",
+      "shapeSha256": "cad2965edbac5d5deed8297f471d3d190d2e3442624dedaa9229d624ff3d0341"
+    },
+    {
+      "path": "Staking.error.EraNotStarted",
+      "shapeSha256": "6b5350c7a864fa05cec693b1980518b98e48a947d75f8ffe41df28af7a614430"
+    },
+    {
+      "path": "Staking.error.UnappliedSlashesInPreviousEra",
+      "shapeSha256": "41071920c6f08e28ef629e87e36f43b64ce6b203d9b680e2b9725760311dea0d"
+    },
+    {
+      "path": "Staking.error.EraNotPrunable",
+      "shapeSha256": "40ca87204e085827587df3b0cce9854d0ae9992f4535b1f32cd6e712fe58af66"
+    },
+    {
+      "path": "Staking.error.CancelledSlash",
+      "shapeSha256": "6564709b29c44f1e5876161fb8027240097b6a97b4f45a1cbda68f75c2f36f5e"
+    },
+    {
+      "path": "Staking.error.CommissionTooHigh",
+      "shapeSha256": "4b5a783370943fcfbb8a1670259f5bbee9765f99e629428d2cc183bcd51fa77c"
+    },
+    {
+      "path": "Staking.error.OptimumGreaterThanCap",
+      "shapeSha256": "84a9c016dd91a377cd0abf4641e8c88ead279b35d5cd4f226094c424b5674fc8"
+    },
+    {
+      "path": "Staking.error.InvalidInactivityProof",
+      "shapeSha256": "a322aa6bb73df451231cd8d06e909954002a448010e8c453c2c58969b6e2f95d"
+    },
+    {
+      "path": "Staking.error.InvalidChillInactiveThreshold",
+      "shapeSha256": "ded0d4b5606107ef8fe11e257287fed64cc59155de52270784ddd586c4c13213"
+    },
+    {
+      "path": "Staking.storage.MaxCommission",
+      "shapeSha256": "f2fdbac86d31c837d31829c653bcdf1bf5fe7754849d23b6b25ea45e57366cd7"
+    },
+    {
+      "path": "Staking.storage.DisableMintingGuard",
+      "shapeSha256": "eea0f94b625aee236824d9301ee1e87abcd6b9720f042d4349d8be1e9b9e07ce"
+    },
+    {
+      "path": "Staking.storage.OptimumSelfStake",
+      "shapeSha256": "e72daa26e164fdf18b1769fbdf67ebb50464a4b7e0e5c8b7b25cb2999daab8b4"
+    },
+    {
+      "path": "Staking.storage.HardCapSelfStake",
+      "shapeSha256": "2e73cd9aa522fba0db3a40cf5c1a28a04be4f3671037adcee1a0c84be8eb715b"
+    },
+    {
+      "path": "Staking.storage.SelfStakeSlopeFactor",
+      "shapeSha256": "9e6cabc888f92122d13e5aa38fcdf0ff5ff540b12d9ea0199cd6da0f7ef92c92"
+    },
+    {
+      "path": "Staking.storage.ErasValidatorIncentiveBudget",
+      "shapeSha256": "6fae4c0d721f27f26f673da3a379a2dae52470eb8ebf76438d092ff3b27559a0"
+    },
+    {
+      "path": "Staking.storage.ErasSumValidatorIncentiveWeight",
+      "shapeSha256": "ecdba6bbf056d89189cd5395c996bdf14208186c1aa0ef149d7eb3428d80a4b6"
+    },
+    {
+      "path": "Staking.storage.ErasValidatorIncentiveWeight",
+      "shapeSha256": "dc43ca846bd1989af24f89f01b24b3ea58c1a2ff12d1e3e350ea806751b82a16"
+    },
+    {
+      "path": "Staking.storage.ErasSumWeightedPoints",
+      "shapeSha256": "b08186486ee8dde5c637f76ce95949756ad885c83b2918800a481cb7b3782eb1"
+    },
+    {
+      "path": "Staking.storage.WeightedPointsFormulaStartEra",
+      "shapeSha256": "f89faf4550ff768b43ff9367ad46467635c795760e79517668ead971b869718f"
+    },
+    {
+      "path": "Staking.storage.AreNominatorsSlashable",
+      "shapeSha256": "aed8d60c55fc3fee30e74109ca6a490d09724921a63420022aaa86c918f245b5"
+    },
+    {
+      "path": "Staking.storage.ErasNominatorsSlashable",
+      "shapeSha256": "2b255eff8d8303c0b040d2673cb67f14065a9bc327f91e49e730de3e5e80b30e"
+    },
+    {
+      "path": "Staking.storage.LastValidatorEra",
+      "shapeSha256": "6d071ac421fb4723a2951c981e62cf439a42eafbeedb3a1077c0e129abe9db38"
+    },
+    {
+      "path": "Staking.storage.OffenceQueue",
+      "shapeSha256": "4646696cc94c4275ebe68a219b60b32f195aa653beeca748fafdbfa7d26e6d4f"
+    },
+    {
+      "path": "Staking.storage.OffenceQueueEras",
+      "shapeSha256": "258274195c77c6da511c49ee42c821ccf53810007bb62da15f6549d0e43a5432"
+    },
+    {
+      "path": "Staking.storage.ProcessingOffence",
+      "shapeSha256": "09c183a2216b4f67236dc23b1fe04cf379c190b45793c3eabbdd8d311d487d30"
+    },
+    {
+      "path": "Staking.storage.AsyncUnappliedSlashes",
+      "shapeSha256": "3a458400e8d738946e89b59649d187e87f30242e25878bffe774feb6896ac3de"
+    },
+    {
+      "path": "Staking.storage.NextDeferredSlashEra",
+      "shapeSha256": "b7503225d52776527d529e511f355c0bd08031ff0e6ffaeaea2dc20431a50293"
+    },
+    {
+      "path": "Staking.storage.CancelledSlashes",
+      "shapeSha256": "0d706558e00e31c3e25617fb8d2b94a56d1cc611b045b366bb611156b3cd3b60"
+    },
+    {
+      "path": "Staking.storage.VoterSnapshotStatus",
+      "shapeSha256": "23ea174bb5be22c6c7e623d8d957869665cfaa51e59310b7d4dd53b1f9cf59b4"
+    },
+    {
+      "path": "Staking.storage.NextElectionPage",
+      "shapeSha256": "33cddd64cf8071cd4518ff4ab3b12e41c3d0ef45ffa9c3862955d30cc1ffdc29"
+    },
+    {
+      "path": "Staking.storage.ElectableStashes",
+      "shapeSha256": "7a06c80547efd6aff9fbbb66d65fa9a82df5688d7cc9dd59ab3bd8bd93113657"
+    },
+    {
+      "path": "Staking.storage.EraPruningState",
+      "shapeSha256": "4dcd8fc3df91d4e52cbcb87061109ac894a52641738d5a8f49df735a8839abfd"
+    },
+    {
+      "path": "Staking.storage.ChillInactiveThreshold",
+      "shapeSha256": "d194d8f9e32d96803897b5897b499de33e343dc83263b2df69fb23c94cff5785"
+    },
+    {
+      "path": "Staking.constants.PlanningEraOffset",
+      "shapeSha256": "4687287ac80e4f62c4602dba2d169778892f58ddc2d76ce7794027f4e1f73d62"
+    },
+    {
+      "path": "Staking.constants.NominatorFastUnbondDuration",
+      "shapeSha256": "c9ae2952c76cc596fca4da9c3095f458c9d5d046d9312d1212161add4eac0187"
+    },
+    {
+      "path": "Staking.constants.SlashDeferOffset",
+      "shapeSha256": "dbf098852d0c00702537e99f5c77a09ed1fcd988f2ceab54c77be3ef0310f0b3"
+    },
+    {
+      "path": "Staking.constants.DisableMinting",
+      "shapeSha256": "0af079e9d0e2e331b608714c88a6050ebdd6705f53137ee54e4a49dfed5e51e9"
+    },
+    {
+      "path": "Staking.constants.MaxEraDuration",
+      "shapeSha256": "865f542f7cfeada9280ed113b2c70c343ed0c3363415f8391480e6b7f560f34b"
+    },
+    {
+      "path": "Staking.constants.MaxPruningItems",
+      "shapeSha256": "89c1ca84c12a3fa924bc17266711f5985767474c74ab12bde58e673958e66510"
+    },
+    {
+      "path": "StakingAsyncBridge",
+      "shapeSha256": "6e25f9044f4c760cef8fd22078cdd5a8da8e9b256ff34221670381b05d258c21"
+    }
+  ],
+  "reviewedStorageMetadataWrappers": [
+    {
+      "path": "Staking.storage.BondedEras",
+      "wrapper": "bounded_collections::bounded_vec::BoundedVec",
+      "shapeSha256": "899705bc8a61b42e0aeb2d5a8647f65429e9d49ceb61604fe9c4597c960b4beb",
+      "change": "One unnamed codec-transparent container field; entire inner encoding remains strictly compared"
+    },
+    {
+      "path": "Staking.storage.ClaimedRewards",
+      "wrapper": "bounded_collections::weak_bounded_vec::WeakBoundedVec",
+      "shapeSha256": "bc7e0782c62db11ad0038c541f44e65bbea08d8d9def19fc4c3d1e9fc9b6ce9c",
+      "change": "One unnamed codec-transparent container field; entire inner encoding remains strictly compared"
+    },
+    {
+      "path": "Staking.storage.ErasRewardPoints.individual",
+      "wrapper": "bounded_collections::bounded_btree_map::BoundedBTreeMap",
+      "shapeSha256": "c5e9d00aa7ffe3b20278b190e33724d121e29207d7661b380ea423d1a4bcb313",
+      "change": "One unnamed codec-transparent container field; entire inner encoding remains strictly compared"
+    }
+  ],
+  "retainedLegacyStorageOutsideMetadata": [],
+  "requiresStorageMigration": {
+    "pallet": "Staking",
+    "from": 16,
+    "to": 18,
+    "rawStateWitnessRequired": true
+  },
+  "checkedAt": "2026-10-25T13:18:11.105490+00:00",
+  "metadataVersion": 14,
+  "inputs": {
+    "baselineMetadata": {
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/baseline-metadata.json",
+      "sha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f"
+    },
+    "candidateMetadata": {
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/candidate-metadata.json",
+      "sha256": "ecea7effa234d2a1262e17a774bf3adaaa24cb2e3acfab8a048115d4ee6c1b19"
+    },
+    "comparisonScript": {
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/compare-metadata.py",
+      "sha256": "07da2db998f6b8e7b90a46dcfe5c2ff42aa0d91f14024bae1d0abf06c26e860f"
+    }
+  },
+  "selfChecks": [
+    "All portable IDs shifted by10000: unchanged semantics accepted",
+    "Nested u32-to-u64 mutation rejected for staking calls, storage and CheckNonce",
+    "Changed payout_stakers call index rejected",
+    "Signed-extension reorder rejected",
+    "Storage hasher mutation rejected",
+    "Identical bit-sequence storage/order and equivalent serde spellings accepted",
+    "Bit-sequence storage width u8-to-u16 rejected",
+    "Zero-field bit-order marker Msb0-to-Lsb0 rejected by identity path",
+    "Changed bit-order marker layout rejected despite unchanged identity path"
+  ],
+  "comparisonMode": "async-staking-v16-v18-reviewed-changes",
+  "limitations": [
+    "Structural metadata comparison verifies declared SCALE layouts, indices, field order/names, storage hashers/defaults and signed payload shapes. It does not execute migrations or verify behavior or custom codec implementations.",
+    "New enum variants preserve encoding of old values. Older metadata cannot decode those new variants.",
+    "Source paths, documentation, generic type IDs and typeName aliases are ignored; extrinsic Address/Call/Signature/Extra generic parameters are explicitly traversed.",
+    "Constant values may intentionally change. Their encoded types are checked and changed bytes are reported separately."
+  ]
+}

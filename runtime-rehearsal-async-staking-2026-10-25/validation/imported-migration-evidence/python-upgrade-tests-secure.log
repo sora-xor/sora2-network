@@ -1,0 +1,17 @@
+test_bip32_official_vectors (test_dependencies.DependencyMigrationTests.test_bip32_official_vectors) ... ok
+test_bip39_known_seed_and_unicode_normalization (test_dependencies.DependencyMigrationTests.test_bip39_known_seed_and_unicode_normalization) ... ok
+test_ecdsa_cannot_fall_back_to_python_backend (test_dependencies.DependencyMigrationTests.test_ecdsa_cannot_fall_back_to_python_backend) ... ok
+test_invalid_child_cannot_cross_derivation_boundary (test_dependencies.DependencyMigrationTests.test_invalid_child_cannot_cross_derivation_boundary) ... ok
+test_invalid_child_retries_next_index (test_dependencies.DependencyMigrationTests.test_invalid_child_retries_next_index) ... ok
+test_invalid_master_and_derivation_inputs_fail (test_dependencies.DependencyMigrationTests.test_invalid_master_and_derivation_inputs_fail) ... ok
+test_keypair_compatibility_with_upstream (test_dependencies.DependencyMigrationTests.test_keypair_compatibility_with_upstream) ... ok
+test_light_client_is_rejected_without_loading_a_native_backend (test_dependencies.DependencyMigrationTests.test_light_client_is_rejected_without_loading_a_native_backend) ... ok
+test_vulnerable_distribution_is_absent (test_dependencies.DependencyMigrationTests.test_vulnerable_distribution_is_absent) ... ok
+test_cli_authentication_forms_retain_sr25519 (test_governance_compatibility.GovernanceCompatibilityTests.test_cli_authentication_forms_retain_sr25519) ... ok
+test_governance_call_payload_and_extrinsic_bytes_match_upstream (test_governance_compatibility.GovernanceCompatibilityTests.test_governance_call_payload_and_extrinsic_bytes_match_upstream) ... ok
+test_sudo_unchecked_preserves_storage_reset_and_batch (test_governance_compatibility.GovernanceCompatibilityTests.test_sudo_unchecked_preserves_storage_reset_and_batch) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 1.470s
+
+OK

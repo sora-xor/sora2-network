@@ -1,0 +1,50 @@
+[
+  {
+    "label": "babe-all-library",
+    "command": "cargo test --locked -p pallet-babe --lib"
+  },
+  {
+    "label": "grandpa-all-library",
+    "command": "cargo test --locked -p pallet-grandpa --lib"
+  },
+  {
+    "label": "staking-replacement-val-payouts",
+    "command": "cargo test --locked -p pallet-staking --lib replacement_reward"
+  },
+  {
+    "label": "staking-additional-payout-rollback",
+    "command": "cargo test --locked -p pallet-staking --lib additional_payout"
+  },
+  {
+    "label": "staking-deferred-slashes",
+    "command": "cargo test --locked -p pallet-staking --lib deferred_slash"
+  },
+  {
+    "label": "preimage-all-library",
+    "command": "cargo test --locked -p pallet-preimage --lib"
+  },
+  {
+    "label": "identity-all-library",
+    "command": "cargo test --locked --target-dir /Users/takemiyamakoto/dev/sora2-network/target --manifest-path /tmp/sora2-stable2609-migration/identity-harness/Cargo.toml --lib"
+  },
+  {
+    "label": "multisig-upstream-all-library",
+    "command": "cargo test --locked -p pallet-multisig-upstream --lib"
+  },
+  {
+    "label": "support-generic-clone",
+    "command": "cargo test --locked -p frame-support --lib clone"
+  },
+  {
+    "label": "support-short-circuit-membership",
+    "command": "cargo test --locked -p frame-support --lib tuple_membership_preserves_empty_and_short_circuit_behavior"
+  },
+  {
+    "label": "support-short-circuit-pause",
+    "command": "cargo test --locked -p frame-support --lib tuple_pause_queries_preserve_empty_and_short_circuit_behavior"
+  },
+  {
+    "label": "smoldot-zstd-bounds",
+    "command": "cargo test --locked --target-dir /Users/takemiyamakoto/dev/sora2-network/target --manifest-path /tmp/sora2-stable2609-migration/smoldot-harness/Cargo.toml --no-default-features --lib executor::host::zstd"
+  }
+]

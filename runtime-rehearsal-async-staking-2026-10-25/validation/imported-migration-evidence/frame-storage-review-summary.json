@@ -1,0 +1,59 @@
+{
+  "upstreamOldCommit": "cd87d0b95e54c8ffc374334386f3f2b2c7a61f54",
+  "upstreamNewCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "scope": "Direct runtime SDK FRAME dependencies, including cfg optional crates; source comparison supplemented by explicit review of state-bearing code deltas. This is not a replacement for exact-Wasm metadata and production-state execution.",
+  "sdkFramePackagesReviewed": 34,
+  "storageVersionChanges": [],
+  "persistentLayoutMigrationRequiredByReviewedDelta": false,
+  "findings": [
+    {
+      "area": "System/account/session/staking state",
+      "finding": "No AccountInfo field or session key storage layout/bounds changes. Session1/Historical1, Staking16, Balances1, Identity2, ImOnline1, Scheduler4, Grandpa5 retained. Existing pinned134 state already satisfies earlier migration floors."
+    },
+    {
+      "area": "System events",
+      "finding": "CodeUpdated now carries hash:T::Hash. Existing event variant wire payload changes; explicit metadata review and API fixture needed. System.Events is block-local and reset at initialization, so not a persistent storage rewrite requirement."
+    },
+    {
+      "area": "Offences events",
+      "finding": "Offence.timeslot field renamed slot; SCALE bytes unchanged, named client fields differ. Report IDs remain byte-identical for unchanged BABE and GRANDPA Slot encodings."
+    },
+    {
+      "area": "BEEFY offence index",
+      "finding": "Slot adds equivocation_type u8, changing report ID preimages. Runtime uses EquivocationReportSystem=() for both production and wip configurations, so no active historical BEEFY offence index migration is required. Revisit if enabling reporting."
+    },
+    {
+      "area": "Session",
+      "finding": "Key rotation skips redundant can_inc_consumer check for existing locally managed keys; first registration and external-to-local transition still require capacity. No migration."
+    },
+    {
+      "area": "Identity",
+      "finding": "New remove_registrar extrinsic uses call index 24. Upstream inserted RegistrarRemoved among existing events; the local customization appends it at event index 22 so all 22 existing event indices remain unchanged. No new errors are added. Persistent storage layout and storage version remain unchanged. Explicit additive metadata review covers the new call and appended event."
+    },
+    {
+      "area": "BagsList",
+      "finding": "Per-item idle rebag weight accounting replaces whole-budget charge; no new storage fields. Runtime MaxAutoRebagPerBlock=() remains0; idle rebagging disabled."
+    },
+    {
+      "area": "ImOnline",
+      "finding": "Persistent storage is unchanged. Heartbeat admission uses the native AuthorizeCall transaction extension, followed by the existing seven extension fields. The transparent outer payment adapter contains the unchanged SkipCheckIfFeeless and legacy signed-payment stack. It bypasses the signed-payer requirement only for RawOrigin::Authorized with an exact ImOnline heartbeat call and zero tip; nonzero tips are rejected. Both bare payment admission callbacks explicitly reject ImOnline heartbeats with InvalidTransaction::Call before dispatch, closing the aggregate unsigned pre-dispatch fallback; other bare calls and all signed feeless/payment/refund callbacks retain legacy behavior. AuthorizeCall adds no encoded bytes, while its metadata entry and the runtime transaction version change explicitly."
+    },
+    {
+      "area": "Utility",
+      "finding": "Empty batches become Normal dispatch class rather than Operational. This intentional upstream behavior may change fee/priority expectations; test in runtime policy fixtures."
+    },
+    {
+      "area": "Migrations",
+      "finding": "pallet-migrations0 unchanged except hashing import paths. Existing runtime migration tuple remains applicable; no additional FRAME versioned migration identified."
+    },
+    {
+      "area": "Additional try_state",
+      "finding": "BEEFY-MMR and authorship add invariants. Full whole-chain try_state needs complete state; partial native migration snapshot must not claim whole-chain validation."
+    },
+    {
+      "area": "Synchronous staking maintenance",
+      "finding": "Upstream marks pallet-staking deprecated/unmaintained in module documentation. No RustSec package advisory matched current DB. Retaining pallet50 preserves custom VAL payouts, deferred slashes and storage behavior; async staking is separate explicit economic/state migration."
+    }
+  ],
+  "sourceInventorySha256": "94a26a3db4b1a6a09d69389cacaca500cabbb675fe2d28683ad00ee2edf63ca1"
+}

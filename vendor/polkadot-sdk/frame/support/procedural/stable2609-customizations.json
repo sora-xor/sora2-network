@@ -1,0 +1,16 @@
+{
+  "upstreamTag": "polkadot-stable2609",
+  "upstreamCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "upstreamPath": "substrate/frame/support/procedural",
+  "sourcePatch": "stable2609-customizations.patch",
+  "sourcePatchSha256": "050e904ce935dc1a8efac3f008e1b3a0e4c0dc6223d8eecc8ffc5a5b9cc5766c",
+  "upstreamManifestSha256": "ed21453054e5ab7c5fefebf934726466aa41ff4c19e7962531e6924cd963ea44",
+  "sourcePatchReplay": "passed",
+  "changedSourceFiles": [
+    {
+      "path": "src/no_bound/clone.rs",
+      "upstreamSha256": "5d096c3d3c90145159911cb132e8a9b989d9ae92d4f3d961b1daeb4310904171",
+      "localSha256": "ec804085b9f6dd67dcc8b19e24f4c3cd5f64423db1fc561f43a3faa6df0d719d"
+    }
+  ]
+}

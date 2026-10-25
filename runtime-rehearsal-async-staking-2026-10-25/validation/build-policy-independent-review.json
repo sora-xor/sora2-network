@@ -1,0 +1,123 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-25T13:18:43.839524+00:00",
+  "scope": "Independent finalizer.verify_build_policy review using in-memory copies of the completed hardened build evidence; separate from build-runner regression counts.",
+  "buildRunId": "20261025T131233Z-09828f72b5f242e489db42175801a52d",
+  "candidateSha256": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+  "sourceFingerprintSha256": "d67bdf9b8603363f89f8cb11ca3ea49cd4015667701ae0404400aa069476cab5",
+  "sourceFingerprintReused": true,
+  "verifierFunction": "finalize-verification.py:verify_build_policy",
+  "verifierFunctionSha256": "ccddbd7bacadb4d68ae5b6ce1977fdd191760ee98d2ea13dcaba37bf1e322850",
+  "cases": [
+    {
+      "name": "actual_completed_build_policy",
+      "status": "passed",
+      "expectation": "accept",
+      "accepted": true
+    },
+    {
+      "name": "leaked_controlled_crate_skip",
+      "status": "passed",
+      "expectation": "reject",
+      "accepted": false,
+      "mutation": "Add presence-based SKIP_FRAMENODE_RUNTIME_WASM_BUILD=false consistently to both effective environment and policy controlled maps.",
+      "exceptionType": "RuntimeError",
+      "rejection": "Uncontrolled build environment"
+    },
+    {
+      "name": "changed_pinned_toolchain",
+      "status": "passed",
+      "expectation": "reject",
+      "accepted": false,
+      "mutation": "Replace host/Wasm toolchain and reported policy toolchain consistently with nightly-2026-10-22.",
+      "exceptionType": "RuntimeError",
+      "rejection": "Uncontrolled build environment"
+    },
+    {
+      "name": "wrong_force_token",
+      "status": "passed",
+      "expectation": "reject",
+      "accepted": false,
+      "mutation": "Replace both artifactFreshness.forceBuildToken values with a different well-formed run token.",
+      "exceptionType": "RuntimeError",
+      "rejection": "Wasm force token differs"
+    },
+    {
+      "name": "missing_compressed_recreation",
+      "status": "passed",
+      "expectation": "reject",
+      "accepted": false,
+      "mutation": "Remove the compressed Wasm entry from both recreatedAfterBuild inventories.",
+      "exceptionType": "RuntimeError",
+      "rejection": "Wasm exports were not recreated"
+    },
+    {
+      "name": "swapped_candidate_hash",
+      "status": "passed",
+      "expectation": "reject",
+      "accepted": false,
+      "mutation": "Replace candidateSha256 with another valid 64-digit hash while retaining the actual recreated export hash.",
+      "exceptionType": "RuntimeError",
+      "rejection": "Candidate is not recreated export"
+    },
+    {
+      "name": "omitted_policy_test_gate",
+      "status": "passed",
+      "expectation": "reject",
+      "accepted": false,
+      "mutation": "Remove build-policy-tests from the recorded build steps.",
+      "exceptionType": "StopIteration",
+      "rejection": "StopIteration"
+    }
+  ],
+  "acceptedBaselineCases": 1,
+  "rejectedMutationCases": 6,
+  "boundInputs": {
+    "/Users/takemiyamakoto/dev/sora2-network/.cargo/config.toml": "cdccb2613d673e961e994d24596399dd78ab6685e6e244aed684f92ad5fba8da",
+    "/Users/takemiyamakoto/dev/sora2-network/Cargo.lock": "9ea12b23715c44b523f1173512e1b84511b168a855521366f1fa54475c078350",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime/src/lib.rs": "fbdc748c67f54af08d2e66b8e4eba9417ee5e8623b51efb85c23d16c7c53f56b",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/candidate-built.compact.compressed.wasm": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/attempts/wasm-exports-before-20261025T131233Z-09828f72b5f242e489db42175801a52d/Cargo.toml": "69e17bba078b7108e69c97d7fabc2623cd32d2afc2f2754649249dd5ccac6d37",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/attempts/wasm-exports-before-20261025T131233Z-09828f72b5f242e489db42175801a52d/framenode_runtime.compact.compressed.wasm": "535b6499c78769a62701520d0bdf17ef65f07319450ca69a5264e99410e1910f",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/attempts/wasm-exports-before-20261025T131233Z-09828f72b5f242e489db42175801a52d/framenode_runtime.compact.wasm": "5aa9c9b063e13517c2db6bf2a53ad4e073ef4336400b3273675f61a80430e9ac",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/build_environment.py": "c5bbc290baa98d0bcacd140f975ea03f781145cf20d860d16de2ea5d36c678b8",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/candidate-build-evidence.json": "28282832e0a8d1bdce8ed146ca49b73b2284694bf3bb035555504e1c773db1df",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/build-policy-tests.stderr.log": "8a9e563bd48bd0b0fb8463f49e6c21ae28321da886ee276476912c11bc9e046f",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/build-policy-tests.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/clippy-all.stderr.log": "e9c9ab2a1bdab24d66207520394a153527aacaee0747aa90978147b73137f9af",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/clippy-all.stdout.log": "566fc34dd75ec9d3a457d1d3a03062d3df8fa8fadb44e34dd7e437a4787d74c0",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/format.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/format.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/production-feature-graph.stderr.log": "98e4abe53ca68a360862577f61208c290f11ff718578faa8dbe6d637dc410db1",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/production-feature-graph.stdout.log": "a8535d7e2f4405362b67ecdbbefd4d038d0362eaf4559dc02a527d7d13a46a51",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/production-wasm.stderr.log": "c6ed83604d4ce4fb4fcbe22c6d88a880f3a79dd47344dfae30ffe936c1f03435",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/production-wasm.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/source-after-build.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/source-after-build.stdout.log": "1f47f6f7f91c8c504dddc805ab4fcba7e1263ddcf4c368b872f8cf9587a755b3",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/source-after-clippy.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/source-after-clippy.stdout.log": "1f47f6f7f91c8c504dddc805ab4fcba7e1263ddcf4c368b872f8cf9587a755b3",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/source-start.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-logs/source-start.stdout.log": "1f47f6f7f91c8c504dddc805ab4fcba7e1263ddcf4c368b872f8cf9587a755b3",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/final-build-verification.json": "50fcad79ee7fd59ab549a542036350f1141d7168787b94eb3ee341cf2a767ce0",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/finalize-verification.py": "6fa7780ac185d77f0714b0e4cef0584aa75cd26b33ce4dd668883d7b7733c3e1",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/run-build-verification.py": "48e5552e5da201a6fadc5110328726e7981a41a4fadd48e41fc748f042b03a28",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-build-end-check.json": "1f47f6f7f91c8c504dddc805ab4fcba7e1263ddcf4c368b872f8cf9587a755b3",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-build-start-check.json": "1f47f6f7f91c8c504dddc805ab4fcba7e1263ddcf4c368b872f8cf9587a755b3",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-end-check.json": "1f47f6f7f91c8c504dddc805ab4fcba7e1263ddcf4c368b872f8cf9587a755b3",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-start.json": "d67bdf9b8603363f89f8cb11ca3ea49cd4015667701ae0404400aa069476cab5",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-fingerprint.py": "5a85328ed64ee75c15674f43d2d4e07d0d3d94a255a286d9e927af2029e07c63",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/test-build-environment.py": "8141c1f301a31ae2bb5dd93ffb7e139fe54dc52d5f2571858f1257c784b2cbbb",
+    "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/test-build-verification.py": "bb9c8e2372282196b2310aa971837737f653c573cde69acf24d409aede12f3f8",
+    "/Users/takemiyamakoto/dev/sora2-network/rust-toolchain.toml": "4ce59ef54d9496321d8e22297f121082ef981693a2dd5f9a79b2ccc2f1dcfac2"
+  },
+  "reviewedInputsUnchanged": true,
+  "sourceEdits": 0,
+  "cargoCommands": 0,
+  "networkRequests": 0,
+  "submittedTransactions": 0,
+  "limitations": [
+    "Does not mark the concurrently running 24-stage Wasm rehearsal or final aggregation complete.",
+    "Does not rerun or relabel the retained native test executions.",
+    "Omission is rejected with StopIteration in the isolated policy function; the outer verify_build gate also checks the exact required step set."
+  ]
+}

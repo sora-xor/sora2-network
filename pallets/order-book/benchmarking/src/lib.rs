@@ -44,7 +44,6 @@
 #![allow(clippy::type_complexity)]
 // too many benchmarks, doesn't compile otherwise
 #![recursion_limit = "512"]
-#![feature(int_roundings)]
 
 // TODO: rename to `order_book` after upgrading to nightly-2023-07-01+
 #[cfg(test)]

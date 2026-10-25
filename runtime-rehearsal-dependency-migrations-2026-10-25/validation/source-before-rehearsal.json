@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "sourceSha256": "e7baceebe77829ca94a2a8c79f1a83704b759582570f74836c9d0607321dfb69",
+  "supportingSha256": "0b5101909414cf669b1ff926dd9f1afea246663ebcb1c99b3971e8c19ce29b1b",
+  "toolingSha256": "6c07d414012fad60cac3f5b0727805576aca54531d7e625f0c82ba1c6bb721bd",
+  "sourceFiles": 4542,
+  "sourceBytes": 183031994,
+  "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6",
+  "overlaySha256": "60a92e6485e610cea5432fc0ef12d58d2300513b4ba6043c14748771a45db027",
+  "compared": "source",
+  "changes": []
+}

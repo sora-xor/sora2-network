@@ -1,0 +1,3 @@
+[2026-10-25T13:25:08Z WARN  wasm_testbed] Env variable `AUTHORIZE_UPGRADE_CHECK_VERSION` not specified. If your chain is running on Substrate >= 0.9.41, this will most likely yield wrong values for the `parachainSystem::authorizeUpgrade` call hash.
+2026-10-25 22:26:42        REGISTRY: Unknown signed extensions AuthorizeCall found, treating them as no-effect
+{"status":"passed","block":28191008,"networks":1,"legacyBacklogGrandfathered":true,"sampledStoredCallsWithinLimit":true}

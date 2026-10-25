@@ -294,10 +294,7 @@ pub mod pallet {
     pub type SpanSlash<T: Config> = StorageMap<
         pallet_staking::Pallet<T>,
         Twox64Concat,
-        (
-            <T as frame_system::Config>::AccountId,
-            pallet_staking::slashing::SpanIndex,
-        ),
+        (<T as frame_system::Config>::AccountId, u32),
         SpanRecord<BalanceOf<T>>,
         ValueQuery,
     >;
@@ -625,7 +622,7 @@ impl<T: Config> Pallet<T> {
         pallet_staking::MinimumActiveStake::<T>::mutate(|v| {
             *v /= T::StakingConvertBalance::convert(denominator);
         });
-        pallet_staking::ErasStakers::<T>::modify_values(|v| {
+        pallet_staking::legacy::ErasStakers::<T>::modify_values(|v| {
             let mut total = Zero::zero();
             v.own /= T::StakingConvertBalance::convert(denominator);
             total += v.own;
@@ -635,7 +632,7 @@ impl<T: Config> Pallet<T> {
             }
             v.total = total;
         });
-        pallet_staking::ErasStakersClipped::<T>::modify_values(|v| {
+        pallet_staking::legacy::ErasStakersClipped::<T>::modify_values(|v| {
             let mut total = Zero::zero();
             v.own /= T::StakingConvertBalance::convert(denominator);
             total += v.own;
@@ -644,6 +641,66 @@ impl<T: Config> Pallet<T> {
                 total += exp.value;
             }
             v.total = total;
+        });
+        let staking_denominator = T::StakingConvertBalance::convert(denominator);
+        pallet_staking::MinNominatorBond::<T>::mutate(|value| *value /= staking_denominator);
+        pallet_staking::MinValidatorBond::<T>::mutate(|value| *value /= staking_denominator);
+        pallet_staking::OptimumSelfStake::<T>::mutate(|value| *value /= staking_denominator);
+        pallet_staking::HardCapSelfStake::<T>::mutate(|value| *value /= staking_denominator);
+        let mut era_totals = sp_std::collections::btree_map::BTreeMap::<
+            EraIndex,
+            pallet_staking::BalanceOf<T>,
+        >::new();
+        // Prefer paged snapshots where both old and new representations exist for a validator.
+        for (era, validator, exposure) in pallet_staking::legacy::ErasStakers::<T>::iter() {
+            if !pallet_staking::ErasStakersOverview::<T>::contains_key(era, validator) {
+                *era_totals.entry(era).or_default() += exposure.total;
+            }
+        }
+        // Async staking stores current exposures in pages. Recompute each total from
+        // rounded components so the overview remains consistent after denomination.
+        for (era, validator, mut overview) in pallet_staking::ErasStakersOverview::<T>::iter() {
+            overview.own /= staking_denominator;
+            overview.total = overview.own;
+            for page in 0..overview.page_count {
+                pallet_staking::ErasStakersPaged::<T>::mutate((era, &validator, page), |entry| {
+                    if let Some(exposure) = entry {
+                        let mut page_total = Zero::zero();
+                        for nominator in &mut exposure.0.others {
+                            nominator.value /= staking_denominator;
+                            page_total += nominator.value;
+                        }
+                        exposure.0.page_total = page_total;
+                        overview.total += page_total;
+                    }
+                });
+            }
+            *era_totals.entry(era).or_default() += overview.total;
+            pallet_staking::ErasStakersOverview::<T>::insert(era, validator, overview);
+        }
+        // For retained eras use the sum of rounded components, not a separately rounded
+        // original total. Historical totals without exposure retain proportional scaling.
+        pallet_staking::ErasTotalStake::<T>::modify_values(|value| *value /= staking_denominator);
+        for (era, total) in era_totals {
+            pallet_staking::ErasTotalStake::<T>::insert(era, total);
+        }
+        pallet_staking::legacy::HistoricalSlashes::<T>::modify_values(|record| {
+            record.slash.own /= staking_denominator;
+            record.slash.payout /= staking_denominator;
+            for (_, amount) in &mut record.slash.others {
+                *amount /= staking_denominator;
+            }
+        });
+        // ErasValidatorReward is the replacement VAL budget on this runtime. XOR
+        // denomination must not scale it, nor any reward or slash cancellation indices.
+        pallet_staking::AsyncUnappliedSlashes::<T>::modify_values(|slash| {
+            slash.own /= staking_denominator;
+            slash.payout /= staking_denominator;
+            if let Some(others) = slash.others.get_mut(..) {
+                for (_, amount) in others {
+                    *amount /= staking_denominator;
+                }
+            }
         });
         pallet_staking::CanceledSlashPayout::<T>::mutate(|v| {
             *v /= T::StakingConvertBalance::convert(denominator);

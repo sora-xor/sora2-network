@@ -604,7 +604,7 @@ impl RepairPlan {
             "schema": 3,
             "matched_entries": self.matched,
             "changed_entries": self.changed,
-            "replacement_blake2_256": hex(&sp_core::hashing::blake2_256(&self.replacement)),
+            "replacement_blake2_256": hex(&sp_io::hashing::blake2_256(&self.replacement)),
         })
     }
 }

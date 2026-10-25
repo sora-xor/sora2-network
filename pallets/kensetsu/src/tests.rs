@@ -2183,6 +2183,10 @@ fn test_accrue_block_limit() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Keep proving that the retired bare keeper interface rejects unsigned accrual"
+)]
 fn unsigned_accrual_is_rejected_regardless_of_quota() {
     new_test_ext().execute_with(|| {
         let cdp_id = setup_accruable_cdps(1)[0];
@@ -3628,6 +3632,10 @@ fn denominate_zero_factor_with_mixed_collateral_infos_rolls_back_all() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Verify legacy unsigned validation and preparation reject retired keeper calls without state changes"
+)]
 fn funded_maintenance_rejects_unsigned_and_root_origins_without_side_effects() {
     new_test_ext().execute_with(|| {
         use frame_support::dispatch::{GetDispatchInfo, Pays};

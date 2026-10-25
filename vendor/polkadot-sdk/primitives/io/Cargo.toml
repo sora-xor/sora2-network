@@ -1,0 +1,270 @@
+# Vendored from polkadot-stable2609; see SORA-PATCH.md.
+
+["package"]
+"name" = "sp-io"
+"version" = "49.0.0"
+"authors" = ["Parity Technologies <admin@parity.io>"]
+"edition" = "2021"
+"license" = "Apache-2.0"
+"homepage" = "https://paritytech.github.io/polkadot-sdk/"
+"repository" = "https://github.com/paritytech/polkadot-sdk.git"
+"description" = "I/O for Substrate runtimes"
+"documentation" = "https://docs.rs/sp-io"
+"readme" = "README.md"
+"build" = "build.rs"
+
+["package"."metadata"]
+
+["package"."metadata"."docs"]
+
+["package"."metadata"."docs"."rs"]
+"targets" = ["x86_64-unknown-linux-gnu"]
+
+["lints"]
+
+["lints"."rust"]
+
+["lints"."rust"."suspicious_double_ref_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."rust"."unexpected_cfgs"]
+"level" = "warn"
+"check-cfg" = ["cfg(build_opt_level, values(\"3\"))", "cfg(build_profile, values(\"debug\", \"release\"))", "cfg(enable_alloc_error_handler)", "cfg(fuzzing)", "cfg(ignore_flaky_test)", "cfg(revive_debug)", "cfg(substrate_runtime)"]
+
+["lints"."clippy"]
+
+["lints"."clippy"."all"]
+"level" = "allow"
+"priority" = 0
+
+["lints"."clippy"."bind_instead_of_map"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."borrowed-box"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."complexity"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."correctness"]
+"level" = "warn"
+"priority" = 1
+
+["lints"."clippy"."default_constructed_unit_structs"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."derivable_impls"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."eq_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."erasing_op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."extra-unused-type-parameters"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."identity-op"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."if-same-then-else"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless-lifetimes"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."needless_option_as_deref"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."nonminimal-bool"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."option-map-unit-fn"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."stable_sort_primitive"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."too-many-arguments"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."type_complexity"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unit_arg"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."unnecessary_cast"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."useless_conversion"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."while_immutable_condition"]
+"level" = "allow"
+"priority" = 2
+
+["lints"."clippy"."zero-prefixed-literal"]
+"level" = "allow"
+"priority" = 2
+
+["dependencies"]
+
+["dependencies"."bytes"]
+"version" = "1.4.0"
+"default-features" = false
+
+["dependencies"."codec"]
+"version" = "3.7.5"
+"default-features" = false
+"package" = "parity-scale-codec"
+"features" = ["bytes"]
+
+["dependencies"."secp256k1"]
+"version" = "0.28.0"
+"default-features" = true
+"features" = ["global-context", "recovery"]
+"optional" = true
+
+["dependencies"."sp-core"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-crypto-hashing"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-externalities"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-keystore"]
+"default-features" = false
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-runtime-interface"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-state-machine"]
+"default-features" = false
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-tracing"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."sp-trie"]
+"default-features" = false
+"optional" = true
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["dependencies"."tracing"]
+"version" = "0.1.37"
+"default-features" = false
+
+["dependencies"."tracing-core"]
+"version" = "0.1.32"
+"default-features" = false
+
+["dependencies"."libsecp256k1"]
+"package" = "sora-secp256k1-compat"
+"path" = "../../../sora-secp256k1-compat"
+"default-features" = false
+
+["target"]
+
+["target"."cfg(not(substrate_runtime))"]
+
+["target"."cfg(not(substrate_runtime))"."dependencies"]
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."sp-keystore"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."sp-trie"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."sp-state-machine"]
+"default-features" = false
+"git" = "https://github.com/paritytech/polkadot-sdk.git"
+"tag" = "polkadot-stable2609"
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."log"]
+"version" = "0.4.22"
+"default-features" = true
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."libsecp256k1"]
+"package" = "sora-secp256k1-compat"
+"path" = "../../../sora-secp256k1-compat"
+"default-features" = false
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."secp256k1"]
+"version" = "0.28.0"
+"default-features" = false
+"features" = ["alloc", "recovery"]
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."ed25519-dalek"]
+"version" = "2.1"
+"default-features" = false
+
+["target"."cfg(not(substrate_runtime))"."dependencies"."docify"]
+"version" = "0.2.9"
+
+["target"."cfg(all(any(target_arch = \"riscv32\", target_arch = \"riscv64\"), substrate_runtime))"]
+
+["target"."cfg(all(any(target_arch = \"riscv32\", target_arch = \"riscv64\"), substrate_runtime))"."dependencies"]
+
+["target"."cfg(all(any(target_arch = \"riscv32\", target_arch = \"riscv64\"), substrate_runtime))"."dependencies"."polkavm-derive"]
+"version" = "0.35.0"
+
+["build-dependencies"]
+
+["build-dependencies"."rustversion"]
+"version" = "1.0.17"
+
+["features"]
+"default" = ["std"]
+"std" = ["bytes/std", "codec/std", "ed25519-dalek/std", "libsecp256k1/std", "log/std", "secp256k1/global-context", "secp256k1/std", "sp-core/std", "sp-crypto-hashing/std", "sp-externalities/std", "sp-keystore/std", "sp-runtime-interface/std", "sp-state-machine/std", "sp-tracing/std", "sp-trie/std", "tracing-core/std", "tracing/std"]
+"with-tracing" = ["sp-tracing/with-tracing"]
+"disable_panic_handler" = []
+"disable_oom" = []
+"disable_allocator" = []
+"improved_panic_error_reporting" = []
+"bls-experimental" = ["sp-core/bls-experimental", "sp-keystore/bls-experimental"]
+"bandersnatch-experimental" = ["sp-core/bandersnatch-experimental", "sp-keystore/bandersnatch-experimental"]

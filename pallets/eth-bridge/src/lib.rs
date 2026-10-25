@@ -380,7 +380,7 @@ pub mod pallet {
     use common::{ContentSource, Description};
     use frame_support::__private::log;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::{GetCallMetadata, StorageVersion};
+    use frame_support::traits::{GetCallMetadata, IsSubType, StorageVersion};
     use frame_support::transactional;
     use frame_support::weights::WeightToFeePolynomial;
     use frame_system::pallet_prelude::*;
@@ -403,6 +403,8 @@ pub mod pallet {
         /// The overarching dispatch call type.
         type RuntimeCall: From<Call<Self>>
             + From<bridge_multisig::Call<Self>>
+            + IsSubType<Call<Self>>
+            + IsSubType<bridge_multisig::Call<Self>>
             + Codec
             + Clone
             + GetCallMetadata

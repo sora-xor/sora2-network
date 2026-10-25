@@ -10,7 +10,7 @@ use sp_runtime::{generic::Preamble, FixedPointNumber, FixedU128};
 fn nonce(encoded: &[u8]) -> u32 {
     let tx = UncheckedExtrinsic::decode(&mut &encoded[..]).unwrap();
     match tx.preamble {
-        Preamble::Signed(_, _, extra) => extra.4 .0,
+        Preamble::Signed(_, _, extra) => extra.5 .0,
         _ => panic!("keeper transaction must be signed"),
     }
 }

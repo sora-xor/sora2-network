@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-10-25T13:53:58.303Z",
+  "endpoint": "wss://mof2.sora.org",
+  "finalizedBlock": 28191295,
+  "finalizedHash": "0x03f4ed58e6c780a14a880d9f56b1d77daf3912dc4219fc8d02eab7113e539afe",
+  "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "specVersion": 134,
+  "transactionVersion": 131,
+  "codeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+  "codeBytes": 3066913,
+  "reviewedBaselineUnchanged": true
+}

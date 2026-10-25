@@ -1,0 +1,2722 @@
+{
+  "status": "passed",
+  "method": "Typed AST comparison: mapping keys are literal String/InsertName values, including Null and Off. global.types duplicate definitions reduce to final HashMap insertions and only global type-entry order is ignored. All remaining mapping/sequence and struct/enum order is retained. Scalar type spellings remain strings; unquoted null shape values remain unit payloads, and null spec bounds remain Option<u64>::None. This models legacy typed deserialization, not generic YAML scalar coercion.",
+  "sourceSemantics": "scale-info-legacy/src/chain_types.rs DeserializableChainTypes.types is HashMap<InsertName,DeserializableShape>; repeated map entries replace earlier values.",
+  "files": [
+    {
+      "path": "types/kusama_assethub_types.yaml",
+      "upstreamSha256": "67bc8b1cfb799263cef35b6974e4039b07d59c8ec8914d1b25706593f20457cf",
+      "localSha256": "28518ff4e2cd55eb9589756b98818a4700babcd206ce49c835488289c1009e46",
+      "completeRegistrySemanticsSha256": "15a74018b7dab245745ffe2a0e518a54adbb36d934a0903c3e584def3818beda",
+      "completeRegistrySemanticsUnchanged": true,
+      "duplicatesRemoved": 20,
+      "identicalFinalDefinitions": 11,
+      "discardedDefinitions": [
+        {
+          "key": "ChangesTrieConfiguration",
+          "removedStartLine": 24,
+          "removedEndLine": 26,
+          "retainedOriginalLine": 194,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    ChangesTrieConfiguration:\n      digest_interval: u32\n      digest_levels: u32\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "digest_interval"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ],
+              [
+                "scalar",
+                null,
+                "digest_levels"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "digest_interval"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ],
+              [
+                "scalar",
+                null,
+                "digest_levels"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    ChangesTrieConfiguration:\n      digest_interval: u32\n      digest_levels: u32\n"
+        },
+        {
+          "key": "RefCount",
+          "removedStartLine": 31,
+          "removedEndLine": 31,
+          "retainedOriginalLine": 1340,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    RefCount: u8\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u8"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    RefCount: u32\n"
+        },
+        {
+          "key": "AccountInfo<Index, AccountData>",
+          "removedStartLine": 32,
+          "removedEndLine": 35,
+          "retainedOriginalLine": 1341,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    AccountInfo<Index, AccountData>:\n      nonce: Index\n      refcount: RefCount\n      data: AccountData\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "nonce"
+              ],
+              [
+                "scalar",
+                null,
+                "Index"
+              ],
+              [
+                "scalar",
+                null,
+                "refcount"
+              ],
+              [
+                "scalar",
+                null,
+                "RefCount"
+              ],
+              [
+                "scalar",
+                null,
+                "data"
+              ],
+              [
+                "scalar",
+                null,
+                "AccountData"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "nonce"
+              ],
+              [
+                "scalar",
+                null,
+                "Index"
+              ],
+              [
+                "scalar",
+                null,
+                "consumers"
+              ],
+              [
+                "scalar",
+                null,
+                "RefCount"
+              ],
+              [
+                "scalar",
+                null,
+                "providers"
+              ],
+              [
+                "scalar",
+                null,
+                "RefCount"
+              ],
+              [
+                "scalar",
+                null,
+                "sufficients"
+              ],
+              [
+                "scalar",
+                null,
+                "RefCount"
+              ],
+              [
+                "scalar",
+                null,
+                "data"
+              ],
+              [
+                "scalar",
+                null,
+                "AccountData"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    AccountInfo<Index, AccountData>:\n      nonce: Index\n      consumers: RefCount\n      providers: RefCount\n      sufficients: RefCount\n      data: AccountData\n"
+        },
+        {
+          "key": "<T::Lookup as StaticLookup>::Source",
+          "removedStartLine": 152,
+          "removedEndLine": 152,
+          "retainedOriginalLine": 1282,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    <T::Lookup as StaticLookup>::Source: AccountId\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "AccountId"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "MultiAddress<AccountId32,u32>"
+          ],
+          "retainedDefinition": "    <T::Lookup as StaticLookup>::Source: MultiAddress<AccountId32,u32>\n"
+        },
+        {
+          "key": "<T::Lookup as StaticLookup>::Source",
+          "removedStartLine": 488,
+          "removedEndLine": 488,
+          "retainedOriginalLine": 1282,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    <T::Lookup as StaticLookup>::Source: AccountId\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "AccountId"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "MultiAddress<AccountId32,u32>"
+          ],
+          "retainedDefinition": "    <T::Lookup as StaticLookup>::Source: MultiAddress<AccountId32,u32>\n"
+        },
+        {
+          "key": "Hash",
+          "removedStartLine": 174,
+          "removedEndLine": 174,
+          "retainedOriginalLine": 1259,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    Hash: H256\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "H256"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "H256"
+          ],
+          "retainedDefinition": "    Hash: H256\n"
+        },
+        {
+          "key": "EraIndex",
+          "removedStartLine": 217,
+          "removedEndLine": 217,
+          "retainedOriginalLine": 261,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    EraIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    EraIndex: u32\n"
+        },
+        {
+          "key": "ValidatorIndex",
+          "removedStartLine": 218,
+          "removedEndLine": 218,
+          "retainedOriginalLine": 242,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    ValidatorIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u16"
+          ],
+          "retainedDefinition": "    ValidatorIndex: u16\n"
+        },
+        {
+          "key": "ElectionCompute",
+          "removedStartLine": 274,
+          "removedEndLine": 277,
+          "retainedOriginalLine": 341,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    ElectionCompute:\n      # in previous versions the last entry was \"AuthorityId\"\n      # (since no data attached, and it is via SCALE can rename)\n      _enum: ['OnChain', 'Signed', 'Unsigned']\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "OnChain"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Signed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unsigned"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "OnChain"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Signed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unsigned"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    ElectionCompute:\n      # in previous versions the last entry was \"AuthorityId\"\n      # (since no data attached, and it is via SCALE can rename)\n      _enum: ['OnChain', 'Signed', 'Unsigned']\n"
+        },
+        {
+          "key": "slashing::SlashingSpans",
+          "removedStartLine": 289,
+          "removedEndLine": 293,
+          "retainedOriginalLine": 301,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    slashing::SlashingSpans:\n      span_index: slashing::SpanIndex\n      last_start: EraIndex\n      last_nonzero_slash: EraIndex\n      prior: Vec<EraIndex>\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "span_index"
+              ],
+              [
+                "scalar",
+                null,
+                "slashing::SpanIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_start"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_nonzero_slash"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "prior"
+              ],
+              [
+                "scalar",
+                null,
+                "Vec<EraIndex>"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "span_index"
+              ],
+              [
+                "scalar",
+                null,
+                "slashing::SpanIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_start"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_nonzero_slash"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "prior"
+              ],
+              [
+                "scalar",
+                null,
+                "Vec<EraIndex>"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    slashing::SlashingSpans:\n      span_index: slashing::SpanIndex\n      last_start: EraIndex\n      last_nonzero_slash: EraIndex\n      prior: Vec<EraIndex>\n"
+        },
+        {
+          "key": "Outcome",
+          "removedStartLine": 726,
+          "removedEndLine": 732,
+          "retainedOriginalLine": 1425,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    Outcome:\n      _enum:\n        Complete: u64\n        Incomplete: (u64, XcmError)\n        Error: XcmError\n\n    # xcm::v0::XcmError in v0 ordering\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Mapping",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Complete"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "u64"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Incomplete"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "(u64, XcmError)"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Error"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "XcmError"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Mapping",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Complete"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Weight"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Incomplete"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "(Weight, XcmError)"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Error"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "XcmError"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    Outcome:\n      _enum:\n        Complete: Weight\n        Incomplete: (Weight, XcmError)\n        Error: XcmError\n    # Minimal XCM error enum (v0). Order matches older runtimes sufficiently to decode common cases.\n"
+        },
+        {
+          "key": "XcmError",
+          "removedStartLine": 733,
+          "removedEndLine": 787,
+          "retainedOriginalLine": 1431,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    XcmError:\n      _enum:\n        - Undefined\n        - Unimplemented\n        - UntrustedReserveLocation\n        - UntrustedTeleportLocation\n        - MultiLocationFull\n        - MultiLocationNotInvertible\n        - BadOrigin\n        - InvalidLocation\n        - BadXcmOrigin\n        - NoPermission\n        - UnhandledXcmVersion\n        - UnhandledXcmMessage\n        - UnhandledEffect\n        - EscalationOfPrivilege\n        - UntrustedReserve\n        - DestinationNotInvertible\n        - Transport\n        - Unroutable\n        - UnknownClaim\n        - FailedToDecode\n        - FailedToTransactAsset\n        - NotWithdrawable\n        - LocationCannotHold\n        - ExceedsMaxMessageSize\n        - DestinationUnsupported\n        - RecursionLimitReached\n        - SubscriptionsUnsupported\n        - TooExpensive\n        - Trap\n        - ExpectationFalse\n        - PalletNotFound\n        - NameMismatch\n        - VersionIncompatible\n        - HoldingWouldOverflow\n        - ExportError\n        - ReanchorFailed\n        - NoHoldingBody\n        - NotDepositable\n        - Unbalanced\n        - NameInvalid\n        - ParamsInvalid\n        - Overweight\n        - NotExported\n        - LockError\n        - AccountNotFound\n        - AccountIdConversionFailed\n        - SovereignAccountNotFound\n        - ModuleNotFound\n        - ModuleError\n        - ExpectationNotMet\n        - BadOriginKind\n\n    # XCM v1-style location and assets (used by Versioned* V1/V2)\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Undefined"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unimplemented"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UntrustedReserveLocation"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UntrustedTeleportLocation"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "MultiLocationFull"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "MultiLocationNotInvertible"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "BadOrigin"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "InvalidLocation"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "BadXcmOrigin"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NoPermission"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnhandledXcmVersion"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnhandledXcmMessage"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnhandledEffect"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "EscalationOfPrivilege"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UntrustedReserve"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "DestinationNotInvertible"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Transport"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unroutable"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnknownClaim"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "FailedToDecode"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "FailedToTransactAsset"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NotWithdrawable"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "LocationCannotHold"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ExceedsMaxMessageSize"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "DestinationUnsupported"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "RecursionLimitReached"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "SubscriptionsUnsupported"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "TooExpensive"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Trap"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ExpectationFalse"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "PalletNotFound"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NameMismatch"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "VersionIncompatible"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "HoldingWouldOverflow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ExportError"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ReanchorFailed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NoHoldingBody"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NotDepositable"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unbalanced"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NameInvalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ParamsInvalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Overweight"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NotExported"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "LockError"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "AccountNotFound"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "AccountIdConversionFailed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "SovereignAccountNotFound"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ModuleNotFound"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ModuleError"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ExpectationNotMet"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "BadOriginKind"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Mapping",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Undefined"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unimplemented"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnhandledXcmMessage"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnhandledEffect"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "EscalationOfPrivilege"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UntrustedReserveLocation"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UntrustedTeleportLocation"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "DestinationNotInvertible"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "MultiLocationFull"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "MultiLocationNotInvertible"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "BadOrigin"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "InvalidLocation"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "AssetNotFound"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "FailedToTransactAsset"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NotWithdrawable"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "LocationCannotHold"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ExceedsMaxMessageSize"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "DestinationUnsupported"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Locked"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "OrdersNotEmpty"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "DuplicateOrder"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NotDepositable"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unwitnessed"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnknownClaim"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Trap"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "u64"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Overflow"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnimplementedXcmVersion"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Incomplete"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "NetworkNotSupported"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "BadXcm"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "WeightLimitReached"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "WeightNotComputable"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Barrier"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "SendFailed"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Transport"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unroutable"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "UnknownError"
+                  ],
+                  [
+                    "Psych::Nodes::Sequence",
+                    [
+
+                    ]
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    XcmError:\n      _enum:\n        Undefined: []\n        Unimplemented: []\n        UnhandledXcmMessage: []\n        UnhandledEffect: []\n        EscalationOfPrivilege: []\n        UntrustedReserveLocation: []\n        UntrustedTeleportLocation: []\n        DestinationNotInvertible: []\n        MultiLocationFull: []\n        MultiLocationNotInvertible: []\n        BadOrigin: []\n        InvalidLocation: []\n        AssetNotFound: []\n        FailedToTransactAsset: []\n        NotWithdrawable: []\n        LocationCannotHold: []\n        ExceedsMaxMessageSize: []\n        DestinationUnsupported: []\n        Locked: []\n        OrdersNotEmpty: []\n        DuplicateOrder: []\n        NotDepositable: []\n        Unwitnessed: []\n        UnknownClaim: []\n        Trap: u64\n        Overflow: []\n        UnimplementedXcmVersion: []\n        Incomplete: []\n        NetworkNotSupported: []\n        BadXcm: []\n        WeightLimitReached: []\n        WeightNotComputable: []\n        Barrier: []\n        SendFailed: []\n        Transport: []\n        Unroutable: []\n        UnknownError: []\n"
+        },
+        {
+          "key": "EcdsaSignature",
+          "removedStartLine": 1010,
+          "removedEndLine": 1010,
+          "retainedOriginalLine": 1246,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    EcdsaSignature: '[u8; 65]'\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "[u8; 65]"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "[u8; 65]"
+          ],
+          "retainedDefinition": "    EcdsaSignature: '[u8; 65]'\n"
+        },
+        {
+          "key": "Timepoint<BlockNumber>",
+          "removedStartLine": 1022,
+          "removedEndLine": 1026,
+          "retainedOriginalLine": 1155,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    Timepoint<BlockNumber>:\n      height: BlockNumber\n      index: u32\n\n    # Identity\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "height"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ],
+              [
+                "scalar",
+                null,
+                "index"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "height"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ],
+              [
+                "scalar",
+                null,
+                "index"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    Timepoint<BlockNumber>:\n      height: BlockNumber\n      index: u32\n\n    # Treasury\n"
+        },
+        {
+          "key": "RegistrarIndex",
+          "removedStartLine": 1039,
+          "removedEndLine": 1039,
+          "retainedOriginalLine": 1065,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    RegistrarIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    RegistrarIndex: u32\n"
+        },
+        {
+          "key": "AccountValidity",
+          "removedStartLine": 1129,
+          "removedEndLine": 1136,
+          "retainedOriginalLine": 1206,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    AccountValidity:\n      _enum:\n        - Invalid\n        - Initiated\n        - Pending\n        - ValidLow\n        - ValidHigh\n        - Completed\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Invalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Initiated"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Pending"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidLow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidHigh"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Completed"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Invalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Initiated"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Pending"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidLow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidHigh"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Completed"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    AccountValidity:\n      _enum: ['Invalid', 'Initiated', 'Pending', 'ValidLow', 'ValidHigh', 'Completed']\n\n    # imOnline\n"
+        },
+        {
+          "key": "AssetId",
+          "removedStartLine": 1226,
+          "removedEndLine": 1226,
+          "retainedOriginalLine": 1337,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    AssetId: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    AssetId: u32\n"
+        },
+        {
+          "key": "T::AssetId",
+          "removedStartLine": 1227,
+          "removedEndLine": 1227,
+          "retainedOriginalLine": 1338,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    T::AssetId: AssetId\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "AssetId"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "AssetId"
+          ],
+          "retainedDefinition": "    T::AssetId: AssetId\n"
+        },
+        {
+          "key": "T::ClassId",
+          "removedStartLine": 1232,
+          "removedEndLine": 1232,
+          "retainedOriginalLine": 1394,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    T::ClassId: ClassId\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "ClassId"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    T::ClassId: u32\n"
+        },
+        {
+          "key": "T::InstanceId",
+          "removedStartLine": 1233,
+          "removedEndLine": 1233,
+          "retainedOriginalLine": 1395,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    T::InstanceId: InstanceId\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "InstanceId"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    T::InstanceId: u32\n"
+        }
+      ],
+      "quotedReservedKeys": [
+        {
+          "path": "global.types.Phase<BlockNumber>._enum.Off",
+          "line": 312,
+          "value": "Off",
+          "quoted": true
+        },
+        {
+          "path": "global.types.MultiLocation._enum.Null",
+          "line": 575,
+          "value": "Null",
+          "quoted": true
+        },
+        {
+          "path": "global.types.Order<Call>._enum.Null",
+          "line": 657,
+          "value": "Null",
+          "quoted": true
+        },
+        {
+          "path": "global.types.ResponseV1._enum.Null",
+          "line": 847,
+          "value": "Null",
+          "quoted": true
+        }
+      ]
+    },
+    {
+      "path": "types/kusama_relay_types.yaml",
+      "upstreamSha256": "dd93da882a6bf81d1dc9e9e475905d6ae188571c34d5e26f0e44a656962b1cd5",
+      "localSha256": "eaf89be2e52e46df620045892df714e4e7986ca9f06c90c94b76ed1dc6d78d17",
+      "completeRegistrySemanticsSha256": "68ad52418fbbcbb42bb15552e7536a8b200fa9a8cac0cdb5a91bacc9692cc204",
+      "completeRegistrySemanticsUnchanged": true,
+      "duplicatesRemoved": 16,
+      "identicalFinalDefinitions": 11,
+      "discardedDefinitions": [
+        {
+          "key": "ChangesTrieConfiguration",
+          "removedStartLine": 25,
+          "removedEndLine": 27,
+          "retainedOriginalLine": 209,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    ChangesTrieConfiguration:\n      digest_interval: u32\n      digest_levels: u32\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "digest_interval"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ],
+              [
+                "scalar",
+                null,
+                "digest_levels"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "digest_interval"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ],
+              [
+                "scalar",
+                null,
+                "digest_levels"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    ChangesTrieConfiguration:\n      digest_interval: u32\n      digest_levels: u32\n"
+        },
+        {
+          "key": "<T::Lookup as StaticLookup>::Source",
+          "removedStartLine": 158,
+          "removedEndLine": 158,
+          "retainedOriginalLine": 525,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    <T::Lookup as StaticLookup>::Source: Address\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "Address"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "Address"
+          ],
+          "retainedDefinition": "    <T::Lookup as StaticLookup>::Source: Address\n"
+        },
+        {
+          "key": "Hash",
+          "removedStartLine": 189,
+          "removedEndLine": 189,
+          "retainedOriginalLine": 1025,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    Hash: H256\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "H256"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "H256"
+          ],
+          "retainedDefinition": "    Hash: H256\n"
+        },
+        {
+          "key": "EraIndex",
+          "removedStartLine": 232,
+          "removedEndLine": 232,
+          "retainedOriginalLine": 279,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    EraIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    EraIndex: u32\n"
+        },
+        {
+          "key": "ValidatorIndex",
+          "removedStartLine": 233,
+          "removedEndLine": 233,
+          "retainedOriginalLine": 257,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    ValidatorIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u16"
+          ],
+          "retainedDefinition": "    ValidatorIndex: u16\n"
+        },
+        {
+          "key": "ElectionCompute",
+          "removedStartLine": 292,
+          "removedEndLine": 295,
+          "retainedOriginalLine": 354,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    ElectionCompute:\n      # in previous versions the last entry was \"AuthorityId\"\n      # (since no data attached, and it is via SCALE can rename)\n      _enum: ['OnChain', 'Signed', 'Unsigned']\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "OnChain"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Signed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unsigned"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "OnChain"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Signed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unsigned"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    ElectionCompute:\n      # in previous versions the last entry was \"AuthorityId\"\n      # (since no data attached, and it is via SCALE can rename)\n      _enum: ['OnChain', 'Signed', 'Unsigned']\n"
+        },
+        {
+          "key": "OpaqueNetworkState",
+          "removedStartLine": 400,
+          "removedEndLine": 402,
+          "retainedOriginalLine": 959,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    OpaqueNetworkState:\n      peer_id: Bytes\n      external_addresses: Vec<Bytes>\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "peer_id"
+              ],
+              [
+                "scalar",
+                null,
+                "Bytes"
+              ],
+              [
+                "scalar",
+                null,
+                "external_addresses"
+              ],
+              [
+                "scalar",
+                null,
+                "Vec<Bytes>"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "peer_id"
+              ],
+              [
+                "scalar",
+                null,
+                "OpaquePeerId"
+              ],
+              [
+                "scalar",
+                null,
+                "external_addresses"
+              ],
+              [
+                "scalar",
+                null,
+                "Vec<OpaqueMultiaddr>"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    OpaqueNetworkState:\n      peer_id: OpaquePeerId\n      external_addresses: Vec<OpaqueMultiaddr>\n"
+        },
+        {
+          "key": "AuthIndex",
+          "removedStartLine": 403,
+          "removedEndLine": 403,
+          "retainedOriginalLine": 964,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    AuthIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    AuthIndex: u32\n"
+        },
+        {
+          "key": "SessionIndex",
+          "removedStartLine": 404,
+          "removedEndLine": 404,
+          "retainedOriginalLine": 1010,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    SessionIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    SessionIndex: u32\n"
+        },
+        {
+          "key": "EcdsaSignature",
+          "removedStartLine": 585,
+          "removedEndLine": 585,
+          "retainedOriginalLine": 1012,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    EcdsaSignature: '[u8; 65]'\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "[u8; 65]"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "[u8; 65]"
+          ],
+          "retainedDefinition": "    EcdsaSignature: '[u8; 65]'\n"
+        },
+        {
+          "key": "VestingSchedule<Balance, BlockNumber>",
+          "removedStartLine": 595,
+          "removedEndLine": 595,
+          "retainedOriginalLine": 1229,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    VestingSchedule<Balance, BlockNumber>: VestingInfo<Balance, BlockNumber>\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "VestingInfo<Balance, BlockNumber>"
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "locked"
+              ],
+              [
+                "scalar",
+                null,
+                "Balance"
+              ],
+              [
+                "scalar",
+                null,
+                "per_block"
+              ],
+              [
+                "scalar",
+                null,
+                "Balance"
+              ],
+              [
+                "scalar",
+                null,
+                "starting_block"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    VestingSchedule<Balance, BlockNumber>:\n      locked: Balance\n      per_block: Balance\n      starting_block: BlockNumber\n"
+        },
+        {
+          "key": "VestingSchedule<T::Balance, T::BlockNumber>",
+          "removedStartLine": 597,
+          "removedEndLine": 597,
+          "retainedOriginalLine": 1225,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    VestingSchedule<T::Balance, T::BlockNumber>: VestingInfo<Balance, BlockNumber>\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "VestingInfo<Balance, BlockNumber>"
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "locked"
+              ],
+              [
+                "scalar",
+                null,
+                "T::Balance"
+              ],
+              [
+                "scalar",
+                null,
+                "per_block"
+              ],
+              [
+                "scalar",
+                null,
+                "T::Balance"
+              ],
+              [
+                "scalar",
+                null,
+                "starting_block"
+              ],
+              [
+                "scalar",
+                null,
+                "T::BlockNumber"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    VestingSchedule<T::Balance, T::BlockNumber>:\n      locked: T::Balance\n      per_block: T::Balance\n      starting_block: T::BlockNumber\n"
+        },
+        {
+          "key": "BitVec",
+          "removedStartLine": 697,
+          "removedEndLine": 697,
+          "retainedOriginalLine": 1015,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    BitVec: Vec<u8>\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "Vec<u8>"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "bitvec::vec::BitVec<u8, bitvec::order::Msb0>"
+          ],
+          "retainedDefinition": "    BitVec: bitvec::vec::BitVec<u8, bitvec::order::Msb0>\n"
+        },
+        {
+          "key": "Timepoint<BlockNumber>",
+          "removedStartLine": 771,
+          "removedEndLine": 775,
+          "retainedOriginalLine": 904,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    Timepoint<BlockNumber>:\n      height: BlockNumber\n      index: u32\n\n    # Identity\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "height"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ],
+              [
+                "scalar",
+                null,
+                "index"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "height"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ],
+              [
+                "scalar",
+                null,
+                "index"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    Timepoint<BlockNumber>:\n      height: BlockNumber\n      index: u32\n\n    # Treasury\n"
+        },
+        {
+          "key": "RegistrarIndex",
+          "removedStartLine": 788,
+          "removedEndLine": 788,
+          "retainedOriginalLine": 814,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    RegistrarIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    RegistrarIndex: u32\n"
+        },
+        {
+          "key": "AccountValidity",
+          "removedStartLine": 878,
+          "removedEndLine": 885,
+          "retainedOriginalLine": 955,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    AccountValidity:\n      _enum:\n        - Invalid\n        - Initiated\n        - Pending\n        - ValidLow\n        - ValidHigh\n        - Completed\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Invalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Initiated"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Pending"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidLow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidHigh"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Completed"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Invalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Initiated"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Pending"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidLow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidHigh"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Completed"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    AccountValidity:\n      _enum: ['Invalid', 'Initiated', 'Pending', 'ValidLow', 'ValidHigh', 'Completed']\n\n    # imOnline\n"
+        }
+      ],
+      "quotedReservedKeys": [
+        {
+          "path": "global.types.Phase<BlockNumber>._enum.Off",
+          "line": 335,
+          "value": "Off",
+          "quoted": true
+        },
+        {
+          "path": "global.types.MultiLocation._enum.Null",
+          "line": 1046,
+          "value": "Null",
+          "quoted": true
+        },
+        {
+          "path": "global.types.Order<Call>._enum.Null",
+          "line": 1123,
+          "value": "Null",
+          "quoted": true
+        }
+      ]
+    },
+    {
+      "path": "types/polkadot_relay_types.yaml",
+      "upstreamSha256": "431e1ce89dbcbd53b1c7001ec08342e3f2e96882a171716dce3f6074d8a267c4",
+      "localSha256": "aaf38e916a36fd65f976954279c20fbcac589fcbb2092cbb5c304fe5f0303080",
+      "completeRegistrySemanticsSha256": "4a0bd0e04c6ff387a77074d704f1ea30107ec2c225d8596bfabf5548ff76c596",
+      "completeRegistrySemanticsUnchanged": true,
+      "duplicatesRemoved": 11,
+      "identicalFinalDefinitions": 10,
+      "discardedDefinitions": [
+        {
+          "key": "ChangesTrieConfiguration",
+          "removedStartLine": 24,
+          "removedEndLine": 26,
+          "retainedOriginalLine": 194,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    ChangesTrieConfiguration:\n      digest_interval: u32\n      digest_levels: u32\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "digest_interval"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ],
+              [
+                "scalar",
+                null,
+                "digest_levels"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "digest_interval"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ],
+              [
+                "scalar",
+                null,
+                "digest_levels"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    ChangesTrieConfiguration:\n      digest_interval: u32\n      digest_levels: u32\n"
+        },
+        {
+          "key": "<T::Lookup as StaticLookup>::Source",
+          "removedStartLine": 152,
+          "removedEndLine": 152,
+          "retainedOriginalLine": 488,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    <T::Lookup as StaticLookup>::Source: AccountId\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "AccountId"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "AccountId"
+          ],
+          "retainedDefinition": "    <T::Lookup as StaticLookup>::Source: AccountId\n"
+        },
+        {
+          "key": "Hash",
+          "removedStartLine": 174,
+          "removedEndLine": 174,
+          "retainedOriginalLine": 782,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    Hash: H256\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "H256"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "H256"
+          ],
+          "retainedDefinition": "    Hash: H256\n"
+        },
+        {
+          "key": "EraIndex",
+          "removedStartLine": 217,
+          "removedEndLine": 217,
+          "retainedOriginalLine": 261,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    EraIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    EraIndex: u32\n"
+        },
+        {
+          "key": "ValidatorIndex",
+          "removedStartLine": 218,
+          "removedEndLine": 218,
+          "retainedOriginalLine": 242,
+          "identicalToFinalWinner": false,
+          "removedDefinition": "    ValidatorIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u16"
+          ],
+          "retainedDefinition": "    ValidatorIndex: u16\n"
+        },
+        {
+          "key": "ElectionCompute",
+          "removedStartLine": 274,
+          "removedEndLine": 277,
+          "retainedOriginalLine": 341,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    ElectionCompute:\n      # in previous versions the last entry was \"AuthorityId\"\n      # (since no data attached, and it is via SCALE can rename)\n      _enum: ['OnChain', 'Signed', 'Unsigned']\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "OnChain"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Signed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unsigned"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "OnChain"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Signed"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Unsigned"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    ElectionCompute:\n      # in previous versions the last entry was \"AuthorityId\"\n      # (since no data attached, and it is via SCALE can rename)\n      _enum: ['OnChain', 'Signed', 'Unsigned']\n"
+        },
+        {
+          "key": "slashing::SlashingSpans",
+          "removedStartLine": 289,
+          "removedEndLine": 293,
+          "retainedOriginalLine": 301,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    slashing::SlashingSpans:\n      span_index: slashing::SpanIndex\n      last_start: EraIndex\n      last_nonzero_slash: EraIndex\n      prior: Vec<EraIndex>\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "span_index"
+              ],
+              [
+                "scalar",
+                null,
+                "slashing::SpanIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_start"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_nonzero_slash"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "prior"
+              ],
+              [
+                "scalar",
+                null,
+                "Vec<EraIndex>"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "span_index"
+              ],
+              [
+                "scalar",
+                null,
+                "slashing::SpanIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_start"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "last_nonzero_slash"
+              ],
+              [
+                "scalar",
+                null,
+                "EraIndex"
+              ],
+              [
+                "scalar",
+                null,
+                "prior"
+              ],
+              [
+                "scalar",
+                null,
+                "Vec<EraIndex>"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    slashing::SlashingSpans:\n      span_index: slashing::SpanIndex\n      last_start: EraIndex\n      last_nonzero_slash: EraIndex\n      prior: Vec<EraIndex>\n"
+        },
+        {
+          "key": "EcdsaSignature",
+          "removedStartLine": 547,
+          "removedEndLine": 547,
+          "retainedOriginalLine": 769,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    EcdsaSignature: '[u8; 65]'\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "[u8; 65]"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "[u8; 65]"
+          ],
+          "retainedDefinition": "    EcdsaSignature: '[u8; 65]'\n"
+        },
+        {
+          "key": "Timepoint<BlockNumber>",
+          "removedStartLine": 559,
+          "removedEndLine": 563,
+          "retainedOriginalLine": 692,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    Timepoint<BlockNumber>:\n      height: BlockNumber\n      index: u32\n\n    # Identity\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "height"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ],
+              [
+                "scalar",
+                null,
+                "index"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "height"
+              ],
+              [
+                "scalar",
+                null,
+                "BlockNumber"
+              ],
+              [
+                "scalar",
+                null,
+                "index"
+              ],
+              [
+                "scalar",
+                null,
+                "u32"
+              ]
+            ]
+          ],
+          "retainedDefinition": "    Timepoint<BlockNumber>:\n      height: BlockNumber\n      index: u32\n\n    # Treasury\n"
+        },
+        {
+          "key": "RegistrarIndex",
+          "removedStartLine": 576,
+          "removedEndLine": 576,
+          "retainedOriginalLine": 602,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    RegistrarIndex: u32\n",
+          "removedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedShape": [
+            "scalar",
+            null,
+            "u32"
+          ],
+          "retainedDefinition": "    RegistrarIndex: u32\n"
+        },
+        {
+          "key": "AccountValidity",
+          "removedStartLine": 666,
+          "removedEndLine": 673,
+          "retainedOriginalLine": 743,
+          "identicalToFinalWinner": true,
+          "removedDefinition": "    AccountValidity:\n      _enum:\n        - Invalid\n        - Initiated\n        - Pending\n        - ValidLow\n        - ValidHigh\n        - Completed\n",
+          "removedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Invalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Initiated"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Pending"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidLow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidHigh"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Completed"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedShape": [
+            "Psych::Nodes::Mapping",
+            [
+              [
+                "scalar",
+                null,
+                "_enum"
+              ],
+              [
+                "Psych::Nodes::Sequence",
+                [
+                  [
+                    "scalar",
+                    null,
+                    "Invalid"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Initiated"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Pending"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidLow"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "ValidHigh"
+                  ],
+                  [
+                    "scalar",
+                    null,
+                    "Completed"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          "retainedDefinition": "    AccountValidity:\n      _enum: ['Invalid', 'Initiated', 'Pending', 'ValidLow', 'ValidHigh', 'Completed']\n\n    # imOnline\n"
+        }
+      ],
+      "quotedReservedKeys": [
+        {
+          "path": "global.types.Phase<BlockNumber>._enum.Off",
+          "line": 317,
+          "value": "Off",
+          "quoted": true
+        }
+      ]
+    }
+  ],
+  "reservedKeyNormalization": {
+    "policy": "Explicitly quote reserved String keys and variant names only; leave null unit-shape values and optional spec-version bounds unchanged.",
+    "totalQuotedKeys": 8
+  }
+}

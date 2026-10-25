@@ -50,11 +50,14 @@ mod babe_config;
 mod bags_thresholds;
 mod bridge_multisig_filter;
 pub use bridge_multisig_filter::BridgeMultisigCallFilter;
+mod authorized_heartbeat_payment;
 /// Constant values used within the runtime.
 pub mod constants;
 mod impls;
 mod liveness;
 pub mod migrations;
+pub mod staking_async;
+pub mod staking_async_migration;
 mod xor_fee_impls;
 
 #[cfg(test)]
@@ -285,8 +288,6 @@ use sp_core::{ConstU64, Encode, OpaqueMetadata, H160};
 use sp_mmr_primitives as mmr;
 #[cfg(feature = "std")]
 use sp_runtime::serde::{Serialize, Serializer};
-#[allow(deprecated)]
-use sp_runtime::traits::transaction_extension::AsTransactionExtension;
 use sp_runtime::traits::{
     BlakeTwo256, Block as BlockT, Convert, Header as HeaderT, IdentifyAccount, IdentityLookup,
     NumberFor, OpaqueKeys, SaturatedConversion, Verify,
@@ -304,8 +305,6 @@ use sp_staking::currency_to_vote::U128CurrencyToVote;
 use sp_std::cmp::Ordering;
 use sp_std::prelude::*;
 use sp_std::vec::Vec;
-#[cfg(feature = "std")]
-use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use static_assertions::assert_eq_size;
 use traits::{parameter_type_with_key, MultiCurrency};
@@ -451,21 +450,12 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 134,
+    spec_version: 137,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 131,
+    transaction_version: 133,
     system_version: 0,
 };
-
-/// The version infromation used to identify this runtime when compiled natively.
-#[cfg(feature = "std")]
-pub fn native_version() -> NativeVersion {
-    NativeVersion {
-        runtime_version: VERSION,
-        can_author_with: Default::default(),
-    }
-}
 
 pub const FARMING_PSWAP_PER_DAY: Balance = balance!(2500000);
 pub const FARMING_REFRESH_FREQUENCY: BlockNumber = 2 * HOURS;
@@ -540,7 +530,7 @@ parameter_types! {
     pub MigrationMaxServiceWeight: Weight = Perbill::from_percent(50) * BlockWeights::get().max_block;
     pub const MaxScheduledPerBlock: u32 = 50;
     pub OffencesWeightSoftLimit: Weight = Perbill::from_percent(60) * BlockWeights::get().max_block;
-    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::max_value();
+    pub const ImOnlineUnsignedPriority: TransactionPriority = TransactionPriority::MAX;
     pub const SessionDuration: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
     pub const ElectionsCandidacyBond: Balance = balance!(1);
     // 1 storage item created, key size is 32 bytes, value size is 16+16.
@@ -794,7 +784,8 @@ impl pallet_timestamp::Config for Runtime {
 }
 
 impl pallet_session::Config for Runtime {
-    type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+    type SessionManager =
+        pallet_session::historical::NoteHistoricalRoot<Self, staking_async::LocalSession>;
     type Keys = opaque::SessionKeys;
     type ShouldEndSession = Babe;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
@@ -811,7 +802,7 @@ impl pallet_session::Config for Runtime {
 impl pallet_session::historical::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type FullIdentification = pallet_staking::Exposure<AccountId, Balance>;
-    type FullIdentificationOf = pallet_staking::DefaultExposureOf<Runtime>;
+    type FullIdentificationOf = staking_async::DefaultExposureOf;
 }
 
 impl pallet_authorship::Config for Runtime {
@@ -819,14 +810,8 @@ impl pallet_authorship::Config for Runtime {
     type EventHandler = (impls::StakingRewardPoints, ImOnline);
 }
 
-/// A reasonable benchmarking config for staking pallet.
-pub struct StakingBenchmarkingConfig;
-impl pallet_staking::BenchmarkingConfig for StakingBenchmarkingConfig {
-    type MaxValidators = ConstU32<1000>;
-    type MaxNominators = ConstU32<1000>;
-}
-
 parameter_types! {
+    pub const StakingRewardPotId: PalletId = PalletId(*b"sora/stk");
     pub const MaxExposurePageSize: u32 = 256;
     pub const MaxControllersInDeprecationBatch: u32 = 5900;
 }
@@ -839,36 +824,43 @@ type StakingAdminOrigin = EitherOfDiverse<
     pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
+impl staking_async::Config for Runtime {}
+
 impl pallet_staking::Config for Runtime {
     type OldCurrency = Balances;
     type Currency = Balances;
     type RuntimeHoldReason = RuntimeHoldReason;
     type CurrencyBalance = Balance;
-    type UnixTime = Timestamp;
     type CurrencyToVote = U128CurrencyToVote;
     type RewardRemainder = ();
-    type RuntimeEvent = RuntimeEvent;
     type Slash = ();
     type Reward = ();
     type SessionsPerEra = SessionsPerEra;
+    type PlanningEraOffset = ConstU32<1>;
+    type NominatorFastUnbondDuration = BondingDuration;
     type BondingDuration = BondingDuration;
     type SlashDeferDuration = SlashDeferDuration;
+    type SlashDeferOffset = ConstU32<1>;
     type AdminOrigin = StakingAdminOrigin;
-    type SessionInterface = liveness::SlashOnlySessionInterface;
     type EraPayout = xor_fee_impls::ValEraPayout;
     type AdditionalPayout = xor_fee_impls::StakingValPayout;
-    type NextNewSession = Session;
     type MaxValidatorSet = MaxActiveValidators;
     type VoterList = BagsList;
-    type ElectionProvider = ElectionProviderMultiPhase;
-    type BenchmarkingConfig = StakingBenchmarkingConfig;
+    type ElectionProvider = staking_async::LocalElection;
     type MaxUnlockingChunks = ConstU32<32>;
     type NominationsQuota = pallet_staking::FixedNominationsQuota<MAX_QUOTA_NOMINATIONS>;
     type MaxExposurePageSize = MaxExposurePageSize;
     type MaxControllersInDeprecationBatch = MaxControllersInDeprecationBatch;
-    type GenesisElectionProvider = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type HistoryDepth = frame_support::traits::ConstU32<84>;
     type EventListeners = ();
+    type DisableMinting = ConstBool<false>;
+    type UnclaimedRewardHandler = ();
+    type RewardPots = pallet_staking::Seed<StakingRewardPotId>;
+    type StakerRewardCalculator = pallet_staking::reward::DefaultStakerRewardCalculator<Self>;
+    type MaxEraDuration = frame_support::traits::ConstU64<{ u64::MAX }>;
+    type MaxPruningItems = ConstU32<100>;
+    type RcClientInterface = staking_async::LocalSession;
+    type IsValidatorInactive = ();
     type Filter = Nothing;
     type TargetList = pallet_staking::UseValidatorsMap<Self>;
     type WeightInfo = ();
@@ -925,7 +917,7 @@ parameter_types! {
         .targets_count((MaxElectableTargets::get() as u32).into())
         .build();
     pub NposSolutionPriority: TransactionPriority =
-        Perbill::from_percent(90) * TransactionPriority::max_value();
+        Perbill::from_percent(90) * TransactionPriority::MAX;
 }
 
 generate_solution_type!(
@@ -946,7 +938,7 @@ impl onchain::Config for OnChainSeqPhragmen {
     type Sort = ConstBool<true>;
     type System = Runtime;
     type Solver = SequentialPhragmen<AccountId, OnChainAccuracy>;
-    type DataProvider = Staking;
+    type DataProvider = staking_async::LocalElectionData;
     type WeightInfo = ();
     type Bounds = ElectionBoundsOnChain;
     type MaxBackersPerWinner = MaxBackersPerWinner;
@@ -1001,7 +993,7 @@ impl pallet_election_provider_multi_phase::Config for Runtime {
     type BetterSignedThreshold = ();
     type OffchainRepeat = OffchainRepeat;
     type MinerTxPriority = NposSolutionPriority;
-    type DataProvider = Staking;
+    type DataProvider = staking_async::LocalElectionData;
     type Fallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type GovernanceFallback = onchain::OnChainExecution<OnChainSeqPhragmen>;
     type Solver = SequentialPhragmen<
@@ -1602,6 +1594,7 @@ where
             .saturating_sub(1);
         let charge_tx_payment = charge_tx_payment_extension();
         let extra: SignedExtra = (
+            frame_system::AuthorizeCall::new(),
             frame_system::CheckSpecVersion::<Runtime>::new(),
             frame_system::CheckTxVersion::<Runtime>::new(),
             frame_system::CheckGenesis::<Runtime>::new(),
@@ -1633,6 +1626,35 @@ where
 {
     fn create_bare(call: RuntimeCall) -> UncheckedExtrinsic {
         UncheckedExtrinsic::new_bare(call)
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    type Extension = SignedExtra;
+
+    fn create_transaction(call: RuntimeCall, extension: Self::Extension) -> Self::Extrinsic {
+        UncheckedExtrinsic::new_transaction(call, extension)
+    }
+}
+
+impl<LocalCall> frame_system::offchain::CreateAuthorizedTransaction<LocalCall> for Runtime
+where
+    RuntimeCall: From<LocalCall>,
+{
+    fn create_extension() -> Self::Extension {
+        (
+            frame_system::AuthorizeCall::new(),
+            frame_system::CheckSpecVersion::new(),
+            frame_system::CheckTxVersion::new(),
+            frame_system::CheckGenesis::new(),
+            frame_system::CheckEra::from(generic::Era::Immortal),
+            frame_system::CheckNonce::from(0),
+            frame_system::CheckWeight::new(),
+            charge_tx_payment_extension(),
+        )
     }
 }
 
@@ -2268,7 +2290,7 @@ impl liveness::Config for Runtime {
 impl pallet_offences::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type IdentificationTuple = pallet_session::historical::IdentificationTuple<Self>;
-    type OnOffenceHandler = Staking;
+    type OnOffenceHandler = staking_async::LocalOffences;
 }
 
 parameter_types! {
@@ -2552,7 +2574,7 @@ parameter_types! {
 
     // Not as important as some essential transactions (e.g. im_online or similar ones)
     pub KensetsuOffchainWorkerTxPriority: TransactionPriority =
-        Perbill::from_percent(10) * TransactionPriority::max_value();
+        Perbill::from_percent(10) * TransactionPriority::MAX;
     // 10 blocks, if tx spoils, worker will resend it
     pub KensetsuOffchainWorkerTxLongevity: TransactionLongevity = 10;
     pub const KensetsuMaxAccruesPerBlock: u32 = 10;
@@ -2585,7 +2607,7 @@ impl kensetsu::Config for Runtime {
 
 parameter_types! {
     pub ApolloOffchainWorkerTxPriority: TransactionPriority =
-        Perbill::from_percent(10) * TransactionPriority::max_value();
+        Perbill::from_percent(10) * TransactionPriority::MAX;
     pub ApolloOffchainWorkerTxLongevity: TransactionLongevity = 100;
     pub const ApolloMaxLiquidationsPerBlock: u32 = 1;
 }
@@ -2860,7 +2882,7 @@ parameter_types! {
     pub const DescendantsUntilFinalized: u8 = 30;
     pub const VerifyPoW: bool = true;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub EthereumLightClientPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::MAX;
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub EthereumLightClientLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
@@ -3127,7 +3149,7 @@ parameter_types! {
     pub const BridgeMaxPeers: u32 = 50;
     pub const BridgeMinPeers: u32 = 4;
     // Not as important as some essential transactions (e.g. im_online or similar ones)
-    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::max_value();
+    pub DataSignerPriority: TransactionPriority = Perbill::from_percent(10) * TransactionPriority::MAX;
     // We don't want to have not relevant imports be stuck in transaction pool
     // for too long
     pub DataSignerLongevity: TransactionLongevity = EPOCH_DURATION_IN_BLOCKS as u64;
@@ -3292,8 +3314,9 @@ construct_runtime! {
         // Resolve the boundary block's author against the incoming session and era.
         Authorship: pallet_authorship::{Pallet, Storage} = 16,
         Grandpa: pallet_grandpa::{Pallet, Call, Storage, Config<T>, Event, ValidateUnsigned} = 15,
-        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, ValidateUnsigned, Config<T>} = 36,
+        ImOnline: pallet_im_online::{Pallet, Call, Storage, Event<T>, Config<T>} = 36,
         Liveness: liveness::{Pallet, Storage} = 120,
+        StakingAsyncBridge: staking_async::{Pallet, Storage} = 121,
 
         // Non-native tokens - everything apart of XOR.
         Tokens: tokens::{Pallet, Storage, Config<T>, Event<T>} = 18,
@@ -3759,20 +3782,16 @@ pub type Block = generic::Block<Header, UncheckedExtrinsic>;
 pub type SignedBlock = generic::SignedBlock<Block>;
 /// BlockId type as expected by this runtime.
 pub type BlockId = generic::BlockId<Block>;
-#[allow(deprecated)]
-pub type ChargeTxPaymentInnerExtension = AsTransactionExtension<ChargeTransactionPayment<Runtime>>;
-pub type ChargeTxPaymentExtension =
-    pallet_skip_feeless_payment::SkipCheckIfFeeless<Runtime, ChargeTxPaymentInnerExtension>;
+// The adapter contains SkipCheckIfFeeless so its bare-heartbeat guard remains outermost.
+pub type ChargeTxPaymentExtension = authorized_heartbeat_payment::AuthorizedHeartbeatPayment;
 
-#[allow(deprecated)]
 pub fn charge_tx_payment_extension() -> ChargeTxPaymentExtension {
-    ChargeTxPaymentExtension::from(AsTransactionExtension(
-        ChargeTransactionPayment::<Runtime>::new(),
-    ))
+    ChargeTxPaymentExtension::from(ChargeTransactionPayment::<Runtime>::new())
 }
 
-/// The SignedExtension to the basic transaction logic.
+/// The transaction extension pipeline for signed and authorized transactions.
 pub type SignedExtra = (
+    frame_system::AuthorizeCall<Runtime>,
     frame_system::CheckSpecVersion<Runtime>,
     frame_system::CheckTxVersion<Runtime>,
     frame_system::CheckGenesis<Runtime>,

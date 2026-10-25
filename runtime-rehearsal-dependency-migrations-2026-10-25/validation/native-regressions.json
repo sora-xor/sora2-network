@@ -1,0 +1,633 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-24T17:34:03.862880+00:00",
+  "sourceFingerprintSha256": "03f97fccba459fff14b01877d7d61f98e97d2de5d4514a078f2b2d0e09cadaac",
+  "steps": [
+    {
+      "name": "source-start",
+      "command": [
+        "python3",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-regressions-start-check.json"
+      ],
+      "startedAt": "2026-10-24T17:34:03.865448+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:34:05.586753+00:00",
+      "log": "regression-logs/source-start.log",
+      "logSha256": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+      "testResults": []
+    },
+    {
+      "name": "native-pinned-production",
+      "command": [
+        "python3",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/run-native-remote.py",
+        "--target-dir",
+        "target",
+        "--source-fingerprint",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-start.json",
+        "--execute"
+      ],
+      "startedAt": "2026-10-24T17:34:05.587292+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:53:40.971241+00:00",
+      "log": "regression-logs/native-pinned-production.log",
+      "logSha256": "5d1892eebad1d322a11edfe0fec056ec914f6db34405a4799e29a732e113eac6",
+      "testResults": []
+    },
+    {
+      "name": "runtime-production",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "framenode-runtime",
+        "--lib",
+        "--no-default-features",
+        "--features",
+        "std,try-runtime",
+        "--",
+        "--skip",
+        "remote_"
+      ],
+      "startedAt": "2026-10-24T17:53:40.972926+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:54:00.592672+00:00",
+      "log": "regression-logs/runtime-production.log",
+      "logSha256": "3d9d8e9ca0052eca9b95ea7c5dc2756483fa85e28a5194470771e1470abffb1f",
+      "testResults": [
+        {
+          "passed": 271,
+          "failed": 0,
+          "ignored": 3
+        }
+      ]
+    },
+    {
+      "name": "common",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "common",
+        "--lib"
+      ],
+      "startedAt": "2026-10-24T17:54:00.597176+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:55:30.253263+00:00",
+      "log": "regression-logs/common.log",
+      "logSha256": "aab5435977efc924e6a5a2f95bbba99e86d02a05b134d658b89855433b0402dc",
+      "testResults": [
+        {
+          "passed": 138,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "parity-db",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "parity-db",
+        "--lib"
+      ],
+      "startedAt": "2026-10-24T17:55:30.259579+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:55:55.143512+00:00",
+      "log": "regression-logs/parity-db.log",
+      "logSha256": "ac31ea124f1db739195e61901b9ac87a0b77e14469958388f2be7031595ffa3a",
+      "testResults": [
+        {
+          "passed": 33,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "wasm-builder",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "substrate-wasm-builder",
+        "--lib"
+      ],
+      "startedAt": "2026-10-24T17:55:55.143940+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:07.776803+00:00",
+      "log": "regression-logs/wasm-builder.log",
+      "logSha256": "c6d511c524549c4bc1afacec3c23494a7f64de82dc1a8b6016d77da3122336f4",
+      "testResults": [
+        {
+          "passed": 14,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "frame-tuple_membership_preserves_empty_and_short_circuit_behavior",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "frame-support",
+        "--lib",
+        "tuple_membership_preserves_empty_and_short_circuit_behavior"
+      ],
+      "startedAt": "2026-10-24T17:56:07.777551+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:52.830630+00:00",
+      "log": "regression-logs/frame-tuple_membership_preserves_empty_and_short_circuit_behavior.log",
+      "logSha256": "49e97f90863dc94362ec43c2002826b242bc9ad775c2a5cd973c662c891dc715",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "frame-tuple_pause_queries_preserve_empty_and_short_circuit_behavior",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "frame-support",
+        "--lib",
+        "tuple_pause_queries_preserve_empty_and_short_circuit_behavior"
+      ],
+      "startedAt": "2026-10-24T17:56:52.832916+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:54.091462+00:00",
+      "log": "regression-logs/frame-tuple_pause_queries_preserve_empty_and_short_circuit_behavior.log",
+      "logSha256": "b6a9e32af0a4454e551fdd5d391418e2b6d0cb4b395f68f80905065e380826cf",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "frame-callback_clone_does_not_require_generic_clone_bounds",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "frame-support",
+        "--lib",
+        "callback_clone_does_not_require_generic_clone_bounds"
+      ],
+      "startedAt": "2026-10-24T17:56:54.095297+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:54.829830+00:00",
+      "log": "regression-logs/frame-callback_clone_does_not_require_generic_clone_bounds.log",
+      "logSha256": "044ac2af8a1c74d8caa46ba9387a04539a459f27dac334a0dbdddf0261742094",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "frame-clone_no_bound_preserves_generic_field_cloning",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "frame-support",
+        "--lib",
+        "clone_no_bound_preserves_generic_field_cloning"
+      ],
+      "startedAt": "2026-10-24T17:56:54.830537+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:55.654484+00:00",
+      "log": "regression-logs/frame-clone_no_bound_preserves_generic_field_cloning.log",
+      "logSha256": "68776205ae1ae674c9432074af08f772171ec8c42258379a63488d0c2ba21087",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "parity-test_recover_from_log_on_error",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "parity-db",
+        "--lib",
+        "--features",
+        "instrumentation",
+        "test_recover_from_log_on_error"
+      ],
+      "startedAt": "2026-10-24T17:56:55.654931+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:58.559942+00:00",
+      "log": "regression-logs/parity-test_recover_from_log_on_error.log",
+      "logSha256": "c46ee1dd50909bd98e6aba5ca82765bf13da68f7e79bdc1d585263f26e2598a7",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "parity-test_partial_log_recovery",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "parity-db",
+        "--lib",
+        "--features",
+        "instrumentation",
+        "test_partial_log_recovery"
+      ],
+      "startedAt": "2026-10-24T17:56:58.560410+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:56:59.166461+00:00",
+      "log": "regression-logs/parity-test_partial_log_recovery.log",
+      "logSha256": "8b5de2ca7cc4caa9f24d45b80bdf442f5ffe8199fd55d42546a2408c6e16d3fc",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-should_not_update_order_book_with_zero_attributes",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::extrinsics::should_not_update_order_book_with_zero_attributes",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T17:56:59.166902+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:59:17.783685+00:00",
+      "log": "regression-logs/order-book-should_not_update_order_book_with_zero_attributes.log",
+      "logSha256": "7fba8c8303f565164a2ff21552748d8c2b6d0f6c8bdf729b3f59230675cc2c17",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-should_not_update_order_book_with_simple_mistakes",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::extrinsics::should_not_update_order_book_with_simple_mistakes",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T17:59:17.810344+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:59:24.408527+00:00",
+      "log": "regression-logs/order-book-should_not_update_order_book_with_simple_mistakes.log",
+      "logSha256": "c3a0c0c918156f66de1527fa3412a61da72ef1ccddcce60d9974e01da403d96c",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-should_not_place_invalid_limit_order",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::order_book::should_not_place_invalid_limit_order",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T17:59:24.431561+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:59:29.877853+00:00",
+      "log": "regression-logs/order-book-should_not_place_invalid_limit_order.log",
+      "logSha256": "1f0ef3458b6839a2623dc58134471089160190516a6830df83455d1f09936785",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-should_not_execute_market_order_with_invalid_amount",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::order_book::should_not_execute_market_order_with_invalid_amount",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T17:59:29.904660+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:59:40.915972+00:00",
+      "log": "regression-logs/order-book-should_not_execute_market_order_with_invalid_amount.log",
+      "logSha256": "e24ddad03eb22492803a6d58cb178ef983465db15e4daa9805b163fc4c58221b",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-should_place_limit_order",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::order_book::should_place_limit_order",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T17:59:40.926515+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:59:48.575209+00:00",
+      "log": "regression-logs/order-book-should_place_limit_order.log",
+      "logSha256": "7af33464e0f1f8ccdf68797e017b49d273f1045a426a3cd1863fc01b7769e59e",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-should_execute_market_order_and_transfer_to_owner",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::order_book::should_execute_market_order_and_transfer_to_owner",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T17:59:48.606099+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:59:50.808323+00:00",
+      "log": "regression-logs/order-book-should_execute_market_order_and_transfer_to_owner.log",
+      "logSha256": "7dc4a4f5b808835913415534239e7e144d666150d2c3610159bbca26158fbb07",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "order-book-cache",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "order-book",
+        "--lib",
+        "tests::data_layer::cache_"
+      ],
+      "startedAt": "2026-10-24T17:59:50.834275+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:00:01.386168+00:00",
+      "log": "regression-logs/order-book-cache.log",
+      "logSha256": "25493efd46b4c124440f21d222e1a1a9348faa5b0dd22feecccbcd79fd2819a8",
+      "testResults": [
+        {
+          "passed": 18,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "ceres-vesting",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "ceres-launchpad",
+        "--lib",
+        "vesting"
+      ],
+      "startedAt": "2026-10-24T18:00:01.408161+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:00:54.371017+00:00",
+      "log": "regression-logs/ceres-vesting.log",
+      "logSha256": "47aea72d0f862bad303446d6d4a5f444958e544f0ad1e720523c3f9c76c104df",
+      "testResults": [
+        {
+          "passed": 9,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "ceres-create",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "ceres-launchpad",
+        "--lib",
+        "tests::create_ilo_ok",
+        "--",
+        "--exact"
+      ],
+      "startedAt": "2026-10-24T18:00:54.371604+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:00:55.081003+00:00",
+      "log": "regression-logs/ceres-create.log",
+      "logSha256": "9bb7598156a2d0661054cee4dfd1e01e753296a0a734b46293b5b41841f8d48d",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "babe-can_predict_next_epoch_change",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "pallet-babe",
+        "--lib",
+        "can_predict_next_epoch_change"
+      ],
+      "startedAt": "2026-10-24T18:00:55.081547+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:02:02.203936+00:00",
+      "log": "regression-logs/babe-can_predict_next_epoch_change.log",
+      "logSha256": "e79c209c27f1152cbc6f7a90d8e853a321d7a0fa47e0a95744c985eea44be0c1",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "babe-can_estimate_current_epoch_progress",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "pallet-babe",
+        "--lib",
+        "can_estimate_current_epoch_progress"
+      ],
+      "startedAt": "2026-10-24T18:02:02.204450+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:02:07.909258+00:00",
+      "log": "regression-logs/babe-can_estimate_current_epoch_progress.log",
+      "logSha256": "3ecbb4811499f5efa53978d6fc161a2403c6959977fec2976770a1dc5cb22b09",
+      "testResults": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "node-bridge",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "framenode",
+        "--bin",
+        "framenode",
+        "local_bridge_bootstrap"
+      ],
+      "startedAt": "2026-10-24T18:02:07.914610+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:04:56.264188+00:00",
+      "log": "regression-logs/node-bridge.log",
+      "logSha256": "59a046e4aab01807db0ddd06bc3f825ae753b830e78aff151d42585a22f5aedb",
+      "testResults": [
+        {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        }
+      ]
+    },
+    {
+      "name": "source-end",
+      "command": [
+        "python3",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-regressions-end-check.json"
+      ],
+      "startedAt": "2026-10-24T18:04:56.270049+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T18:04:59.391616+00:00",
+      "log": "regression-logs/source-end.log",
+      "logSha256": "e492a41eb93252fcfd8bd435461d0bc8d891b76729bd80cb8c77e2dff4927d32",
+      "testResults": []
+    }
+  ],
+  "finishedAt": "2026-10-24T18:04:59.415711+00:00"
+}

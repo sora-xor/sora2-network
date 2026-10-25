@@ -1,7 +1,7 @@
 // This file is part of the SORA network and Polkaswap app.
 // SPDX-License-Identifier: BSD-4-Clause
 
-use crate::{AccountId, Historical, ImOnline, ImOnlineId, Offences, Runtime, Session};
+use crate::{AccountId, ImOnline, ImOnlineId, Offences, Runtime, Session};
 use codec::Encode;
 use frame_support::{
     traits::OneSessionHandler,
@@ -127,7 +127,7 @@ pub(crate) fn refresh_exposure_work() -> Weight {
     let mut max_validators = 0;
     for &era in &context.eras {
         reads = reads.saturating_add(1);
-        if pallet_staking::ErasStakers::<Runtime>::iter_key_prefix(era)
+        if pallet_staking::legacy::ErasStakers::<Runtime>::iter_key_prefix(era)
             .next()
             .is_some()
         {
@@ -241,28 +241,11 @@ impl OneSessionHandler<AccountId> for LivenessImOnline {
     }
 }
 
-/// Staking applies financial penalties, while equivocation reporters below
-/// explicitly retain consensus disabling. Offline reports must not disable a
-/// returning author while the outgoing session is being finalized.
-pub struct SlashOnlySessionInterface;
-
-impl pallet_staking::SessionInterface<AccountId> for SlashOnlySessionInterface {
-    fn report_offence(_validator: AccountId, _severity: OffenceSeverity) {}
-
-    fn validators() -> Vec<AccountId> {
-        Session::validators()
-    }
-
-    fn prune_historical_up_to(up_to: SessionIndex) {
-        Historical::prune_up_to(up_to);
-    }
-}
-
 struct BorrowedOffence<'a, O>(&'a O);
 
 impl<O: Offence<Identification>> Offence<Identification> for BorrowedOffence<'_, O> {
     const ID: sp_staking::offence::Kind = O::ID;
-    type TimeSlot = O::TimeSlot;
+    type Slot = O::Slot;
 
     fn offenders(&self) -> Vec<Identification> {
         self.0.offenders()
@@ -276,8 +259,8 @@ impl<O: Offence<Identification>> Offence<Identification> for BorrowedOffence<'_,
         self.0.validator_set_count()
     }
 
-    fn time_slot(&self) -> Self::TimeSlot {
-        self.0.time_slot()
+    fn slot(&self) -> Self::Slot {
+        self.0.slot()
     }
 
     fn slash_fraction(&self, offenders_count: u32) -> sp_runtime::Perbill {
@@ -301,8 +284,11 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
         let Some(active_era) = pallet_staking::ActiveEra::<Runtime>::get() else {
             return Ok(());
         };
-        let active_era_start =
-            pallet_staking::ErasStartSessionIndex::<Runtime>::get(active_era.index).unwrap_or(0);
+        let active_era_start = pallet_staking::BondedEras::<Runtime>::get()
+            .iter()
+            .find(|(era, _)| *era == active_era.index)
+            .map(|(_, session)| *session)
+            .unwrap_or(0);
         // Historical offences still slash their original exposure, but must not
         // disable validators for an offence outside the active era.
         if offence.session_index() < active_era_start {
@@ -311,15 +297,13 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
 
         // Offences recalculates severity for all concurrent offenders whenever
         // one new report arrives. Replay that complete set in the same order.
-        let concurrent = pallet_offences::ConcurrentReportsIndex::<Runtime>::get(
-            O::ID,
-            offence.time_slot().encode(),
-        )
-        .into_iter()
-        .filter_map(pallet_offences::Reports::<Runtime>::get)
-        .collect::<Vec<_>>();
+        let concurrent =
+            pallet_offences::ConcurrentReportsIndex::<Runtime>::get(O::ID, offence.slot().encode())
+                .into_iter()
+                .filter_map(pallet_offences::Reports::<Runtime>::get)
+                .collect::<Vec<_>>();
         let severity = OffenceSeverity(offence.slash_fraction(concurrent.len() as u32));
-        let invulnerables = pallet_staking::Invulnerables::<Runtime>::get();
+        let invulnerables = pallet_staking::legacy::Invulnerables::<Runtime>::get();
         for details in concurrent {
             let validator = details.offender.0;
             if !invulnerables.contains(&validator) {
@@ -329,7 +313,7 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
         Ok(())
     }
 
-    fn is_known_offence(offenders: &[Identification], time_slot: &O::TimeSlot) -> bool {
+    fn is_known_offence(offenders: &[Identification], time_slot: &O::Slot) -> bool {
         <Offences as ReportOffence<AccountId, Identification, O>>::is_known_offence(
             offenders, time_slot,
         )
@@ -372,7 +356,7 @@ impl EquivocationWeights {
         let mut largest_queue = 0u64;
         let mut all_queue_bytes = 0u64;
         for era in &execution_eras {
-            let key = pallet_staking::UnappliedSlashes::<Runtime>::hashed_key_for(era);
+            let key = pallet_staking::legacy::UnappliedSlashes::<Runtime>::hashed_key_for(era);
             // Obtain the encoded length without decoding an unbounded queue.
             // Probe live state: this value can grow between session boundaries.
             let bytes = u64::from(sp_io::storage::read(&key, &mut [], 0).unwrap_or(0));

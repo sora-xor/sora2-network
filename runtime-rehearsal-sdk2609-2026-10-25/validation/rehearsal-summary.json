@@ -1,0 +1,568 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-25T02:43:55.631275+00:00",
+  "project": "SORA Nexus",
+  "sdk": {
+    "tag": "polkadot-stable2609",
+    "commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe"
+  },
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/candidate-built.compact.compressed.wasm",
+    "sha256": "bf20c07577124a2cdc1b08d9fccab8044f45ae5e771b38c07d8db2ea5c00fbe6",
+    "bytes": 1908770,
+    "specVersion": 136,
+    "transactionVersion": 132,
+    "systemVersion": 0
+  },
+  "sourceFingerprint": {
+    "path": "source-clippy-start.json",
+    "sha256": "a5c2f0a63ef4706c9ba4e7f14cf5e57f292aab177abdd6b17b34e2a852502284",
+    "sourceSha256": "3b92b6dd265bcee36275c36190560a9daba88f0b30746bc99a8c422c447b5d13",
+    "sourceFiles": 4755,
+    "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6"
+  },
+  "freshSourceVerification": {
+    "command": [
+      "/opt/homebrew/opt/python@3.15/bin/python3.15",
+      "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-fingerprint.py",
+      "--check",
+      "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-clippy-start.json",
+      "--source-only"
+    ],
+    "result": {
+      "status": "passed",
+      "sourceSha256": "3b92b6dd265bcee36275c36190560a9daba88f0b30746bc99a8c422c447b5d13",
+      "supportingSha256": "5b6499c3cda7fdd074d16fb61b9a837ed1b82f19d852650d00c50ae14640e79c",
+      "toolingSha256": "432a9b80b989a0cb323b1d684197b4a5ef64644e52e3244fc6ee605514ce2b4e",
+      "sourceFiles": 4755,
+      "sourceBytes": 224186222,
+      "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6",
+      "overlaySha256": "ca8bf2967499ad02ec290d853ce0396a0b2d2c8162775d8aa63158d7fa5fa8b1",
+      "compared": "source",
+      "changes": []
+    },
+    "stderr": ""
+  },
+  "clippy": {
+    "status": "passed",
+    "modes": [
+      "mainnet",
+      "try-runtime",
+      "extended"
+    ],
+    "allTargets": true,
+    "denyWarnings": true,
+    "compilerWarnings": 0,
+    "compilerErrors": 0
+  },
+  "native": {
+    "reportSha256": "f7c5bea9df9fa0bf80739471c6b3b9a3f7ac7265cc2115c97766f3b8c0371807",
+    "remoteReportSha256": "5167629ba62dd2ff6d24cc83b2049768aaedc4704c1e2c3b52b1a50aeb55ae21",
+    "regressionSteps": 53,
+    "testExecutions": {
+      "passed": 876,
+      "failed": 0,
+      "ignored": 3
+    },
+    "remoteModeTestsPassed": 4,
+    "pinnedMigrationTestsPassed": 1,
+    "totalRustTestExecutionsPassed": 881,
+    "countsMeaning": "Test executions; targeted reruns can include cases also covered by a complete package suite.",
+    "groups": [
+      {
+        "name": "source-start",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "runtime-production",
+        "passed": 277,
+        "failed": 0,
+        "ignored": 3
+      },
+      {
+        "name": "runtime-local-remote-name",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "common",
+        "passed": 138,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "parity-db",
+        "passed": 33,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "wasm-builder",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "frame-tuple_membership_preserves_empty_and_short_circuit_behavior",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "frame-tuple_pause_queries_preserve_empty_and_short_circuit_behavior",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "frame-callback_clone_does_not_require_generic_clone_bounds",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "frame-clone_no_bound_preserves_generic_field_cloning",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "parity-test_recover_from_log_on_error",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "parity-test_partial_log_recovery",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-should_not_update_order_book_with_zero_attributes",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-should_not_update_order_book_with_simple_mistakes",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-should_not_place_invalid_limit_order",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-should_not_execute_market_order_with_invalid_amount",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-should_place_limit_order",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-should_execute_market_order_and_transfer_to_owner",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "order-book-cache",
+        "passed": 18,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "ceres-vesting",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "ceres-create",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "babe-can_predict_next_epoch_change",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "babe-can_estimate_current_epoch_progress",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "node-bridge",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "frame-decode-all",
+        "passed": 25,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "scale-info-legacy-all",
+        "passed": 27,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "scale-info-legacy-no-std",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "extrinsic-allocation-bound",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "runtime-extrinsic-format",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "core-ecdsa",
+        "passed": 22,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "version-wasm-embedding",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "babe-all-library",
+        "passed": 31,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "grandpa-all-library",
+        "passed": 27,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "staking-replacement-val-payouts",
+        "passed": 3,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "staking-additional-payout-rollback",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "staking-deferred-slashes",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "preimage-all-library",
+        "passed": 24,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "identity-all-library",
+        "passed": 49,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "multisig-upstream-all-library",
+        "passed": 39,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "support-generic-clone",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "support-short-circuit-membership",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "support-short-circuit-pause",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "smoldot-zstd-bounds",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "executor-memory-and-stack-regressions",
+        "passed": 12,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "executor-instance-memory-limits",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "tracing-ansi-security-regression",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "network-webrtc-certificates",
+        "passed": 25,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "subxt-signer-rustcrypto-wallet-vectors",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "subxt-macro-codegen-and-diagnostics",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "node-bridge-bootstrap-and-rpc",
+        "passed": 6,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "node-babe-cache-repair",
+        "passed": 16,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "native-pinned-production",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "source-end",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "stateSnapshot": {
+      "path": "native-28179122-75039ef9b072bcf4.snap",
+      "bytes": 243895814,
+      "sha256": "1954049236a9328a3a325403830c7769a92e52b860af3d15e5303d264db0eba4"
+    },
+    "scopeSha256": "75039ef9b072bcf4a439e2846c4191ebb29947fb5d3c9fa184d4c3e40fc8e11c",
+    "nativeTestInstrumentation": {
+      "commonTestEnabled": true,
+      "meaning": "common/test uses stricter fixed-point balance conversion and test include fallbacks; exact production semantics are checked by the separate default-production Wasm fork."
+    },
+    "coverage": {
+      "status": "passed",
+      "package": "framenode-runtime",
+      "defaultFeatures": false,
+      "features": [
+        "std",
+        "try-runtime"
+      ],
+      "featureClassification": "Production chain feature selection plus common/test instrumentation from the chain-spec development dependency; not byte-identical production dependency behavior.",
+      "test": "remote_try_runtime_upgrade_rehearsal",
+      "checks": "Configured pre/post upgrade hooks, retained-state decoding, audited storage versions, complete bridge replay/index/bounds checks, and multi-block migration completion.",
+      "forbiddenFeatures": [
+        "private-net",
+        "wip",
+        "stage",
+        "runtime-benchmarks",
+        "reduced-pswap-reward-periods"
+      ],
+      "candidateBinding": "Native source execution; pair with the separately hashed exact-Wasm fork rehearsal. This is not a deployment eligibility decision.",
+      "preparedScopeStatus": "not-run"
+    },
+    "limitations": [
+      "Native unit-test dependency unification enables common/test: FixedWrapper balance conversion uses stricter unwrap/checked behavior, and common include macros use test fallbacks. This is production chain feature selection with test instrumentation. Exact default-production Wasm fork execution establishes production runtime semantics.",
+      "No global try_state claim: System.Account, account balances/tokens, assets and unrelated pallets are omitted. Full Staking/XorFee retains real reward budgets, exposures and claims for migration hooks; it does not execute real user payouts.",
+      "Child tries are omitted because the selected migration paths use ordinary pallet/raw storage. This is not a complete chain-state snapshot or cryptographic state proof.",
+      "Legacy custom pallet data is omitted only after current pinned preflight verifies its no-op guard. Any guard/version mismatch aborts preparation and requires source/scope review.",
+      "Already-applied migration markers mean current-state replay exercises their idempotent no-op branch. Synthetic/native fixture tests separately cover active historical migrations.",
+      "The native runner uses a fresh scope-specific snapshot and rejects pre-existing cache files; a matching block hash alone does not prove filter completeness.",
+      "Public RPC responses are trusted for this diagnostic rehearsal. Finality/canonicality are provider assertions, not independent consensus verification.",
+      "No signed transactions, governance enactment, offchain-worker execution, full block consensus execution or validator deployment occurs."
+    ]
+  },
+  "wasm": {
+    "runId": "20261025T022231Z-7fbcf4d9",
+    "stagesPassed": 18,
+    "checks": {
+      "freshStageOutputs": true,
+      "allRequiredStagesPassed": true,
+      "candidateSnapshotAndEvidenceHashesAgree": true,
+      "scriptAndSourceBindingsUnchangedDuringRun": true,
+      "fullPendingInventoryComplete": true
+    },
+    "sdkMigration": {
+      "reviewedCompatibility": true,
+      "existingScaleEncodingCompatible": false,
+      "codeUpdatedEventRequiresMetadataRefresh": true,
+      "reconstructedPrimitivePackages": 7,
+      "sourceProvenanceSha256": "e0316edbb5f59189b12d543766e43c04cbe361057f88410115357c9de759d21c",
+      "authorizedHeartbeatCases": 7,
+      "authorizedHeartbeatAdmissionSourcesPerCase": 3,
+      "emptyUtilityBatchesNormalAndPaid": 3,
+      "offlineGovernanceSigningCases": 8,
+      "signedHeartbeatStillPaid": true
+    },
+    "metadataCounts": {
+      "existingPallets": 81,
+      "existingCalls": 406,
+      "nestedTypePairsVisited": 10405,
+      "existingEvent": 443,
+      "existingError": 975,
+      "existingStorageEntries": 491,
+      "existingConstants": 157,
+      "signedExtensions": 7
+    },
+    "rawScaleCompatible": false,
+    "reviewedSdkMigrationCompatible": true
+  },
+  "productionBaseline": {
+    "endpoint": "wss://mof2.sora.org",
+    "blockNumber": 28179122,
+    "blockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+    "specVersion": 134,
+    "transactionVersion": 131,
+    "codeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221"
+  },
+  "audits": {
+    "cargoLockfiles": 11,
+    "cargoVulnerabilities": 0,
+    "cargoWarnings": 0,
+    "regressionHarnessLockfiles": 5,
+    "npmGraphs": 7,
+    "npmVulnerabilities": 0,
+    "cargoLockBindings": {
+      "Cargo.lock": "bb38997ef7100f640545589925b94c9cbef87dda49fb8fd8312d972bda26ae52",
+      "misc/farming_snapshot/convert/Cargo.lock": "d8a0e5f7dafdccb1aff6e6dfc3cec0a99be2931e5515bd5241ac3a46ee3cf2b4",
+      "misc/rewards_snapshot/get_lp_tokens/Cargo.lock": "754fd576afce602af8f4d1b33a93caa59947bdc7328adc8979e27db3bae43175",
+      "vendor/sora2-common/Cargo.lock": "b7b5d522eca273a8d83126614045edcfb647c0ffbcf8b2b01a1f0e154148c563",
+      "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+      "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+      "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+      "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+      "vendor/chopsticks-executor/Cargo.lock": "cbdf80db91af71a4d13366b086f4c71d3de69638f3d3263cfea14c5cb983d7f5",
+      "vendor/polkadot-wasm-crypto/Cargo.lock": "b823a26da7a4c0ab9e9b7a4042059712596531366de54dadbbfac12b8857ab91",
+      "vendor/tikv-jemalloc-ctl-0.6.1/Cargo.lock": "09a8b44510139edae0213e44d2bd0eb5792787da4f26ae9ccec3d063378fb82c"
+    },
+    "npmLockBindings": {
+      "runtime-upgrade-4.8.9/validation/rehearsal-package-lock.json": "0b16f71062d59690e333b17eff901255f8f37afa43abd42fa983830aaaffb49f",
+      "runtime-upgrade-4.8.10/validation/package-lock.json": "4ca1b5192950cc30b9cbb8a252401c04b201e224bb7d407965de94d69f5da759",
+      "runtime-upgrade-4.8.11/validation/package-lock.json": "ade61ab4b9d0806429259d7c2c4a8d0d2e751d01645cb40b9dedfced9b024cdb",
+      "runtime-upgrade-4.8.12/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-rehearsal-sdk2609-2026-10-25/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "misc/polkadotjs/bug-hunt/frontend-repro/package-lock.json": "e6583f7d2c1af7096e13ffbace805f373efc9af8cead5f43175ac6aad82a20cf"
+    },
+    "importedEvidenceSha256": "4f797e6313ce67a2a0927ba8e8e39983d07401bc9fa889d6f6262d6aeecc3fee",
+    "npmSummarySha256": "3a22bcc3dac0ff46ca1e310b09987f9e3b9216b4871feb9aa7e0534b508624fc"
+  },
+  "rejectedAdmission": {
+    "reportSha256": "e4fb98c21d9e78ea5da17d69bfad90695f5d385ed237464a1783c3a1fa5200a6",
+    "blockSizeReviewSha256": "3c500488bc99da69c377a6edc5c8269a5e3432c9f22155b730a2c133c170b560",
+    "rejectedTransactions": 28,
+    "inspectedRawDiffEntries": 69,
+    "committedStateChangesOnInvalidTransaction": 0,
+    "negativeAndRollbackTests": 11,
+    "currentPureVerifier": {
+      "status": "passed",
+      "transactions": 28,
+      "entries": 69
+    },
+    "accountingException": "Only four reviewed System block-accounting fields; BlockSize requires exact plain Optional u32 metadata and four-byte values. Every invalid diff is discarded."
+  },
+  "bridge": {
+    "reportSha256": "1188764087f961080466fab3316cc906c9cfb5fdc0eda967de4b3d0c47b1674c",
+    "pendingOperations": 2061,
+    "hashOnlyOperations": 2061,
+    "inventoryComplete": true,
+    "storedCallBoundObservable": false,
+    "operatorReadinessConfirmed": false,
+    "activationAuthorized": false
+  },
+  "submittedTransactions": 0,
+  "deployed": false,
+  "scopeLimitations": [
+    "Native storage is scoped; it is not whole-chain try_state or a complete state-root proof.",
+    "Native tests enable common/test instrumentation; exact default-production Wasm is verified separately.",
+    "Synthetic fixtures and mocked outer signatures exercise local paths; heartbeat signatures and migration ownership proofs use real Wasm verification.",
+    "Production reward-publication/remap and BABE-repair markers are already set; live replay checks idempotence, and local fixtures cover active historical paths.",
+    "Bridge inventory is complete but all 2061 operations are hash-only; stored payload bounds and operator readiness remain unconfirmed.",
+    "System.CodeUpdated gains a hash field, Offences field naming changes, and new authorization/Identity metadata requires client refresh and transaction version 132.",
+    "Upstream synchronous staking is deprecated in favor of staking-async; custom VAL/deferred-slash behavior is retained, so async migration remains separate.",
+    "Zero native submissions is based on reviewed read-only RPC code paths, not independent packet capture."
+  ],
+  "evidenceSha256": {
+    "final-build-verification.json": "56ed1b5f256e67cfb13f0587cfc2663f944fc7aedd9bed484c59462798315752",
+    "candidate-build-evidence.json": "723a3b22fff6bdf8633a401551aaf7022c05a9f0d6342e43f2f77867e73e0fb4",
+    "source-clippy-start.json": "a5c2f0a63ef4706c9ba4e7f14cf5e57f292aab177abdd6b17b34e2a852502284",
+    "native-regressions.json": "f7c5bea9df9fa0bf80739471c6b3b9a3f7ac7265cc2115c97766f3b8c0371807",
+    "native-remote-execution.json": "5167629ba62dd2ff6d24cc83b2049768aaedc4704c1e2c3b52b1a50aeb55ae21",
+    "native-remote-scope.json": "75039ef9b072bcf4a439e2846c4191ebb29947fb5d3c9fa184d4c3e40fc8e11c",
+    "rehearsal-run.json": "85985f09579783e263dc8bdf5f047d80b0558a979fe15b410baeafca3b6498e8",
+    "current-production-identity.json": "d3911c07b09a0960116ec6b9e34bc5e57bb42ba9abd8541df292ae544c6bbf7f",
+    "snapshot.json": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+    "wasm-compatibility.json": "7127b674b412dfd0628952cfa7b05ad8a1a4a0316b23b9e02ecdb1d7a48f06fb",
+    "metadata-compatibility.json": "ee5f117105001f9e923ae33e16c966ada4f422cb6daf6deea7df37be53a688bd",
+    "python-candidate-signing-report.json": "7b4201a57efddb970924f5a8b318f651f2af05bbaac086e558c689544721410b",
+    "equivocation-fee-wasm-rehearsal.json": "fd13e643221bf7de0b83b49cc682e344ab498ddd84db0cb049d72edc3e543403",
+    "fee-policy-wasm-rehearsal.json": "64fda98dbf2d40dc1daab787aed0838a83930db57fa52c7da0fd0689c36bbf0f",
+    "fee-event-check.json": "662beb050e5edd1e9ae7270f969b7d96944c8ef7496793a71d906ec75ba2fcdf",
+    "bridge-readiness.json": "1188764087f961080466fab3316cc906c9cfb5fdc0eda967de4b3d0c47b1674c",
+    "rejected-admission-check.json": "e4fb98c21d9e78ea5da17d69bfad90695f5d385ed237464a1783c3a1fa5200a6",
+    "rejected-admission-block-size-review.json": "3c500488bc99da69c377a6edc5c8269a5e3432c9f22155b730a2c133c170b560",
+    "sdk-primitives-provenance.json": "e0316edbb5f59189b12d543766e43c04cbe361057f88410115357c9de759d21c",
+    "imported-migration-evidence/import-summary.json": "4f797e6313ce67a2a0927ba8e8e39983d07401bc9fa889d6f6262d6aeecc3fee",
+    "npm-security-refresh/summary.json": "3a22bcc3dac0ff46ca1e310b09987f9e3b9216b4871feb9aa7e0534b508624fc"
+  },
+  "aggregatorSha256": "e19d34c8479bc08dc1afba4db9df5c01e76a7ac7e93d6df86f306b8bae851c92",
+  "verifiedFileBindings": 582
+}

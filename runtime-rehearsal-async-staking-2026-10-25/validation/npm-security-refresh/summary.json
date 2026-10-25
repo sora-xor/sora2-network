@@ -1,0 +1,169 @@
+{
+  "status": "passed",
+  "checked_at_utc": "2026-10-25T06:49:52.591348+00:00",
+  "node": "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+  "npm": "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/npm",
+  "helper_sha256": "17cb9f212f7026bd937ff00b42c7faf4ed1fea542f17a9fc085cfe502b0684cc",
+  "projects": [
+    {
+      "project": "misc/polkadotjs/bug-hunt/frontend-repro",
+      "manifest": "package.json",
+      "manifest_sha256": "9a3f13eedf8770631ac66bbc1a2e854017c95f05bb8c59b2aada1e10862ce438",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "e6583f7d2c1af7096e13ffbace805f373efc9af8cead5f43175ac6aad82a20cf",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-00",
+      "audit_sha256": "4ddec3a66c618b898a1914dcfaad98f29c70df231bc9aca3059f3abf61e85855",
+      "closure_sha256": "3a83ff6aaef76458ece05c4ae7770415f7cf0f95a9c9f09c977ad3e66fd586fd"
+    },
+    {
+      "project": "runtime-rehearsal-async-staking-2026-10-25/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-01",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "8bc5a97ad1b3eaf04b5d5706f9ef6cc2448a7dab37859ebc37c932551c76d477"
+    },
+    {
+      "project": "runtime-rehearsal-dependency-migrations-2026-10-25/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-02",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "16b3e1e782a67cfc76e50840f22a68f3048d17879301750b5642a301d44113be"
+    },
+    {
+      "project": "runtime-rehearsal-sdk2609-2026-10-25/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-03",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "5f19a078eb30b9d4a43012181aa281f3949722610875f38ae7aea099f0bf5122"
+    },
+    {
+      "project": "runtime-upgrade-4.8.10/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "fa7b17ba3cb3f2a7755db75d75cd0675ad9c994acb818ceecd6cc2b7559499f9",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "4ca1b5192950cc30b9cbb8a252401c04b201e224bb7d407965de94d69f5da759",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-04",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "c73c757db10fb274ca202464e491121e79face02efc1fb5f0c98042b81736856"
+    },
+    {
+      "project": "runtime-upgrade-4.8.11/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "36a8d33a64d568632a515d1d7fc14d1b13f4c9a3cc2b08a1d21f977c48672919",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "ade61ab4b9d0806429259d7c2c4a8d0d2e751d01645cb40b9dedfced9b024cdb",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-05",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "8d9eae544fd9ef0e56cd987348092d1c2714a6426b9bb201727e709ccd2825e7"
+    },
+    {
+      "project": "runtime-upgrade-4.8.12/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-06",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "63f46af216321f01fe94608933376171c9f01680d5b6102886f35875c556d5c3"
+    },
+    {
+      "project": "runtime-upgrade-4.8.9/validation",
+      "manifest": "rehearsal-package.json",
+      "manifest_sha256": "202542aa34fd5528d41cc43f07ea2fdfdfc673e5373e48a6136f85b102d1013f",
+      "lockfile": "rehearsal-package-lock.json",
+      "lock_sha256": "0b16f71062d59690e333b17eff901255f8f37afa43abd42fa983830aaaffb49f",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-async-staking-2026-10-25/validation/npm-security-refresh/project-07",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284",
+      "closure_sha256": "3f232f78a491e6d00e9995690a1f413a6ccde7b320c523e8a4a870797aba5144"
+    }
+  ]
+}

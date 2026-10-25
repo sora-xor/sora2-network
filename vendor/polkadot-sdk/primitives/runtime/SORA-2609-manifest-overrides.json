@@ -1,0 +1,24 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/runtime",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "paste",
+        "package"
+      ],
+      "upstream": null,
+      "local": "pastey"
+    },
+    {
+      "path": [
+        "dependencies",
+        "paste",
+        "version"
+      ],
+      "upstream": "1.0.15",
+      "local": "0.2.3"
+    }
+  ]
+}

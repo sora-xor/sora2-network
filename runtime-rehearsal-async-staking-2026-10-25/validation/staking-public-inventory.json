@@ -1,0 +1,460 @@
+{
+  "status": "passed",
+  "createdAt": "2026-10-25T05:03:32.230Z",
+  "blockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+  "blockNumber": 28179122,
+  "endpoint": "wss://mof2.sora.org",
+  "complete": true,
+  "totalKeys": 21509,
+  "metadataSha256": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+  "stateFile": "staking-public-state.json.gz",
+  "stateSha256": "20a6e232f5c84ca0ca933f6a42a668579cbf2a63193a4a7d6228e11d1b83fcbf",
+  "rpcMethods": {
+    "chain_getBlockHash": 1,
+    "state_getKeysPaged": 44,
+    "state_queryStorageAt": 108
+  },
+  "submittedTransactions": 0,
+  "inventories": {
+    "ValidatorCount": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MinimumValidatorCount": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "Invulnerables": {
+      "count": 1,
+      "maxBytes": 65,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 2
+    },
+    "Bonded": {
+      "count": 2626,
+      "maxBytes": 32,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MinNominatorBond": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MinValidatorBond": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MinimumActiveStake": {
+      "count": 1,
+      "maxBytes": 16,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MinCommission": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "Ledger": {
+      "count": 2626,
+      "maxBytes": 391,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "Payee": {
+      "count": 2626,
+      "maxBytes": 33,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "Validators": {
+      "count": 31,
+      "maxBytes": 5,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "CounterForValidators": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MaxValidatorsCount": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "Nominators": {
+      "count": 2181,
+      "maxBytes": 774,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "CounterForNominators": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "VirtualStakers": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "CounterForVirtualStakers": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MaxNominatorsCount": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "CurrentEra": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0,
+      "samples": [
+        {
+          "key": "0x5f3e4907f716ac89b6347d15ececedca0b6a45321efae92aea15e0740ec7afe7",
+          "value": 7806
+        }
+      ]
+    },
+    "ActiveEra": {
+      "count": 1,
+      "maxBytes": 13,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0,
+      "samples": [
+        {
+          "key": "0x5f3e4907f716ac89b6347d15ececedca487df464e44a534ba6b0cbb32407b587",
+          "value": {
+            "index": 7806,
+            "start": 1792846260000
+          }
+        }
+      ]
+    },
+    "ErasStartSessionIndex": {
+      "count": 85,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasStakers": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasStakersOverview": {
+      "count": 1275,
+      "maxBytes": 30,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasStakersClipped": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasStakersPaged": {
+      "count": 1275,
+      "maxBytes": 1647,
+      "maxOthers": 42,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ClaimedRewards": {
+      "count": 746,
+      "maxBytes": 5,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 1
+    },
+    "ErasValidatorPrefs": {
+      "count": 1275,
+      "maxBytes": 5,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasValidatorReward": {
+      "count": 84,
+      "maxBytes": 16,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasRewardPoints": {
+      "count": 85,
+      "maxBytes": 545,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ErasTotalStake": {
+      "count": 85,
+      "maxBytes": 16,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "ForceEra": {
+      "count": 1,
+      "maxBytes": 1,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "MaxStakedRewards": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "SlashRewardFraction": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "CanceledSlashPayout": {
+      "count": 1,
+      "maxBytes": 16,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "UnappliedSlashes": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "BondedEras": {
+      "count": 1,
+      "maxBytes": 233,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 29,
+      "samples": [
+        {
+          "key": "0x5f3e4907f716ac89b6347d15ececedcaea07de2b8f010516dca3f7ef52f7ac5a",
+          "value": [
+            [
+              7778,
+              47972
+            ],
+            [
+              7779,
+              47978
+            ],
+            [
+              7780,
+              47984
+            ],
+            [
+              7781,
+              47990
+            ],
+            [
+              7782,
+              47996
+            ],
+            [
+              7783,
+              48002
+            ],
+            [
+              7784,
+              48008
+            ],
+            [
+              7785,
+              48014
+            ],
+            [
+              7786,
+              48020
+            ],
+            [
+              7787,
+              48026
+            ],
+            [
+              7788,
+              48032
+            ],
+            [
+              7789,
+              48038
+            ],
+            [
+              7790,
+              48044
+            ],
+            [
+              7791,
+              48050
+            ],
+            [
+              7792,
+              48056
+            ],
+            [
+              7793,
+              48062
+            ],
+            [
+              7794,
+              48068
+            ],
+            [
+              7795,
+              48074
+            ],
+            [
+              7796,
+              48080
+            ],
+            [
+              7797,
+              48086
+            ],
+            [
+              7798,
+              48092
+            ],
+            [
+              7799,
+              48098
+            ],
+            [
+              7800,
+              48104
+            ],
+            [
+              7801,
+              48110
+            ],
+            [
+              7802,
+              48116
+            ],
+            [
+              7803,
+              48122
+            ],
+            [
+              7804,
+              48128
+            ],
+            [
+              7805,
+              48134
+            ],
+            [
+              7806,
+              48140
+            ]
+          ]
+        }
+      ]
+    },
+    "ValidatorSlashInEra": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "NominatorSlashInEra": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "SlashingSpans": {
+      "count": 1929,
+      "maxBytes": 129,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "SpanSlash": {
+      "count": 4564,
+      "maxBytes": 32,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    },
+    "CurrentPlannedSession": {
+      "count": 1,
+      "maxBytes": 4,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0,
+      "samples": [
+        {
+          "key": "0x5f3e4907f716ac89b6347d15ececedcac0d39ff577af2cc6b67ac3641fa9c4e7",
+          "value": 48144
+        }
+      ]
+    },
+    "ChillThreshold": {
+      "count": 0,
+      "maxBytes": 0,
+      "maxOthers": 0,
+      "maxReporters": 0,
+      "maxEntries": 0
+    }
+  },
+  "decodedAt": "2026-10-25T05:04:40.257Z",
+  "decoding": "SCALE bytes from Uint8Array, including primitive values"
+}

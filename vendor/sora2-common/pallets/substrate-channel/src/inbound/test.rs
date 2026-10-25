@@ -260,6 +260,10 @@ pub fn new_tester() -> sp_io::TestExternalities {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -319,6 +323,10 @@ fn test_submit() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit_with_invalid_nonce() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -362,6 +370,10 @@ fn test_submit_with_invalid_nonce() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn test_submit_with_invalid_network_id() {
     new_tester().execute_with(|| {
         let origin = RuntimeOrigin::signed(Keyring::Bob.into());
@@ -395,6 +407,10 @@ fn test_submit_with_invalid_network_id() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn authenticated_deliveries_stay_free_and_consume_failed_batch_nonces() {
     new_tester().execute_with(|| {
         use frame_support::dispatch::{GetDispatchInfo, Pays};
@@ -465,6 +481,10 @@ fn authenticated_deliveries_stay_free_and_consume_failed_batch_nonces() {
 }
 
 #[test]
+#[expect(
+    deprecated,
+    reason = "Exercise the deployed bridge unsigned admission contract during the SDK migration"
+)]
 fn unauthenticated_or_wrong_type_submission_is_rejected_before_execution() {
     new_tester().execute_with(|| {
         let commitment =

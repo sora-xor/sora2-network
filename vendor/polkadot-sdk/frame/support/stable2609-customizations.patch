@@ -1,0 +1,577 @@
+--- /dev/null
++++ b/.rustfmt.toml
+@@ -0,0 +1,26 @@
++# Basic
++edition = "2021"
++hard_tabs = true
++max_width = 100
++use_small_heuristics = "Max"
++# Imports
++imports_granularity = "Crate"
++reorder_imports = true
++# Consistency
++newline_style = "Unix"
++normalize_comments = true
++normalize_doc_attributes = true
++# Misc
++chain_width = 80
++spaces_around_ranges = false
++binop_separator = "Back"
++reorder_impl_items = false
++match_arm_leading_pipes = "Never"
++match_arm_blocks = true
++match_block_trailing_comma = true
++trailing_comma = "Vertical"
++trailing_semicolon = true
++use_field_init_shorthand = true
++# Preserve upstream commentary across formatter upgrades without rewriting source.
++comment_width = 100
++wrap_comments = false
+--- a/src/crypto/ecdsa.rs
++++ b/src/crypto/ecdsa.rs
+@@ -34,16 +34,14 @@
+ 
+ impl ECDSAExt for Public {
+ 	fn to_eth_address(&self) -> Result<[u8; 20], ()> {
+-		use k256::{elliptic_curve::sec1::ToEncodedPoint, PublicKey};
++		use k256::{elliptic_curve::sec1::ToSec1Point, PublicKey};
+ 
+ 		PublicKey::from_sec1_bytes(self.as_slice()).map_err(drop).and_then(|pub_key| {
+ 			// uncompress the key
+-			let uncompressed = pub_key.to_encoded_point(false);
++			let uncompressed = pub_key.to_sec1_point(false);
+ 			// convert to ETH address
+-			<[u8; 20]>::try_from(
+-				sp_io::hashing::keccak_256(&uncompressed.as_bytes()[1..])[12..].as_ref(),
+-			)
+-			.map_err(drop)
++			<[u8; 20]>::try_from(&sp_io::hashing::keccak_256(&uncompressed.as_bytes()[1..])[12..])
++				.map_err(drop)
+ 		})
+ 	}
+ }
+--- a/src/storage/mod.rs
++++ b/src/storage/mod.rs
+@@ -1802,7 +1802,7 @@
+ 			assert_eq!(MyStorage::iter_values().collect::<Vec<_>>(), vec![1, 2, 3, 4]);
+ 
+ 			// test removal
+-			let _ = MyStorage::clear(u32::max_value(), None);
++			let _ = MyStorage::clear(u32::MAX, None);
+ 			assert!(MyStorage::iter_values().collect::<Vec<_>>().is_empty());
+ 
+ 			// test migration
+@@ -1812,7 +1812,7 @@
+ 			assert!(MyStorage::iter_values().collect::<Vec<_>>().is_empty());
+ 			MyStorage::translate_values(|v: u32| Some(v as u64));
+ 			assert_eq!(MyStorage::iter_values().collect::<Vec<_>>(), vec![1, 2]);
+-			let _ = MyStorage::clear(u32::max_value(), None);
++			let _ = MyStorage::clear(u32::MAX, None);
+ 
+ 			// test migration 2
+ 			unhashed::put(&[&k[..], &vec![1][..]].concat(), &1u128);
+@@ -1824,7 +1824,7 @@
+ 			assert_eq!(MyStorage::iter_values().collect::<Vec<_>>(), vec![1, 2, 3]);
+ 			MyStorage::translate_values(|v: u128| Some(v as u64));
+ 			assert_eq!(MyStorage::iter_values().collect::<Vec<_>>(), vec![1, 2, 3]);
+-			let _ = MyStorage::clear(u32::max_value(), None);
++			let _ = MyStorage::clear(u32::MAX, None);
+ 
+ 			// test that other values are not modified.
+ 			assert_eq!(unhashed::get(&key_before[..]), Some(32u64));
+--- a/src/storage/types/counted_map.rs
++++ b/src/storage/types/counted_map.rs
+@@ -793,7 +793,7 @@
+ 			assert_eq!(A::count(), 2);
+ 
+ 			// Remove all.
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 
+ 			assert_eq!(A::count(), 0);
+ 			assert_eq!(A::initialize_counter(), 0);
+@@ -1040,7 +1040,7 @@
+ 			assert_eq!(B::count(), 2);
+ 
+ 			// Remove all.
+-			let _ = B::clear(u32::max_value(), None);
++			let _ = B::clear(u32::MAX, None);
+ 
+ 			assert_eq!(B::count(), 0);
+ 			assert_eq!(B::initialize_counter(), 0);
+--- a/src/storage/types/counted_nmap.rs
++++ b/src/storage/types/counted_nmap.rs
+@@ -835,7 +835,7 @@
+ 			A::insert((3,), 10);
+ 			A::insert((4,), 10);
+ 			assert_eq!(A::count(), 3);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			assert!(!A::contains_key((2,)) && !A::contains_key((3,)) && !A::contains_key((4,)));
+ 			assert_eq!(A::count(), 0);
+ 
+@@ -928,7 +928,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len((3,)), None);
+ 			WithLen::append((0,), 10);
+ 			assert_eq!(WithLen::decode_len((0,)), Some(1));
+@@ -1091,7 +1091,7 @@
+ 			A::insert((3, 30), 10);
+ 			A::insert((4, 40), 10);
+ 			assert_eq!(A::count(), 3);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			// one of the item has been removed
+ 			assert!(
+ 				!A::contains_key((2, 20)) && !A::contains_key((3, 30)) && !A::contains_key((4, 40))
+@@ -1195,7 +1195,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len((3, 30)), None);
+ 			WithLen::append((0, 100), 10);
+ 			assert_eq!(WithLen::decode_len((0, 100)), Some(1));
+@@ -1384,7 +1384,7 @@
+ 			A::insert((3, 30, 300), 10);
+ 			A::insert((4, 40, 400), 10);
+ 			assert_eq!(A::count(), 3);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			// one of the item has been removed
+ 			assert!(
+ 				!A::contains_key((2, 20, 200)) &&
+@@ -1495,7 +1495,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len((3, 30, 300)), None);
+ 			WithLen::append((0, 100, 1000), 10);
+ 			assert_eq!(WithLen::decode_len((0, 100, 1000)), Some(1));
+--- a/src/storage/types/double_map.rs
++++ b/src/storage/types/double_map.rs
+@@ -966,7 +966,7 @@
+ 
+ 			A::insert(3, 30, 10);
+ 			A::insert(4, 40, 10);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			assert_eq!(A::contains_key(3, 30), false);
+ 			assert_eq!(A::contains_key(4, 40), false);
+ 
+@@ -1037,7 +1037,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len(3, 30), None);
+ 			WithLen::append(0, 100, 10);
+ 			assert_eq!(WithLen::decode_len(0, 100), Some(1));
+@@ -1051,7 +1051,7 @@
+ 			assert_eq!(A::iter_prefix_values(4).collect::<Vec<_>>(), vec![13, 14]);
+ 			assert_eq!(A::iter_prefix(4).collect::<Vec<_>>(), vec![(40, 13), (41, 14)]);
+ 
+-			let _ = A::clear_prefix(3, u32::max_value(), None);
++			let _ = A::clear_prefix(3, u32::MAX, None);
+ 			assert_eq!(A::iter_prefix(3).collect::<Vec<_>>(), vec![]);
+ 			assert_eq!(A::iter_prefix(4).collect::<Vec<_>>(), vec![(40, 13), (41, 14)]);
+ 
+@@ -1081,7 +1081,7 @@
+ 			assert_eq!(collected_k2_values, [42, 43].iter().copied().collect::<BTreeSet<_>>());
+ 
+ 			// Remove items from the map using k1 = 0
+-			let _ = FooDoubleMap::clear_prefix(0, u32::max_value(), None);
++			let _ = FooDoubleMap::clear_prefix(0, u32::MAX, None);
+ 			// Values associated with (0, _) should have been removed
+ 			assert_eq!(FooDoubleMap::iter_prefix(0).collect::<Vec<_>>(), vec![]);
+ 		});
+--- a/src/storage/types/map.rs
++++ b/src/storage/types/map.rs
+@@ -762,7 +762,7 @@
+ 
+ 			A::insert(3, 10);
+ 			A::insert(4, 10);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			assert_eq!(A::contains_key(3), false);
+ 			assert_eq!(A::contains_key(4), false);
+ 
+@@ -836,7 +836,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len(3), None);
+ 			WithLen::append(0, 10);
+ 			assert_eq!(WithLen::decode_len(0), Some(1));
+--- a/src/storage/types/nmap.rs
++++ b/src/storage/types/nmap.rs
+@@ -814,7 +814,7 @@
+ 
+ 			A::insert((3,), 10);
+ 			A::insert((4,), 10);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			assert_eq!(A::contains_key((3,)), false);
+ 			assert_eq!(A::contains_key((4,)), false);
+ 
+@@ -879,7 +879,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len((3,)), None);
+ 			WithLen::append((0,), 10);
+ 			assert_eq!(WithLen::decode_len((0,)), Some(1));
+@@ -1024,7 +1024,7 @@
+ 
+ 			A::insert((3, 30), 10);
+ 			A::insert((4, 40), 10);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			assert_eq!(A::contains_key((3, 30)), false);
+ 			assert_eq!(A::contains_key((4, 40)), false);
+ 
+@@ -1095,7 +1095,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len((3, 30)), None);
+ 			WithLen::append((0, 100), 10);
+ 			assert_eq!(WithLen::decode_len((0, 100)), Some(1));
+@@ -1270,7 +1270,7 @@
+ 
+ 			A::insert((3, 30, 300), 10);
+ 			A::insert((4, 40, 400), 10);
+-			let _ = A::clear(u32::max_value(), None);
++			let _ = A::clear(u32::MAX, None);
+ 			assert_eq!(A::contains_key((3, 30, 300)), false);
+ 			assert_eq!(A::contains_key((4, 40, 400)), false);
+ 
+@@ -1348,7 +1348,7 @@
+ 				]
+ 			);
+ 
+-			let _ = WithLen::clear(u32::max_value(), None);
++			let _ = WithLen::clear(u32::MAX, None);
+ 			assert_eq!(WithLen::decode_len((3, 30, 300)), None);
+ 			WithLen::append((0, 100, 1000), 10);
+ 			assert_eq!(WithLen::decode_len((0, 100, 1000)), Some(1));
+--- a/src/tests/mod.rs
++++ b/src/tests/mod.rs
+@@ -469,7 +469,7 @@
+ 	e.commit_all().unwrap();
+ 	e.execute_with(|| {
+ 		assert!(matches!(
+-			DoubleMap::clear_prefix(&key1, u32::max_value(), None),
++			DoubleMap::clear_prefix(&key1, u32::MAX, None),
+ 			MultiRemovalResults { maybe_cursor: None, backend: 2, unique: 2, loops: 2 }
+ 		));
+ 		assert_eq!(DoubleMap::get(&key1, &key2), 0u64);
+@@ -511,7 +511,7 @@
+ 		DoubleMap::insert(&(key1 + 1), &(key2 + 1), &4u64);
+ 		// all in overlay
+ 		assert!(matches!(
+-			DoubleMap::clear_prefix(&key1, u32::max_value(), None),
++			DoubleMap::clear_prefix(&key1, u32::MAX, None),
+ 			MultiRemovalResults { maybe_cursor: None, backend: 0, unique: 0, loops: 0 }
+ 		));
+ 		// Note this is the incorrect answer (for now), since we are using v2 of
+@@ -519,7 +519,7 @@
+ 		// When we switch to v3, then this will become:
+ 		//   MultiRemovalResults:: { maybe_cursor: None, backend: 0, unique: 2, loops: 2 },
+ 		assert!(matches!(
+-			DoubleMap::clear_prefix(&key1, u32::max_value(), None),
++			DoubleMap::clear_prefix(&key1, u32::MAX, None),
+ 			MultiRemovalResults { maybe_cursor: None, backend: 0, unique: 0, loops: 0 }
+ 		));
+ 		assert_eq!(DoubleMap::get(&key1, &key2), 0u64);
+@@ -784,3 +784,69 @@
+ 	#[allow(dead_code)]
+ 	struct Test;
+ }
++
++#[test]
++fn clone_no_bound_preserves_generic_field_cloning() {
++	use core::{cell::Cell, marker::PhantomData};
++	use std::rc::Rc;
++
++	struct NotClone;
++	struct Tracked(Rc<Cell<usize>>, u8);
++	impl Clone for Tracked {
++		fn clone(&self) -> Self {
++			self.0.set(self.0.get() + 1);
++			Self(Rc::clone(&self.0), self.1)
++		}
++	}
++
++	#[derive(crate::CloneNoBound)]
++	struct Named<T> {
++		__clone_no_bound_field: u8,
++		tracked: Tracked,
++		marker: PhantomData<T>,
++	}
++	#[derive(crate::CloneNoBound)]
++	struct Tuple<T>(u8, Tracked, PhantomData<T>);
++	#[derive(crate::CloneNoBound)]
++	enum Variant<T> {
++		Named { __clone_no_bound_field: u8, tracked: Tracked, marker: PhantomData<T> },
++		Tuple(u8, Tracked, PhantomData<T>),
++		Unit,
++	}
++	#[derive(crate::CloneNoBound)]
++	struct Unit;
++	#[derive(crate::CloneNoBound)]
++	enum Empty {}
++
++	let count = Rc::new(Cell::new(0));
++	let named = Named::<NotClone> {
++		__clone_no_bound_field: 17,
++		tracked: Tracked(Rc::clone(&count), 42),
++		marker: PhantomData,
++	};
++	let named_clone = named.clone();
++	assert_eq!((named_clone.__clone_no_bound_field, named_clone.tracked.1), (17, 42));
++	assert_eq!(count.get(), 1);
++	let tuple = Tuple::<NotClone>(17, Tracked(Rc::clone(&count), 42), PhantomData).clone();
++	assert_eq!((tuple.0, tuple.1 .1), (17, 42));
++	assert_eq!(count.get(), 2);
++	let variant = Variant::<NotClone>::Named {
++		__clone_no_bound_field: 17,
++		tracked: Tracked(Rc::clone(&count), 42),
++		marker: PhantomData,
++	}
++	.clone();
++	assert!(matches!(
++		variant,
++		Variant::Named { __clone_no_bound_field: 17, tracked: Tracked(_, 42), .. }
++	));
++	assert_eq!(count.get(), 3);
++	let variant =
++		Variant::<NotClone>::Tuple(17, Tracked(Rc::clone(&count), 42), PhantomData).clone();
++	assert!(matches!(variant, Variant::Tuple(17, Tracked(_, 42), _)));
++	assert_eq!(count.get(), 4);
++	assert!(matches!(Variant::<NotClone>::Unit.clone(), Variant::Unit));
++	let _: Unit = Unit.clone();
++	let _: fn(&Empty) -> Empty = Empty::clone;
++	assert_eq!(count.get(), 4);
++}
+--- a/src/traits/members.rs
++++ b/src/traits/members.rs
+@@ -34,10 +34,11 @@
+ #[cfg_attr(feature = "tuples-128", impl_for_tuples(128))]
+ impl<T> Contains<T> for Tuple {
+ 	fn contains(t: &T) -> bool {
++		let contains = false;
+ 		for_tuples!( #(
+-			if Tuple::contains(t) { return true }
++			let contains = contains || Tuple::contains(t);
+ 		)* );
+-		false
++		contains
+ 	}
+ }
+ 
+@@ -52,10 +53,11 @@
+ #[cfg_attr(feature = "tuples-128", impl_for_tuples(128))]
+ impl<A, B> ContainsPair<A, B> for Tuple {
+ 	fn contains(a: &A, b: &B) -> bool {
++		let contains = false;
+ 		for_tuples!( #(
+-			if Tuple::contains(a, b) { return true }
++			let contains = contains || Tuple::contains(a, b);
+ 		)* );
+-		false
++		contains
+ 	}
+ }
+ 
+@@ -196,6 +198,30 @@
+ 
+ 	match_types! {
+ 		pub type OneOrTenToTwenty: impl Contains<u8> = { 1 | 10..=20 };
++	}
++
++	struct NeverCalled;
++
++	impl Contains<u8> for NeverCalled {
++		fn contains(_: &u8) -> bool {
++			panic!("tuple membership must short-circuit")
++		}
++	}
++
++	impl ContainsPair<u8, u8> for NeverCalled {
++		fn contains(_: &u8, _: &u8) -> bool {
++			panic!("tuple pair membership must short-circuit")
++		}
++	}
++
++	#[test]
++	fn tuple_membership_preserves_empty_and_short_circuit_behavior() {
++		assert!(!<() as Contains<u8>>::contains(&1));
++		assert!(!<(Nothing, Nothing) as Contains<u8>>::contains(&1));
++		assert!(<(Nothing, Everything, NeverCalled) as Contains<u8>>::contains(&1));
++		assert!(!<() as ContainsPair<u8, u8>>::contains(&1, &2));
++		assert!(!<(Nothing, Nothing) as ContainsPair<u8, u8>>::contains(&1, &2));
++		assert!(<(Nothing, Everything, NeverCalled) as ContainsPair<u8, u8>>::contains(&1, &2));
+ 	}
+ 
+ 	#[test]
+--- a/src/traits/messages.rs
++++ b/src/traits/messages.rs
+@@ -398,11 +398,44 @@
+ #[impl_trait_for_tuples::impl_for_tuples(8)]
+ impl<Origin> QueuePausedQuery<Origin> for Tuple {
+ 	fn is_paused(origin: &Origin) -> bool {
++		let paused = false;
+ 		for_tuples!( #(
+-			if Tuple::is_paused(origin) {
+-				return true;
+-			}
++			let paused = paused || Tuple::is_paused(origin);
+ 		)* );
+-		false
+-	}
+-}
++		paused
++	}
++}
++
++#[cfg(test)]
++mod tuple_pause_tests {
++	use super::QueuePausedQuery;
++
++	struct Active;
++	struct Paused;
++	struct NeverCalled;
++
++	impl QueuePausedQuery<()> for Active {
++		fn is_paused(_: &()) -> bool {
++			false
++		}
++	}
++
++	impl QueuePausedQuery<()> for Paused {
++		fn is_paused(_: &()) -> bool {
++			true
++		}
++	}
++
++	impl QueuePausedQuery<()> for NeverCalled {
++		fn is_paused(_: &()) -> bool {
++			panic!("tuple pause queries must short-circuit")
++		}
++	}
++
++	#[test]
++	fn tuple_pause_queries_preserve_empty_and_short_circuit_behavior() {
++		assert!(!<() as QueuePausedQuery<()>>::is_paused(&()));
++		assert!(!<(Active, Active) as QueuePausedQuery<()>>::is_paused(&()));
++		assert!(<(Active, Paused, NeverCalled) as QueuePausedQuery<()>>::is_paused(&()));
++	}
++}
+--- a/src/traits/reality.rs
++++ b/src/traits/reality.rs
+@@ -330,3 +330,21 @@
+ 		Err(DispatchError::Unavailable)
+ 	}
+ }
++
++#[cfg(test)]
++mod callback_clone_tests {
++	use super::{Callback, PhantomData};
++
++	struct NotClone;
++
++	#[test]
++	fn callback_clone_does_not_require_generic_clone_bounds() {
++		let callback = Callback::<NotClone, NotClone> {
++			pallet_index: 17,
++			call_index: 42,
++			phantom: PhantomData,
++		};
++		let cloned = callback.clone();
++		assert_eq!((cloned.pallet_index, cloned.call_index), (17, 42));
++	}
++}
+--- a/src/traits/tokens/fungible/union_of.rs
++++ b/src/traits/tokens/fungible/union_of.rs
+@@ -343,7 +343,8 @@
+ 		Criterion: Convert<AssetKind, Either<(), Right::AssetId>>,
+ 		AssetKind: AssetId,
+ 		AccountId,
+-	> fungibles::InspectFreeze<AccountId> for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
++	> fungibles::InspectFreeze<AccountId>
++	for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
+ {
+ 	type Id = Left::Id;
+ 	fn balance_frozen(asset: Self::AssetId, id: &Self::Id, who: &AccountId) -> Self::Balance {
+@@ -452,7 +453,8 @@
+ 		Criterion: Convert<AssetKind, Either<(), Right::AssetId>>,
+ 		AssetKind: AssetId,
+ 		AccountId,
+-	> fungibles::UnbalancedHold<AccountId> for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
++	> fungibles::UnbalancedHold<AccountId>
++	for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
+ {
+ 	fn set_balance_on_hold(
+ 		asset: Self::AssetId,
+--- a/src/traits/tokens/fungibles/union_of.rs
++++ b/src/traits/tokens/fungibles/union_of.rs
+@@ -176,7 +176,8 @@
+ 		Criterion: Convert<AssetKind, Either<Left::AssetId, Right::AssetId>>,
+ 		AssetKind: AssetId,
+ 		AccountId,
+-	> fungibles::roles::Inspect<AccountId> for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
++	> fungibles::roles::Inspect<AccountId>
++	for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
+ {
+ 	fn owner(asset: Self::AssetId) -> Option<AccountId> {
+ 		match Criterion::convert(asset) {
+@@ -312,7 +313,8 @@
+ 		Criterion: Convert<AssetKind, Either<Left::AssetId, Right::AssetId>>,
+ 		AssetKind: AssetId,
+ 		AccountId,
+-	> fungibles::InspectFreeze<AccountId> for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
++	> fungibles::InspectFreeze<AccountId>
++	for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
+ {
+ 	type Id = Left::Id;
+ 	fn balance_frozen(asset: Self::AssetId, id: &Self::Id, who: &AccountId) -> Self::Balance {
+@@ -422,7 +424,8 @@
+ 		Criterion: Convert<AssetKind, Either<Left::AssetId, Right::AssetId>>,
+ 		AssetKind: AssetId,
+ 		AccountId,
+-	> fungibles::UnbalancedHold<AccountId> for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
++	> fungibles::UnbalancedHold<AccountId>
++	for UnionOf<Left, Right, Criterion, AssetKind, AccountId>
+ {
+ 	fn set_balance_on_hold(
+ 		asset: Self::AssetId,
+--- a/src/traits/voting.rs
++++ b/src/traits/voting.rs
+@@ -122,10 +122,10 @@
+ 	fn end_ongoing(index: Self::Index, approved: bool) -> Result<(), ()>;
+ 
+ 	/// The maximum amount of ongoing polls within any single class. By default it practically
+-	/// unlimited (`u32::max_value()`).
++	/// unlimited (`u32::MAX`).
+ 	#[cfg(feature = "runtime-benchmarks")]
+ 	fn max_ongoing() -> (Self::Class, u32) {
+-		(Self::classes().into_iter().next().expect("Always one class"), u32::max_value())
++		(Self::classes().into_iter().next().expect("Always one class"), u32::MAX)
+ 	}
+ }
+ 

@@ -1917,6 +1917,113 @@ fn proposer_quota_preserves_capacity_for_other_members() {
 }
 
 #[test]
+fn legacy_stored_call_loader_accepts_valid_encoding_at_the_call_limit() {
+    new_test_ext().execute_with(|| {
+        let cap = <<Test as Config>::MaxCallBytes as Get<u32>>::get() as usize;
+        let call = RuntimeCall::System(frame_system::Call::remark {
+            remark: vec![7; cap - 4],
+        });
+        let encoded = call.encode();
+        assert_eq!(encoded.len(), cap);
+        let hash = blake2_256(&encoded);
+        let stored = (encoded, 1u64, 9u64).encode();
+        let key = crate::Calls::<Test>::hashed_key_for(hash);
+        sp_io::storage::set(&key, &stored);
+        assert_eq!(Multisig::decode_call(&hash, None), Some(call));
+        assert_eq!(
+            sp_io::storage::get(&key).unwrap().as_ref(),
+            stored.as_slice()
+        );
+    });
+}
+
+#[test]
+fn legacy_stored_call_loader_rejects_oversized_and_malformed_values_without_mutation() {
+    new_test_ext().execute_with(|| {
+        let cap = <<Test as Config>::MaxCallBytes as Get<u32>>::get() as usize;
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let encoded = call.encode();
+        let hash = blake2_256(&encoded);
+        let key = crate::Calls::<Test>::hashed_key_for(hash);
+        assert!(Multisig::decode_call(&hash, None).is_none());
+        let valid = (encoded.clone(), 1u64, 0u64).encode();
+        let mut trailing = valid.clone();
+        trailing.push(0);
+        let mut oversized_suffix = valid.clone();
+        oversized_suffix.extend(vec![0; cap]);
+        let mut truncated_suffix = valid.clone();
+        truncated_suffix.pop();
+        let cases = [
+            // This one-byte overflow still fits the conservative total tuple bound;
+            // it must be rejected by the declared call length itself.
+            (vec![0u8; cap + 1], 1u64, 0u64).encode(),
+            (vec![0u8; cap * 2], 1u64, 0u64).encode(),
+            oversized_suffix,
+            vec![0xff; 5],    // Compact<u32> claims an unsupported integer width.
+            vec![0x01, 0x00], // Non-canonical two-byte encoding of zero.
+            vec![0x02],       // Truncated four-byte compact prefix.
+            Compact(cap as u32).encode(), // Complete prefix, missing call body.
+            truncated_suffix,
+            trailing,
+        ];
+        for value in cases {
+            sp_io::storage::set(&key, &value);
+            assert!(Multisig::decode_call(&hash, None).is_none());
+            assert_eq!(
+                sp_io::storage::get(&key).unwrap().as_ref(),
+                value.as_slice()
+            );
+            // Supplying valid call bytes does not require decoding the historical value.
+            assert_eq!(
+                Multisig::decode_call(&hash, Some(&encoded)),
+                Some(call.clone())
+            );
+        }
+    });
+}
+
+#[test]
+fn quorum_cancellation_removes_oversized_legacy_call_and_releases_capacity() {
+    new_test_ext().execute_with(|| {
+        let multi = Multisig::multi_account_id(&1, 1, 0);
+        assert_ok!(Multisig::register_multisig(
+            RuntimeOrigin::signed(1),
+            vec![1, 2]
+        ));
+        let call = RuntimeCall::Balances(BalancesCall::transfer_allow_death { dest: 6, value: 1 });
+        let hash = blake2_256(&call.encode());
+        assert_ok!(Multisig::as_multi(
+            RuntimeOrigin::signed(1),
+            multi,
+            Some(now()),
+            call.encode(),
+            true,
+            Weight::zero()
+        ));
+        let oversized = vec![0u8; <<Test as Config>::MaxCallBytes as Get<u32>>::get() as usize + 1];
+        crate::Calls::<Test>::insert(hash, (oversized, 1u64, 0u64));
+        assert!(Multisig::decode_call(&hash, None).is_none());
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 1);
+        assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 1), 1);
+        for signer in [1, 2] {
+            assert_ok!(Multisig::approve_cancellation(
+                &signer,
+                &multi,
+                now(),
+                &hash,
+                |_| true
+            ));
+        }
+        assert!(!crate::Calls::<Test>::contains_key(hash));
+        assert!(!crate::Multisigs::<Test>::contains_key(multi, hash));
+        assert_eq!(crate::NewPendingOperations::<Test>::get(multi), 0);
+        assert_eq!(crate::PendingOperationsByProposer::<Test>::get(multi, 1), 0);
+        assert!(!crate::DispatchedCalls::<Test>::contains_key(hash, now()));
+        assert_eq!(Balances::free_balance(6), 0);
+    });
+}
+
+#[test]
 fn quorum_cancellation_frees_full_capacity_without_depositor_or_call_bytes() {
     new_test_ext().execute_with(|| {
         let multi = Multisig::multi_account_id(&1, 1, 0);

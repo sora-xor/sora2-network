@@ -583,6 +583,16 @@ pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
     /// `None` if default transaction payment pallet fees should be used
     fn compute_fee(call: &Call) -> Option<(Balance, Self::FeeDetails)>;
 
+    /// Compute custom fees using the complete extrinsic dispatch information,
+    /// including transaction-extension weight. Flat-fee implementations can
+    /// keep using `compute_fee`; weight-derived policies must use this input.
+    fn compute_fee_with_dispatch_info(
+        call: &Call,
+        _info: &DispatchInfoOf<Call>,
+    ) -> Option<(Balance, Self::FeeDetails)> {
+        Self::compute_fee(call)
+    }
+
     /// Compute actual fees for this call
     ///
     /// Parameters:
@@ -719,7 +729,7 @@ where
                 None,
             );
         }
-        let maybe_custom_fee = T::CustomFees::compute_fee(call);
+        let maybe_custom_fee = T::CustomFees::compute_fee_with_dispatch_info(call, info);
         let (fee, kind) = match maybe_custom_fee {
             Some((0, custom_details)) => (
                 FeeDetails {

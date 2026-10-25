@@ -1,0 +1,5 @@
+error: unexpected end of input, `skip_meta` can only be specified once
+  --> tests/benchmark_ui/extra_skip_meta.rs:26:34
+   |
+26 |     #[benchmark(skip_meta, skip_meta)]
+   |                                     ^

@@ -36,7 +36,7 @@ use codec::{Decode, DecodeWithMemTracking, Encode};
 use common::weights::BlockWeights;
 use common::Denominator;
 use frame_support::dispatch::DispatchClass;
-use frame_support::traits::{OnUnbalanced, RewardsReporter};
+use frame_support::traits::OnUnbalanced;
 use frame_support::weights::constants::BlockExecutionWeight;
 use frame_support::weights::Weight;
 use frame_support::{
@@ -71,9 +71,7 @@ impl pallet_authorship::EventHandler<crate::AccountId, crate::BlockNumber> for S
         .map(|ledger| ledger.stash)
         .unwrap_or(author);
 
-        <pallet_staking::Pallet<crate::Runtime> as RewardsReporter<crate::AccountId>>::reward_by_ids(
-            [(reward_stash, 20)],
-        );
+        pallet_staking::Pallet::<crate::Runtime>::reward_by_ids([(reward_stash, 20)]);
     }
 }
 

@@ -1,0 +1,377 @@
+import { blake2AsHex } from '@polkadot/util-crypto';
+import { defaultLogger } from '../../logger.js';
+import { ResponseError } from '../shared.js';
+import { afterResponse, getDescendantValues } from './storage-common.js';
+const logger = defaultLogger.child({
+    name: 'rpc-chainHead_v1'
+});
+const following = new Map();
+/**
+ * Start a chainHead follow subscription
+ *
+ * @param context
+ * @param params - [`withRuntime`]
+ * @param subscriptionManager
+ *
+ * @return subscription id
+ */ export const chainHead_v1_follow = async (context, [withRuntime], { subscribe })=>{
+    const update = async (block)=>{
+        logger.trace({
+            hash: block.hash
+        }, 'chainHead_v1_follow');
+        const getNewRuntime = async ()=>{
+            const [runtime, previousRuntime] = await Promise.all([
+                block.runtimeVersion,
+                block.parentBlock.then((b)=>b?.runtimeVersion)
+            ]);
+            const hasNewRuntime = runtime.implVersion !== previousRuntime?.implVersion || runtime.specVersion !== previousRuntime.specVersion;
+            return hasNewRuntime ? runtime : null;
+        };
+        const newRuntime = withRuntime ? await getNewRuntime() : null;
+        callback({
+            event: 'newBlock',
+            blockHash: block.hash,
+            parentBlockHash: (await block.parentBlock)?.hash,
+            newRuntime
+        });
+        callback({
+            event: 'bestBlockChanged',
+            bestBlockHash: block.hash
+        });
+        callback({
+            event: 'finalized',
+            finalizedBlockHashes: [
+                block.hash
+            ],
+            prunedBlockHashes: []
+        });
+        const storageDiffs = following.get(id)?.storageDiffs;
+        if (storageDiffs?.size) {
+            // Fetch the storage diffs and update the `closestDescendantMerkleValue` for those that changed
+            const diffKeys = Object.keys(await block.storageDiff());
+            for (const [prefix, value] of storageDiffs.entries()){
+                if (diffKeys.some((key)=>key.startsWith(prefix))) {
+                    storageDiffs.set(prefix, value + 1);
+                }
+            }
+        }
+    };
+    const id = context.chain.headState.subscribeHead(update);
+    const cleanup = ()=>{
+        context.chain.headState.unsubscribeHead(id);
+        following.delete(id);
+    };
+    const callback = subscribe('chainHead_v1_followEvent', id, cleanup);
+    following.set(id, {
+        callback,
+        pendingDescendantValues: new Map(),
+        storageDiffs: new Map()
+    });
+    afterResponse(async ()=>{
+        callback({
+            event: 'initialized',
+            finalizedBlockHashes: [
+                context.chain.head.hash
+            ],
+            finalizedBlockRuntime: withRuntime ? await context.chain.head.runtimeVersion : null
+        });
+        callback({
+            event: 'bestBlockChanged',
+            bestBlockHash: context.chain.head.hash
+        });
+    });
+    return id;
+};
+/**
+ * Stop a chainHead follow subscription
+ *
+ * @param context
+ * @param params - [`followSubscription`]
+ * @param subscriptionManager
+ */ export const chainHead_v1_unfollow = async (_, [followSubscription], { unsubscribe })=>{
+    unsubscribe(followSubscription);
+    return null;
+};
+/**
+ * Retrieve the header for a specific block
+ *
+ * @param context
+ * @param params - [`followSubscription`, `hash`]
+ *
+ * @return SCALE-encoded header, or null if the block is not found.
+ */ export const chainHead_v1_header = async (context, [followSubscription, hash])=>{
+    if (!following.has(followSubscription)) return null;
+    const block = await context.chain.getBlock(hash);
+    return block ? (await block.header).toHex() : null;
+};
+const operationStarted = (operationId)=>({
+        result: 'started',
+        operationId
+    });
+const randomId = ()=>Math.random().toString(36).substring(2);
+/**
+ * Perform a runtime call for a block
+ *
+ * @param context
+ * @param params - [`followSubscription`, `hash`, `function`, `callParameters`]
+ *
+ * @return OperationStarted event with operationId to receive the result on the follow subscription
+ */ export const chainHead_v1_call = async (context, [followSubscription, hash, method, callParameters])=>{
+    const operationId = randomId();
+    afterResponse(async ()=>{
+        const block = await context.chain.getBlock(hash);
+        if (!block) {
+            following.get(followSubscription)?.callback({
+                event: 'operationError',
+                operationId,
+                error: `Block ${hash} not found`
+            });
+        } else {
+            try {
+                const resp = await block.call(method, [
+                    callParameters
+                ]);
+                following.get(followSubscription)?.callback({
+                    event: 'operationCallDone',
+                    operationId,
+                    output: resp.result
+                });
+            } catch (ex) {
+                following.get(followSubscription)?.callback({
+                    event: 'operationError',
+                    operationId,
+                    error: ex.message
+                });
+            }
+        }
+    });
+    return operationStarted(operationId);
+};
+/**
+ * Query the storage for a given block
+ *
+ * @param context
+ * @param params - [`followSubscription`, `hash`, `items`, `childTrie`]
+ *
+ * @return OperationStarted event with operationId to receive the result on the follow subscription
+ *
+ * The query type `closestDescendantMerkleValue` is not up to spec.
+ * According to the spec, the result should be the Merkle value of the key or
+ * the closest descendant of the key.
+ * As chopsticks doesn't have direct access to the Merkle tree, it will return
+ * a string that will change every time that one of the descendant changes, but
+ * it won't be the actual Merkle value.
+ * This should be enough for applications that don't rely on the actual Merkle
+ * value, but just use it to detect for storage changes.
+ */ export const chainHead_v1_storage = async (context, [followSubscription, hash, items, _childTrie])=>{
+    const operationId = randomId();
+    afterResponse(async ()=>{
+        const block = await context.chain.getBlock(hash);
+        if (!block) {
+            following.get(followSubscription)?.callback({
+                event: 'operationError',
+                operationId,
+                error: 'Block not found'
+            });
+            return;
+        }
+        const handleStorageItemRequest = async (sir)=>{
+            switch(sir.type){
+                case 'value':
+                    {
+                        const value = await block.get(sir.key);
+                        if (value) {
+                            following.get(followSubscription)?.callback({
+                                event: 'operationStorageItems',
+                                operationId,
+                                items: [
+                                    {
+                                        key: sir.key,
+                                        value
+                                    }
+                                ]
+                            });
+                        }
+                        return null;
+                    }
+                case 'hash':
+                    {
+                        const value = await block.get(sir.key);
+                        if (value) {
+                            following.get(followSubscription)?.callback({
+                                event: 'operationStorageItems',
+                                operationId,
+                                items: [
+                                    {
+                                        key: sir.key,
+                                        hash: blake2AsHex(value)
+                                    }
+                                ]
+                            });
+                        }
+                        return null;
+                    }
+                case 'descendantsValues':
+                    {
+                        const { items, next } = await getDescendantValues(block, {
+                            prefix: sir.key,
+                            startKey: '0x'
+                        });
+                        following.get(followSubscription)?.callback({
+                            event: 'operationStorageItems',
+                            operationId,
+                            items
+                        });
+                        return next;
+                    }
+                case 'descendantsHashes':
+                    {
+                        const { items, next } = await getDescendantValues(block, {
+                            prefix: sir.key,
+                            startKey: '0x'
+                        });
+                        following.get(followSubscription)?.callback({
+                            event: 'operationStorageItems',
+                            operationId,
+                            items: items.map(({ key, value })=>({
+                                    key,
+                                    hash: value !== undefined ? blake2AsHex(value) : undefined
+                                }))
+                        });
+                        return next ? {
+                            ...next,
+                            isDescendantHashes: true
+                        } : null;
+                    }
+                case 'closestDescendantMerkleValue':
+                    {
+                        const followingSubscription = following.get(followSubscription);
+                        if (!followingSubscription) return null;
+                        if (!followingSubscription.storageDiffs.has(sir.key)) {
+                            // Set up a diff watch for this key
+                            followingSubscription.storageDiffs.set(sir.key, 0);
+                        }
+                        followingSubscription.callback({
+                            event: 'operationStorageItems',
+                            operationId,
+                            items: [
+                                {
+                                    key: sir.key,
+                                    closestDescendantMerkleValue: String(followingSubscription.storageDiffs.get(sir.key))
+                                }
+                            ]
+                        });
+                        return null;
+                    }
+            }
+        };
+        const listResult = await Promise.all(items.map(handleStorageItemRequest));
+        const pending = listResult.filter((v)=>v !== null);
+        if (!pending.length) {
+            following.get(followSubscription)?.callback({
+                event: 'operationStorageDone',
+                operationId
+            });
+        } else {
+            const follower = following.get(followSubscription);
+            if (follower) {
+                follower.pendingDescendantValues.set(operationId, {
+                    hash,
+                    params: pending
+                });
+                follower.callback({
+                    event: 'operationWaitingForContinue',
+                    operationId
+                });
+            }
+        }
+    });
+    return {
+        ...operationStarted(operationId),
+        discardedItems: 0
+    };
+};
+const limitReached = {
+    result: 'limitReached'
+};
+/**
+ * Retrieve the body of a specific block
+ *
+ * @param context
+ * @param params - [`followSubscription`, `hash`]
+ *
+ * @return OperationStarted event with operationId to receive the result on the follow subscription
+ */ export const chainHead_v1_body = async (context, [followSubscription, hash])=>{
+    if (!following.has(followSubscription)) return limitReached;
+    const block = await context.chain.getBlock(hash);
+    if (!block) {
+        throw new ResponseError(-32801, 'Block not found');
+    }
+    const operationId = randomId();
+    afterResponse(async ()=>{
+        const body = await block.extrinsics;
+        following.get(followSubscription)?.callback({
+            event: 'operationBodyDone',
+            operationId,
+            value: body
+        });
+    });
+    return operationStarted(operationId);
+};
+/**
+ * Resume an operation paused through `operationWaitingForContinue`
+ *
+ * @param context
+ * @param params - [`followSubscription`, `operationId`]
+ */ export const chainHead_v1_continue = async (context, [followSubscription, operationId])=>{
+    const follower = following.get(followSubscription);
+    const pendingOp = follower?.pendingDescendantValues.get(operationId);
+    if (!pendingOp || !follower) {
+        throw new ResponseError(-32803, "Operation ID doesn't have anything pending");
+    }
+    const block = await context.chain.getBlock(pendingOp.hash);
+    if (!block) {
+        throw new ResponseError(-32801, 'Block not found');
+    }
+    afterResponse(async ()=>{
+        const handlePendingOperation = async (params)=>{
+            const { items, next } = await getDescendantValues(block, params);
+            follower.callback({
+                event: 'operationStorageItems',
+                operationId,
+                items: params.isDescendantHashes ? items.map(({ key, value })=>({
+                        key,
+                        hash: value !== undefined ? blake2AsHex(value) : value
+                    })) : items
+            });
+            return next;
+        };
+        const listResult = await Promise.all(pendingOp.params.map(handlePendingOperation));
+        const pending = listResult.filter((v)=>v !== null);
+        if (!pending.length) {
+            follower.pendingDescendantValues.delete(operationId);
+            follower.callback({
+                event: 'operationStorageDone',
+                operationId
+            });
+        } else {
+            follower.pendingDescendantValues.set(operationId, {
+                hash: pendingOp.hash,
+                params: pending
+            });
+            follower.callback({
+                event: 'operationWaitingForContinue',
+                operationId
+            });
+        }
+    });
+    return null;
+};
+export const chainHead_v1_stopOperation = async (_context, [followSubscription, operationId])=>{
+    following.get(followSubscription)?.pendingDescendantValues.delete(operationId);
+    return null;
+};
+// no-op, since there's no concept of unpinning in chopsticks
+export const chainHead_v1_unpin = async (_context, [_followSubscription, _hashOrHashes])=>{
+    return null;
+};

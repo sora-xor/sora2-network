@@ -1,0 +1,361 @@
+{
+  "runId": "20261024T174836Z-fa72028d",
+  "status": "passed",
+  "startedAt": "2026-10-24T17:48:36.554695+00:00",
+  "scope": "Read-only production RPC; candidate execution and fixtures remain local. No transaction submission or deployment.",
+  "archivedPriorOutputs": [
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/rehearsal-run.json",
+      "sha256": "0d3adfbd5d4af25759b0943cda4aaf4b11ff17924690c8b4a31c17bcb472661d"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/wasm-compatibility.json",
+      "sha256": "db36a4744389a5fbecd2d23a15297f7a5619e7d381644bf3a84a09cdf7c2cc39"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/wasm-compatibility.log",
+      "sha256": "2d28fdaa7c2305e39554987a67475a5b2d414908a687377d2ed22c1edb38866b"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/baseline-metadata.json",
+      "sha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/candidate-metadata.json",
+      "sha256": "95097e0720804255fa3db59e2e896eece134040beceda895a90e0475b754013b"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/metadata-compatibility.json",
+      "sha256": "35320ec0eb71a26c66737e6025cbead64be7796f1ed299ef132a655da5a47398"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/equivocation-fee-wasm-rehearsal.json",
+      "sha256": "88789852429ce1b8d20b7154458bf2d86c81f84c4e46e917ac679218651d8506"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/equivocation-fee-wasm-rehearsal.log",
+      "sha256": "5636920079a0e90c1ae529498e41ba8aba5386b582c2dee2231bb2b3a3c095bc"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/fee-event-check.json",
+      "sha256": "ea27251118a5a6fe51395f9083c0579d7addf26472a8cd8025f1eef51baa2886"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/fee-event-check.log",
+      "sha256": "22b762d960af1e972d3925961b305116284e0d3644be9b1db9f3286ea7f9557f"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/fee-policy-wasm-rehearsal.json",
+      "sha256": "3fa822ca36b7b49e4709883eea2694bc0d39ef95132fe0207cddd3c7448ef4dd"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/fee-policy-wasm-rehearsal.log",
+      "sha256": "18a25dbe22f542ec5f9392cfdeb0fe7dcf4ede1568fe88254bc92228cad0714a"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/wasm-interface-tests.log",
+      "sha256": "8856449664076756d530abe10ac3906a8a147cada2f85c094d94ec5de216df91"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/readonly-rpc-tests.log",
+      "sha256": "c597f630f08ebdce73a95a5d294acb11c2107ee37eda71381fa35d79e09d0ae5"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/fee-evidence-tests.log",
+      "sha256": "bf6eddc3ef18e61457da112ddc23c969bd1a9c6214d1f566957f95a9c413f935"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/rehearsal-run-tests.log",
+      "sha256": "75159ba226d780e241ca5d6320260c3b8d4f2d7c4702a88da4e26fcde3d999f9"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/source-before-rehearsal.json",
+      "sha256": "17abd57f444fc8d37a0e7c9d6a24a966608d884430105263522992dc343b80db"
+    },
+    {
+      "path": "validation/attempts/prior-to-20261024T174836Z-fa72028d/source-before-rehearsal.log",
+      "sha256": "17abd57f444fc8d37a0e7c9d6a24a966608d884430105263522992dc343b80db"
+    }
+  ],
+  "stages": [
+    {
+      "name": "Verify full source before rehearsal",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:36.584899+00:00",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-before-rehearsal.json"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:38.642606+00:00",
+      "log": "validation/source-before-rehearsal.log",
+      "logSha256": "ab876fba62115a50c46e52cfd6ff2739e3deca9be03d7857360b5d650bb24cb4",
+      "result": "validation/source-before-rehearsal.json",
+      "resultSha256": "ab876fba62115a50c46e52cfd6ff2739e3deca9be03d7857360b5d650bb24cb4"
+    },
+    {
+      "name": "Wasm interface negative regressions",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:38.643396+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "--test",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-wasm-interfaces.cjs"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:38.763240+00:00",
+      "log": "validation/wasm-interface-tests.log",
+      "logSha256": "79fd4ff27d346a5b63315dfca2d16728ad00f9da96db69bd46564d4eb90b0148"
+    },
+    {
+      "name": "Read-only RPC guard regressions",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:38.764198+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "--test",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-readonly-rpc.cjs"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:38.947708+00:00",
+      "log": "validation/readonly-rpc-tests.log",
+      "logSha256": "c1e8b94b2bfdc4b93ce016cadb6b1045450073dcb9073f6caa37106f805e95aa"
+    },
+    {
+      "name": "Fee evidence binding regressions",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:38.948388+00:00",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-fee-evidence.py"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:39.074503+00:00",
+      "log": "validation/fee-evidence-tests.log",
+      "logSha256": "0005b29afd2f56f71127b89cddee1d258c01db0784316ab624a84da1230c0d67"
+    },
+    {
+      "name": "Run evidence negative regressions",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:39.075905+00:00",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-rehearsal-run.py"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:39.297964+00:00",
+      "log": "validation/rehearsal-run-tests.log",
+      "logSha256": "03ab328104ed1a3a5e62a5553e8b80158cde02fb5662eeaba58ce9518f5c53eb"
+    },
+    {
+      "name": "Runtime lifecycle and rollback regressions",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:39.299855+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "--test",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-runtime-execution.cjs"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:39.396356+00:00",
+      "log": "validation/runtime-execution-tests.log",
+      "logSha256": "c3baaa021decc3d70d7de6bbfb8573322ea6c42ba8e394f1424d4c56709b63fa"
+    },
+    {
+      "name": "Exact candidate compatibility",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:39.397429+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/verify-wasm-compatibility.cjs",
+        "--candidate",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/candidate.compact.compressed.wasm",
+        "--candidate-spec",
+        "135",
+        "--baseline",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/live-runtime.compact.compressed.wasm",
+        "--output-dir",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:48:48.701354+00:00",
+      "log": "validation/wasm-compatibility.log",
+      "logSha256": "de4e70f8e076a63aaf373a0df1b4eb98c138ed4362bd62cc642269a9ccc03745",
+      "result": "validation/wasm-compatibility.json",
+      "resultSha256": "944b72ee2f6165ce0ffa1c4a2c3323f29070903bf984434633cafe4de04a18fa"
+    },
+    {
+      "name": "Equivocation and fee execution",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:48:48.702789+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-equivocation-fees.cjs",
+        "--endpoint",
+        "wss://mof2.sora.org",
+        "--wasm",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/candidate.compact.compressed.wasm",
+        "--candidate-spec",
+        "135",
+        "--synthetic-fixtures",
+        "--snapshot",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/snapshot.json",
+        "--cache",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/.public-read-cache.json.gz",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/equivocation-fee-wasm-rehearsal.json"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:49:11.297348+00:00",
+      "log": "validation/equivocation-fee-wasm-rehearsal.log",
+      "logSha256": "84261b290c30963b545b606b3c0a346738ffb92deb10ad2eba3f001268b254c8",
+      "result": "validation/equivocation-fee-wasm-rehearsal.json",
+      "resultSha256": "9bdcdb0a6ed1410b75a4b070d0f1938ba04711f3fdda992cd8d75dfa2ff2f6db"
+    },
+    {
+      "name": "Independent fee event verification",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:49:11.300015+00:00",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/verify-fee-events.py"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:49:11.386210+00:00",
+      "log": "validation/fee-event-check.log",
+      "logSha256": "22b762d960af1e972d3925961b305116284e0d3644be9b1db9f3286ea7f9557f",
+      "result": "validation/fee-event-check.json",
+      "resultSha256": "cca33c7aacb3f9dc5410cbe1a936d4adf52ceebb5947e4f8f8814914852f7054"
+    },
+    {
+      "name": "Fee policy and bridge fixtures",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:49:11.387518+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-fee-policy.cjs",
+        "--endpoint",
+        "wss://mof2.sora.org",
+        "--wasm",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/candidate.compact.compressed.wasm",
+        "--candidate-spec",
+        "135",
+        "--synthetic-fixtures",
+        "--snapshot",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/snapshot.json",
+        "--cache",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/.public-read-cache.json.gz",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/fee-policy-wasm-rehearsal.json"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:53:43.378888+00:00",
+      "log": "validation/fee-policy-wasm-rehearsal.log",
+      "logSha256": "001754f6e09f9cc802f5b35e35418d2504f395ca0dfa946c9798bcd3a8d6689e",
+      "result": "validation/fee-policy-wasm-rehearsal.json",
+      "resultSha256": "1665ecc7410fae651dc08adc61fab76c5e34d3628ac5f848a2d72b83a7528ee5"
+    },
+    {
+      "name": "Complete pending bridge inventory",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:53:43.397143+00:00",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/check-bridge-readiness.cjs"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:54:54.896812+00:00",
+      "log": "validation/bridge-readiness.log",
+      "logSha256": "50e006316f0f61b8de60d88280bef241424ef9513eb8d41ebbeedbe003171c9e",
+      "result": "validation/bridge-readiness.json",
+      "resultSha256": "6c3808384f7f19dcfa2fb3de557b890537d68078ea1790c5b082bb3e7da3a5f0"
+    },
+    {
+      "name": "Verify full source after rehearsal",
+      "status": "passed",
+      "startedAt": "2026-10-24T17:54:54.901496+00:00",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-after-rehearsal.json"
+      ],
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T17:54:57.672901+00:00",
+      "log": "validation/source-after-rehearsal.log",
+      "logSha256": "e492a41eb93252fcfd8bd435461d0bc8d891b76729bd80cb8c77e2dff4927d32",
+      "result": "validation/source-after-rehearsal.json",
+      "resultSha256": "e492a41eb93252fcfd8bd435461d0bc8d891b76729bd80cb8c77e2dff4927d32"
+    }
+  ],
+  "inputs": {
+    "candidateSha256": "2109096d15dd84e49c7d081ad20ab7b194424cc4e640f804133da0b836c28adf",
+    "candidateSourcePath": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/candidate-built.compact.compressed.wasm",
+    "candidatePath": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/candidate.compact.compressed.wasm",
+    "snapshotSha256": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+    "snapshotBlockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+    "buildEvidenceSha256": "a4742122364d307256f6bd92e8eece1b7e6ae521c890438a10043d4b2a016fd3",
+    "files": {
+      "runtime-rehearsal-dependency-migrations-2026-10-25/run-local-rehearsals.py": "160a197bb4df3691d7a7cc13f3508808de92ce469939af63490cedad7cd4a1a2",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/run-local-rehearsals.sh": "29af60d4d882397411d360f35163442041cff4a38f4d75fde335566340a1b7c6",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/verify-wasm-compatibility.cjs": "60c49c80649c40c233db1eb75380a39ad51e20133dee579a20bb5fac18452a54",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/wasm-interfaces.cjs": "140c80dd84a0a4284428384dead430ca1aaae6923ffefbe5d636ef187b7c10c1",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-wasm-interfaces.cjs": "c4098c72211f9ce902dd258c7b743fccc9ea57cadab973ab7b56170d7d8b65b3",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/readonly-rpc.cjs": "69b9b881966a836b8b8e6a1216eb7765e962f13bdf03e05788150a79e03bda78",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-readonly-rpc.cjs": "86412339fadfb339bad0d6a5e528ee97ed1357f863874dfc46287951809af981",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/validate-dependencies.cjs": "02c04729c25d2d43ce38ec529ef21ba12d6a59472128006c034962406322405a",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/compare-metadata.py": "cf60d006964bb2ffd67746cbe47ba9214e1861e4529ed68c4ea3cdcb0185494f",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/verify-fee-events.py": "c3bf9963afd1841dbb2caf8e37a666e2674438f68a657f4e50eb2a1d01825e7d",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-fee-evidence.py": "ee27c32221e5e9aaf1798cb69f46cbf80f079ea3c40055a702e7ec6ae31ee6cc",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-rehearsal-run.py": "e66e6a9be6ddaeea76b35c1cca964efc361f4daceb05f46c64b21c92ba609c77",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/runtime-execution.cjs": "69a4d1867d437d4778dc8c9823f9d6c47b5777e385676d816a3ce2c765558731",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-runtime-execution.cjs": "a43f5b127129454a46138e185bede7e80f59e5d25747b6c1da3505fefabbf435",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-equivocation-fees.cjs": "999f59783dd1cdc45da030dbf9a741cbd1ccdc27dcfa0ab0a016edda98aa725e",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-fee-policy.cjs": "ef97287d4492c491f047707a81f1fbafc2879256f7afd3a5889551aab30a4941",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/check-bridge-readiness.cjs": "5f2c7cdfdefc2600e3e6924c870ea4aaa9e64b53b50cb26cf577596d624906fc",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/retired-lending-fixture.cjs": "ad4e082ba5928497ca119c4f6037d9f0467803c90d13c8bfebd68b3fccbc762c",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/payout-batch-fixture.cjs": "38040a1c9d0e24611fe2916b2a68262f8a4631999216fc1c8dd62dcb41c64680",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/migration-proof-fixture.json": "94396ebc78d2d72de8d599bf4883bf710f2fe7dcbbe066fe420a832417d22a56",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/package.json": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-start.json": "03f97fccba459fff14b01877d7d61f98e97d2de5d4514a078f2b2d0e09cadaac",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-verification.json": "97525bc90648099480d079dc355deb0e06cd538b811016ee1acb185c06fbaec6",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/source-start.stdout.log": "7a106ccff3c7c64c2795286ac9172c5246080c0785ef81fe0c7dea743af552fa",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/source-start.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/clippy-all.stdout.log": "d7895e981d3cfdccef21c380d096ca0fba4b4a28646c1d07e2308f5f2abe7ea6",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/clippy-all.stderr.log": "45a52a67a8622844846cdd0aedf22a9179de29cb0b1b29aa6b3004f2b066ba93",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/source-after-clippy.stdout.log": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/source-after-clippy.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/format.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/format.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/production-feature-graph.stdout.log": "a8535d7e2f4405362b67ecdbbefd4d038d0362eaf4559dc02a527d7d13a46a51",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/production-feature-graph.stderr.log": "d44a79ec17b7096c968f044d9d94537359abd431debd0780f0e1a2bba08af140",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/production-wasm.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/production-wasm.stderr.log": "081ea1cbbf0f3f02f8f33783795f23354b3019c2dbdb61e09d284f17203e5403",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/source-after-build.stdout.log": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/final-build-logs/source-after-build.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-clippy-end-check.json": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-build-end-check.json": "7a4323c9d7f237717c7b09e70732f1322fdfb00b21370d9b0d53fec1186febfa",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/source-fingerprint.py": "1480b0a88c00483e46f6c2883a8e6787664f373e60421931f90d24362e590b84",
+      "runtime/src/lib.rs": "41abcf0f296c5c1884fe27d3239bce5f865884bbc02ba640c2aecff252891070",
+      "Cargo.lock": "084a55c7e7faef19ac84b8cf12f98acc5a271412a9533aa415472743f26addd0",
+      "rust-toolchain.toml": "4ce59ef54d9496321d8e22297f121082ef981693a2dd5f9a79b2ccc2f1dcfac2"
+    }
+  },
+  "checks": {
+    "freshStageOutputs": true,
+    "allRequiredStagesPassed": true,
+    "candidateSnapshotAndEvidenceHashesAgree": true,
+    "scriptAndSourceBindingsUnchangedDuringRun": true,
+    "fullPendingInventoryComplete": true
+  },
+  "finishedAt": "2026-10-24T17:54:57.707667+00:00"
+}

@@ -174,8 +174,10 @@ mod _allowed_deprecated {
     )]
     #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
     #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Hash))]
+    #[derive(Default)]
     #[repr(u8)]
     pub enum PredefinedAssetId {
+        #[default]
         XOR = 0,
         #[deprecated(
             note = "asset id for this variant is either absent or different in all environments; \
@@ -263,12 +265,6 @@ pub const SB: AssetId32<PredefinedAssetId> = AssetId32::from_bytes(hex!(
 impl IsRepresentation for PredefinedAssetId {
     fn is_representation(&self) -> bool {
         false
-    }
-}
-
-impl Default for PredefinedAssetId {
-    fn default() -> Self {
-        Self::XOR
     }
 }
 
@@ -978,19 +974,15 @@ pub enum LiquiditySourceType {
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
+#[derive(Default)]
 pub enum FilterMode {
     /// Filter is disabled, all items regardless of filter are included.
+    #[default]
     Disabled,
     /// Only selected items are filtered out, rest will be included.
     ForbidSelected,
     /// Only selected items will be included, rest are filtered out.
     AllowSelected,
-}
-
-impl Default for FilterMode {
-    fn default() -> Self {
-        Self::Disabled
-    }
 }
 
 #[derive(
@@ -999,17 +991,13 @@ impl Default for FilterMode {
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[repr(u8)]
+#[derive(Default)]
 pub enum ManagementMode {
     /// All functions can be managed with this mode.
+    #[default]
     Private,
     /// Functions checked as public can be managed with this mode.
     Public,
-}
-
-impl Default for ManagementMode {
-    fn default() -> Self {
-        Self::Private
-    }
 }
 
 /// Identification of liquidity source.
@@ -1303,8 +1291,10 @@ impl From<InvokeRPCError> for i32 {
 )]
 #[cfg_attr(not(feature = "std"), derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derive(Default)]
 pub enum RewardReason {
     /// Reason is unknown.
+    #[default]
     Unspecified,
     /// Buying XOR with collateral tokens (except PSWAP and VAL) is rewarded.
     BuyOnBondingCurve,
@@ -1314,12 +1304,6 @@ pub enum RewardReason {
     DeprecatedMarketMakerVolume,
     /// Crowdloan reward.
     Crowdloan,
-}
-
-impl Default for RewardReason {
-    fn default() -> Self {
-        Self::Unspecified
-    }
 }
 
 #[derive(Encode, Decode, Clone, Debug, Default, scale_info::TypeInfo)]
@@ -1434,6 +1418,14 @@ impl<N: Get<u32>> TryFrom<&str> for BoundedString<N> {
     }
 }
 
+impl<N: Get<u32>> core::str::FromStr for BoundedString<N> {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Self::try_from(value)
+    }
+}
+
 impl<N: Get<u32>> PartialOrd for BoundedString<N> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
@@ -1535,6 +1527,20 @@ mod tests {
     use hex_literal::hex;
 
     use crate::{AssetId32, PredefinedAssetId, TechAssetId};
+
+    #[test]
+    fn bounded_string_parsing_preserves_utf8_byte_limits_and_encoding() {
+        type Text = BoundedString<frame_support::traits::ConstU32<4>>;
+        for value in ["", "abcd", "éé", "💡"] {
+            let parsed: Text = value.parse().unwrap();
+            assert_eq!(parsed, Text::try_from(value).unwrap());
+            assert_eq!(parsed.encode(), value.as_bytes().to_vec().encode());
+        }
+        for value in ["abcde", "ééa", "💡a"] {
+            assert!(value.parse::<Text>().is_err());
+            assert!(Text::try_from(value).is_err());
+        }
+    }
 
     #[test]
     fn should_serialize_and_deserialize_assetid32_properly_with_string() {

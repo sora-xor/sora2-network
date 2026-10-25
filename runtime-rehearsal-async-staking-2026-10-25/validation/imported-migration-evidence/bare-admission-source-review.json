@@ -1,0 +1,74 @@
+{
+  "oldTag": "polkadot-stable2603-7",
+  "oldCommit": "cd87d0b95e54c8ffc374334386f3f2b2c7a61f54",
+  "newTag": "polkadot-stable2609",
+  "newCommit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "reviewKind": "Static source comparison; not a claim of old-Wasm execution.",
+  "ordinaryUnregisteredBareAdmission": "Pre-existing: generated pool validation rejects with NoUnsignedValidator while generated pre_dispatch defaults to Ok for calls without a registered ValidateUnsigned pallet. The bare CheckedExtrinsic branch then executes with None origin; a BadOrigin dispatch error is an admitted extrinsic if extensions allow it.",
+  "evidence": [
+    "The generated ValidateUnsigned implementation is identical except for an added allow(deprecated) attribute. Its unregistered pre_dispatch fallback remains Ok, while pool validation remains NoUnsignedValidator.",
+    "Both CheckedExtrinsic bare validation and application branches are identical after renaming Extension to ExtensionV0.",
+    "SkipCheckIfFeeless source is byte-identical between releases. It supplies no bare callback overrides, so default bare callbacks accept and do not call the wrapped signed-payment implementation.",
+    "CheckSpecVersion, CheckTxVersion, CheckGenesis, CheckMortality and CheckNonce source files are byte-identical. CheckWeight extracts its existing arithmetic into a helper, with unchanged weight calculation.",
+    "The prior local runtime explicitly registered ImOnline ValidateUnsigned. Old ImOnline pre_dispatch used the trait default to re-run heartbeat signature/session validation and its dispatch accepted None. New ImOnline removes that registration and accepts Authorized origins. The retired bare heartbeat therefore newly fell into the existing unregistered-call fallback until the narrow outer adapter guard rejected it."
+  ],
+  "scopeDecision": "Retain the exact ImOnline heartbeat bare guard. No demonstrated new ordinary-call admission regression warrants widening policy in this SDK migration.",
+  "sourceFiles": [
+    {
+      "path": "substrate/frame/support/procedural/src/construct_runtime/expand/unsigned.rs",
+      "oldSha256": "3e167c1f6bdb5b960464b70b3466bb04035abb99539f40ed5a048b9c658387ad",
+      "newSha256": "420fd7c1e1f0edd5e126356b7cc6411051c3de5a46e5c8bc70ec8bab5461e8f7"
+    },
+    {
+      "path": "substrate/primitives/runtime/src/generic/checked_extrinsic.rs",
+      "oldSha256": "b71664a9f5de2e8050788ec293d143e898f51bfa3647c6bb9c916f347bd7c195",
+      "newSha256": "37a5dc10e6e922f8cd54af991cc4db5f8edeaa295ad578f25c0e743b29a86449"
+    },
+    {
+      "path": "substrate/frame/transaction-payment/skip-feeless-payment/src/lib.rs",
+      "oldSha256": "723eabc697de7f47be4939e5f0ba757dbe22c1a9eb7da0f3332266a8defd8a20",
+      "newSha256": "723eabc697de7f47be4939e5f0ba757dbe22c1a9eb7da0f3332266a8defd8a20"
+    },
+    {
+      "path": "substrate/primitives/runtime/src/traits/transaction_extension/mod.rs",
+      "oldSha256": "19f3a3f34b3e9396243e6b559b07ffe4f8b8d08d35ffa0733bcdcc50f7822254",
+      "newSha256": "f5b998803d51bcc92beae2fd95b07860069aa1d3f1f4a0a2159f09f8ef165b54"
+    },
+    {
+      "path": "substrate/frame/im-online/src/lib.rs",
+      "oldSha256": "10f19f289afaf0fb2bdb4fc54cce5a550cc680a81e60110be3c2e1a56c0efd92",
+      "newSha256": "9854ee552ca738fb5b03509dc2d3767a1eded8a8ab8a1ac5b875b788fc2ac9b3"
+    },
+    {
+      "path": "substrate/frame/system/src/extensions/check_spec_version.rs",
+      "oldSha256": "f7f82eaf2b803a4aaecc632ef4e1b6d2a0b51baf61c7c137817e4498e4c2e3db",
+      "newSha256": "f7f82eaf2b803a4aaecc632ef4e1b6d2a0b51baf61c7c137817e4498e4c2e3db"
+    },
+    {
+      "path": "substrate/frame/system/src/extensions/check_tx_version.rs",
+      "oldSha256": "9cecad3288f06b44ebe0ada5c49284cc322df2136b1e1f16e8ecbd39a31b7a62",
+      "newSha256": "9cecad3288f06b44ebe0ada5c49284cc322df2136b1e1f16e8ecbd39a31b7a62"
+    },
+    {
+      "path": "substrate/frame/system/src/extensions/check_genesis.rs",
+      "oldSha256": "8284e193f3b0a5f39dc3dfb031f6cd54f88dbb2eca22cbe1cab9fb020d30de27",
+      "newSha256": "8284e193f3b0a5f39dc3dfb031f6cd54f88dbb2eca22cbe1cab9fb020d30de27"
+    },
+    {
+      "path": "substrate/frame/system/src/extensions/check_mortality.rs",
+      "oldSha256": "356e486a2079bfad04f3ec29eab4864116842d72cd7b51bf924b03808dc661ca",
+      "newSha256": "356e486a2079bfad04f3ec29eab4864116842d72cd7b51bf924b03808dc661ca"
+    },
+    {
+      "path": "substrate/frame/system/src/extensions/check_nonce.rs",
+      "oldSha256": "b03c60c2cddd25d49c608bd7106199261d0be1d4cb3c106d67b1a9cc376d30f1",
+      "newSha256": "b03c60c2cddd25d49c608bd7106199261d0be1d4cb3c106d67b1a9cc376d30f1"
+    },
+    {
+      "path": "substrate/frame/system/src/extensions/check_weight.rs",
+      "oldSha256": "a96221fc2060f3aa9c6b7eb4555eb2ccdd55e949152d2ce8b61dfe61696be706",
+      "newSha256": "ff0f736ae85a34847b79ccbcd3a2d44e76b0b7e51ed7037b823870b6c3e6f4f3"
+    }
+  ],
+  "priorRuntimeSourceSha256": "41abcf0f296c5c1884fe27d3239bce5f865884bbc02ba640c2aecff252891070"
+}

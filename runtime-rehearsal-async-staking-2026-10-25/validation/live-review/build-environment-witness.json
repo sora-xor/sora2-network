@@ -1,0 +1,21 @@
+{
+  "status": "reproduced-environment-leak",
+  "scope": "Executed only the actual runner environment-construction AST with synthetic values; no compilation or candidate files changed. Skip behavior and stale artifact reuse established by source review, not a full fault-injected release run.",
+  "runnerSha256": "90097d745ed500827c542d8ba4ebfb104092a8551f7122bc27130946c0ba1551",
+  "builderSha256": "1635d69da46b371a2e0aaee2754e0c1157f3eccd70792e0ea6ef8ca7aa99b0b1",
+  "supplied": {
+    "SKIP_WASM_BUILD": "1",
+    "SKIP_FRAMENODE_RUNTIME_WASM_BUILD": "1",
+    "DOCS_RS": "1",
+    "WASM_BUILD_RUSTFLAGS": "review-sentinel",
+    "WASM_BUILD_CARGO_ARGS": "review-sentinel",
+    "WASM_BUILD_TOOLCHAIN": "review-sentinel"
+  },
+  "retained": {
+    "SKIP_FRAMENODE_RUNTIME_WASM_BUILD": "1",
+    "DOCS_RS": "1",
+    "WASM_BUILD_RUSTFLAGS": "review-sentinel",
+    "WASM_BUILD_CARGO_ARGS": "review-sentinel",
+    "WASM_BUILD_TOOLCHAIN": "review-sentinel"
+  }
+}

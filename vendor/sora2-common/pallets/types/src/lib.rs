@@ -41,7 +41,7 @@ pub mod types;
 pub mod utils;
 
 use codec::{Decode, Encode};
-use derivative::Derivative;
+use derive_where::derive_where;
 pub use ethereum_types::{H128, H64};
 pub use log::Log;
 use serde::{Deserialize, Serialize};
@@ -224,14 +224,9 @@ pub enum GenericTimepoint {
     TON(TonTransactionId),
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
@@ -342,14 +337,9 @@ impl From<u32> for LiberlandAssetId {
     }
 }
 
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive_where(Debug, Clone, PartialEq, Eq)]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub enum GenericBridgeMessage<MaxPayload: Get<u32>> {

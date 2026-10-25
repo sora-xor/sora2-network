@@ -1,0 +1,15 @@
+{
+  "upstream_commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "source_path": "substrate/primitives/wasm-interface",
+  "differences": [
+    {
+      "path": [
+        "dependencies",
+        "wasmtime",
+        "version"
+      ],
+      "upstream": "36.0.7",
+      "local": "36.0.19"
+    }
+  ]
+}

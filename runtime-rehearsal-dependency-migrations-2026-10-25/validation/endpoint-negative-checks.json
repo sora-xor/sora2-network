@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "script": "rehearse-equivocation-fees.cjs",
+      "scriptSha256": "8edf9768e2b7eaa3d7833ec8fbb93f295b39b880e8a379b5ad153e38a4226369",
+      "endpoint": "https://mof2.sora.org",
+      "rejected": true,
+      "exit": 1,
+      "publicRpcMethods": {}
+    },
+    {
+      "script": "rehearse-equivocation-fees.cjs",
+      "scriptSha256": "8edf9768e2b7eaa3d7833ec8fbb93f295b39b880e8a379b5ad153e38a4226369",
+      "endpoint": "wss://example.invalid",
+      "rejected": true,
+      "exit": 1,
+      "publicRpcMethods": {}
+    },
+    {
+      "script": "rehearse-fee-policy.cjs",
+      "scriptSha256": "131303006668e995975f456dcdf5653c62fe2a64570aa42488e36994c2a2c321",
+      "endpoint": "https://mof2.sora.org",
+      "rejected": true,
+      "exit": 1,
+      "publicRpcMethods": {}
+    },
+    {
+      "script": "rehearse-fee-policy.cjs",
+      "scriptSha256": "131303006668e995975f456dcdf5653c62fe2a64570aa42488e36994c2a2c321",
+      "endpoint": "wss://example.invalid",
+      "rejected": true,
+      "exit": 1,
+      "publicRpcMethods": {}
+    }
+  ]
+}

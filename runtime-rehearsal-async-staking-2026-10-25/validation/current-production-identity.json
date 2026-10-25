@@ -1,0 +1,319 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-25T13:17:02.173Z",
+  "endpoint": "wss://mof2.sora.org",
+  "readOnly": true,
+  "submittedTransactions": 0,
+  "remoteRpcMethods": {
+    "chain_getFinalizedHead": 1,
+    "chain_getBlockHash": 3,
+    "chain_getHeader": 1,
+    "state_getStorage": 1,
+    "state_getRuntimeVersion": 1
+  },
+  "inputs": {
+    "scriptSha256": "901d30856530b7acdf1ec6be6f9dbbee52e17a82d7418975f6ea240aa905450d",
+    "snapshotSha256": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+    "rpcGuardSha256": "69b9b881966a836b8b8e6a1216eb7765e962f13bdf03e05788150a79e03bda78"
+  },
+  "rpcGuard": {
+    "layer": "WsProvider.prototype.send, before setup",
+    "allowlist": [
+      "chain_getBlock",
+      "chain_getBlockHash",
+      "chain_getFinalizedHead",
+      "chain_getHeader",
+      "rpc_methods",
+      "state_call",
+      "state_getKeysPaged",
+      "state_getMetadata",
+      "state_getRuntimeVersion",
+      "state_getStorage",
+      "state_queryStorageAt",
+      "state_subscribeRuntimeVersion",
+      "state_unsubscribeRuntimeVersion",
+      "system_chain",
+      "system_name",
+      "system_properties",
+      "system_version"
+    ],
+    "coversSetupAndPrivateCachedCalls": true
+  },
+  "pinnedBaseline": {
+    "blockNumber": 28179122,
+    "blockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 134,
+      "implVersion": 1,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "stateVersion": 0
+    },
+    "codeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221"
+  },
+  "currentFinalized": {
+    "blockNumber": 28190927,
+    "blockHash": "0x42d36b7baf0a72a5b4505293e1006314cb353823a8396da6fb52b365a3e53b9e",
+    "header": {
+      "parentHash": "0x6210e25ca96c1e80cff80f6fcdffa3cfacafeaf180b69961a0f173d01935e27c",
+      "number": "0x1ae28cf",
+      "stateRoot": "0xdbe9395ae825b517ae16a8eed88ce9273ee0baa51ed5bd9ce4806f754dcb72d7",
+      "extrinsicsRoot": "0xfd5b8ffaacd9dc7f9c93945c2b4b5d3c8145849dbd5ef3b40d50f70728b5ad62",
+      "digest": {
+        "logs": [
+          "0x0642414245340201000000e0aacf1100000000",
+          "0x05424142450101be37bf88a2ab547e94e4aa54e467f1da643a01078902e554b056345cb1091c0887791f3d65ca002a8cff3bf1846288465c1233a9df801d6a12022fd79212fd80"
+        ]
+      }
+    },
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 134,
+      "implVersion": 1,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 131,
+      "systemVersion": 0,
+      "stateVersion": 0
+    },
+    "codeBytes": 3066913,
+    "codeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221"
+  },
+  "sameRuntimeVersion": true,
+  "sameRuntimeCode": true,
+  "pinnedBlockRemainsCanonical": true,
+  "snapshotPreserved": true,
+  "pinnedRuntimeStillRepresentative": true,
+  "scope": "Runtime identity only: this checks code bytes and runtime version at the current finalized head. It does not claim all current storage equals the pinned snapshot.",
+  "finishedAt": "2026-10-25T13:17:05.672Z"
+}
