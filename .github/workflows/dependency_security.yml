@@ -16,6 +16,7 @@ on:
       - "misc/dependency_security/**"
       - "runtime-rehearsal-dependency-migrations-2026-10-25/**"
       - "runtime-rehearsal-sdk2609-2026-10-25/**"
+      - "runtime-rehearsal-async-staking-2026-10-25/**"
       - "vendor/chopsticks-core/**"
       - "vendor/chopsticks-executor/**"
       - "vendor/polkadot-wasm-crypto*/**"
@@ -39,6 +40,7 @@ on:
       - "misc/dependency_security/**"
       - "runtime-rehearsal-dependency-migrations-2026-10-25/**"
       - "runtime-rehearsal-sdk2609-2026-10-25/**"
+      - "runtime-rehearsal-async-staking-2026-10-25/**"
       - "vendor/chopsticks-core/**"
       - "vendor/chopsticks-executor/**"
       - "vendor/polkadot-wasm-crypto*/**"
@@ -144,6 +146,9 @@ jobs:
           - name: stable2609 production rehearsal
             manifest: runtime-rehearsal-sdk2609-2026-10-25/validation/package.json
             lockfile: runtime-rehearsal-sdk2609-2026-10-25/validation/package-lock.json
+          - name: async staking production rehearsal
+            manifest: runtime-rehearsal-async-staking-2026-10-25/validation/package.json
+            lockfile: runtime-rehearsal-async-staking-2026-10-25/validation/package-lock.json
           - name: frontend reproduction
             manifest: misc/polkadotjs/bug-hunt/frontend-repro/package.json
             lockfile: misc/polkadotjs/bug-hunt/frontend-repro/package-lock.json
@@ -177,6 +182,14 @@ jobs:
           node --test runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-wasm-interfaces.cjs
           python3 runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-fee-evidence.py
           python3 runtime-rehearsal-dependency-migrations-2026-10-25/validation/test-rehearsal-run.py
+      - name: Validate async staking build and evidence guards offline
+        if: matrix.name == 'async staking production rehearsal'
+        run: |
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-build-verification.py --include-environment
+          node --test runtime-rehearsal-async-staking-2026-10-25/validation/test-wasm-interfaces.cjs runtime-rehearsal-async-staking-2026-10-25/validation/test-runtime-execution.cjs runtime-rehearsal-async-staking-2026-10-25/validation/test-bridge-rpc-size.cjs
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-fee-evidence.py
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-rehearsal-run.py
+          python3 runtime-rehearsal-async-staking-2026-10-25/validation/test-source-fingerprint.py
       - name: Audit a complete temporary copy of the operational npm graph
         env:
           MANIFEST: ${{ matrix.manifest }}
