@@ -98,7 +98,13 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
     }
 
     fn weight(&self, call: &RuntimeCall) -> Weight {
-        self.0.weight(call)
+        // Validate and prepare each check the lineage and static retirement
+        // map. A constant upper bound keeps dispatch information independent
+        // of whether recovery has initialized its storage yet.
+        let retirement = <Runtime as frame_system::Config>::DbWeight::get()
+            .reads(8)
+            .saturating_add(Weight::from_parts(4_000_000, 16_384));
+        self.0.weight(call).saturating_add(retirement)
     }
 
     fn validate(
@@ -111,6 +117,10 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
         inherited_implication: &impl Implication,
         source: TransactionSource,
     ) -> ValidateResult<Self::Val, RuntimeCall> {
+        if matches!(origin.as_system_ref(), Some(frame_system::RawOrigin::Signed(account)) if crate::incident_recovery::account_retired(account))
+        {
+            return Err(InvalidTransaction::BadSigner.into());
+        }
         if Self::is_authorized_heartbeat(&origin, call) {
             self.ensure_zero_tip()?;
             return Ok((ValidTransaction::default(), None, origin));
@@ -137,6 +147,10 @@ impl TransactionExtension<RuntimeCall> for AuthorizedHeartbeatPayment {
         info: &DispatchInfoOf<RuntimeCall>,
         len: usize,
     ) -> Result<Self::Pre, TransactionValidityError> {
+        if matches!(origin.as_system_ref(), Some(frame_system::RawOrigin::Signed(account)) if crate::incident_recovery::account_retired(account))
+        {
+            return Err(InvalidTransaction::BadSigner.into());
+        }
         match val {
             Some(val) => self.0.prepare(val, origin, call, info, len).map(Some),
             None if Self::is_authorized_heartbeat(origin, call) => {

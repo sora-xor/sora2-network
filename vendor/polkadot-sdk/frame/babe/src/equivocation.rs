@@ -178,7 +178,9 @@ where
 
 		// Check that the slot number is consistent with the session index
 		// in the key ownership proof (i.e. slot is for that epoch)
-		if Pallet::<T>::session_index_for_epoch(epoch_index) != session_index {
+		if Pallet::<T>::session_index_for_epoch(epoch_index) != session_index ||
+			!crate::recovery::key_allowed(epoch_index, &offender, validator_set_count)
+		{
 			return Err(Error::<T>::InvalidKeyOwnershipProof.into());
 		}
 

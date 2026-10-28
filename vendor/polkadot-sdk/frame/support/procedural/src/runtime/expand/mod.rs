@@ -187,8 +187,13 @@ fn construct_runtime_final_expansion(
 	for runtime_type in runtime_types.iter() {
 		match runtime_type {
 			RuntimeType::RuntimeCall(_) => {
-				dispatch =
-					Some(expand::expand_outer_dispatch(&name, system_pallet, &pallets, &scrate));
+				dispatch = Some(expand::expand_outer_dispatch(
+					&name,
+					system_pallet,
+					&pallets,
+					&scrate,
+					None,
+				));
 			},
 			RuntimeType::RuntimeEvent(_) => {
 				outer_event = Some(expand::expand_outer_enum(

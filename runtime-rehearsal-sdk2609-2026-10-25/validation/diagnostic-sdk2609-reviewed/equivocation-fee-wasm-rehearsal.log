@@ -1,0 +1,29 @@
+2026-10-25T00:38:09.398Z Loading pinned deployed public state
+2026-10-25T00:38:26.252Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-10-25T00:38:33.098Z Finalizing the inherent-only upgrade block through actual candidate Wasm
+2026-10-25T00:38:40.683Z Initializing the next normal block after migration completion
+2026-10-25T00:38:52.540Z Generating synthetic report fixtures using real current-session ownership proofs
+2026-10-25T00:39:30.100Z Charging signed babe.reportEquivocation
+2026-10-25T00:39:35.377Z Charging duplicate babe.reportEquivocation
+2026-10-25T00:39:40.948Z Rejecting unsigned babe.reportEquivocation
+2026-10-25T00:39:55.339Z Charging signed babe.reportEquivocationUnsigned
+2026-10-25T00:40:00.825Z Charging duplicate babe.reportEquivocationUnsigned
+2026-10-25T00:40:06.497Z Rejecting unsigned babe.reportEquivocationUnsigned
+2026-10-25T00:40:16.325Z Charging signed grandpa.reportEquivocation
+2026-10-25T00:40:22.504Z Charging duplicate grandpa.reportEquivocation
+2026-10-25T00:40:30.243Z Rejecting unsigned grandpa.reportEquivocation
+2026-10-25T00:40:44.743Z Charging signed grandpa.reportEquivocationUnsigned
+2026-10-25T00:40:49.769Z Charging duplicate grandpa.reportEquivocationUnsigned
+2026-10-25T00:40:56.500Z Rejecting unsigned grandpa.reportEquivocationUnsigned
+2026-10-25T00:41:12.541Z Charging a signed utility wrapper with a legacy report call
+2026-10-25T00:41:19.280Z Verifying timestamp inherent retained normal execution
+{"status":"passed","candidateSha256":"0eecd87ed64bc5bfbece4772e0c43f6907be94a9609f6025c89f2636fc5f37ca"}

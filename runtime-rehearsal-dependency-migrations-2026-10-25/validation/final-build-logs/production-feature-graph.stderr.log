@@ -1,0 +1,27 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/takemiyamakoto/dev/sora2-network/vendor/parity-db/Cargo.toml
+workspace: /Users/takemiyamakoto/dev/sora2-network/Cargo.toml
+warning: patch `frame-benchmarking v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-7#cd87d0b9)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/benchmarking
+warning: patch `frame-benchmarking v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-7#cd87d0b9)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/benchmarking
+warning: patch `sp-io v45.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-7#cd87d0b9)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/io
+warning: patch `sp-runtime v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-7#cd87d0b9)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/runtime
+warning: patch `sp-version v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-7#cd87d0b9)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/version
+warning: patch `substrate-wasm-builder v32.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2603-7#cd87d0b9)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/utils/wasm-builder

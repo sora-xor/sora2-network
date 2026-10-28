@@ -277,7 +277,7 @@
 "tag" = "polkadot-stable2609"
 
 ["dev-dependencies"."zstd"]
-"version" = "0.12.4"
+"version" = "0.14.3"
 "default-features" = false
 
 ["features"]

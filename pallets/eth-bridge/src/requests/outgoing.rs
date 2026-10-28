@@ -224,6 +224,7 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
     pub fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id, tx_hash)?;
         let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
             .ok_or(Error::<T>::UnknownNetwork)?;
         common::with_transaction(|| {
@@ -259,6 +260,10 @@ impl<T: Config> OutgoingTransfer<T> {
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(
+            self.network_id,
+            super::OffchainRequest::outgoing(super::OutgoingRequest::Transfer(self.clone())).hash(),
+        )?;
         let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
             .ok_or(Error::<T>::UnknownNetwork)?;
         let generic_network_id =
@@ -288,6 +293,7 @@ impl<T: Config> OutgoingTransfer<T> {
 
     /// Validates the request again, then, if the asset is originated in Sidechain, it gets burned.
     pub fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id, tx_hash)?;
         self.validate()?;
         let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
             .ok_or(Error::<T>::UnknownNetwork)?;

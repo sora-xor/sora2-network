@@ -1,0 +1,11 @@
+✔ sync and async file-backed Blobs and Files preserve content and metadata (24.228959ms)
+✔ slicing and streaming preserve byte ranges (37.604958ms)
+✔ changed-file reads reject with the native DOMException constructor (17.978667ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.784459

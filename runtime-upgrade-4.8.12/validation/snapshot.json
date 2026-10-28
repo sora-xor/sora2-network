@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "capturedAt": "2026-10-05T02:13:12.977Z",
+  "capturedAt": "2026-10-08T04:10:55.113Z",
   "endpoint": "wss://mof2.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -15,29 +15,29 @@
     "chain_getFinalizedHead": 1,
     "chain_getHeader": 21,
     "state_getMetadata": 1,
-    "state_getStorage": 49,
+    "state_getStorage": 48,
     "chain_getBlock": 20
   },
   "genesis": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
-  "blockHash": "0xa5ab45d23201e7d5a985e66635882405c44f7407a95855848a146cf346443a05",
-  "blockNumber": 27906905,
+  "blockHash": "0xcfe4270824d65f3c408e2345aaf6af6377507ee538bf26c03676725643d8c40e",
+  "blockNumber": 27951199,
   "header": {
-    "parentHash": "0x583992af1ab4d023d7a1cd335f1af08a1d657a8b7ceba716a49f6e246ea22b90",
-    "number": 27906905,
-    "stateRoot": "0xe637d7c052b98f23752d8bdea6507f105043340ba5e691fbb3c939be119baa84",
-    "extrinsicsRoot": "0xc1df0f2ae1342c5d45efe803a6afce31f519cf37d8dd24cad7a92cc918ece74a",
+    "parentHash": "0xc3c20ccee5447a594282e81a4d408db3bc6097fdf4b31dd5570c9825ba87fe19",
+    "number": 27951199,
+    "stateRoot": "0xdc69e235a02b757ab6fa2799bb797a435d19e41a96923fbc291aa2007257d855",
+    "extrinsicsRoot": "0x2e34fb6614fd3b0dd07d35705ba4387b4ad8f33341cc9ffcacca37adb5c0a4fb",
     "digest": {
       "logs": [
         {
           "preRuntime": [
             "0x42414245",
-            "0x0103000000f22bcb110000000062dbd077ad8c0a1c7a44f87919aae49b2f07471183f833657ec0db1dcdab4f76140fcf62bc3427d0cf1debaf3c0db7c271153cdc500eee68cf23278a02af540de30474bd0ac8e4e1beb28efd06b069ed34f1d750a8dc1c0f6c2fb656e3b9920a"
+            "0x02030000004bd9cb1100000000"
           ]
         },
         {
           "seal": [
             "0x42414245",
-            "0xd85dfb8ec519c54d442cb3e370412d533cd9de296725af8c1233db9a726b1a74232761549034cd1214a3576d635be317bdd286800c8c994a45a0afbe2400eb85"
+            "0xd068081d92aee19ea037204fcbee13d173c8215bc213b044b059e143f65995526f834c9a82154717a1438ee0deba3748411d28fd37e7ec8127ed01c298c4b680"
           ]
         }
       ]
@@ -47,7 +47,7 @@
     "specName": "sora-substrate",
     "implName": "sora-substrate",
     "authoringVersion": 1,
-    "specVersion": 132,
+    "specVersion": 133,
     "implVersion": 1,
     "apis": [
       [
@@ -169,16 +169,16 @@
   "metadata": {
     "file": "deployed-metadata.scale",
     "bytes": 623616,
-    "sha256": "02ff8610d9203be7e256d8b4a82681281690ca38a871cdb747d0caf6f8268371"
+    "sha256": "e7b2459c35f0c0d1273216bb965a36168e1ca3bd94592608b40c1eaa3b682e17"
   },
   "code": {
     "file": "live-runtime.compact.compressed.wasm",
-    "bytes": 3055007,
-    "sha256": "a39de37798885ee253db508c553aca80321974fdd20fa0830bb94220cb9224c3"
+    "bytes": 3055443,
+    "sha256": "15310a2f7899d458c84e47278c78f075fec74e3d6ab3de1fdc20ef914b14960a"
   },
-  "session": 47673,
+  "session": 47747,
   "validatorCount": 15,
-  "currentSlot": "298527730",
+  "currentSlot": "298572107",
   "feePayerCandidates": [
     "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
     "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
@@ -190,16 +190,15 @@
     "cnWA5jrFjKWE9e5Tv7nysnQLqC2kEzBthc83ekqnkiHLfE33q",
     "cnWn9rhK9CcCVWGGXs5MDYRd7QBm6s6T4cDsmNeFWZVF2t3Le",
     "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
-    "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP",
     "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
+    "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
     "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
     "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
     "cnTd2LcRRAi2yaqtof3URkjDEFADPAsFGF5UF4gsqwbBWiSHQ",
-    "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt",
-    "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer",
-    "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY",
     "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
     "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
+    "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+    "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
     "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
     "cnVNzYq884MufA4qN5JQCG1PSjCvnErfiC3uS3s6k85iSb8Re",
     "cnWHoJkvECM4MzWGm9fyZQmtiaMkBfiX8hqNfKAbt5B8Wunk7",
@@ -218,8 +217,8 @@
     },
     {
       "address": "cnSN33HpCwZqxQ4iVf3voVUJ9jx9wPULVMXw6iVgPgkeneNtM",
-      "nonce": "5136",
-      "free": "3312644622472704575"
+      "nonce": "5139",
+      "free": "4393499285466236973"
     },
     {
       "address": "cnUGD6KnZ4HsamuDRDwRHsMytEaYWcYfywcTprNyKypQZYBij",
@@ -228,13 +227,13 @@
     },
     {
       "address": "cnVS46aLyfRHTossU1ZEXaw6Eok1Lk9NeMdhJsSNzp7ywJLEq",
-      "nonce": "1122",
+      "nonce": "1123",
       "free": "852690748004628703"
     },
     {
       "address": "cnVSNJ9v3An2YuNF7SnZMCWxXypP95AYe6uQhghXQcSdNqpKf",
-      "nonce": "15352",
-      "free": "39966047662681058784"
+      "nonce": "15424",
+      "free": "45134804721194808733"
     },
     {
       "address": "cnVcjvUEVGbK4LGLB9K382EEKm57dxtmGYdiFfnjEWWg9vr72",
@@ -253,18 +252,18 @@
     },
     {
       "address": "cnRpgnq8YUZtTtqcLYPzH4Yb8Vs27EJY2pN8wrJm71ThfGrn4",
-      "nonce": "5",
-      "free": "656037792758576660"
-    },
-    {
-      "address": "cnSKStFWJRim7dYdpVw64uCDpZqghLcbVLhKkA23rQBAupToP",
-      "nonce": "2",
-      "free": "4961408"
+      "nonce": "7",
+      "free": "455996367579162008"
     },
     {
       "address": "cnSbSN9Fbkn2DBQZHdgMP1EVfeEXRWjrpdafJHLJqrW7ZBfYH",
       "nonce": "13",
       "free": "340829"
+    },
+    {
+      "address": "cnSgNFZaSoRGMVqTenCDaPLQhTur42Es5kVL5bQE3jRBHV9un",
+      "nonce": "5",
+      "free": "30952309898886709794"
     },
     {
       "address": "cnSu6uWhoCJHvLLRooUyTuJGRzMR4YgNMBPV3GHoBsvLYaSAp",
@@ -273,28 +272,13 @@
     },
     {
       "address": "cnTTL4ihCzLkRT7wyjZA2JQeTjmiwwczxJAsih2eJwZG6ttfq",
-      "nonce": "73",
-      "free": "1229508791005804889"
+      "nonce": "76",
+      "free": "1317765137408487814"
     },
     {
       "address": "cnTd2LcRRAi2yaqtof3URkjDEFADPAsFGF5UF4gsqwbBWiSHQ",
       "nonce": "4",
       "free": "18551025515475813390"
-    },
-    {
-      "address": "cnTdAJkkN741K8nnTJ8fet7raNN2LktCTQSMu9khHP4h5aBQt",
-      "nonce": "3",
-      "free": "11624781"
-    },
-    {
-      "address": "cnTqek55E1LrLvv61fiR29KpYSeB5wX45gsSVKDQCy7u39Eer",
-      "nonce": "2",
-      "free": "4961408"
-    },
-    {
-      "address": "cnTrBoA557FBSAub32KJAbNVK73gP7CG8Ji8uA5W1JFsDUUPY",
-      "nonce": "2",
-      "free": "46356031"
     },
     {
       "address": "cnUG7rnJxpe49dnDuYv4gn5XbXrFUJsQX4LsLos4JENcFEzsg",
@@ -303,8 +287,18 @@
     },
     {
       "address": "cnULofTPpy7mxwv1jrYtNmVkwjVF6myAmYZmmbAEE3Vy9Sa9y",
-      "nonce": "4",
-      "free": "1017394911782098095449"
+      "nonce": "5",
+      "free": "1016628120619122737614"
+    },
+    {
+      "address": "cnUS6ssUq8sRZB48UNNsVd2BfQWBww8vw6Ayt2iT52rCaZ6cs",
+      "nonce": "1089",
+      "free": "705981297061845719"
+    },
+    {
+      "address": "cnUrZR2Gd5FPSFQGGUWZweYxWM58zEoHY7aQySmqDMjBW15Lq",
+      "nonce": "0",
+      "free": "0"
     },
     {
       "address": "cnVCuEDifwFEuNxTgf6NxrtwYJ56SEiC4mVse6iLQADpHKxZK",
@@ -337,5 +331,5 @@
     "scriptSha256": "537e1dcde666bc21ba54551d4a394bb7f38f3827fcc96821d32b959408e8196f",
     "packageLockSha256": "d3e676fd0ef61c0ce9c54df8541c0b5d26c92196e32ac5d541230be3b7bba6f7"
   },
-  "finishedAt": "2026-10-05T02:13:43.003Z"
+  "finishedAt": "2026-10-08T04:11:20.264Z"
 }

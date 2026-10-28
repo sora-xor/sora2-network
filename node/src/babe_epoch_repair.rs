@@ -120,6 +120,7 @@ impl RepairBabeEpochCacheCmd {
             )
             .map_err(|e| e.to_string())?;
         let snapshot = Snapshot::from_info(client.info());
+        require_precheckpoint_heads(snapshot.best_number, snapshot.finalized_number)?;
         if snapshot.genesis_hash != H256::from_str(MAINNET_GENESIS).expect("valid constant genesis")
         {
             return Err("This command is restricted to the SORA mainnet genesis".into());
@@ -218,7 +219,9 @@ enum ExistingDatabase {
     Rocks(Arc<dyn sp_database::Database<H256>>),
 }
 
-/// This incident recovery is pinned to SDK e373717: 13 columns, AUX column 8.
+/// Revalidated against stable2609 7a8daa68: 13 columns, AUX column 8, epoch schema 3.
+/// The retained stable2603-3 wire encodings are byte-identical; see the evidence
+/// in node/chain_spec/BABE_EPOCH_REPAIR_2609.md.
 /// No SDK initialization, pruning, genesis or offchain write may pass this guard.
 struct GuardedDatabase {
     inner: ExistingDatabase,
@@ -348,7 +351,8 @@ fn require_existing_database(source: &sc_client_db::DatabaseSource) -> RepairRes
             path
         }
         DatabaseSource::RocksDb { path, .. } => {
-            // SDK e373717's RocksDB schema is 4. Do not run its automatic older-schema migration.
+            // Both retained stable2603-3 and stable2609 use RocksDB schema 4.
+            // Do not run the SDK's automatic older-schema migration.
             if !path.join("CURRENT").is_file()
                 || std::fs::read(path.join("db_version")).map_err(|e| e.to_string())? != b"4"
             {
@@ -378,6 +382,15 @@ struct Snapshot {
     finalized_number: u32,
     best_hash: H256,
     best_number: u32,
+}
+
+fn require_precheckpoint_heads(best: u32, finalized: u32) -> RepairResult<()> {
+    if best >= common::recovery::CHECKPOINT_NUMBER
+        || finalized >= common::recovery::CHECKPOINT_NUMBER
+    {
+        return Err("BABE cache preparation requires a separate restored database ending before recovery checkpoint 28,191,817; this command cannot reinterpret recovery or abandoned-branch epochs".into());
+    }
+    Ok(())
 }
 
 impl Snapshot {
@@ -904,6 +917,14 @@ mod tests {
         cell::RefCell,
         sync::atomic::{AtomicU64, Ordering},
     };
+
+    #[test]
+    fn cache_preparation_cannot_reinterpret_post_checkpoint_databases() {
+        let checkpoint = common::recovery::CHECKPOINT_NUMBER;
+        assert!(require_precheckpoint_heads(checkpoint - 1, checkpoint - 1).is_ok());
+        assert!(require_precheckpoint_heads(checkpoint, checkpoint - 1).is_err());
+        assert!(require_precheckpoint_heads(checkpoint + 1, checkpoint).is_err());
+    }
 
     fn vrf_config() -> BabeEpochConfiguration {
         BabeEpochConfiguration {

@@ -1,0 +1,6 @@
+valid {'exit': 0, 'passed': True, 'expected_diagnostic': None}
+missing_source {'exit': 101, 'passed': True, 'expected_diagnostic': "At least one of 'runtime_metadata_path'"}
+conflicting_sources {'exit': 101, 'passed': True, 'expected_diagnostic': "Only one of 'runtime_metadata_path'"}
+missing_out_dir {'exit': 101, 'passed': True, 'expected_diagnostic': 'OUT_DIR environment variable is not set'}
+invalid_url {'exit': 101, 'passed': True, 'expected_diagnostic': 'Cannot download metadata; invalid url'}
+invalid_type {'exit': 101, 'passed': True, 'expected_diagnostic': 'does not exist at path'}

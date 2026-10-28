@@ -177,6 +177,8 @@ pub mod pallet {
         CallEncodeFailed,
         /// Invalid base fee update.
         InvalidBaseFeeUpdate,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     impl<T: Config> Pallet<T> {
@@ -190,6 +192,10 @@ pub mod pallet {
             >,
             proof: &<T::Verifier as Verifier>::Proof,
         ) -> DispatchResult {
+            ensure!(
+                crate::recovery::inbound_allowed::<T>(),
+                Error::<T>::RecoveryHalted
+            );
             match (network_id, commitment) {
                 (GenericNetworkId::EVM(id), bridge_types::GenericCommitment::EVM(value)) => {
                     Self::verify_evm_commitment(id, value)?
@@ -337,6 +343,18 @@ pub mod pallet {
                 bridge_types::ton::Commitment::Inbound(inbound_commitment) => {
                     Self::ensure_ton_channel(ton_network_id, inbound_commitment.channel)?;
                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
+                    ensure!(
+                        !bridge_types::recovery::message_quarantined(
+                            network_id,
+                            MessageId::basic(
+                                network_id,
+                                T::ThisNetworkId::get(),
+                                inbound_commitment.nonce
+                            )
+                            .hash(),
+                        ),
+                        Error::<T>::RecoveryHalted
+                    );
                 }
             }
             Ok(())
@@ -349,6 +367,11 @@ pub mod pallet {
                 T::MaxMessagePayloadSize,
             >,
         ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError> {
+            ensure!(
+                !crate::recovery::halted()
+                    || matches!(&commitment, bridge_types::evm::Commitment::Inbound(_)),
+                Error::<T>::RecoveryHalted
+            );
             Self::verify_evm_commitment(chain_id, &commitment)?;
             let network_id = GenericNetworkId::EVM(chain_id);
             let outcome = match commitment {
@@ -430,6 +453,18 @@ pub mod pallet {
                 bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
                     Self::ensure_evm_channel(chain_id, inbound_commitment.channel)?;
                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
+                    ensure!(
+                        !bridge_types::recovery::message_quarantined(
+                            network_id,
+                            MessageId::basic(
+                                network_id,
+                                T::ThisNetworkId::get(),
+                                inbound_commitment.nonce
+                            )
+                            .hash(),
+                        ),
+                        Error::<T>::RecoveryHalted
+                    );
                 }
                 bridge_types::evm::Commitment::StatusReport(status_report) => {
                     Self::ensure_evm_channel(chain_id, status_report.channel)?;
@@ -496,6 +531,21 @@ pub mod pallet {
         ) -> DispatchResult {
             let network_id = GenericNetworkId::Sub(sub_network_id);
             Self::ensure_channel_nonce(network_id, commitment.nonce)?;
+            for index in 0..commitment.messages.len() {
+                ensure!(
+                    !bridge_types::recovery::message_quarantined(
+                        network_id,
+                        MessageId::batched(
+                            network_id,
+                            T::ThisNetworkId::get(),
+                            commitment.nonce,
+                            index as u64
+                        )
+                        .hash(),
+                    ),
+                    Error::<T>::RecoveryHalted
+                );
+            }
             Ok(())
         }
     }

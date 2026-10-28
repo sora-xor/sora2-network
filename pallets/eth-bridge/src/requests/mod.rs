@@ -166,6 +166,10 @@ impl<T: Config> OutgoingRequest<T> {
     /// Checks that the request can be initiated (e.g., verifies that an account has
     /// sufficient funds for transfer).
     fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(
+            self.network_id(),
+            OffchainRequest::outgoing(self.clone()).hash(),
+        )?;
         match self {
             OutgoingRequest::Transfer(request) => request.validate(),
             OutgoingRequest::AddAsset(request) => request.validate(),
@@ -180,6 +184,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id(), tx_hash)?;
         match self {
             OutgoingRequest::Transfer(request) => request.prepare(tx_hash),
             OutgoingRequest::AddAsset(request) => request.prepare(()),
@@ -194,6 +199,7 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     pub(crate) fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(self.network_id(), tx_hash)?;
         match self {
             OutgoingRequest::Transfer(request) => request.finalize(tx_hash),
             OutgoingRequest::AddAsset(request) => request.finalize(),
@@ -208,6 +214,10 @@ impl<T: Config> OutgoingRequest<T> {
     }
 
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_outgoing_active::<T>(
+            self.network_id(),
+            OffchainRequest::outgoing(self.clone()).hash(),
+        )?;
         match self {
             OutgoingRequest::Transfer(request) => request.cancel(),
             OutgoingRequest::AddAsset(request) => request.cancel(),
@@ -635,6 +645,10 @@ impl<T: Config> LoadIncomingRequest<T> {
             Self::Meta(request, _) => {
                 match request.kind {
                     IncomingMetaRequestKind::MarkAsDone => {
+                        crate::recovery::ensure_outgoing_active::<T>(
+                            request.network_id,
+                            request.hash,
+                        )?;
                         ensure!(
                             !Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
                                 request.network_id,
@@ -815,6 +829,7 @@ impl<T: Config> OffchainRequest<T> {
     /// Checks that the request can be initiated (e.g., verifies that an account has
     /// sufficient funds for transfer).
     pub(crate) fn validate(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(request, _) => request.validate(),
             OffchainRequest::LoadIncoming(request) => request.validate(),
@@ -824,6 +839,7 @@ impl<T: Config> OffchainRequest<T> {
 
     /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
     pub(crate) fn prepare(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(request, tx_hash) => request.prepare(*tx_hash),
             OffchainRequest::LoadIncoming(request) => request.prepare(),
@@ -833,6 +849,7 @@ impl<T: Config> OffchainRequest<T> {
 
     /// Undos the state changes done in the `prepare` function.
     pub fn cancel(&self) -> Result<(), DispatchError> {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(request, _) => request.cancel(),
             OffchainRequest::LoadIncoming(request) => request.cancel(),
@@ -841,6 +858,7 @@ impl<T: Config> OffchainRequest<T> {
     }
 
     pub fn finalize(&self) -> DispatchResult {
+        crate::recovery::ensure_request_active::<T>(self)?;
         match self {
             OffchainRequest::Outgoing(r, tx_hash) => r.finalize(*tx_hash),
             OffchainRequest::Incoming(r, _) => r.finalize().map(|_| ()),

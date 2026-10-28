@@ -1,0 +1,11 @@
+test_changed_source_or_log_is_rejected (__main__.RunEvidenceTests.test_changed_source_or_log_is_rejected) ... ok
+test_complete_build_proof_chain_is_accepted (__main__.RunEvidenceTests.test_complete_build_proof_chain_is_accepted) ... ok
+test_failed_or_missing_build_gate_is_rejected (__main__.RunEvidenceTests.test_failed_or_missing_build_gate_is_rejected) ... ok
+test_identity_failure_archives_prior_success_and_writes_fresh_failure (__main__.RunEvidenceTests.test_identity_failure_archives_prior_success_and_writes_fresh_failure) ... ok
+test_optimized_python_writes_failure_instead_of_skipping_assertions (__main__.RunEvidenceTests.test_optimized_python_writes_failure_instead_of_skipping_assertions) ... ok
+test_unpassed_proof_or_changed_fingerprint_is_rejected (__main__.RunEvidenceTests.test_unpassed_proof_or_changed_fingerprint_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.212s
+
+OK

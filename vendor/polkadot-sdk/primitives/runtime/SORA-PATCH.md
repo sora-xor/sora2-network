@@ -40,3 +40,9 @@ allocation as before. `tests/extrinsic_allocation.rs` records actual allocator
 requests while rejecting a forged `u32::MAX` prefix on a two-byte payload, for
 both known- and unknown-length Inputs. Existing valid wire encodings and final
 length validation remain unchanged.
+
+The 2026-10-27 security migration raises only the `zstd` **dev-dependency**
+from 0.12.4 to published 0.14.3, with its fixed zstd-safe 8.2.0 /
+zstd-sys 2.1.2 dependencies. This dependency is used to encode test proof
+fixtures; production no_std runtime code and its compressed-proof decoder are
+unchanged. No compression package version is spoofed or advisory suppressed.

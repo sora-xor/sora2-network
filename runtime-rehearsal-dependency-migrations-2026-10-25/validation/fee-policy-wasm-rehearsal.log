@@ -1,0 +1,53 @@
+2026-10-24T17:49:11.951Z Loading pinned deployed public state
+2026-10-24T17:49:15.438Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-10-24T17:49:16.296Z Finalizing the inherent-only upgrade block through actual candidate Wasm
+2026-10-24T17:49:16.855Z Initializing the next normal block after migration completion
+2026-10-24T17:49:20.260Z Exact Wasm: payout-only batches use the 1/100 fee and retain execution weights
+2026-10-24T17:50:26.177Z Exact Wasm: empty, mixed, nested and xorless payout wrappers retain ordinary fees
+2026-10-24T17:50:57.437Z Exact Wasm: paid cancellation failure empty outer batch
+2026-10-24T17:50:58.207Z Exact Wasm: paid cancellation failure empty inner group
+2026-10-24T17:50:58.740Z Exact Wasm: paid cancellation failure all empty inner groups
+2026-10-24T17:50:59.274Z Exact Wasm: paid cancellation failure mixed real-ID/empty groups
+2026-10-24T17:50:59.803Z Exact Wasm: unauthorized Rewards failure retains fees
+2026-10-24T17:51:00.349Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.accrue missing CDP
+2026-10-24T17:51:01.871Z Exact Wasm: signed invalid maintenance pays and bare rejects kensetsu.liquidate missing CDP
+2026-10-24T17:51:03.400Z Exact Wasm: signed invalid maintenance pays and bare rejects apolloPlatform.liquidate missing position
+2026-10-24T17:51:04.944Z Exact Wasm: bare inbound relay rejected bridgeInboundChannel
+   multisig_verifier::pallet  ERROR: [404] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [405] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [406] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [407] verify_signatures: Network Sub(Mainnet) not initialized
+2026-10-24T17:51:06.332Z Exact Wasm: bare inbound relay rejected substrateBridgeInboundChannel
+   multisig_verifier::pallet  ERROR: [408] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [409] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [410] verify_signatures: Network Sub(Mainnet) not initialized
+   multisig_verifier::pallet  ERROR: [411] verify_signatures: Network Sub(Mainnet) not initialized
+2026-10-24T17:51:07.827Z Exact Wasm: retired lending activities fail with paid RepaymentOnly through direct and batch dispatch
+2026-10-24T17:51:22.957Z Exact Wasm: retired Kensetsu partial repayment and closure return existing collateral
+2026-10-24T17:51:26.900Z Exact Wasm: existing Kensetsu interest continues accruing during partial repayment and closure
+2026-10-24T17:51:28.080Z Exact Wasm: Apollo repayment releases collateral and reserves paid interest without DEX conversion
+2026-10-24T17:51:33.312Z Exact Wasm: Apollo principal exits preserve earned rewards when the reward escrow is empty
+2026-10-24T17:51:37.854Z Exact Wasm: first requested preimage provision refunds
+2026-10-24T17:51:38.784Z Exact Wasm: requested preimage replay retains fees
+2026-10-24T17:51:40.926Z Exact Wasm: migration requires XOR before a valid VAL claim can execute
+2026-10-24T17:51:42.357Z Exact Wasm: successful migration delivers VAL and retains the XOR fee
+2026-10-24T17:51:44.634Z Exact Wasm: failed migration keeps its fee and rolls back the VAL claim
+2026-10-24T17:51:46.704Z Exact Wasm: authenticated legacy peer reports remote failure with zero XOR
+2026-10-24T17:51:49.379Z Exact Wasm: authenticated legacy protocol replay rejects before execution
+2026-10-24T17:51:51.702Z Exact Wasm: one zero-XOR peer opens its 32-operation fair quota
+2026-10-24T17:53:31.027Z Exact Wasm: current zero-XOR quorum releases a full orphaned queue without proposer or payload
+2026-10-24T17:53:37.645Z Exact Wasm: place useful synthetic sell order on existing public book
+2026-10-24T17:53:39.885Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrder
+2026-10-24T17:53:40.737Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrder
+2026-10-24T17:53:41.402Z Exact Wasm: useful synthetic order cancellation refunds cancelLimitOrdersBatch
+2026-10-24T17:53:42.074Z Exact Wasm: cancelled synthetic order replay retains fees cancelLimitOrdersBatch
+{"status":"passed","candidateSha256":"2109096d15dd84e49c7d081ad20ab7b194424cc4e640f804133da0b836c28adf"}

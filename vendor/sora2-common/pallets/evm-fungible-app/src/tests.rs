@@ -42,11 +42,27 @@ use bridge_types::types::{
 use bridge_types::{EVMChainId, GenericNetworkId, H160, H256};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
-use sp_keyring::AccountKeyring as Keyring;
+use sp_keyring::Sr25519Keyring as Keyring;
 use traits::MultiCurrency;
 
 fn last_event() -> RuntimeEvent {
     System::events().pop().expect("Event expected").event
+}
+
+#[test]
+fn recovery_halt_rejects_direct_burn_and_refund_before_balance_changes() {
+    new_tester().execute_with(|| {
+        let owner: AccountId = Keyring::Bob.into();
+        sp_io::storage::set(b":sora-nexus:recovery:bridge-halt:v1", &[1]);
+        assert_noop!(
+            FungibleApp::burn_inner(owner.clone(), BASE_NETWORK_ID, XOR, H160::repeat_byte(9), 1),
+            Error::<Test>::RecoveryHalted
+        );
+        assert_noop!(
+            FungibleApp::refund_inner(BASE_NETWORK_ID, owner, XOR, 1),
+            Error::<Test>::RecoveryHalted
+        );
+    });
 }
 
 #[test]

@@ -16,6 +16,31 @@ copy. [`stable2609-customizations.json`](stable2609-customizations.json) records
 the patch hash and every changed source file hash. Earlier patch descriptions
 below are historical rationale; their older base tags are not the current source.
 
+## SORA Nexus recovery origin admission
+
+An optional `#[dispatch_origin_guard(check_path, weight_path)]` annotation inside
+`construct_runtime!`, immediately before the runtime declaration, protects every
+generated `RuntimeCall` dispatch, including `dispatch_bypass_filter`. The check
+accepts `&RuntimeOrigin` and returns `DispatchResult`; the weight function returns
+`Weight`. It executes before entering a pallet call. Scheduled calls, nested
+multisigs, utility derivatives and root `dispatch_as` cannot bypass this guard
+when their effective dispatch origin is retired.
+
+The guard overhead is included in `GetDispatchInfo` and in a returned explicit
+actual weight on both success and failure. A rejected origin charges guard weight
+only. Nested calls each account for their own guard. Runtimes without the
+annotation retain the original generated dispatch and weight code. The annotation
+does not change call indices, encoded enums, metadata or FRAME Config interfaces.
+The newer `#[runtime]` macro remains unchanged and does not enable this hook.
+
+The SORA Nexus runtime uses the hook only to reject retired signed origins after
+its immutable recovery policy exists. Its weight function returns zero before the
+policy exists, retaining historical declared/actual weights. Root, unsigned and
+custom collective origins retain their original semantics. Parser and generated
+code tests cover opt-in behavior, invalid declarations, unchanged encoded enum
+shape, admission placement and weight wrapping; runtime tests exercise the actual
+derivative, multisig, bypass and saved-origin dispatch paths.
+
 ## Earlier patch rationale
 
 ### SORA Nexus compiler maintenance

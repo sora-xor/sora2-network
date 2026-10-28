@@ -1,0 +1,30 @@
+2026-10-24T17:38:07.443Z Loading pinned deployed public state
+2026-10-24T17:38:10.742Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-10-24T17:38:25.248Z Exact Wasm: payout-only batches use the 1/100 fee and retain execution weights
+2026-10-24T17:39:38.559Z Exact Wasm: empty, mixed, nested and xorless payout wrappers retain ordinary fees
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '0x100275000100000000000000000000002290753e55170200000001000000750300000000000001000000750100'
+- '0x080275000100000000000000000000002290753e5517020000'
+
+    at reject (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/payout-batch-fixture.cjs:151:12)
+    at async payoutBatchFixture (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/payout-batch-fixture.cjs:266:5)
+    at async main (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-fee-policy.cjs:830:34) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: '0x100275000100000000000000000000002290753e55170200000001000000750300000000000001000000750100',
+  expected: '0x080275000100000000000000000000002290753e5517020000',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+{"status":"failed","error":"Expected values to be strictly equal:\n+ actual - expected\n\n+ '0x100275000100000000000000000000002290753e55170200000001000000750300000000000001000000750100'\n- '0x080275000100000000000000000000002290753e5517020000'\n","candidateSha256":"2109096d15dd84e49c7d081ad20ab7b194424cc4e640f804133da0b836c28adf"}

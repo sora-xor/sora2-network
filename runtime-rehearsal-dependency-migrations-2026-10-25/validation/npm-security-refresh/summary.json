@@ -1,0 +1,179 @@
+{
+  "status": "passed",
+  "checked_at_utc": "2026-10-24T17:05:59.127429+00:00",
+  "local_date": "2026-10-25",
+  "timezone": "Asia/Tokyo",
+  "node": "v24.22.1",
+  "npm": "11.19.1",
+  "helper_sha256": "c3d5ea47b8fd78955bd59a9930e62b5acd00d642a7ae8929d16990a974838183",
+  "projects": [
+    {
+      "project": "runtime-upgrade-4.8.9/validation",
+      "manifest": "rehearsal-package.json",
+      "manifest_sha256": "202542aa34fd5528d41cc43f07ea2fdfdfc673e5373e48a6136f85b102d1013f",
+      "lockfile": "rehearsal-package-lock.json",
+      "lock_sha256": "0b16f71062d59690e333b17eff901255f8f37afa43abd42fa983830aaaffb49f",
+      "staged_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-gczrmzu_/runtime-upgrade-4.8.9/validation",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "dependencies": {
+        "prod": 91,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 90
+      },
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/npm-security-refresh/runtime-4.8.9",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284"
+    },
+    {
+      "project": "runtime-upgrade-4.8.10/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "fa7b17ba3cb3f2a7755db75d75cd0675ad9c994acb818ceecd6cc2b7559499f9",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "4ca1b5192950cc30b9cbb8a252401c04b201e224bb7d407965de94d69f5da759",
+      "staged_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-tsfew5q4/runtime-upgrade-4.8.10/validation",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "dependencies": {
+        "prod": 91,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 90
+      },
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/npm-security-refresh/runtime-4.8.10",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284"
+    },
+    {
+      "project": "runtime-upgrade-4.8.11/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "36a8d33a64d568632a515d1d7fc14d1b13f4c9a3cc2b08a1d21f977c48672919",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "ade61ab4b9d0806429259d7c2c4a8d0d2e751d01645cb40b9dedfced9b024cdb",
+      "staged_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-7dwyj635/runtime-upgrade-4.8.11/validation",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "dependencies": {
+        "prod": 91,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 90
+      },
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/npm-security-refresh/runtime-4.8.11",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284"
+    },
+    {
+      "project": "runtime-upgrade-4.8.12/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "staged_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-hsbvjv96/runtime-upgrade-4.8.12/validation",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "dependencies": {
+        "prod": 91,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 90
+      },
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/npm-security-refresh/runtime-4.8.12",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284"
+    },
+    {
+      "project": "runtime-rehearsal-dependency-migrations-2026-10-25/validation",
+      "manifest": "package.json",
+      "manifest_sha256": "c6ff1f368e9b1932a8fb24f38f4dc932754227bb359e73768435a4a7d3e9bea0",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "staged_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-vpbkpu2p/runtime-rehearsal-dependency-migrations-2026-10-25/validation",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "dependencies": {
+        "prod": 91,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 90
+      },
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/npm-security-refresh/production-rehearsal",
+      "audit_sha256": "e830d8f853cae58e43a205bc2d31c69bd5c1127e6f681c4a78a2832bc1574284"
+    },
+    {
+      "project": "misc/polkadotjs/bug-hunt/frontend-repro",
+      "manifest": "package.json",
+      "manifest_sha256": "9a3f13eedf8770631ac66bbc1a2e854017c95f05bb8c59b2aada1e10862ce438",
+      "lockfile": "package-lock.json",
+      "lock_sha256": "e6583f7d2c1af7096e13ffbace805f373efc9af8cead5f43175ac6aad82a20cf",
+      "staged_project": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-pllcsmuq/misc/polkadotjs/bug-hunt/frontend-repro",
+      "closure_exit": 0,
+      "audit_exit": 0,
+      "dependencies": {
+        "prod": 52,
+        "dev": 0,
+        "optional": 0,
+        "peer": 0,
+        "peerOptional": 0,
+        "total": 51
+      },
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "evidence": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/npm-security-refresh/frontend",
+      "audit_sha256": "4ddec3a66c618b898a1914dcfaad98f29c70df231bc9aca3059f3abf61e85855"
+    }
+  ]
+}

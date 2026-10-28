@@ -1,0 +1,11 @@
+✔ provider-level guard rejects submission and administrative methods before transport (1.632917ms)
+✔ setup and cached reads pass through the same class with parameters and receiver intact (0.175667ms)
+✔ restoration removes the guard without replacing the original transport (0.067792ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 332.154625

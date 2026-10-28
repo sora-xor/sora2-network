@@ -1778,7 +1778,7 @@ index 08edfe608..75eacde03 100644
 +    });
 +}
 diff --git a/pallets/xor-fee/src/lib.rs b/pallets/xor-fee/src/lib.rs
-index d7570f43e..fcfb3668d 100644
+index d7570f43e..d649bf1dd 100644
 --- a/pallets/xor-fee/src/lib.rs
 +++ b/pallets/xor-fee/src/lib.rs
 @@ -225,37 +225,6 @@ where
@@ -1871,6 +1871,32 @@ index d7570f43e..fcfb3668d 100644
      /// Check if the fee payment should be postponed
      ///
      /// Parameters:
+@@ -652,6 +583,16 @@ pub trait ApplyCustomFees<Call: Dispatchable, AccountId> {
+     /// `None` if default transaction payment pallet fees should be used
+     fn compute_fee(call: &Call) -> Option<(Balance, Self::FeeDetails)>;
+ 
++    /// Compute custom fees using the complete extrinsic dispatch information,
++    /// including transaction-extension weight. Flat-fee implementations can
++    /// keep using `compute_fee`; weight-derived policies must use this input.
++    fn compute_fee_with_dispatch_info(
++        call: &Call,
++        _info: &DispatchInfoOf<Call>,
++    ) -> Option<(Balance, Self::FeeDetails)> {
++        Self::compute_fee(call)
++    }
++
+     /// Compute actual fees for this call
+     ///
+     /// Parameters:
+@@ -788,7 +729,7 @@ where
+                 None,
+             );
+         }
+-        let maybe_custom_fee = T::CustomFees::compute_fee(call);
++        let maybe_custom_fee = T::CustomFees::compute_fee_with_dispatch_info(call, info);
+         let (fee, kind) = match maybe_custom_fee {
+             Some((0, custom_details)) => (
+                 FeeDetails {
 diff --git a/runtime/src/lib.rs b/runtime/src/lib.rs
 index 34161f9e3..c08e2ca4c 100644
 --- a/runtime/src/lib.rs
@@ -1982,15 +2008,16 @@ index 0e67da5ee..000000000
 -    }
 -}
 diff --git a/runtime/src/tests/liveness.rs b/runtime/src/tests/liveness.rs
-index 2cb846afb..de1d51aa8 100644
+index 2cb846afb..f48d0da97 100644
 --- a/runtime/src/tests/liveness.rs
 +++ b/runtime/src/tests/liveness.rs
-@@ -1013,5 +1013,6 @@ mod equivocation_bridge;
+@@ -1013,5 +1013,7 @@ mod equivocation_bridge;
  mod equivocation_fees;
  mod feeless_success;
  mod funded_keepers;
 -mod migration_sponsorship;
 +mod migration_fees;
++mod payout_batch_fees;
 +mod retired_lending;
  mod session_boundaries;
 diff --git a/runtime/src/tests/liveness/funded_keepers.rs b/runtime/src/tests/liveness/funded_keepers.rs
@@ -2895,6 +2922,618 @@ index 7463e121d..000000000
 -        ));
 -    });
 -}
+diff --git a/runtime/src/tests/liveness/payout_batch_fees.rs b/runtime/src/tests/liveness/payout_batch_fees.rs
+new file mode 100644
+index 000000000..a5a608425
+--- /dev/null
++++ b/runtime/src/tests/liveness/payout_batch_fees.rs
+@@ -0,0 +1,606 @@
++// This file is part of the SORA network and Polkaswap app.
++// SPDX-License-Identifier: BSD-4-Clause
++
++use super::*;
++use crate::xor_fee_impls::{CustomFeeDetails, CustomFees};
++use crate::{
++    Assets, Executive, RuntimeCall, SignedExtra, TransactionPayment, UncheckedExtrinsic, XorFee,
++};
++use common::{prelude::constants::MINIMAL_FEE, AssetInfoProvider, VAL};
++use frame_support::{
++    assert_err,
++    dispatch::{GetDispatchInfo, Pays, PostDispatchInfo},
++    weights::Weight,
++};
++use pallet_staking::EraRewardPoints;
++use sp_core::sr25519;
++use sp_runtime::{generic::Era, DispatchResult, FixedPointNumber, FixedU128};
++use xor_fee::ApplyCustomFees;
++
++#[derive(Clone, Copy, Debug)]
++enum BatchKind {
++    Batch,
++    All,
++    Force,
++}
++
++const KINDS: [BatchKind; 3] = [BatchKind::Batch, BatchKind::All, BatchKind::Force];
++
++impl BatchKind {
++    fn call(self, calls: Vec<RuntimeCall>) -> RuntimeCall {
++        RuntimeCall::Utility(match self {
++            Self::Batch => pallet_utility::Call::batch { calls },
++            Self::All => pallet_utility::Call::batch_all { calls },
++            Self::Force => pallet_utility::Call::force_batch { calls },
++        })
++    }
++}
++
++fn fixture(funded: bool) -> (sr25519::Pair, Validators) {
++    let validators = Validators::with_count(2);
++    pallet_staking::CurrentEra::<Runtime>::put(ERA + 1);
++    pallet_staking::ErasValidatorReward::<Runtime>::insert(ERA, 200 * UNIT);
++    xor_fee::ValStakingEraReward::<Runtime>::insert(ERA, 200 * UNIT);
++    pallet_staking::ErasRewardPoints::<Runtime>::insert(
++        ERA,
++        EraRewardPoints {
++            total: 20,
++            individual: validators
++                .accounts
++                .iter()
++                .cloned()
++                .map(|who| (who, 10))
++                .collect(),
++        },
++    );
++    let signer = sr25519::Pair::from_seed(&[78; 32]);
++    let who = AccountId::from(signer.public());
++    // Retain a provider even without XOR so CheckNonce does not mask fee admission.
++    System::inc_providers(&who);
++    if funded {
++        drop(Balances::deposit_creating(&who, 1_000_000 * UNIT));
++    }
++    assert_ok!(XorFee::update_multiplier(
++        RuntimeOrigin::root(),
++        FixedU128::saturating_from_integer(1),
++    ));
++    (signer, validators)
++}
++
++fn payout(stash: &AccountId, by_page: bool) -> RuntimeCall {
++    RuntimeCall::Staking(if by_page {
++        pallet_staking::Call::payout_stakers_by_page {
++            validator_stash: stash.clone(),
++            era: ERA,
++            page: 0,
++        }
++    } else {
++        pallet_staking::Call::payout_stakers {
++            validator_stash: stash.clone(),
++            era: ERA,
++        }
++    })
++}
++
++fn invalid_payout(stash: &AccountId) -> RuntimeCall {
++    RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page {
++        validator_stash: stash.clone(),
++        era: ERA,
++        page: u32::MAX,
++    })
++}
++
++fn reset() {
++    frame_system::BlockSize::<Runtime>::kill();
++    frame_system::BlockWeight::<Runtime>::kill();
++    System::reset_events();
++}
++
++fn wire(call: RuntimeCall, signer: &sr25519::Pair) -> UncheckedExtrinsic {
++    let who = AccountId::from(signer.public());
++    let extra: SignedExtra = (
++        frame_system::CheckSpecVersion::new(),
++        frame_system::CheckTxVersion::new(),
++        frame_system::CheckGenesis::new(),
++        frame_system::CheckEra::from(Era::Immortal),
++        frame_system::CheckNonce::from(System::account_nonce(&who)),
++        frame_system::CheckWeight::new(),
++        crate::charge_tx_payment_extension(),
++    );
++    let payload = crate::SignedPayload::new(call.clone(), extra.clone()).unwrap();
++    let signature = payload.using_encoded(|bytes| signer.sign(bytes));
++    UncheckedExtrinsic::new_signed(call, who, crate::Signature::Sr25519(signature), extra)
++}
++
++fn val_balance(who: &AccountId) -> Balance {
++    Assets::free_balance(&VAL, who).unwrap()
++}
++
++fn claimed(stash: &AccountId) -> bool {
++    pallet_staking::ClaimedRewards::<Runtime>::get(ERA, stash).contains(&0)
++}
++
++fn apply_paid(
++    call: RuntimeCall,
++    signer: &sr25519::Pair,
++    submitted: usize,
++) -> (DispatchResult, Balance) {
++    reset();
++    let extrinsic = wire(call, signer);
++    let len = extrinsic.encoded_size() as u32;
++    let info = extrinsic.get_dispatch_info();
++    assert_eq!(info.pays_fee, Pays::Yes);
++    assert!(info.extension_weight.ref_time() > 0);
++    let quote = XorFee::query_info(&extrinsic, &extrinsic.function, len);
++    let details = XorFee::query_fee_details(&extrinsic, &extrinsic.function, len);
++    assert_eq!(quote.partial_fee, details.final_fee());
++    assert_eq!(quote.weight, info.total_weight());
++    let multiplier = xor_fee::Multiplier::<Runtime>::get();
++    let floor = multiplier.saturating_mul_int(MINIMAL_FEE * submitted as Balance)
++        + TransactionPayment::length_to_fee(len);
++    assert!(quote.partial_fee >= floor);
++    let who = AccountId::from(signer.public());
++    let before = Balances::free_balance(&who);
++    let nonce = System::account_nonce(&who);
++    let result = Executive::apply_extrinsic(extrinsic).expect("funded payout batch is admitted");
++    let charged = before - Balances::free_balance(&who);
++    assert!(
++        charged >= floor,
++        "all submitted calls retain a positive fee floor"
++    );
++    assert!(charged <= quote.partial_fee);
++    assert_eq!(System::account_nonce(&who), nonce + 1);
++    let paid = System::events()
++        .into_iter()
++        .find_map(|record| match record.event {
++            RuntimeEvent::TransactionPayment(
++                pallet_transaction_payment::Event::TransactionFeePaid {
++                    who: payer,
++                    actual_fee,
++                    tip,
++                },
++            ) if payer == who => {
++                assert_eq!(tip, 0);
++                Some(actual_fee)
++            }
++            _ => None,
++        })
++        .expect("the actual XOR charge is emitted");
++    assert_eq!(paid, charged);
++    (result, charged)
++}
++
++#[test]
++fn signed_payout_batches_pay_val_once_and_charge_replays_for_all_variants() {
++    for kind in KINDS {
++        for by_page in [false, true] {
++            for submitted in [1, 2] {
++                ext().execute_with(|| {
++                    let (signer, validators) = fixture(true);
++                    let native_before = validators.balances_and_stakes();
++                    let call = kind.call(
++                        validators
++                            .accounts
++                            .iter()
++                            .take(submitted)
++                            .map(|who| payout(who, by_page))
++                            .collect(),
++                    );
++                    assert_ok!(apply_paid(call.clone(), &signer, submitted).0);
++                    for (index, stash) in validators.accounts.iter().enumerate() {
++                        assert_eq!(claimed(stash), index < submitted);
++                        assert_eq!(val_balance(stash) > 0, index < submitted);
++                    }
++                    let rewards = validators
++                        .accounts
++                        .iter()
++                        .chain(std::iter::once(&validators.nominator))
++                        .map(val_balance)
++                        .collect::<Vec<_>>();
++                    assert!(val_balance(&validators.nominator) > 0);
++                    assert_eq!(validators.balances_and_stakes(), native_before);
++                    let replay = apply_paid(call, &signer, submitted).0;
++                    if matches!(kind, BatchKind::All) {
++                        assert_eq!(
++                            replay.unwrap_err(),
++                            pallet_staking::Error::<Runtime>::AlreadyClaimed.into()
++                        );
++                    } else {
++                        assert_ok!(replay);
++                    }
++                    assert_eq!(
++                        validators
++                            .accounts
++                            .iter()
++                            .chain(std::iter::once(&validators.nominator))
++                            .map(val_balance)
++                            .collect::<Vec<_>>(),
++                        rewards
++                    );
++                    assert!(!System::events().iter().any(|record| matches!(
++                        record.event,
++                        RuntimeEvent::Staking(pallet_staking::Event::Rewarded { .. })
++                    )));
++                });
++            }
++        }
++    }
++}
++
++#[test]
++fn invalid_and_interrupted_payout_batches_pay_for_every_submitted_call() {
++    for kind in [BatchKind::Batch, BatchKind::All] {
++        ext().execute_with(|| {
++            let (signer, validators) = fixture(true);
++            // A failing first call must not make the unexecuted tail free.
++            let call = kind.call(vec![
++                invalid_payout(&validators.accounts[0]),
++                payout(&validators.accounts[1], true),
++            ]);
++            let result = apply_paid(call, &signer, 2).0;
++            if matches!(kind, BatchKind::All) {
++                assert_eq!(
++                    result.unwrap_err(),
++                    pallet_staking::Error::<Runtime>::InvalidPage.into()
++                );
++            } else {
++                assert_ok!(result);
++                assert!(System::events().iter().any(|record| matches!(
++                    record.event,
++                    RuntimeEvent::Utility(pallet_utility::Event::BatchInterrupted { index: 0, .. })
++                )));
++            }
++            assert!(validators
++                .accounts
++                .iter()
++                .all(|who| !claimed(who) && val_balance(who) == 0));
++            assert_eq!(val_balance(&validators.nominator), 0);
++        });
++    }
++}
++
++#[test]
++fn failed_atomic_payout_batch_rolls_back_rewards_and_claims_but_keeps_xor_fee() {
++    ext().execute_with(|| {
++        let (signer, validators) = fixture(true);
++        let before = validators.balances_and_stakes();
++        let call = BatchKind::All.call(vec![
++            payout(&validators.accounts[0], false),
++            invalid_payout(&validators.accounts[1]),
++        ]);
++        assert_eq!(
++            apply_paid(call, &signer, 2).0.unwrap_err(),
++            pallet_staking::Error::<Runtime>::InvalidPage.into()
++        );
++        assert!(validators
++            .accounts
++            .iter()
++            .all(|who| !claimed(who) && val_balance(who) == 0));
++        assert_eq!(val_balance(&validators.nominator), 0);
++        assert_eq!(validators.balances_and_stakes(), before);
++        assert!(!System::events().iter().any(|record| matches!(
++            record.event,
++            RuntimeEvent::Staking(pallet_staking::Event::Rewarded { .. })
++        )));
++    });
++}
++
++#[test]
++fn force_payout_batch_continues_after_invalid_page_and_still_charges_all_items() {
++    ext().execute_with(|| {
++        let (signer, validators) = fixture(true);
++        let call = BatchKind::Force.call(vec![
++            invalid_payout(&validators.accounts[0]),
++            payout(&validators.accounts[1], true),
++        ]);
++        assert_ok!(apply_paid(call, &signer, 2).0);
++        assert!(!claimed(&validators.accounts[0]));
++        assert_eq!(val_balance(&validators.accounts[0]), 0);
++        assert!(claimed(&validators.accounts[1]));
++        assert!(val_balance(&validators.accounts[1]) > 0);
++        assert!(val_balance(&validators.nominator) > 0);
++        assert!(System::events().iter().any(|record| matches!(
++            record.event,
++            RuntimeEvent::Utility(pallet_utility::Event::BatchCompletedWithErrors)
++        )));
++    });
++}
++
++#[test]
++fn payout_batches_require_xor_before_validation_and_execution() {
++    for kind in KINDS {
++        ext().execute_with(|| {
++            let (signer, validators) = fixture(false);
++            let who = AccountId::from(signer.public());
++            let call = kind.call(vec![
++                payout(&validators.accounts[0], false),
++                payout(&validators.accounts[1], true),
++            ]);
++            for source in [
++                TransactionSource::External,
++                TransactionSource::Local,
++                TransactionSource::InBlock,
++            ] {
++                reset();
++                assert_err!(
++                    Executive::validate_transaction(
++                        source,
++                        wire(call.clone(), &signer),
++                        Default::default()
++                    ),
++                    InvalidTransaction::Payment
++                );
++            }
++            reset();
++            assert_err!(
++                Executive::apply_extrinsic(wire(call, &signer)),
++                InvalidTransaction::Payment
++            );
++            assert_eq!(Balances::free_balance(&who), 0);
++            assert_eq!(System::account_nonce(&who), 0);
++            assert!(validators
++                .accounts
++                .iter()
++                .all(|stash| !claimed(stash) && val_balance(stash) == 0));
++            assert_eq!(val_balance(&validators.nominator), 0);
++            assert!(System::events().is_empty());
++        });
++    }
++}
++
++#[test]
++fn payout_discount_excludes_empty_mixed_nested_and_other_wrapped_calls() {
++    ext().execute_with(|| {
++        let (signer, validators) = fixture(true);
++        let direct = payout(&validators.accounts[0], false);
++        let eligible = BatchKind::Batch.call(vec![direct.clone()]);
++        let mut calls = Vec::new();
++        for kind in KINDS {
++            calls.push(kind.call(vec![]));
++            calls.push(kind.call(vec![
++                direct.clone(),
++                RuntimeCall::System(frame_system::Call::remark { remark: vec![] }),
++            ]));
++            calls.push(kind.call(vec![direct.clone(), eligible.clone()]));
++        }
++        calls.extend([
++            RuntimeCall::Utility(pallet_utility::Call::as_derivative {
++                index: 0,
++                call: Box::new(eligible.clone()),
++            }),
++            RuntimeCall::Multisig(pallet_multisig::Call::as_multi_threshold_1 {
++                other_signatories: vec![validators.accounts[0].clone()],
++                call: Box::new(eligible.clone()),
++            }),
++            RuntimeCall::XorFee(xor_fee::Call::xorless_call {
++                call: Box::new(eligible),
++                asset_id: None,
++            }),
++        ]);
++        for call in calls {
++            let extrinsic = wire(call, &signer);
++            let info = extrinsic.get_dispatch_info();
++            let len = extrinsic.encoded_size() as u32;
++            assert_eq!(
++                CustomFees::compute_fee_with_dispatch_info(&extrinsic.function, &info),
++                None
++            );
++            assert_eq!(
++                XorFee::query_info(&extrinsic, &extrinsic.function, len).partial_fee,
++                TransactionPayment::compute_fee(len, &info, 0)
++            );
++        }
++        for by_page in [false, true] {
++            assert_eq!(
++                CustomFees::compute_fee(&payout(&validators.accounts[0], by_page)),
++                Some((MINIMAL_FEE, CustomFeeDetails::Regular(MINIMAL_FEE)))
++            );
++        }
++    });
++}
++
++#[test]
++fn payout_batch_fee_quotes_preserve_length_tips_multipliers_and_extension_weight() {
++    ext().execute_with(|| {
++        let (signer, validators) = fixture(true);
++        let call = BatchKind::Batch.call(vec![
++            payout(&validators.accounts[0], false),
++            payout(&validators.accounts[1], true),
++        ]);
++        let extrinsic = wire(call.clone(), &signer);
++        let info = extrinsic.get_dispatch_info();
++        assert!(info.extension_weight.ref_time() > 0);
++        let len = extrinsic.encoded_size() as u32;
++        let floor = 2 * MINIMAL_FEE;
++        // Distinct multipliers catch accidentally applying either one twice.
++        let multiplier = FixedU128::saturating_from_integer(7);
++        xor_fee::Multiplier::<Runtime>::put(multiplier);
++        pallet_transaction_payment::NextFeeMultiplier::<Runtime>::put(
++            FixedU128::saturating_from_integer(3),
++        );
++        let standard = TransactionPayment::compute_fee(0, &info, 0);
++        let discounted = standard.div_ceil(100).max(floor);
++        let length_fee = TransactionPayment::length_to_fee(len);
++        let quote = XorFee::query_info(&extrinsic, &call, len);
++        let details = XorFee::query_fee_details(&extrinsic, &call, len);
++        assert_eq!(
++            quote.partial_fee,
++            multiplier.saturating_mul_int(discounted) + length_fee
++        );
++        assert_eq!(quote.partial_fee, details.final_fee());
++        assert_eq!(quote.weight, info.total_weight());
++        let inclusion = details.inclusion_fee.unwrap();
++        assert_eq!(inclusion.base_fee, 0);
++        assert_eq!(inclusion.len_fee, length_fee);
++        assert_eq!(
++            inclusion.adjusted_weight_fee,
++            multiplier.saturating_mul_int(discounted)
++        );
++        assert!(
++            quote.partial_fee > XorFee::compute_fee(len, &call, &call.get_dispatch_info(), 0).0,
++            "extension weight participates in both quote and admission price"
++        );
++        let tip = UNIT / 10;
++        let (upfront, custom) = XorFee::compute_fee(len, &call, &info, tip);
++        assert_eq!(
++            custom,
++            Some(CustomFeeDetails::PayoutBatch { minimum_fee: floor })
++        );
++        assert_eq!(
++            upfront,
++            quote.partial_fee + multiplier.saturating_mul_int(tip)
++        );
++        assert_eq!(
++            XorFee::compute_fee(len + 100, &call, &info, tip).0 - upfront,
++            TransactionPayment::length_to_fee(100)
++        );
++        for actual_weight in [
++            Weight::zero(),
++            info.total_weight() / 10,
++            info.total_weight(),
++        ] {
++            let post = PostDispatchInfo {
++                actual_weight: Some(actual_weight),
++                pays_fee: Pays::Yes,
++            };
++            let old_actual = TransactionPayment::compute_actual_fee(0, &info, &post, 0);
++            let expected = multiplier.saturating_mul_int(old_actual.div_ceil(100).max(floor))
++                + length_fee
++                + multiplier.saturating_mul_int(tip);
++            for result in [
++                Ok(()),
++                Err(sp_runtime::DispatchError::Other("failed payout")),
++            ] {
++                assert_eq!(
++                    XorFee::compute_actual_fee(len, &info, &post, &result, tip, custom),
++                    expected
++                );
++            }
++            assert!(expected <= upfront);
++        }
++        // Even an immediate error retains a floor for every submitted child.
++        // Doubling a skipped tail must double that floor, irrespective of weight refunds.
++        let post = PostDispatchInfo {
++            actual_weight: Some(Weight::zero()),
++            pays_fee: Pays::Yes,
++        };
++        for count in [1, 2] {
++            let call = BatchKind::Batch.call(vec![invalid_payout(&validators.accounts[0]); count]);
++            let info = call.get_dispatch_info();
++            let (_, custom) = XorFee::compute_fee(0, &call, &info, 0);
++            assert_eq!(
++                XorFee::compute_actual_fee(
++                    0,
++                    &info,
++                    &post,
++                    &Err(pallet_staking::Error::<Runtime>::InvalidPage.into()),
++                    0,
++                    custom
++                ),
++                multiplier.saturating_mul_int(MINIMAL_FEE * count as Balance)
++            );
++        }
++    });
++}
++
++#[test]
++fn payout_batch_must_fund_full_quote_even_when_execution_would_refund() {
++    ext().execute_with(|| {
++        let (signer, validators) = fixture(false);
++        let who = AccountId::from(signer.public());
++        let call = BatchKind::Batch.call(vec![
++            invalid_payout(&validators.accounts[0]),
++            payout(&validators.accounts[1], true),
++        ]);
++        let extrinsic = wire(call.clone(), &signer);
++        let quote =
++            XorFee::query_info(&extrinsic, &call, extrinsic.encoded_size() as u32).partial_fee;
++        drop(Balances::deposit_creating(&who, quote - 1));
++        reset();
++        assert_err!(
++            Executive::validate_transaction(
++                TransactionSource::External,
++                wire(call.clone(), &signer),
++                Default::default()
++            ),
++            InvalidTransaction::Payment
++        );
++        assert_err!(
++            Executive::apply_extrinsic(wire(call, &signer)),
++            InvalidTransaction::Payment
++        );
++        assert_eq!(Balances::free_balance(&who), quote - 1);
++        assert_eq!(System::account_nonce(&who), 0);
++    });
++}
++
++#[test]
++fn payout_batch_discount_preserves_extrinsic_and_block_weight_admission_limits() {
++    ext().execute_with(|| {
++        let (signer, validators) = fixture(true);
++        let child = payout(&validators.accounts[0], false);
++        let mut count = 1;
++        let oversized = loop {
++            let call = BatchKind::Batch.call(vec![child.clone(); count]);
++            let info = call.get_dispatch_info();
++            if info.total_weight().any_gt(
++                crate::BlockWeights::get()
++                    .get(info.class)
++                    .max_extrinsic
++                    .unwrap(),
++            ) {
++                break call;
++            }
++            count += 1;
++            assert!(count < 1000);
++        };
++        let extrinsic = wire(oversized, &signer);
++        let info = extrinsic.get_dispatch_info();
++        let len = extrinsic.encoded_size() as u32;
++        let quote = XorFee::query_info(&extrinsic, &extrinsic.function, len);
++        assert!(quote.partial_fee < TransactionPayment::compute_fee(len, &info, 0));
++        assert_eq!(quote.weight, info.total_weight());
++        let who = AccountId::from(signer.public());
++        let before = Balances::free_balance(&who);
++        reset();
++        assert_err!(
++            Executive::validate_transaction(
++                TransactionSource::External,
++                extrinsic.clone(),
++                Default::default()
++            ),
++            InvalidTransaction::ExhaustsResources
++        );
++        assert_err!(
++            Executive::apply_extrinsic(extrinsic),
++            InvalidTransaction::ExhaustsResources
++        );
++        assert_eq!(Balances::free_balance(&who), before);
++        assert_eq!(System::account_nonce(&who), 0);
++        assert!(!claimed(&validators.accounts[0]));
++
++        let small = wire(BatchKind::Batch.call(vec![child]), &signer);
++        let small_info = small.get_dispatch_info();
++        reset();
++        System::register_extra_weight_unchecked(
++            crate::BlockWeights::get()
++                .get(small_info.class)
++                .max_total
++                .unwrap(),
++            small_info.class,
++        );
++        // Block building discards the candidate overlay on admission failure;
++        // CheckNonce prepares before the block-weight extension in this runtime.
++        let admission =
++            frame_support::storage::with_transaction::<_, sp_runtime::DispatchError, _>(|| {
++                frame_support::storage::TransactionOutcome::Rollback(Ok(
++                    Executive::apply_extrinsic(small),
++                ))
++            })
++            .unwrap();
++        assert_err!(admission, InvalidTransaction::ExhaustsResources);
++        assert_eq!(Balances::free_balance(&who), before);
++        assert_eq!(System::account_nonce(&who), 0);
++        assert!(!claimed(&validators.accounts[0]));
++    });
++}
 diff --git a/runtime/src/tests/liveness/retired_lending.rs b/runtime/src/tests/liveness/retired_lending.rs
 new file mode 100644
 index 000000000..c0d808ef0
@@ -3422,10 +4061,89 @@ index 000000000..c0d808ef0
 +    });
 +}
 diff --git a/runtime/src/xor_fee_impls.rs b/runtime/src/xor_fee_impls.rs
-index 7d0da73bd..eebf8a7cd 100644
+index 7d0da73bd..d023992ad 100644
 --- a/runtime/src/xor_fee_impls.rs
 +++ b/runtime/src/xor_fee_impls.rs
-@@ -563,24 +563,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
+@@ -38,7 +38,7 @@ use common::LiquidityProxyTrait;
+ use common::PriceToolsProvider;
+ #[cfg(feature = "wip")] // Xorless fee
+ use common::PriceVariant;
+-use frame_support::dispatch::DispatchResult;
++use frame_support::dispatch::{DispatchInfo, DispatchResult, GetDispatchInfo};
+ use frame_support::traits::Currency;
+ use pallet_utility::Call as UtilityCall;
+ use sp_runtime::traits::Zero;
+@@ -310,6 +310,37 @@ fn pay_val_to_reward_destination(
+ }
+ 
+ impl CustomFees {
++    /// Only flat, nonempty payout batches receive the resource-price discount.
++    /// Do not recurse into wrappers: that would also subsidize unrelated work
++    /// or permit arbitrary nesting overhead at the payout price.
++    fn payout_batch_minimum(call: &RuntimeCall) -> Option<Balance> {
++        let calls = match call {
++            RuntimeCall::Utility(UtilityCall::batch { calls })
++            | RuntimeCall::Utility(UtilityCall::batch_all { calls })
++            | RuntimeCall::Utility(UtilityCall::force_batch { calls }) => calls,
++            _ => return None,
++        };
++        if calls.is_empty()
++            || !calls.iter().all(|call| {
++                matches!(
++                    call,
++                    RuntimeCall::Staking(pallet_staking::Call::payout_stakers { .. })
++                        | RuntimeCall::Staking(pallet_staking::Call::payout_stakers_by_page { .. })
++                )
++            })
++        {
++            return None;
++        }
++        Some(MINIMAL_FEE.saturating_mul(calls.len() as Balance))
++    }
++
++    fn discounted_payout_batch_fee(standard_fee: Balance, minimum_fee: Balance) -> Balance {
++        // Round up, keep a paid floor for every submitted payout (including
++        // skipped/failed/replayed claims), and retain normal weight refunds.
++        // Length fees and tips are added separately by XorFee, without discount.
++        standard_fee.div_ceil(100).max(minimum_fee)
++    }
++
+     fn match_call(call: &RuntimeCall) -> Option<Balance> {
+         match call {
+             RuntimeCall::LiquidityProxy(liquidity_proxy::Call::swap_transfer_batch {
+@@ -381,6 +412,10 @@ pub enum CustomFeeDetails {
+     /// Regular call with custom fee without any additional logic
+     Regular(Balance),
+ 
++    /// One percent of the ordinary base/weight fee, bounded below by the
++    /// direct-payout fee for every submitted call. No change to execution weight.
++    PayoutBatch { minimum_fee: Balance },
++
+     /// OrderBook::place_limit_order custom fee depends on limit order lifetime
+     LimitOrderLifetime(Option<Moment>),
+ 
+@@ -395,6 +430,20 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
+     type FeeDetails = CustomFeeDetails;
+ 
+     fn compute_fee(call: &RuntimeCall) -> Option<(Balance, CustomFeeDetails)> {
++        Self::compute_fee_with_dispatch_info(call, &call.get_dispatch_info())
++    }
++
++    fn compute_fee_with_dispatch_info(
++        call: &RuntimeCall,
++        info: &DispatchInfo,
++    ) -> Option<(Balance, CustomFeeDetails)> {
++        if let Some(minimum_fee) = Self::payout_batch_minimum(call) {
++            let standard_fee = TransactionPayment::compute_fee(0, info, 0);
++            return Some((
++                Self::discounted_payout_batch_fee(standard_fee, minimum_fee),
++                CustomFeeDetails::PayoutBatch { minimum_fee },
++            ));
++        }
+         let mut fee = Self::base_fee(call)?;
+ 
+         let mut compute_details = |call: &RuntimeCall| -> CustomFeeDetails {
+@@ -563,24 +612,6 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
          validate_bridge_fee_exemption(who, call)
      }
  
@@ -3450,3 +4168,14 @@ index 7d0da73bd..eebf8a7cd 100644
      fn compute_actual_fee(
          _post_info: &sp_runtime::traits::PostDispatchInfoOf<RuntimeCall>,
          _info: &sp_runtime::traits::DispatchInfoOf<RuntimeCall>,
+@@ -590,6 +621,10 @@ impl xor_fee::ApplyCustomFees<RuntimeCall, AccountId> for CustomFees {
+         let fee_details = fee_details?;
+         match fee_details {
+             CustomFeeDetails::Regular(fee) => Some(fee),
++            CustomFeeDetails::PayoutBatch { minimum_fee } => {
++                let standard_fee = TransactionPayment::compute_actual_fee(0, _info, _post_info, 0);
++                Some(Self::discounted_payout_batch_fee(standard_fee, minimum_fee))
++            }
+             CustomFeeDetails::LimitOrderLifetime(lifetime) => {
+                 order_book::fee_calculator::FeeCalculator::<Runtime>::place_limit_order_fee(
+                     lifetime,

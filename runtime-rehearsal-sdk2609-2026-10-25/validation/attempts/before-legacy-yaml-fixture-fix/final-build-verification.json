@@ -1,0 +1,209 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-25T01:24:31.073600+00:00",
+  "workingDirectory": "/Users/takemiyamakoto/dev/sora2-network",
+  "environment": {
+    "LIBRARY_PATH": "/opt/homebrew/opt/llvm@22/lib",
+    "LIBCLANG_PATH": "/opt/homebrew/opt/llvm@22/lib",
+    "LLVM_CONFIG_PATH": "/opt/homebrew/opt/llvm@22/bin/llvm-config",
+    "CARGO_TARGET_DIR": "/Users/takemiyamakoto/dev/sora2-network/target",
+    "WASM_BUILD_TYPE": "release",
+    "WASM_BUILD_NO_COLOR": "1"
+  },
+  "steps": [
+    {
+      "name": "source-start",
+      "command": [
+        "python3",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-fingerprint.py",
+        "--final",
+        "--label",
+        "final-clippy-and-production-build",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-clippy-start.json"
+      ],
+      "startedAt": "2026-10-25T01:24:31.074631+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:24:37.200402+00:00",
+      "stdout": "final-build-logs/source-start.stdout.log",
+      "stdoutSha256": "379cfdbd2107cd78fa2ddbc04e3b7f735e42bdac6f8a2e1eba444b8a41dd16ad",
+      "stderr": "final-build-logs/source-start.stderr.log",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "clippy-all",
+      "command": [
+        "housekeeping/clippy.sh",
+        "all",
+        "--message-format=json"
+      ],
+      "startedAt": "2026-10-25T01:24:37.219721+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:25:05.811681+00:00",
+      "stdout": "final-build-logs/clippy-all.stdout.log",
+      "stdoutSha256": "b6bc973c68eb1315c8f8172f8bc2cf688cce4c895c01ddc519b3c68cbd6c0541",
+      "stderr": "final-build-logs/clippy-all.stderr.log",
+      "stderrSha256": "caf7247b3460d82b824faf7d66ff487159fdb059c97d9c833c466bfceda30588"
+    },
+    {
+      "name": "source-after-clippy",
+      "command": [
+        "python3",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-clippy-end-check.json"
+      ],
+      "startedAt": "2026-10-25T01:25:05.815562+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:25:10.387392+00:00",
+      "stdout": "final-build-logs/source-after-clippy.stdout.log",
+      "stdoutSha256": "2d42d53b64ac0c3554d1f72121653928d3596a6c46052e626dff0623b1ccc536",
+      "stderr": "final-build-logs/source-after-clippy.stderr.log",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "startedAt": "2026-10-25T01:25:10.390848+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:25:14.583915+00:00",
+      "stdout": "final-build-logs/format.stdout.log",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr": "final-build-logs/format.stderr.log",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "production-feature-graph",
+      "command": [
+        "cargo",
+        "tree",
+        "--locked",
+        "-p",
+        "framenode-runtime",
+        "--features",
+        "build-wasm-binary",
+        "-e",
+        "features",
+        "-i",
+        "framenode-runtime",
+        "--prefix",
+        "none"
+      ],
+      "startedAt": "2026-10-25T01:25:14.584749+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:25:17.056775+00:00",
+      "stdout": "final-build-logs/production-feature-graph.stdout.log",
+      "stdoutSha256": "a8535d7e2f4405362b67ecdbbefd4d038d0362eaf4559dc02a527d7d13a46a51",
+      "stderr": "final-build-logs/production-feature-graph.stderr.log",
+      "stderrSha256": "98e4abe53ca68a360862577f61208c290f11ff718578faa8dbe6d637dc410db1"
+    },
+    {
+      "name": "production-wasm",
+      "command": [
+        "scripts/with_llvm_env.sh",
+        "cargo",
+        "check",
+        "--locked",
+        "-p",
+        "framenode-runtime",
+        "--lib",
+        "--features",
+        "build-wasm-binary"
+      ],
+      "startedAt": "2026-10-25T01:25:17.057603+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:26:04.310537+00:00",
+      "stdout": "final-build-logs/production-wasm.stdout.log",
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr": "final-build-logs/production-wasm.stderr.log",
+      "stderrSha256": "74c1c9789a223d26d2e9bb70106349d329512bdd961a740d736fa92ba01de6d1"
+    },
+    {
+      "name": "source-after-build",
+      "command": [
+        "python3",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/source-build-end-check.json"
+      ],
+      "startedAt": "2026-10-25T01:26:04.316806+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T01:26:13.109548+00:00",
+      "stdout": "final-build-logs/source-after-build.stdout.log",
+      "stdoutSha256": "2d42d53b64ac0c3554d1f72121653928d3596a6c46052e626dff0623b1ccc536",
+      "stderr": "final-build-logs/source-after-build.stderr.log",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "sourceFingerprint": {
+    "path": "source-clippy-start.json",
+    "sha256": "a1e4e03f9e718faf055cf2a792e31bb3500c40bcb33da0e7d14ba9a329fe482f",
+    "sourceSha256": "f89ce96b3083e2bfd9a5eae99dcbf0b4694de192de499c179c11312ea609f4e5",
+    "sourceFiles": 4734,
+    "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6"
+  },
+  "candidate": {
+    "status": "passed",
+    "createdAt": "2026-10-25T01:26:13.242503+00:00",
+    "candidateSha256": "bf20c07577124a2cdc1b08d9fccab8044f45ae5e771b38c07d8db2ea5c00fbe6",
+    "candidateBytes": 1908770,
+    "candidatePath": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/candidate-built.compact.compressed.wasm",
+    "specVersion": 136,
+    "transactionVersion": 132,
+    "command": [
+      "scripts/with_llvm_env.sh",
+      "cargo",
+      "check",
+      "--locked",
+      "-p",
+      "framenode-runtime",
+      "--lib",
+      "--features",
+      "build-wasm-binary"
+    ],
+    "buildCommand": "scripts/with_llvm_env.sh cargo check --locked -p framenode-runtime --lib --features build-wasm-binary",
+    "sourceInputs": {
+      "runtime/src/lib.rs": "93c5365f27c2e188904b02f232f600593e80ba4cd240a21b6384837b0c857645",
+      "Cargo.lock": "bb38997ef7100f640545589925b94c9cbef87dda49fb8fd8312d972bda26ae52",
+      "rust-toolchain.toml": "4ce59ef54d9496321d8e22297f121082ef981693a2dd5f9a79b2ccc2f1dcfac2"
+    },
+    "environment": {
+      "LIBRARY_PATH": "/opt/homebrew/opt/llvm@22/lib",
+      "LIBCLANG_PATH": "/opt/homebrew/opt/llvm@22/lib",
+      "LLVM_CONFIG_PATH": "/opt/homebrew/opt/llvm@22/bin/llvm-config",
+      "CARGO_TARGET_DIR": "/Users/takemiyamakoto/dev/sora2-network/target",
+      "WASM_BUILD_TYPE": "release",
+      "WASM_BUILD_NO_COLOR": "1"
+    },
+    "sourceFingerprint": {
+      "path": "source-clippy-start.json",
+      "sha256": "a1e4e03f9e718faf055cf2a792e31bb3500c40bcb33da0e7d14ba9a329fe482f",
+      "sourceSha256": "f89ce96b3083e2bfd9a5eae99dcbf0b4694de192de499c179c11312ea609f4e5",
+      "sourceFiles": 4734,
+      "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6"
+    },
+    "rustc": "rustc 1.101.0-nightly (7189d39d9 2026-10-22)\nbinary: rustc\ncommit-hash: 7189d39d9ce936881b8132c6addeaf3e295cd455\ncommit-date: 2026-10-22\nhost: aarch64-apple-darwin\nrelease: 1.101.0-nightly\nLLVM version: 23.1.4\n",
+    "wasmProjectManifestSha256": "f44c502ce9dbf8b896ad1175ec413264c5e6a3a3582507b83751dbe051da1783",
+    "wasmProjectDependency": {
+      "default-features": false,
+      "features": [
+        "build-wasm-binary"
+      ],
+      "package": "framenode-runtime",
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime"
+    },
+    "verificationReport": "final-build-verification.json"
+  },
+  "finishedAt": "2026-10-25T01:26:13.246533+00:00"
+}

@@ -37,6 +37,8 @@ mod benchmarking;
 
 #[cfg(test)]
 mod mock;
+#[cfg(test)]
+mod recovery_tests;
 
 pub mod weights;
 
@@ -50,11 +52,34 @@ use sp_std::vec::Vec;
 
 pub use weights::WeightInfo;
 
+/// Retained reference custody for an unconfirmed SORA Nexus referral grant.
+/// The active edge and its indexes keep their original reference accounting;
+/// payout lookup is disabled until the effective owner reconfirms this exact edge.
+#[derive(
+    Clone,
+    codec::Encode,
+    codec::Decode,
+    codec::DecodeWithMemTracking,
+    PartialEq,
+    Eq,
+    Debug,
+    scale_info::TypeInfo,
+)]
+pub struct SuspendedReferral<AccountId> {
+    pub referrer: AccountId,
+    /// Raw reviewed evidence commitment, never the derived policy/Wasm hash.
+    pub evidence_commitment: [u8; 32],
+}
+
 impl<T: Config> Pallet<T> {
     pub fn set_referrer_to(
         referral: &T::AccountId,
         referrer: T::AccountId,
     ) -> Result<(), DispatchError> {
+        ensure!(
+            !SuspendedReferrers::<T>::contains_key(referral),
+            Error::<T>::InvalidSuspension
+        );
         Referrers::<T>::mutate(&referral, |r| {
             ensure!(r.is_none(), Error::<T>::AlreadyHasReferrer);
             frame_system::Pallet::<T>::inc_providers(referral);
@@ -196,6 +221,56 @@ pub mod pallet {
             Self::set_referrer_to(&referree, referrer)?;
             Ok(().into())
         }
+
+        /// Reconfirm only the exact suspended edge. No reference, balance or
+        /// reserve is released; choosing another referrer needs separate review.
+        #[pallet::call_index(3)]
+        #[pallet::weight(Weight::from_parts(100_000_000, 262_144).saturating_add(T::DbWeight::get().reads_writes(8, 1)))]
+        pub fn confirm_suspended_referrer(
+            origin: OriginFor<T>,
+            expected_referrer: T::AccountId,
+        ) -> DispatchResultWithPostInfo {
+            let owner = ensure_signed(origin)?;
+            ensure!(
+                frame_support::storage::unhashed::exists(common::recovery::POLICY_STORAGE_KEY),
+                Error::<T>::SuspensionUnavailable
+            );
+            ensure!(
+                frame_system::Pallet::<T>::block_number()
+                    > common::recovery::CHECKPOINT_NUMBER.into(),
+                Error::<T>::SuspensionUnavailable
+            );
+            let suspended =
+                SuspendedReferrers::<T>::get(&owner).ok_or(Error::<T>::SuspensionUnavailable)?;
+            ensure!(
+                suspended.evidence_commitment != [0; 32]
+                    && suspended.referrer == expected_referrer
+                    && Referrers::<T>::get(&owner) == Some(expected_referrer.clone()),
+                Error::<T>::InvalidSuspension
+            );
+            ensure!(
+                Referrals::<T>::decode_len(&expected_referrer).is_some_and(|len| len <= 4096),
+                Error::<T>::InvalidSuspension
+            );
+            ensure!(
+                Referrals::<T>::get(&expected_referrer)
+                    .iter()
+                    .filter(|entry| *entry == &owner)
+                    .count()
+                    == 1,
+                Error::<T>::InvalidSuspension
+            );
+            let required = if owner == expected_referrer { 2 } else { 1 };
+            for account in [&owner, &expected_referrer] {
+                let account = frame_system::Account::<T>::get(account);
+                ensure!(
+                    account.providers > 0 && account.consumers >= required,
+                    Error::<T>::InvalidSuspension
+                );
+            }
+            SuspendedReferrers::<T>::remove(&owner);
+            Ok(().into())
+        }
     }
 
     #[pallet::error]
@@ -206,6 +281,10 @@ pub mod pallet {
         IncRefError,
         /// Referrer doesn't have enough of reserved balance
         ReferrerInsufficientBalance,
+        /// No recovered, retained referral edge is available for confirmation.
+        SuspensionUnavailable,
+        /// The retained forward/reverse/reference witnesses no longer agree.
+        InvalidSuspension,
     }
 
     #[pallet::storage]
@@ -220,6 +299,12 @@ pub mod pallet {
     #[pallet::getter(fn referrals)]
     pub type Referrals<T: Config> =
         StorageMap<_, Blake2_128Concat, T::AccountId, Vec<T::AccountId>, ValueQuery>;
+
+    /// Unconfirmed grants retain custody of their original native references.
+    #[pallet::storage]
+    #[pallet::getter(fn suspended_referrer)]
+    pub type SuspendedReferrers<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, crate::SuspendedReferral<T::AccountId>>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -249,7 +334,11 @@ pub mod pallet {
 
 impl<T: Config> ReferrerAccountProvider<T::AccountId> for Pallet<T> {
     fn get_referrer_account(who: &T::AccountId) -> Option<T::AccountId> {
-        Self::referrer_account(who)
+        if SuspendedReferrers::<T>::contains_key(who) {
+            None
+        } else {
+            Self::referrer_account(who)
+        }
     }
 }
 

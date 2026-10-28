@@ -19,6 +19,15 @@
       ],
       "upstream": "1.0.15",
       "local": "0.2.3"
+    },
+    {
+      "path": [
+        "dev-dependencies",
+        "zstd",
+        "version"
+      ],
+      "upstream": "0.12.4",
+      "local": "0.14.3"
     }
   ]
 }

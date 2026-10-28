@@ -96,7 +96,8 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 use std::borrow::Cow;
 
 /// Specialized `ChainSpec`. This is a specialization of the general Substrate ChainSpec type.
-pub type ChainSpec = sc_service::GenericChainSpec<sc_service::NoExtension>;
+pub mod recovery;
+pub type ChainSpec = sc_service::GenericChainSpec<recovery::Extensions>;
 type Technical = technical::Pallet<Runtime>;
 type AccountPublic = <Signature as Verify>::Signer;
 

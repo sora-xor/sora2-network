@@ -301,7 +301,7 @@
         0,
         0,
         0,
-        132,
+        133,
         0,
         0,
         0,
@@ -1049,19 +1049,19 @@
     "CheckWeight",
     "ChargeTransactionPayment"
   ],
-  "checkedAt": "2026-10-05T09:27:34.179551+00:00",
+  "checkedAt": "2026-10-08T04:46:16.922717+00:00",
   "metadataVersion": 14,
   "inputs": {
     "baselineMetadata": {
-      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/baseline-metadata.json",
-      "sha256": "ee445496ff86c4c59d028410838b01c8d2e2773dd828e0edd3fca51bc93059ca"
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/baseline-metadata.json",
+      "sha256": "4deeb8ba960034d2c649dd82606d535030186b33b09b9b9f9cc91f241fff9840"
     },
     "candidateMetadata": {
-      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/candidate-metadata.json",
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/candidate-metadata.json",
       "sha256": "2bcd7934f79a469a4aea9971bedbffc093dc1c0fd96cf70a3ce030c3a911c66f"
     },
     "comparisonScript": {
-      "path": "/Users/takemiyamakoto/.codex/worktrees/pr1368-conflicts/sora2-network/runtime-upgrade-4.8.12/validation/compare-metadata.py",
+      "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-upgrade-4.8.12/validation/compare-metadata.py",
       "sha256": "1847d01b9483dc6b8ab486386dfc7923b25bc4936a77bcc9ec3b2cc112144751"
     }
   },

@@ -1,0 +1,11 @@
+{
+  "status": "imported-complete-pinned-public-state",
+  "blockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+  "source": "staking-public-state.json.gz",
+  "sourceSha256": "20a6e232f5c84ca0ca933f6a42a668579cbf2a63193a4a7d6228e11d1b83fcbf",
+  "previousCacheSha256": "aec983bf838d3a97e881e69433f8d2669d0846b58817ee547dc8d165a3bbec65",
+  "newCacheSha256": "479310956a840be445de104386bab978e9ab268cf84fb7b4818322cf68808011",
+  "keysImported": 21509,
+  "completeRanges": 33,
+  "existingValuesMatched": true
+}

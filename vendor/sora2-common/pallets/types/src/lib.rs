@@ -32,6 +32,7 @@
 
 pub mod channel_abi;
 pub mod evm;
+pub mod recovery;
 pub mod substrate;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;

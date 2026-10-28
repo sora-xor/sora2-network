@@ -243,12 +243,28 @@ impl OneSessionHandler<AccountId> for LivenessImOnline {
 
 struct BorrowedOffence<'a, O>(&'a O);
 
+fn effective_offenders(mut offenders: Vec<Identification>) -> Vec<Identification> {
+    crate::incident_recovery::resolve_authenticated_accounts(offenders.iter_mut().flat_map(
+        |(owner, exposure)| {
+            core::iter::once(owner).chain(exposure.others.iter_mut().map(|entry| &mut entry.who))
+        },
+    ))
+    .expect("authenticated offence requires the verified recovery identity map");
+    offenders
+}
+
+fn effective_reporters(mut reporters: Vec<AccountId>) -> Vec<AccountId> {
+    crate::incident_recovery::resolve_authenticated_accounts(reporters.iter_mut())
+        .expect("authenticated reporters require the verified recovery identity map");
+    reporters
+}
+
 impl<O: Offence<Identification>> Offence<Identification> for BorrowedOffence<'_, O> {
     const ID: sp_staking::offence::Kind = O::ID;
     type Slot = O::Slot;
 
     fn offenders(&self) -> Vec<Identification> {
-        self.0.offenders()
+        effective_offenders(self.0.offenders())
     }
 
     fn session_index(&self) -> SessionIndex {
@@ -277,7 +293,7 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
 {
     fn report_offence(reporters: Vec<AccountId>, offence: O) -> Result<(), OffenceError> {
         <Offences as ReportOffence<AccountId, Identification, BorrowedOffence<'_, O>>>::report_offence(
-            reporters,
+            effective_reporters(reporters),
             BorrowedOffence(&offence),
         )?;
 
@@ -315,7 +331,8 @@ impl<O: Offence<Identification>> ReportOffence<AccountId, Identification, O>
 
     fn is_known_offence(offenders: &[Identification], time_slot: &O::Slot) -> bool {
         <Offences as ReportOffence<AccountId, Identification, O>>::is_known_offence(
-            offenders, time_slot,
+            &effective_offenders(offenders.to_vec()),
+            time_slot,
         )
     }
 }
@@ -449,6 +466,15 @@ impl EquivocationWeights {
             .saturating_add(Self::disabled_history(validators))
             // Cache plus live session/active/planned/retained-era context reads.
             .saturating_add(db.reads(9))
+            // Identity canonicalization precedes report hashing and deduplication.
+            // Static binary searches require no per-identity storage reads.
+            .saturating_add(db.reads(5))
+            .saturating_add(Weight::from_parts(
+                participants
+                    .saturating_add(u64::from(validators))
+                    .saturating_mul(6 * WEIGHT_REF_TIME_PER_MICROS),
+                256,
+            ))
             .saturating_add(Weight::from_parts(0, 16_384))
             .saturating_add(Self::queued_payloads(
                 context,
@@ -524,6 +550,7 @@ impl ReportOffence<AccountId, Identification, OfflineOffence> for MajorityOfflin
         reporters: Vec<AccountId>,
         mut offence: OfflineOffence,
     ) -> Result<(), OffenceError> {
+        offence.offenders = effective_offenders(offence.offenders);
         let validators = Session::validators();
         // The session-ending hook runs before the session and disabled set rotate.
         // Do not apply current-session history to an inconsistent report.
@@ -572,13 +599,15 @@ impl ReportOffence<AccountId, Identification, OfflineOffence> for MajorityOfflin
         // Preserve the upstream fraction, deduplication and deferred-slash handling.
         // For 13 of 25 validators, the existing offline fraction is 7%.
         <Offences as ReportOffence<AccountId, Identification, OfflineOffence>>::report_offence(
-            reporters, offence,
+            effective_reporters(reporters),
+            offence,
         )
     }
 
     fn is_known_offence(offenders: &[Identification], time_slot: &SessionIndex) -> bool {
         <Offences as ReportOffence<AccountId, Identification, OfflineOffence>>::is_known_offence(
-            offenders, time_slot,
+            &effective_offenders(offenders.to_vec()),
+            time_slot,
         )
     }
 }

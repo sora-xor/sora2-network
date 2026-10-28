@@ -1,0 +1,10 @@
+✔ authorized heartbeat uses General version5 and version0 extension bytes without an outer signature (5.1795ms)
+✔ unreviewed extension bytes cannot silently enter the General fixture (2.104875ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 506.598667

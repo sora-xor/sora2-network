@@ -297,3 +297,154 @@ fn mint_failure_reports_transport_success_but_preserves_failed_application_outco
             ))));
     });
 }
+
+#[test]
+fn recovery_mint_journals_ack_without_outbound_nonce_or_duplicate_credit() {
+    new_tester().execute_with(|| {
+        use bridge_types::traits::MessageDispatchOutcome;
+        use bridge_types::types::MessageStatus;
+        let network = SubNetworkId::Liberland;
+        let id = H256::repeat_byte(19);
+        let recipient = Keyring::Bob.to_account_id();
+        let origin = || -> RuntimeOrigin {
+            dispatch::RawOrigin::new(BridgeOriginOutput::new(
+                network,
+                id,
+                bridge_types::GenericTimepoint::Unknown,
+                (),
+            ))
+            .into()
+        };
+        crate::AssetKinds::<Test>::insert(network, AssetId::Xor, AssetKind::Sidechain);
+        crate::SidechainPrecision::<Test>::insert(network, AssetId::Xor, 18);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        let before = Currencies::total_balance(AssetId::Xor, &recipient);
+        let mint = || {
+            SubstrateApp::mint_with_outcome(
+                origin(),
+                AssetId::Xor,
+                GenericAccount::Sora(Keyring::Alice.into()),
+                recipient.clone(),
+                GenericBalance::Substrate(1_000_000),
+            )
+        };
+        assert_noop!(mint(), Error::<Test>::RecoveryHalted);
+        for context in [
+            vec![],
+            vec![1],
+            0u32.to_le_bytes().to_vec(),
+            [1u32.to_le_bytes().as_slice(), &[0]].concat(),
+        ] {
+            sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &context);
+            assert_noop!(mint(), Error::<Test>::RecoveryHalted);
+        }
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
+        assert_eq!(mint().unwrap(), MessageDispatchOutcome::Applied);
+        assert_eq!(
+            Currencies::total_balance(AssetId::Xor, &recipient),
+            before + 100_000 // Fixture conversion preserves the native 10:1 precision ratio.
+        );
+        assert_eq!(
+            crate::DeferredTransferResults::<Test>::get(network, id),
+            Some(MessageStatus::Done)
+        );
+        assert_eq!(
+            substrate_bridge_channel::outbound::ChannelNonces::<Test>::get(network),
+            0
+        );
+        assert_noop!(mint(), Error::<Test>::DeferredResultExists);
+        assert_noop!(
+            SubstrateApp::update_transaction_status(origin(), id, MessageStatus::Failed),
+            Error::<Test>::RecoveryHalted
+        );
+        sp_io::storage::clear(crate::recovery::INBOUND_CONTEXT_KEY);
+        assert!(!crate::recovery::inbound_allowed::<Test>());
+    });
+}
+
+#[test]
+fn recovery_failed_mint_rolls_back_partial_credit_and_journals_failed_result() {
+    new_tester().execute_with(|| {
+        let network = SubNetworkId::Liberland;
+        let id = H256::repeat_byte(20);
+        let recipient = Keyring::Bob.to_account_id();
+        let origin: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
+            network,
+            id,
+            bridge_types::GenericTimepoint::Unknown,
+            (),
+        ))
+        .into();
+        crate::AssetKinds::<Test>::insert(network, AssetId::Xor, AssetKind::Sidechain);
+        crate::SidechainPrecision::<Test>::insert(network, AssetId::Xor, 18);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
+        sp_io::storage::set(b"test:fail-after-recovery-credit", &[1]);
+        let balance = Currencies::total_balance(AssetId::Xor, &recipient);
+        let issuance = Currencies::total_issuance(AssetId::Xor);
+        let outcome = SubstrateApp::mint_with_outcome(
+            origin,
+            AssetId::Xor,
+            GenericAccount::Sora(Keyring::Alice.into()),
+            recipient.clone(),
+            GenericBalance::Substrate(1_000_000),
+        )
+        .unwrap();
+        assert_eq!(
+            outcome,
+            bridge_types::traits::MessageDispatchOutcome::Failed
+        );
+        assert_eq!(Currencies::total_balance(AssetId::Xor, &recipient), balance);
+        assert_eq!(Currencies::total_issuance(AssetId::Xor), issuance);
+        assert!(!sp_io::storage::exists(b"test:partial-recovery-credit"));
+        assert_eq!(
+            crate::DeferredTransferResults::<Test>::get(network, id),
+            Some(bridge_types::types::MessageStatus::Failed)
+        );
+        assert_eq!(
+            substrate_bridge_channel::outbound::ChannelNonces::<Test>::get(network),
+            0
+        );
+    });
+}
+
+#[test]
+fn recovery_chunk_failure_rolls_back_successful_credit_and_deferred_ack_together() {
+    new_tester().execute_with(|| {
+        let network = SubNetworkId::Liberland;
+        let id = H256::repeat_byte(21);
+        crate::AssetKinds::<Test>::insert(network, AssetId::Xor, AssetKind::Sidechain);
+        crate::SidechainPrecision::<Test>::insert(network, AssetId::Xor, 18);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
+        let root = sp_io::storage::root(sp_runtime::StateVersion::V1);
+        let result: Result<(), sp_runtime::DispatchError> =
+            frame_support::storage::with_storage_layer(|| {
+                let origin: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
+                    network,
+                    id,
+                    bridge_types::GenericTimepoint::Unknown,
+                    (),
+                ))
+                .into();
+                SubstrateApp::mint_with_outcome(
+                    origin,
+                    AssetId::Xor,
+                    GenericAccount::Sora(Keyring::Alice.into()),
+                    Keyring::Bob.into(),
+                    GenericBalance::Substrate(1_000_000),
+                )?;
+                assert!(crate::DeferredTransferResults::<Test>::contains_key(
+                    network, id
+                ));
+                Err(sp_runtime::DispatchError::Other(
+                    "later recovery invariant failed",
+                ))
+            });
+        assert!(result.is_err());
+        assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), root);
+        assert!(!crate::DeferredTransferResults::<Test>::contains_key(
+            network, id
+        ));
+    });
+}

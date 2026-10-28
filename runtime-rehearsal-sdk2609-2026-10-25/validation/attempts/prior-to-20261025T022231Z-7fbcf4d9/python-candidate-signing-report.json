@@ -1,0 +1,299 @@
+{
+  "script_sha256": "546e635f67850db37383451758c1fd8008e48a3b714381dc6deefd5fe446510a",
+  "candidate_sha256": "bf20c07577124a2cdc1b08d9fccab8044f45ae5e771b38c07d8db2ea5c00fbe6",
+  "purpose": "Offline candidate governance-signing compatibility",
+  "metadata_sha256": "9ff202f9ccc98a719fcde1e51a1bb97bffd253101fe617af09e6e3eb16572cf5",
+  "metadata_bytes": 627437,
+  "runtime_report_sha256": "dbc5a099cda0bc95d98d3eee8583ed790bd020c773fe9299f4352e14d1b1fdc4",
+  "runtime_version": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 136,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 132,
+    "stateVersion": 0
+  },
+  "genesis_hash": "0x7e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+  "key_policy": "Synthetic SR25519 key derived from 32 fixed 0x42 bytes; no operator key accessed",
+  "network_policy": "socket creation, RPC and submissions fail closed",
+  "source_sha256": {
+    "/Users/takemiyamakoto/dev/sora2-network/misc/runtime_upgrade/main.py": "3fdb31f2efd7734d89f0dea2b502a5dc493d28d77d5ea3784917a539ba71d1c6",
+    "/Users/takemiyamakoto/dev/sora2-network/misc/runtime_upgrade/vendor/substrateinterface/base.py": "de49bb92f21c3f75d8ad58a39a8010ab5563194a6ac28f3febed45e3a9b52793",
+    "/Users/takemiyamakoto/dev/sora2-network/misc/runtime_upgrade/vendor/substrateinterface/keypair.py": "ab532b124e59f90bc9705bc4c583c9a7d58b6e529b9eeb76d51cb171c85dffbb",
+    "/tmp/sora2-runtime-upgrade-safe-python313/lib/python3.13/site-packages/scalecodec/types.py": "066667d1691d47255d0b02ed909ac569b71b36fbebda8eb0580ed42d62ec4ce6"
+  },
+  "cases": [
+    {
+      "call": "council",
+      "nonce": 0,
+      "tip": 0,
+      "payload_is_blake2_256": false,
+      "call_hex": "0x1b020c1d050212121212121212121212121212121212121212121212121212121212121212127b0000009c",
+      "payload_hex": "0x1b020c1d050212121212121212121212121212121212121212121212121212121212121212127b0000009c00000088000000840000007e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad57e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "extrinsic_hex": "0x410284a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a01aa4b4fab88ecd9acd2531de0cdd0b6883461b98aec8c784cdafb007576e8a26a528f02634101023cae98961f7f31d61a394d4696ee9983764d67ab040097f1840000001b020c1d050212121212121212121212121212121212121212121212121212121212121212127b0000009c",
+      "extrinsic_bytes": 146,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "council",
+      "nonce": 7,
+      "tip": 19,
+      "payload_is_blake2_256": false,
+      "call_hex": "0x1b020c1d050212121212121212121212121212121212121212121212121212121212121212127b0000009c",
+      "payload_hex": "0x1b020c1d050212121212121212121212121212121212121212121212121212121212121212127b0000009c001c4c88000000840000007e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad57e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "extrinsic_hex": "0x410284a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a0132b2c3431695777f850a77388355a8afc29e2fc49f39ad4b3eb9ff0e9176d94ae64c5db4148f452b47593cb1d11f3c65eb30a5b2925ed55d69c067b14ad1da80001c4c1b020c1d050212121212121212121212121212121212121212121212121212121212121212127b0000009c",
+      "extrinsic_bytes": 146,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "technical_committee",
+      "nonce": 0,
+      "tip": 0,
+      "payload_is_blake2_256": false,
+      "call_hex": "0x1c020c1d0712121212121212121212121212121212121212121212121212121212121212120a00000000000000a8",
+      "payload_hex": "0x1c020c1d0712121212121212121212121212121212121212121212121212121212121212120a00000000000000a800000088000000840000007e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad57e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "extrinsic_hex": "0x4d0284a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a01e8cfa7c2047dd03734da4ae51f83405a35461a86101364d740e9aeee748cde025a850ce308cabca041f827040ff9218664f6c01b92e175020a78ab05559983840000001c020c1d0712121212121212121212121212121212121212121212121212121212121212120a00000000000000a8",
+      "extrinsic_bytes": 149,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "technical_committee",
+      "nonce": 7,
+      "tip": 19,
+      "payload_is_blake2_256": false,
+      "call_hex": "0x1c020c1d0712121212121212121212121212121212121212121212121212121212121212120a00000000000000a8",
+      "payload_hex": "0x1c020c1d0712121212121212121212121212121212121212121212121212121212121212120a00000000000000a8001c4c88000000840000007e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad57e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "extrinsic_hex": "0x4d0284a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a01482e24cc5cf4443ca373b223c7a92e2c1c9117010d4c8f8ba7ac5677bc04722d2e9eeb4f27427fd45993e5a6b807bb491ddc89363412738b251cf27a5426cd8a001c4c1c020c1d0712121212121212121212121212121212121212121212121212121212121212120a00000000000000a8",
+      "extrinsic_bytes": 149,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "note_preimage",
+      "nonce": 0,
+      "tip": 0,
+      "payload_is_blake2_256": false,
+      "call_hex": "0x3800200061736d01000000",
+      "payload_hex": "0x3800200061736d0100000000000088000000840000007e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad57e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "extrinsic_hex": "0xc10184a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a01a8da2bd4eb7890a04b598dc46ffb6906bc287e1e638b64af8c6eb2a85464d250dd561caaae2c188fe5f17607a8c384dbcc9c22a8ead047758f552c2c591906810000003800200061736d01000000",
+      "extrinsic_bytes": 114,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "note_preimage",
+      "nonce": 7,
+      "tip": 19,
+      "payload_is_blake2_256": false,
+      "call_hex": "0x3800200061736d01000000",
+      "payload_hex": "0x3800200061736d01000000001c4c88000000840000007e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad57e4e32d0feafd4f9c9414b0be86373f9a1efa904809b683453a9af6856d38ad5",
+      "extrinsic_hex": "0xc10184a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a017e15b5dbd9ea529ae1ae48d63868c3ef20f37ff210d369360afd37e3efd9ae00574fe125d480e1f49ff659164e696f811469c51bef9d60550b719f7c9344b68a001c4c3800200061736d01000000",
+      "extrinsic_bytes": 114,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "note_preimage_hashed_payload",
+      "nonce": 0,
+      "tip": 0,
+      "payload_is_blake2_256": true,
+      "call_hex": "0x38000110000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "payload_hex": "0xa4a19546a6aaab9bf3f128dc29d66cdfc8298116a2e4107eec0c3d331984764e",
+      "extrinsic_hex": "0xa51184a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a0166cb45ecf64813151ca5b03411d1282d442405e27d812d6050e8d7e76eb5ef498eb38423b6d1e5025264ff3729e7dcc7db007c939d11e453561ec81a7d0d698700000038000110000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "extrinsic_bytes": 1131,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    },
+    {
+      "call": "note_preimage_hashed_payload",
+      "nonce": 7,
+      "tip": 19,
+      "payload_is_blake2_256": true,
+      "call_hex": "0x38000110000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "payload_hex": "0x741c658aaaac4ebb92d8c454119b2f91a2b50b7c2bb759219d699ccadf68d8cd",
+      "extrinsic_hex": "0xa51184a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a01e629d71868f8ef4f170415db51bf90f46860f88ee07b9a861cefa7822ab809201524efb59dba608e549a54b913afdabcebbcd67d8291eda2352dcb99a9a7668a001c4c38000110000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "extrinsic_bytes": 1131,
+      "full_extra_matches_all_metadata_extensions": true,
+      "signature_verifies": true,
+      "signature_rejects_transaction_version_131": true,
+      "extrinsic_roundtrip_consumes_all_bytes": true
+    }
+  ],
+  "synthetic_public_key": "a4d007a95b28ce117e4051904503612abdcbd22b60475121f92a8b5dedac375a",
+  "signed_extensions": {
+    "AuthorizeCall": {
+      "extrinsic": "scale_info::1040",
+      "additional_signed": "scale_info::62"
+    },
+    "CheckSpecVersion": {
+      "extrinsic": "scale_info::1041",
+      "additional_signed": "scale_info::4"
+    },
+    "CheckTxVersion": {
+      "extrinsic": "scale_info::1042",
+      "additional_signed": "scale_info::4"
+    },
+    "CheckGenesis": {
+      "extrinsic": "scale_info::1043",
+      "additional_signed": "scale_info::13"
+    },
+    "CheckMortality": {
+      "extrinsic": "scale_info::1044",
+      "additional_signed": "scale_info::13"
+    },
+    "CheckNonce": {
+      "extrinsic": "scale_info::1046",
+      "additional_signed": "scale_info::62"
+    },
+    "CheckWeight": {
+      "extrinsic": "scale_info::1047",
+      "additional_signed": "scale_info::62"
+    },
+    "ChargeTransactionPayment": {
+      "extrinsic": "scale_info::1049",
+      "additional_signed": "scale_info::62"
+    }
+  },
+  "authorize_call": {
+    "explicit_hex": "",
+    "implicit_hex": "",
+    "whole_extra_type": "scale_info::1039"
+  },
+  "rpc_calls": 0,
+  "submission_calls": 0,
+  "status": "passed",
+  "production_helper_changed": false,
+  "limits": "Checks encoding and signatures offline; no governance authorization, chain execution or transaction submission is claimed."
+}

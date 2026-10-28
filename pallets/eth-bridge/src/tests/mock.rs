@@ -267,6 +267,7 @@ impl Config for Runtime {
     type WeightToFee = WeightToFixedFee;
     type MessageStatusNotifier = ();
     type BridgeAssetLockChecker = ();
+    type IncomingAccountResolver = ();
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = TestDenominator;
     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;

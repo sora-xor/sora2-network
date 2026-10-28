@@ -1,0 +1,39 @@
+test_bounded_storage_defaults_remain_strict (__main__.AsyncStakingCompatibilityTests.test_bounded_storage_defaults_remain_strict) ... ok
+test_bounded_storage_hashers_remain_strict (__main__.AsyncStakingCompatibilityTests.test_bounded_storage_hashers_remain_strict) ... ok
+test_bounded_wrapper_inner_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_bounded_wrapper_inner_drift_is_rejected) ... ok
+test_bridge_cannot_gain_calls (__main__.AsyncStakingCompatibilityTests.test_bridge_cannot_gain_calls) ... ok
+test_bridge_shape_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_bridge_shape_drift_is_rejected) ... ok
+test_existing_staking_call_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_existing_staking_call_drift_is_rejected) ... ok
+test_extra_bounded_wrapper_fields_are_rejected (__main__.AsyncStakingCompatibilityTests.test_extra_bounded_wrapper_fields_are_rejected) ... ok
+test_missing_reviewed_addition_is_rejected (__main__.AsyncStakingCompatibilityTests.test_missing_reviewed_addition_is_rejected) ... ok
+test_named_bounded_wrapper_fields_are_rejected (__main__.AsyncStakingCompatibilityTests.test_named_bounded_wrapper_fields_are_rejected) ... ok
+test_new_call_field_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_new_call_field_drift_is_rejected) ... ok
+test_new_call_index_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_new_call_index_drift_is_rejected) ... ok
+test_old_error_index_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_old_error_index_drift_is_rejected) ... ok
+test_old_event_index_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_old_event_index_drift_is_rejected) ... ok
+test_old_storage_hasher_drift_is_rejected (__main__.AsyncStakingCompatibilityTests.test_old_storage_hasher_drift_is_rejected) ... ok
+test_old_storage_removal_is_rejected (__main__.AsyncStakingCompatibilityTests.test_old_storage_removal_is_rejected) ... ok
+test_reviewed_additions_leave_existing_contracts_strict (__main__.AsyncStakingCompatibilityTests.test_reviewed_additions_leave_existing_contracts_strict) ... ok
+test_unexpected_bounded_wrapper_identity_is_rejected (__main__.AsyncStakingCompatibilityTests.test_unexpected_bounded_wrapper_identity_is_rejected) ... ok
+test_unreviewed_addition_is_rejected (__main__.AsyncStakingCompatibilityTests.test_unreviewed_addition_is_rejected) ... ok
+test_changed_authorization_shape_is_rejected (__main__.Sdk2609CompatibilityTests.test_changed_authorization_shape_is_rejected) ... ok
+test_code_updated_hash_drift_is_rejected (__main__.Sdk2609CompatibilityTests.test_code_updated_hash_drift_is_rejected) ... ok
+test_code_updated_index_drift_is_rejected (__main__.Sdk2609CompatibilityTests.test_code_updated_index_drift_is_rejected) ... ok
+test_existing_nested_encoding_change_is_rejected (__main__.Sdk2609CompatibilityTests.test_existing_nested_encoding_change_is_rejected) ... ok
+test_existing_storage_change_is_rejected (__main__.Sdk2609CompatibilityTests.test_existing_storage_change_is_rejected) ... ok
+test_extension_reorder_is_rejected (__main__.Sdk2609CompatibilityTests.test_extension_reorder_is_rejected) ... ok
+test_identity_call_index_drift_is_rejected (__main__.Sdk2609CompatibilityTests.test_identity_call_index_drift_is_rejected) ... ok
+test_identity_call_noncompact_index_is_rejected (__main__.Sdk2609CompatibilityTests.test_identity_call_noncompact_index_is_rejected) ... ok
+test_identity_event_insertion_is_rejected (__main__.Sdk2609CompatibilityTests.test_identity_event_insertion_is_rejected) ... ok
+test_identity_event_type_drift_is_rejected (__main__.Sdk2609CompatibilityTests.test_identity_event_type_drift_is_rejected) ... ok
+test_implicit_signing_bytes_are_rejected (__main__.Sdk2609CompatibilityTests.test_implicit_signing_bytes_are_rejected) ... ok
+test_offence_field_type_drift_is_rejected (__main__.Sdk2609CompatibilityTests.test_offence_field_type_drift_is_rejected) ... ok
+test_only_zero_encoded_leading_authorization_is_projected (__main__.Sdk2609CompatibilityTests.test_only_zero_encoded_leading_authorization_is_projected) ... ok
+test_unreviewed_additional_call_is_rejected (__main__.Sdk2609CompatibilityTests.test_unreviewed_additional_call_is_rejected) ... ok
+test_wrong_extra_tuple_is_rejected (__main__.Sdk2609CompatibilityTests.test_wrong_extra_tuple_is_rejected) ... ok
+test_wrong_identity_is_rejected (__main__.Sdk2609CompatibilityTests.test_wrong_identity_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 34 tests in 5.896s
+
+OK

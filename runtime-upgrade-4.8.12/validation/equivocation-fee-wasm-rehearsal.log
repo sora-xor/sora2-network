@@ -1,5 +1,5 @@
-2026-10-05T07:41:10.949Z Loading pinned deployed public state
-2026-10-05T07:41:13.788Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+2026-10-08T04:55:14.219Z Loading pinned deployed public state
+2026-10-08T04:55:23.319Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
       runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
       runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
       runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
@@ -9,19 +9,19 @@
       runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
       runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
       runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
-2026-10-05T07:41:14.285Z Generating synthetic report fixtures using real current-session ownership proofs
-2026-10-05T07:41:15.214Z Charging signed babe.reportEquivocation
-2026-10-05T07:41:15.550Z Charging duplicate babe.reportEquivocation
-2026-10-05T07:41:15.865Z Rejecting unsigned babe.reportEquivocation
-2026-10-05T07:41:16.477Z Charging signed babe.reportEquivocationUnsigned
-2026-10-05T07:41:16.788Z Charging duplicate babe.reportEquivocationUnsigned
-2026-10-05T07:41:17.097Z Rejecting unsigned babe.reportEquivocationUnsigned
-2026-10-05T07:41:17.703Z Charging signed grandpa.reportEquivocation
-2026-10-05T07:41:18.036Z Charging duplicate grandpa.reportEquivocation
-2026-10-05T07:41:18.349Z Rejecting unsigned grandpa.reportEquivocation
-2026-10-05T07:41:18.957Z Charging signed grandpa.reportEquivocationUnsigned
-2026-10-05T07:41:19.269Z Charging duplicate grandpa.reportEquivocationUnsigned
-2026-10-05T07:41:19.581Z Rejecting unsigned grandpa.reportEquivocationUnsigned
-2026-10-05T07:41:20.189Z Charging a signed utility wrapper with a legacy report call
-2026-10-05T07:41:20.505Z Verifying timestamp inherent retained normal execution
-{"status":"passed","candidateSha256":"98f152040b1f084b53f7c2e024c0357c03ca62a89c4b2fd26546a0e446da55e4"}
+2026-10-08T04:55:26.038Z Generating synthetic report fixtures using real current-session ownership proofs
+2026-10-08T04:55:31.583Z Charging signed babe.reportEquivocation
+2026-10-08T04:55:32.595Z Charging duplicate babe.reportEquivocation
+2026-10-08T04:55:33.356Z Rejecting unsigned babe.reportEquivocation
+2026-10-08T04:55:35.542Z Charging signed babe.reportEquivocationUnsigned
+2026-10-08T04:55:36.799Z Charging duplicate babe.reportEquivocationUnsigned
+2026-10-08T04:55:37.640Z Rejecting unsigned babe.reportEquivocationUnsigned
+2026-10-08T04:55:39.339Z Charging signed grandpa.reportEquivocation
+2026-10-08T04:55:41.508Z Charging duplicate grandpa.reportEquivocation
+2026-10-08T04:55:42.390Z Rejecting unsigned grandpa.reportEquivocation
+2026-10-08T04:55:44.648Z Charging signed grandpa.reportEquivocationUnsigned
+2026-10-08T04:55:46.240Z Charging duplicate grandpa.reportEquivocationUnsigned
+2026-10-08T04:55:47.804Z Rejecting unsigned grandpa.reportEquivocationUnsigned
+2026-10-08T04:55:50.729Z Charging a signed utility wrapper with a legacy report call
+2026-10-08T04:55:52.718Z Verifying timestamp inherent retained normal execution
+{"status":"passed","candidateSha256":"db1271d7f435f09ff9236c2cf2c4e33e52786c1c5e75157757988e21c9ca8f3e"}

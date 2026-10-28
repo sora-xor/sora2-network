@@ -1,0 +1,14 @@
+✔ resolves imported and defined function indices to their exported signatures (2.955084ms)
+✔ type table ordering does not change the named ABI (1.735584ms)
+✔ exported arity/type changes are observable even with identical names and kinds (0.497875ms)
+✔ independent engine export reflection must agree (1.615166ms)
+✔ default static heap accepts the exact wasm32 bound and rejects one extra page (0.153083ms)
+✔ unsupported memory widths, sharing and malformed page counts are rejected (0.2195ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.305917

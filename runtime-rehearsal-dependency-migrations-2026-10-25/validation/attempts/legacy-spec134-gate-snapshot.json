@@ -1,0 +1,36 @@
+{
+  "status": "failed",
+  "capturedAt": "2026-10-24T16:37:14.772Z",
+  "endpoint": "wss://mof2.sora.org",
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "remoteRpcMethods": {
+    "chain_getBlockHash": 2,
+    "state_getRuntimeVersion": 3,
+    "system_chain": 1,
+    "system_properties": 1,
+    "rpc_methods": 1,
+    "state_call": 2,
+    "state_subscribeRuntimeVersion": 1,
+    "chain_getFinalizedHead": 1,
+    "chain_getHeader": 3,
+    "state_getStorage": 1
+  },
+  "finality": {
+    "finalizedHead": "0xf514a15d96b7597c6be0913c93408348f1d498481f4795ee9d86545cd71fe2e7",
+    "finalizedNumber": 28179102,
+    "selectedCanonicalHash": "0xf514a15d96b7597c6be0913c93408348f1d498481f4795ee9d86545cd71fe2e7",
+    "selectedNumber": 28179102,
+    "checkedAt": "2026-10-24T16:37:20.683Z"
+  },
+  "chainTimestamp": {
+    "milliseconds": "1792859826010",
+    "iso": "2026-10-24T16:37:06.010Z",
+    "ageSecondsAtCapture": 14
+  },
+  "error": {
+    "message": "Candidate spec 134 must advance deployed runtime",
+    "stack": "AssertionError [ERR_ASSERTION]: Candidate spec 134 must advance deployed runtime\n    at main (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/capture-public-state.cjs:43:3)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  "finishedAt": "2026-10-24T16:37:21.054Z"
+}

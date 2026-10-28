@@ -41,6 +41,10 @@ pub struct Cli {
     /// Disable BEEFY gadget. Enabled by default
     #[clap(long)]
     pub disable_beefy: bool,
+
+    /// Directory of public recovery inherent payloads named by parent hash.
+    #[clap(long)]
+    pub recovery_inherent_dir: Option<std::path::PathBuf>,
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -50,6 +54,9 @@ pub enum Subcommand {
     Key(sc_cli::KeySubcommand),
     /// Build a chain specification.
     BuildSpec(sc_cli::BuildSpecCmd),
+
+    /// Prepare a separate, manifest-bound recovery specification offline.
+    PrepareRecoverySpec(crate::recovery::PrepareRecoverySpecCmd),
 
     /// Validate blocks.
     CheckBlock(sc_cli::CheckBlockCmd),

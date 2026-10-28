@@ -1,0 +1,19 @@
+✔ only exact block-accounting keys and valid extrinsic-data suffixes pass (3.595167ms)
+✔ payer/event/fee/reward or other storage writes are rejected (0.392125ms)
+✔ forged, extended and truncated extrinsic-data keys are rejected (0.34575ms)
+✔ only an exact BlockSize key with a SCALE u32 value passes (0.219417ms)
+✔ BlockSize allowance is derived from exact metadata storage name and u32 type (0.630541ms)
+✔ BlockSize metadata changes cannot broaden the allowance (0.240959ms)
+✔ runtime inclusion modes are decoded explicitly and unknown modes rejected (0.852042ms)
+✔ signed fixtures cannot run in an inherent-only, unknown or wrong-height block (0.423ms)
+✔ invalid transaction storage changes are retained as evidence but fully rolled back (0.574333ms)
+✔ admitted dispatch errors retain fee/nonce effects instead of rolling back (0.072709ms)
+✔ runtime apply normalization uses the outer validity result (0.16125ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 169.311542

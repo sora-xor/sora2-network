@@ -610,6 +610,13 @@ pub fn decommission_legacy_ethereum_xor<T: Config>() -> Weight {
 }
 
 fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, DispatchError> {
+    // The recovery restores checkpoint backing and quarantines uncertain claims.
+    // This legacy aggregate burn cannot prove their ownership or refund safety.
+    // Keep every record/registration/reserve intact until a separate reconciled
+    // accounting migration is authorized, even after the global halt is removed.
+    if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
+        return Ok(T::DbWeight::get().reads(1));
+    }
     let mut reads = 0u64;
     let mut writes = 0u64;
 

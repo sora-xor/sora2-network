@@ -48,3 +48,9 @@ The 2026-10-25 compiler cleanup makes a test assertion a statement and uses
 iterator for_each in the test helper, retaining the original order of block
 progression followed by slot increment (including overflow timing). Consensus
 production code is unchanged.
+
+SORA Nexus incident recovery adds a separate policy-bound, bounded epoch interval
+record for maintenance while economic sessions are frozen. Historical epochs
+outside those intervals keep the ordinary lookup. The first resumed session
+forces a fresh SkippedEpochs offset anchor even for a contiguous epoch transition.
+The absent-record path retains deployed behavior and must pass state-root replay.

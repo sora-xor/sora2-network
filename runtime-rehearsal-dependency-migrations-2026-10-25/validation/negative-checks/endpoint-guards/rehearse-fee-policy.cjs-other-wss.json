@@ -1,0 +1,34 @@
+{
+  "status": "failed",
+  "startedAt": "2026-10-24T17:21:15.469Z",
+  "localOnly": true,
+  "syntheticFixturesEnabled": false,
+  "endpoint": "wss://example.invalid",
+  "pinnedBlockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+  "pinnedBlockNumber": 28179122,
+  "executor": "@acala-network/chopsticks-core@1.5.2",
+  "mockSignatureHost": true,
+  "allowUnresolvedImports": true,
+  "offchainWorker": false,
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "realSignatures": 0,
+  "remoteRpcMethods": {},
+  "unsignedChecks": [],
+  "signedChecks": [],
+  "fixtureOverrides": [],
+  "fixtureLimitations": [],
+  "localOnlySyntheticEvidence": true,
+  "constraints": [
+    "Only enumerated read-only public RPC supplies block-hash-pinned state.",
+    "Main branches replace only :code locally. Explicit --synthetic-fixtures branches additionally record every fixture key/value override; these do not claim mainnet-state coverage.",
+    "Synthetic headers and extrinsics use the mocked signature host. Real cryptography is covered by native tests; consensus validity and governance enactment are outside this rehearsal.",
+    "Independent fee cases branch from initialized local state; replay checks retain prior local execution. No transactions are submitted to the public network.",
+    "Migration ownership proofs use deterministic synthetic ed25519/SHA3 keys and real Wasm verification; only transaction/header signatures use the mocked host."
+  ],
+  "error": {
+    "message": "Endpoint must equal the captured approved endpoint\n+ actual - expected\n\n+ 'wss://example.invalid'\n- 'wss://mof2.sora.org'\n         ^\n",
+    "stack": "AssertionError [ERR_ASSERTION]: Endpoint must equal the captured approved endpoint\n+ actual - expected\n\n+ 'wss://example.invalid'\n- 'wss://mof2.sora.org'\n         ^\n\n    at main (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-fee-policy.cjs:799:10)\n    at Object.<anonymous> (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-dependency-migrations-2026-10-25/validation/rehearse-fee-policy.cjs:902:1)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47"
+  },
+  "finishedAt": "2026-10-24T17:21:15.474Z"
+}

@@ -1,0 +1,30 @@
+2026-10-25T06:02:16.910Z Loading pinned deployed public state
+2026-10-25T06:02:25.186Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+      runtime::frame-support   INFO: [3] 🐥 New pallet "StakingAsyncBridge" detected in the runtime. The pallet has no defined storage version, so the on-chain version is being initialized to StorageVersion(0).
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-10-25T06:02:31.121Z Finalizing the inherent-only upgrade block through actual candidate Wasm
+2026-10-25T06:02:32.697Z Initializing the next normal block after migration completion
+2026-10-25T06:02:34.875Z Generating synthetic report fixtures using real current-session ownership proofs
+2026-10-25T06:02:43.107Z Charging signed babe.reportEquivocation
+2026-10-25T06:02:45.249Z Charging duplicate babe.reportEquivocation
+2026-10-25T06:02:46.852Z Rejecting unsigned babe.reportEquivocation
+2026-10-25T06:02:50.775Z Charging signed babe.reportEquivocationUnsigned
+2026-10-25T06:02:52.636Z Charging duplicate babe.reportEquivocationUnsigned
+2026-10-25T06:02:54.506Z Rejecting unsigned babe.reportEquivocationUnsigned
+2026-10-25T06:02:57.963Z Charging signed grandpa.reportEquivocation
+2026-10-25T06:02:59.999Z Charging duplicate grandpa.reportEquivocation
+2026-10-25T06:03:01.908Z Rejecting unsigned grandpa.reportEquivocation
+2026-10-25T06:03:05.864Z Charging signed grandpa.reportEquivocationUnsigned
+2026-10-25T06:03:07.987Z Charging duplicate grandpa.reportEquivocationUnsigned
+2026-10-25T06:03:09.891Z Rejecting unsigned grandpa.reportEquivocationUnsigned
+2026-10-25T06:03:13.649Z Charging a signed utility wrapper with a legacy report call
+2026-10-25T06:03:15.821Z Verifying timestamp inherent retained normal execution
+{"status":"passed","candidateSha256":"c040d5621bfce585dac66a90f74490e528ce5ffbff172564c98bedc555823da6"}

@@ -43,3 +43,9 @@ Local policy:
 Unit tests cover both signed call variants, retained successful and duplicate
 report fees, rejection of every unsigned transaction source, unsigned origin
 rejection, and the disabled publication helper.
+
+SORA Nexus incident recovery permits the manifest-pinned fresh GRANDPA set to
+share the frozen economic session with its predecessor. The exception requires
+the exact checkpoint, policy, set S+1, session and fresh offender key. Fresh-key
+membership in that session is explicitly rejected for other sets. Signature and
+ownership-proof verification still run; historical set ranges remain unchanged.

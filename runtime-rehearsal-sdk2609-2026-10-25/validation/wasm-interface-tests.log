@@ -1,0 +1,17 @@
+✔ resolves imported and defined function indices to their exported signatures (1.932833ms)
+✔ type table ordering does not change the named ABI (1.343208ms)
+✔ exported arity/type changes are observable even with identical names and kinds (0.3735ms)
+✔ independent engine export reflection must agree (1.467417ms)
+✔ default static heap accepts the exact wasm32 bound and rejects one extra page (0.17725ms)
+✔ unsupported memory widths, sharing and malformed page counts are rejected (0.276791ms)
+✔ only the unused data-end linker global may be removed (11.73225ms)
+✔ required allocator, memory and runtime function exports cannot be removed (1.5075ms)
+✔ linker kind changes, unreviewed additions and runtime signature changes fail (0.634792ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93.695542

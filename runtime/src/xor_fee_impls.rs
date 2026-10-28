@@ -1254,7 +1254,7 @@ mod tests {
             let actual = dispatch_staking_payout(&fixture).unwrap().actual_weight.unwrap();
             let native = <<Runtime as pallet_staking::Config>::WeightInfo as pallet_staking::WeightInfo>::payout_stakers_alive_staked(0);
             let val = <super::StakingValPayout as pallet_staking::AdditionalPayout<AccountId>>::weight(1);
-            assert_eq!(actual, native.saturating_add(val));
+            assert_eq!(actual, native.saturating_add(val).saturating_add(crate::incident_recovery_origin::weight()));
             assert!(actual.ref_time() > native.ref_time());
             assert!(actual.proof_size() > native.proof_size());
             assert!(declared.all_gte(actual));

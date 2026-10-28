@@ -1,0 +1,1176 @@
+{
+  "status": "failed",
+  "startedAt": "2026-10-25T00:57:55.095Z",
+  "localOnly": true,
+  "watchdogMs": 2700000,
+  "syntheticFixturesEnabled": true,
+  "endpoint": "wss://mof2.sora.org",
+  "pinnedBlockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+  "pinnedBlockNumber": 28179122,
+  "executor": "@acala-network/chopsticks-core@1.5.2",
+  "mockSignatureHost": true,
+  "allowUnresolvedImports": true,
+  "offchainWorker": false,
+  "submittedTransactions": 0,
+  "privateKeysRead": 0,
+  "productionSignatures": 0,
+  "remoteRpcMethods": {
+    "chain_getHeader": 1,
+    "system_chain": 1,
+    "system_properties": 1
+  },
+  "unsignedChecks": [],
+  "signedChecks": [
+    {
+      "method": "imOnline.heartbeat signed outer transaction remains paid BadOrigin",
+      "expectSuccess": false,
+      "expectFree": false,
+      "expectedError": "BadOrigin",
+      "expectedClass": null,
+      "dispatchClass": "Normal",
+      "payer": "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+      "callHex": "0x2400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e",
+      "signed": true,
+      "outcome": {
+        "ok": {
+          "err": {
+            "badOrigin": null
+          }
+        }
+      },
+      "quotedFee": "909507895520255057",
+      "xorCharged": "909507895520255057",
+      "before": {
+        "nonce": 756,
+        "consumers": 4,
+        "providers": 4,
+        "sufficients": 0,
+        "data": {
+          "free": "0x0000000000000000899c1e16dadc4b71",
+          "reserved": "0x000000000000000114b15da79bf42128",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "after": {
+        "nonce": 757,
+        "consumers": 4,
+        "providers": 4,
+        "sufficients": 0,
+        "data": {
+          "free": "0x00000000000000007cfce57a21f66f20",
+          "reserved": "0x000000000000000114b15da79bf42128",
+          "frozen": 0,
+          "flags": "0x80000000000000000000000000000000"
+        }
+      },
+      "events": [
+        {
+          "section": "balances",
+          "method": "Withdraw",
+          "data": [
+            "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+            "0x00000000000000000c9f389cb8e5dc51"
+          ]
+        },
+        {
+          "section": "xorFee",
+          "method": "FeeWithdrawn",
+          "data": [
+            "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+            "0x00000000000000000c9f389cb8e5dc51"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x0000000000000000053280b900d71e7c"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x000000000000000005f0931c933efe44"
+          ]
+        },
+        {
+          "section": "balances",
+          "method": "Rescinded",
+          "data": [
+            "0x0000000000000000017c24c724cfbf91"
+          ]
+        },
+        {
+          "section": "transactionPayment",
+          "method": "TransactionFeePaid",
+          "data": [
+            "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+            "0x00000000000000000c9f389cb8e5dc51",
+            0
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicFailed",
+          "data": [
+            {
+              "badOrigin": null
+            },
+            {
+              "weight": {
+                "refTime": 909491000,
+                "proofSize": 646581
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "storageDiffEntries": 13,
+      "decodedError": "BadOrigin",
+      "actualFeeEventVerified": true,
+      "passed": true
+    }
+  ],
+  "fixtureOverrides": [
+    {
+      "kind": "sdk2609AuthorizedHeartbeat",
+      "fixtureOnly": true,
+      "purpose": "One local synthetic authority key and cleared liveness markers; real inner sr25519 signature, no production key or outer signer",
+      "overrides": [
+        {
+          "pallet": "imOnline",
+          "name": "keys",
+          "key": "0x2b06af9719ac64d755623cda8ddd9b949f99a2ce711f3a31b2fc05604c93f179",
+          "before": "0x3ca029e5e05166fc33632fa39cc45d4a59490fa68ca8a30a5665ea3e092eca0d2c82012f6b23fb8b9450a9aef1a2d43967b5bf8d9e9c54017e0785abc601373d727ef33341ae9321f960d6097d4738ae5541d9ac135d1d59f0d48f88bb9aca3458f08e0730c4b4501877c8caff7721287fb3afe278872499d8410c3d5b6f81016f340d9099243fa2a97f8a3f03799439b41ef42d811760df1471574df0151a7a2418734ec6cf0489642480fc47d1d8db216b9b4f5731364e1cbb4144ebf40dba60547670eb9bee126547dfb3e775f146d14cef48d639f3f2a814163a1446e14d7d7019d85ccedbe2c03405e9df89fed7680230dee8152ba3669837471525928d0944de127094c26f420430ac7e0b680ad8a752284814f4bd77e5dfa3af3acb8a3a38364b218e599f78f2b52f34748908addce908881b2c76296c50b2494261c004527c6f6bc0274d5e3e0679c612c30b253419ced73701f5fc81df5d4636830440bea605e56dda0fee057ed1562d7f7e187588c363bbeb8c8d75699219dc44e5381e6d81a5855be6ce2098d51868017cd56b21fa0f7a53bfb56b7a040c85b9d173548aa5314b363422077268e78053536f121eea19b782c7df12c0b10a92e7e824b0212c28a188c99a9cbd315dd1fdf069eb0ba207a87c067d0a20c11d407dfc73",
+          "value": "0x042c93dadfa29370d251facff542365248e84b301bb95a54ca5683e55b3b08e132"
+        },
+        {
+          "pallet": "imOnline",
+          "name": "receivedHeartbeats",
+          "key": "0x2b06af9719ac64d755623cda8ddd9b94cc5a1aa6e3716372f36ef103b7e3ae672a2774358b2165fe0fbc0000b4def25cfda6ef3a00000000",
+          "before": null,
+          "value": null
+        },
+        {
+          "pallet": "imOnline",
+          "name": "authoredBlocks",
+          "key": "0x2b06af9719ac64d755623cda8ddd9b94b1c371ded9e9c565e89ba783c4d5f5f92a2774358b2165fe0fbc0000472e459c192bf08c0ecc260b52235fc3d721e3d9a8872220ced6ee766f12585a1b3ad194076bb132",
+          "before": "0x1f000000",
+          "value": null
+        }
+      ]
+    }
+  ],
+  "fixtureLimitations": [],
+  "localOnlySyntheticEvidence": true,
+  "constraints": [
+    "Only enumerated read-only public RPC supplies block-hash-pinned state.",
+    "An inherent-only upgrade block is finalized with timestamp only; signed fixtures start in the next AllExtrinsics block. InvalidTransaction raw diffs are recorded and rolled back as in the node block builder.",
+    "Main branches replace only :code locally. Explicit --synthetic-fixtures branches additionally record every fixture key/value override; these do not claim mainnet-state coverage.",
+    "Synthetic headers and outer signed extrinsics use the mocked-signature marker. Inner validator heartbeats and migration ownership proofs use real signatures and Wasm verification; consensus validity and governance enactment are outside this rehearsal.",
+    "Independent fee cases branch from initialized local state; replay checks retain prior local execution. No transactions are submitted to the public network.",
+    "Migration ownership proofs use deterministic synthetic ed25519/SHA3 keys and real Wasm verification; only transaction/header signatures use the mocked host."
+  ],
+  "dependencies": {
+    "manifest": {
+      "private": true,
+      "description": "Read-only pinned public state and local exact-Wasm equivocation report fee validation",
+      "dependencies": {
+        "@acala-network/chopsticks-core": "file:../../vendor/chopsticks-core",
+        "@babel/runtime": "7.28.4",
+        "@polkadot/api": "16.5.6",
+        "@polkadot/keyring": "14.0.3",
+        "@sora-substrate/type-definitions": "1.27.7",
+        "@polkadot/wasm-crypto": "file:../../vendor/polkadot-wasm-crypto-js",
+        "@polkadot/rpc-provider": "file:../../vendor/polkadot-rpc-provider",
+        "fetch-blob": "file:../../vendor/fetch-blob"
+      },
+      "name": "sora-equivocation-report-fee-validation",
+      "version": "4.8.12"
+    },
+    "installed": {
+      "@acala-network/chopsticks-core": "1.5.2",
+      "@babel/runtime": "7.28.4",
+      "@polkadot/api": "16.5.6",
+      "@polkadot/keyring": "14.0.3",
+      "@sora-substrate/type-definitions": "1.27.7",
+      "@polkadot/wasm-crypto": "7.5.4",
+      "@polkadot/rpc-provider": "16.5.6",
+      "fetch-blob": "3.2.0"
+    },
+    "localSources": {
+      "@acala-network/chopsticks-core": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/chopsticks-core",
+        "version": "1.5.2",
+        "manifestSha256": "0423fce6a4cb8b36e4449cd324cb83dbae43bc68d6473a37f3578b731fd2eb99"
+      },
+      "@polkadot/wasm-crypto": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-wasm-crypto-js",
+        "version": "7.5.4",
+        "manifestSha256": "fc0ad4e653666d3c882d9eed28301128f5615d4cf6cc60ee9dcdcbcb019537ee"
+      },
+      "@polkadot/rpc-provider": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-rpc-provider",
+        "version": "16.5.6",
+        "manifestSha256": "7a5b430aa8735f4d8253223a9fcc3af57ab38a5a6c8644622b9d963c59a6aead"
+      },
+      "fetch-blob": {
+        "path": "/Users/takemiyamakoto/dev/sora2-network/vendor/fetch-blob",
+        "version": "3.2.0",
+        "manifestSha256": "5f3627367f6c9f7c64490abd5cdefe912cd13c6318c4b0be961aa1b4e6341076"
+      }
+    },
+    "nativeArtifacts": {
+      "@acala-network/chopsticks-executor": {
+        "wasmSha256": "e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966",
+        "wasmBytes": 2723362,
+        "canonicalHost": "x86_64-unknown-linux-gnu",
+        "assetsChecked": 14,
+        "provenanceSha256": "22bc3445aa13b338500246218d55b8785217b48957def2f6cd31cf051af475b2"
+      },
+      "@polkadot/wasm-crypto-wasm": {
+        "wasmSha256": "7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f",
+        "wasmBytes": 676030,
+        "canonicalHost": "x86_64-unknown-linux-gnu",
+        "assetsChecked": 18,
+        "provenanceSha256": "300b5b6ecb33d4d3df736edadc5b4585101f7bbb41c10682fcafb849c3d1388c"
+      }
+    },
+    "lockSha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760"
+  },
+  "stage": "Exact Wasm: authorized heartbeat heartbeat replay rejects",
+  "rpcGuard": {
+    "layer": "WsProvider.prototype.send, before setup",
+    "allowlist": [
+      "chain_getBlock",
+      "chain_getBlockHash",
+      "chain_getFinalizedHead",
+      "chain_getHeader",
+      "rpc_methods",
+      "state_call",
+      "state_getKeysPaged",
+      "state_getMetadata",
+      "state_getRuntimeVersion",
+      "state_getStorage",
+      "state_queryStorageAt",
+      "state_subscribeRuntimeVersion",
+      "state_unsubscribeRuntimeVersion",
+      "system_chain",
+      "system_name",
+      "system_properties",
+      "system_version"
+    ],
+    "coversSetupAndPrivateCachedCalls": true
+  },
+  "readCache": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/.public-read-cache.json.gz",
+    "content": "Immutable public storage scoped by block hash",
+    "existingValues": 3503,
+    "storageHits": 1004,
+    "keyPageHits": 157,
+    "fetchedValues": 0,
+    "fetchedKeyPages": 0,
+    "savedBytes": 3578799,
+    "sha256": "aec983bf838d3a97e881e69433f8d2669d0846b58817ee547dc8d165a3bbec65"
+  },
+  "deployedVersion": {
+    "specName": "sora-substrate",
+    "implName": "sora-substrate",
+    "authoringVersion": 1,
+    "specVersion": 134,
+    "implVersion": 1,
+    "apis": [
+      [
+        "0xdf6acb689907609b",
+        5
+      ],
+      [
+        "0x37e397fc7c91f5e4",
+        2
+      ],
+      [
+        "0x40fe3ad401f8959a",
+        6
+      ],
+      [
+        "0xd2bc9897eed08f15",
+        3
+      ],
+      [
+        "0xf78b278be53f454c",
+        2
+      ],
+      [
+        "0xab3c0572291feb8b",
+        2
+      ],
+      [
+        "0x37c8bb1350a9a2a8",
+        4
+      ],
+      [
+        "0x49a15104d14de433",
+        1
+      ],
+      [
+        "0x3c174d7764069e61",
+        2
+      ],
+      [
+        "0x0f3489937d1c2064",
+        1
+      ],
+      [
+        "0x7b08daa9d117c89b",
+        1
+      ],
+      [
+        "0xd83dc51e16a813fc",
+        1
+      ],
+      [
+        "0xf8e0c25200c466cc",
+        1
+      ],
+      [
+        "0x7714ae7197b04674",
+        1
+      ],
+      [
+        "0xfa5dc115e8dd759b",
+        3
+      ],
+      [
+        "0x8fd89fd41faef876",
+        1
+      ],
+      [
+        "0xc890b8837395d703",
+        1
+      ],
+      [
+        "0x5cb928f4410f41fc",
+        1
+      ],
+      [
+        "0xcbca25e39f142387",
+        2
+      ],
+      [
+        "0xbc9d89904f5b923f",
+        1
+      ],
+      [
+        "0x49eaaf1b548a0cb0",
+        6
+      ],
+      [
+        "0x91d5df18b0d2cf58",
+        3
+      ],
+      [
+        "0xed99c5acb25eedf5",
+        3
+      ],
+      [
+        "0xeb4d485ae89fbcb5",
+        1
+      ],
+      [
+        "0x8e688fe9454ac970",
+        1
+      ],
+      [
+        "0x4ee6f974cd3d43f9",
+        2
+      ],
+      [
+        "0x98deaed7652aeff9",
+        1
+      ],
+      [
+        "0xfbc577b9d747efd6",
+        1
+      ]
+    ],
+    "transactionVersion": 131,
+    "stateVersion": 0
+  },
+  "deployedWasmSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221",
+  "candidate": {
+    "path": "/tmp/sora2-stable2609-migration/diagnostic-sdk2609.compact.compressed.wasm",
+    "bytes": 1905819,
+    "sha256": "0eecd87ed64bc5bfbece4772e0c43f6907be94a9609f6025c89f2636fc5f37ca",
+    "runtimeVersion": {
+      "specName": "sora-substrate",
+      "implName": "sora-substrate",
+      "authoringVersion": 1,
+      "specVersion": 136,
+      "implVersion": 1,
+      "apis": [
+        [
+          "0xdf6acb689907609b",
+          5
+        ],
+        [
+          "0x37e397fc7c91f5e4",
+          2
+        ],
+        [
+          "0x40fe3ad401f8959a",
+          6
+        ],
+        [
+          "0xd2bc9897eed08f15",
+          3
+        ],
+        [
+          "0xf78b278be53f454c",
+          2
+        ],
+        [
+          "0xab3c0572291feb8b",
+          2
+        ],
+        [
+          "0x37c8bb1350a9a2a8",
+          4
+        ],
+        [
+          "0x49a15104d14de433",
+          1
+        ],
+        [
+          "0x3c174d7764069e61",
+          2
+        ],
+        [
+          "0x0f3489937d1c2064",
+          1
+        ],
+        [
+          "0x7b08daa9d117c89b",
+          1
+        ],
+        [
+          "0xd83dc51e16a813fc",
+          1
+        ],
+        [
+          "0xf8e0c25200c466cc",
+          1
+        ],
+        [
+          "0x7714ae7197b04674",
+          1
+        ],
+        [
+          "0xfa5dc115e8dd759b",
+          3
+        ],
+        [
+          "0x8fd89fd41faef876",
+          1
+        ],
+        [
+          "0xc890b8837395d703",
+          1
+        ],
+        [
+          "0x5cb928f4410f41fc",
+          1
+        ],
+        [
+          "0xcbca25e39f142387",
+          2
+        ],
+        [
+          "0xbc9d89904f5b923f",
+          1
+        ],
+        [
+          "0x49eaaf1b548a0cb0",
+          6
+        ],
+        [
+          "0x91d5df18b0d2cf58",
+          3
+        ],
+        [
+          "0xed99c5acb25eedf5",
+          3
+        ],
+        [
+          "0xeb4d485ae89fbcb5",
+          1
+        ],
+        [
+          "0x8e688fe9454ac970",
+          1
+        ],
+        [
+          "0x4ee6f974cd3d43f9",
+          2
+        ],
+        [
+          "0x98deaed7652aeff9",
+          1
+        ],
+        [
+          "0xfbc577b9d747efd6",
+          1
+        ]
+      ],
+      "transactionVersion": 132,
+      "stateVersion": 0
+    }
+  },
+  "initialize": {
+    "header": {
+      "parentHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+      "number": 28179123,
+      "stateRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "extrinsicsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": {
+        "logs": [
+          {
+            "preRuntime": [
+              "0x42414245",
+              "0x0202000000897acf1100000000"
+            ]
+          }
+        ]
+      }
+    },
+    "slot": 298809993,
+    "result": "0x01",
+    "inclusionMode": "OnlyInherents",
+    "storageDiffEntries": 61,
+    "runtimeLogs": [
+      {
+        "message": "⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      },
+      {
+        "message": "⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`",
+        "level": 2,
+        "target": "runtime::frame-support"
+      }
+    ],
+    "stakingClaimAndLedgerWrites": 0,
+    "nativeXorIssuancePreserved": true
+  },
+  "runtimeExtrinsicApplications": [
+    {
+      "blockNumber": 28179123,
+      "extrinsicSha256": "df183342c73e6a339a297020648b1c4fa0f353c05cf5465c8468c78463650b40",
+      "result": "0x0000",
+      "rawStorageDiffEntries": 11,
+      "rawStorageDiffSha256": "d10c381f4ad1e70e9464a388e0facb6d80af728c6b162f6ab94dcc6d4a202298",
+      "transaction": "committed_admitted_extrinsic"
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "6a159bb91290ac1240d0a5332de84f1079400f14a2ab81b2c238d785a6403f6f",
+      "result": "0x0000",
+      "rawStorageDiffEntries": 11,
+      "rawStorageDiffSha256": "d8f7a795267a4cc08785272050a465ea0c2b3aa60e2432e2b8e1ac4ae3f0929a",
+      "transaction": "committed_admitted_extrinsic"
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "fd356be5be824be4ecbfbfe1afeb2ef60fe2897789a57e72d0d51062d259938b",
+      "result": "0x000102",
+      "rawStorageDiffEntries": 10,
+      "rawStorageDiffSha256": "f71ddda1ddc5fba5073c872aba8ccf0cca93c8caae17ccfeae8f95144288a0a7",
+      "transaction": "committed_admitted_extrinsic"
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "ca6ea1eb9bfb4aec9020f001923ca290afc9e3cf37a7f66477d95753280a2eac",
+      "result": "0x010004",
+      "rawStorageDiffEntries": 3,
+      "rawStorageDiffSha256": "aa8f50b01d06ec424b312ba0884fd4247ffe3b5e67504413f5be2e00633dfd23",
+      "transaction": "rolled_back_invalid_transaction",
+      "discardedStorageDiff": [
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7156afe25323c70e43eb722ed7c886297",
+          "0x01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96",
+          "0x0000000007e46852190db639bc01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7df1daeb8986837f21cc5d17596bb78d15153cb1f00942ff401000000",
+          "0x65015d0145000000002400b4faad010fbc0000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      ]
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "02ac97b6a3a23158dda717b1c41f7006caddcd73875943dc1b2427b10f984238",
+      "result": "0x010003",
+      "rawStorageDiffEntries": 3,
+      "rawStorageDiffSha256": "6ea17ff2c9a28384b5caf44bfe29ae23016270531af6f668ae48feb4dd6ce58b",
+      "transaction": "rolled_back_invalid_transaction",
+      "discardedStorageDiff": [
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7156afe25323c70e43eb722ed7c886297",
+          "0x01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96",
+          "0x0000000007e46852190db639bc01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7df1daeb8986837f21cc5d17596bb78d15153cb1f00942ff401000000",
+          "0x65015d0145000000002400b4faad0110bc0000000000000100000024c7fc22d19fe0577bbf0e4dadc2ea29fa263e392c6263c696bb280aa9a343548cf6d42da5c6ff013ee93f9cc5b272847b6b0d39ebe98b91bc29b67b9de7d18e"
+        ]
+      ]
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "dff1e93982cb72b9d4a2c7c7fa8d8c56f80c43a35b3154af12877541d76b3e33",
+      "result": "0x010001",
+      "rawStorageDiffEntries": 3,
+      "rawStorageDiffSha256": "01a1b618637f46af37167b02c9b1400824299ad98ab103253d056a3a29fb6591",
+      "transaction": "rolled_back_invalid_transaction",
+      "discardedStorageDiff": [
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7156afe25323c70e43eb722ed7c886297",
+          "0x01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96",
+          "0x0000000007e46852190db639bc01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7df1daeb8986837f21cc5d17596bb78d15153cb1f00942ff401000000",
+          "0x65015d0145000000042400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e"
+        ]
+      ]
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "b6ec25b8ae00182d6c029cf07312e2667e3381424fa3d73dd77cc29e23deb231",
+      "result": "0x01000a",
+      "rawStorageDiffEntries": 3,
+      "rawStorageDiffSha256": "af4ab390147c6b2076fca0818b692a7a55f0eba1b4af0193329b5f37f899a560",
+      "transaction": "rolled_back_invalid_transaction",
+      "discardedStorageDiff": [
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7156afe25323c70e43eb722ed7c886297",
+          "0x01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96",
+          "0x0000000007e46852190db639bc01"
+        ],
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7df1daeb8986837f21cc5d17596bb78d15153cb1f00942ff401000000",
+          "0x2824450000000000000401"
+        ]
+      ]
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "f86bb8d3989b6dc907ed07480d8a7b955ccb723292d290177ee9198301cb9224",
+      "result": "0x0000",
+      "rawStorageDiffEntries": 11,
+      "rawStorageDiffSha256": "2729216bab583eb0e3e19cd1e3bc0cfd1f756f90cca74fc64c7bf355ab7ff22a",
+      "transaction": "committed_admitted_extrinsic"
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "f86bb8d3989b6dc907ed07480d8a7b955ccb723292d290177ee9198301cb9224",
+      "result": "0x010003",
+      "rawStorageDiffEntries": 1,
+      "rawStorageDiffSha256": "5edbe9462717eb2aa32288b72eab7623da2f6de7f77ffa076dd6c16935149260",
+      "transaction": "rolled_back_invalid_transaction",
+      "discardedStorageDiff": [
+        [
+          "0x26aa394eea5630e07c48ae0c9558cef7df1daeb8986837f21cc5d17596bb78d19eb2dcce60f37a2702000000",
+          "0x65015d0145000000002400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e"
+        ]
+      ]
+    },
+    {
+      "blockNumber": 28179124,
+      "extrinsicSha256": "ed8f6797bbbd5828d05fa5ea3dd6f4b7caa0ec8e7bc43c66d49ba1a245dfcbc5",
+      "result": "0x000102",
+      "rawStorageDiffEntries": 13,
+      "rawStorageDiffSha256": "54e8fcbd6f6b364bd148b94f054488b3efce6516c5f2f458e19dad6cc6e3de9f",
+      "transaction": "committed_admitted_extrinsic"
+    }
+  ],
+  "upgradeTimestamp": {
+    "value": 1792859958000,
+    "outcome": {
+      "ok": {
+        "ok": []
+      }
+    }
+  },
+  "upgradeFinalization": {
+    "actualCandidateWasm": true,
+    "timestampOnly": true,
+    "signedExtrinsicsApplied": 0,
+    "header": {
+      "parentHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+      "number": 28179123,
+      "stateRoot": "0x0e63db3d5455415822ae8d1d8391ccf2ab0b57cb0eed63b7433316311d3d4985",
+      "extrinsicsRoot": "0x18539ac531a8b3fb02ffd5ae611eb014336b209da99a70ad07df995534c4a651",
+      "digest": {
+        "logs": [
+          {
+            "preRuntime": [
+              "0x42414245",
+              "0x0202000000897acf1100000000"
+            ]
+          }
+        ]
+      }
+    },
+    "hash": "0x6259948fa94becba4ee4b87feb4c1e3a9a524401c846015f0872f405d1d209f6",
+    "cursorBefore": {
+      "active": {
+        "index": 0,
+        "innerCursor": null,
+        "startedAt": 28179122
+      }
+    },
+    "cursorAfter": null,
+    "events": [
+      {
+        "section": "multiBlockMigrations",
+        "method": "MigrationSkipped",
+        "data": [
+          0
+        ]
+      },
+      {
+        "section": "multiBlockMigrations",
+        "method": "UpgradeCompleted",
+        "data": []
+      }
+    ],
+    "storageDiffEntries": 17,
+    "stakingClaimAndLedgerWrites": 0,
+    "nativeXorIssuancePreserved": true,
+    "stateRootConsensusVerified": false,
+    "scope": "Local partial-backend execution; finalized header linkage is coherent, but this is not a consensus/state-root validation."
+  },
+  "postUpgradeInitialize": {
+    "header": {
+      "parentHash": "0x6259948fa94becba4ee4b87feb4c1e3a9a524401c846015f0872f405d1d209f6",
+      "number": 28179124,
+      "stateRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "extrinsicsRoot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "digest": {
+        "logs": [
+          {
+            "preRuntime": [
+              "0x42414245",
+              "0x02040000008a7acf1100000000"
+            ]
+          }
+        ]
+      }
+    },
+    "slot": 298809994,
+    "result": "0x00",
+    "inclusionMode": "AllExtrinsics",
+    "storageDiffEntries": 58,
+    "runtimeLogs": [],
+    "stakingClaimAndLedgerWrites": 0,
+    "nativeXorIssuancePreserved": true
+  },
+  "timestamp": {
+    "value": 1792859964000,
+    "outcome": {
+      "ok": {
+        "ok": []
+      }
+    }
+  },
+  "signedFixtureBlock": {
+    "number": 28179124,
+    "hash": "0x87ca8e1dbe2a515514605d90e49c888a8a25afca1851fc34b861bc63484a8312",
+    "parentHash": "0x6259948fa94becba4ee4b87feb4c1e3a9a524401c846015f0872f405d1d209f6",
+    "slot": 298809994,
+    "inclusionMode": "AllExtrinsics",
+    "migrationCursorNone": true,
+    "candidateSpecVersion": 136
+  },
+  "signer": {
+    "address": "cnSGoq13YebjhR8ATsSTEWef1VmueFmnA6H3zWwXHRaqj6jiN",
+    "free": "9915833563072973681",
+    "minimumSpendable": "8969850863714523186",
+    "selectedFromPublicAccounts": true,
+    "storageOverrides": []
+  },
+  "signerSelection": {
+    "largestFixtureFee": "3984925431857261593",
+    "minimumSpendable": "8969850863714523186",
+    "fixtureQuotes": 6
+  },
+  "authorizedHeartbeatChecks": [
+    {
+      "label": "legacy bare heartbeat rejects",
+      "encoded": "0x4d01042400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e",
+      "expectedAccepted": false,
+      "sources": {
+        "External": {
+          "err": {
+            "unknown": {
+              "noUnsignedValidator": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "unknown": {
+              "noUnsignedValidator": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "unknown": {
+              "noUnsignedValidator": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "ok": {
+          "err": {
+            "badOrigin": null
+          }
+        }
+      },
+      "passed": false,
+      "failure": "legacy bare heartbeat rejects application\n\ntrue !== false\n"
+    },
+    {
+      "label": "invalid authority signature rejects",
+      "encoded": "0x5d0145000000002400b4faad010fbc0000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expectedAccepted": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "badProof": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "badProof": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "badProof": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "badProof": null
+          }
+        }
+      },
+      "events": [],
+      "accountAndIssuancePreserved": true,
+      "passed": true
+    },
+    {
+      "label": "wrong session rejects",
+      "encoded": "0x5d0145000000002400b4faad0110bc0000000000000100000024c7fc22d19fe0577bbf0e4dadc2ea29fa263e392c6263c696bb280aa9a343548cf6d42da5c6ff013ee93f9cc5b272847b6b0d39ebe98b91bc29b67b9de7d18e",
+      "expectedAccepted": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "stale": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "stale": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "stale": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "stale": null
+          }
+        }
+      },
+      "events": [],
+      "accountAndIssuancePreserved": true,
+      "passed": true
+    },
+    {
+      "label": "nonzero unsigned tip rejects",
+      "encoded": "0x5d0145000000042400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e",
+      "expectedAccepted": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "payment": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "payment": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "payment": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "payment": null
+          }
+        }
+      },
+      "events": [],
+      "accountAndIssuancePreserved": true,
+      "passed": true
+    },
+    {
+      "label": "ordinary paid call cannot use General authorization",
+      "encoded": "0x24450000000000000401",
+      "expectedAccepted": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "badSigner": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "badSigner": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "badSigner": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "badSigner": null
+          }
+        }
+      },
+      "events": [],
+      "accountAndIssuancePreserved": true,
+      "passed": true
+    },
+    {
+      "label": "real signed authority heartbeat succeeds without payer",
+      "encoded": "0x5d0145000000002400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e",
+      "expectedAccepted": true,
+      "sources": {
+        "External": {
+          "ok": {
+            "priority": "0xffffffffffffffff",
+            "requires": [],
+            "provides": [
+              "0x20496d4f6e6c696e650fbc00002c93dadfa29370d251facff542365248e84b301bb95a54ca5683e55b3b08e132"
+            ],
+            "longevity": 300,
+            "propagate": true
+          }
+        },
+        "Local": {
+          "ok": {
+            "priority": "0xffffffffffffffff",
+            "requires": [],
+            "provides": [
+              "0x20496d4f6e6c696e650fbc00002c93dadfa29370d251facff542365248e84b301bb95a54ca5683e55b3b08e132"
+            ],
+            "longevity": 300,
+            "propagate": true
+          }
+        },
+        "InBlock": {
+          "ok": {
+            "priority": "0xffffffffffffffff",
+            "requires": [],
+            "provides": [
+              "0x20496d4f6e6c696e650fbc00002c93dadfa29370d251facff542365248e84b301bb95a54ca5683e55b3b08e132"
+            ],
+            "longevity": 300,
+            "propagate": true
+          }
+        }
+      },
+      "apply": {
+        "ok": {
+          "ok": []
+        }
+      },
+      "events": [
+        {
+          "section": "imOnline",
+          "method": "HeartbeatReceived",
+          "data": [
+            "0x2c93dadfa29370d251facff542365248e84b301bb95a54ca5683e55b3b08e132"
+          ]
+        },
+        {
+          "section": "system",
+          "method": "ExtrinsicSuccess",
+          "data": [
+            {
+              "weight": {
+                "refTime": 777230000,
+                "proofSize": 642988
+              },
+              "class": "Normal",
+              "paysFee": "Yes"
+            }
+          ]
+        }
+      ],
+      "accountAndIssuancePreserved": true,
+      "passed": true
+    },
+    {
+      "label": "heartbeat replay rejects",
+      "encoded": "0x5d0145000000002400b4faad010fbc0000000000000100000000cc07965bdf5e04e82ce57a563981a195b3132ad19a329c35d69d4f3063c4582bd9bf8ebc255739fd05b9a0e28c15aa5169c91520b7c459a5ea47f6525f9c8e",
+      "expectedAccepted": false,
+      "sources": {
+        "External": {
+          "err": {
+            "invalid": {
+              "stale": null
+            }
+          }
+        },
+        "Local": {
+          "err": {
+            "invalid": {
+              "stale": null
+            }
+          }
+        },
+        "InBlock": {
+          "err": {
+            "invalid": {
+              "stale": null
+            }
+          }
+        }
+      },
+      "apply": {
+        "err": {
+          "invalid": {
+            "stale": null
+          }
+        }
+      },
+      "events": [],
+      "accountAndIssuancePreserved": true,
+      "passed": true
+    }
+  ],
+  "authorizedHeartbeatFailures": [
+    {
+      "label": "legacy bare heartbeat rejects",
+      "error": "legacy bare heartbeat rejects application\n\ntrue !== false\n"
+    }
+  ],
+  "authorizedHeartbeatCryptography": {
+    "scheme": "sr25519",
+    "deterministicSyntheticAuthority": true,
+    "validInnerSignatureAccepted": true,
+    "invalidInnerSignatureRejected": true,
+    "innerSignaturesUseMockMarker": false,
+    "productionKeysUsed": 0
+  },
+  "error": {
+    "message": "Every independent authorization case must pass\n+ actual - expected\n\n+ [\n+   {\n+     error: 'legacy bare heartbeat rejects application\\n\\ntrue !== false\\n',\n+     label: 'legacy bare heartbeat rejects'\n+   }\n+ ]\n- []\n",
+    "stack": "AssertionError [ERR_ASSERTION]: Every independent authorization case must pass\n+ actual - expected\n\n+ [\n+   {\n+     error: 'legacy bare heartbeat rejects application\\n\\ntrue !== false\\n',\n+     label: 'legacy bare heartbeat rejects'\n+   }\n+ ]\n- []\n\n    at authorizedHeartbeatFixture (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/authorized-heartbeat-fixture.cjs:113:10)\n    at async main (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/rehearse-fee-policy.cjs:881:40)"
+  },
+  "finishedAt": "2026-10-25T00:59:35.458Z"
+}

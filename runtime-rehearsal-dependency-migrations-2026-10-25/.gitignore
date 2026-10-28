@@ -1,0 +1,3 @@
+# Reproducible public-chain caches; their hashes and scope are recorded in evidence.
+*.snap
+.public-read-cache.json.gz

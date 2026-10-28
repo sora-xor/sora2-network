@@ -1,0 +1,3 @@
+usage: test-staking-async-source.py [-h] --upstream-repo UPSTREAM_REPO
+                                    [--output OUTPUT]
+test-staking-async-source.py: error: the following arguments are required: --upstream-repo

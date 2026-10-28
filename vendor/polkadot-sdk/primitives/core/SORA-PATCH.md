@@ -6,9 +6,16 @@ Sources and license notices are retained. Workspace dependencies and lints are
 made explicit; internal SDK dependencies retain that tag.
 
 Upgrade k256 to the actual stable 0.14.0 release, using elliptic-curve 0.14 and
-crypto-bigint 0.7.6. sp-core explicitly requires crypto-bigint >=0.7.6 to preserve
-the floor fixed by
-[RUSTSEC-2026-0387](https://rustsec.org/advisories/RUSTSEC-2026-0387.html).
+crypto-bigint 0.7.10. sp-core explicitly requires crypto-bigint >=0.7.10, preserving
+the security fixes from
+[RUSTSEC-2026-0387](https://rustsec.org/advisories/RUSTSEC-2026-0387.html)
+and the subsequent arithmetic corrections. Upstream yanked 0.7.6 through 0.7.8
+when [0.7.9 corrected the `NonZero<T>` multiplication implementation](https://github.com/RustCrypto/crypto-bigint/releases/tag/v0.7.9).
+[0.7.10](https://github.com/RustCrypto/crypto-bigint/releases/tag/v0.7.10)
+also retains the inversion/truncation and modular multiplication boundary fixes
+from 0.7.7. The published 0.7.10 archive SHA-256 is
+`9c035cb64cba03dad2fb921f3e218785e8cf9a41790da5eb3a1400f62fa2be11`,
+with upstream commit `55af01b1957b1f90d718bf697ea9a6db7287151c`.
 No vulnerable crate is relabeled and no advisory is ignored.
 
 Use SEC1's renamed point encoding API and k256's slice parsing and infallible

@@ -1,0 +1,2644 @@
+diff --git a/pallets/bridge-proxy/src/lib.rs b/pallets/bridge-proxy/src/lib.rs
+--- a/pallets/bridge-proxy/src/lib.rs
++++ b/pallets/bridge-proxy/src/lib.rs
+@@ -51,6 +51,24 @@
+     direction: MessageDirection,
+ }
+ 
++impl<AssetId> BridgeRequest<AssetId> {
++    pub fn source(&self) -> &GenericAccount {
++        &self.source
++    }
++    pub fn asset_id(&self) -> &AssetId {
++        &self.asset_id
++    }
++    pub fn amount(&self) -> Balance {
++        self.amount
++    }
++    pub fn direction(&self) -> MessageDirection {
++        self.direction
++    }
++    pub fn status(&self) -> MessageStatus {
++        self.status
++    }
++}
++
+ #[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
+ pub struct TransferLimitSettings<BlockNumber> {
+     max_amount: Balance,
+@@ -58,6 +76,21 @@
+ }
+ 
+ pub use pallet::*;
++
++fn recovery_halted() -> bool {
++    sp_io::storage::exists(common::recovery::BRIDGE_HALT_STORAGE_KEY)
++}
++
++fn recovery_inbound_allowed<T: frame_system::Config>() -> bool {
++    if !recovery_halted() {
++        return true;
++    }
++    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
++    number.ok().is_some_and(|number| {
++        sp_io::storage::get(common::recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY)
++            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
++    })
++}
+ 
+ #[frame_support::pallet]
+ pub mod pallet {
+@@ -215,6 +248,8 @@
+         AssetAlreadyLimited,
+         AssetNotLimited,
+         WrongLimitSettings,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     #[pallet::call]
+@@ -228,6 +263,7 @@
+             recipient: GenericAccount,
+             amount: BalanceOf<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+             let sender = ensure_signed(origin)?;
+             match recipient {
+                 GenericAccount::EVM(recipient) => {
+@@ -333,6 +369,11 @@
+             asset_id: AssetIdOf<T>,
+             amount: Balance,
+         ) -> DispatchResult {
++            ensure!(
++                !recovery_halted()
++                    && !bridge_types::recovery::message_quarantined(network_id, message_id),
++                Error::<T>::RecoveryHalted
++            );
+             let GenericAccount::Sora(beneficiary) = beneficiary else {
+                 return Err(Error::<T>::WrongAccountKind.into());
+             };
+@@ -371,6 +412,12 @@
+         mut new_status: MessageStatus,
+         end_timepoint: GenericTimepoint,
+     ) {
++        // A legacy record may decode with an incorrect direction. A committed
++        // quarantine protects its identity and evidence independently of that
++        // untrusted field, including after the separate global halt is removed.
++        if bridge_types::recovery::message_quarantined(network_id, message_id) {
++            return;
++        }
+         let sender = match Senders::<T>::get(network_id, message_id) {
+             Some(sender) => sender,
+             None => {
+@@ -384,6 +431,9 @@
+         };
+         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
+             if let Some(req) = req {
++                if recovery_halted() && req.direction == MessageDirection::Outbound {
++                    return;
++                }
+                 if new_status == MessageStatus::Failed
+                     && req.direction == MessageDirection::Outbound
+                 {
+@@ -420,6 +470,9 @@
+         start_timepoint: GenericTimepoint,
+         status: MessageStatus,
+     ) {
++        if bridge_types::recovery::message_quarantined(network_id, message_id) {
++            return;
++        }
+         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
+         Senders::<T>::insert(&network_id, &message_id, &dest);
+         Transactions::<T>::insert(
+@@ -447,6 +500,9 @@
+         amount: Balance,
+         status: MessageStatus,
+     ) {
++        if bridge_types::recovery::message_quarantined(network_id, message_id) {
++            return;
++        }
+         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
+         Senders::<T>::insert(&network_id, &message_id, &source);
+         Transactions::<T>::insert(
+@@ -534,6 +590,25 @@
+         LockedAssets::<T>::remove(network_id, asset_id);
+         Ok(())
+     }
++
++    /// Reverse only the preparation accounting of a proven, already prepared
++    /// HASHI sidechain claim extinguished by the recovery executive. No mint/refund.
++    pub fn recovery_extinguish_prepared_sidechain(
++        network_id: GenericNetworkId,
++        asset_id: AssetIdOf<T>,
++        amount: Balance,
++    ) -> DispatchResult {
++        ensure!(
++            recovery_halted() && recovery_inbound_allowed::<T>(),
++            Error::<T>::RecoveryHalted
++        );
++        LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
++            *value = value
++                .checked_sub(amount)
++                .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
++            DispatchResult::Ok(())
++        })
++    }
+ }
+ 
+ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
+@@ -590,6 +665,7 @@
+         asset_id: &Self::AssetId,
+         amount: &Self::Balance,
+     ) -> DispatchResult {
++        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+         let bridge_account = Self::bridge_fee_tech_account(network_id);
+         technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
+         Ok(())
+@@ -601,6 +677,7 @@
+         asset_id: &Self::AssetId,
+         amount: &Self::Balance,
+     ) -> DispatchResult {
++        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+         let bridge_account = Self::bridge_fee_tech_account(network_id);
+         technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
+         Ok(())
+@@ -614,6 +691,7 @@
+         asset_id: &AssetIdOf<T>,
+         amount: &Balance,
+     ) -> DispatchResult {
++        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
+         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
+             network_id,
+             asset_id,
+@@ -671,6 +749,7 @@
+         asset_id: &AssetIdOf<T>,
+         amount: &Balance,
+     ) -> DispatchResult {
++        ensure!(recovery_inbound_allowed::<T>(), Error::<T>::RecoveryHalted);
+         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
+             network_id,
+             asset_id,
+diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
+--- a/pallets/eth-bridge/src/lib.rs
++++ b/pallets/eth-bridge/src/lib.rs
+@@ -73,6 +73,8 @@
+ 
+ #[macro_use]
+ extern crate alloc;
++
++pub mod recovery;
+ extern crate jsonrpc_core as jsonrpc;
+ 
+ use crate::offchain::SignatureParams;
+@@ -380,7 +382,7 @@
+     use common::{ContentSource, Description};
+     use frame_support::__private::log;
+     use frame_support::pallet_prelude::*;
+-    use frame_support::traits::{GetCallMetadata, StorageVersion};
++    use frame_support::traits::{GetCallMetadata, IsSubType, StorageVersion};
+     use frame_support::transactional;
+     use frame_support::weights::WeightToFeePolynomial;
+     use frame_system::pallet_prelude::*;
+@@ -403,6 +405,8 @@
+         /// The overarching dispatch call type.
+         type RuntimeCall: From<Call<Self>>
+             + From<bridge_multisig::Call<Self>>
++            + IsSubType<Call<Self>>
++            + IsSubType<bridge_multisig::Call<Self>>
+             + Codec
+             + Clone
+             + GetCallMetadata
+@@ -430,6 +434,9 @@
+ 
+         type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
+ 
++        /// Permanent beneficiary/query ownership resolution after native authentication.
++        type IncomingAccountResolver: crate::recovery::IncomingAccountResolver<Self::AccountId>;
++
+         type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
+ 
+         /// To retrieve asset info
+@@ -471,6 +478,9 @@
+         ///
+         /// Note: only one worker is expected to be used.
+         fn offchain_worker(block_number: frame_system::pallet_prelude::BlockNumberFor<T>) {
++            if crate::recovery::halted() {
++                return;
++            }
+             debug!("Entering off-chain workers {:?}", block_number);
+             let marker_ref = StorageValueRef::persistent(STORAGE_PEER_MARKER_KEY);
+             let legacy_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
+@@ -557,6 +567,7 @@
+             initial_peers: Vec<<T as frame_system::pallet::Config>::AccountId>,
+             signature_version: BridgeSignatureVersion,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             ensure_root(origin)?;
+             let net_id = NextNetworkId::<T>::get();
+             ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
+@@ -593,6 +604,7 @@
+             asset_id: AssetIdOf<T>,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             ensure_root(origin)?;
+             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+@@ -630,6 +642,7 @@
+             decimals: u8,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("called add_sidechain_token");
+             ensure_root(origin)?;
+             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+@@ -675,6 +688,7 @@
+             amount: Balance,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("called transfer_to_sidechain");
+             let from = ensure_signed(origin)?;
+             let nonce = frame_system::Pallet::<T>::account_nonce(&from);
+@@ -703,13 +717,17 @@
+ 
+         #[transactional]
+         #[pallet::call_index(4)]
+-        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
++        #[pallet::weight(<T as Config>::WeightInfo::request_from_sidechain().saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
+         pub fn request_from_sidechain(
+             origin: OriginFor<T>,
+             eth_tx_hash: H256,
+             kind: IncomingRequestKind,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             debug!("called request_from_sidechain");
+             let from = ensure_signed(origin)?;
+             let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
+@@ -756,12 +774,16 @@
+         /// - `request` - an incoming request.
+         /// - `network_id` - network identifier.
+         #[pallet::call_index(5)]
+-        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
++        #[pallet::weight(<T as Config>::WeightInfo::finalize_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
+         pub fn finalize_incoming_request(
+             origin: OriginFor<T>,
+             hash: H256,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             debug!("called finalize_incoming_request");
+             let _ = Self::ensure_bridge_account(origin, network_id)?;
+             let request =
+@@ -791,6 +813,7 @@
+             address: EthAddress,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("called change_peers_out");
+             ensure_root(origin)?;
+             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+@@ -840,6 +863,7 @@
+             peer_address: Option<EthAddress>,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("called change_peers_out");
+             ensure_root(origin)?;
+             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+@@ -906,6 +930,7 @@
+             origin: OriginFor<T>,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("called prepare_for_migration");
+             ensure_root(origin)?;
+             if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
+@@ -948,6 +973,7 @@
+             network_id: BridgeNetworkId<T>,
+             new_signature_version: BridgeSignatureVersion,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("called prepare_for_migration");
+             ensure_root(origin)?;
+             let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
+@@ -975,11 +1001,15 @@
+         ///
+         /// Can only be called by a bridge account.
+         #[pallet::call_index(10)]
+-        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()))]
++        #[pallet::weight(<T as Config>::WeightInfo::register_incoming_request().saturating_mul(3).saturating_add(bridge_multisig::Pallet::<T>::protocol_validation_weight()).saturating_add(crate::recovery::resolution_weight::<T>()))]
+         pub fn register_incoming_request(
+             origin: OriginFor<T>,
+             incoming_request: IncomingRequest<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             debug!("called register_incoming_request");
+             let net_id = incoming_request.network_id();
+             let _ = Self::ensure_bridge_account(origin, net_id)?;
+@@ -1000,6 +1030,7 @@
+         #[pallet::call_index(11)]
+         #[pallet::weight({
+             <T as Config>::WeightInfo::request_from_sidechain()
++                .saturating_add(crate::recovery::resolution_weight::<T>())
+                 .saturating_add(<T as Config>::WeightInfo::register_incoming_request())
+                 .saturating_add(if incoming_request_result.is_ok() {
+                     <T as Config>::WeightInfo::finalize_incoming_request()
+@@ -1012,6 +1043,10 @@
+             load_incoming_request: LoadIncomingRequest<T>,
+             incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             debug!("called import_incoming_request");
+             let net_id = load_incoming_request.network_id();
+             let _ = Self::ensure_bridge_account(origin, net_id)?;
+@@ -1093,6 +1128,7 @@
+             address: EthAddress,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             let _ = ensure_root(origin)?;
+             let mut peers = Peers::<T>::get(network_id);
+             if !peers.contains(&who) {
+@@ -1127,6 +1163,7 @@
+             asset_id: AssetIdOf<T>,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
+             ensure_root(origin)?;
+             ensure!(
+@@ -1155,6 +1192,7 @@
+             token_address: EthAddress,
+             network_id: BridgeNetworkId<T>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             log::debug!(
+                 "called register_existing_sidechain_asset. asset_id: {:?}",
+                 asset_id
+@@ -1194,7 +1232,9 @@
+             network_id: BridgeNetworkId<T>,
+             hash: H256,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             ensure_root(origin)?;
++            crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
+             let status =
+                 RequestStatuses::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
+             ensure!(
+@@ -1458,6 +1498,8 @@
+         /// The request has reached the maximum number of stored approvals.
+         TooManyApprovals,
+         DuplicateApproval,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     impl<T: Config> Error<T> {
+@@ -1927,8 +1969,9 @@
+             } => {
+                 load_incoming_request.validate()?;
+                 let hash = load_incoming_request.hash();
++                let retained = Self::retained_recovery_load(load_incoming_request)?;
+                 ensure!(
+-                    !Requests::<T>::contains_key(network, hash),
++                    retained || !Requests::<T>::contains_key(network, hash),
+                     Error::<T>::DuplicatedRequest
+                 );
+                 ensure!(
+@@ -1958,9 +2001,13 @@
+                     RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending),
+                     Error::<T>::ExpectedPendingRequest
+                 );
++                crate::recovery::ensure_incoming_active::<T>(incoming)?;
+                 incoming.validate()?;
+             }
+             Call::abort_request { hash, .. } => {
++                let request =
++                    Requests::<T>::get(network, hash).ok_or(Error::<T>::UnknownRequest)?;
++                crate::recovery::ensure_request_active::<T>(&request)?;
+                 ensure!(
+                     Requests::<T>::contains_key(network, hash),
+                     Error::<T>::UnknownRequest
+@@ -1979,6 +2026,11 @@
+         incoming: &IncomingRequest<T>,
+         network: T::NetworkId,
+     ) -> DispatchResult {
++        crate::recovery::ensure_incoming_active::<T>(incoming)?;
++        ensure!(
++            crate::recovery::inbound_allowed::<T>(),
++            Error::<T>::RecoveryHalted
++        );
+         ensure!(
+             !LoadToIncomingRequestHash::<T>::contains_key(network, incoming.hash()),
+             Error::<T>::RequestIsAlreadyRegistered
+@@ -2007,6 +2059,8 @@
+         author: &T::AccountId,
+         network: T::NetworkId,
+     ) -> DispatchResult {
++        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
++        crate::recovery::ensure_outgoing_active::<T>(network, *hash)?;
+         Self::ensure_peer(author, network)?;
+         let request = Requests::<T>::get(network, hash)
+             .and_then(|request| request.into_outgoing().map(|x| x.0))
+@@ -2053,7 +2107,14 @@
+     /// 4. There is no registered request with the same hash.
+     /// 5. The request's `validate` and `prepare` should pass.
+     fn add_request(request: &OffchainRequest<T>) -> Result<(), DispatchError> {
++        crate::recovery::ensure_request_active::<T>(request)?;
++        ensure!(
++            !crate::recovery::halted()
++                || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
++            Error::<T>::RecoveryHalted
++        );
+         let net_id = request.network_id();
++        crate::recovery::ensure_outgoing_active::<T>(net_id, request.hash())?;
+         let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
+         if request.is_incoming() {
+             Self::register_incoming_request_inner(request, net_id)?;
+@@ -2104,10 +2165,11 @@
+             queue_len < T::MaxRequestsPerQueue::get() as usize,
+             Error::<T>::RequestsQueueFull
+         );
++        let index_author = crate::recovery::incoming_index_author::<T>(request)?;
+         request.validate()?;
+         request.prepare()?;
+         Self::clear_request_signatures(net_id, &hash);
+-        Self::record_account_request(request.author(), net_id, hash);
++        Self::record_account_request(&index_author, net_id, hash);
+         Requests::<T>::insert(net_id, &hash, request);
+         RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
+         RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
+@@ -2123,13 +2185,18 @@
+         incoming_request: &OffchainRequest<T>,
+         network_id: T::NetworkId,
+     ) -> Result<H256, DispatchError> {
++        crate::recovery::ensure_request_active::<T>(incoming_request)?;
++        ensure!(
++            crate::recovery::inbound_allowed::<T>(),
++            Error::<T>::RecoveryHalted
++        );
+         let replay_key = incoming_request
+             .as_incoming()
+             .ok_or(Error::<T>::ExpectedIncomingRequest)?
+             .0
+             .hash();
+         let incoming_request_hash = incoming_request.hash();
+-        let request_author = incoming_request.author().clone();
++        let request_author = crate::recovery::incoming_index_author::<T>(incoming_request)?;
+         ensure!(
+             !LoadToIncomingRequestHash::<T>::contains_key(network_id, replay_key),
+             Error::<T>::RequestIsAlreadyRegistered
+@@ -2210,13 +2277,30 @@
+         hash: H256,
+         network_id: T::NetworkId,
+     ) -> DispatchResult {
++        crate::recovery::ensure_incoming_active::<T>(request)?;
++        ensure!(
++            crate::recovery::inbound_allowed::<T>(),
++            Error::<T>::RecoveryHalted
++        );
+         ensure!(
+             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
+                 == RequestStatus::Pending,
+             Error::<T>::ExpectedPendingRequest
+         );
++        // A policy/resolver failure is not a failed external transfer. Reject it
++        // before finalize's ordinary cancellation fallback can alter reserves,
++        // request statuses or queue/replay bookkeeping.
++        if let IncomingRequest::Transfer(transfer) = request {
++            crate::recovery::ordinary_account::<T>(&transfer.to)?;
++        }
+         let error_opt = request.finalize().err();
+         if let Some(e) = error_opt {
++            // Recovery's outer transaction owns rollback. The ordinary cancellation
++            // path would relock/refund while outbound activity is deliberately halted.
++            // Propagate the failure instead of invoking cancellation (which may panic).
++            if crate::recovery::halted() {
++                return Err(e);
++            }
+             error!("Incoming request failed {:?} {:?}", hash, e);
+             Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
+             RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
+@@ -2245,6 +2329,9 @@
+ 
+     #[inline]
+     pub(crate) fn clear_request_signatures(network_id: T::NetworkId, hash: &H256) {
++        if bridge_types::recovery::hashi_quarantined(network_id, *hash) {
++            return;
++        }
+         RequestApprovals::<T>::remove(network_id, hash);
+         RequestApprovers::<T>::remove(network_id, hash);
+     }
+@@ -2400,15 +2487,47 @@
+         error: DispatchError,
+         network_id: T::NetworkId,
+     ) -> Result<(), DispatchError> {
++        crate::recovery::ensure_request_active::<T>(request)?;
++        ensure!(
++            !crate::recovery::halted()
++                || (request.as_outgoing().is_none() && crate::recovery::inbound_allowed::<T>()),
++            Error::<T>::RecoveryHalted
++        );
+         ensure!(
+             RequestStatuses::<T>::get(network_id, hash).ok_or(Error::<T>::UnknownRequest)?
+                 == RequestStatus::Pending,
+             Error::<T>::ExpectedPendingRequest
+         );
++        crate::recovery::ensure_outgoing_active::<T>(network_id, hash)?;
+         cancel!(request, hash, network_id, error);
+         Self::remove_request_from_queue(network_id, &hash);
+         Self::deposit_event(Event::RequestAborted(hash));
+         Ok(())
++    }
++
++    /// The same exact admission is used by protocol validation and dispatch.
++    /// Merely being halted does not authorize reuse outside the internal
++    /// authenticated recovery inbound context.
++    fn retained_recovery_load(load: &LoadIncomingRequest<T>) -> Result<bool, DispatchError> {
++        if !crate::recovery::halted() || !crate::recovery::inbound_allowed::<T>() {
++            return Ok(false);
++        }
++        let network = load.network_id();
++        let hash = load.hash();
++        if Requests::<T>::get(network, hash) != Some(OffchainRequest::LoadIncoming(load.clone())) {
++            return Ok(false);
++        }
++        ensure!(
++            RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending)
++                && !LoadToIncomingRequestHash::<T>::contains_key(network, hash)
++                && RequestsQueue::<T>::get(network)
++                    .iter()
++                    .filter(|id| **id == hash)
++                    .count()
++                    == 1,
++            Error::<T>::RequestIsAlreadyRegistered
++        );
++        Ok(true)
+     }
+ 
+     fn inner_import_incoming_request(
+@@ -2416,9 +2535,34 @@
+         load_incoming_request: LoadIncomingRequest<T>,
+         incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
+     ) -> Result<(), DispatchError> {
++        crate::recovery::ensure_request_active::<T>(&OffchainRequest::LoadIncoming(
++            load_incoming_request.clone(),
++        ))?;
++        if let Ok(incoming) = &incoming_request_result {
++            crate::recovery::ensure_incoming_active::<T>(incoming)?;
++        }
++        ensure!(
++            crate::recovery::inbound_allowed::<T>(),
++            Error::<T>::RecoveryHalted
++        );
++        // Resolve both ownership roles before even the nonfinancial load half
++        // can be registered. Its kind alone does not establish the type of the
++        // authenticated incoming result, and policy failure must not enter the
++        // ordinary abort/cancellation fallback after partial bookkeeping.
++        if let Ok(IncomingRequest::Transfer(transfer)) = &incoming_request_result {
++            crate::recovery::ordinary_account::<T>(&transfer.author)?;
++            crate::recovery::ordinary_account::<T>(&transfer.to)?;
++        }
+         let replay_key = load_incoming_request.hash();
++        let retained_load = Self::retained_recovery_load(&load_incoming_request)?;
+         let load_incoming = OffchainRequest::LoadIncoming(load_incoming_request);
+-        Self::add_request(&load_incoming)?;
++        // A checkpoint may already contain the load half of this exact receipt.
++        // Recovery still authenticates the complete import with a fresh native
++        // quorum; retaining this nonfinancial bookkeeping must not resubmit it,
++        // change its author/timepoint, or bypass a consumed replay identity.
++        if !retained_load {
++            Self::add_request(&load_incoming)?;
++        }
+         match incoming_request_result {
+             Ok(incoming_request) => {
+                 if net_id != incoming_request.network_id() {
+@@ -2486,6 +2630,8 @@
+         author: <T as frame_system::pallet::Config>::AccountId,
+         net_id: T::NetworkId,
+     ) -> Result<Option<Weight>, DispatchError> {
++        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
++        crate::recovery::ensure_outgoing_active::<T>(net_id, hash)?;
+         let request = Requests::<T>::get(net_id, hash)
+             .and_then(|x| x.into_outgoing().map(|x| x.0))
+             .ok_or(Error::<T>::UnknownRequest)?;
+diff --git a/pallets/eth-bridge/src/migration.rs b/pallets/eth-bridge/src/migration.rs
+--- a/pallets/eth-bridge/src/migration.rs
++++ b/pallets/eth-bridge/src/migration.rs
+@@ -610,6 +610,13 @@
+ }
+ 
+ fn decommission_legacy_ethereum_xor_inner<T: Config>() -> Result<Weight, DispatchError> {
++    // The recovery restores checkpoint backing and quarantines uncertain claims.
++    // This legacy aggregate burn cannot prove their ownership or refund safety.
++    // Keep every record/registration/reserve intact until a separate reconciled
++    // accounting migration is authorized, even after the global halt is removed.
++    if sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
++        return Ok(T::DbWeight::get().reads(1));
++    }
+     let mut reads = 0u64;
+     let mut writes = 0u64;
+ 
+diff --git a/pallets/eth-bridge/src/offchain/handle.rs b/pallets/eth-bridge/src/offchain/handle.rs
+--- a/pallets/eth-bridge/src/offchain/handle.rs
++++ b/pallets/eth-bridge/src/offchain/handle.rs
+@@ -170,6 +170,7 @@
+     /// Encodes the given outgoing request to Ethereum ABI, then signs the data by off-chain worker's
+     /// key and sends the approve as a signed transaction.
+     fn handle_outgoing_request(request: OutgoingRequest<T>, hash: H256) -> Result<(), Error<T>> {
++        crate::recovery::ensure_outgoing_active::<T>(request.network_id(), hash)?;
+         let signer = Signer::<T, T::PeerId>::any_account();
+         if !signer.can_sign() {
+             error!(
+@@ -425,6 +426,7 @@
+     /// There are 4 flows. 3 for incoming request: handle 'mark as done', handle 'cancel outgoing
+     /// request' and for the rest, and only one for all outgoing requests.
+     fn handle_offchain_request(request: OffchainRequest<T>) -> Result<(), Error<T>> {
++        crate::recovery::ensure_request_active::<T>(&request)?;
+         debug!("Handling request: {:?}", request.hash());
+         match request {
+             OffchainRequest::LoadIncoming(request) => {
+@@ -1059,6 +1061,9 @@
+ 
+         let mut stale_hashes = BTreeSet::new();
+         for request_hash in RequestsQueue::<T>::get(network_id) {
++            if bridge_types::recovery::hashi_quarantined(network_id, request_hash) {
++                continue;
++            }
+             let request = match Requests::<T>::get(network_id, request_hash) {
+                 Some(v) => v,
+                 _ => {
+@@ -1066,6 +1071,9 @@
+                     continue;
+                 }
+             };
++            if crate::recovery::ensure_request_active::<T>(&request).is_err() {
++                continue;
++            }
+             if request.should_be_skipped() {
+                 debug!("Temporary skip request: {:?}", request_hash);
+                 continue;
+diff --git a/pallets/eth-bridge/src/offchain/mod.rs b/pallets/eth-bridge/src/offchain/mod.rs
+--- a/pallets/eth-bridge/src/offchain/mod.rs
++++ b/pallets/eth-bridge/src/offchain/mod.rs
+@@ -555,6 +555,9 @@
+     where
+         T: CreateSignedTransaction<<T as Config>::RuntimeCall>,
+     {
++        if crate::recovery::halted() {
++            return;
++        }
+         let s_networks_ids = StorageValueRef::persistent(STORAGE_NETWORK_IDS_KEY);
+ 
+         let substrate_finalized_height = match Self::handle_substrate() {
+diff --git a/pallets/eth-bridge/src/offchain/transaction.rs b/pallets/eth-bridge/src/offchain/transaction.rs
+--- a/pallets/eth-bridge/src/offchain/transaction.rs
++++ b/pallets/eth-bridge/src/offchain/transaction.rs
+@@ -39,7 +39,7 @@
+ use frame_support::sp_runtime::offchain::storage::StorageValueRef;
+ use frame_support::sp_runtime::traits::{BlockNumberProvider, IdentifyAccount, Saturating};
+ use frame_support::sp_runtime::RuntimeAppPublic;
+-use frame_support::traits::GetCallMetadata;
++use frame_support::traits::{GetCallMetadata, IsSubType};
+ use frame_support::traits::GetCallName;
+ use frame_support::{ensure, fail};
+ #[cfg(test)]
+@@ -123,6 +123,9 @@
+             "Re-sending signed transaction: {:?}",
+             self.call.get_call_metadata()
+         );
++        if Pallet::<T>::ensure_recovery_call_active(&self.call).is_err() {
++            return false;
++        }
+         let result = Pallet::<T>::send_signed_transaction(signer, &self.call);
+ 
+         if let Some((account, res)) = result {
+@@ -150,6 +153,69 @@
+ }
+ 
+ impl<T: Config> Pallet<T> {
++    // Preserve deployed signer selection. The recovery only rejects quarantined
++    // cached/direct/multisig protocol calls before another local signature exists.
++    fn ensure_recovery_call_active(call: &Call<T>) -> Result<(), Error<T>> {
++        if !sp_io::storage::exists(common::recovery::POLICY_STORAGE_KEY) {
++            return Ok(());
++        }
++        if let Some(protocol) = <Call<T> as IsSubType<crate::Call<T>>>::is_sub_type(call) {
++            return Self::ensure_protocol_not_quarantined(protocol);
++        }
++        let Some(multisig) = <Call<T> as IsSubType<bridge_multisig::Call<T>>>::is_sub_type(call)
++        else {
++            return Ok(());
++        };
++        let inner = match multisig {
++            bridge_multisig::Call::as_multi_threshold_1 { call, .. } => Some(call.as_ref().clone()),
++            bridge_multisig::Call::as_multi { call, .. } =>
++                bridge_multisig::Pallet::<T>::decode_call(&blake2_256(call), Some(call)),
++            bridge_multisig::Call::approve_as_multi { call_hash, .. } =>
++                bridge_multisig::Pallet::<T>::decode_call(call_hash, None),
++            _ => None,
++        };
++        if let Some(inner) = inner {
++            if let Some(protocol) = <Call<T> as IsSubType<crate::Call<T>>>::is_sub_type(&inner) {
++                Self::ensure_protocol_not_quarantined(protocol)?;
++            }
++        }
++        Ok(())
++    }
++
++    fn ensure_protocol_not_quarantined(call: &crate::Call<T>) -> Result<(), Error<T>> {
++        match call {
++            crate::Call::approve_request {
++                network_id, hash, ..
++            } => crate::recovery::ensure_outgoing_active::<T>(*network_id, *hash),
++            crate::Call::abort_request {
++                network_id, hash, ..
++            }
++            | crate::Call::finalize_incoming_request {
++                network_id, hash, ..
++            } => {
++                let request = crate::Requests::<T>::get(network_id, hash)
++                    .ok_or(Error::<T>::UnknownRequest)?;
++                crate::recovery::ensure_request_active::<T>(&request)
++            }
++            crate::Call::register_incoming_request { incoming_request } => {
++                crate::recovery::ensure_incoming_active::<T>(incoming_request)
++            }
++            crate::Call::import_incoming_request {
++                load_incoming_request,
++                incoming_request_result,
++            } => {
++                crate::recovery::ensure_request_active::<T>(
++                    &crate::requests::OffchainRequest::LoadIncoming(load_incoming_request.clone()),
++                )?;
++                if let Ok(request) = incoming_request_result {
++                    crate::recovery::ensure_incoming_active::<T>(request)?;
++                }
++                Ok(())
++            }
++            _ => Ok(()),
++        }
++    }
++
+     pub(crate) fn get_signer() -> Result<Signer<T, T::PeerId>, Error<T>> {
+         let signer = Signer::<T, T::PeerId>::any_account();
+         if !signer.can_sign() {
+@@ -182,6 +248,7 @@
+         T: CreateSignedTransaction<LocalCall>,
+         LocalCall: Clone + GetCallName + Encode + Into<<T as Config>::RuntimeCall>,
+     {
++        Self::ensure_recovery_call_active(&call.clone().into())?;
+         let signer = Self::get_signer()?;
+         debug!("Sending signed transaction: {}", call.get_call_name());
+         let result = Self::send_signed_transaction(&signer, &call);
+diff --git a/pallets/eth-bridge/src/recovery.rs b/pallets/eth-bridge/src/recovery.rs
+new file mode 100644
+--- /dev/null
++++ b/pallets/eth-bridge/src/recovery.rs
+@@ -0,0 +1,208 @@
++//! Persistent SORA Nexus bridge maintenance latch. No call can clear it here.
++
++use codec::{Decode, Encode};
++use frame_support::ensure;
++use sp_runtime::{traits::UniqueSaturatedInto, DispatchError};
++
++pub const HASHI_RESOLUTION_KEY: &[u8] = b":sora-nexus:recovery:hashi-resolution:v1";
++
++/// Internal, one-transfer resolution written only by the committed recovery executive.
++/// The original peer-approved request remains stored and is used for replay protection.
++#[derive(Clone, Encode, Decode, codec::DecodeWithMemTracking)]
++pub struct HashiResolution<AccountId> {
++    pub block: u32,
++    pub request_hash: [u8; 32],
++    pub beneficiary: AccountId,
++    pub excluded: bool,
++    pub consumed: bool,
++}
++
++pub(crate) fn transfer_resolution<T: crate::Config>(
++    request: &crate::IncomingTransfer<T>,
++) -> Result<Option<HashiResolution<T::AccountId>>, DispatchError> {
++    ensure_incoming_transaction_active::<T>(request.network_id, request.tx_hash)?;
++    if !halted() {
++        return Ok(None);
++    }
++    ensure!(inbound_allowed::<T>(), crate::Error::<T>::RecoveryHalted);
++    let bytes =
++        sp_io::storage::get(HASHI_RESOLUTION_KEY).ok_or(crate::Error::<T>::RecoveryHalted)?;
++    // AccountId is bounded by frame_system::Config. Reject extra bytes and stale contexts.
++    ensure!(bytes.len() <= 1024, crate::Error::<T>::RecoveryHalted);
++    let mut input = bytes.as_ref();
++    let resolution = HashiResolution::<T::AccountId>::decode(&mut input)
++        .map_err(|_| crate::Error::<T>::RecoveryHalted)?;
++    let block: u32 = frame_system::Pallet::<T>::block_number()
++        .try_into()
++        .map_err(|_| crate::Error::<T>::RecoveryHalted)?;
++    ensure!(
++        input.is_empty()
++            && resolution.block == block
++            && !resolution.consumed
++            && resolution.request_hash == sp_io::hashing::blake2_256(&request.encode()),
++        crate::Error::<T>::RecoveryHalted
++    );
++    Ok(Some(resolution))
++}
++
++pub(crate) fn consume_transfer<AccountId: Encode>(mut resolution: HashiResolution<AccountId>) {
++    resolution.consumed = true;
++    sp_io::storage::set(HASHI_RESOLUTION_KEY, &resolution.encode());
++}
++
++pub(crate) const HALT_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
++pub(crate) const INBOUND_CONTEXT_KEY: &[u8] = b":sora-nexus:recovery:bridge-inbound-context:v1";
++
++pub(crate) fn halted() -> bool {
++    sp_io::storage::exists(HALT_KEY)
++}
++
++/// The recovery executive sets this exact SCALE u32 only around a committed
++/// authenticated inbound operation, and clears it transactionally before return.
++pub(crate) fn inbound_allowed<T: frame_system::Config>() -> bool {
++    if !halted() {
++        return true;
++    }
++    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
++    number.ok().is_some_and(|number| {
++        sp_io::storage::get(INBOUND_CONTEXT_KEY)
++            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
++    })
++}
++
++/// A request quarantine cannot be reopened by clearing the global maintenance latch.
++pub fn ensure_outgoing_active<T: crate::Config>(
++    network: T::NetworkId,
++    hash: sp_core::H256,
++) -> Result<(), crate::Error<T>> {
++    ensure!(
++        !bridge_types::recovery::hashi_quarantined(network, hash)
++            && !bridge_types::recovery::message_quarantined(
++                bridge_types::GenericNetworkId::EVMLegacy(network.unique_saturated_into()),
++                hash,
++            ),
++        crate::Error::<T>::RecoveryHalted
++    );
++    Ok(())
++}
++
++/// Incoming BridgeProxy identity is the external transaction hash, not the
++/// separately hashed native request. Match the notifier's exact domain before
++/// reserving, minting, releasing custody, or recording load/replay bookkeeping.
++pub(crate) fn ensure_incoming_transaction_active<T: crate::Config>(
++    network: T::NetworkId,
++    tx_hash: sp_core::H256,
++) -> Result<(), crate::Error<T>> {
++    ensure!(
++        !bridge_types::recovery::message_quarantined(
++            bridge_types::GenericNetworkId::EVMLegacy(network.unique_saturated_into()),
++            tx_hash,
++        ),
++        crate::Error::<T>::RecoveryHalted
++    );
++    Ok(())
++}
++
++/// Resolve incoming cancellation/status work to its original outgoing identity
++/// before any cancellation fallback or native status mutation can run.
++pub(crate) fn ensure_incoming_active<T: crate::Config>(
++    request: &crate::requests::IncomingRequest<T>,
++) -> Result<(), crate::Error<T>> {
++    match request {
++        crate::requests::IncomingRequest::Transfer(request) => {
++            ensure_incoming_transaction_active::<T>(request.network_id, request.tx_hash)
++        }
++        crate::requests::IncomingRequest::CancelOutgoingRequest(request) => {
++            ensure_outgoing_active::<T>(request.network_id, request.outgoing_request_hash)
++        }
++        crate::requests::IncomingRequest::MarkAsDone(request) => {
++            ensure_outgoing_active::<T>(request.network_id, request.outgoing_request_hash)
++        }
++        _ => Ok(()),
++    }
++}
++
++pub(crate) fn ensure_request_active<T: crate::Config>(
++    request: &crate::requests::OffchainRequest<T>,
++) -> Result<(), crate::Error<T>> {
++    match request {
++        crate::requests::OffchainRequest::Outgoing(request, hash) => {
++            ensure_outgoing_active::<T>(request.network_id(), *hash)
++        }
++        crate::requests::OffchainRequest::Incoming(request, _) => {
++            ensure_incoming_active::<T>(request)
++        }
++        crate::requests::OffchainRequest::LoadIncoming(
++            crate::requests::LoadIncomingRequest::Meta(request, _),
++        ) if request.kind == crate::requests::IncomingMetaRequestKind::MarkAsDone => {
++            ensure_outgoing_active::<T>(request.network_id, request.hash)
++        }
++        crate::requests::OffchainRequest::LoadIncoming(
++            crate::requests::LoadIncomingRequest::Transaction(request),
++        ) if matches!(
++            request.kind,
++            crate::requests::IncomingTransactionRequestKind::Transfer
++                | crate::requests::IncomingTransactionRequestKind::TransferXOR
++        ) =>
++        {
++            ensure_incoming_transaction_active::<T>(request.network_id, request.hash)
++        }
++        crate::requests::OffchainRequest::LoadIncoming(_) => Ok(()),
++    }
++}
++
++/// Resolves an authenticated historical account without changing its authority.
++/// The runtime supplies a permanent, policy-bound map; identity is useful for
++/// pallets embedded in runtimes without incident recovery.
++pub trait IncomingAccountResolver<AccountId> {
++    fn resolve(account: &AccountId) -> Result<Option<AccountId>, DispatchError>;
++}
++
++impl<AccountId> IncomingAccountResolver<AccountId> for () {
++    fn resolve(_: &AccountId) -> Result<Option<AccountId>, DispatchError> {
++        Ok(None)
++    }
++}
++
++/// The manifest executor owns its transient resolution and index reconciliation.
++/// Ordinary native delivery may use the permanent map only after admission.
++pub(crate) fn ordinary_account<T: crate::Config>(
++    account: &T::AccountId,
++) -> Result<T::AccountId, DispatchError> {
++    if halted() {
++        return Ok(account.clone());
++    }
++    Ok(T::IncomingAccountResolver::resolve(account)?.unwrap_or_else(|| account.clone()))
++}
++
++/// AccountRequests indexes the author, independently of a transfer beneficiary.
++/// Resolve before preparation or registration writes. Never change outgoing
++/// authorization or the original signed Incoming/LoadIncoming request bytes.
++pub(crate) fn incoming_index_author<T: crate::Config>(
++    request: &crate::OffchainRequest<T>,
++) -> Result<T::AccountId, DispatchError> {
++    match request {
++        crate::OffchainRequest::Outgoing(_, _) => Ok(request.author().clone()),
++        // The native load kind need not equal its incoming result kind. These
++        // are query references only, including administrative incoming kinds;
++        // native validations and signed payloads remain unchanged.
++        crate::OffchainRequest::Incoming(_, _) | crate::OffchainRequest::LoadIncoming(_) => {
++            ordinary_account::<T>(request.author())
++        }
++    }
++}
++
++/// At most six permanent lookups occur in an incoming import (author and
++/// beneficiary preflight, load author, transfer author, beneficiary preflight
++/// before cancellation handling, and finalization). Cover all marker/context
++/// reads and 78 static-map comparisons; historical no-policy weights are unchanged.
++pub(crate) fn resolution_weight<T: crate::Config>() -> frame_support::weights::Weight {
++    if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") || halted() {
++        // Halted manifest work supplies its own bounded executor allowance and
++        // never calls the permanent resolver. Preserve its signed max_weight.
++        return frame_support::weights::Weight::zero();
++    }
++    use frame_support::traits::Get;
++    frame_support::weights::Weight::from_parts(50_000_000, 32_768)
++        .saturating_add(T::DbWeight::get().reads(32))
++}
+diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/src/requests/incoming.rs
+--- a/pallets/eth-bridge/src/requests/incoming.rs
++++ b/pallets/eth-bridge/src/requests/incoming.rs
+@@ -321,6 +321,7 @@
+     }
+ 
+     pub fn validate(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
+         ensure!(
+             !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
+                 self.network_id,
+@@ -355,6 +356,12 @@
+ 
+     /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
+     pub fn prepare(&self) -> Result<(), DispatchError> {
++        let resolution = crate::recovery::transfer_resolution(self)?;
++        // An excluded sidechain claim never creates locally issued backing. An owned
++        // asset still reserves its exact entitlement, which finalize burns in place.
++        if !self.asset_kind.is_owned() && resolution.as_ref().is_some_and(|value| value.excluded) {
++            return Ok(());
++        }
+         let generic_network_id =
+             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
+         let asset_kind = if self.asset_kind.is_owned() {
+@@ -380,6 +387,7 @@
+ 
+     /// Unreserves previously reserved amount of funds if the asset kind is owned.
+     pub fn unreserve(&self) -> DispatchResult {
++        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
+         if self.asset_kind.is_owned() {
+             let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
+                 .ok_or(Error::<T>::UnknownNetwork)?;
+@@ -391,6 +399,7 @@
+ 
+     /// Calls `.unreserve`.
+     pub fn cancel(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_incoming_transaction_active::<T>(self.network_id, self.tx_hash)?;
+         let generic_network_id =
+             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
+         let asset_kind = if self.asset_kind.is_owned() {
+@@ -413,8 +422,31 @@
+     /// otherwise the amount is minted.
+     pub fn finalize(&self) -> Result<H256, DispatchError> {
+         self.validate()?;
++        let resolution = crate::recovery::transfer_resolution(self)?;
+         let bridge_account_id = crate::Pallet::<T>::bridge_account(self.network_id)
+             .ok_or(Error::<T>::UnknownNetwork)?;
++        if let Some(resolution) = resolution.as_ref().filter(|value| value.excluded) {
++            if self.asset_kind.is_owned() {
++                common::with_transaction(|| -> Result<_, DispatchError> {
++                    self.unreserve()?;
++                    assets::Pallet::<T>::burn_from(
++                        &self.asset_id,
++                        &bridge_account_id,
++                        &bridge_account_id,
++                        self.amount,
++                    )
++                })?;
++            }
++            crate::recovery::consume_transfer(resolution.clone());
++            return Ok(self.tx_hash);
++        }
++        // Preserve the original request and its authenticated replay identity.
++        // A committed maintenance resolution takes precedence; ordinary native
++        // delivery uses the permanent map after bridge-account authentication.
++        let beneficiary = match resolution.as_ref() {
++            Some(value) => value.beneficiary.clone(),
++            None => crate::recovery::ordinary_account::<T>(&self.to)?,
++        };
+         let transfer_fee = Self::fee_amount();
+         let amount = if self.should_take_fee {
+             self.amount - transfer_fee
+@@ -432,22 +464,30 @@
+                         transfer_fee,
+                     )?;
+                 }
+-                Assets::<T>::transfer_from(&self.asset_id, &bridge_account_id, &self.to, amount)?;
++                Assets::<T>::transfer_from(
++                    &self.asset_id,
++                    &bridge_account_id,
++                    &beneficiary,
++                    amount,
++                )?;
+                 Ok(())
+             })?;
+         } else {
+-            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &self.to, amount)?;
++            Assets::<T>::mint_to(&self.asset_id, &bridge_account_id, &beneficiary, amount)?;
+         }
+         T::MessageStatusNotifier::inbound_request(
+             GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into()),
+             self.tx_hash,
+             GenericAccount::EVM(self.from),
+-            self.to.clone(),
++            beneficiary.clone(),
+             self.asset_id,
+             self.amount,
+             GenericTimepoint::EVM(self.at_height),
+             MessageStatus::Done,
+         );
++        if let Some(resolution) = resolution {
++            crate::recovery::consume_transfer(resolution);
++        }
+         Ok(self.tx_hash)
+     }
+ 
+@@ -513,6 +553,7 @@
+     /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
+     /// is changed to `Frozen` to stop receiving approvals.
+     pub fn prepare(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
+         ensure!(
+             !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
+             Error::<T>::DeprecatedLegacyXor
+@@ -543,6 +584,7 @@
+ 
+     /// Changes the request's status back to `ApprovalsReady`.
+     pub fn cancel(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
+         if self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer() {
+             crate::RequestStatuses::<T>::insert(
+                 self.network_id,
+@@ -566,6 +608,7 @@
+     /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
+     /// make it available for resubmission.
+     pub fn finalize(&self) -> Result<H256, DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
+         ensure!(
+             !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
+             Error::<T>::DeprecatedLegacyXor
+@@ -610,6 +653,7 @@
+ impl<T: Config> IncomingMarkAsDoneRequest<T> {
+     /// Checks that the marking request status is `ApprovalsReady`.
+     pub fn validate(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id, self.outgoing_request_hash)?;
+         ensure!(
+             !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                 self.network_id,
+diff --git a/pallets/eth-bridge/src/requests/mod.rs b/pallets/eth-bridge/src/requests/mod.rs
+--- a/pallets/eth-bridge/src/requests/mod.rs
++++ b/pallets/eth-bridge/src/requests/mod.rs
+@@ -166,6 +166,10 @@
+     /// Checks that the request can be initiated (e.g., verifies that an account has
+     /// sufficient funds for transfer).
+     fn validate(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(
++            self.network_id(),
++            OffchainRequest::outgoing(self.clone()).hash(),
++        )?;
+         match self {
+             OutgoingRequest::Transfer(request) => request.validate(),
+             OutgoingRequest::AddAsset(request) => request.validate(),
+@@ -180,6 +184,7 @@
+     }
+ 
+     fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id(), tx_hash)?;
+         match self {
+             OutgoingRequest::Transfer(request) => request.prepare(tx_hash),
+             OutgoingRequest::AddAsset(request) => request.prepare(()),
+@@ -194,6 +199,7 @@
+     }
+ 
+     pub(crate) fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id(), tx_hash)?;
+         match self {
+             OutgoingRequest::Transfer(request) => request.finalize(tx_hash),
+             OutgoingRequest::AddAsset(request) => request.finalize(),
+@@ -208,6 +214,10 @@
+     }
+ 
+     pub fn cancel(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(
++            self.network_id(),
++            OffchainRequest::outgoing(self.clone()).hash(),
++        )?;
+         match self {
+             OutgoingRequest::Transfer(request) => request.cancel(),
+             OutgoingRequest::AddAsset(request) => request.cancel(),
+@@ -635,6 +645,10 @@
+             Self::Meta(request, _) => {
+                 match request.kind {
+                     IncomingMetaRequestKind::MarkAsDone => {
++                        crate::recovery::ensure_outgoing_active::<T>(
++                            request.network_id,
++                            request.hash,
++                        )?;
+                         ensure!(
+                             !Pallet::<T>::is_decommissioned_legacy_ethereum_xor_outgoing_transfer_request(
+                                 request.network_id,
+@@ -815,6 +829,7 @@
+     /// Checks that the request can be initiated (e.g., verifies that an account has
+     /// sufficient funds for transfer).
+     pub(crate) fn validate(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_request_active::<T>(self)?;
+         match self {
+             OffchainRequest::Outgoing(request, _) => request.validate(),
+             OffchainRequest::LoadIncoming(request) => request.validate(),
+@@ -824,6 +839,7 @@
+ 
+     /// Performs additional state changes for the request (e.g., reserves funds for a transfer).
+     pub(crate) fn prepare(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_request_active::<T>(self)?;
+         match self {
+             OffchainRequest::Outgoing(request, tx_hash) => request.prepare(*tx_hash),
+             OffchainRequest::LoadIncoming(request) => request.prepare(),
+@@ -833,6 +849,7 @@
+ 
+     /// Undos the state changes done in the `prepare` function.
+     pub fn cancel(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_request_active::<T>(self)?;
+         match self {
+             OffchainRequest::Outgoing(request, _) => request.cancel(),
+             OffchainRequest::LoadIncoming(request) => request.cancel(),
+@@ -841,6 +858,7 @@
+     }
+ 
+     pub fn finalize(&self) -> DispatchResult {
++        crate::recovery::ensure_request_active::<T>(self)?;
+         match self {
+             OffchainRequest::Outgoing(r, tx_hash) => r.finalize(*tx_hash),
+             OffchainRequest::Incoming(r, _) => r.finalize().map(|_| ()),
+diff --git a/pallets/eth-bridge/src/requests/outgoing.rs b/pallets/eth-bridge/src/requests/outgoing.rs
+--- a/pallets/eth-bridge/src/requests/outgoing.rs
++++ b/pallets/eth-bridge/src/requests/outgoing.rs
+@@ -224,6 +224,7 @@
+ 
+     /// Transfers the given `amount` of `asset_id` to the bridge account and reserve it.
+     pub fn prepare(&self, tx_hash: H256) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id, tx_hash)?;
+         let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+             .ok_or(Error::<T>::UnknownNetwork)?;
+         common::with_transaction(|| {
+@@ -259,6 +260,10 @@
+     }
+ 
+     pub fn cancel(&self) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(
++            self.network_id,
++            super::OffchainRequest::outgoing(super::OutgoingRequest::Transfer(self.clone())).hash(),
++        )?;
+         let bridge_account = crate::Pallet::<T>::bridge_account(self.network_id)
+             .ok_or(Error::<T>::UnknownNetwork)?;
+         let generic_network_id =
+@@ -288,6 +293,7 @@
+ 
+     /// Validates the request again, then, if the asset is originated in Sidechain, it gets burned.
+     pub fn finalize(&self, tx_hash: H256) -> Result<(), DispatchError> {
++        crate::recovery::ensure_outgoing_active::<T>(self.network_id, tx_hash)?;
+         self.validate()?;
+         let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
+             .ok_or(Error::<T>::UnknownNetwork)?;
+diff --git a/vendor/sora2-common/pallets/channel/src/inbound/mod.rs b/vendor/sora2-common/pallets/channel/src/inbound/mod.rs
+--- a/vendor/sora2-common/pallets/channel/src/inbound/mod.rs
++++ b/vendor/sora2-common/pallets/channel/src/inbound/mod.rs
+@@ -177,6 +177,8 @@
+         CallEncodeFailed,
+         /// Invalid base fee update.
+         InvalidBaseFeeUpdate,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     impl<T: Config> Pallet<T> {
+@@ -190,6 +192,10 @@
+             >,
+             proof: &<T::Verifier as Verifier>::Proof,
+         ) -> DispatchResult {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             match (network_id, commitment) {
+                 (GenericNetworkId::EVM(id), bridge_types::GenericCommitment::EVM(value)) => {
+                     Self::verify_evm_commitment(id, value)?
+@@ -337,6 +343,18 @@
+                 bridge_types::ton::Commitment::Inbound(inbound_commitment) => {
+                     Self::ensure_ton_channel(ton_network_id, inbound_commitment.channel)?;
+                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
++                    ensure!(
++                        !bridge_types::recovery::message_quarantined(
++                            network_id,
++                            MessageId::basic(
++                                network_id,
++                                T::ThisNetworkId::get(),
++                                inbound_commitment.nonce
++                            )
++                            .hash(),
++                        ),
++                        Error::<T>::RecoveryHalted
++                    );
+                 }
+             }
+             Ok(())
+@@ -349,6 +367,11 @@
+                 T::MaxMessagePayloadSize,
+             >,
+         ) -> Result<MessageDispatchOutcome, sp_runtime::DispatchError> {
++            ensure!(
++                !crate::recovery::halted()
++                    || matches!(&commitment, bridge_types::evm::Commitment::Inbound(_)),
++                Error::<T>::RecoveryHalted
++            );
+             Self::verify_evm_commitment(chain_id, &commitment)?;
+             let network_id = GenericNetworkId::EVM(chain_id);
+             let outcome = match commitment {
+@@ -430,6 +453,18 @@
+                 bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
+                     Self::ensure_evm_channel(chain_id, inbound_commitment.channel)?;
+                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
++                    ensure!(
++                        !bridge_types::recovery::message_quarantined(
++                            network_id,
++                            MessageId::basic(
++                                network_id,
++                                T::ThisNetworkId::get(),
++                                inbound_commitment.nonce
++                            )
++                            .hash(),
++                        ),
++                        Error::<T>::RecoveryHalted
++                    );
+                 }
+                 bridge_types::evm::Commitment::StatusReport(status_report) => {
+                     Self::ensure_evm_channel(chain_id, status_report.channel)?;
+@@ -496,6 +531,21 @@
+         ) -> DispatchResult {
+             let network_id = GenericNetworkId::Sub(sub_network_id);
+             Self::ensure_channel_nonce(network_id, commitment.nonce)?;
++            for index in 0..commitment.messages.len() {
++                ensure!(
++                    !bridge_types::recovery::message_quarantined(
++                        network_id,
++                        MessageId::batched(
++                            network_id,
++                            T::ThisNetworkId::get(),
++                            commitment.nonce,
++                            index as u64
++                        )
++                        .hash(),
++                    ),
++                    Error::<T>::RecoveryHalted
++                );
++            }
+             Ok(())
+         }
+     }
+@@ -566,6 +616,9 @@
+         }
+     }
+ 
++    // Keep the deployed bridge worker wire format and fee policy during this SDK migration.
++    // The FRAME macro recognizes this exact attribute when retaining legacy admission.
++    #[allow(deprecated)]
+     #[pallet::validate_unsigned]
+     impl<T: Config> ValidateUnsigned for Pallet<T> {
+         type Call = Call<T>;
+diff --git a/vendor/sora2-common/pallets/channel/src/lib.rs b/vendor/sora2-common/pallets/channel/src/lib.rs
+--- a/vendor/sora2-common/pallets/channel/src/lib.rs
++++ b/vendor/sora2-common/pallets/channel/src/lib.rs
+@@ -30,5 +30,7 @@
+ 
+ #![cfg_attr(not(feature = "std"), no_std)]
+ 
++mod recovery;
++
+ pub mod inbound;
+ pub mod outbound;
+diff --git a/vendor/sora2-common/pallets/channel/src/outbound/mod.rs b/vendor/sora2-common/pallets/channel/src/outbound/mod.rs
+--- a/vendor/sora2-common/pallets/channel/src/outbound/mod.rs
++++ b/vendor/sora2-common/pallets/channel/src/outbound/mod.rs
+@@ -36,7 +36,6 @@
+ use bridge_types::traits::OutboundChannel;
+ use bridge_types::traits::TimepointProvider;
+ use bridge_types::EVMChainId;
+-use bridge_types::GenericNetworkId;
+ use bridge_types::SubNetworkId;
+ use bridge_types::{H256, U256};
+ use frame_support::ensure;
+@@ -180,6 +179,9 @@
+         // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
+         // with the corresponding commitment is persisted offchain.
+         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
++            if crate::recovery::halted() {
++                return T::DbWeight::get().reads(1);
++            }
+             let interval = Self::interval();
+             let mut weight = Default::default();
+             if now % interval == Zero::zero() {
+@@ -221,15 +223,58 @@
+         MessageGasLimitExceeded,
+         /// Commitment consume too much gas
+         CommitmentGasLimitExceeded,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     impl<T: Config> Pallet<T> {
++        /// Exact native queue witness for manifest-bound recovery quarantine.
++        pub fn recovery_queue(
++            network_id: GenericNetworkId,
++        ) -> BoundedVec<GenericBridgeMessage<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit>
++        {
++            MessageQueues::<T>::get(network_id)
++        }
++
+         pub(crate) fn commit(network_id: GenericNetworkId) -> Weight {
++            if crate::recovery::halted() {
++                return T::DbWeight::get().reads(1);
++            }
++            let Some(next_nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
++                return T::DbWeight::get().reads(1);
++            };
++            if bridge_types::recovery::batch_quarantined(0, network_id, next_nonce) {
++                return T::DbWeight::get().reads(2);
++            }
++            let message_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
++            let recovery_reads = (message_count as u64).saturating_mul(2).saturating_add(2);
++            if message_count > T::MaxMessagesPerCommit::get() as usize
++                || (0..message_count).any(|index| {
++                    bridge_types::recovery::message_quarantined(
++                        network_id,
++                        MessageId::batched(
++                            T::ThisNetworkId::get(),
++                            network_id,
++                            next_nonce,
++                            index as u64,
++                        )
++                        .hash(),
++                    )
++                })
++            {
++                return T::DbWeight::get().reads(recovery_reads);
++            }
++            let recovery_overhead = if sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
++                T::DbWeight::get().reads(recovery_reads)
++            } else {
++                Weight::zero()
++            };
+             debug!("Commit substrate messages");
+             let messages = MessageQueues::<T>::take(network_id);
+             QueueTotalGas::<T>::remove(network_id);
+             if messages.is_empty() {
+-                return <T as Config>::WeightInfo::on_initialize_no_messages();
++                return <T as Config>::WeightInfo::on_initialize_no_messages()
++                    .saturating_add(recovery_overhead);
+             }
+ 
+             let batch_nonce = ChannelNonces::<T>::mutate(network_id, |nonce| {
+@@ -299,11 +344,13 @@
+                 }
+                 GenericNetworkId::EVMLegacy(_) => {
+                     error!("EVMLegacy messages are not supported by this channel (if you noticed this message, please report it)");
+-                    return <T as Config>::WeightInfo::on_initialize_no_messages();
++                    return <T as Config>::WeightInfo::on_initialize_no_messages()
++                        .saturating_add(recovery_overhead);
+                 }
+                 GenericNetworkId::TON(_) => {
+                     error!("TON messages are not supported yet by this channel (if you noticed this message, please report it)");
+-                    return <T as Config>::WeightInfo::on_initialize_no_messages();
++                    return <T as Config>::WeightInfo::on_initialize_no_messages()
++                        .saturating_add(recovery_overhead);
+                 }
+             };
+ 
+@@ -321,6 +368,7 @@
+                 messages_count as u32,
+                 average_payload_size as u32,
+             )
++            .saturating_add(recovery_overhead)
+         }
+ 
+         fn average_payload_size(
+@@ -354,11 +402,62 @@
+     }
+ 
+     impl<T: Config> Pallet<T> {
++        /// Recovery-only upper bound for both marker reads at every bounded
++        /// queue position, the global/batch gates and repeated weight probes.
++        /// No-policy execution retains deployed historical dispatch weights.
++        pub(crate) fn recovery_submit_overhead() -> Weight {
++            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
++                return Weight::zero();
++            }
++            let positions = T::MaxMessagesPerCommit::get() as u64;
++            T::DbWeight::get()
++                .reads(positions.saturating_mul(2).saturating_add(8))
++                .saturating_add(Weight::from_parts(
++                    positions.saturating_mul(250_000).saturating_add(2_000_000),
++                    positions.saturating_mul(8_192).saturating_add(16_384),
++                ))
++        }
++
++        pub(crate) fn submit_evm_inner(
++            network_id: EVMChainId,
++            who: &RawOrigin<T::AccountId>,
++            payload: &[u8],
++            additional_data: AdditionalEVMOutboundData,
++        ) -> Result<H256, DispatchError> {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
++            ensure!(
++                additional_data.max_gas < T::MaxGasPerMessage::get(),
++                Error::<T>::MessageGasLimitExceeded
++            );
++            QueueTotalGas::<T>::try_mutate(GenericNetworkId::EVM(network_id), |total_gas| {
++                *total_gas = total_gas.saturating_add(additional_data.max_gas);
++                ensure!(
++                    *total_gas < T::MaxGasPerCommit::get(),
++                    Error::<T>::CommitmentGasLimitExceeded
++                );
++                Ok::<(), DispatchError>(())
++            })?;
++            let message = bridge_types::evm::Message {
++                payload: payload
++                    .to_vec()
++                    .try_into()
++                    .map_err(|_| Error::<T>::PayloadTooLarge)?,
++                target: additional_data.target,
++                max_gas: additional_data.max_gas,
++            };
++            Self::submit_message(
++                network_id.into(),
++                who,
++                bridge_types::GenericBridgeMessage::EVM(message),
++            )
++        }
++
+         pub fn submit_message(
+             network_id: GenericNetworkId,
+             who: &RawOrigin<T::AccountId>,
+             message: GenericBridgeMessage<T::MaxMessagePayloadSize>,
+         ) -> Result<H256, DispatchError> {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("Send message from {:?} to network {:?}", who, network_id);
+             let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
+             ensure!(
+@@ -368,6 +467,21 @@
+             let batch_nonce = ChannelNonces::<T>::get(network_id)
+                 .checked_add(1)
+                 .ok_or(Error::<T>::Overflow)?;
++            ensure!(
++                !bridge_types::recovery::batch_quarantined(0, network_id, batch_nonce),
++                Error::<T>::RecoveryHalted
++            );
++
++            // Do not append a fresh transfer behind an irreversibly stopped
++            // position: the exact batch (including all existing slots) is blocked.
++            ensure!(
++                !(0..=messages_count).any(|index| bridge_types::recovery::message_quarantined(
++                    network_id,
++                    MessageId::batched(T::ThisNetworkId::get(), network_id, batch_nonce, index)
++                        .hash(),
++                )),
++                Error::<T>::RecoveryHalted
++            );
+ 
+             MessageQueues::<T>::try_append(network_id, message)
+                 .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+@@ -395,6 +509,7 @@
+         payload: &[u8],
+         _: (),
+     ) -> Result<H256, DispatchError> {
++        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+         let message = BridgeMessage {
+             payload: payload
+                 .to_vec()
+@@ -410,7 +525,7 @@
+     }
+ 
+     fn submit_weight() -> Weight {
+-        <T as Config>::WeightInfo::submit()
++        <T as Config>::WeightInfo::submit().saturating_add(Self::recovery_submit_overhead())
+     }
+ }
+ 
+@@ -422,35 +537,22 @@
+         payload: &[u8],
+         additional_data: AdditionalEVMOutboundData,
+     ) -> Result<H256, DispatchError> {
+-        ensure!(
+-            additional_data.max_gas < T::MaxGasPerMessage::get(),
+-            Error::<T>::MessageGasLimitExceeded
+-        );
+-        QueueTotalGas::<T>::try_mutate(GenericNetworkId::EVM(network_id), |total_gas| {
+-            *total_gas = total_gas.saturating_add(additional_data.max_gas);
+-            ensure!(
+-                *total_gas < T::MaxGasPerCommit::get(),
+-                Error::<T>::CommitmentGasLimitExceeded
+-            );
+-            Ok::<(), DispatchError>(())
+-        })?;
+-        let message = bridge_types::evm::Message {
+-            payload: payload
+-                .to_vec()
+-                .try_into()
+-                .map_err(|_| Error::<T>::PayloadTooLarge)?,
+-            target: additional_data.target,
+-            max_gas: additional_data.max_gas,
+-        };
+-        Self::submit_message(
+-            network_id.into(),
+-            who,
+-            bridge_types::GenericBridgeMessage::EVM(message),
+-        )
++        // A stopped queue must not consume its aggregate gas budget. The
++        // deployed no-policy path is retained exactly for checkpoint replay.
++        if sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
++            frame_support::storage::with_transaction(|| {
++                match Self::submit_evm_inner(network_id, who, payload, additional_data) {
++                    Ok(id) => frame_support::storage::TransactionOutcome::Commit(Ok(id)),
++                    Err(error) => frame_support::storage::TransactionOutcome::Rollback(Err(error)),
++                }
++            })
++        } else {
++            Self::submit_evm_inner(network_id, who, payload, additional_data)
++        }
+     }
+ 
+     fn submit_weight() -> Weight {
+-        <T as Config>::WeightInfo::submit()
++        <T as Config>::WeightInfo::submit().saturating_add(Self::recovery_submit_overhead())
+     }
+ }
+ 
+diff --git a/vendor/sora2-common/pallets/channel/src/recovery.rs b/vendor/sora2-common/pallets/channel/src/recovery.rs
+new file mode 100644
+--- /dev/null
++++ b/vendor/sora2-common/pallets/channel/src/recovery.rs
+@@ -0,0 +1,21 @@
++//! Persistent SORA Nexus bridge maintenance latch. No call can clear it here.
++
++pub(crate) const HALT_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
++pub(crate) const INBOUND_CONTEXT_KEY: &[u8] = b":sora-nexus:recovery:bridge-inbound-context:v1";
++
++pub(crate) fn halted() -> bool {
++    sp_io::storage::exists(HALT_KEY)
++}
++
++/// The recovery executive sets this exact SCALE u32 only around a committed
++/// authenticated inbound operation, and clears it transactionally before return.
++pub(crate) fn inbound_allowed<T: frame_system::Config>() -> bool {
++    if !halted() {
++        return true;
++    }
++    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
++    number.ok().is_some_and(|number| {
++        sp_io::storage::get(INBOUND_CONTEXT_KEY)
++            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
++    })
++}
+diff --git a/vendor/sora2-common/pallets/data-signer/src/lib.rs b/vendor/sora2-common/pallets/data-signer/src/lib.rs
+--- a/vendor/sora2-common/pallets/data-signer/src/lib.rs
++++ b/vendor/sora2-common/pallets/data-signer/src/lib.rs
+@@ -183,6 +183,8 @@
+         ApprovalNotPending,
+         PendingApprovalAlreadyExists,
+         PeerRegisteredInOtherNetwork,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     /// Peers
+@@ -230,6 +232,10 @@
+             network_id: GenericNetworkId,
+             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             let peers = Self::canonicalize_peers(peers, true)?;
+             Self::ensure_no_substrate_peer_overlap(network_id, peers.iter())?;
+@@ -256,6 +262,14 @@
+             data: H256,
+             signature: ecdsa::Signature,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !bridge_types::recovery::commitment_quarantined(network_id, data),
++                Error::<T>::RecoveryHalted
++            );
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_none(origin)?;
+             let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::PalletNotInitialized)?;
+             ensure!(
+@@ -304,6 +318,10 @@
+             network_id: GenericNetworkId,
+             peer: ecdsa::Public,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 !PendingPeerUpdate::<T>::get(network_id),
+@@ -343,6 +361,10 @@
+             network_id: GenericNetworkId,
+             peer: ecdsa::Public,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 !PendingPeerUpdate::<T>::get(network_id),
+@@ -373,6 +395,10 @@
+             origin: OriginFor<T>,
+             peer: ecdsa::Public,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
+             let network_id: GenericNetworkId = network_id.into();
+             ensure!(
+@@ -403,6 +429,10 @@
+             origin: OriginFor<T>,
+             _peer: ecdsa::Public,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin)?;
+             let network_id: GenericNetworkId = network_id.into();
+             ensure!(
+@@ -420,6 +450,10 @@
+             network_id: GenericNetworkId,
+             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             let peers = Self::canonicalize_peers(peers, false)?;
+             Self::ensure_no_substrate_peer_overlap(network_id, peers.iter())?;
+@@ -440,6 +474,14 @@
+             network_id: GenericNetworkId,
+             data: H256,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !bridge_types::recovery::commitment_quarantined(network_id, data),
++                Error::<T>::RecoveryHalted
++            );
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 Peers::<T>::contains_key(network_id),
+@@ -463,6 +505,10 @@
+             network_id: GenericNetworkId,
+             data: H256,
+         ) -> DispatchResultWithPostInfo {
++            ensure!(
++                !bridge_types::recovery::commitment_quarantined(network_id, data),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 PendingApprovals::<T>::get(network_id, data),
+@@ -552,12 +598,19 @@
+         type Call = Call<T>;
+         // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
++            if sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1") {
++                return InvalidTransaction::Call.into();
++            }
+             if let Call::approve {
+                 network_id,
+                 data,
+                 signature,
+             } = call
+             {
++                ensure!(
++                    !bridge_types::recovery::commitment_quarantined(*network_id, *data),
++                    InvalidTransaction::Stale
++                );
+                 let peers = Peers::<T>::get(network_id).ok_or(InvalidTransaction::BadSigner)?;
+                 ensure!(
+                     PendingApprovals::<T>::get(network_id, *data),
+diff --git a/vendor/sora2-common/pallets/evm-fungible-app/src/lib.rs b/vendor/sora2-common/pallets/evm-fungible-app/src/lib.rs
+--- a/vendor/sora2-common/pallets/evm-fungible-app/src/lib.rs
++++ b/vendor/sora2-common/pallets/evm-fungible-app/src/lib.rs
+@@ -308,6 +308,8 @@
+         BaseFeeIsNotAvailable,
+         InvalidBaseFeeUpdate,
+         DeprecatedTokenAddress,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     #[pallet::genesis_config]
+@@ -369,6 +371,10 @@
+             else {
+                 frame_support::fail!(DispatchError::BadOrigin);
+             };
++            ensure!(
++                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
++                Error::<T>::RecoveryHalted
++            );
+             Self::ensure_token_address_allowed(network_id, token)?;
+             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
+                 // should never return this error, because called from Ethereum
+@@ -426,6 +432,10 @@
+             asset_id: AssetIdOf<T>,
+             contract: H160,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             let CallOriginOutput {
+                 network_id: GenericNetworkId::EVM(network_id),
+                 additional: GenericAdditionalInboundData::EVM(additional),
+@@ -481,6 +491,10 @@
+             name: AssetNameOf<T>,
+             decimals: u8,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 !AssetsByAddresses::<T>::contains_key(network_id, address),
+@@ -526,6 +540,10 @@
+             asset_id: AssetIdOf<T>,
+             decimals: u8,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 !AssetsByAddresses::<T>::contains_key(network_id, address),
+@@ -567,6 +585,10 @@
+             network_id: EVMChainId,
+             asset_id: AssetIdOf<T>,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             ensure!(
+                 !TokenAddresses::<T>::contains_key(network_id, &asset_id),
+@@ -604,6 +626,10 @@
+             name: AssetNameOf<T>,
+             sidechain_precision: u8,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             Self::ensure_token_address_allowed(network_id, contract)?;
+             ensure!(
+@@ -632,6 +658,10 @@
+             asset_id: AssetIdOf<T>,
+             sidechain_precision: u8,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure_root(origin)?;
+             Self::ensure_token_address_allowed(network_id, contract)?;
+             ensure!(
+@@ -658,6 +688,10 @@
+             relayer: H160,
+             signature: sp_core::ecdsa::Signature,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             let who = ensure_signed(origin)?;
+             Self::ensure_can_claim_relayer_fees(&who, network_id, relayer, signature)?;
+             let spent_fees = SpentFees::<T>::get(network_id, relayer);
+@@ -775,6 +809,10 @@
+             recipient: H160,
+             amount: BalanceOf<T>,
+         ) -> Result<H256, DispatchError> {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
+             let target =
+@@ -845,6 +883,10 @@
+             asset_id: AssetIdOf<T>,
+             amount: BalanceOf<T>,
+         ) -> DispatchResult {
++            ensure!(
++                !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1"),
++                Error::<T>::RecoveryHalted
++            );
+             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
+ 
+             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+@@ -891,11 +933,15 @@
+ 
+         fn refund(
+             network_id: GenericNetworkId,
+-            _message_id: H256,
++            message_id: H256,
+             recipient: T::AccountId,
+             asset_id: AssetIdOf<T>,
+             amount: BalanceOf<T>,
+         ) -> DispatchResult {
++            ensure!(
++                !bridge_types::recovery::message_quarantined(network_id, message_id),
++                Error::<T>::RecoveryHalted
++            );
+             let network_id = network_id.evm().ok_or(Error::<T>::InvalidNetwork)?;
+             Pallet::<T>::refund_inner(network_id, recipient, asset_id, amount)
+         }
+diff --git a/vendor/sora2-common/pallets/jetton-app/src/lib.rs b/vendor/sora2-common/pallets/jetton-app/src/lib.rs
+--- a/vendor/sora2-common/pallets/jetton-app/src/lib.rs
++++ b/vendor/sora2-common/pallets/jetton-app/src/lib.rs
+@@ -137,7 +137,6 @@
+ 
+     #[pallet::config]
+     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
+-
+         type CallOrigin: EnsureOrigin<
+             Self::RuntimeOrigin,
+             Success = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
+@@ -238,6 +237,8 @@
+         WrongRequestStatus,
+         OperationNotSupported,
+         WrongAccountPrefix,
++        /// This exact message remains permanently quarantined by recovery.
++        RecoveryHalted,
+     }
+ 
+     #[pallet::genesis_config]
+@@ -314,6 +315,10 @@
+             else {
+                 fail!(DispatchError::BadOrigin);
+             };
++            ensure!(
++                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
++                Error::<T>::RecoveryHalted
++            );
+             let sender = sender.address().ok_or(Error::<T>::WrongAccountPrefix)?;
+             let token = token.address().ok_or(Error::<T>::WrongAccountPrefix)?;
+             let asset_id = AssetsByAddresses::<T>::get(token)
+diff --git a/vendor/sora2-common/pallets/parachain-app/src/lib.rs b/vendor/sora2-common/pallets/parachain-app/src/lib.rs
+--- a/vendor/sora2-common/pallets/parachain-app/src/lib.rs
++++ b/vendor/sora2-common/pallets/parachain-app/src/lib.rs
+@@ -157,7 +157,6 @@
+ 
+     #[pallet::config]
+     pub trait Config: frame_system::Config<RuntimeEvent: From<Event<Self>>> {
+-
+         type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
+ 
+         type CallOrigin: EnsureOrigin<
+@@ -252,6 +251,8 @@
+         RelaychainAssetNotRegistered,
+         NotRelayTransferableAsset,
+         RelaychainAssetRegistered,
++        /// This exact message remains permanently quarantined by recovery.
++        RecoveryHalted,
+     }
+ 
+     #[pallet::call]
+@@ -274,6 +275,10 @@
+                 timepoint,
+                 ..
+             } = T::CallOrigin::ensure_origin(origin.clone())?;
++            ensure!(
++                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
++                Error::<T>::RecoveryHalted
++            );
+ 
+             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
+@@ -728,11 +733,15 @@
+ 
+     fn refund(
+         network_id: GenericNetworkId,
+-        _message_id: bridge_types::H256,
++        message_id: bridge_types::H256,
+         recipient: T::AccountId,
+         asset_id: AssetIdOf<T>,
+         amount: BalanceOf<T>,
+     ) -> DispatchResult {
++        ensure!(
++            !bridge_types::recovery::message_quarantined(network_id, message_id),
++            sp_runtime::DispatchError::Other("recovery outgoing quarantine")
++        );
+         let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
+         let asset_kind =
+             AssetKinds::<T>::get(network_id, &asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+diff --git a/vendor/sora2-common/pallets/substrate-app/src/lib.rs b/vendor/sora2-common/pallets/substrate-app/src/lib.rs
+--- a/vendor/sora2-common/pallets/substrate-app/src/lib.rs
++++ b/vendor/sora2-common/pallets/substrate-app/src/lib.rs
+@@ -39,6 +39,8 @@
+ //! - `burn`: Burn an backed substrate or thischain token balance.
+ //!
+ #![cfg_attr(not(feature = "std"), no_std)]
++
++mod recovery;
+ 
+ pub const TRANSFER_MAX_GAS: u64 = 100_000;
+ 
+@@ -264,6 +266,13 @@
+         OptionQuery,
+     >;
+ 
++    /// Acknowledgements for manifest-authorized incoming transfers are retained
++    /// without consuming any outbound queue slot or nonce while recovery is halted.
++    /// Reopening and delivery require a separate reconciled release.
++    #[pallet::storage]
++    pub type DeferredTransferResults<T: Config> =
++        StorageDoubleMap<_, Identity, SubNetworkId, Identity, H256, MessageStatus, OptionQuery>;
++
+     #[pallet::error]
+     pub enum Error<T> {
+         TokenIsNotRegistered,
+@@ -276,6 +285,10 @@
+         UnknownPrecision,
+         WrongAssetId,
+         WrongAccountId,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
++        /// An existing delivery result cannot be overwritten or replayed.
++        DeferredResultExists,
+     }
+ 
+     #[pallet::call]
+@@ -307,6 +320,10 @@
+             asset_kind: AssetKind,
+             sidechain_precision: u8,
+         ) -> DispatchResult {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+             SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
+             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
+@@ -327,6 +344,7 @@
+             asset_id: AssetIdOf<T>,
+             sidechain_asset_id: GenericAssetId,
+         ) -> DispatchResult {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+             ensure!(
+                 T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
+@@ -389,6 +407,7 @@
+             symbol: AssetSymbolOf<T>,
+             name: AssetNameOf<T>,
+         ) -> DispatchResult {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             ensure_root(origin)?;
+ 
+             // Ensure that asset had not been registered for current network id
+@@ -425,6 +444,7 @@
+             message_id: H256,
+             message_status: MessageStatus,
+         ) -> DispatchResult {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             let CallOriginOutput {
+                 network_id,
+                 timepoint,
+@@ -450,6 +470,10 @@
+             recipient: AccountIdOf<T>,
+             amount: GenericBalance,
+         ) -> Result<bridge_types::traits::MessageDispatchOutcome, DispatchError> {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             frame_support::storage::with_storage_layer(|| {
+                 let CallOriginOutput {
+                     network_id,
+@@ -457,6 +481,14 @@
+                     timepoint,
+                     ..
+                 } = T::CallOrigin::ensure_origin(origin)?;
++                ensure!(
++                    !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
++                    Error::<T>::RecoveryHalted
++                );
++                ensure!(
++                    !DeferredTransferResults::<T>::contains_key(network_id, message_id),
++                    Error::<T>::DeferredResultExists
++                );
+                 // A caught mint error must not commit any partial mint/unlock mutations.
+                 let outcome = match frame_support::storage::with_storage_layer(|| {
+                     Self::mint_inner(
+@@ -473,16 +505,20 @@
+                     bridge_types::traits::MessageDispatchOutcome::Applied => MessageStatus::Done,
+                     bridge_types::traits::MessageDispatchOutcome::Failed => MessageStatus::Failed,
+                 };
+-                T::OutboundChannel::submit(
+-                    network_id,
+-                    &RawOrigin::Root,
+-                    &SubstrateAppCall::ReportTransferResult {
+-                        message_id,
+-                        message_status,
+-                    }
+-                    .prepare_message(),
+-                    (),
+-                )?;
++                if crate::recovery::halted() {
++                    DeferredTransferResults::<T>::insert(network_id, message_id, message_status);
++                } else {
++                    T::OutboundChannel::submit(
++                        network_id,
++                        &RawOrigin::Root,
++                        &SubstrateAppCall::ReportTransferResult {
++                            message_id,
++                            message_status,
++                        }
++                        .prepare_message(),
++                        (),
++                    )?;
++                }
+                 Ok(outcome)
+             })
+         }
+@@ -496,6 +532,14 @@
+             message_id: H256,
+             timepoint: bridge_types::GenericTimepoint,
+         ) -> DispatchResult {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
++            ensure!(
++                !bridge_types::recovery::message_quarantined(network_id.into(), message_id),
++                Error::<T>::RecoveryHalted
++            );
+             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
+ 
+@@ -543,6 +587,7 @@
+             recipient: GenericAccount,
+             amount: BalanceOf<T>,
+         ) -> Result<H256, DispatchError> {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
+ 
+             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+@@ -648,11 +693,15 @@
+ 
+     fn refund(
+         network_id: GenericNetworkId,
+-        _message_id: bridge_types::H256,
++        message_id: bridge_types::H256,
+         recipient: T::AccountId,
+         asset_id: AssetIdOf<T>,
+         amount: BalanceOf<T>,
+     ) -> DispatchResult {
++        ensure!(
++            !bridge_types::recovery::message_quarantined(network_id, message_id),
++            Error::<T>::RecoveryHalted
++        );
+         let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
+         let asset_kind =
+             AssetKinds::<T>::get(network_id, &asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+diff --git a/vendor/sora2-common/pallets/substrate-app/src/recovery.rs b/vendor/sora2-common/pallets/substrate-app/src/recovery.rs
+new file mode 100644
+--- /dev/null
++++ b/vendor/sora2-common/pallets/substrate-app/src/recovery.rs
+@@ -0,0 +1,21 @@
++//! Persistent SORA Nexus bridge maintenance latch. No call can clear it here.
++
++pub(crate) const HALT_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
++pub(crate) const INBOUND_CONTEXT_KEY: &[u8] = b":sora-nexus:recovery:bridge-inbound-context:v1";
++
++pub(crate) fn halted() -> bool {
++    sp_io::storage::exists(HALT_KEY)
++}
++
++/// The recovery executive sets this exact SCALE u32 only around a committed
++/// authenticated inbound operation, and clears it transactionally before return.
++pub(crate) fn inbound_allowed<T: frame_system::Config>() -> bool {
++    if !halted() {
++        return true;
++    }
++    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
++    number.ok().is_some_and(|number| {
++        sp_io::storage::get(INBOUND_CONTEXT_KEY)
++            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
++    })
++}
+diff --git a/vendor/sora2-common/pallets/substrate-channel/src/inbound/mod.rs b/vendor/sora2-common/pallets/substrate-channel/src/inbound/mod.rs
+--- a/vendor/sora2-common/pallets/substrate-channel/src/inbound/mod.rs
++++ b/vendor/sora2-common/pallets/substrate-channel/src/inbound/mod.rs
+@@ -123,6 +123,8 @@
+         ContractExists,
+         /// Call encoding failed.
+         CallEncodeFailed,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     impl<T: Config> Pallet<T> {
+@@ -135,6 +137,10 @@
+             >,
+             proof: &<T::Verifier as Verifier>::Proof,
+         ) -> DispatchResult {
++            ensure!(
++                crate::recovery::inbound_allowed::<T>(),
++                Error::<T>::RecoveryHalted
++            );
+             let bridge_types::GenericCommitment::Sub(batch) = commitment else {
+                 frame_support::fail!(Error::<T>::InvalidCommitment);
+             };
+@@ -142,6 +148,21 @@
+                 ChannelNonces::<T>::get(network_id).checked_add(1) == Some(batch.nonce),
+                 Error::<T>::InvalidNonce
+             );
++            for index in 0..batch.messages.len() {
++                ensure!(
++                    !bridge_types::recovery::message_quarantined(
++                        network_id.into(),
++                        MessageId::batched(
++                            network_id.into(),
++                            T::ThisNetworkId::get(),
++                            batch.nonce,
++                            index as u64
++                        )
++                        .hash(),
++                    ),
++                    Error::<T>::RecoveryHalted
++                );
++            }
+             T::Verifier::verify(network_id.into(), commitment.hash(), proof)
+         }
+ 
+@@ -236,6 +257,9 @@
+         }
+     }
+ 
++    // Keep the deployed bridge worker wire format and fee policy during this SDK migration.
++    // The FRAME macro recognizes this exact attribute when retaining legacy admission.
++    #[allow(deprecated)]
+     #[pallet::validate_unsigned]
+     impl<T: Config> ValidateUnsigned for Pallet<T> {
+         type Call = Call<T>;
+diff --git a/vendor/sora2-common/pallets/substrate-channel/src/lib.rs b/vendor/sora2-common/pallets/substrate-channel/src/lib.rs
+--- a/vendor/sora2-common/pallets/substrate-channel/src/lib.rs
++++ b/vendor/sora2-common/pallets/substrate-channel/src/lib.rs
+@@ -30,5 +30,7 @@
+ 
+ #![cfg_attr(not(feature = "std"), no_std)]
+ 
++mod recovery;
++
+ pub mod inbound;
+ pub mod outbound;
+diff --git a/vendor/sora2-common/pallets/substrate-channel/src/outbound/mod.rs b/vendor/sora2-common/pallets/substrate-channel/src/outbound/mod.rs
+--- a/vendor/sora2-common/pallets/substrate-channel/src/outbound/mod.rs
++++ b/vendor/sora2-common/pallets/substrate-channel/src/outbound/mod.rs
+@@ -31,10 +31,10 @@
+ //! Channel for passing messages from substrate to ethereum.
+ 
+ use bridge_types::substrate::BridgeMessage;
++use bridge_types::H256;
+ use frame_support::ensure;
+ use frame_support::traits::Get;
+ use frame_support::weights::Weight;
+-use bridge_types::H256;
+ 
+ use bridge_types::types::MessageNonce;
+ use bridge_types::SubNetworkId;
+@@ -80,7 +80,6 @@
+     pub trait Config:
+         frame_system::Config<RuntimeEvent: From<Event<Self>>> + pallet_timestamp::Config
+     {
+-
+         /// Max bytes in a message payload
+         type MaxMessagePayloadSize: Get<u32>;
+ 
+@@ -164,7 +163,33 @@
+         //
+         // Use `on_finalize` instead of `on_idle` to ensure that the commitment is always sent,
+         // because `on_idle` not guaranteed to be called.
++        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
++            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
++                return Weight::zero();
++            }
++            if crate::recovery::halted() {
++                return T::DbWeight::get().reads(2);
++            }
++            let interval = Self::interval();
++            let mut reads = 3u64;
++            if now % interval == Zero::zero() {
++                for network in MessageQueues::<T>::iter_keys() {
++                    let count = MessageQueues::<T>::decode_len(network)
++                        .unwrap_or(0)
++                        .min(T::MaxMessagesPerCommit::get() as usize)
++                        as u64;
++                    reads = reads
++                        .saturating_add(3)
++                        .saturating_add(count.saturating_mul(2));
++                }
++            }
++            T::DbWeight::get().reads(reads)
++        }
++
+         fn on_finalize(now: BlockNumberFor<T>) {
++            if crate::recovery::halted() {
++                return;
++            }
+             let interval = Self::interval();
+             if now % interval == Zero::zero() {
+                 for chain_id in MessageQueues::<T>::iter_keys() {
+@@ -203,6 +228,8 @@
+         ChannelExists,
+         /// Interval cannot be zero.
+         ZeroInterval,
++        /// Bridge execution remains quarantined by the recovery release.
++        RecoveryHalted,
+     }
+ 
+     #[pallet::call]
+@@ -224,7 +251,40 @@
+     }
+ 
+     impl<T: Config> Pallet<T> {
++        /// Exact native queue witness for manifest-bound recovery quarantine.
++        pub fn recovery_queue(
++            network_id: SubNetworkId,
++        ) -> BoundedVec<BridgeMessage<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit> {
++            MessageQueues::<T>::get(network_id)
++        }
++
+         pub(crate) fn commit(network_id: SubNetworkId) {
++            if crate::recovery::halted() {
++                return;
++            }
++            let Some(next_nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
++                return;
++            };
++            if bridge_types::recovery::batch_quarantined(1, network_id.into(), next_nonce) {
++                return;
++            }
++            let message_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
++            if message_count > T::MaxMessagesPerCommit::get() as usize
++                || (0..message_count).any(|index| {
++                    bridge_types::recovery::message_quarantined(
++                        network_id.into(),
++                        MessageId::batched(
++                            T::ThisNetworkId::get(),
++                            network_id.into(),
++                            next_nonce,
++                            index as u64,
++                        )
++                        .hash(),
++                    )
++                })
++            {
++                return;
++            }
+             debug!("Commit substrate messages");
+             let messages = MessageQueues::<T>::take(network_id);
+ 
+@@ -295,6 +355,7 @@
+             payload: &[u8],
+             _: (),
+         ) -> Result<H256, DispatchError> {
++            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+             debug!("Send message from {:?} to network {:?}", who, network_id);
+             let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
+             ensure!(
+@@ -309,6 +370,26 @@
+             let batch_nonce = ChannelNonces::<T>::get(network_id)
+                 .checked_add(1)
+                 .ok_or(Error::<T>::Overflow)?;
++            ensure!(
++                !bridge_types::recovery::batch_quarantined(1, network_id.into(), batch_nonce),
++                Error::<T>::RecoveryHalted
++            );
++
++            // Do not append a fresh transfer behind an irreversibly stopped
++            // position: the exact batch (including all existing slots) is blocked.
++            ensure!(
++                !(0..=messages_count).any(|index| bridge_types::recovery::message_quarantined(
++                    network_id.into(),
++                    MessageId::batched(
++                        T::ThisNetworkId::get(),
++                        network_id.into(),
++                        batch_nonce,
++                        index
++                    )
++                    .hash(),
++                )),
++                Error::<T>::RecoveryHalted
++            );
+ 
+             MessageQueues::<T>::try_append(
+                 network_id,
+@@ -336,7 +417,21 @@
+         }
+ 
+         fn submit_weight() -> Weight {
+-            <T as Config>::WeightInfo::submit()
++            let base = <T as Config>::WeightInfo::submit();
++            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
++                return base;
++            }
++            // Cover both marker namespaces at every bounded queue position,
++            // global/batch admission and repeated weight probes.
++            let positions = T::MaxMessagesPerCommit::get() as u64;
++            base.saturating_add(
++                T::DbWeight::get()
++                    .reads(positions.saturating_mul(2).saturating_add(8))
++                    .saturating_add(Weight::from_parts(
++                        positions.saturating_mul(250_000).saturating_add(2_000_000),
++                        positions.saturating_mul(8_192).saturating_add(16_384),
++                    )),
++            )
+         }
+     }
+ }
+diff --git a/vendor/sora2-common/pallets/substrate-channel/src/recovery.rs b/vendor/sora2-common/pallets/substrate-channel/src/recovery.rs
+new file mode 100644
+--- /dev/null
++++ b/vendor/sora2-common/pallets/substrate-channel/src/recovery.rs
+@@ -0,0 +1,21 @@
++//! Persistent SORA Nexus bridge maintenance latch. No call can clear it here.
++
++pub(crate) const HALT_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
++pub(crate) const INBOUND_CONTEXT_KEY: &[u8] = b":sora-nexus:recovery:bridge-inbound-context:v1";
++
++pub(crate) fn halted() -> bool {
++    sp_io::storage::exists(HALT_KEY)
++}
++
++/// The recovery executive sets this exact SCALE u32 only around a committed
++/// authenticated inbound operation, and clears it transactionally before return.
++pub(crate) fn inbound_allowed<T: frame_system::Config>() -> bool {
++    if !halted() {
++        return true;
++    }
++    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
++    number.ok().is_some_and(|number| {
++        sp_io::storage::get(INBOUND_CONTEXT_KEY)
++            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
++    })
++}
+diff --git a/vendor/sora2-common/pallets/types/src/lib.rs b/vendor/sora2-common/pallets/types/src/lib.rs
+--- a/vendor/sora2-common/pallets/types/src/lib.rs
++++ b/vendor/sora2-common/pallets/types/src/lib.rs
+@@ -32,6 +32,7 @@
+ 
+ pub mod channel_abi;
+ pub mod evm;
++pub mod recovery;
+ pub mod substrate;
+ #[cfg(any(feature = "test", test))]
+ pub mod test_utils;
+diff --git a/vendor/sora2-common/pallets/types/src/recovery.rs b/vendor/sora2-common/pallets/types/src/recovery.rs
+new file mode 100644
+--- /dev/null
++++ b/vendor/sora2-common/pallets/types/src/recovery.rs
+@@ -0,0 +1,115 @@
++//! Permanent SORA Nexus outgoing quarantine identifiers.
++//!
++//! These markers survive removal of the independent global bridge halt. They are
++//! written only by manifest-authorized recovery work. Native records and public
++//! signatures remain evidence; existence of a marker never authorizes a refund.
++
++use crate::{GenericNetworkId, H256};
++use codec::{Decode, DecodeWithMemTracking, Encode};
++use sp_std::vec::Vec;
++
++fn key(prefix: &[u8], identity: impl Encode) -> Vec<u8> {
++    let mut key = prefix.to_vec();
++    key.extend(identity.encode());
++    key
++}
++
++pub fn hashi_key(network: impl Encode, request: H256) -> Vec<u8> {
++    key(
++        b":sora-nexus:recovery:outgoing-hashi:v1:",
++        (network, request),
++    )
++}
++
++pub fn message_key(network: GenericNetworkId, message: H256) -> Vec<u8> {
++    key(
++        b":sora-nexus:recovery:outgoing-message:v1:",
++        (network, message),
++    )
++}
++
++/// Guarded historical ownership work uses a data namespace separate from the
++/// executive's protected control namespace. This marker conveys no financial
++/// claim and cannot establish the authority of an external batch or signature.
++#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking)]
++pub struct HistoricalMessageTombstone {
++    pub tag: [u8; 8],
++    pub source_record_hash: [u8; 32],
++    pub original_owner: [u8; 32],
++    pub effective_owner: [u8; 32],
++    /// Raw review/data commitment; never the policy that commits this value.
++    pub evidence: [u8; 32],
++    pub refund_authorized: bool,
++}
++
++impl HistoricalMessageTombstone {
++    pub const TAG: [u8; 8] = *b"snxhist1";
++    pub fn is_valid(&self) -> bool {
++        self.tag == Self::TAG
++            && !self.refund_authorized
++            && self.source_record_hash != [0; 32]
++            && self.evidence != [0; 32]
++    }
++}
++
++pub fn historical_message_key(network: GenericNetworkId, message: H256) -> Vec<u8> {
++    key(
++        b":sora-nexus:historical-outgoing-message:v1:",
++        (network, message),
++    )
++}
++
++/// Channel 0 is the generic channel; channel 1 is the substrate channel. Keeping
++/// them separate prevents a nonce on one implementation from blocking the other.
++pub fn batch_key(channel: u8, network: GenericNetworkId, nonce: u64) -> Vec<u8> {
++    key(
++        b":sora-nexus:recovery:outgoing-batch:v1:",
++        (channel, network, nonce),
++    )
++}
++
++pub const HISTORICAL_COMMITMENT_PREFIX: &[u8] = b":sora-nexus:historical-signing-commitment:v1:";
++
++/// Exact checkpoint-known signing hash, independent of message-ID hash domains.
++/// No retained signature or external redemption authorization is invalidated.
++pub fn historical_commitment_key(network: GenericNetworkId, commitment: H256) -> Vec<u8> {
++    key(HISTORICAL_COMMITMENT_PREFIX, (network, commitment))
++}
++
++pub fn commitment_key(network: GenericNetworkId, commitment: H256) -> Vec<u8> {
++    key(
++        b":sora-nexus:recovery:outgoing-commitment:v1:",
++        (network, commitment),
++    )
++}
++
++pub const HISTORICAL_HASHI_PREFIX: &[u8] = b":sora-nexus:historical-hashi-request:v1:";
++
++/// Native HASHI lookup identity, including old requests without BridgeProxy rows.
++/// Stored request hashes remain authoritative even when historical migrations
++/// changed a payload amount. A marker never authorizes an external refund.
++pub fn historical_hashi_key(network: impl Encode, request: H256) -> Vec<u8> {
++    key(HISTORICAL_HASHI_PREFIX, (network, request))
++}
++
++pub fn hashi_quarantined(network: impl Encode, request: H256) -> bool {
++    sp_io::storage::exists(&hashi_key(&network, request))
++        || sp_io::storage::exists(&historical_hashi_key(network, request))
++}
++
++pub fn message_quarantined(network: GenericNetworkId, message: H256) -> bool {
++    sp_io::storage::exists(&message_key(network, message))
++        // Malformed or unknown marker bytes also stop execution. Only typed,
++        // reviewed work may create the canonical historical marker; decoding
++        // failure must never revive an old refund or outgoing authorization.
++        || sp_io::storage::exists(&historical_message_key(network, message))
++}
++
++pub fn batch_quarantined(channel: u8, network: GenericNetworkId, nonce: u64) -> bool {
++    sp_io::storage::exists(&batch_key(channel, network, nonce))
++}
++
++pub fn commitment_quarantined(network: GenericNetworkId, commitment: H256) -> bool {
++    sp_io::storage::exists(&commitment_key(network, commitment))
++        || sp_io::storage::exists(&historical_commitment_key(network, commitment))
++}
+diff --git a/pallets/eth-bridge/src/tests/mock.rs b/pallets/eth-bridge/src/tests/mock.rs
+--- a/pallets/eth-bridge/src/tests/mock.rs
++++ b/pallets/eth-bridge/src/tests/mock.rs
+@@ -267,6 +267,7 @@
+     type WeightToFee = WeightToFixedFee;
+     type MessageStatusNotifier = ();
+     type BridgeAssetLockChecker = ();
++    type IncomingAccountResolver = ();
+     type AssetInfoProvider = assets::Pallet<Runtime>;
+     type Denominator = TestDenominator;
+     type MaxRequestsPerQueue = MaxRequestsPerQueueConst;
+@@ -840,15 +841,13 @@
+                 .encode(),
+             );
+             bridge_network_configs.push(ext_network.config.clone());
+-            endowed_accounts.extend(ext_network.config.assets.iter().cloned().map(
+-                |asset_config| {
+-                    (
+-                        ext_network.config.bridge_account_id.clone(),
+-                        asset_config.asset_id().clone(),
+-                        0,
+-                    )
+-                },
+-            ));
++            endowed_accounts.extend(ext_network.config.assets.iter().map(|asset_config| {
++                (
++                    ext_network.config.bridge_account_id.clone(),
++                    asset_config.asset_id().clone(),
++                    0,
++                )
++            }));
+             if self.endow_reserve_assets {
+                 endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
+                     |(asset_id, _balance)| {

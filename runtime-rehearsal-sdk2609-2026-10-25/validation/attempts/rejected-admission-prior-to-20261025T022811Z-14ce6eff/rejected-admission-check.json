@@ -1,0 +1,54 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-25T01:54:12.722Z",
+  "checkedAt": "2026-10-25T01:54:12.782Z",
+  "candidateSha256": "bf20c07577124a2cdc1b08d9fccab8044f45ae5e771b38c07d8db2ea5c00fbe6",
+  "snapshotSha256": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+  "runSha256": "c4ae732f081cbf4b48fddf041f0ede7a8d8b018be2fa06689a7d47fc32835e33",
+  "compatibilitySha256": "dbc5a099cda0bc95d98d3eee8583ed790bd020c773fe9299f4352e14d1b1fdc4",
+  "metadataSha256": "460d09cdc9a69355f84eefad577d95c0c6667dbcf5cdb434043d1557fa96318f",
+  "allowedAccountingKeys": {
+    "plain": [
+      "0x26aa394eea5630e07c48ae0c9558cef7156afe25323c70e43eb722ed7c886297",
+      "0x26aa394eea5630e07c48ae0c9558cef734abf5cb34d6244378cddbf18e849d96"
+    ],
+    "blockSize": "0x26aa394eea5630e07c48ae0c9558cef7dd2ecd4efaa88c313bb2e876dc3521ea",
+    "extrinsicData": "0x26aa394eea5630e07c48ae0c9558cef7df1daeb8986837f21cc5d17596bb78d1"
+  },
+  "suites": [
+    {
+      "report": "equivocation-fee-wasm-rehearsal.json",
+      "reportSha256": "16efd6c070deb6d8dd4435a7bc4b05d9e33bda6bf5a64f004e8a6b293392f26b",
+      "rejectedTransactions": 4,
+      "inspectedRawDiffEntries": 12,
+      "blockSizeWrites": [],
+      "rawAccountFeeRewardClaimAndEventWrites": 0,
+      "committedStateChangesOnInvalidTransaction": 0
+    },
+    {
+      "report": "fee-policy-wasm-rehearsal.json",
+      "reportSha256": "1c0404801876dedbc6aa22cd2196b6054ba5e4072ac00b9bccc17a6cb855a932",
+      "rejectedTransactions": 24,
+      "inspectedRawDiffEntries": 57,
+      "blockSizeWrites": [
+        {
+          "extrinsicSha256": "8a0c7adb2ff8a0141092da188c990e918d2251d002ded09c08fe156e4bca1657",
+          "encodedValue": "0xd9000000",
+          "decodedBytes": 217
+        }
+      ],
+      "rawAccountFeeRewardClaimAndEventWrites": 0,
+      "committedStateChangesOnInvalidTransaction": 0
+    }
+  ],
+  "checks": {
+    "rawInvalidDiffsContainOnlyBlockAccounting": true,
+    "noRawAccountFeeRewardClaimOrEventWrites": true,
+    "invalidTransactionDiffsRolledBack": true,
+    "admittedDispatchErrorsRemainCommitted": true,
+    "signedTestsRanOnlyInFollowingNormalBlock": true
+  },
+  "networkRequests": 0,
+  "scriptSha256": "fd0fe8f6301d9b41c6a0cb5af67f0ba820867b171e8e13918cbd873a59cea879",
+  "finishedAt": "2026-10-25T01:54:12.794Z"
+}

@@ -1,0 +1,11 @@
+✔ only exact block-accounting keys and valid extrinsic-data suffixes pass (1.109375ms)
+✔ payer/event/fee/reward or other storage writes are rejected (0.5215ms)
+✔ forged, extended and truncated extrinsic-data keys are rejected (0.5105ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 452.631375

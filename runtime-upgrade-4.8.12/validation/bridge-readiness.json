@@ -1,6 +1,6 @@
 {
   "status": "passed",
-  "checkedAt": "2026-10-05T09:30:01.573Z",
+  "checkedAt": "2026-10-08T04:13:52.994Z",
   "endpoint": "wss://mof2.sora.org",
   "submittedTransactions": 0,
   "privateKeysRead": 0,
@@ -20,7 +20,7 @@
       "peers": [
         {
           "account": "cnSRgH9n7hKJHqgLUubsPZ18CQgJCkprnMZwjNGFY7NBbbmpG",
-          "nonce": "877453",
+          "nonce": "877485",
           "providers": 6,
           "consumers": 0,
           "sufficients": 0,
@@ -30,7 +30,7 @@
         },
         {
           "account": "cnTgsL4SGJBTMvQo8eoorUj8GyJSXdaeDLwnqHYPbnawuAjj3",
-          "nonce": "180859",
+          "nonce": "180891",
           "providers": 3,
           "consumers": 1,
           "sufficients": 0,
@@ -40,7 +40,7 @@
         },
         {
           "account": "cnVByMHQrfhbz81zioyZhP5YQmt5VGcpJY7bg3S5z5WcMVQNJ",
-          "nonce": "928727",
+          "nonce": "928759",
           "providers": 6,
           "consumers": 0,
           "sufficients": 0,
@@ -698,13 +698,13 @@
       ]
     }
   ],
-  "blockHash": "0xd1f586078378c8a8894d080d276b1b00a2120d3919e487677639de036e03d94e",
-  "blockNumber": 27911254,
+  "blockHash": "0x04275cc77c9a1c5016333c271391784850eb6dc9f3d3e8dc57e0b87abb19647c",
+  "blockNumber": 27951228,
   "runtimeVersion": {
     "specName": "sora-substrate",
     "implName": "sora-substrate",
     "authoringVersion": 1,
-    "specVersion": 132,
+    "specVersion": 133,
     "implVersion": 1,
     "apis": [
       [
@@ -854,5 +854,5 @@
     "state_getStorage": 133
   },
   "scriptSha256": "727c389d24d650c2c5b4e090ff4a8f62debaf8a3ed5fca7ff81a204050b48aeb",
-  "snapshotSha256": "bcc1aa60b48c960c3d349c67bbc0a007d77dadf3f927a879c146632a336e207f"
+  "snapshotSha256": "b7f1c593b3ffe034855b3a35c1dd9fab783443f6325ff3b1476f68dccd05622a"
 }

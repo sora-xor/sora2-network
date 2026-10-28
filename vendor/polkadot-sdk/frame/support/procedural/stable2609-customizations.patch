@@ -1,3 +1,309 @@
+--- a/src/construct_runtime/expand/call.rs
++++ b/src/construct_runtime/expand/call.rs
+@@ -15,7 +15,7 @@
+ // See the License for the specific language governing permissions and
+ // limitations under the License
+ 
+-use crate::construct_runtime::Pallet;
++use crate::construct_runtime::{parse::DispatchOriginGuard, Pallet};
+ use proc_macro2::TokenStream;
+ use quote::quote;
+ use syn::Ident;
+@@ -25,6 +25,7 @@
+ 	system_pallet: &Pallet,
+ 	pallet_decls: &[Pallet],
+ 	scrate: &TokenStream,
++	dispatch_origin_guard: Option<&DispatchOriginGuard>,
+ ) -> TokenStream {
+ 	let mut variant_defs = TokenStream::new();
+ 	let mut variant_patterns = Vec::new();
+@@ -55,6 +56,56 @@
+ 			#path::__substrate_call_check::is_call_part_defined!(#name);
+ 		});
+ 	}
++
++	let dispatch_info = quote! {
++		match self {
++			#(
++				#pallet_attrs
++				#variant_patterns => call.get_dispatch_info(),
++			)*
++		}
++	};
++	let unfiltered_dispatch = quote! {
++		match self {
++			#(
++				#pallet_attrs
++				#variant_patterns =>
++					#scrate::traits::UnfilteredDispatchable::dispatch_bypass_filter(call, origin),
++			)*
++		}
++	};
++	let (dispatch_info, unfiltered_dispatch) = if let Some(guard) = dispatch_origin_guard {
++		let check = &guard.check;
++		let weight = &guard.weight;
++		(
++			quote! {
++				let mut info = { #dispatch_info };
++				info.call_weight = info.call_weight.saturating_add(#weight());
++				info
++			},
++			quote! {
++				// An origin guard is an admission invariant, not a bypassable call filter.
++				// Every nested RuntimeCall charges its own declared/actual overhead.
++				let guard_weight = #weight();
++				if let Err(error) = #check(&origin) {
++					return Err(#scrate::dispatch::DispatchErrorWithPostInfo {
++						post_info: (Some(guard_weight), #scrate::dispatch::Pays::Yes).into(),
++						error,
++					});
++				}
++				let result: #scrate::dispatch::DispatchResultWithPostInfo = { #unfiltered_dispatch };
++				result.map(|mut post| {
++					post.actual_weight = post.actual_weight.map(|actual| actual.saturating_add(guard_weight));
++					post
++				}).map_err(|mut error| {
++					error.post_info.actual_weight = error.post_info.actual_weight.map(|actual| actual.saturating_add(guard_weight));
++					error
++				})
++			},
++		)
++	} else {
++		(dispatch_info, unfiltered_dispatch)
++	};
+ 
+ 	quote! {
+ 		#( #query_call_part_macros )*
+@@ -110,12 +161,7 @@
+ 		}
+ 		impl #scrate::dispatch::GetDispatchInfo for RuntimeCall {
+ 			fn get_dispatch_info(&self) -> #scrate::dispatch::DispatchInfo {
+-				match self {
+-					#(
+-						#pallet_attrs
+-						#variant_patterns => call.get_dispatch_info(),
+-					)*
+-				}
++				#dispatch_info
+ 			}
+ 		}
+ 
+@@ -184,13 +230,7 @@
+ 		impl #scrate::traits::UnfilteredDispatchable for RuntimeCall {
+ 			type RuntimeOrigin = RuntimeOrigin;
+ 			fn dispatch_bypass_filter(self, origin: RuntimeOrigin) -> #scrate::dispatch::DispatchResultWithPostInfo {
+-				match self {
+-					#(
+-						#pallet_attrs
+-						#variant_patterns =>
+-							#scrate::traits::UnfilteredDispatchable::dispatch_bypass_filter(call, origin),
+-					)*
+-				}
++				#unfiltered_dispatch
+ 			}
+ 		}
+ 
+@@ -248,3 +288,61 @@
+ 		}
+ 	}
+ }
++
++#[cfg(test)]
++mod dispatch_origin_guard_tests {
++	use super::*;
++	use crate::construct_runtime::parse::RuntimeDeclaration;
++	use quote::ToTokens;
++
++	fn generated(guarded: bool) -> syn::File {
++		let attribute = if guarded {
++			"#[dispatch_origin_guard(crate::admission::check, crate::admission::weight)]"
++		} else {
++			""
++		};
++		let RuntimeDeclaration::Explicit(definition) = syn::parse_str::<RuntimeDeclaration>(&format!(
++			"{attribute} pub enum Runtime {{ System: frame_system::{{Pallet, Call, Storage, Event<T>}} = 0 }}"
++		)).unwrap() else { panic!() };
++		let tokens = expand_outer_dispatch(
++			&definition.name,
++			&definition.pallets[0],
++			&definition.pallets,
++			&quote!(frame_support),
++			definition.dispatch_origin_guard.as_ref(),
++		);
++		syn::parse2(tokens).unwrap()
++	}
++
++	#[test]
++	fn optional_guard_changes_dispatch_and_weight_without_changing_call_encoding() {
++		let plain = generated(false);
++		let guarded = generated(true);
++		let call_enum = |file: syn::File| {
++			file.items
++				.into_iter()
++				.find_map(|item| {
++					if let syn::Item::Enum(item) = item {
++						Some(item.to_token_stream().to_string())
++					} else {
++						None
++					}
++				})
++				.unwrap()
++		};
++		assert_eq!(call_enum(plain.clone()), call_enum(guarded.clone()));
++		let plain = plain.to_token_stream().to_string();
++		let guarded = guarded.to_token_stream().to_string();
++		assert!(!plain.contains("guard_weight"));
++		assert!(!plain.contains("admission"));
++		assert!(guarded
++			.contains("info . call_weight . saturating_add (crate :: admission :: weight ())"));
++		assert!(guarded.contains("error . post_info . actual_weight"));
++		assert!(guarded.contains("post . actual_weight"));
++		assert_eq!(guarded.matches("crate :: admission :: check").count(), 1);
++		let dispatch = guarded.split("fn dispatch_bypass_filter").nth(1).unwrap();
++		assert!(
++			dispatch.find("admission :: check").unwrap() < dispatch.find("match self").unwrap()
++		);
++	}
++}
+--- a/src/construct_runtime/mod.rs
++++ b/src/construct_runtime/mod.rs
+@@ -348,7 +348,13 @@
+ fn construct_runtime_final_expansion(
+ 	definition: ExplicitRuntimeDeclaration,
+ ) -> Result<TokenStream2> {
+-	let ExplicitRuntimeDeclaration { name, pallets, pallets_token, where_section } = definition;
++	let ExplicitRuntimeDeclaration {
++		name,
++		pallets,
++		pallets_token,
++		where_section,
++		dispatch_origin_guard,
++	} = definition;
+ 
+ 	let system_pallet =
+ 		pallets.iter().find(|decl| decl.name == SYSTEM_PALLET_NAME).ok_or_else(|| {
+@@ -398,7 +404,13 @@
+ 	let all_pallets = decl_all_pallets(&name, pallets.iter(), &features);
+ 	let pallet_to_index = decl_pallet_runtime_setup(&name, &pallets, &scrate);
+ 
+-	let dispatch = expand::expand_outer_dispatch(&name, system_pallet, &pallets, &scrate);
++	let dispatch = expand::expand_outer_dispatch(
++		&name,
++		system_pallet,
++		&pallets,
++		&scrate,
++		dispatch_origin_guard.as_ref(),
++	);
+ 	let tasks = expand::expand_outer_task(&name, &pallets, &scrate);
+ 	let query = expand::expand_outer_query(&name, &pallets, &scrate);
+ 	let metadata = expand::expand_runtime_metadata(
+--- a/src/construct_runtime/parse.rs
++++ b/src/construct_runtime/parse.rs
+@@ -72,14 +72,45 @@
+ /// Declaration of a runtime with all pallet having explicit declaration of parts.
+ #[derive(Debug)]
+ pub struct ExplicitRuntimeDeclaration {
++	pub dispatch_origin_guard: Option<DispatchOriginGuard>,
+ 	pub name: Ident,
+ 	pub where_section: Option<WhereSection>,
+ 	pub pallets: Vec<Pallet>,
+ 	pub pallets_token: token::Brace,
+ }
+ 
++/// Optional runtime-wide admission applied even to unfiltered nested dispatch.
++/// Both paths are supplied explicitly; other runtimes retain the SDK behavior.
++#[derive(Debug)]
++pub struct DispatchOriginGuard {
++	pub check: Path,
++	pub weight: Path,
++}
++
++impl Parse for DispatchOriginGuard {
++	fn parse(input: ParseStream) -> Result<Self> {
++		let check = input.parse()?;
++		input.parse::<Token![,]>()?;
++		let weight = input.parse()?;
++		if !input.is_empty() {
++			return Err(input.error("expected exactly origin-check and weight function paths"));
++		}
++		Ok(Self { check, weight })
++	}
++}
++
+ impl Parse for RuntimeDeclaration {
+ 	fn parse(input: ParseStream) -> Result<Self> {
++		let mut dispatch_origin_guard = None;
++		for attribute in input.call(Attribute::parse_outer)? {
++			if !attribute.path().is_ident("dispatch_origin_guard") {
++				return Err(Error::new(attribute.span(), "only #[dispatch_origin_guard(check, weight)] is supported on the runtime declaration"));
++			}
++			if dispatch_origin_guard.is_some() {
++				return Err(Error::new(attribute.span(), "duplicate dispatch_origin_guard"));
++			}
++			dispatch_origin_guard = Some(attribute.parse_args::<DispatchOriginGuard>()?);
++		}
+ 		input.parse::<Token![pub]>()?;
+ 
+ 		// Support either `enum` or `struct`.
+@@ -101,6 +132,7 @@
+ 			},
+ 			PalletsConversion::Explicit(pallets) => {
+ 				Ok(RuntimeDeclaration::Explicit(ExplicitRuntimeDeclaration {
++					dispatch_origin_guard,
+ 					name,
+ 					where_section,
+ 					pallets,
+@@ -109,6 +141,7 @@
+ 			},
+ 			PalletsConversion::ExplicitExpanded(pallets) => {
+ 				Ok(RuntimeDeclaration::ExplicitExpanded(ExplicitRuntimeDeclaration {
++					dispatch_origin_guard,
+ 					name,
+ 					where_section,
+ 					pallets,
+@@ -789,3 +822,42 @@
+ 		Ok(PalletsConversion::Explicit(pallets))
+ 	}
+ }
++
++#[cfg(test)]
++mod dispatch_origin_guard_tests {
++	use super::*;
++
++	fn declaration(attribute: &str) -> Result<RuntimeDeclaration> {
++		syn::parse_str(&format!(
++			"{attribute} pub enum Runtime {{ System: frame_system::{{Pallet, Call, Storage, Event<T>}} = 0 }}"
++		))
++	}
++
++	#[test]
++	fn origin_guard_is_optional_and_explicitly_runtime_scoped() {
++		let RuntimeDeclaration::Explicit(plain) = declaration("").unwrap() else { panic!() };
++		assert!(plain.dispatch_origin_guard.is_none());
++		let RuntimeDeclaration::Explicit(guarded) = declaration(
++			"#[dispatch_origin_guard(crate::admission::check, crate::admission::weight)]",
++		)
++		.unwrap() else {
++			panic!()
++		};
++		let guard = guarded.dispatch_origin_guard.unwrap();
++		assert_eq!(guard.check.to_token_stream().to_string(), "crate :: admission :: check");
++		assert_eq!(guard.weight.to_token_stream().to_string(), "crate :: admission :: weight");
++	}
++
++	#[test]
++	fn origin_guard_rejects_duplicates_unknown_attributes_and_incomplete_paths() {
++		for attribute in [
++			"#[dispatch_origin_guard(check, weight)] #[dispatch_origin_guard(check, weight)]",
++			"#[unknown_guard(check, weight)]",
++			"#[dispatch_origin_guard(check)]",
++			"#[dispatch_origin_guard(check, weight, extra)]",
++			"#[dispatch_origin_guard(\"check\", weight)]",
++		] {
++			assert!(declaration(attribute).is_err(), "{attribute}");
++		}
++	}
++}
 --- a/src/no_bound/clone.rs
 +++ b/src/no_bound/clone.rs
 @@ -24,12 +24,31 @@
@@ -76,3 +382,21 @@
  					#impl_
  				}
  			}
+--- a/src/runtime/expand/mod.rs
++++ b/src/runtime/expand/mod.rs
+@@ -187,8 +187,13 @@
+ 	for runtime_type in runtime_types.iter() {
+ 		match runtime_type {
+ 			RuntimeType::RuntimeCall(_) => {
+-				dispatch =
+-					Some(expand::expand_outer_dispatch(&name, system_pallet, &pallets, &scrate));
++				dispatch = Some(expand::expand_outer_dispatch(
++					&name,
++					system_pallet,
++					&pallets,
++					&scrate,
++					None,
++				));
+ 			},
+ 			RuntimeType::RuntimeEvent(_) => {
+ 				outer_event = Some(expand::expand_outer_enum(

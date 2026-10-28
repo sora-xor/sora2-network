@@ -251,18 +251,37 @@ impl OnOffenceHandler<AccountId, pallet_session::historical::IdentificationTuple
         fractions: &[Perbill],
         session: SessionIndex,
     ) -> Weight {
-        <Staking as AHStakingInterface>::on_new_offences(
-            session,
+        // This handler receives authenticated offence reports. Historical proof
+        // roots retain their original identities; financial liabilities and
+        // reporter claims follow the recovery's verified effective owner.
+        let resolved_accounts =
             offenders
                 .iter()
                 .zip(fractions)
-                .map(|(details, fraction)| Offence {
-                    offender: details.offender.0.clone(),
-                    reporters: details.reporters.clone(),
-                    slash_fraction: *fraction,
-                })
-                .collect(),
-        )
+                .fold(0u64, |count, (details, _)| {
+                    count
+                        .saturating_add(1)
+                        .saturating_add(details.reporters.len() as u64)
+                });
+        let mut reports: Vec<_> = offenders
+            .iter()
+            .zip(fractions)
+            .map(|(details, fraction)| Offence {
+                offender: details.offender.0.clone(),
+                reporters: details.reporters.clone(),
+                slash_fraction: *fraction,
+            })
+            .collect();
+        crate::incident_recovery::resolve_authenticated_accounts(reports.iter_mut().flat_map(
+            |report| core::iter::once(&mut report.offender).chain(report.reporters.iter_mut()),
+        ))
+        .expect("authenticated offence requires a valid recovery policy");
+        <Staking as AHStakingInterface>::on_new_offences(session, reports)
+            .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads(1))
+            .saturating_add(Weight::from_parts(
+                resolved_accounts.saturating_mul(2_000_000),
+                128,
+            ))
     }
 }
 

@@ -163,7 +163,33 @@ pub mod pallet {
         //
         // Use `on_finalize` instead of `on_idle` to ensure that the commitment is always sent,
         // because `on_idle` not guaranteed to be called.
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
+                return Weight::zero();
+            }
+            if crate::recovery::halted() {
+                return T::DbWeight::get().reads(2);
+            }
+            let interval = Self::interval();
+            let mut reads = 3u64;
+            if now % interval == Zero::zero() {
+                for network in MessageQueues::<T>::iter_keys() {
+                    let count = MessageQueues::<T>::decode_len(network)
+                        .unwrap_or(0)
+                        .min(T::MaxMessagesPerCommit::get() as usize)
+                        as u64;
+                    reads = reads
+                        .saturating_add(3)
+                        .saturating_add(count.saturating_mul(2));
+                }
+            }
+            T::DbWeight::get().reads(reads)
+        }
+
         fn on_finalize(now: BlockNumberFor<T>) {
+            if crate::recovery::halted() {
+                return;
+            }
             let interval = Self::interval();
             if now % interval == Zero::zero() {
                 for chain_id in MessageQueues::<T>::iter_keys() {
@@ -202,6 +228,8 @@ pub mod pallet {
         ChannelExists,
         /// Interval cannot be zero.
         ZeroInterval,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     #[pallet::call]
@@ -223,7 +251,40 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Exact native queue witness for manifest-bound recovery quarantine.
+        pub fn recovery_queue(
+            network_id: SubNetworkId,
+        ) -> BoundedVec<BridgeMessage<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit> {
+            MessageQueues::<T>::get(network_id)
+        }
+
         pub(crate) fn commit(network_id: SubNetworkId) {
+            if crate::recovery::halted() {
+                return;
+            }
+            let Some(next_nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
+                return;
+            };
+            if bridge_types::recovery::batch_quarantined(1, network_id.into(), next_nonce) {
+                return;
+            }
+            let message_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
+            if message_count > T::MaxMessagesPerCommit::get() as usize
+                || (0..message_count).any(|index| {
+                    bridge_types::recovery::message_quarantined(
+                        network_id.into(),
+                        MessageId::batched(
+                            T::ThisNetworkId::get(),
+                            network_id.into(),
+                            next_nonce,
+                            index as u64,
+                        )
+                        .hash(),
+                    )
+                })
+            {
+                return;
+            }
             debug!("Commit substrate messages");
             let messages = MessageQueues::<T>::take(network_id);
 
@@ -294,6 +355,7 @@ pub mod pallet {
             payload: &[u8],
             _: (),
         ) -> Result<H256, DispatchError> {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("Send message from {:?} to network {:?}", who, network_id);
             let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
             ensure!(
@@ -308,6 +370,26 @@ pub mod pallet {
             let batch_nonce = ChannelNonces::<T>::get(network_id)
                 .checked_add(1)
                 .ok_or(Error::<T>::Overflow)?;
+            ensure!(
+                !bridge_types::recovery::batch_quarantined(1, network_id.into(), batch_nonce),
+                Error::<T>::RecoveryHalted
+            );
+
+            // Do not append a fresh transfer behind an irreversibly stopped
+            // position: the exact batch (including all existing slots) is blocked.
+            ensure!(
+                !(0..=messages_count).any(|index| bridge_types::recovery::message_quarantined(
+                    network_id.into(),
+                    MessageId::batched(
+                        T::ThisNetworkId::get(),
+                        network_id.into(),
+                        batch_nonce,
+                        index
+                    )
+                    .hash(),
+                )),
+                Error::<T>::RecoveryHalted
+            );
 
             MessageQueues::<T>::try_append(
                 network_id,
@@ -335,7 +417,21 @@ pub mod pallet {
         }
 
         fn submit_weight() -> Weight {
-            <T as Config>::WeightInfo::submit()
+            let base = <T as Config>::WeightInfo::submit();
+            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
+                return base;
+            }
+            // Cover both marker namespaces at every bounded queue position,
+            // global/batch admission and repeated weight probes.
+            let positions = T::MaxMessagesPerCommit::get() as u64;
+            base.saturating_add(
+                T::DbWeight::get()
+                    .reads(positions.saturating_mul(2).saturating_add(8))
+                    .saturating_add(Weight::from_parts(
+                        positions.saturating_mul(250_000).saturating_add(2_000_000),
+                        positions.saturating_mul(8_192).saturating_add(16_384),
+                    )),
+            )
         }
     }
 }

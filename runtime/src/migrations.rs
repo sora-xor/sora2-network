@@ -42,6 +42,7 @@ use sp_std::prelude::Vec;
 // Existing versioned bridges remain safe when upgrading 4.8.10 to 4.8.11.
 // The BABE repair schedules a normal announced epoch transition once on mainnet.
 pub type Migrations = (
+    crate::incident_recovery::RecoverFeeClocks,
     crate::babe_config::ScheduleMainnetPlainEpochConfig,
     RemapStakingRewardPointsToStash,
     PublishValStakingRewards,

@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::traits::BridgeAssetLocker;
 use bridge_types::traits::BridgeAssetRegistry;
 use bridge_types::traits::BridgeOriginOutput;
 use bridge_types::traits::TimepointProvider;
@@ -357,7 +358,7 @@ impl substrate_app::Config for Test {
     type AccountIdConverter = AccountIdConverter;
     type AssetIdConverter = AssetIdConverter;
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
-    type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
+    type BridgeAssetLocker = RecoveryTestAssetLocker;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -442,5 +443,61 @@ impl bridge_types::traits::DispatchWithOutcome for RuntimeCall {
         sp_runtime::traits::Dispatchable::dispatch(self, origin)
             .map(|_| bridge_types::traits::MessageDispatchOutcome::Applied)
             .map_err(|error| error.error)
+    }
+}
+
+pub struct RecoveryTestAssetLocker;
+impl BridgeAssetLocker<AccountId32> for RecoveryTestAssetLocker {
+    type AssetId = AssetId;
+    type Balance = Balance;
+
+    fn lock_asset(
+        network: GenericNetworkId,
+        kind: AssetKind,
+        who: &AccountId32,
+        asset: &AssetId,
+        amount: &Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        bridge_types::test_utils::BridgeAssetLockerImpl::<Currencies>::lock_asset(
+            network, kind, who, asset, amount,
+        )
+    }
+    fn unlock_asset(
+        network: GenericNetworkId,
+        kind: AssetKind,
+        who: &AccountId32,
+        asset: &AssetId,
+        amount: &Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        bridge_types::test_utils::BridgeAssetLockerImpl::<Currencies>::unlock_asset(
+            network, kind, who, asset, amount,
+        )?;
+        if sp_io::storage::exists(b"test:fail-after-recovery-credit") {
+            sp_io::storage::set(b"test:partial-recovery-credit", b"written");
+            return Err(sp_runtime::DispatchError::Other(
+                "injected post-credit failure",
+            ));
+        }
+        Ok(())
+    }
+    fn withdraw_fee(
+        network: GenericNetworkId,
+        who: &AccountId32,
+        asset: &AssetId,
+        amount: &Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        bridge_types::test_utils::BridgeAssetLockerImpl::<Currencies>::withdraw_fee(
+            network, who, asset, amount,
+        )
+    }
+    fn refund_fee(
+        network: GenericNetworkId,
+        who: &AccountId32,
+        asset: &AssetId,
+        amount: &Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        bridge_types::test_utils::BridgeAssetLockerImpl::<Currencies>::refund_fee(
+            network, who, asset, amount,
+        )
     }
 }

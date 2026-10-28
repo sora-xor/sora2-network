@@ -1,0 +1,67 @@
+{
+  "manifest": {
+    "private": true,
+    "description": "Read-only pinned public state and local exact-Wasm equivocation report fee validation",
+    "dependencies": {
+      "@acala-network/chopsticks-core": "file:../../vendor/chopsticks-core",
+      "@babel/runtime": "7.28.4",
+      "@polkadot/api": "16.5.6",
+      "@polkadot/keyring": "14.0.3",
+      "@sora-substrate/type-definitions": "1.27.7",
+      "@polkadot/wasm-crypto": "file:../../vendor/polkadot-wasm-crypto-js",
+      "@polkadot/rpc-provider": "file:../../vendor/polkadot-rpc-provider",
+      "fetch-blob": "file:../../vendor/fetch-blob"
+    },
+    "name": "sora-equivocation-report-fee-validation",
+    "version": "4.8.12"
+  },
+  "installed": {
+    "@acala-network/chopsticks-core": "1.5.2",
+    "@babel/runtime": "7.28.4",
+    "@polkadot/api": "16.5.6",
+    "@polkadot/keyring": "14.0.3",
+    "@sora-substrate/type-definitions": "1.27.7",
+    "@polkadot/wasm-crypto": "7.5.4",
+    "@polkadot/rpc-provider": "16.5.6",
+    "fetch-blob": "3.2.0"
+  },
+  "localSources": {
+    "@acala-network/chopsticks-core": {
+      "path": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-vpbkpu2p/vendor/chopsticks-core",
+      "version": "1.5.2",
+      "manifestSha256": "0423fce6a4cb8b36e4449cd324cb83dbae43bc68d6473a37f3578b731fd2eb99"
+    },
+    "@polkadot/wasm-crypto": {
+      "path": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-vpbkpu2p/vendor/polkadot-wasm-crypto-js",
+      "version": "7.5.4",
+      "manifestSha256": "fc0ad4e653666d3c882d9eed28301128f5615d4cf6cc60ee9dcdcbcb019537ee"
+    },
+    "@polkadot/rpc-provider": {
+      "path": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-vpbkpu2p/vendor/polkadot-rpc-provider",
+      "version": "16.5.6",
+      "manifestSha256": "7a5b430aa8735f4d8253223a9fcc3af57ab38a5a6c8644622b9d963c59a6aead"
+    },
+    "fetch-blob": {
+      "path": "/private/var/folders/7l/w31n0ppj4zg874c4szhllss00000gn/T/sora2-npm-current-vpbkpu2p/vendor/fetch-blob",
+      "version": "3.2.0",
+      "manifestSha256": "5f3627367f6c9f7c64490abd5cdefe912cd13c6318c4b0be961aa1b4e6341076"
+    }
+  },
+  "nativeArtifacts": {
+    "@acala-network/chopsticks-executor": {
+      "wasmSha256": "e58f725beeb705f1b79234046ea2f12b5b6a73f9b8851980b0d7895252c41966",
+      "wasmBytes": 2723362,
+      "canonicalHost": "x86_64-unknown-linux-gnu",
+      "assetsChecked": 14,
+      "provenanceSha256": "22bc3445aa13b338500246218d55b8785217b48957def2f6cd31cf051af475b2"
+    },
+    "@polkadot/wasm-crypto-wasm": {
+      "wasmSha256": "7f08ea9227b0d72df0953194994c54a56a34a7135a43690eb6c3f4867a4c316f",
+      "wasmBytes": 676030,
+      "canonicalHost": "x86_64-unknown-linux-gnu",
+      "assetsChecked": 18,
+      "provenanceSha256": "300b5b6ecb33d4d3df736edadc5b4585101f7bbb41c10682fcafb849c3d1388c"
+    }
+  },
+  "lockSha256": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760"
+}

@@ -51,6 +51,24 @@ pub struct BridgeRequest<AssetId> {
     direction: MessageDirection,
 }
 
+impl<AssetId> BridgeRequest<AssetId> {
+    pub fn source(&self) -> &GenericAccount {
+        &self.source
+    }
+    pub fn asset_id(&self) -> &AssetId {
+        &self.asset_id
+    }
+    pub fn amount(&self) -> Balance {
+        self.amount
+    }
+    pub fn direction(&self) -> MessageDirection {
+        self.direction
+    }
+    pub fn status(&self) -> MessageStatus {
+        self.status
+    }
+}
+
 #[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking, PartialEq, Eq, TypeInfo)]
 pub struct TransferLimitSettings<BlockNumber> {
     max_amount: Balance,
@@ -58,6 +76,21 @@ pub struct TransferLimitSettings<BlockNumber> {
 }
 
 pub use pallet::*;
+
+fn recovery_halted() -> bool {
+    sp_io::storage::exists(common::recovery::BRIDGE_HALT_STORAGE_KEY)
+}
+
+fn recovery_inbound_allowed<T: frame_system::Config>() -> bool {
+    if !recovery_halted() {
+        return true;
+    }
+    let number: Result<u32, _> = frame_system::Pallet::<T>::block_number().try_into();
+    number.ok().is_some_and(|number| {
+        sp_io::storage::get(common::recovery::BRIDGE_INBOUND_CONTEXT_STORAGE_KEY)
+            .is_some_and(|bytes| bytes.as_ref() == number.to_le_bytes().as_slice())
+    })
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -215,6 +248,8 @@ pub mod pallet {
         AssetAlreadyLimited,
         AssetNotLimited,
         WrongLimitSettings,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     #[pallet::call]
@@ -228,6 +263,7 @@ pub mod pallet {
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         ) -> DispatchResultWithPostInfo {
+            ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
             let sender = ensure_signed(origin)?;
             match recipient {
                 GenericAccount::EVM(recipient) => {
@@ -333,6 +369,11 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             amount: Balance,
         ) -> DispatchResult {
+            ensure!(
+                !recovery_halted()
+                    && !bridge_types::recovery::message_quarantined(network_id, message_id),
+                Error::<T>::RecoveryHalted
+            );
             let GenericAccount::Sora(beneficiary) = beneficiary else {
                 return Err(Error::<T>::WrongAccountKind.into());
             };
@@ -371,6 +412,12 @@ where
         mut new_status: MessageStatus,
         end_timepoint: GenericTimepoint,
     ) {
+        // A legacy record may decode with an incorrect direction. A committed
+        // quarantine protects its identity and evidence independently of that
+        // untrusted field, including after the separate global halt is removed.
+        if bridge_types::recovery::message_quarantined(network_id, message_id) {
+            return;
+        }
         let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
             None => {
@@ -384,6 +431,9 @@ where
         };
         Transactions::<T>::mutate((network_id, sender), message_id, |req| {
             if let Some(req) = req {
+                if recovery_halted() && req.direction == MessageDirection::Outbound {
+                    return;
+                }
                 if new_status == MessageStatus::Failed
                     && req.direction == MessageDirection::Outbound
                 {
@@ -420,6 +470,9 @@ where
         start_timepoint: GenericTimepoint,
         status: MessageStatus,
     ) {
+        if bridge_types::recovery::message_quarantined(network_id, message_id) {
+            return;
+        }
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         Senders::<T>::insert(&network_id, &message_id, &dest);
         Transactions::<T>::insert(
@@ -447,6 +500,9 @@ where
         amount: Balance,
         status: MessageStatus,
     ) {
+        if bridge_types::recovery::message_quarantined(network_id, message_id) {
+            return;
+        }
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         Senders::<T>::insert(&network_id, &message_id, &source);
         Transactions::<T>::insert(
@@ -534,6 +590,25 @@ impl<T: Config> Pallet<T> {
         LockedAssets::<T>::remove(network_id, asset_id);
         Ok(())
     }
+
+    /// Reverse only the preparation accounting of a proven, already prepared
+    /// HASHI sidechain claim extinguished by the recovery executive. No mint/refund.
+    pub fn recovery_extinguish_prepared_sidechain(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            recovery_halted() && recovery_inbound_allowed::<T>(),
+            Error::<T>::RecoveryHalted
+        );
+        LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
+            *value = value
+                .checked_sub(amount)
+                .ok_or(Error::<T>::NotEnoughLockedLiquidity)?;
+            DispatchResult::Ok(())
+        })
+    }
 }
 
 impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
@@ -590,6 +665,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
         Ok(())
@@ -601,6 +677,7 @@ impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
         let bridge_account = Self::bridge_fee_tech_account(network_id);
         technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
         Ok(())
@@ -614,6 +691,7 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
+        ensure!(!recovery_halted(), Error::<T>::RecoveryHalted);
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
             network_id,
             asset_id,
@@ -671,6 +749,7 @@ impl<T: Config> BridgeAssetLockChecker<AssetIdOf<T>, Balance> for Pallet<T> {
         asset_id: &AssetIdOf<T>,
         amount: &Balance,
     ) -> DispatchResult {
+        ensure!(recovery_inbound_allowed::<T>(), Error::<T>::RecoveryHalted);
         LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
             network_id,
             asset_id,

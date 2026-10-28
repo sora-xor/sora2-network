@@ -1,0 +1,53 @@
+# SORA Nexus retained pending authorizations
+
+The recovery checkpoint is the complete post-state of block 28,191,817, hash `0x7f7c253fa72f32e7b03f32bdc9ae456fd7174fb131b689be6d876006124129f0`. This adapter cancels retained authorization bookkeeping without dispatching the historical calls, invoking native cancellation, or creating refunds. It does not infer which accounts are compromised.
+
+## Scheduler and preimage custody
+
+The authenticated checkpoint contains six `Scheduler.Agenda` records and `IncompleteSince = 28,191,818`. Each agenda has one named, nonperiodic, priority-63 Root task with a hash/length lookup. The six enactment blocks are 12,646,428; 15,823,193; 17,832,069; 25,769,290; 25,811,959; and 25,852,498. Their names identify completed, approved Democracy referenda 265, 387, 530, 779, 780 and 781. The scan cursor is past every task. State alone does not establish why these records remained.
+
+The last two tasks reference the same call hash. Two earlier tasks declare lookup lengths that differ from the retained legacy preimage status length (62 versus 57, and 173 versus 159). The adapter preserves this evidence exactly; it never reinterprets a historical RuntimeCall using current metadata. A fifth referenced hash has requested status but no retained preimage bytes.
+
+Native `Scheduler::cancel` calls the preimage provider's `drop`. Native Preimage operations can first convert `StatusFor` into `RequestStatusFor`, unreserve legacy deposits, and then decrement or remove request state. These effects would not be justified merely by deleting the stale agenda record. The recovery compiler therefore deletes exactly the six agenda rows and scan cursor using old-value hashes. It preserves all five referenced preimage namespaces, legacy/current request records, provider identities and the providers' exact `System.Account` backing. The actual finite review binds 19 rows, including four opaque preimage byte vectors and three backing accounts. One retained preimage deposit is 9,970,023,333,234,965,100 base units; no refund is created.
+
+`prepare_scheduler_review.mjs` creates `review.json` and source-bound `evidence.json` from an independently verified complete capture and executing-Wasm metadata witness. It reads no RPC endpoint. Capture pages and source files are hashed, metadata roundtrips are checked, and large preimage byte vectors are length-validated without decoding their calls. The native compiler independently checks this input against the complete loaded checkpoint; the evidence JSON does not establish a successful rehearsal by itself.
+
+The compiler requires the exact six agenda keys, canonical pinned encodings, the checkpoint+1 cursor, and complete `Lookup`/`Retries` absence. It rejects any mapped or attacker preimage provider: a separate reviewed provider-custody transformation is required before that account can be substituted. The full static write set must pass `verify_preservation`; attempting to change or create a record within a protected preimage namespace or change backing fails. Large preimages are preserved by this complete write-set constraint and root-bound checkpoint evidence; they are not fetched by the bounded ordinary value audit. Any dynamic operation that can touch that custody remains an additional exact-execution review obligation.
+
+## Empty prefixes are executable invariants
+
+The checkpoint's native `Multisig` pallet has only its storage-version record. The compiler requires absence of `Multisig.Multisigs` and emits a committed prefix audit alongside empty `Scheduler.Agenda`, `Lookup` and `Retries` audits. These are not JSON assertions. `RecoveryAction::PrefixAudit` is appended at discriminant 8, shares the strict audit cursor, and checks both an exact key equal to the prefix and its lexicographic successor. Empty-valued keys count as present. The same bounded implementation supports explicit default child-trie scopes. Duplicate, overlapping, unordered or oversized prefix sets are rejected; committed failures freeze recovery and leave escape available. Prefix audits do not activate the final runtime by themselves.
+
+## Registered BridgeMultisig accounts
+
+Three exact checkpoint `BridgeMultisig.Accounts` rows exist, with Twox64Concat AccountId keys:
+
+| Account | Signatories | Stored threshold |
+| --- | ---: | ---: |
+| `0xe0f54b9ee063b49d1080c68e678c1d4399442a72e110eab133de89371c6e1f10` | 1 | 67% |
+| `0x4a600ee23d7b0092632d19087c1d171159ca4aa00677679ff5efb9fdb8c0f1c1` | 1 | 67% |
+| `0x54734f90f971a02c609b2d684e61b557cb8494021fd01de35d3cae2f0670cb9c` | 3 | 67% |
+
+The stored percentage is not the number of required signatures. The pallet computes its threshold from the signer count using `n - (n - 1) / 3`. Signer public identities and row hashes are in the scheduler evidence's `bridgeAccounts` section. These observations do not establish victim ownership.
+
+A `SemanticPlan.bridgeMemberships` review binds the exact account row and independent review evidence. Every controlling signer must have a checkpoint-bound ownership proof. Replacing only a signer can preserve the registered account address. Moving the registered account additionally requires the existing `DerivedKind::BridgeMultisig` proof of creator, creation block and nonce, matching the CSV. The adapter sorts the replacement signer set, rejects duplicates, preserves the stored 67% byte, and moves the exact `System.Account` provider/balance/nonce/consumer backing without adding or removing references. Occupied destinations fail.
+
+All pending operations belonging to an affected account must be cancelled by the existing opaque-preimage adapter, including its exhaustive shared-call and underlying-request preservation checks. The membership adapter creates no refund. Membership/account edits form a small atomic group; cancellations retain their bounded per-call groups. Private expected-state checks bind every group to the complete cancellation and custody result, and committed old/new per-account empty-prefix audits cover operations, cancellation approvals and newer admission markers. A missing cancellation or any newly introduced pending authorization fails. No ordinary economic execution is permitted between these maintenance groups.
+
+The actual signed mapping, derivation/control evidence, full financial coverage, and new exact-artifact rehearsals remain release inputs. Existing immutable v2 and escape-v1 artifacts predate these new prefix/member adapters and do not certify them.
+
+## Coupled offence reports and concurrent severity indices
+
+The checkpoint contains 26,040 `Offences.Reports` records and 8,312 `Offences.ConcurrentReportsIndex` records (19,345,295 encoded bytes in the complete reviewed graph). A ReportId is the hash of SCALE `(offence kind, opaque encoded time slot, complete IdentificationTuple)`. It is not merely a hash of the validator address. A replaced nominator inside an exposure can change that ID even when the validator is unchanged; changing only a reporter does not change it.
+
+`offences::compile` requires every retained report to appear exactly once in the complete checkpoint index graph. Native denomination changed historical exposure amounts in place without rekeying these reports: at this checkpoint, 11,272 IDs no longer hash the current denominated offender bytes, while 14,768 do. An untouched offender retains its checkpoint-committed ID and exact index position, including when only a reporter changes. This is preservation of authenticated checkpoint state, not a claim that every original preimage has been verified.
+
+An affected offender must either match its original ID directly or supply a bounded original full-identification preimage. That preimage must hash to the checkpoint ID under the exact index kind/slot. Applying the source denomination operation (divide own/individual amounts, recompute total) must reproduce the exact ordered checkpoint offender bytes, and its factor must divide the checkpoint cumulative denominator. The denominator receives an exact terminal audit witness and private preservation certificate. The replacement ID hashes the remapped **original historical** identification, while the stored financial exposure keeps its checkpoint amounts. This agrees with authenticated old historical proofs at the runtime deduplication boundary. Unused, duplicate, incorrect or missing preimages, account/order differences, invalid factors, missing/orphan/duplicate graph references and destination collisions fail.
+
+The compiler reports preserved legacy IDs separately from authenticated original preimages. It rewrites each changed concurrent index in its original order; the number of offenders and concurrent severity groups does not change. Each changed concurrent group is an atomic bounded storage chunk. No offence is dispatched and no slash is executed during this transformation. `prepare_offence_preimages.mjs` binds narrow historical source responses to the complete review. Its helper verifies hashes and denomination; native compilation independently repeats admission. Historical RPC proofs are retained as evidence and are not represented as independently verified by this helper.
+
+For the public victim fixture, both affected reports have valid original preimages at block 21,063,092, immediately before the first denomination at 21,063,093. Their IDs are `22aa62789a73828f8673713e6ee356436a8977d4647efc135200f21109fa5acf` and `6413bdee891e197ac837993c5b1316e89d0e8d7bcbda49add54a1c560f9cd19a`; division by the authenticated checkpoint factor 10^38 reproduces their checkpoint exposures. Other supplied victim mappings may require additional original preimages.
+
+Private expected-state verification must run against the complete final static write set, preventing callers from dropping a paired index/report edit or altering an unchanged report after the adapter runs. All resulting and deleted keys receive exact audit witnesses; completely empty report/index prefixes receive committed prefix audits. `prepare_offences_review.mjs` produces the complete raw review offline from the independently verified capture. Its output is evidence for native graph verification, not a substitute for it.
+
+The final runtime must also canonicalize the full historical identification before both `pallet_offences::report_offence` and `is_known_offence`. Canonicalizing only the eventual financial debit would allow an old-set proof to recreate an old ReportId and increase concurrent severity a second time. Historical proof roots remain unchanged; canonicalization happens after proof authentication and before offence deduplication. This runtime ingress requirement and the offline graph transformation must ship together.

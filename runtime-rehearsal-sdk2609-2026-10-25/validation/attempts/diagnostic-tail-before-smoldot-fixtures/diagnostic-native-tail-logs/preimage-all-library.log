@@ -1,0 +1,1589 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /Users/takemiyamakoto/dev/sora2-network/vendor/parity-db/Cargo.toml
+workspace: /Users/takemiyamakoto/dev/sora2-network/Cargo.toml
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/kensetsu/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+55 ~ ]
+56 + [lints]
+57 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+55 ~ ]
+56 + [lints]
+   |
+warning: `kensetsu-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/pswap-distribution/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+34 ~ ]
+35 + [lints]
+36 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+34 ~ ]
+35 + [lints]
+   |
+warning: `pswap-distribution-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/vested-rewards/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+24 ~ std = ["codec/std", "scale-info/std", "serde", "sp-api/std", "sp-runtime/std", "sp-std/std"]
+25 + [lints]
+26 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+24 ~ std = ["codec/std", "scale-info/std", "serde", "sp-api/std", "sp-runtime/std", "sp-std/std"]
+25 + [lints]
+   |
+warning: `vested-rewards-runtime-api` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/utils/wasm-builder/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `substrate-wasm-builder` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/dex-api/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ dex-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ dex-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+   |
+warning: `dex-api-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/polkamarkt/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+16 ~ polkamarkt-runtime-api = { path = "../runtime-api" }
+17 + [lints]
+18 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+16 ~ polkamarkt-runtime-api = { path = "../runtime-api" }
+17 + [lints]
+   |
+warning: `polkamarkt-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> utils/remote-ext/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+31 ~ common = { path = "../../common" }
+32 + [lints]
+33 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+31 ~ common = { path = "../../common" }
+32 + [lints]
+   |
+warning: `remote-ext` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/liquidity-proxy/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+34 ~ ]
+35 + [lints]
+36 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+34 ~ ]
+35 + [lints]
+   |
+warning: `liquidity-proxy-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/sora-secp256k1-compat/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+16 ~ std = ["k256/std"]
+17 + [lints]
+18 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+16 ~ std = ["k256/std"]
+17 + [lints]
+   |
+warning: `sora-secp256k1-compat` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/ceres-staking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+60 ~ try-runtime = ["frame-support/try-runtime"]
+61 + [lints]
+62 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+60 ~ try-runtime = ["frame-support/try-runtime"]
+61 + [lints]
+   |
+warning: `ceres-staking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/demeter-farming-platform/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+79 ~ ]
+80 + [lints]
+81 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+79 ~ ]
+80 + [lints]
+   |
+warning: `demeter-farming-platform-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> common/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+83 ~ private-net = []
+84 + [lints]
+85 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+83 ~ private-net = []
+84 + [lints]
+   |
+warning: `common` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/ceres-governance-platform/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+71 ~ try-runtime = ["frame-support/try-runtime"]
+72 + [lints]
+73 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+71 ~ try-runtime = ["frame-support/try-runtime"]
+72 + [lints]
+   |
+warning: `ceres-governance-platform` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/bridge-proxy/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+71 ~ try-runtime = ["frame-support/try-runtime"]
+72 + [lints]
+73 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+71 ~ try-runtime = ["frame-support/try-runtime"]
+72 + [lints]
+   |
+warning: `bridge-proxy` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/polkamarkt/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+58 ~ ]
+59 + [lints]
+60 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+58 ~ ]
+59 + [lints]
+   |
+warning: `pallet-polkamarkt` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/mock-liquidity-source/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+71 ~ try-runtime = ["frame-support/try-runtime"]
+72 + [lints]
+73 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+71 ~ try-runtime = ["frame-support/try-runtime"]
+72 + [lints]
+   |
+warning: `mock-liquidity-source` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/rewards/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ rewards-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ rewards-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+   |
+warning: `rewards-rpc` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/babe/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `pallet-babe` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/eth-bridge/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+25 ~ ]
+26 + [lints]
+27 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+25 ~ ]
+26 + [lints]
+   |
+warning: `eth-bridge-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/pallet-multisig/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+60 ~ ]
+61 + [lints]
+62 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+60 ~ ]
+61 + [lints]
+   |
+warning: `pallet-multisig` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/staking/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `pallet-staking` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/xst/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+91 ~ try-runtime = ["frame-support/try-runtime"]
+92 + [lints]
+93 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+91 ~ try-runtime = ["frame-support/try-runtime"]
+92 + [lints]
+   |
+warning: `xst` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/rewards/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+72 ~ try-runtime = ["frame-support/try-runtime"]
+73 + [lints]
+74 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+72 ~ try-runtime = ["frame-support/try-runtime"]
+73 + [lints]
+   |
+warning: `rewards` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/vested-rewards/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+83 ~ wip = []
+84 + [lints]
+85 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+83 ~ wip = []
+84 + [lints]
+   |
+warning: `vested-rewards` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/tracing/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sp-tracing` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/trading-pair/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ trading-pair-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ trading-pair-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+   |
+warning: `trading-pair-rpc` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/support/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `frame-support` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/oracle-proxy/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+33 ~ ]
+34 + [lints]
+35 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+33 ~ ]
+34 + [lints]
+   |
+warning: `oracle-proxy-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/extended-assets/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+70 ~ test = []
+71 + [lints]
+72 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+70 ~ test = []
+71 + [lints]
+   |
+warning: `extended-assets` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/apollo-platform/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+83 ~ try-runtime = ["frame-support/try-runtime"]
+84 + [lints]
+85 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+83 ~ try-runtime = ["frame-support/try-runtime"]
+84 + [lints]
+   |
+warning: `apollo-platform` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/farming/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+19 ~ std = ["sp-api/std", "sp-std/std", "codec/std"]
+20 + [lints]
+21 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+19 ~ std = ["sp-api/std", "sp-std/std", "codec/std"]
+20 + [lints]
+   |
+warning: `farming-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/pool-xyk/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+80 ~ try-runtime = ["frame-support/try-runtime"]
+81 + [lints]
+82 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+80 ~ try-runtime = ["frame-support/try-runtime"]
+81 + [lints]
+   |
+warning: `pool-xyk` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/iroha-migration/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+15 ~ std = ["sp-api/std"]
+16 + [lints]
+17 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+15 ~ std = ["sp-api/std"]
+16 + [lints]
+   |
+warning: `iroha-migration-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/order-book/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+56 ~ try-runtime = ["frame-support/try-runtime", "order-book/try-runtime"]
+57 + [lints]
+58 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+56 ~ try-runtime = ["frame-support/try-runtime", "order-book/try-runtime"]
+57 + [lints]
+   |
+warning: `order-book-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/permissions/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+46 ~ ]
+47 + [lints]
+48 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+46 ~ ]
+47 + [lints]
+   |
+warning: `permissions` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/pool-xyk/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+67 ~ ]
+68 + [lints]
+69 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+67 ~ ]
+68 + [lints]
+   |
+warning: `pool-xyk-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/technical/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+66 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+   |
+warning: `technical` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/price-tools/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+73 ~ try-runtime = ["frame-support/try-runtime"]
+74 + [lints]
+75 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+73 ~ try-runtime = ["frame-support/try-runtime"]
+74 + [lints]
+   |
+warning: `price-tools` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/open-runtime-module-library-v1/tokens/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+58 ~ ]
+59 + [lints]
+60 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+58 ~ ]
+59 + [lints]
+   |
+warning: `orml-tokens` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/dex-manager/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ dex-manager-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ dex-manager-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+   |
+warning: `dex-manager-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/xst/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+80 ~ ]
+81 + [lints]
+82 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+80 ~ ]
+81 + [lints]
+   |
+warning: `xst-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/multicollateral-bonding-curve-pool/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+86 ~ try-runtime = ["frame-support/try-runtime"]
+87 + [lints]
+88 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+86 ~ try-runtime = ["frame-support/try-runtime"]
+87 + [lints]
+   |
+warning: `multicollateral-bonding-curve-pool` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/trading-pair/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+66 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+   |
+warning: `trading-pair` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/liquidity-proxy/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ common = { path = "../../../common" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ common = { path = "../../../common" }
+18 + [lints]
+   |
+warning: `liquidity-proxy-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/pswap-distribution/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ pswap-distribution-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ pswap-distribution-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+   |
+warning: `pswap-distribution-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/bridge-proxy/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+26 ~ std = []
+27 + [lints]
+28 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+26 ~ std = []
+27 + [lints]
+   |
+warning: `bridge-proxy-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/vested-rewards/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+19 ~ vested-rewards-runtime-api = { path = "../runtime-api" }
+20 + [lints]
+21 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+19 ~ vested-rewards-runtime-api = { path = "../runtime-api" }
+20 + [lints]
+   |
+warning: `vested-rewards-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> utils/generate-bags/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+22 ~ ] }
+23 + [lints]
+24 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+22 ~ ] }
+23 + [lints]
+   |
+warning: `generate-bags` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/assets/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ common = { path = "../../../common" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ common = { path = "../../../common" }
+18 + [lints]
+   |
+warning: `assets-rpc` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/preimage/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `pallet-preimage` (manifest) generated 9 warnings
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/tracing/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sc-tracing` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/ceres-liquidity-locker/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+72 ~ try-runtime = ["frame-support/try-runtime"]
+73 + [lints]
+74 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+72 ~ try-runtime = ["frame-support/try-runtime"]
+73 + [lints]
+   |
+warning: `ceres-liquidity-locker` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+   --> vendor/frame-decode/Cargo.toml
+    = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+    |
+119 ~ version = "2.0.0"
+120 + [lints]
+121 + workspace = true
+    |
+help: to clarify your intent to not inherit, add:
+    |
+119 ~ version = "2.0.0"
+120 + [lints]
+    |
+warning: `frame-decode` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/parity-db/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+90 ~ version = "0.3.9"
+91 + [lints]
+92 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+90 ~ version = "0.3.9"
+91 + [lints]
+   |
+warning: `parity-db` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/open-runtime-module-library-v1/traits/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+42 ~ ]
+43 + [lints]
+44 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+42 ~ ]
+43 + [lints]
+   |
+warning: `orml-traits` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/soratopia/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+58 ~ try-runtime = ["frame-support/try-runtime"]
+59 + [lints]
+60 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+58 ~ try-runtime = ["frame-support/try-runtime"]
+59 + [lints]
+   |
+warning: `soratopia` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/core/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sp-core` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/kensetsu/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+65 ~ try-runtime = ["frame-support/try-runtime"]
+66 + [lints]
+67 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+65 ~ try-runtime = ["frame-support/try-runtime"]
+66 + [lints]
+   |
+warning: `kensetsu` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/band/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+57 ~ try-runtime = ["frame-support/try-runtime"]
+58 + [lints]
+59 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+57 ~ try-runtime = ["frame-support/try-runtime"]
+58 + [lints]
+   |
+warning: `band` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/dex-api/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+32 ~ ]
+33 + [lints]
+34 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+32 ~ ]
+33 + [lints]
+   |
+warning: `dex-runtime-api` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/grandpa/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `pallet-grandpa` (manifest) generated 9 warnings
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/wasmtime/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sc-executor-wasmtime` (manifest) generated 9 warnings
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/wasm-interface/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sp-wasm-interface` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/polkamarkt/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+30 ~ ]
+31 + [lints]
+32 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+30 ~ ]
+31 + [lints]
+   |
+warning: `polkamarkt-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/liquidity-proxy/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+85 ~ ]
+86 + [lints]
+87 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+85 ~ ]
+86 + [lints]
+   |
+warning: `liquidity-proxy-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/dex-manager/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+66 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+   |
+warning: `dex-manager` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/rewards/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+31 ~ ]
+32 + [lints]
+33 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+31 ~ ]
+32 + [lints]
+   |
+warning: `rewards-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/eth-bridge/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+18 ~ eth-bridge-runtime-api = { path = "../runtime-api" }
+19 + [lints]
+20 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+18 ~ eth-bridge-runtime-api = { path = "../runtime-api" }
+19 + [lints]
+   |
+warning: `eth-bridge-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> utils/parse/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+22 ~ private-net = ["framenode-runtime/private-net"]
+23 + [lints]
+24 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+22 ~ private-net = ["framenode-runtime/private-net"]
+23 + [lints]
+   |
+warning: `parse` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/dex-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+74 ~ try-runtime = ["frame-support/try-runtime"]
+75 + [lints]
+76 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+74 ~ try-runtime = ["frame-support/try-runtime"]
+75 + [lints]
+   |
+warning: `dex-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/demeter-farming-platform/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+79 ~ try-runtime = ["frame-support/try-runtime"]
+80 + [lints]
+81 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+79 ~ try-runtime = ["frame-support/try-runtime"]
+80 + [lints]
+   |
+warning: `demeter-farming-platform` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/pswap-distribution/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+79 ~ try-runtime = ["frame-support/try-runtime"]
+80 + [lints]
+81 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+79 ~ try-runtime = ["frame-support/try-runtime"]
+80 + [lints]
+   |
+warning: `pswap-distribution` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/scale-info-legacy/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+79 ~ default-features = false
+80 + [lints]
+81 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+79 ~ default-features = false
+80 + [lints]
+   |
+warning: `scale-info-legacy` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> node/chain_spec/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+53 ~ runtime-benchmarks = ["framenode-runtime/runtime-benchmarks"]
+54 + [lints]
+55 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+53 ~ runtime-benchmarks = ["framenode-runtime/runtime-benchmarks"]
+54 + [lints]
+   |
+warning: `framenode-chain-spec` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/frame/benchmarking/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `frame-benchmarking` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/faucet/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+66 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+   |
+warning: `faucet` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/runtime/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sp-runtime` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/iroha-migration/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+74 ~ try-runtime = ["frame-support/try-runtime"]
+75 + [lints]
+76 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+74 ~ try-runtime = ["frame-support/try-runtime"]
+75 + [lints]
+   |
+warning: `iroha-migration` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/xor-fee/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+89 ~ wip = []
+90 + [lints]
+91 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+89 ~ wip = []
+90 + [lints]
+   |
+warning: `xor-fee` (manifest) generated 1 warning
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/pallet-multisig-upstream/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `pallet-multisig-upstream` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/farming/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+93 ~ try-runtime = ["frame-support/try-runtime"]
+94 + [lints]
+95 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+93 ~ try-runtime = ["frame-support/try-runtime"]
+94 + [lints]
+   |
+warning: `farming` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/pswap-distribution/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+74 ~ ]
+75 + [lints]
+76 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+74 ~ ]
+75 + [lints]
+   |
+warning: `pswap-distribution-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/trading-pair/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+26 ~ ]
+27 + [lints]
+28 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+26 ~ ]
+27 + [lints]
+   |
+warning: `trading-pair-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/dex-manager/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+23 ~ ]
+24 + [lints]
+25 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+23 ~ ]
+24 + [lints]
+   |
+warning: `dex-manager-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/farming/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+20 ~ std = ["sp-api/std", "sp-runtime/std", "farming-runtime-api/std"]
+21 + [lints]
+22 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+20 ~ std = ["sp-api/std", "sp-runtime/std", "farming-runtime-api/std"]
+21 + [lints]
+   |
+warning: `farming-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/iroha-migration/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+17 ~ iroha-migration-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+19 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+17 ~ iroha-migration-runtime-api = { path = "../runtime-api" }
+18 + [lints]
+   |
+warning: `iroha-migration-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/oracle-proxy/rpc/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+18 ~ sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
+19 + [lints]
+20 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+18 ~ sp-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609", default-features = false }
+19 + [lints]
+   |
+warning: `oracle-proxy-rpc` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/presto/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+76 ~ stage = []
+77 + [lints]
+78 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+76 ~ stage = []
+77 + [lints]
+   |
+warning: `presto` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/io/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sp-io` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/ceres-liquidity-locker/benchmarking/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+73 ~ ]
+74 + [lints]
+75 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+73 ~ ]
+74 + [lints]
+   |
+warning: `ceres-liquidity-locker-benchmarking` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/ceres-token-locker/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+66 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+64 ~ try-runtime = ["frame-support/try-runtime"]
+65 + [lints]
+   |
+warning: `ceres-token-locker` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/liquidity-proxy/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+86 ~ test = []
+87 + [lints]
+88 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+86 ~ test = []
+87 + [lints]
+   |
+warning: `liquidity-proxy` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/referrals/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+59 ~ try-runtime = ["frame-support/try-runtime"]
+60 + [lints]
+61 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+59 ~ try-runtime = ["frame-support/try-runtime"]
+60 + [lints]
+   |
+warning: `referrals` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/order-book/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+71 ~ test = []
+72 + [lints]
+73 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+71 ~ test = []
+72 + [lints]
+   |
+warning: `order-book` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/bridge-proxy/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+22 ~ std = ["codec/std", "sp-api/std", "sp-std/std"]
+23 + [lints]
+24 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+22 ~ std = ["codec/std", "sp-api/std", "sp-std/std"]
+23 + [lints]
+   |
+warning: `bridge-proxy-runtime-api` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/oracle-proxy/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+53 ~ try-runtime = ["frame-support/try-runtime"]
+54 + [lints]
+55 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+53 ~ try-runtime = ["frame-support/try-runtime"]
+54 + [lints]
+   |
+warning: `oracle-proxy` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/hermes-governance-platform/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+74 ~ try-runtime = ["frame-support/try-runtime"]
+75 + [lints]
+76 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+74 ~ try-runtime = ["frame-support/try-runtime"]
+75 + [lints]
+   |
+warning: `hermes-governance-platform` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/assets/runtime-api/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+33 ~ ]
+34 + [lints]
+35 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+33 ~ ]
+34 + [lints]
+   |
+warning: `assets-runtime-api` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/client/executor/common/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sc-executor-common` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/assets/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+61 ~ try-runtime = ["frame-support/try-runtime"]
+62 + [lints]
+63 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+61 ~ try-runtime = ["frame-support/try-runtime"]
+62 + [lints]
+   |
+warning: `assets` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/ceres-launchpad/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+80 ~ try-runtime = ["frame-support/try-runtime"]
+81 + [lints]
+82 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+80 ~ try-runtime = ["frame-support/try-runtime"]
+81 + [lints]
+   |
+warning: `ceres-launchpad` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/open-runtime-module-library-v1/utilities/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+35 ~ ]
+36 + [lints]
+37 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+35 ~ ]
+36 + [lints]
+   |
+warning: `orml-utilities` (manifest) generated 1 warning
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.borrowed-box` is deprecated in favor of `lints.clippy.borrowed_box` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.extra-unused-type-parameters` is deprecated in favor of `lints.clippy.extra_unused_type_parameters` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.identity-op` is deprecated in favor of `lints.clippy.identity_op` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.if-same-then-else` is deprecated in favor of `lints.clippy.if_same_then_else` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.needless-lifetimes` is deprecated in favor of `lints.clippy.needless_lifetimes` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.nonminimal-bool` is deprecated in favor of `lints.clippy.nonminimal_bool` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.option-map-unit-fn` is deprecated in favor of `lints.clippy.option_map_unit_fn` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.too-many-arguments` is deprecated in favor of `lints.clippy.too_many_arguments` and will not work in a future edition
+warning: vendor/polkadot-sdk/primitives/version/Cargo.toml: `lints.clippy.zero-prefixed-literal` is deprecated in favor of `lints.clippy.zero_prefixed_literal` and will not work in a future edition
+warning: `sp-version` (manifest) generated 9 warnings
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/qa-tools/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+76 ~ try-runtime = ["frame-support/try-runtime"]
+77 + [lints]
+78 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+76 ~ try-runtime = ["frame-support/try-runtime"]
+77 + [lints]
+   |
+warning: `qa-tools` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> vendor/open-runtime-module-library-v1/currencies/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+54 ~ ]
+55 + [lints]
+56 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+54 ~ ]
+55 + [lints]
+   |
+warning: `orml-currencies` (manifest) generated 1 warning
+warning: missing `[lints]` to inherit `[workspace.lints]`
+  --> pallets/denomination/Cargo.toml
+   = note: `cargo::missing_lints_inheritance` is set to `warn` by default
+help: to inherit `workspace.lints, add:
+   |
+66 ~ try-runtime = ["frame-support/try-runtime"]
+67 + [lints]
+68 + workspace = true
+   |
+help: to clarify your intent to not inherit, add:
+   |
+66 ~ try-runtime = ["frame-support/try-runtime"]
+67 + [lints]
+   |
+warning: `denomination` (manifest) generated 1 warning
+warning: patch `frame-benchmarking v50.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/benchmarking
+warning: patch `frame-benchmarking v50.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/benchmarking
+warning: patch `sc-network v0.60.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/client/network
+warning: patch `sp-io v49.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/io
+warning: patch `sp-runtime v49.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/runtime
+warning: patch `sp-version v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/version
+warning: patch `substrate-wasm-builder v35.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)` was not used in the crate graph
+  |
+  = help: perhaps you meant one of the following:
+          	/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/utils/wasm-builder
+warning: patch `multihash-derive v0.8.1 (/Users/takemiyamakoto/dev/sora2-network/vendor/multihash-derive-0.8.1)` was not used in the crate graph
+warning: patch `multihash v0.17.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/multihash-017)` was not used in the crate graph
+help: Check that the patched package version and available features are compatible
+      with the dependency requirements. If the patch has a different version from
+      what is locked in the Cargo.lock file, run `cargo update` to use the new
+      version. This may also occur with an optional dependency that is not enabled.
+   Compiling sp-core v28.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/core)
+   Compiling sp-trie v47.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-keystore v0.34.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-state-machine v0.54.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-io v49.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/io)
+   Compiling sp-application-crypto v49.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-runtime v49.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/runtime)
+   Compiling sp-version v47.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/primitives/version)
+   Compiling sp-inherents v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-staking v46.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-api v44.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling sp-genesis-builder v0.25.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling frame-support v49.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/support)
+   Compiling frame-system v49.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling pallet-balances v51.0.0 (https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-stable2609#7a8daa68)
+   Compiling pallet-preimage v50.0.0 (/Users/takemiyamakoto/dev/sora2-network/vendor/polkadot-sdk/frame/preimage)
+    Finished `test` profile [unoptimized] target(s) in 44.69s
+     Running unittests src/lib.rs (target/debug/build/pallet-preimage/fce8d1db6aef3614/out/pallet_preimage-fce8d1db6aef3614)
+
+running 24 tests
+test mock::test_genesis_config_builds ... ok
+test mock::__construct_runtime_integrity_test::runtime_integrity_tests ... ok
+test tests::manager_note_preimage_works ... ok
+test tests::query_and_store_preimage_workflow ... ok
+test tests::query_preimage_request_works ... ok
+test tests::query_preimage_hold_and_drop_work ... ok
+test tests::requested_then_noted_preimage_cannot_be_unnoted ... ok
+test tests::requested_preimage_can_be_provided_after_previous_request_is_consumed ... ok
+test tests::manager_unnote_preimage_works ... ok
+test tests::manager_can_convert_an_existing_unrequested_preimage ... ok
+test tests::requested_preimage_first_provision_refunds_but_replay_keeps_fees ... ok
+test tests::request_user_note_order_makes_no_difference ... ok
+test tests::requested_then_user_noted_preimage_is_free ... ok
+test tests::manager_unnote_user_preimage_works ... ok
+test tests::request_note_order_makes_no_difference ... ok
+test tests::store_preimage_basic_works ... ok
+test tests::unrequest_preimage_works ... ok
+test tests::user_noted_then_requested_preimage_is_refunded_once_only ... ok
+test tests::user_unnote_preimage_works ... ok
+test tests::user_note_preimage_works ... ok
+test tests::store_preimage_bound_too_large_errors ... ok
+test tests::store_preimage_note_too_large_errors ... ok
+test tests::noted_preimage_use_correct_map ... ok
+test tests::ensure_updated_works ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.19s
+

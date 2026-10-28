@@ -1,10 +1,10 @@
 {
   "status": "passed",
   "baseCommit": "bb38216396835fae45de9c38104e4927a96eb36c",
-  "sourceTreeAfterPatch": "36c466398e3f2760e8ab44fdb89de796f5b0dd99",
+  "sourceTreeAfterPatch": "7fa503c556a3cabcf800a3926b72c01cba565672",
   "sourceIsUncommittedOverlay": true,
   "patch": "source.patch",
-  "patchSha256": "77609ca470ee82a6cf4b6472bc9d058d665b8ab3990ab6e61e916a3fa1c251d1",
+  "patchSha256": "1f7eb0cf6c46b29caff1652d17972a0301db956883d14e1ac4d7c1699f41c920",
   "patchAppliesToCleanBase": true,
   "replayedTreeMatches": true,
   "userIndexModified": false,
@@ -32,7 +32,8 @@
     "pallets/apollo-platform/src/lib.rs",
     "pallets/apollo-platform/src/tests.rs",
     "common/src/mock.rs",
-    "runtime/src/tests/liveness/retired_lending.rs"
+    "runtime/src/tests/liveness/retired_lending.rs",
+    "runtime/src/tests/liveness/payout_batch_fees.rs"
   ],
   "requiredDeletions": [
     "runtime/src/migration_fees.rs",
@@ -59,14 +60,15 @@
     "pallets/kensetsu/src/lib.rs": "84ceded1431e62c48c4acddfcf041a088e0c882114237ab643ef4165507c1cad",
     "pallets/kensetsu/src/mock.rs": "a37f26c818d7a576824f29f676e41d8f24b3b0d2ad39d03d0574c557b66af229",
     "pallets/kensetsu/src/tests.rs": "df036eb3529a5296ec323bb621d39f039f1b3762209a0e7c2985e264293c858b",
-    "pallets/xor-fee/src/lib.rs": "36c8ba1d133789cb795bc0d77875121ef327e0f02a545d77d5bb3b144aaef1d2",
+    "pallets/xor-fee/src/lib.rs": "2d28fc05840809c7d3898b7bde39693454ef40c1700f266a32151da4371b9863",
     "runtime/src/lib.rs": "3a6385123429def4a42007d3fc482beae570fdca30df056c10649e99a2311ce2",
-    "runtime/src/tests/liveness.rs": "ae508aa15b53670a6df319a7b28c575545169d3b7ad49fdacdd8012723a5f858",
+    "runtime/src/tests/liveness.rs": "e0dc295d8cfb3bb8a59157682172f0759c5372f0a140b2d1f3f239519d8b340d",
     "runtime/src/tests/liveness/bridge_fees.rs": "2b72b2696b18922633bb9f74e5fea7d778c154324920c51ebd642526c476ac71",
     "runtime/src/tests/liveness/funded_keepers.rs": "b9c70a2e7a19578cc281fd7d72d79301190a3ab903857b107623d91549315c1c",
     "runtime/src/tests/liveness/migration_fees.rs": "2960d710d51c7b82a67f1360a16bf435644e5272d1e56f55d7b3ebf997e03762",
+    "runtime/src/tests/liveness/payout_batch_fees.rs": "1bdf9a15504694cb43ce4ddcace2e85a5e46f0fb614e4ae0a2670a32d337d922",
     "runtime/src/tests/liveness/retired_lending.rs": "c7f4e254365b6cc4f3522bbda07303209c5952f6338232de57b04974c6ba4a6f",
-    "runtime/src/xor_fee_impls.rs": "cffa28997a73445b568864605819f9e9ac6ad1e9c2d394270c408f45a68aafa7",
+    "runtime/src/xor_fee_impls.rs": "6666794f8597b247f61fd2adb64e52920db330049b00dfb410de9784a5f18076",
     "vendor/sora2-common/Cargo.lock": "cbbfd58735ac1c191e6146037fc854f70c7b76f1c2e581db774fb05cef4b1e87",
     "vendor/sora2-common/Cargo.toml": "76a90cb1d4d7b6ee8876616655961cdc46f9345dbb468e034a600b46cb81351a"
   }

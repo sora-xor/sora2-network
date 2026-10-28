@@ -1,0 +1,1 @@
+PASS CJS/ESM: 12 fixed state roots, proof round trips, malformed input, decompression bomb, callbacks, and actual Wasm execution

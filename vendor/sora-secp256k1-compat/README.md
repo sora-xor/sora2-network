@@ -6,7 +6,14 @@ of maintained RustCrypto `k256` 0.14.0. The recommendation comes from
 It contains only the byte-oriented compatibility API needed by this repository;
 all curve arithmetic, secret-key ownership, deterministic signing, verification,
 and recovery are performed by k256. It is not a renamed copy of the retired
-implementation. The crypto-bigint dependency enforces the 0.7.6 security floor.
+implementation. The crypto-bigint dependency enforces the 0.7.10 floor. Upstream
+[yanked 0.7.6 through 0.7.8](https://github.com/RustCrypto/crypto-bigint/releases/tag/v0.7.9)
+because 0.7.9 corrects `NonZero<T>` multiplication; 0.7.10 includes that correction,
+the earlier inversion and modular multiplication fixes, and the timing-security
+fixes from 0.7.6. Its published archive SHA-256 is
+`9c035cb64cba03dad2fb921f3e218785e8cf9a41790da5eb3a1400f62fa2be11`.
+The dated checks below describe their original artifacts; the new dependency
+requires fresh signature, no-std and Wasm compatibility verification.
 
 Historical protocol behavior is intentional:
 

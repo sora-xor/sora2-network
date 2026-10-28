@@ -1,0 +1,80 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-25T06:03:17.770105+00:00",
+  "checkedSignedReports": 9,
+  "candidateSha256": "c040d5621bfce585dac66a90f74490e528ce5ffbff172564c98bedc555823da6",
+  "snapshotSha256": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+  "metadataSha256": "ecea7effa234d2a1262e17a774bf3adaaa24cb2e3acfab8a048115d4ee6c1b19",
+  "compatibilitySha256": "e3eb831b35b849bcf34bb9d3bfa8c0194baaa9c475a174c2dc70278312af0dc8",
+  "rehearsalSha256": "bae37652809814466d5ae05e232733bb950ff4bb57ff23da4a90d2e824233f25",
+  "scriptSha256": "c3bf9963afd1841dbb2caf8e37a666e2674438f68a657f4e50eb2a1d01825e7d",
+  "allFeeEventsMatchPayerBalanceDecrease": true,
+  "allFailedReportsAreDuplicateOffenceReport": true,
+  "networkRequests": 0,
+  "checks": [
+    {
+      "method": "babe.reportEquivocation",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "365545982728251358075",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "babe.reportEquivocation duplicate",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "365545982728251358075",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "365545982728251358075",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "babe.reportEquivocationUnsigned duplicate",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "365545982728251358075",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocation",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "366070961444347321538",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocation duplicate",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "366070961444347321538",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "366070961444347321538",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "grandpa.reportEquivocationUnsigned duplicate",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "366070961444347321538",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    },
+    {
+      "method": "utility.batchAll([babe.reportEquivocationUnsigned])",
+      "payer": "cnRVHUYq6zah5dwdxD7B3CehfyfREb21GXBwyqqwbneyJoTRq",
+      "actualFee": "365605185180300223717",
+      "eventEqualsBalanceDecrease": true,
+      "dispatchOutcomeChecked": true
+    }
+  ],
+  "finishedAt": "2026-10-25T06:03:17.825378+00:00"
+}

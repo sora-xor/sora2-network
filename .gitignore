@@ -84,3 +84,6 @@ docs/security*
 /misc/slash-investigation/*.tar.gz
 /misc/slash-investigation/lifecycle-release-metadata.json
 /misc/slash-investigation/candidate-source.patch
+
+# Local runtime rehearsal state snapshots
+/runtime-rehearsal-*/validation/**/*.snap

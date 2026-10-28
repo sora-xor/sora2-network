@@ -1,0 +1,11 @@
+{
+  "status": "final",
+  "sourceSha256": "2b5b307b12be12470d1c192caf30b669cec4211f93634b6b7ebbb543533d0015",
+  "supportingSha256": "5539b0bd5a1ef7b4ff9eba74e050a7a418d6014a58bd6a4fc963a4e1478f1094",
+  "toolingSha256": "1f594e5c8136689108bb176a4d9a5f402b7a29fcf67bd0873754822b070c5ba5",
+  "sourceFiles": 4806,
+  "sourceBytes": 225851573,
+  "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6",
+  "overlaySha256": "a220cb90868ede3e20b748c7878428aabb73a153d63f456553f30f44dd72a59d",
+  "output": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-start.json"
+}

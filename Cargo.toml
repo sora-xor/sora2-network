@@ -1,4 +1,6 @@
 [patch.crates-io]
+wasmtime-internal-cache = { path = "vendor/wasmtime-internal-cache-36.0.19" }
+polkadot-node-primitives = { path = "vendor/polkadot-sdk/polkadot/node/primitives" }
 frame-decode = { path = "vendor/frame-decode" }
 scale-info-legacy = { path = "vendor/scale-info-legacy" }
 sc-executor-common = { path = "vendor/polkadot-sdk/client/executor/common" }
@@ -107,7 +109,7 @@ sp-version = { path = "vendor/polkadot-sdk/primitives/version" }
 sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sp-mmr-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
-sp-maybe-compressed-blob = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-maybe-compressed-blob = { path = "vendor/polkadot-sdk/primitives/maybe-compressed-blob" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 pallet-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
@@ -181,6 +183,7 @@ members = [
     "vendor/polkadot-sdk/primitives/runtime",
     "vendor/polkadot-sdk/primitives/version",
     "vendor/polkadot-sdk/frame/benchmarking",
+    "vendor/polkadot-sdk/frame/support/procedural",
     "vendor/polkadot-sdk/utils/wasm-builder",
     "vendor/polkadot-sdk/client/executor/common",
     "vendor/sora-secp256k1-compat",
@@ -231,6 +234,7 @@ members = [
     "utils/parse",
     "utils/generate-bags",
     "utils/remote-ext",
+    "utils/incident-recovery",
     "vendor/polkadot-sdk/frame/babe",
     "vendor/polkadot-sdk/frame/grandpa",
     "vendor/polkadot-sdk/frame/preimage",
@@ -247,6 +251,9 @@ members = [
 ]
 
 exclude = [
+    "vendor/polkadot-sdk/primitives/maybe-compressed-blob",
+    "vendor/polkadot-sdk/polkadot/node/primitives",
+    "vendor/wasmtime-internal-cache-36.0.19",
     "vendor/polkadot-sdk/frame/staking",
     "vendor/polkadot-sdk/client/network",
     "vendor/ark-ec-0.4.2",
@@ -331,12 +338,46 @@ orml-traits = { path = "vendor/open-runtime-module-library-v1/traits", package =
 [profile.release]
 panic = 'unwind'
 
+# Offline recovery authenticates full trie snapshots at every restart. Keeping
+# the portable SHA-256 compression loop optimized avoids minutes per checksum
+# in debug rehearsals without removing or caching any verification step.
+[profile.dev.package."sha2:0.10.9"]
+opt-level = 3
+
+[profile.dev.package."sha2:0.11.1"]
+opt-level = 3
+
+# The offline recovery verifier decodes and checks the complete checkpoint on
+# every run. Optimize its host-side iterators while retaining dev assertions and
+# overflow checks; this does not change the runtime Wasm build profile.
+[profile.dev.package.incident-recovery]
+opt-level = 3
+
+# Recovery crash/restart rehearsals re-read the complete compressed base trie.
+# Keep that verification intact without running the gzip decoder unoptimized.
+[profile.dev.package."miniz_oxide:0.9.1"]
+opt-level = 3
+
+# The snapshot restart profile also spends substantial time in the host gzip
+# adapter and trie reconstruction. Keep the exact disk/hash/root checks while
+# optimizing these dependency implementations in local verifier builds.
+[profile.dev.package.flate2]
+opt-level = 3
+
+[profile.dev.package.sp-state-machine]
+opt-level = 3
+
+[profile.dev.package.sp-core]
+opt-level = 3
+
 [patch."https://github.com/sora-xor/substrate.git"]
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 
 [patch."https://github.com/paritytech/polkadot-sdk.git"]
+sp-maybe-compressed-blob = { path = "vendor/polkadot-sdk/primitives/maybe-compressed-blob" }
+polkadot-node-primitives = { path = "vendor/polkadot-sdk/polkadot/node/primitives" }
 sc-network = { path = "vendor/polkadot-sdk/client/network" }
 frame-support-procedural = { path = "vendor/polkadot-sdk/frame/support/procedural" }
 sc-executor-common = { path = "vendor/polkadot-sdk/client/executor/common" }
@@ -447,7 +488,7 @@ sp-npos-elections = { git = "https://github.com/paritytech/polkadot-sdk.git", ta
 sp-staking = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sp-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
-sp-maybe-compressed-blob = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sp-maybe-compressed-blob = { path = "vendor/polkadot-sdk/primitives/maybe-compressed-blob" }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 mmr-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 pallet-mmr = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }

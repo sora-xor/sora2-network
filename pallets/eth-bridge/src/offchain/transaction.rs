@@ -165,6 +165,7 @@ impl<T: Config> Pallet<T> {
     /// Non-protocol calls retain the generic helper's caller-selected signer behavior.
     fn signer_for_protocol_call(call: &Call<T>) -> Result<Option<Signer<T, T::PeerId>>, Error<T>> {
         if let Some(protocol) = <Call<T> as IsSubType<crate::Call<T>>>::is_sub_type(call) {
+            Self::ensure_protocol_not_quarantined(protocol)?;
             let Some(network) = Self::peer_protocol_network(protocol) else {
                 return Ok(None);
             };
@@ -204,6 +205,7 @@ impl<T: Config> Pallet<T> {
         let Some(protocol) = <Call<T> as IsSubType<crate::Call<T>>>::is_sub_type(&inner) else {
             return Ok(None);
         };
+        Self::ensure_protocol_not_quarantined(protocol)?;
         let Some(network) = Self::peer_protocol_network(protocol) else {
             return Ok(None);
         };
@@ -212,6 +214,40 @@ impl<T: Config> Pallet<T> {
             Error::<T>::UnknownNetwork
         );
         Self::network_signer(network, Some(id), None).map(Some)
+    }
+
+    fn ensure_protocol_not_quarantined(call: &crate::Call<T>) -> Result<(), Error<T>> {
+        match call {
+            crate::Call::approve_request {
+                network_id, hash, ..
+            } => crate::recovery::ensure_outgoing_active::<T>(*network_id, *hash),
+            crate::Call::abort_request {
+                network_id, hash, ..
+            }
+            | crate::Call::finalize_incoming_request {
+                network_id, hash, ..
+            } => {
+                let request = crate::Requests::<T>::get(network_id, hash)
+                    .ok_or(Error::<T>::UnknownRequest)?;
+                crate::recovery::ensure_request_active::<T>(&request)
+            }
+            crate::Call::register_incoming_request { incoming_request } => {
+                crate::recovery::ensure_incoming_active::<T>(incoming_request)
+            }
+            crate::Call::import_incoming_request {
+                load_incoming_request,
+                incoming_request_result,
+            } => {
+                crate::recovery::ensure_request_active::<T>(
+                    &crate::requests::OffchainRequest::LoadIncoming(load_incoming_request.clone()),
+                )?;
+                if let Ok(request) = incoming_request_result {
+                    crate::recovery::ensure_incoming_active::<T>(request)?;
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
     }
 
     fn network_signer(

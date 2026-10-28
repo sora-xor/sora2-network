@@ -185,6 +185,7 @@ where
 		let round = equivocation_proof.round();
 		let session_index = key_owner_proof.session();
 		let validator_set_count = key_owner_proof.validator_count();
+		let recovery_range = crate::recovery::override_range(set_id, session_index, &offender);
 
 		// Validate equivocation proof (check votes are different and signatures are valid).
 		if !sp_consensus_grandpa::check_equivocation_proof(equivocation_proof) {
@@ -210,10 +211,12 @@ where
 
 		// Check that the session id for the membership proof is within the
 		// bounds of the set id reported in the equivocation.
-		if session_index > set_id_session_index ||
-			previous_set_id_session_index
-				.map(|previous_index| session_index <= previous_index)
-				.unwrap_or(false)
+		if recovery_range == Some(false) ||
+			(recovery_range.is_none() &&
+				(session_index > set_id_session_index ||
+					previous_set_id_session_index
+						.map(|previous_index| session_index <= previous_index)
+						.unwrap_or(false)))
 		{
 			return Err(Error::<T>::InvalidEquivocationProof.into());
 		}

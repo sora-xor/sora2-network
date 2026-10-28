@@ -1,0 +1,393 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-25T06:19:32.792265+00:00",
+  "project": "SORA Nexus",
+  "sdk": {
+    "tag": "polkadot-stable2609",
+    "commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe"
+  },
+  "candidate": {
+    "path": "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/candidate-built.compact.compressed.wasm",
+    "sha256": "c040d5621bfce585dac66a90f74490e528ce5ffbff172564c98bedc555823da6",
+    "bytes": 1959737,
+    "specVersion": 137,
+    "transactionVersion": 133,
+    "systemVersion": 0
+  },
+  "sourceFingerprint": {
+    "path": "source-clippy-start.json",
+    "sha256": "8ea7852fa3c2e2f3d2955415c7db36b839ef1cd1d122271f0bd076e05d83f256",
+    "sourceSha256": "2b5b307b12be12470d1c192caf30b669cec4211f93634b6b7ebbb543533d0015",
+    "sourceFiles": 4806,
+    "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6"
+  },
+  "freshSourceVerification": {
+    "command": [
+      "/opt/homebrew/opt/python@3.15/bin/python3.15",
+      "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-fingerprint.py",
+      "--check",
+      "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-start.json",
+      "--source-only"
+    ],
+    "result": {
+      "status": "passed",
+      "sourceSha256": "2b5b307b12be12470d1c192caf30b669cec4211f93634b6b7ebbb543533d0015",
+      "supportingSha256": "5539b0bd5a1ef7b4ff9eba74e050a7a418d6014a58bd6a4fc963a4e1478f1094",
+      "toolingSha256": "7a4e280df59e434fb17aa2f3a2daa3d4d6cdbc415632b560db7cd4c71dfbaf8f",
+      "sourceFiles": 4806,
+      "sourceBytes": 225851573,
+      "gitHead": "7fe885f651e682bde75f77f1ecbbc542d202a7b6",
+      "overlaySha256": "a220cb90868ede3e20b748c7878428aabb73a153d63f456553f30f44dd72a59d",
+      "compared": "source",
+      "changes": []
+    },
+    "stderr": ""
+  },
+  "clippy": {
+    "status": "passed",
+    "modes": [
+      "mainnet",
+      "try-runtime",
+      "extended"
+    ],
+    "allTargets": true,
+    "denyWarnings": true,
+    "compilerWarnings": 0,
+    "compilerErrors": 0
+  },
+  "native": {
+    "reportSha256": "047c389eca5d2dd473c14d26f3bab7e093d0f689ca632497f12fa0fdcb636e47",
+    "remoteReportSha256": "6c81a932b0b9877fc7e6e41a0c162570fd610cb2c835f9c4838282d7046436cb",
+    "regressionSteps": 6,
+    "testExecutions": {
+      "passed": 600,
+      "failed": 0,
+      "ignored": 3
+    },
+    "remoteModeTestsPassed": 4,
+    "pinnedMigrationTestsPassed": 1,
+    "totalRustTestExecutionsPassed": 605,
+    "countsMeaning": "Test executions; targeted reruns can include cases also covered by a complete package suite.",
+    "groups": [
+      {
+        "name": "source-start",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "runtime-production",
+        "passed": 298,
+        "failed": 0,
+        "ignored": 3
+      },
+      {
+        "name": "runtime-local-remote-name",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "staking-async-all",
+        "passed": 300,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "native-pinned-production",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "name": "source-end",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "stateSnapshot": {
+      "path": "native-28179122-b1e4293526ec3d9a.snap",
+      "bytes": 243895814,
+      "sha256": "5c3bea0da54b73de6c26cce0464939515d9fccc4d8427d37287075126f54b6a2"
+    },
+    "scopeSha256": "b1e4293526ec3d9af642129c253705b090c573f8f0c8a74512b1d5268fe45329",
+    "nativeTestInstrumentation": {
+      "commonTestEnabled": true,
+      "meaning": "common/test uses stricter fixed-point balance conversion and test include fallbacks; exact production semantics are checked by the separate default-production Wasm fork."
+    },
+    "coverage": {
+      "status": "passed",
+      "package": "framenode-runtime",
+      "defaultFeatures": false,
+      "features": [
+        "std",
+        "try-runtime"
+      ],
+      "featureClassification": "Production chain feature selection plus common/test instrumentation from the chain-spec development dependency; not byte-identical production dependency behavior.",
+      "test": "remote_try_runtime_upgrade_rehearsal",
+      "checks": "Configured pre/post upgrade hooks, retained-state decoding, audited storage versions, complete bridge replay/index/bounds checks, and multi-block migration completion.",
+      "forbiddenFeatures": [
+        "private-net",
+        "wip",
+        "stage",
+        "runtime-benchmarks",
+        "reduced-pswap-reward-periods"
+      ],
+      "candidateBinding": "Native source execution; pair with the separately hashed exact-Wasm fork rehearsal. This is not a deployment eligibility decision.",
+      "preparedScopeStatus": "not-run"
+    },
+    "limitations": [
+      "Native unit-test dependency unification enables common/test: FixedWrapper balance conversion uses stricter unwrap/checked behavior, and common include macros use test fallbacks. This is production chain feature selection with test instrumentation. Exact default-production Wasm fork execution establishes production runtime semantics.",
+      "No global try_state claim: System.Account, account balances/tokens, assets and unrelated pallets are omitted. Full Staking/XorFee retains real reward budgets, exposures and claims for migration hooks; it does not execute real user payouts.",
+      "Child tries are omitted because the selected migration paths use ordinary pallet/raw storage. This is not a complete chain-state snapshot or cryptographic state proof.",
+      "Legacy custom pallet data is omitted only after current pinned preflight verifies its no-op guard. Any guard/version mismatch aborts preparation and requires source/scope review.",
+      "Already-applied migration markers mean current-state replay exercises their idempotent no-op branch. Synthetic/native fixture tests separately cover active historical migrations.",
+      "The native runner uses a fresh scope-specific snapshot and rejects pre-existing cache files; a matching block hash alone does not prove filter completeness.",
+      "Public RPC responses are trusted for this diagnostic rehearsal. Finality/canonicality are provider assertions, not independent consensus verification.",
+      "No signed transactions, governance enactment, offchain-worker execution, full block consensus execution or validator deployment occurs."
+    ]
+  },
+  "wasm": {
+    "runId": "20261025T060025Z-4da4a4a7",
+    "stagesPassed": 20,
+    "checks": {
+      "freshStageOutputs": true,
+      "allRequiredStagesPassed": true,
+      "candidateSnapshotAndEvidenceHashesAgree": true,
+      "scriptAndSourceBindingsUnchangedDuringRun": true,
+      "fullPendingInventoryComplete": true
+    },
+    "sdkMigration": {
+      "reviewedCompatibility": true,
+      "existingScaleEncodingCompatible": false,
+      "codeUpdatedEventRequiresMetadataRefresh": true,
+      "reconstructedPrimitivePackages": 7,
+      "sourceProvenanceSha256": "9d02adcd54f20b667ef325dd90ca6f36c292977563a3dc6d10844c65db01307d",
+      "authorizedHeartbeatCases": 7,
+      "authorizedHeartbeatAdmissionSourcesPerCase": 3,
+      "emptyUtilityBatchesNormalAndPaid": 3,
+      "offlineGovernanceSigningCases": 8,
+      "signedHeartbeatStillPaid": true
+    },
+    "metadataCounts": {
+      "existingPallets": 81,
+      "existingCalls": 406,
+      "nestedTypePairsVisited": 10405,
+      "existingEvent": 443,
+      "existingError": 975,
+      "existingStorageEntries": 491,
+      "existingConstants": 157,
+      "signedExtensions": 7
+    },
+    "rawScaleCompatible": false,
+    "reviewedSdkMigrationCompatible": true
+  },
+  "productionBaseline": {
+    "endpoint": "wss://mof2.sora.org",
+    "blockNumber": 28179122,
+    "blockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+    "specVersion": 134,
+    "transactionVersion": 131,
+    "codeSha256": "de7173a9e0137a32265b341354383958d85beef81103571e6b0aa09622ef2221"
+  },
+  "audits": {
+    "cargoLockfiles": 11,
+    "cargoVulnerabilities": 0,
+    "cargoWarnings": 0,
+    "regressionHarnessLockfiles": 5,
+    "npmGraphs": 8,
+    "npmVulnerabilities": 0,
+    "rustSecDatabaseCommit": "21d909e4c8bd4e14c7aea58bf980c881a0053ab1",
+    "cargoLockBindings": {
+      "Cargo.lock": "9ea12b23715c44b523f1173512e1b84511b168a855521366f1fa54475c078350",
+      "misc/farming_snapshot/convert/Cargo.lock": "d8a0e5f7dafdccb1aff6e6dfc3cec0a99be2931e5515bd5241ac3a46ee3cf2b4",
+      "misc/rewards_snapshot/get_lp_tokens/Cargo.lock": "754fd576afce602af8f4d1b33a93caa59947bdc7328adc8979e27db3bae43175",
+      "vendor/sora2-common/Cargo.lock": "b7b5d522eca273a8d83126614045edcfb647c0ffbcf8b2b01a1f0e154148c563",
+      "misc/runtime_upgrade/vendor/native/py-bip39-bindings/Cargo.lock": "e426344ea7809223cccf32dfafc18543c5b9b897372f47ba591e3b598a01978b",
+      "misc/runtime_upgrade/vendor/native/py-ed25519-zebra-bindings/Cargo.lock": "65d84a5a23dddf54019fdca8f8245431752dd01fda976b056d314efc5869f8a6",
+      "misc/runtime_upgrade/vendor/native/py-sr25519-bindings/Cargo.lock": "f1e7837d57a582717c1418af1bd1ca450eaf1121aeaf7b28054c77a81ded85bf",
+      "misc/runtime_upgrade/vendor/native/pydantic-core/Cargo.lock": "e9f18888c4ab4e38bbfcceb7760c58786bd966fda9964d3f10af654f4e685777",
+      "vendor/chopsticks-executor/Cargo.lock": "cbdf80db91af71a4d13366b086f4c71d3de69638f3d3263cfea14c5cb983d7f5",
+      "vendor/polkadot-wasm-crypto/Cargo.lock": "b823a26da7a4c0ab9e9b7a4042059712596531366de54dadbbfac12b8857ab91",
+      "vendor/tikv-jemalloc-ctl-0.6.1/Cargo.lock": "09a8b44510139edae0213e44d2bd0eb5792787da4f26ae9ccec3d063378fb82c",
+      "runtime-rehearsal-async-staking-2026-10-25/validation/imported-migration-evidence/network-harness/Cargo.lock": "c1a317a312b54f6ba21b2e669dbfb36ba2266c8c6d81795696c18488c98f3d50",
+      "runtime-rehearsal-async-staking-2026-10-25/validation/imported-migration-evidence/signer-harness/Cargo.lock": "bb7d991aae98601fe39e444207b319ebbbf57a0a8690a190a8788ec84b9c2877",
+      "runtime-rehearsal-async-staking-2026-10-25/validation/imported-migration-evidence/macro-harness/Cargo.lock": "5a8ac9ab6c8e4c38154272941bef5d5ba507974cd6ff7453b88e6af70369bfba",
+      "runtime-rehearsal-async-staking-2026-10-25/validation/imported-migration-evidence/identity-harness/Cargo.lock": "6ccf981ec0a895dcc264eaa6aa5f97e3d91c877ff30cc9104c676f75baba765e",
+      "runtime-rehearsal-async-staking-2026-10-25/validation/imported-migration-evidence/smoldot-harness/Cargo.lock": "72ead9a98a6ca6dac15ab124a24056c69b804f10ffd1390029b216429b1b1b89"
+    },
+    "npmLockBindings": {
+      "misc/polkadotjs/bug-hunt/frontend-repro/package-lock.json": "e6583f7d2c1af7096e13ffbace805f373efc9af8cead5f43175ac6aad82a20cf",
+      "runtime-rehearsal-async-staking-2026-10-25/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-rehearsal-dependency-migrations-2026-10-25/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-rehearsal-sdk2609-2026-10-25/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-upgrade-4.8.10/validation/package-lock.json": "4ca1b5192950cc30b9cbb8a252401c04b201e224bb7d407965de94d69f5da759",
+      "runtime-upgrade-4.8.11/validation/package-lock.json": "ade61ab4b9d0806429259d7c2c4a8d0d2e751d01645cb40b9dedfced9b024cdb",
+      "runtime-upgrade-4.8.12/validation/package-lock.json": "0c917b9bc5fea341b47ccf0fc4776aeb830050b9a333807ee72ff143a4797760",
+      "runtime-upgrade-4.8.9/validation/rehearsal-package-lock.json": "0b16f71062d59690e333b17eff901255f8f37afa43abd42fa983830aaaffb49f"
+    },
+    "cargoSummarySha256": "783d8cc99756d2b2205e825154b1218a3bee42c213c3412656e0131a0010cd28",
+    "databaseSourceSha256": "a4db253792346f51ee6edf9953755084f5ef68091a039b58fc584f6a078d28f1",
+    "historicalSourceReviewSha256": "4f797e6313ce67a2a0927ba8e8e39983d07401bc9fa889d6f6262d6aeecc3fee",
+    "historicalHarnessScope": "Historical SDK2609 tests; reviewed package sources unchanged; harness locks freshly audited",
+    "npmSummarySha256": "4a71c4881de6a28b063ccbf10813bd11b2677cef82715b6ee124197034755a78"
+  },
+  "asyncStakingMigration": {
+    "reviewedCompatibility": true,
+    "storageVersions": {
+      "from": 16,
+      "to": 18
+    },
+    "sourceProofSha256": "c8e373148f7ea3c9490c5e1ef721325f0e4f1d06a68271659872d90c935201cd",
+    "completePinnedWitnessChecks": 2,
+    "capturedKeys": 21509,
+    "fullPinnedStakingMigrationVerified": true,
+    "inputProofs": {
+      "inventorySha256": "85319b3bbb2432afe59413e8d3a72b29502d7c103379fa7485f2b1021ea52d4c",
+      "stateSha256": "20a6e232f5c84ca0ca933f6a42a668579cbf2a63193a4a7d6228e11d1b83fcbf",
+      "importProofSha256": "4469c6bfbf044b34f05b5b6e275328188c26bfb2921e607c8ef7f252bfa9fccb"
+    },
+    "bytePreservedKeys": 21507,
+    "preservedBytesSha256": "8205aeed80df647f0f7e31e57afca4554b80fde274752f5fde773e5b0e3c7e73",
+    "recencyEntries": 15,
+    "normalAuthorshipPointIncrement": 20,
+    "noConsensusStateRootClaim": true,
+    "clientQueryCompatibility": {
+      "status": "passed",
+      "localOnly": true,
+      "remoteRequests": 0,
+      "blockHash": "0x32fd0d8dd97744f86dcf9d964d7fcd25fea43ab5e6d9d7054db9b7b75eba8cd0",
+      "inputs": {
+        "baselineMetadataSha256": "70fb15b7f598a58fc71a174af66df68b9136a2e87ec51dcd56aa279165cd6ba4",
+        "candidateMetadataSha256": "1d9f129aca091cfa515a03537752e94814bb475a6329c832b74793a03b5c5805",
+        "inventorySha256": "85319b3bbb2432afe59413e8d3a72b29502d7c103379fa7485f2b1021ea52d4c",
+        "stateSha256": "20a6e232f5c84ca0ca933f6a42a668579cbf2a63193a4a7d6228e11d1b83fcbf",
+        "verifierSha256": "58250476cdc980c7ec014c369daa39a7038ae5dfb7fc5a939d2c5ebfd2564627"
+      },
+      "storageItems": [
+        {
+          "storage": "BondedEras",
+          "prefix": "0x5f3e4907f716ac89b6347d15ececedcaea07de2b8f010516dca3f7ef52f7ac5a",
+          "entries": 1,
+          "rawPairsSha256": "82b2740d393270846c951414a0767e5f5b0219dc16cb224cc275d3c0386f64fd",
+          "decodedPairsSha256": "11a687af3b54230db27fbbe09d1804ace260806e6301302b2dc5c08616ade132",
+          "completePrefixVerified": true,
+          "allScaleBytesRoundtrip": true,
+          "decodedJsonIdentical": true
+        },
+        {
+          "storage": "ClaimedRewards",
+          "prefix": "0x5f3e4907f716ac89b6347d15ececedcaac664702a457aaa158e5bb458a0c376c",
+          "entries": 746,
+          "rawPairsSha256": "d733399bc2df7c722719f511e11126a6996ed73e339d7d99df517a0e7589bb9d",
+          "decodedPairsSha256": "9283a8ae033df810aece64eb1c77d22b67cf5048135bcf17410c3ea7911a2efe",
+          "completePrefixVerified": true,
+          "allScaleBytesRoundtrip": true,
+          "decodedJsonIdentical": true
+        },
+        {
+          "storage": "ErasRewardPoints",
+          "prefix": "0x5f3e4907f716ac89b6347d15ececedca80cc6574281671b299c1727d7ac68cab",
+          "entries": 85,
+          "rawPairsSha256": "e1bc62b45aaa71e69bc95c7be614a56edea90ec3494b872440c5ca462c627554",
+          "decodedPairsSha256": "a944a600dd0b23911dd38e063f300d69fc0e4ff5340223a33d79ff7db1554e79",
+          "completePrefixVerified": true,
+          "allScaleBytesRoundtrip": true,
+          "decodedJsonIdentical": true
+        },
+        {
+          "storage": "Ledger",
+          "prefix": "0x5f3e4907f716ac89b6347d15ececedca422adb579f1dbf4f3886c5cfa3bb8cc4",
+          "entries": 2626,
+          "rawPairsSha256": "ab0a5be8197226a7aa79049a267a6c34f3db874df9ca9537291a2e454308ae80",
+          "decodedPairsSha256": "fcd3bd09a8925b669bcf78098da61f04233302bc061abf138bb56424c1f07d0f",
+          "completePrefixVerified": true,
+          "allScaleBytesRoundtrip": true,
+          "decodedJsonIdentical": true
+        },
+        {
+          "storage": "ErasStakersPaged",
+          "prefix": "0x5f3e4907f716ac89b6347d15ececedca6ecf40373c722b0340d3d65c311a4305",
+          "entries": 1275,
+          "rawPairsSha256": "282da55a2b287d0e7a8b6a9eeea4874a56f165fe590079b168d5db4b591ec8b9",
+          "decodedPairsSha256": "ad4ba54445226451e69029fe6708bc5db8bfaaa7914301f87bd445a662cd5cb4",
+          "completePrefixVerified": true,
+          "allScaleBytesRoundtrip": true,
+          "decodedJsonIdentical": true
+        }
+      ],
+      "totalValues": 4733,
+      "scope": "Every pinned value for all five named prefixes, decoded independently with deployed and candidate PolkadotJS registries; exact JSON equality and full SCALE roundtrip."
+    }
+  },
+  "rejectedAdmission": {
+    "reportSha256": "dc0ffcd16b7719265e3d6ccdf4b149de64e04fb0501e4a63166e08fd2468a2f0",
+    "blockSizeReviewSha256": "768dfec9fb59d2eb25400a01a24d5b2044dab2efa82c9d60c25c69ef4bc7f1c5",
+    "rejectedTransactions": 28,
+    "inspectedRawDiffEntries": 69,
+    "committedStateChangesOnInvalidTransaction": 0,
+    "negativeAndRollbackTests": 11,
+    "currentPureVerifier": {
+      "status": "passed",
+      "transactions": 28,
+      "entries": 69
+    },
+    "accountingException": "Only four reviewed System block-accounting fields; BlockSize requires exact plain Optional u32 metadata and four-byte values. Every invalid diff is discarded."
+  },
+  "bridge": {
+    "reportSha256": "405f5d4f9e4e750479b2122629f2d98de7624c8e6e36468e18981202f7687d0e",
+    "pendingOperations": 2061,
+    "hashOnlyOperations": 2061,
+    "inventoryComplete": true,
+    "storedCallBoundObservable": false,
+    "operatorReadinessConfirmed": false,
+    "activationAuthorized": false
+  },
+  "submittedTransactions": 0,
+  "deployed": false,
+  "scopeLimitations": [
+    "Native storage is scoped; it is not whole-chain try_state or a complete state-root proof.",
+    "Native tests enable common/test instrumentation; exact default-production Wasm is verified separately.",
+    "Synthetic fixtures and mocked outer signatures exercise local paths; heartbeat signatures and migration ownership proofs use real Wasm verification.",
+    "Production reward-publication/remap and BABE-repair markers are already set; live replay checks idempotence, and local fixtures cover active historical paths.",
+    "Bridge inventory is complete but all 2061 operations are hash-only; stored payload bounds and operator readiness remain unconfirmed.",
+    "System.CodeUpdated gains a hash field, Offences field naming changes, and new authorization/Identity metadata requires client refresh and transaction version 133.",
+    "Actual async staking replaces synchronous staking; the migration preserves pinned legacy bytes and local session/election behavior through a runtime adapter. Full Staking coverage is not a whole-chain state-root proof.",
+    "Unchanged SDK client/security harness executions are explicitly historical; current runtime and async pallet suites, dependency audits, and Clippy are fresh.",
+    "Zero native submissions is based on reviewed read-only RPC code paths, not independent packet capture."
+  ],
+  "evidenceSha256": {
+    "final-build-verification.json": "a8951a545c91f9bf88a5c7d26385352e62821d8c36d4dccc7725dc54189d80af",
+    "candidate-build-evidence.json": "82e01b75eb533ea9c35fd7f2fcc0934973d2d5c46611b401d8ca718723eb5ba7",
+    "source-clippy-start.json": "8ea7852fa3c2e2f3d2955415c7db36b839ef1cd1d122271f0bd076e05d83f256",
+    "native-regressions.json": "047c389eca5d2dd473c14d26f3bab7e093d0f689ca632497f12fa0fdcb636e47",
+    "native-remote-execution.json": "6c81a932b0b9877fc7e6e41a0c162570fd610cb2c835f9c4838282d7046436cb",
+    "native-remote-scope.json": "b1e4293526ec3d9af642129c253705b090c573f8f0c8a74512b1d5268fe45329",
+    "rehearsal-run.json": "b6c788db04f544c200512017e096c3ee69231aa0014908266e2e505ade1fcad1",
+    "current-production-identity.json": "f49dba2616deb840c7908d82e99a301236ec6c9fa846c9843b8c8359fbf1fc8e",
+    "snapshot.json": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+    "wasm-compatibility.json": "e3eb831b35b849bcf34bb9d3bfa8c0194baaa9c475a174c2dc70278312af0dc8",
+    "metadata-compatibility.json": "335af6b4dab3004560313d6e604af457aedc3c38c8a1696f57e3f533732b53cc",
+    "python-candidate-signing-report.json": "46ec78ca29ad86b9323cb81569fe0248f18e7a0715bba3ea516c77cdad8c50a5",
+    "equivocation-fee-wasm-rehearsal.json": "bae37652809814466d5ae05e232733bb950ff4bb57ff23da4a90d2e824233f25",
+    "fee-policy-wasm-rehearsal.json": "ebda441b3398905d99e1a968f427d3cb72db37854cf782e19cae8be5fc4ac20d",
+    "fee-event-check.json": "0e2aef075d4fcd96fe78b4f5ebee80cd7a0a40680c6423bab69e8311a8171393",
+    "bridge-readiness.json": "405f5d4f9e4e750479b2122629f2d98de7624c8e6e36468e18981202f7687d0e",
+    "rejected-admission-check.json": "dc0ffcd16b7719265e3d6ccdf4b149de64e04fb0501e4a63166e08fd2468a2f0",
+    "rejected-admission-block-size-review.json": "768dfec9fb59d2eb25400a01a24d5b2044dab2efa82c9d60c25c69ef4bc7f1c5",
+    "sdk-primitives-provenance.json": "9d02adcd54f20b667ef325dd90ca6f36c292977563a3dc6d10844c65db01307d",
+    "staking-async-source-proof.json": "c8e373148f7ea3c9490c5e1ef721325f0e4f1d06a68271659872d90c935201cd",
+    "staking-public-inventory.json": "85319b3bbb2432afe59413e8d3a72b29502d7c103379fa7485f2b1021ea52d4c",
+    "staking-public-state.json.gz": "20a6e232f5c84ca0ca933f6a42a668579cbf2a63193a4a7d6228e11d1b83fcbf",
+    "staking-cache-import.json": "4469c6bfbf044b34f05b5b6e275328188c26bfb2921e607c8ef7f252bfa9fccb",
+    "current-cargo-audits/summary.json": "783d8cc99756d2b2205e825154b1218a3bee42c213c3412656e0131a0010cd28",
+    "current-cargo-audits/database-source.json": "a4db253792346f51ee6edf9953755084f5ef68091a039b58fc584f6a078d28f1",
+    "imported-migration-evidence/import-summary.json": "4f797e6313ce67a2a0927ba8e8e39983d07401bc9fa889d6f6262d6aeecc3fee",
+    "imported-migration-evidence/historical-reference.json": "4e59e2735048a4e867243b82157d2992ffd50758b3af4f097fed02ae9593e4cf",
+    "npm-security-refresh/summary.json": "4a71c4881de6a28b063ccbf10813bd11b2677cef82715b6ee124197034755a78",
+    "npm-security-refresh/installed-checks.json": "f0ab9f29a16865d7f714d2b4f9b6aaf055aaebaee548e3da9ece59eb177b0fc1"
+  },
+  "aggregatorSha256": "480c3e4b82f23425ac33acae55b7a4b35dbf8cd47a8b4c955464c41d5adad621",
+  "verifiedFileBindings": 635
+}

@@ -36,7 +36,6 @@ use bridge_types::traits::EVMOutboundChannel;
 use bridge_types::traits::OutboundChannel;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::EVMChainId;
-use bridge_types::GenericNetworkId;
 use bridge_types::SubNetworkId;
 use bridge_types::{H256, U256};
 use frame_support::ensure;
@@ -180,6 +179,9 @@ pub mod pallet {
         // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
         // with the corresponding commitment is persisted offchain.
         fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+            if crate::recovery::halted() {
+                return T::DbWeight::get().reads(1);
+            }
             let interval = Self::interval();
             let mut weight = Default::default();
             if now % interval == Zero::zero() {
@@ -221,15 +223,58 @@ pub mod pallet {
         MessageGasLimitExceeded,
         /// Commitment consume too much gas
         CommitmentGasLimitExceeded,
+        /// Bridge execution remains quarantined by the recovery release.
+        RecoveryHalted,
     }
 
     impl<T: Config> Pallet<T> {
+        /// Exact native queue witness for manifest-bound recovery quarantine.
+        pub fn recovery_queue(
+            network_id: GenericNetworkId,
+        ) -> BoundedVec<GenericBridgeMessage<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit>
+        {
+            MessageQueues::<T>::get(network_id)
+        }
+
         pub(crate) fn commit(network_id: GenericNetworkId) -> Weight {
+            if crate::recovery::halted() {
+                return T::DbWeight::get().reads(1);
+            }
+            let Some(next_nonce) = ChannelNonces::<T>::get(network_id).checked_add(1) else {
+                return T::DbWeight::get().reads(1);
+            };
+            if bridge_types::recovery::batch_quarantined(0, network_id, next_nonce) {
+                return T::DbWeight::get().reads(2);
+            }
+            let message_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
+            let recovery_reads = (message_count as u64).saturating_mul(2).saturating_add(2);
+            if message_count > T::MaxMessagesPerCommit::get() as usize
+                || (0..message_count).any(|index| {
+                    bridge_types::recovery::message_quarantined(
+                        network_id,
+                        MessageId::batched(
+                            T::ThisNetworkId::get(),
+                            network_id,
+                            next_nonce,
+                            index as u64,
+                        )
+                        .hash(),
+                    )
+                })
+            {
+                return T::DbWeight::get().reads(recovery_reads);
+            }
+            let recovery_overhead = if sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
+                T::DbWeight::get().reads(recovery_reads)
+            } else {
+                Weight::zero()
+            };
             debug!("Commit substrate messages");
             let messages = MessageQueues::<T>::take(network_id);
             QueueTotalGas::<T>::remove(network_id);
             if messages.is_empty() {
-                return <T as Config>::WeightInfo::on_initialize_no_messages();
+                return <T as Config>::WeightInfo::on_initialize_no_messages()
+                    .saturating_add(recovery_overhead);
             }
 
             let batch_nonce = ChannelNonces::<T>::mutate(network_id, |nonce| {
@@ -299,11 +344,13 @@ pub mod pallet {
                 }
                 GenericNetworkId::EVMLegacy(_) => {
                     error!("EVMLegacy messages are not supported by this channel (if you noticed this message, please report it)");
-                    return <T as Config>::WeightInfo::on_initialize_no_messages();
+                    return <T as Config>::WeightInfo::on_initialize_no_messages()
+                        .saturating_add(recovery_overhead);
                 }
                 GenericNetworkId::TON(_) => {
                     error!("TON messages are not supported yet by this channel (if you noticed this message, please report it)");
-                    return <T as Config>::WeightInfo::on_initialize_no_messages();
+                    return <T as Config>::WeightInfo::on_initialize_no_messages()
+                        .saturating_add(recovery_overhead);
                 }
             };
 
@@ -321,6 +368,7 @@ pub mod pallet {
                 messages_count as u32,
                 average_payload_size as u32,
             )
+            .saturating_add(recovery_overhead)
         }
 
         fn average_payload_size(
@@ -354,11 +402,62 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        /// Recovery-only upper bound for both marker reads at every bounded
+        /// queue position, the global/batch gates and repeated weight probes.
+        /// No-policy execution retains deployed historical dispatch weights.
+        pub(crate) fn recovery_submit_overhead() -> Weight {
+            if !sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
+                return Weight::zero();
+            }
+            let positions = T::MaxMessagesPerCommit::get() as u64;
+            T::DbWeight::get()
+                .reads(positions.saturating_mul(2).saturating_add(8))
+                .saturating_add(Weight::from_parts(
+                    positions.saturating_mul(250_000).saturating_add(2_000_000),
+                    positions.saturating_mul(8_192).saturating_add(16_384),
+                ))
+        }
+
+        pub(crate) fn submit_evm_inner(
+            network_id: EVMChainId,
+            who: &RawOrigin<T::AccountId>,
+            payload: &[u8],
+            additional_data: AdditionalEVMOutboundData,
+        ) -> Result<H256, DispatchError> {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
+            ensure!(
+                additional_data.max_gas < T::MaxGasPerMessage::get(),
+                Error::<T>::MessageGasLimitExceeded
+            );
+            QueueTotalGas::<T>::try_mutate(GenericNetworkId::EVM(network_id), |total_gas| {
+                *total_gas = total_gas.saturating_add(additional_data.max_gas);
+                ensure!(
+                    *total_gas < T::MaxGasPerCommit::get(),
+                    Error::<T>::CommitmentGasLimitExceeded
+                );
+                Ok::<(), DispatchError>(())
+            })?;
+            let message = bridge_types::evm::Message {
+                payload: payload
+                    .to_vec()
+                    .try_into()
+                    .map_err(|_| Error::<T>::PayloadTooLarge)?,
+                target: additional_data.target,
+                max_gas: additional_data.max_gas,
+            };
+            Self::submit_message(
+                network_id.into(),
+                who,
+                bridge_types::GenericBridgeMessage::EVM(message),
+            )
+        }
+
         pub fn submit_message(
             network_id: GenericNetworkId,
             who: &RawOrigin<T::AccountId>,
             message: GenericBridgeMessage<T::MaxMessagePayloadSize>,
         ) -> Result<H256, DispatchError> {
+            ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
             debug!("Send message from {:?} to network {:?}", who, network_id);
             let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
             ensure!(
@@ -368,6 +467,21 @@ pub mod pallet {
             let batch_nonce = ChannelNonces::<T>::get(network_id)
                 .checked_add(1)
                 .ok_or(Error::<T>::Overflow)?;
+            ensure!(
+                !bridge_types::recovery::batch_quarantined(0, network_id, batch_nonce),
+                Error::<T>::RecoveryHalted
+            );
+
+            // Do not append a fresh transfer behind an irreversibly stopped
+            // position: the exact batch (including all existing slots) is blocked.
+            ensure!(
+                !(0..=messages_count).any(|index| bridge_types::recovery::message_quarantined(
+                    network_id,
+                    MessageId::batched(T::ThisNetworkId::get(), network_id, batch_nonce, index)
+                        .hash(),
+                )),
+                Error::<T>::RecoveryHalted
+            );
 
             MessageQueues::<T>::try_append(network_id, message)
                 .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
@@ -395,6 +509,7 @@ impl<T: Config> OutboundChannel<SubNetworkId, T::AccountId, ()> for Pallet<T> {
         payload: &[u8],
         _: (),
     ) -> Result<H256, DispatchError> {
+        ensure!(!crate::recovery::halted(), Error::<T>::RecoveryHalted);
         let message = BridgeMessage {
             payload: payload
                 .to_vec()
@@ -410,7 +525,7 @@ impl<T: Config> OutboundChannel<SubNetworkId, T::AccountId, ()> for Pallet<T> {
     }
 
     fn submit_weight() -> Weight {
-        <T as Config>::WeightInfo::submit()
+        <T as Config>::WeightInfo::submit().saturating_add(Self::recovery_submit_overhead())
     }
 }
 
@@ -422,35 +537,22 @@ impl<T: Config> OutboundChannel<EVMChainId, T::AccountId, AdditionalEVMOutboundD
         payload: &[u8],
         additional_data: AdditionalEVMOutboundData,
     ) -> Result<H256, DispatchError> {
-        ensure!(
-            additional_data.max_gas < T::MaxGasPerMessage::get(),
-            Error::<T>::MessageGasLimitExceeded
-        );
-        QueueTotalGas::<T>::try_mutate(GenericNetworkId::EVM(network_id), |total_gas| {
-            *total_gas = total_gas.saturating_add(additional_data.max_gas);
-            ensure!(
-                *total_gas < T::MaxGasPerCommit::get(),
-                Error::<T>::CommitmentGasLimitExceeded
-            );
-            Ok::<(), DispatchError>(())
-        })?;
-        let message = bridge_types::evm::Message {
-            payload: payload
-                .to_vec()
-                .try_into()
-                .map_err(|_| Error::<T>::PayloadTooLarge)?,
-            target: additional_data.target,
-            max_gas: additional_data.max_gas,
-        };
-        Self::submit_message(
-            network_id.into(),
-            who,
-            bridge_types::GenericBridgeMessage::EVM(message),
-        )
+        // A stopped queue must not consume its aggregate gas budget. The
+        // deployed no-policy path is retained exactly for checkpoint replay.
+        if sp_io::storage::exists(b":sora-nexus:recovery:policy:v1") {
+            frame_support::storage::with_transaction(|| {
+                match Self::submit_evm_inner(network_id, who, payload, additional_data) {
+                    Ok(id) => frame_support::storage::TransactionOutcome::Commit(Ok(id)),
+                    Err(error) => frame_support::storage::TransactionOutcome::Rollback(Err(error)),
+                }
+            })
+        } else {
+            Self::submit_evm_inner(network_id, who, payload, additional_data)
+        }
     }
 
     fn submit_weight() -> Weight {
-        <T as Config>::WeightInfo::submit()
+        <T as Config>::WeightInfo::submit().saturating_add(Self::recovery_submit_overhead())
     }
 }
 

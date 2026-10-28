@@ -1,0 +1,7 @@
+{
+  "status": "failed-diagnostic-attempt",
+  "mainnet": "passed",
+  "try-runtime": "map_or_identity in upstream async try-state",
+  "extended": "deprecated max_value benchmarks and unused test accessor",
+  "scope": "Retained failed attempt. Final verification requires all three modes to pass on one frozen source."
+}

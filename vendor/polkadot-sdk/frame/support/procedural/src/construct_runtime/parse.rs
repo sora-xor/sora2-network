@@ -72,14 +72,45 @@ pub struct ImplicitRuntimeDeclaration {
 /// Declaration of a runtime with all pallet having explicit declaration of parts.
 #[derive(Debug)]
 pub struct ExplicitRuntimeDeclaration {
+	pub dispatch_origin_guard: Option<DispatchOriginGuard>,
 	pub name: Ident,
 	pub where_section: Option<WhereSection>,
 	pub pallets: Vec<Pallet>,
 	pub pallets_token: token::Brace,
 }
 
+/// Optional runtime-wide admission applied even to unfiltered nested dispatch.
+/// Both paths are supplied explicitly; other runtimes retain the SDK behavior.
+#[derive(Debug)]
+pub struct DispatchOriginGuard {
+	pub check: Path,
+	pub weight: Path,
+}
+
+impl Parse for DispatchOriginGuard {
+	fn parse(input: ParseStream) -> Result<Self> {
+		let check = input.parse()?;
+		input.parse::<Token![,]>()?;
+		let weight = input.parse()?;
+		if !input.is_empty() {
+			return Err(input.error("expected exactly origin-check and weight function paths"));
+		}
+		Ok(Self { check, weight })
+	}
+}
+
 impl Parse for RuntimeDeclaration {
 	fn parse(input: ParseStream) -> Result<Self> {
+		let mut dispatch_origin_guard = None;
+		for attribute in input.call(Attribute::parse_outer)? {
+			if !attribute.path().is_ident("dispatch_origin_guard") {
+				return Err(Error::new(attribute.span(), "only #[dispatch_origin_guard(check, weight)] is supported on the runtime declaration"));
+			}
+			if dispatch_origin_guard.is_some() {
+				return Err(Error::new(attribute.span(), "duplicate dispatch_origin_guard"));
+			}
+			dispatch_origin_guard = Some(attribute.parse_args::<DispatchOriginGuard>()?);
+		}
 		input.parse::<Token![pub]>()?;
 
 		// Support either `enum` or `struct`.
@@ -101,6 +132,7 @@ impl Parse for RuntimeDeclaration {
 			},
 			PalletsConversion::Explicit(pallets) => {
 				Ok(RuntimeDeclaration::Explicit(ExplicitRuntimeDeclaration {
+					dispatch_origin_guard,
 					name,
 					where_section,
 					pallets,
@@ -109,6 +141,7 @@ impl Parse for RuntimeDeclaration {
 			},
 			PalletsConversion::ExplicitExpanded(pallets) => {
 				Ok(RuntimeDeclaration::ExplicitExpanded(ExplicitRuntimeDeclaration {
+					dispatch_origin_guard,
 					name,
 					where_section,
 					pallets,
@@ -787,5 +820,44 @@ fn convert_pallets(pallets: Vec<PalletDeclaration>) -> syn::Result<PalletsConver
 		Ok(PalletsConversion::ExplicitExpanded(pallets))
 	} else {
 		Ok(PalletsConversion::Explicit(pallets))
+	}
+}
+
+#[cfg(test)]
+mod dispatch_origin_guard_tests {
+	use super::*;
+
+	fn declaration(attribute: &str) -> Result<RuntimeDeclaration> {
+		syn::parse_str(&format!(
+			"{attribute} pub enum Runtime {{ System: frame_system::{{Pallet, Call, Storage, Event<T>}} = 0 }}"
+		))
+	}
+
+	#[test]
+	fn origin_guard_is_optional_and_explicitly_runtime_scoped() {
+		let RuntimeDeclaration::Explicit(plain) = declaration("").unwrap() else { panic!() };
+		assert!(plain.dispatch_origin_guard.is_none());
+		let RuntimeDeclaration::Explicit(guarded) = declaration(
+			"#[dispatch_origin_guard(crate::admission::check, crate::admission::weight)]",
+		)
+		.unwrap() else {
+			panic!()
+		};
+		let guard = guarded.dispatch_origin_guard.unwrap();
+		assert_eq!(guard.check.to_token_stream().to_string(), "crate :: admission :: check");
+		assert_eq!(guard.weight.to_token_stream().to_string(), "crate :: admission :: weight");
+	}
+
+	#[test]
+	fn origin_guard_rejects_duplicates_unknown_attributes_and_incomplete_paths() {
+		for attribute in [
+			"#[dispatch_origin_guard(check, weight)] #[dispatch_origin_guard(check, weight)]",
+			"#[unknown_guard(check, weight)]",
+			"#[dispatch_origin_guard(check)]",
+			"#[dispatch_origin_guard(check, weight, extra)]",
+			"#[dispatch_origin_guard(\"check\", weight)]",
+		] {
+			assert!(declaration(attribute).is_err(), "{attribute}");
+		}
 	}
 }

@@ -1,0 +1,21 @@
+✔ pinned baseline self-check covers every value in all five prefixes (704.31525ms)
+✔ candidate query field rename fails despite byte-identical storage encoding (152.697333ms)
+✔ missing-prefix fails even with matching fixture inventory hash (204.432125ms)
+✔ trailing-bytes fails even with matching fixture inventory hash (186.96375ms)
+✔ resolves imported and defined function indices to their exported signatures (1.017375ms)
+✔ type table ordering does not change the named ABI (0.592333ms)
+✔ exported arity/type changes are observable even with identical names and kinds (0.191666ms)
+✔ independent engine export reflection must agree (1.560416ms)
+✔ default static heap accepts the exact wasm32 bound and rejects one extra page (0.131208ms)
+✔ unsupported memory widths, sharing and malformed page counts are rejected (0.190166ms)
+✔ only the unused data-end linker global may be removed (11.438292ms)
+✔ required allocator, memory and runtime function exports cannot be removed (0.772583ms)
+✔ linker kind changes, unreviewed additions and runtime signature changes fail (0.302792ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1740.337666

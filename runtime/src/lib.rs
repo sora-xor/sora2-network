@@ -54,6 +54,22 @@ mod authorized_heartbeat_payment;
 /// Constant values used within the runtime.
 pub mod constants;
 mod impls;
+pub mod incident_recovery;
+#[cfg(test)]
+mod incident_recovery_bridge_history_tests;
+#[cfg(test)]
+mod incident_recovery_bridge_preview_tests;
+pub mod incident_recovery_consensus;
+#[cfg(test)]
+mod incident_recovery_elections_tests;
+pub mod incident_recovery_evm_source;
+pub mod incident_recovery_incoming;
+mod incident_recovery_origin;
+pub mod incident_recovery_outgoing;
+#[cfg(test)]
+mod incident_recovery_preview_audits;
+#[cfg(test)]
+mod incident_recovery_staking_tests;
 mod liveness;
 pub mod migrations;
 pub mod staking_async;
@@ -450,10 +466,10 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
     spec_name: Cow::Borrowed("sora-substrate"),
     impl_name: Cow::Borrowed("sora-substrate"),
     authoring_version: 1,
-    spec_version: 137,
+    spec_version: 138,
     impl_version: 1,
     apis: RUNTIME_API_VERSIONS,
-    transaction_version: 133,
+    transaction_version: 134,
     system_version: 0,
 };
 
@@ -614,7 +630,7 @@ impl frame_system::Config for Runtime {
     type ExtensionsWeightInfo = ();
     type SingleBlockMigrations = migrations::Migrations;
     type MultiBlockMigrator = MultiBlockMigrations;
-    type PreInherents = ();
+    type PreInherents = incident_recovery::RecoveryLineage;
     type PostInherents = ();
     type PostTransactions = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
@@ -624,7 +640,7 @@ impl pallet_babe::Config for Runtime {
     type EpochDuration = EpochDuration;
     type ExpectedBlockTime = ExpectedBlockTime;
     type EpochChangeTrigger = pallet_babe::ExternalTrigger;
-    type DisabledValidators = Session;
+    type DisabledValidators = incident_recovery_consensus::RecoveryDisabledValidators;
     type WeightInfo = liveness::EquivocationWeights;
     type MaxAuthorities = MaxAuthorities;
     type MaxNominators = MaxNominators;
@@ -633,7 +649,7 @@ impl pallet_babe::Config for Runtime {
     type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<
         Self,
         liveness::EquivocationReports,
-        Historical,
+        incident_recovery_consensus::RecoveryOwnership,
         ReportLongevity,
     >;
 }
@@ -766,7 +782,7 @@ impl pallet_grandpa::Config for Runtime {
     type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<
         Self,
         liveness::EquivocationReports,
-        Historical,
+        incident_recovery_consensus::RecoveryOwnership,
         ReportLongevity,
     >;
 }
@@ -787,7 +803,7 @@ impl pallet_session::Config for Runtime {
     type SessionManager =
         pallet_session::historical::NoteHistoricalRoot<Self, staking_async::LocalSession>;
     type Keys = opaque::SessionKeys;
-    type ShouldEndSession = Babe;
+    type ShouldEndSession = incident_recovery::RecoverySessionBoundary;
     type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
     type RuntimeEvent = RuntimeEvent;
     type ValidatorId = AccountId;
@@ -1101,7 +1117,7 @@ impl pallet_balances::Config for Runtime {
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ExistentialDeposit;
-    type AccountStore = System;
+    type AccountStore = incident_recovery::RecoveryNativeAccounts;
     type WeightInfo = ();
     type FreezeIdentifier = ();
     type MaxLocks = MaxLocks;
@@ -1141,7 +1157,7 @@ impl tokens::Config for Runtime {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
+    type CurrencyHooks = incident_recovery::RecoveryCurrencyHooks;
     type MaxLocks = MaxLocksTokens;
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -1983,6 +1999,7 @@ impl eth_bridge::Config for Runtime {
     type WeightToFee = XorFee;
     type MessageStatusNotifier = BridgeProxy;
     type BridgeAssetLockChecker = BridgeProxy;
+    type IncomingAccountResolver = incident_recovery_incoming::PersistentAccountResolver;
     type AssetInfoProvider = assets::Pallet<Runtime>;
     type Denominator = Denomination;
     type MaxRequestsPerQueue = MaxEthBridgeRequestsPerQueue;
@@ -2842,7 +2859,7 @@ parameter_types! {
 
 impl bridge_channel::inbound::Config for Runtime {
     type Verifier = MultiVerifier;
-    type MessageDispatch = Dispatch;
+    type MessageDispatch = incident_recovery_incoming::RecoveryGenericMessageDispatch;
     type WeightInfo = ();
     type ThisNetworkId = ThisNetworkId;
     type UnsignedPriority = DataSignerPriority;
@@ -3026,7 +3043,7 @@ impl dispatch::Config<dispatch::Instance2> for Runtime {
 
 impl substrate_bridge_channel::inbound::Config for Runtime {
     type Verifier = MultiVerifier;
-    type MessageDispatch = SubstrateDispatch;
+    type MessageDispatch = incident_recovery_incoming::RecoverySubstrateMessageDispatch;
     type UnsignedPriority = DataSignerPriority;
     type UnsignedLongevity = DataSignerLongevity;
     type MaxMessagePayloadSize = BridgeMaxMessagePayloadSize;
@@ -3288,6 +3305,7 @@ impl denomination::Config for Runtime {
 }
 
 construct_runtime! {
+    #[dispatch_origin_guard(crate::incident_recovery_origin::check, crate::incident_recovery_origin::weight)]
     pub enum Runtime {
         System: frame_system::{Pallet, Call, Storage, Config<T>, Event<T>} = 0,
 
@@ -3858,12 +3876,14 @@ impl_runtime_apis! {
         }
 
         fn execute_block(block: <Block as BlockT>::LazyBlock) {
+            incident_recovery::assert_final_runtime_admission(&block.header);
             Executive::execute_block(block)
         }
 
         fn initialize_block(
             header: &<Block as BlockT>::Header,
         ) -> sp_runtime::ExtrinsicInclusionMode {
+            incident_recovery::assert_final_runtime_admission(header);
             Executive::initialize_block(header)
         }
     }
@@ -4400,11 +4420,11 @@ impl_runtime_apis! {
             }
 
             fn generate_key_ownership_proof(
-                    _slot_number: sp_consensus_babe::Slot,
+                    slot_number: sp_consensus_babe::Slot,
                     authority_id: sp_consensus_babe::AuthorityId,
             ) -> Option<sp_consensus_babe::OpaqueKeyOwnershipProof> {
                     use codec::Encode;
-                    Historical::prove((sp_consensus_babe::KEY_TYPE, authority_id))
+                    incident_recovery_consensus::prove_babe(slot_number, authority_id)
                             .map(|p| p.encode())
                             .map(sp_consensus_babe::OpaqueKeyOwnershipProof::new)
             }
@@ -4619,11 +4639,11 @@ impl_runtime_apis! {
         }
 
         fn generate_key_ownership_proof(
-            _set_id: fg_primitives::SetId,
+            set_id: fg_primitives::SetId,
             authority_id: GrandpaId,
         ) -> Option<fg_primitives::OpaqueKeyOwnershipProof> {
             use codec::Encode;
-            Historical::prove((fg_primitives::KEY_TYPE, authority_id))
+            incident_recovery_consensus::prove_grandpa(set_id, authority_id)
                 .map(|p| p.encode())
                 .map(fg_primitives::OpaqueKeyOwnershipProof::new)
         }
@@ -4878,3 +4898,7 @@ impl_runtime_apis! {
         }
     }
 }
+
+// Native-only fixture exporter; appended to preserve existing production source positions.
+#[cfg(test)]
+mod incident_recovery_hashi_preview_tests;

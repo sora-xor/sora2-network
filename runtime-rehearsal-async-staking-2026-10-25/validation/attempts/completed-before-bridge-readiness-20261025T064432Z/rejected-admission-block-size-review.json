@@ -1,0 +1,164 @@
+{
+  "status": "passed",
+  "createdAt": "2026-10-25T06:13:23.027334+00:00",
+  "archivedPriorOutputs": [],
+  "steps": [
+    {
+      "name": "rejected-admission-regressions",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "--test",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/test-rejected-admission.cjs",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/test-runtime-execution.cjs"
+      ],
+      "startedAt": "2026-10-25T06:13:25.847836+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T06:13:26.091645+00:00",
+      "log": "rejected-admission-regressions.log",
+      "logSha256": "f013eda8d12ed48ff63fa997b102b71f4a41680c3ba51eebdd0df51c02db8dbb"
+    },
+    {
+      "name": "rejected-admission-check",
+      "command": [
+        "/tmp/sora2-node24/node-v24.22.1-darwin-arm64/bin/node",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/verify-rejected-admission.cjs"
+      ],
+      "startedAt": "2026-10-25T06:13:26.103141+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-25T06:13:26.275326+00:00",
+      "log": "rejected-admission-check.log",
+      "logSha256": "04d943932b3673208326faab2440cfde51142f0e4ff4d61e6c632774c7caba5e"
+    }
+  ],
+  "sourceChecks": [
+    {
+      "stage": "start",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/rejected-admission-source-start-check.json"
+      ],
+      "exitCode": 0,
+      "evidence": "rejected-admission-source-start-check.json",
+      "sha256": "c3a420e2535d90002152e5f5575c1efbcbcd0a09ac667eea55f3484ba4a1e8cb"
+    },
+    {
+      "stage": "end",
+      "command": [
+        "/opt/homebrew/opt/python@3.15/bin/python3.15",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-fingerprint.py",
+        "--check",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-start.json",
+        "--source-only",
+        "--output",
+        "/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-async-staking-2026-10-25/validation/rejected-admission-source-end-check.json"
+      ],
+      "exitCode": 0,
+      "evidence": "rejected-admission-source-end-check.json",
+      "sha256": "c3a420e2535d90002152e5f5575c1efbcbcd0a09ac667eea55f3484ba4a1e8cb"
+    }
+  ],
+  "finding": "The prior verifier omitted System.BlockSize, an existing block-accounting write reached by the new rejected bare heartbeat fixture. This is a verifier scope correction, not a runtime behavior change.",
+  "upstreamRevisions": {
+    "before": "cd87d0b95e54c8ffc374334386f3f2b2c7a61f54",
+    "after": "7a8daa68e18718c18823c1109513fdc1c8aa71fe"
+  },
+  "sourceProof": {
+    "checkWeightFunctions": {
+      "do_prepare": {
+        "identicalBetween2603And2609": true,
+        "sha256": "1ccc415d6936960eb0449b774155391cfea0f377c9eb9559459cb8322f750533"
+      },
+      "bare_validate_and_prepare": {
+        "identicalBetween2603And2609": true,
+        "sha256": "e0a2de3fdb685a968465911f3eea5f043816bee89fe3bd4f017df91eb3271d5f"
+      }
+    },
+    "executionOrder": [
+      "CheckedExtrinsic Bare invokes ValidateUnsigned::pre_dispatch",
+      "SignedExtra CheckWeight::bare_validate_and_prepare writes BlockSize and BlockWeight",
+      "Following AuthorizedHeartbeatPayment rejects legacy bare ImOnline heartbeat as InvalidTransaction::Call",
+      "Runtime API caller discards the entire invalid storage diff before constructing the next local state"
+    ],
+    "storageDeclaration": "frame_system::BlockSize = StorageValue<_, u32>",
+    "runtimeSourcesModified": false
+  },
+  "fixture": {
+    "label": "legacy bare heartbeat rejects",
+    "extrinsicSha256": "e3b2ef47bade2668e9cdc43849ff50e87ec277729935945cb79bcbe57436a4cf",
+    "apply": {
+      "err": {
+        "invalid": {
+          "call": null
+        }
+      }
+    },
+    "events": [],
+    "sources": {
+      "External": {
+        "err": {
+          "unknown": {
+            "noUnsignedValidator": null
+          }
+        }
+      },
+      "Local": {
+        "err": {
+          "unknown": {
+            "noUnsignedValidator": null
+          }
+        }
+      },
+      "InBlock": {
+        "err": {
+          "unknown": {
+            "noUnsignedValidator": null
+          }
+        }
+      }
+    },
+    "blockSizeWrite": {
+      "extrinsicSha256": "e3b2ef47bade2668e9cdc43849ff50e87ec277729935945cb79bcbe57436a4cf",
+      "encodedValue": "0xd9000000",
+      "decodedBytes": 217
+    }
+  },
+  "checks": {
+    "exactMetadataPlainU32AndOptionalRequired": true,
+    "exact32ByteBlockSizeKeyRequired": true,
+    "onlyFourByteScaleU32WritesAccepted": true,
+    "noSystemPrefixOrAccountEventException": true,
+    "allRejectedDiffsStillRolledBack": true,
+    "negativeAndRollbackTestsPassed": 11
+  },
+  "inputs": {
+    "runtime-rehearsal-async-staking-2026-10-25/validation/rehearsal-run.json": "b6c788db04f544c200512017e096c3ee69231aa0014908266e2e505ade1fcad1",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/candidate-build-evidence.json": "82e01b75eb533ea9c35fd7f2fcc0934973d2d5c46611b401d8ca718723eb5ba7",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/source-clippy-start.json": "8ea7852fa3c2e2f3d2955415c7db36b839ef1cd1d122271f0bd076e05d83f256",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/wasm-compatibility.json": "e3eb831b35b849bcf34bb9d3bfa8c0194baaa9c475a174c2dc70278312af0dc8",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/candidate-metadata.json": "ecea7effa234d2a1262e17a774bf3adaaa24cb2e3acfab8a048115d4ee6c1b19",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/snapshot.json": "4b78410599bcb878de4e325f4273284aad1ead757b0c7ae0aafb79f79a7022e6",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/equivocation-fee-wasm-rehearsal.json": "bae37652809814466d5ae05e232733bb950ff4bb57ff23da4a90d2e824233f25",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/fee-policy-wasm-rehearsal.json": "ebda441b3398905d99e1a968f427d3cb72db37854cf782e19cae8be5fc4ac20d",
+    "/tmp/sora2-stable2609-migration/upstream/substrate/frame/system/src/extensions/check_weight.rs": "ff0f736ae85a34847b79ccbcd3a2d44e76b0b7e51ed7037b823870b6c3e6f4f3",
+    "/Users/takemiyamakoto/.cargo/git/checkouts/polkadot-sdk-dee0edd6eefa0594/cd87d0b/substrate/frame/system/src/extensions/check_weight.rs": "a96221fc2060f3aa9c6b7eb4555eb2ccdd55e949152d2ce8b61dfe61696be706",
+    "/tmp/sora2-stable2609-migration/upstream/substrate/frame/system/src/lib.rs": "6b0e3ca0d75a20529f1a007b1ef6663730b5a487d9f56201807b2e4b32e0e8c6",
+    "vendor/polkadot-sdk/primitives/runtime/src/generic/checked_extrinsic.rs": "37a5dc10e6e922f8cd54af991cc4db5f8edeaa295ad578f25c0e743b29a86449",
+    "runtime/src/lib.rs": "fbdc748c67f54af08d2e66b8e4eba9417ee5e8623b51efb85c23d16c7c53f56b",
+    "runtime/src/authorized_heartbeat_payment.rs": "c9c9fead939f4b510f8f86aa4048e932e85527769a7f0b85df943f7f09b1761a",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/runtime-execution.cjs": "69a4d1867d437d4778dc8c9823f9d6c47b5777e385676d816a3ce2c765558731",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/verify-rejected-admission.cjs": "fd0fe8f6301d9b41c6a0cb5af67f0ba820867b171e8e13918cbd873a59cea879",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/test-rejected-admission.cjs": "05a5eb97b161c799071807547c19fb6a1ffbfd2919da48bcec9b5720db6c4ba8",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/test-runtime-execution.cjs": "a43f5b127129454a46138e185bede7e80f59e5d25747b6c1da3505fefabbf435",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/rejected-admission-check.json": "dc0ffcd16b7719265e3d6ccdf4b149de64e04fb0501e4a63166e08fd2468a2f0",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/rejected-admission-source-start-check.json": "c3a420e2535d90002152e5f5575c1efbcbcd0a09ac667eea55f3484ba4a1e8cb",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/rejected-admission-source-end-check.json": "c3a420e2535d90002152e5f5575c1efbcbcd0a09ac667eea55f3484ba4a1e8cb",
+    "runtime-rehearsal-async-staking-2026-10-25/validation/refresh-rejected-admission-review.py": "99b01ff32bf30c7e90d1a9ecf747c7e0b04b12227441841d3ddc1b50cd2ab263"
+  },
+  "runId": "20261025T060025Z-4da4a4a7",
+  "finishedAt": "2026-10-25T06:13:27.745824+00:00"
+}

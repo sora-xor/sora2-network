@@ -1,0 +1,13 @@
+✔ runtime inclusion modes are decoded explicitly and unknown modes rejected (0.57475ms)
+✔ signed fixtures cannot run in an inherent-only, unknown or wrong-height block (0.317542ms)
+✔ invalid transaction storage changes are retained as evidence but fully rolled back (0.446834ms)
+✔ admitted dispatch errors retain fee/nonce effects instead of rolling back (0.057083ms)
+✔ runtime apply normalization uses the outer validity result (0.13625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 44.326291

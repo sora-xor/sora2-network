@@ -1,0 +1,3 @@
+# Unified-diff context prefixes intentionally precede tabs/empty lines. The
+# provenance verifier applies this exact artifact and hashes all resulting Rust.
+vendor/polkadot-sdk/frame/support/procedural/stable2609-customizations.patch whitespace=-blank-at-eol,-space-before-tab

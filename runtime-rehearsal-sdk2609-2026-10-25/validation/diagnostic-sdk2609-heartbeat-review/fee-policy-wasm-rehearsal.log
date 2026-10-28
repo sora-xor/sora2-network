@@ -1,0 +1,41 @@
+2026-10-25T00:57:55.209Z Loading pinned deployed public state
+2026-10-25T00:58:12.939Z Executing exact candidate Core_initialize_block and on-runtime-upgrade hooks
+      runtime::frame-support   INFO: [3] ⚠️ Liveness declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ PoolXYK declares internal migrations (which *might* execute). On-chain `StorageVersion(3)` vs in-code storage version `StorageVersion(3)`
+      runtime::frame-support   INFO: [3] ⚠️ EthBridge declares internal migrations (which *might* execute). On-chain `StorageVersion(4)` vs in-code storage version `StorageVersion(4)`
+      runtime::frame-support   INFO: [3] ⚠️ CeresLiquidityLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresTokenLocker declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ CeresGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ DemeterFarmingPlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ HermesGovernancePlatform declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `NoStorageVersionSet`
+      runtime::frame-support   INFO: [3] ⚠️ MultiBlockMigrations declares internal migrations (which *might* execute). On-chain `StorageVersion(0)` vs in-code storage version `StorageVersion(0)`
+2026-10-25T00:58:18.922Z Finalizing the inherent-only upgrade block through actual candidate Wasm
+2026-10-25T00:58:22.584Z Initializing the next normal block after migration completion
+2026-10-25T00:58:38.479Z Exact Wasm: authorized heartbeat legacy bare heartbeat rejects
+2026-10-25T00:58:42.600Z Exact Wasm: authorized heartbeat invalid authority signature rejects
+2026-10-25T00:58:45.933Z Exact Wasm: authorized heartbeat wrong session rejects
+2026-10-25T00:58:49.509Z Exact Wasm: authorized heartbeat nonzero unsigned tip rejects
+2026-10-25T00:58:56.169Z Exact Wasm: authorized heartbeat ordinary paid call cannot use General authorization
+2026-10-25T00:59:04.629Z Exact Wasm: authorized heartbeat real signed authority heartbeat succeeds without payer
+2026-10-25T00:59:16.606Z Exact Wasm: authorized heartbeat heartbeat replay rejects
+AssertionError [ERR_ASSERTION]: Every independent authorization case must pass
++ actual - expected
+
++ [
++   {
++     error: 'legacy bare heartbeat rejects application\n\ntrue !== false\n',
++     label: 'legacy bare heartbeat rejects'
++   }
++ ]
+- []
+
+    at authorizedHeartbeatFixture (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/authorized-heartbeat-fixture.cjs:113:10)
+    at async main (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/rehearse-fee-policy.cjs:881:40) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+{"status":"failed","error":"Every independent authorization case must pass\n+ actual - expected\n\n+ [\n+   {\n+     error: 'legacy bare heartbeat rejects application\\n\\ntrue !== false\\n',\n+     label: 'legacy bare heartbeat rejects'\n+   }\n+ ]\n- []\n","candidateSha256":"0eecd87ed64bc5bfbece4772e0c43f6907be94a9609f6025c89f2636fc5f37ca"}

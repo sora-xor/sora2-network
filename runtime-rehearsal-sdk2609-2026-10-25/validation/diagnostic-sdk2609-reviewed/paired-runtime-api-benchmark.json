@@ -1,0 +1,299 @@
+{
+  "status": "passed",
+  "startedAt": "2026-10-25T00:52:54.213Z",
+  "localOnly": true,
+  "remoteRequests": 0,
+  "scriptSha256": "9932249fed03ac05a7dc373ceb229cf081db48d0639f4a1ad374f1efa21b06a4",
+  "inputs": {
+    "old135": {
+      "bytes": 1900414,
+      "sha256": "2109096d15dd84e49c7d081ad20ab7b194424cc4e640f804133da0b836c28adf"
+    },
+    "new136": {
+      "bytes": 1905819,
+      "sha256": "0eecd87ed64bc5bfbece4772e0c43f6907be94a9609f6025c89f2636fc5f37ca"
+    }
+  },
+  "method": "Six paired samples per API after warmups, alternating old/new and new/old order. Same installed executor, process, callbacks and parameters. Per-call timing includes executor task setup and compressed runtime loading.",
+  "limitations": [
+    "Pure deterministic runtime APIs only; this does not measure block throughput, storage migrations, signed extensions, or staking payout execution.",
+    "Concurrent machine workload is not controlled; alternation and process CPU timing reduce, but do not eliminate, scheduling bias."
+  ],
+  "samples": [
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": 0,
+      "elapsedMs": 1998.7722919999997,
+      "processCpuMs": 432.562,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": 0,
+      "elapsedMs": 1780.6847909999997,
+      "processCpuMs": 420.906,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 0,
+      "elapsedMs": 1339.9156249999978,
+      "processCpuMs": 409.774,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 0,
+      "elapsedMs": 677.6442080000015,
+      "processCpuMs": 407.905,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": 1,
+      "elapsedMs": 787.929583000001,
+      "processCpuMs": 414.909,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": 1,
+      "elapsedMs": 840.869708000002,
+      "processCpuMs": 421.906,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 1,
+      "elapsedMs": 897.9830419999998,
+      "processCpuMs": 419.195,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 1,
+      "elapsedMs": 1006.7119170000005,
+      "processCpuMs": 406.265,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": 2,
+      "elapsedMs": 735.3102500000023,
+      "processCpuMs": 409.654,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": 2,
+      "elapsedMs": 1221.6867920000004,
+      "processCpuMs": 410.246,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 2,
+      "elapsedMs": 1118.0176659999997,
+      "processCpuMs": 412.183,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 2,
+      "elapsedMs": 1020.4184160000004,
+      "processCpuMs": 415.595,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": 3,
+      "elapsedMs": 685.8607499999998,
+      "processCpuMs": 417.844,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": 3,
+      "elapsedMs": 679.5283750000017,
+      "processCpuMs": 407.773,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 3,
+      "elapsedMs": 510.3223340000004,
+      "processCpuMs": 411.346,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 3,
+      "elapsedMs": 1088.093041,
+      "processCpuMs": 414.814,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": 4,
+      "elapsedMs": 728.982082999999,
+      "processCpuMs": 418.508,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": 4,
+      "elapsedMs": 571.7862920000007,
+      "processCpuMs": 415.992,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 4,
+      "elapsedMs": 687.4289580000004,
+      "processCpuMs": 409.069,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 4,
+      "elapsedMs": 1059.743083999998,
+      "processCpuMs": 411.417,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": 5,
+      "elapsedMs": 515.9673340000008,
+      "processCpuMs": 401.501,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": 5,
+      "elapsedMs": 720.2848750000012,
+      "processCpuMs": 408.689,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 5,
+      "elapsedMs": 636.1369579999991,
+      "processCpuMs": 392.919,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": 5,
+      "elapsedMs": 827.4307499999995,
+      "processCpuMs": 411.923,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    }
+  ],
+  "warmups": [
+    {
+      "label": "old135",
+      "method": "Core_version",
+      "pair": -1,
+      "elapsedMs": 3109.757458,
+      "processCpuMs": 741.626,
+      "outputSha256": "d2728bcd6ec58923155243e675482721122ec5afb6897293c8be2ed7b7b1021c",
+      "outputBytes": 384
+    },
+    {
+      "label": "new136",
+      "method": "Core_version",
+      "pair": -1,
+      "elapsedMs": 2357.092457999999,
+      "processCpuMs": 461.761,
+      "outputSha256": "12b795c012f17903a4ae245381738014caeee45ec4e57016fd4d34f199d8300d",
+      "outputBytes": 384
+    },
+    {
+      "label": "old135",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": -1,
+      "elapsedMs": 2077.262750000001,
+      "processCpuMs": 448.111,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    },
+    {
+      "label": "new136",
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "pair": -1,
+      "elapsedMs": 1990.0611669999998,
+      "processCpuMs": 434.875,
+      "outputSha256": "d187a3382062a5119ca9b8e4716740af93da0f390f1b1a79d13da4e65befacd4",
+      "outputBytes": 16
+    }
+  ],
+  "results": [
+    {
+      "method": "Core_version",
+      "samplesPerRuntime": 6,
+      "oldMedianElapsedMs": 735.3102500000023,
+      "newMedianElapsedMs": 787.929583000001,
+      "candidateToOldElapsedRatio": 1.071560722837739,
+      "oldMedianProcessCpuMs": 418.508,
+      "newMedianProcessCpuMs": 415.992
+    },
+    {
+      "method": "TransactionPaymentApi_query_length_to_fee",
+      "samplesPerRuntime": 6,
+      "oldMedianElapsedMs": 1088.093041,
+      "newMedianElapsedMs": 897.9830419999998,
+      "candidateToOldElapsedRatio": 0.8252814861996712,
+      "oldMedianProcessCpuMs": 411.923,
+      "newMedianProcessCpuMs": 411.417
+    }
+  ],
+  "finishedAt": "2026-10-25T00:53:26.637Z"
+}

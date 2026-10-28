@@ -1,0 +1,10 @@
+{
+  "status": "failed",
+  "startedAt": "2026-10-25T01:51:32.604Z",
+  "error": {
+    "message": "Rejected raw admission wrote outside the three block-accounting fields: 0x26aa394eea5630e07c48ae0c9558cef7dd2ecd4efaa88c313bb2e876dc3521ea",
+    "stack": "AssertionError [ERR_ASSERTION]: Rejected raw admission wrote outside the three block-accounting fields: 0x26aa394eea5630e07c48ae0c9558cef7dd2ecd4efaa88c313bb2e876dc3521ea\n    at assertAccountingOnly (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/verify-rejected-admission.cjs:21:5)\n    at verify (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/verify-rejected-admission.cjs:60:7)\n    at Object.<anonymous> (/Users/takemiyamakoto/dev/sora2-network/runtime-rehearsal-sdk2609-2026-10-25/validation/verify-rejected-admission.cjs:77:34)\n    at Module._compile (node:internal/modules/cjs/loader:1929:14)\n    at Object..js (node:internal/modules/cjs/loader:2060:10)\n    at Module.load (node:internal/modules/cjs/loader:1651:32)\n    at Module._load (node:internal/modules/cjs/loader:1443:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47"
+  },
+  "scriptSha256": "86d638bfe7805a989e8a7bb4fe18c28ad8275d236914b1f89b146b5fce4457a6",
+  "finishedAt": "2026-10-25T01:51:32.640Z"
+}

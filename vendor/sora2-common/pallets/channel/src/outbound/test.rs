@@ -378,3 +378,57 @@ fn evm_queue_total_gas_is_cleared_after_commit() {
         ));
     });
 }
+
+#[test]
+fn recovery_halt_preserves_queued_messages_and_nonces_without_committing() {
+    new_tester().execute_with(|| {
+        let origin = RawOrigin::Signed(Keyring::Bob.to_account_id());
+        assert_ok!(BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID.sub().unwrap(),
+            &origin,
+            &[0, 1, 2],
+            ()
+        ));
+        let queue = MessageQueues::<Test>::get(BASE_NETWORK_ID);
+        sp_io::storage::set(crate::recovery::HALT_KEY, &[1]);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
+        assert_noop!(
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID.sub().unwrap(), &origin, &[3], ()),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        let _ = <BridgeOutboundChannel as frame_support::traits::Hooks<_>>::on_initialize(10);
+        assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+    });
+}
+
+#[test]
+fn permanent_batch_quarantine_survives_global_halt_removal() {
+    new_tester().execute_with(|| {
+        let origin = RawOrigin::Signed(Keyring::Bob.to_account_id());
+        assert_ok!(BridgeOutboundChannel::submit(
+            BASE_NETWORK_ID.sub().unwrap(),
+            &origin,
+            &[0, 1, 2],
+            ()
+        ));
+        let queue = MessageQueues::<Test>::get(BASE_NETWORK_ID);
+        sp_io::storage::set(
+            &bridge_types::recovery::batch_key(0, BASE_NETWORK_ID, 1),
+            &[1],
+        );
+        sp_io::storage::clear(crate::recovery::HALT_KEY);
+        sp_io::storage::set(crate::recovery::INBOUND_CONTEXT_KEY, &1u32.to_le_bytes());
+        assert_noop!(
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID.sub().unwrap(), &origin, &[3], ()),
+            Error::<Test>::RecoveryHalted
+        );
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
+        let _ = <BridgeOutboundChannel as frame_support::traits::Hooks<_>>::on_initialize(10);
+        assert_eq!(MessageQueues::<Test>::get(BASE_NETWORK_ID), queue);
+        assert_eq!(ChannelNonces::<Test>::get(BASE_NETWORK_ID), 0);
+        assert!(LatestCommitment::<Test>::get(BASE_NETWORK_ID).is_none());
+    });
+}

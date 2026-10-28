@@ -348,7 +348,13 @@ fn construct_runtime_explicit_to_explicit_expanded(
 fn construct_runtime_final_expansion(
 	definition: ExplicitRuntimeDeclaration,
 ) -> Result<TokenStream2> {
-	let ExplicitRuntimeDeclaration { name, pallets, pallets_token, where_section } = definition;
+	let ExplicitRuntimeDeclaration {
+		name,
+		pallets,
+		pallets_token,
+		where_section,
+		dispatch_origin_guard,
+	} = definition;
 
 	let system_pallet =
 		pallets.iter().find(|decl| decl.name == SYSTEM_PALLET_NAME).ok_or_else(|| {
@@ -398,7 +404,13 @@ fn construct_runtime_final_expansion(
 	let all_pallets = decl_all_pallets(&name, pallets.iter(), &features);
 	let pallet_to_index = decl_pallet_runtime_setup(&name, &pallets, &scrate);
 
-	let dispatch = expand::expand_outer_dispatch(&name, system_pallet, &pallets, &scrate);
+	let dispatch = expand::expand_outer_dispatch(
+		&name,
+		system_pallet,
+		&pallets,
+		&scrate,
+		dispatch_origin_guard.as_ref(),
+	);
 	let tasks = expand::expand_outer_task(&name, &pallets, &scrate);
 	let query = expand::expand_outer_query(&name, &pallets, &scrate);
 	let metadata = expand::expand_runtime_metadata(

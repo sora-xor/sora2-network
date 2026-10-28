@@ -1,0 +1,18 @@
+{
+  "compatibleExistingScaleEncoding": true,
+  "counts": {
+    "existingPallets": 81,
+    "existingCalls": 406,
+    "nestedTypePairsVisited": 10405,
+    "existingEvent": 443,
+    "existingError": 975,
+    "existingStorageEntries": 491,
+    "existingConstants": 157,
+    "signedExtensions": 7
+  },
+  "breakingChanges": [],
+  "additions": 0,
+  "constantValueChanges": 0,
+  "selfChecks": 9,
+  "output": "runtime-rehearsal-dependency-migrations-2026-10-25/validation/diagnostic-metadata-comparison.json"
+}
