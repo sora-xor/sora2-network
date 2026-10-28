@@ -121,6 +121,24 @@ enum Command {
         #[arg(long)]
         output: PathBuf,
     },
+    /// Execute a fresh baseline, then SIGKILL exact-Wasm importers at committed snapshots.
+    #[cfg(all(unix, feature = "runtime-work-types"))]
+    RehearseMaintenanceCrashes {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        /// Require the same opaque prior-policy certificate as incoming coverage.
+        #[arg(long)]
+        require_prior_incoming_evidence: bool,
+    },
+    /// Internal bounded importer; its report alone is never release evidence.
+    #[cfg(all(unix, feature = "runtime-work-types"))]
+    #[command(hide = true)]
+    MaintenanceCrashWorker {
+        #[arg(long)]
+        job: PathBuf,
+    },
     /// Verify authenticated Burn-event history and export trusted extractor input.
     VerifyBurnHistory {
         #[arg(long)]
@@ -730,6 +748,26 @@ fn run() -> incident_recovery::Result<()> {
                 "{}",
                 serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
             );
+        }
+        #[cfg(all(unix, feature = "runtime-work-types"))]
+        Command::RehearseMaintenanceCrashes {
+            manifest,
+            output,
+            require_prior_incoming_evidence,
+        } => {
+            let report = incident_recovery::maintenance::process_death::run(
+                &manifest,
+                &output,
+                require_prior_incoming_evidence,
+            )?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
+        }
+        #[cfg(all(unix, feature = "runtime-work-types"))]
+        Command::MaintenanceCrashWorker { job } => {
+            incident_recovery::maintenance::process_death::worker(&job)?;
         }
         Command::VerifyBurnHistory { manifest, output } => {
             let report = incident_recovery::burn_history::verify(&manifest, &output)?;

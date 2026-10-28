@@ -23,11 +23,14 @@ import tempfile
 import time
 
 import hashi_codec as scale
+import node_identity
 import burn_release
 import incoming_release
 import incoming_replay_release
 import execution_release
 import history_release
+import artifact_identity_release
+import forward_repair_release
 
 FORMAT = "sora-nexus-recovery-release-candidate-v1"
 MANIFEST = "sora-nexus-recovery-release-v1"
@@ -83,6 +86,26 @@ def local_file(root, relative):
 
 def hex_bytes(value, size=32):
     return scale.raw(value, size, True)
+
+
+def grandpa_key(value):
+    """Decode exact JSON keys without changing the node command's SS58 contract."""
+    if isinstance(value, str) and value.startswith("0x"):
+        return hex_bytes(value)
+    key = node_identity.authority_key(value)
+    reject(any(key), "Zero GRANDPA authority key")
+    return key
+
+
+def grandpa_rows(rows, *, hex_only=False):
+    reject(isinstance(rows, list) and 0 < len(rows) <= 1000, "Invalid GRANDPA authority list")
+    result = []
+    for row in rows:
+        reject(isinstance(row, list) and len(row) == 2 and type(row[1]) is int
+               and 0 < row[1] < 2**64, "Invalid GRANDPA authority key/weight row")
+        result.append((hex_bytes(row[0]) if hex_only else grandpa_key(row[0]), row[1]))
+    reject(len({key for key, _ in result}) == len(result), "Duplicate decoded GRANDPA authority")
+    return result
 
 
 def bounded_hex(value, maximum):
@@ -396,14 +419,14 @@ def verify_candidate(path, previous_manifest=None):
         if policy:
             reject(config.get("policyCommitment") == "0x" + policy["commitment"] and config.get("evidenceCommitment") == "0x" + policy["evidenceCommitment"], "Chain policy/evidence mismatch")
         if operators:
-            reject(sorted(value[2:] for value in config.get("retiredGrandpaKeys", [])) == operators["retired"] and sorted(value[2:] for value in config.get("approvedGrandpaKeys", [])) == operators["fresh"], "Chain operator-key inventory mismatch")
+            reject(sorted(grandpa_key(value).hex() for value in config.get("retiredGrandpaKeys", [])) == operators["retired"] and sorted(grandpa_key(value).hex() for value in config.get("approvedGrandpaKeys", [])) == operators["fresh"], "Chain operator-key inventory mismatch")
         reject(type(config.get("firstRecoverySlot")) is int and type(config.get("lastAbandonedSignedSlot")) is int and 0 < config["lastAbandonedSignedSlot"] < config["firstRecoverySlot"] < 2**64, "Invalid signing-stop slot boundary")
         reject(type(config.get("previousGrandpaSetId")) is int and 0 <= config["previousGrandpaSetId"] < 2**64 - 1, "Invalid previous GRANDPA set")
         required_config = {"schemaVersion", "checkpointHash", "policyCommitment", "bootstrapCodeHash", "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId", "previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys", "approvedGrandpaKeys", "lastAbandonedSignedSlot", "firstRecoverySlot"}
         reject(set(config) == required_config, "Unknown recovery chain extension field")
         inventories = []
         for field, maximum in (("retiredGrandpaKeys", 3000), ("approvedGrandpaKeys", 1000)):
-            keys = [hex_bytes(value) for value in config[field]]
+            keys = [grandpa_key(value) for value in config[field]]
             reject(0 < len(keys) <= maximum and keys == sorted(set(keys)), "Invalid complete GRANDPA inventory")
             inventories.append(set(keys))
         old_keys, new_keys = inventories
@@ -414,7 +437,7 @@ def verify_candidate(path, previous_manifest=None):
         transitions = {old: row["fresh"] for row in operators["grandpaTransitions"] for old in row["retired"]} if operators else None
         for before, after in zip(prior, fresh):
             reject(isinstance(before, list) and isinstance(after, list) and len(before) == len(after) == 2, "Invalid authority/weight encoding")
-            old_key, new_key = hex_bytes(before[0]), hex_bytes(after[0])
+            old_key, new_key = grandpa_key(before[0]), grandpa_key(after[0])
             reject(type(before[1]) is int and type(after[1]) is int and 0 < before[1] == after[1] < 2**64, "GRANDPA weights/order changed")
             reject(old_key in old_keys and new_key in new_keys and old_key not in prior_seen and new_key not in fresh_seen, "Incomplete/duplicate active GRANDPA inventory")
             # Runtime installation derives each fresh authority from its old
@@ -476,6 +499,8 @@ def verify_candidate(path, previous_manifest=None):
                    provenance.get("schema") != "sora-nexus-final-fixture-source-v1",
                    "Public diagnostic fixture artifacts cannot be packaged for production")
     historical_replay = history_release.bind(root, records, paths, local_file, digest_file)
+    artifact_identity = artifact_identity_release.bind(root, records, paths, local_file, digest_file)
+    forward_repair = forward_repair_release.bind(root, records, paths, policy, artifact_identity, incoming_replay, local_file, digest_file)
     previous_hash = None
     if previous_manifest:
         prior = scale.read_json(previous_manifest)
@@ -501,6 +526,10 @@ def verify_candidate(path, previous_manifest=None):
         report["incomingRecoveryReplay"] = incoming_replay
     if historical_replay is not None:
         report["historicalReplay"] = historical_replay
+    if artifact_identity is not None:
+        report["artifactIdentityReplay"] = artifact_identity
+    if forward_repair is not None:
+        report["forwardRepairReplay"] = forward_repair
     report["blockers"] += ["Missing required artifact: " + role for role in missing]
     return report, paths
 
@@ -619,7 +648,10 @@ def run_evidence_verifier(report, paths, binary, expected_sha256, replay_scratch
 def package(candidate, output, previous_manifest=None, verifier=None, verifier_sha256=None, *,
             burn_node=None, burn_node_sha256=None, burn_verifier_sha256=None,
             burn_verification_output=None, burn_timeout=86400,
-            execution_verifier_sha256=None, execution_verification_output=None):
+            execution_verifier_sha256=None, execution_verification_output=None,
+            passive_consensus_manifest=None, passive_consensus_source_sha256=None, passive_consensus_output=None,
+            supporting_check_manifest=None, supporting_check_source_sha256=None, supporting_check_output=None,
+            supporting_check_target=None, supporting_final_target=None, supporting_legacy_target=None):
     reject(not output.exists(), "Release output must be a new directory")
     report, paths = verify_candidate(candidate, previous_manifest)
     if verifier:
@@ -633,6 +665,8 @@ def package(candidate, output, previous_manifest=None, verifier=None, verifier_s
         else:
             run_evidence_verifier(report, paths, verifier, verifier_sha256, replay_scratch)
         history_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
+        artifact_identity_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
+        forward_repair_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
     else:
         reject(verifier_sha256 is None, "Verifier digest without executable")
     burn_options = (burn_node, burn_node_sha256, burn_verifier_sha256, burn_verification_output)
@@ -647,6 +681,22 @@ def package(candidate, output, previous_manifest=None, verifier=None, verifier_s
         reject(execution_verifier_sha256 is not None and execution_verification_output is not None,
                "Execution verification requires the fixed verifier source pin and a fresh output directory")
         execution_release.package_hook(report, paths, execution_verifier_sha256, execution_verification_output)
+    passive_options = (passive_consensus_manifest, passive_consensus_source_sha256, passive_consensus_output)
+    if any(value is not None for value in passive_options):
+        reject(all(value is not None for value in passive_options),
+               "Passive consensus requires an explicit data manifest, fixed source binding and fresh local output")
+        import passive_consensus_release
+        passive_consensus_release.package_hook(report, paths, passive_consensus_manifest,
+            passive_consensus_source_sha256, passive_consensus_output)
+    supporting_options = (supporting_check_manifest, supporting_check_source_sha256, supporting_check_output,
+                          supporting_check_target, supporting_final_target, supporting_legacy_target)
+    if any(value is not None for value in supporting_options):
+        reject(all(value is not None for value in supporting_options) and verifier is not None,
+               "Supporting checks require a pinned native verifier, complete manifest/source pins, fresh output and three persistent build lanes")
+        import supporting_checks_release
+        supporting_checks_release.package_hook(report, paths, supporting_check_manifest,
+            supporting_check_source_sha256, supporting_check_output, supporting_check_target,
+            supporting_final_target, supporting_legacy_target, verifier, verifier_sha256)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".sora-nexus-release-", dir=output.parent))
     try:
@@ -693,13 +743,31 @@ def main():
     parser.add_argument("--burn-timeout", type=int, default=86400)
     parser.add_argument("--execution-verifier-sha256")
     parser.add_argument("--execution-verification-output", type=Path)
+    parser.add_argument("--passive-consensus-manifest", type=Path)
+    parser.add_argument("--passive-consensus-source-sha256")
+    parser.add_argument("--passive-consensus-output", type=Path)
+    parser.add_argument("--supporting-check-manifest", type=Path)
+    parser.add_argument("--supporting-check-source-sha256")
+    parser.add_argument("--supporting-check-output", type=Path)
+    parser.add_argument("--supporting-check-target", type=Path)
+    parser.add_argument("--supporting-final-target", type=Path)
+    parser.add_argument("--supporting-legacy-target", type=Path)
     args = parser.parse_args()
     result = package(args.candidate, args.output, args.previous_manifest, args.evidence_verifier, args.evidence_verifier_sha256,
                      burn_node=args.burn_node, burn_node_sha256=args.burn_node_sha256,
                      burn_verifier_sha256=args.burn_verifier_sha256,
                      burn_verification_output=args.burn_verification_output, burn_timeout=args.burn_timeout,
                      execution_verifier_sha256=args.execution_verifier_sha256,
-                     execution_verification_output=args.execution_verification_output)
+                     execution_verification_output=args.execution_verification_output,
+                     passive_consensus_manifest=args.passive_consensus_manifest,
+                     passive_consensus_source_sha256=args.passive_consensus_source_sha256,
+                     passive_consensus_output=args.passive_consensus_output,
+                     supporting_check_manifest=args.supporting_check_manifest,
+                     supporting_check_source_sha256=args.supporting_check_source_sha256,
+                     supporting_check_output=args.supporting_check_output,
+                     supporting_check_target=args.supporting_check_target,
+                     supporting_final_target=args.supporting_final_target,
+                     supporting_legacy_target=args.supporting_legacy_target)
     print(json.dumps({"output": str(args.output), "productionReady": result["productionReady"], "missingArtifacts": result["missingArtifacts"], "blockers": result["blockers"]}))
 
 

@@ -45,6 +45,10 @@ pub struct Cli {
     /// Directory of public recovery inherent payloads named by parent hash.
     #[clap(long)]
     pub recovery_inherent_dir: Option<std::path::PathBuf>,
+
+    /// Fresh evidence directory for a passive recovery verification node.
+    #[clap(long)]
+    pub recovery_evidence_dir: Option<std::path::PathBuf>,
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -57,6 +61,9 @@ pub enum Subcommand {
 
     /// Prepare a separate, manifest-bound recovery specification offline.
     PrepareRecoverySpec(crate::recovery::PrepareRecoverySpecCmd),
+
+    /// Verify persisted recovery state and finality in a stopped owned database copy.
+    VerifyRecoveryDatabase(crate::recovery_evidence::VerifyRecoveryDatabaseCmd),
 
     /// Validate blocks.
     CheckBlock(sc_cli::CheckBlockCmd),

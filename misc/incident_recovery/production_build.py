@@ -486,6 +486,13 @@ def validate_source_provenance(source, provenance, actual):
             require(name in actual and all(actual[name][key] == pin[key] for key in ('sha256', 'blake2_256')), 'legacy overlay differs')
 
 
+def copy_cargo_logs(output, receipt, remember=write):
+    """Retain exact actual logs for the established repair release admission."""
+    return {'cargo.' + name: remember(output / ('cargo.' + name),
+        read(output / 'cargo' / name, receipt['outputs'][name], MAX_LOG))
+        for name in ('stdout.log', 'stderr.log')}
+
+
 def build_wasm(source, output, target, spec_version, guard, retain=None, retain_source=None):
     require(target.exists() and target.is_dir() and target.resolve(strict=True) == target, 'explicit persistent target must already exist')
     require(target != source and target not in source.parents and source not in target.parents, 'source/target overlap')
@@ -567,7 +574,9 @@ def build_wasm(source, output, target, spec_version, guard, retain=None, retain_
                     artifacts[name] = remember(output / name, raw)
                 remember(output / 'wasm-project.toml', project_bytes)
                 current_guard()
+                logs = copy_cargo_logs(output, receipt, remember)
                 report.update(status='passed', exitCode=receipt['exitCode'], processReceipt=digest(output / 'cargo/execution.json'),
+                    logs=logs,
                     runtimeIdentity=identity, wasmProjectDependency=dependency, artifacts=artifacts, lockAfter=digest(source / 'Cargo.lock'))
             except BaseException as error:
                 report.update(status='failed', error=str(error))
@@ -728,7 +737,8 @@ def main():
             print(json.dumps({'sourceInventory': digest(args.output.resolve()), 'productionReady': False}))
         else:
             report = build(args)
-            print(json.dumps({'status': report['status'], 'manifest': str(args.output / 'BUILD-MANIFEST.json'), 'productionReady': False}))
+            print(json.dumps({'status': report['status'], 'manifest': str(args.output / 'BUILD-MANIFEST.json'),
+                'manifestPin': pin_bytes(serialized(report)), 'productionReady': False}))
     except (ValueError, OSError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, 'Production build rejected: ' + str(error) + '\n')
 

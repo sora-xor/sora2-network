@@ -6,7 +6,8 @@ compressed runtime Wasm. The tests and development run use Python 3.15. It does
 not publish artifacts, alter a service, restart a node, or authorize activation.
 The package always states `productionReady: false`: independent exact-artifact
 execution, full/warp sync and recovery-scenario verification remain required.
-Historical replay has the narrow optional fresh-execution hook described below. There is no force, skip, or promotion flag.
+Historical replay and recovery Wasm identity have the narrow optional
+fresh-execution hooks described below. There is no force, skip, or promotion flag.
 
 A candidate JSON uses this exact shape (replace the illustrative paths and
 hashes with actual public release inputs):
@@ -401,3 +402,92 @@ authenticity, consensus seals, finality, full/warp synchronization, operator
 approval and all other gates are unchanged. Overall `productionReady` remains
 false. The native verifier digest is an explicitly supplied trusted executable
 pin; this hook does not establish who built or approved that executable.
+
+For recovery Wasm identity, supply both optional roles
+`artifactActivationReplay` and `artifactHoldReplay`, together with the explicitly
+pinned native verifier. These are existing native maintenance manifests, with
+their complete local checkpoint, runtime, policy and envelope reference graph.
+They must use the exact package checkpoint capture, original policy,
+bootstrap134, hold135 and final138 bytes, previous GRANDPA set, fresh authorities
+and first recovery slot from the chain specification. Fixture provenance,
+fixture fields, known public test signing keys across roles, repair versions and
+alternate policies are rejected by this narrow hook.
+
+The activation manifest uses `sora-nexus-maintenance-replay-v1`. It must finish
+automatic activation and include at least one subsequent block executed by the
+exact final138 Wasm. Incoming/outgoing work requires the existing original-policy
+native recorder, its independent mode555 executable and exact nonfixture engine
+binding. Its auxiliary native comparisons do not replace Wasm authoring or
+import. The report's `nativeExecution` flag records those auxiliary comparisons;
+it is not evidence that block execution bypassed Wasm.
+
+The hold manifest uses `sora-nexus-supplied-council-maintenance-replay-v1`. Its
+first recovery child must carry the actual recovered-council hold135 escape,
+followed by at least one block executed by hold135. The terminal remains Hold,
+with unchanged policy, zero work/audit cursors and operation counter1. Obtain
+the deterministic expected terminal root through an offline diagnostic first;
+the package hook then executes a fresh replay against that committed root.
+Council signatures are supplied public release inputs. The hook neither
+generates signatures nor establishes approval of the council inventory.
+
+Each scenario runs the fixed `rehearse-maintenance --manifest ... --output ...`
+command in a newly owned directory, separately from incoming and historical
+replays, with a 24-hour limit to accommodate busy machines and complete state
+restoration. Inputs, helper sources, the independent verifier copy, actual
+process receipts, blocks, transcripts and the complete snapshot graph remain
+hash-bound through final output registration. Failed attempts are retained.
+Changing an accepted file aborts packaging; archived success reports cannot
+clear this gate. Successful output uses `generated-artifact-identity/`
+reconstruction paths.
+
+Only `executingArtifactIdentity` is verified by this hook. The trusted fresh
+native CLI executes `Core_version`, checks transaction versions131/132/134,
+authors and independently imports every block through Wasm, and reconstructs
+persisted state. The packager joins each block's actual executing code hash,
+ancestry, policy marker, timestamp, recovery envelope and restored-state witness
+to the package. Merely installing a runtime or reading its custom section is
+insufficient. This gate covers the three recovery Wasm artifacts; node identity,
+source/build authenticity, consensus, finality, full/warp sync, operator approval,
+forward repair and all other gates remain separate. `productionReady` stays false.
+
+The optional `forwardRepairReplay` role enables a separate fresh forward-repair
+verification. Give it the same file path as `recoveryParentReplay`; both roles
+must identify the exact manifest already bound by incoming-coverage admission.
+The identity pair above and all incoming-coverage inputs remain required. Each
+repair136/137 needs the existing policy, binding, preserved-source provenance,
+build receipt and logs. The hook admits only the forward branches 135→136,
+135→137 or 135→136→137 and requires a real block executed by every listed runtime,
+followed by automatic runtime 138 activation and an ordinary runtime 138 block. It does not demand
+an unused intermediate version.
+
+This hook uses a fresh fixed `verify-incoming-coverage --recovery-replay ...`
+invocation in its own copied input graph and output directory. That existing
+native command alone provides the opaque, in-process historical incoming-audit
+certificate needed here. It must preserve prior authenticated incoming operations
+and their audits through the complete final active policy, with no pending audit
+left behind. A separately serialized certificate cannot enter the native checker.
+The ordinary identity pair, the incoming gate and this repair gate are separate
+executions; success is never copied between their reports.
+
+Raw council authorization bytes and signing messages must match the checkpoint,
+original policy, observed phase/cursor/counter, executing and installed code,
+destination version and exact signed revised policy. Each old authorization is
+tested for replay rejection by the native rehearsal. Native-v2 dynamic work must
+match its accepted escape prefix, active policy, exact engine and handover
+lifecycle. The handover authorization exists only for the first repaired child;
+later native comparisons require its absence. All block, transcript, snapshot,
+native process and output bindings remain guarded through final registration.
+
+The current admission corridor requires at least one historical incoming audit
+and an actual dynamic operation compared by a repaired native engine. A release
+with no incoming work or no historical audit is unsupported by this hook; do not
+invent an empty inventory or weaken coverage to bypass it. The fixed replay has
+a 24-hour bound and retains failed attempts. Successful objects use
+`generated-forward-repair/` reconstruction paths.
+
+Only `automaticActivationEscapeAndForwardRepair` changes after this check.
+The identity gate must already have passed with the same pinned verifier and is
+left unchanged. Native source/build authenticity, council inventory approval,
+external finality, economic policy approval, full/warp synchronization, actual
+process-crash recovery and maintenance epoch/liveness/custom-staking coverage
+remain separate. `productionReady` remains false.

@@ -539,6 +539,7 @@ pub struct RecoveryBlockImport<I> {
     recovery: Option<RecoveryConfig>,
     authorities: SharedAuthoritySet<H256, u32>,
     client: Arc<crate::service::FullClient>,
+    evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
 }
 
 impl<I> RecoveryBlockImport<I> {
@@ -554,7 +555,17 @@ impl<I> RecoveryBlockImport<I> {
             recovery,
             authorities,
             client,
+            evidence: None,
         }
+    }
+
+    /// Attach a passive verification journal without changing ordinary imports.
+    pub fn with_evidence(
+        mut self,
+        evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
+    ) -> Self {
+        self.evidence = evidence;
+        self
     }
 }
 
@@ -667,7 +678,30 @@ where
                 ));
             }
         }
-        self.inner.import_block(block).await
+        let observation = self.evidence.as_ref().map(|_| serde_json::json!({
+            "kind":"import-attempt", "hash":format!("{:#x}",block.post_hash()),
+            "number":*block.header.number(), "parentHash":format!("{:#x}",block.header.parent_hash()),
+            "origin":format!("{:?}",block.origin), "headerOnly":block.body.is_none(),
+        }));
+        if let (Some(recorder), Some(value)) = (&self.evidence, &observation) {
+            recorder
+                .record(value.clone(), None)
+                .map_err(sp_consensus::Error::ClientImport)?;
+        }
+        let result = self.inner.import_block(block).await;
+        if let (Some(recorder), Some(mut value)) = (&self.evidence, observation) {
+            value["kind"] = "import-result".into();
+            value["outcome"] = format!("{result:?}").into();
+            value["imported"] = matches!(&result, Ok(ImportResult::Imported(_))).into();
+            if let Ok(ImportResult::Imported(aux)) = &result {
+                value["headerOnly"] = aux.header_only.into();
+                value["badJustification"] = aux.bad_justification.into();
+            }
+            recorder
+                .record(value, None)
+                .map_err(sp_consensus::Error::ClientImport)?;
+        }
+        result
     }
 }
 
@@ -686,6 +720,7 @@ pub struct RecoveryWarpProvider {
     inner: Arc<dyn WarpSyncProvider<Block>>,
     client: Arc<crate::service::FullClient>,
     recovery: Option<RecoveryConfig>,
+    evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
 }
 
 impl RecoveryWarpProvider {
@@ -699,7 +734,17 @@ impl RecoveryWarpProvider {
             inner,
             client,
             recovery,
+            evidence: None,
         }
+    }
+
+    /// Retain successful SDK verification only when explicitly requested.
+    pub fn with_evidence(
+        mut self,
+        evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
+    ) -> Self {
+        self.evidence = evidence;
+        self
     }
 }
 
@@ -784,6 +829,7 @@ impl WarpSyncProvider<Block> for RecoveryWarpProvider {
             recovery: self.recovery.clone(),
             last_number: None,
             boundary_seen: false,
+            evidence: self.evidence.clone(),
         })
     }
 }
@@ -793,6 +839,7 @@ struct RecoveryWarpVerifier {
     recovery: Option<RecoveryConfig>,
     last_number: Option<u32>,
     boundary_seen: bool,
+    evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
 }
 
 /// A matching lineage marker is not a finality proof. Every verifier must cross
@@ -842,7 +889,19 @@ impl Verifier<Block> for RecoveryWarpVerifier {
             let proof = WarpProofWire::decode_all(&mut encoded.0.as_slice())?;
             next = validate_warp_fragments(&proof, recovery, next.0, next.1)?;
         }
+        let context = self
+            .evidence
+            .as_ref()
+            .map(|_| self.inner.next_proof_context());
         let result = self.inner.verify(encoded)?;
+        if let (Some(recorder), Some(context)) = (&self.evidence, context) {
+            recorder.record(
+                serde_json::json!({"kind":"warp-accepted", "context":format!("{context:#x}"),
+                "complete":matches!(&result, VerificationResult::Complete(_, _)),
+                "target":format!("{:#x}",self.inner.next_proof_context())}),
+                Some(&encoded.0),
+            )?;
+        }
         // Only commit the boundary after the SDK accepted the complete proof.
         (self.last_number, self.boundary_seen) = next;
         Ok(result)
@@ -1181,6 +1240,7 @@ mod tests {
             recovery: Some(fixture()),
             last_number: None,
             boundary_seen: false,
+            evidence: None,
         };
         let skipped = EncodedProof(
             WarpProofWire {

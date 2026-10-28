@@ -87,7 +87,7 @@ class Fixture(unittest.TestCase):
 
     def test_fixed_generous_timeout_budgets(self):
         self.verify()
-        self.assertEqual(n.VERSION_TIMEOUT_SECONDS, 120)
+        self.assertEqual(n.VERSION_TIMEOUT_SECONDS, 900)
         self.assertEqual(n.PREPARE_TIMEOUT_SECONDS, 3600)
         self.assertEqual([(call[1], call[3]) for call in self.calls],
                          [("version", n.VERSION_TIMEOUT_SECONDS),

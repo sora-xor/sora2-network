@@ -41,6 +41,9 @@ pub mod post_complete;
 #[cfg(feature = "bridge-fixture")]
 #[path = "maintenance_post_complete_channel.rs"]
 pub mod post_complete_channel;
+#[cfg(all(unix, feature = "runtime-work-types"))]
+#[path = "maintenance_process_death.rs"]
+pub mod process_death;
 #[path = "maintenance_snapshot.rs"]
 mod snapshot;
 #[path = "maintenance_supplied_escape.rs"]

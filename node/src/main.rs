@@ -50,6 +50,7 @@ mod eth_bridge_metrics;
 #[cfg(feature = "private-net")]
 mod fork_off;
 mod recovery;
+mod recovery_evidence;
 mod rpc;
 
 #[allow(

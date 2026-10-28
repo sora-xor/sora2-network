@@ -238,6 +238,28 @@ pub fn run() -> sc_cli::Result<()> {
             let runner = cli.create_runner(cmd)?;
             runner.sync_run(|config| cmd.run(config).map_err(sc_cli::Error::Input))
         }
+        Some(Subcommand::VerifyRecoveryDatabase(cmd)) => {
+            let runner = cli.create_runner(cmd)?;
+            runner.async_run(|mut config| {
+                config.keystore = sc_service::config::KeystoreConfig::InMemory;
+                let PartialComponents {
+                    client,
+                    backend,
+                    task_manager,
+                    other: (_, import_setup, _, _),
+                    ..
+                } = service::new_partial(&mut config, None, true, None)?;
+                let result = cmd
+                    .run(
+                        client,
+                        backend,
+                        import_setup.1.shared_authority_set().clone(),
+                        &*config.chain_spec,
+                    )
+                    .map_err(sc_cli::Error::Input);
+                Ok((futures::future::ready(result), task_manager))
+            })
+        }
         Some(Subcommand::CheckBlock(cmd)) => {
             let runner = cli.create_runner(cmd)?;
             set_default_ss58_version();
@@ -247,7 +269,7 @@ pub fn run() -> sc_cli::Result<()> {
                     task_manager,
                     import_queue,
                     ..
-                } = service::new_partial(&mut config, None, true)?;
+                } = service::new_partial(&mut config, None, true, None)?;
                 Ok((cmd.run(client, import_queue), task_manager))
             })
         }
@@ -259,7 +281,7 @@ pub fn run() -> sc_cli::Result<()> {
                     client,
                     task_manager,
                     ..
-                } = service::new_partial(&mut config, None, true)?;
+                } = service::new_partial(&mut config, None, true, None)?;
                 Ok((cmd.run(client, config.database), task_manager))
             })
         }
@@ -271,7 +293,7 @@ pub fn run() -> sc_cli::Result<()> {
                     client,
                     task_manager,
                     ..
-                } = service::new_partial(&mut config, None, true)?;
+                } = service::new_partial(&mut config, None, true, None)?;
                 Ok((cmd.run(client, config.chain_spec), task_manager))
             })
         }
@@ -284,7 +306,7 @@ pub fn run() -> sc_cli::Result<()> {
                     task_manager,
                     import_queue,
                     ..
-                } = service::new_partial(&mut config, None, true)?;
+                } = service::new_partial(&mut config, None, true, None)?;
                 Ok((cmd.run(client, import_queue), task_manager))
             })
         }
@@ -302,7 +324,7 @@ pub fn run() -> sc_cli::Result<()> {
                     task_manager,
                     backend,
                     ..
-                } = service::new_partial(&mut config, None, true)?;
+                } = service::new_partial(&mut config, None, true, None)?;
                 Ok((cmd.run(client, backend, None), task_manager))
             })
         }
@@ -314,21 +336,21 @@ pub fn run() -> sc_cli::Result<()> {
 
             match cmd {
                 BenchmarkCmd::Storage(cmd) => runner.sync_run(|mut config| {
-                    let partial = service::new_partial(&mut config, None, true)?;
+                    let partial = service::new_partial(&mut config, None, true, None)?;
                     let db = partial.backend.expose_db();
                     let storage = partial.backend.expose_storage();
                     let shared_trie_cache = partial.backend.expose_shared_trie_cache();
                     cmd.run(config, partial.client, db, storage, shared_trie_cache)
                 }),
                 BenchmarkCmd::Block(cmd) => runner.sync_run(|mut config| {
-                    let partial = service::new_partial(&mut config, None, true)?;
+                    let partial = service::new_partial(&mut config, None, true, None)?;
                     cmd.run(partial.client)
                 }),
                 BenchmarkCmd::Pallet(cmd) => runner.sync_run(|config| {
                     cmd.run_with_spec::<sp_runtime::traits::HashingFor<framenode_runtime::Block>, ()>(Some(config.chain_spec))
                 }),
                 BenchmarkCmd::Overhead(cmd) => runner.sync_run(|mut config| {
-                    let partial = service::new_partial(&mut config, None, true)?;
+                    let partial = service::new_partial(&mut config, None, true, None)?;
                     let ext_builder = RemarkBuilder::new(partial.client.clone());
                     cmd.run(
                         config.chain_spec.name().into(),
@@ -340,7 +362,7 @@ pub fn run() -> sc_cli::Result<()> {
                     )
                 }),
                 BenchmarkCmd::Extrinsic(cmd) => runner.sync_run(|mut config| {
-                    let partial = service::new_partial(&mut config, None, true)?;
+                    let partial = service::new_partial(&mut config, None, true, None)?;
                     let ext_factory = ExtrinsicFactory(vec![
                         Box::new(RemarkBuilder::new(partial.client.clone())),
                         Box::new(AssetTransferBuilder::new(
@@ -389,6 +411,7 @@ pub fn run() -> sc_cli::Result<()> {
                             cli.disable_beefy,
                             None,
                             cli.recovery_inherent_dir.clone(),
+                            cli.recovery_evidence_dir.clone(),
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -398,6 +421,7 @@ pub fn run() -> sc_cli::Result<()> {
                             cli.disable_beefy,
                             None,
                             cli.recovery_inherent_dir.clone(),
+                            cli.recovery_evidence_dir.clone(),
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -413,6 +437,7 @@ pub fn run() -> sc_cli::Result<()> {
                             true,
                             None,
                             cli.recovery_inherent_dir.clone(),
+                            cli.recovery_evidence_dir.clone(),
                         )
                         .map_err(sc_cli::Error::Service)
                     }
@@ -422,6 +447,7 @@ pub fn run() -> sc_cli::Result<()> {
                             true,
                             None,
                             cli.recovery_inherent_dir.clone(),
+                            cli.recovery_evidence_dir.clone(),
                         )
                         .map_err(sc_cli::Error::Service)
                     }

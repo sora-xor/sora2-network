@@ -554,6 +554,151 @@ fn recovery_channels_authenticated_attacker_exclusion_consumes_without_credit() 
     }
 }
 
+#[test]
+fn recovery_thischain_exclusion_preserves_pooled_custody_and_consumes_claim_once() {
+    use bridge_types::traits::BridgeAssetLocker;
+
+    // Exclusion extinguishes this authenticated claim. It does not prove title
+    // to pooled checkpoint backing and must not be reported as a token burn.
+    for exclude_source in [false, true] {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let recipient = if exclude_source {
+                old()
+            } else {
+                AccountId::new(recovery::ATTACKER_ACCOUNT)
+            };
+            let (mut policy, mut operation) = fixture(ChannelKind::Substrate, recipient.clone());
+            let network = SubNetworkId::Liberland;
+            assert_ok!(crate::SubstrateBridgeApp::finalize_asset_registration(
+                origin(network),
+                common::DAI,
+                GenericAssetId::Sora(common::DAI.into()),
+                AssetKind::Thischain,
+                18,
+            ));
+            assert_eq!(
+                crate::SubstrateBridgeApp::asset_kind(network, common::DAI),
+                Some(AssetKind::Thischain)
+            );
+
+            let innocent = AccountId::new([46; 32]);
+            let custody = crate::BridgeProxy::bridge_account(network.into()).unwrap();
+            let backing = 5 * AMOUNT;
+            let liquid = 2 * AMOUNT;
+            System::inc_providers(&innocent);
+            assert_ok!(crate::Assets::mint_to(
+                &common::DAI,
+                &custody,
+                &innocent,
+                backing + liquid,
+            ));
+            // Populate the real technical custody account and LockedAssets by
+            // the ordinary Thischain lock routine before maintenance starts.
+            assert_ok!(
+                <crate::BridgeProxy as BridgeAssetLocker<AccountId>>::lock_asset(
+                    network.into(),
+                    AssetKind::Thischain,
+                    &innocent,
+                    &common::DAI,
+                    &backing,
+                )
+            );
+            if exclude_source {
+                let sender = prepare(&operation, &policy)
+                    .unwrap()
+                    .transfers
+                    .remove(0)
+                    .sender;
+                operation.registries[0]
+                    .accounts
+                    .push(normalized_account(&sender).unwrap());
+                operation.registries[0].no_known_attackers = false;
+                policy.chunk_hashes[0] = operation.commitment();
+            }
+            let entry = prepare(&operation, &policy).unwrap().transfers.remove(0);
+            assert!(entry.excluded);
+            let signed_bytes = operation.encode();
+            crate::incident_recovery::with_test_policy(&policy, || {
+                recovery::storage::initialize(&policy).unwrap();
+                assert_ok!(apply_operation(&policy, &operation));
+                assert_eq!(operation.encode(), signed_bytes);
+                assert_eq!(native_nonce(&operation), 1);
+                assert_eq!(
+                    crate::Assets::total_issuance(&common::DAI).unwrap(),
+                    backing + liquid
+                );
+                assert_eq!(
+                    crate::Assets::free_balance(&common::DAI, &custody).unwrap(),
+                    backing
+                );
+                assert_eq!(
+                    crate::BridgeProxy::locked_assets(network.into(), common::DAI),
+                    backing
+                );
+                assert_eq!(
+                    crate::Assets::free_balance(&common::DAI, &innocent).unwrap(),
+                    liquid
+                );
+                for account in [recipient.clone(), old(), replacement()] {
+                    assert_eq!(
+                        crate::Assets::free_balance(&common::DAI, &account).unwrap(),
+                        0
+                    );
+                    assert!(!frame_system::Account::<Runtime>::contains_key(account));
+                }
+                assert!(crate::BridgeProxy::sender(network.into(), entry.id).is_none());
+                assert!(crate::BridgeProxy::transactions(
+                    (network.into(), entry.beneficiary.clone()),
+                    entry.id
+                )
+                .is_none());
+                assert_eq!(
+                    substrate_bridge_app::DeferredTransferResults::<Runtime>::get(
+                        network, entry.id
+                    ),
+                    Some(MessageStatus::Done)
+                );
+                assert_eq!(
+                    substrate_bridge_channel::outbound::ChannelNonces::<Runtime>::get(network),
+                    0
+                );
+                assert!(
+                    substrate_bridge_channel::outbound::Pallet::<Runtime>::recovery_queue(network)
+                        .is_empty()
+                );
+                let receipt = sp_io::storage::get(&receipt_key(network.into(), entry.id)).unwrap();
+                let (_, _, _, consumed): ([u8; 32], [u8; 32], [u8; 32], ExpectedTransfer) =
+                    decode_bounded(&receipt).unwrap();
+                assert!(consumed.delivered && consumed.excluded);
+                assert_eq!(consumed.original, entry.original);
+                assert_eq!(consumed.beneficiary, entry.beneficiary);
+
+                // Even a fresh authorized work cursor cannot consume this
+                // identity twice or replace its ACK/custody/issuance evidence.
+                let mut repeated = operation.clone();
+                repeated.index = 1;
+                let mut repeated_policy = policy.clone();
+                repeated_policy.chunk_hashes.push(repeated.commitment());
+                sp_io::storage::set(ACTIVE_POLICY_STORAGE_KEY, &repeated_policy.commitment());
+                let mut status = recovery::storage::status().unwrap().unwrap();
+                status.phase = RecoveryPhase::Applying;
+                sp_io::storage::set(STATUS_STORAGE_KEY, &status.encode());
+                let before_repeat = batch_storage_without_status();
+                assert_eq!(
+                    apply_operation(&repeated_policy, &repeated),
+                    Err(RecoveryError::WrongPreimage)
+                );
+                assert_eq!(batch_storage_without_status(), before_repeat);
+                assert_eq!(native_nonce(&operation), 1);
+                assert_eq!(
+                    sp_io::storage::get(&receipt_key(network.into(), entry.id)).unwrap(),
+                    receipt
+                );
+            });
+        });
+    }
+}
+
 /// Capture every non-status top-storage value: a failed committed chunk may record
 /// Failed, but no earlier message's financial, query, nonce, event or ACK writes.
 fn batch_storage_without_status() -> alloc::collections::BTreeMap<Vec<u8>, Vec<u8>> {

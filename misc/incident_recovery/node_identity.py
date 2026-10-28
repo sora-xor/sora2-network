@@ -28,7 +28,7 @@ COPY_NAMES = {"nodeBinary": "framenode", "chainSpec": "candidate.json",
 MAX_LOG = 64 * 1024
 # Offline preparation parses the full chain specification and validates every Wasm substitute.
 # Keep finite limits generous enough for the shared build host under sustained load.
-VERSION_TIMEOUT_SECONDS = 120
+VERSION_TIMEOUT_SECONDS = 900
 PREPARE_TIMEOUT_SECONDS = 3600
 MAX_WASM_BYTES = 50 * 1024**2
 SDK_ZSTD_PREFIX = bytes([82, 188, 83, 118, 70, 219, 142, 5])

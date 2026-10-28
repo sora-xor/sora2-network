@@ -277,7 +277,11 @@ def main() -> None:
         result = refresh(args.destination.resolve()) if args.refresh_overlay else prepare(args.destination.resolve(), args.spec_version, args.binding)
     except (ValueError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"recovery export rejected: {error}\n")
-    print(json.dumps({"destination": str(args.destination.resolve()), "bound": result["bound"], "releaseReady": False}))
+    # Bind stdout to the exact in-process provenance value, not a subsequent
+    # rehash of a mutable file after the export completed.
+    provenance_bytes = (json.dumps(result, indent=2, sort_keys=True) + "\n").encode()
+    print(json.dumps({"destination": str(args.destination.resolve()), "bound": result["bound"],
+        "provenancePin": {**digest(provenance_bytes), "bytes": len(provenance_bytes)}, "releaseReady": False}))
 
 if __name__ == "__main__":
     main()

@@ -359,6 +359,57 @@ impl Journal {
         })
     }
 
+    /// Reopen a pinned committed chain for append, without accepting caller-supplied
+    /// writer indexes. This is used only by the separate process-death rehearsal.
+    #[cfg(all(unix, feature = "runtime-work-types"))]
+    pub(crate) fn resume_pinned(
+        directory: &Path,
+        latest_file: &str,
+        latest_sha256: &str,
+        expected_root: H256,
+    ) -> Result<(Self, sp_io::TestExternalities)> {
+        let ext = restore_pinned(directory, latest_file, latest_sha256, expected_root)?;
+        let latest = Object {
+            file: latest_file.into(),
+            sha256: latest_sha256.into(),
+        };
+        let manifest = read_manifest(directory, &latest)?;
+        let next = manifest
+            .index
+            .checked_add(1)
+            .ok_or("snapshot index overflow")?;
+        if next > 100_000 || directory.join(format!("snapshots/{next:06}.json")).exists() {
+            return Err("snapshot continuation would overwrite or exceed bound".into());
+        }
+        let (raw, root) = ext.into_raw_snapshot();
+        let mut index = HashMap::with_capacity(raw.len());
+        for (key, (value, count)) in &raw {
+            if key.len() < 32
+                || *count <= 0
+                || index
+                    .insert(
+                        key.clone(),
+                        (<[u8; 32]>::from(Sha256::digest(value)), *count),
+                    )
+                    .is_some()
+            {
+                return Err("invalid resumed snapshot node inventory".into());
+            }
+        }
+        let ext = sp_io::TestExternalities::from_raw_snapshot(raw, root, StateVersion::V0);
+        Ok((
+            Self {
+                directory: directory.to_path_buf(),
+                index,
+                latest: Some(latest),
+                base: Some(manifest.base),
+                root,
+                next,
+            },
+            ext,
+        ))
+    }
+
     pub(crate) fn persist(
         &mut self,
         mut ext: sp_io::TestExternalities,
@@ -571,6 +622,54 @@ mod tests {
         let latest = journal.latest.clone().unwrap();
         // No writer or resident externalities is returned to the reopening test.
         (directory, latest, root)
+    }
+
+    #[cfg(all(unix, feature = "runtime-work-types"))]
+    #[test]
+    fn resumed_writer_appends_to_exact_persisted_chain_and_preserves_child_trie() {
+        let (directory, latest, root) = pinned_test_journal();
+        let previous = fs::read(directory.join(&latest.file)).unwrap();
+        let (mut journal, mut ext) =
+            Journal::resume_pinned(&directory, &latest.file, &latest.sha256, root).unwrap();
+        ext.execute_with(|| {
+            assert_eq!(
+                sp_io::default_child_storage::get(b"child", b"key"),
+                Some(vec![4])
+            );
+            sp_io::storage::set(b"continued", b"from last saved state");
+            sp_io::default_child_storage::set(b"child", b"key", &[5]);
+        });
+        let (mut restored, next_hash) = journal.persist(ext).unwrap();
+        let next_root = replay::root(&mut restored);
+        assert_eq!(fs::read(directory.join(&latest.file)).unwrap(), previous);
+        let next = read_manifest(
+            &directory,
+            &Object {
+                file: "snapshots/000002.json".into(),
+                sha256: next_hash.clone(),
+            },
+        )
+        .unwrap();
+        assert_eq!(next.parent.as_ref(), Some(&latest));
+        assert!(next.delta.is_some());
+        assert!(Journal::resume_pinned(&directory, &latest.file, &latest.sha256, root).is_err());
+        let (_, mut reopened) =
+            Journal::resume_pinned(&directory, "snapshots/000002.json", &next_hash, next_root)
+                .unwrap();
+        reopened.execute_with(|| {
+            assert_eq!(
+                sp_io::storage::get(b"continued").unwrap().as_ref(),
+                b"from last saved state"
+            );
+            assert_eq!(
+                sp_io::default_child_storage::get(b"child", b"key"),
+                Some(vec![5])
+            );
+        });
+        assert!(
+            Journal::resume_pinned(&directory, "snapshots/000002.json", &next_hash, root).is_err()
+        );
+        fs::remove_dir_all(directory).unwrap();
     }
 
     #[test]

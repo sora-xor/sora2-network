@@ -75,7 +75,7 @@ pub(crate) type HostFunctions = (
 );
 pub(crate) type FullClient =
     sc_service::TFullClient<Block, RuntimeApi, WasmExecutor<HostFunctions>>;
-type FullBackend = sc_service::TFullBackend<Block>;
+pub(crate) type FullBackend = sc_service::TFullBackend<Block>;
 type FullSelectChain = sc_consensus::LongestChain<FullBackend, Block>;
 type TransactionPool = sc_transaction_pool::TransactionPoolHandle<Block, FullClient>;
 type FullGrandpaBlockImport =
@@ -360,6 +360,7 @@ pub fn new_partial(
     config: &mut Configuration,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
     offline: bool,
+    recovery_evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
 ) -> Result<
     sc_service::PartialComponents<
         FullClient,
@@ -414,6 +415,16 @@ pub fn new_partial(
             vec![],
         )?;
     let client = Arc::new(client);
+    if let Some(recorder) = &recovery_evidence {
+        use sc_client_api::AuxStore as _;
+        let info = client.info();
+        let marker = client.get_aux(b"sora-nexus/recovery/checkpoint-imported/v1")?;
+        recorder.record(serde_json::json!({"kind":"database-open",
+            "bestHash":format!("{:#x}",info.best_hash),"bestNumber":info.best_number,
+            "finalizedHash":format!("{:#x}",info.finalized_hash),"finalizedNumber":info.finalized_number,
+            "genesisHash":format!("{:#x}",info.genesis_hash),"checkpointMarkerPresent":marker.is_some(),
+        }),None).map_err(ServiceError::Other)?;
+    }
     crate::recovery::validate_startup_network(
         client.info().genesis_hash,
         recovery.is_some(),
@@ -628,7 +639,8 @@ pub fn new_partial(
         recovery,
         grandpa_link.shared_authority_set().clone(),
         client.clone(),
-    );
+    )
+    .with_evidence(recovery_evidence);
 
     let (import_queue, babe_worker_handle) =
         sc_consensus_babe::import_queue(sc_consensus_babe::ImportQueueParams {
@@ -716,6 +728,7 @@ pub fn new_full<FullNetwork>(
     disable_beefy: bool,
     telemetry_worker_handle: Option<TelemetryWorkerHandle>,
     recovery_inherent_dir: Option<PathBuf>,
+    recovery_evidence_dir: Option<PathBuf>,
 ) -> Result<TaskManager, ServiceError>
 where
     FullNetwork: NetworkBackend<Block, <Block as BlockT>::Hash> + 'static,
@@ -734,6 +747,11 @@ where
             ));
         }
     }
+    let recovery_evidence = recovery_evidence_dir
+        .as_deref()
+        .map(|directory| crate::recovery_evidence::Recorder::create(directory, &config))
+        .transpose()
+        .map_err(ServiceError::Other)?;
     // Increase the default value by 2 to make wasm being able to use 128MB, each heap page is 64KiB
     config.executor.default_heap_pages = Some(1024 * 2);
 
@@ -748,7 +766,12 @@ where
         select_chain,
         transaction_pool,
         other: (rpc_extensions_builder, import_setup, rpc_setup, mut telemetry),
-    } = new_partial(&mut config, telemetry_worker_handle, false)?;
+    } = new_partial(
+        &mut config,
+        telemetry_worker_handle,
+        false,
+        recovery_evidence.clone(),
+    )?;
     if framenode_chain_spec::recovery::config(&*config.chain_spec).is_some() && !disable_beefy {
         return Err(ServiceError::Other(
             "BEEFY must remain disabled for production recovery".into(),
@@ -819,11 +842,14 @@ where
         import_setup.1.shared_authority_set().clone(),
         crate::recovery::hard_forks(&*config.chain_spec),
     ));
-    let warp_sync = Arc::new(crate::recovery::RecoveryWarpProvider::new(
-        grandpa_warp,
-        client.clone(),
-        framenode_chain_spec::recovery::config(&*config.chain_spec).cloned(),
-    ));
+    let warp_sync = Arc::new(
+        crate::recovery::RecoveryWarpProvider::new(
+            grandpa_warp,
+            client.clone(),
+            framenode_chain_spec::recovery::config(&*config.chain_spec).cloned(),
+        )
+        .with_evidence(recovery_evidence),
+    );
 
     let (network, system_rpc_tx, tx_handler_controller, sync_service, _bitswap_handle) =
         sc_service::build_network(sc_service::BuildNetworkParams {
