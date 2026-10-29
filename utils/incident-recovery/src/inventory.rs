@@ -1444,6 +1444,12 @@ pub fn inventory_with_resolutions(
                             return Err("adapter-resolved ownership watch lacks its source-pinned descriptor".into());
                         }
                     }
+                    // A resolved hashed key still consumes its supplied preimage;
+                    // preimages for absent keys remain rejected below.
+                    let preimage_key = (trie.clone(), key.clone());
+                    if preimages.contains_key(&preimage_key) {
+                        seen_preimages.insert(preimage_key);
+                    }
                     continue;
                 }
             }

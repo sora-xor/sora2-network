@@ -579,6 +579,24 @@ mod tests {
         );
     }
     #[test]
+    fn resolved_hashed_rows_consume_their_preimages_in_the_inventory() {
+        let (s, storage, map, options) = fixture();
+        let c = compile(&s, &storage, &map, &options).unwrap();
+        let mappings = map
+            .iter()
+            .map(|p| (account_bytes(&p.old), account_bytes(&p.new)))
+            .collect();
+        crate::inventory::inventory_with_resolutions(
+            &s,
+            &storage,
+            &mappings,
+            &options,
+            &c.resolutions,
+            &c.edits,
+        )
+        .unwrap();
+    }
+    #[test]
     fn destination_with_its_own_foreign_scope_grant_is_rejected() {
         let (s, mut storage, map, mut options) = fixture();
         let components = vec![map[0].new.encode(), Scope::Unlimited.encode()];
