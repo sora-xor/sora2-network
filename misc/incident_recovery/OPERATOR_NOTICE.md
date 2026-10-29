@@ -53,6 +53,35 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
    reconciliation evidence against their authenticated public records. A candidate package marked incomplete
    does not authorize restart.
 
+## Restart steps for validators
+
+1. Stop every old node that holds validator keys, including backup and sentry
+   nodes, and keep them stopped. Recovery slots and GRANDPA sets after 7956 are
+   still slashable, so running an old node beside a recovery node with the same
+   keys is a double-signing offence.
+2. Do not reuse your usual database. The abandoned chain finalized blocks after
+   the checkpoint, and neither `framenode revert` nor GRANDPA can undo finalized
+   blocks. Node 4.8.13 also refuses any database whose checkpoint was imported by
+   the old release. Get a database that ends at block **28,191,816** instead:
+   - From the release snapshot: check its SHA-256 against the release manifest,
+     then unpack it to `<base-path>/chains/sora-nexus-recovery-28191817/db/full`.
+   - By warp sync, starting from an empty database. This works only after the
+     recovery chain has finalized blocks and at least 3 recovery peers serve it.
+3. More than 2/3 of validators must start from the snapshot. GRANDPA cannot
+   finalize the first recovery blocks without them, and warp sync cannot begin
+   before that finality exists. Coordinate who uses the snapshot before restart.
+4. Keep your existing keystore and point the node at it. The recovery chain ID
+   moves the default keystore from `<base-path>/chains/sora-substrate-main-net/keystore`
+   to `<base-path>/chains/sora-nexus-recovery-28191817/keystore`, which is empty.
+   Start the node with `--keystore-path <base-path>/chains/sora-substrate-main-net/keystore`,
+   or copy that directory to the new location. Without its retained GRANDPA key
+   the node refuses to start as a validator. Do not generate or rotate keys.
+5. Start node 4.8.13 with the release chain spec, your usual base path and no
+   runtime overrides. The GRANDPA voter stays stopped until the checkpoint is
+   imported and set 7957 is installed. Any warning that begins
+   `GRANDPA remains stopped before verified recovery` after that point means the
+   database or chain spec differs from the release.
+
 ## During recovery
 
 The maintenance executive accepts only timestamp/consensus handling, committed
