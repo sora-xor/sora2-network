@@ -19,9 +19,14 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
 
 ## Before restart
 
-1. Stop all signing on the abandoned branch. Record the final signed BABE slot
-   and the required public signing-stop evidence. The first recovery slot must
-   exceed every reported signed slot; the release cannot guess this number.
+1. Stop all signing on the abandoned branch before restart. The release derives
+   `lastObservedAbandonedSlot` from authenticated public header ancestry and sets
+   the first recovery slot strictly above it. No operator signing-stop attestation
+   is required as a release input. Public headers do not prove private signing
+   history; never run old and recovery nodes concurrently with the same keys.
+   This release admits abandoned-head slot **298871044** and recovery slots
+   starting at **298871045**. A later observed head blocks packaging until the
+   runtime backstop and its tests are updated to match the new public evidence.
 2. Preserve an immutable copy of the abandoned database and its evidence. Prepare
    a **separate** database ending at block **28,191,816**. Every participating
    restored node must import the checkpoint under the recovery release. Do not
@@ -29,18 +34,23 @@ checks; it is not an ordinary council upgrade on the abandoned chain.
 3. Use the release's new chain-spec ID, database path and protocol/fork identity.
    Runtime overrides are forbidden. The spec-134 substitute must remain byte
    identical for the lifetime of this recovery chain, including future syncs.
-4. Supply freshly generated GRANDPA **public** keys using the approved operator
-   inventory. Private keys stay with their operators. Remove the manifest-listed
-   retired GRANDPA signing keys from the recovery keystore, including retired
-   active, queued and pending keys. Confirm independently retained BABE and
-   liveness keys against the approved inventory.
-5. Verify that the release pins the client set ID immediately before checkpoint
-   import and applies exactly **S+1** to both ordinary import and warp sync.
+4. Retain the checkpoint GRANDPA, BABE and liveness signing keys. The release
+   derives their active, queued and pending unions from checkpoint state and
+   remaps owner accounts using the trusted CSV. Do not generate replacement
+   consensus keys or remove retained keys for this release. Private keys remain
+   with their operators; no manual public-key approval inventory is required.
+5. Verify that the release pins checkpoint client set **7956** and applies
+   recovery set **7957** with the same ordered authority keys and weights to
+   both ordinary import and warp sync.
    An arbitrary high-bit authority-set reset is not supported.
+   The voter starts only after the verified checkpoint import and authority
+   transition. Recovery permanently rejects GRANDPA reports for sets through
+   7956 and BABE reports for slots through 298871044; recovery-chain offences
+   remain reportable. Startup validation failures are logged as warnings.
 6. Verify all manifest file hashes, policy/data commitments and exact-artifact
    rehearsal results. Check the account mapping, derived accounts, council,
-   operator evidence, finalized external heads and bridge reconciliation evidence
-   against their approved public records. A candidate package marked incomplete
+   checkpoint-derived consensus records, finalized external heads and bridge
+   reconciliation evidence against their authenticated public records. A candidate package marked incomplete
    does not authorize restart.
 
 ## During recovery
@@ -78,9 +88,7 @@ Burn-event identity and the effective replacement owner. Linked SORA Nexus XOR
 claims for replaced accounts remain held until replacement-key recipient
 authorization is verified.
 
-Soratopia points also follow the replacement owner. Preserve checkpoint activity,
-account creation age and each existing points era in the recovery indexer. Do not
-copy present-day totals from the abandoned branch or add the old and replacement
-totals together. Keep original records as evidence; retired identities must not
-retain a second spendable or queryable entitlement. Check the separate Soratopia
-replay and conservation gate before admitting the recovered rewards service.
+Frontend and off-chain Soratopia points recovery are deferred until after the
+node/runtime update. Existing evidence and historical points records must remain
+available for that separate work; this release does not claim that the rewards
+service or account queries have already been migrated.

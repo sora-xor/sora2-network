@@ -1,5 +1,6 @@
 """Fixture preparation tests. No synthetic data is treated as release evidence."""
 import hashlib
+import copy
 import json
 from pathlib import Path
 import subprocess
@@ -30,7 +31,7 @@ class FixtureTests(unittest.TestCase):
         self.assertEqual(release.operator_identity(encoded)["owners"], 1)
         self.assertFalse(rows[0]["operatorApproved"])
         self.assertTrue(rows[0]["fixtureOnly"])
-        self.assertNotEqual(rows[0]["freshGrandpa"], hx(8))
+        self.assertEqual(rows[0]["retainedGrandpa"], [hx(8)])
         changed = self.inventory()
         changed["observedSigningInventory"][0]["retainedBabe"] = [hx(9), hx(9)]
         with self.assertRaisesRegex(ValueError, "union"):
@@ -49,6 +50,23 @@ class FixtureTests(unittest.TestCase):
         fixture.fresh_directory(self.root / "out")
         with self.assertRaisesRegex(ValueError, "new directory"):
             fixture.fresh_directory(self.root / "out")
+
+    def test_active_retained_keys_keep_checkpoint_order_and_weights(self):
+        consensus = {'validators': [hx(3), hx(2)], 'records': [
+            {'storage': 'Grandpa.Authorities', 'value': [[hx(9), 2], [hx(8), 3]]}]}
+        operators = [{'owner': hx(2), 'retainedGrandpa': [hx(8)], 'fixtureOnly': True, 'operatorApproved': False},
+                     {'owner': hx(3), 'retainedGrandpa': [hx(9), hx(10)], 'fixtureOnly': True, 'operatorApproved': False}]
+        self.assertEqual(fixture.fixture_active_grandpa(consensus, operators), [[hx(9), 2], [hx(8), 3]])
+        for change in (lambda rows: rows[0].update(retainedGrandpa=[hx(11)]),
+                       lambda rows: rows[0].update(retainedGrandpa=[hx(8), hx(9)]),
+                       lambda rows: rows[0].update(retainedGrandpa=[hx(8), hx(8)]),
+                       lambda rows: rows[1].update(owner=hx(2)),
+                       lambda rows: rows[0].update(operatorApproved=True)):
+            altered = copy.deepcopy(operators); change(altered)
+            with self.assertRaises(ValueError): fixture.fixture_active_grandpa(consensus, altered)
+        for weight in (True, 0, 2**64):
+            altered = copy.deepcopy(consensus); altered['records'][0]['value'][0][1] = weight
+            with self.assertRaises(ValueError): fixture.fixture_active_grandpa(altered, operators)
 
     def test_final_export_preserves_lock_and_worktree_and_records_generated_binding(self):
         repo = self.root / "repo"

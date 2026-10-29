@@ -302,8 +302,8 @@ class SupportingChecksTests(unittest.TestCase):
         _, input_paths, _, commitment = build.load_inputs(path, build.digest(path)['sha256'])
         self.report['policy']['evidenceCommitment'] = commitment
         for key, role in ((inputs['compose']['csv'], 'signedMappingCsv'),
-            (inputs['operatorsScale'], 'operatorsScale'), (inputs['compose']['proofs'], 'ownershipProofs'),
-            (inputs['derivedInventory'], 'derivedAccountInventory')):
+            (inputs['operatorsScale'], 'operatorsScale'),
+            (inputs['compose']['inventory'], 'storageInventory')):
             self.paths[role] = input_paths[key]
         self.refs['buildInputs'] = path
         # References are canonical paths relative to this new input root.

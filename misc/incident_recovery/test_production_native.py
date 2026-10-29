@@ -48,7 +48,7 @@ class ProductionNativeTests(unittest.TestCase):
         self.put(source / 'Cargo.toml', b'[workspace]\nmembers = ["runtime"]\n')
         self.put(source / 'runtime/Cargo.toml', b'[features]\ndefault = ["std"]\nbuild-wasm-binary = []\n')
         self.put(source / 'runtime/src/lib.rs', b'#[cfg(all(feature = "std", feature = "build-wasm-binary"))]\nconst EXAMPLE: () = ();\n')
-        operators = scale.compact(1) + h(2) + scale.compact(1) + h(8) + (fresh or h(9)) + scale.compact(1) + h(10) + scale.compact(1) + h(11)
+        operators = b'snxops02' + scale.compact(1) + h(2) + scale.compact(1) + (fresh or h(9)) + scale.compact(1) + h(10) + scale.compact(1) + h(11)
         self.put(base / 'final.wasm', wasm(138, 134))
         generated = f'pub const OPERATORS_SCALE: &[u8] = &[{",".join(map(str, operators))}];\n'
         generated += f'pub const FINAL_CODE_HASH: &[u8] = &[{",".join(map(str, hashlib.blake2b(wasm(138, 134), digest_size=32).digest()))}];\n'

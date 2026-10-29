@@ -147,7 +147,7 @@ class TransportTests(unittest.TestCase):
             "validators": [hx(2)], "records": [{"storage": "Grandpa.Authorities", "value": [[hx(8), 1]]}],
             "checkpointSlot": 298823260, "checkpointTimestamp": 1792939560002, "previousGrandpaSet": 7956}))
         operators = self.root / "operators.json"
-        operators.write_text(json.dumps([{"owner": hx(2), "freshGrandpa": hx(9), "fixtureOnly": True, "operatorApproved": False}]))
+        operators.write_text(json.dumps([{"owner": hx(2), "retainedGrandpa": [hx(8)], "fixtureOnly": True, "operatorApproved": False}]))
         paths = []
         for spec, tx in [(134, 131), (135, 132), (138, 134)]:
             runtime = self.root / f"runtime-{spec}.wasm"

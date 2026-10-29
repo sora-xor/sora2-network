@@ -34,8 +34,8 @@ MAX_WASM_BYTES = 50 * 1024**2
 SDK_ZSTD_PREFIX = bytes([82, 188, 83, 118, 70, 219, 142, 5])
 CONFIG_FIELDS = {"schemaVersion", "checkpointHash", "policyCommitment", "policyScale", "bootstrapCodeHash",
                  "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId",
-                 "previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys",
-                 "approvedGrandpaKeys", "lastAbandonedSignedSlot", "firstRecoverySlot"}
+                 "previousGrandpaAuthorities", "grandpaAuthorities",
+                 "approvedGrandpaKeys", "lastObservedAbandonedSlot", "firstRecoverySlot"}
 
 
 def need(condition, message):
@@ -226,7 +226,7 @@ def authority_json(config):
             need(isinstance(row, list) and len(row) == 2 and type(row[1]) is int
                  and 0 < row[1] < 2**64, "GRANDPA authority key/weight pair required")
             authority_key(row[0])
-    for name, maximum in (("retiredGrandpaKeys", 3000), ("approvedGrandpaKeys", 1000)):
+    for name, maximum in (("approvedGrandpaKeys", 3000),):
         keys = config[name]
         need(isinstance(keys, list) and 0 < len(keys) <= maximum, "bounded GRANDPA key inventory required")
         for key in keys:
@@ -257,8 +257,20 @@ def template_inputs(spec, config, bootstrap):
     need(isinstance(spec, dict), "chain spec must be an object")
     exact(config, CONFIG_FIELDS)
     authority_json(config)
-    need(type(config["schemaVersion"]) is int and config["schemaVersion"] == 2
+    need(type(config["schemaVersion"]) is int and config["schemaVersion"] == 3
          and config["checkpointHash"] == CHECKPOINT_HASH, "recovery checkpoint identity")
+    need(type(config["previousGrandpaSetId"]) is int and config["previousGrandpaSetId"] == 7956,
+         "recovery checkpoint GRANDPA set differs")
+    need(config["grandpaAuthorities"] == config["previousGrandpaAuthorities"],
+         "checkpoint GRANDPA authority keys/order/weights must be preserved")
+    approved = [authority_key(key) for key in config["approvedGrandpaKeys"]]
+    active = [authority_key(row[0]) for row in config["grandpaAuthorities"]]
+    need(approved == sorted(set(approved)) and len(active) == len(set(active))
+         and set(active).issubset(approved) and all(any(key) for key in approved),
+         "checkpoint GRANDPA retained-key inventory differs")
+    need(type(config["lastObservedAbandonedSlot"]) is int and type(config["firstRecoverySlot"]) is int
+         and config["lastObservedAbandonedSlot"] == 298871044 < config["firstRecoverySlot"] < 2**64,
+         "public abandoned-chain slot bound differs")
     need(spec.get("id") == "sora-nexus-recovery-28191817"
          and spec.get("protocolId") == "sora-nexus-recovery-28191817-v1"
          and spec.get("forkId") == "recovery-28191817-v1", "recovery network identity")

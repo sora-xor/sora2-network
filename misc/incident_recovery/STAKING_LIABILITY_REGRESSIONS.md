@@ -30,6 +30,6 @@ The three focused tests passed on the current source:
 
 These tests establish native handler behavior with deliberately small fixtures.
 The typed fixture edits are not a substitute for the offline compiler's complete
-checkpoint inventory, final CSV ownership proofs, actual operator inventory or
+checkpoint inventory, final trusted CSV, derived checkpoint operator inventory or
 exact-artifact maintenance and activation rehearsals. They do not authorize a
 release or rewrite historical headers, roots or proofs.

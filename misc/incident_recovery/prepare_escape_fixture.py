@@ -108,9 +108,7 @@ def manifest(root, destination, inputs_path, consensus_path, operators_path, boo
         scale.require(fixture.digest((inputs_path / name).read_bytes()) == expected, "Changed escape fixture input")
     consensus, operators = scale.read_json(consensus_path), scale.read_json(operators_path)
     scale.require(consensus["checkpointHash"] == scale.CHECKPOINT_HASH and consensus["stateRoot"] == release.CHECKPOINT_ROOT, "Wrong fixture checkpoint")
-    scale.require([row["owner"] for row in operators] == consensus["validators"] and all(row["fixtureOnly"] and not row["operatorApproved"] for row in operators), "Public fixture operators required")
-    active = next(row["value"] for row in consensus["records"] if row["storage"] == "Grandpa.Authorities")
-    scale.require(len(active) == len(operators), "Active key weight mismatch")
+    active = fixture.fixture_active_grandpa(consensus, operators)
     destination.mkdir(parents=True)
 
     def artifact(name, data):
@@ -153,7 +151,7 @@ def manifest(root, destination, inputs_path, consensus_path, operators_path, boo
     document = {"schema": MANIFEST_SCHEMA, "checkpointHash": scale.CHECKPOINT_HASH, "checkpointCapture": "checkpoint",
                 "policy": original, "bootstrap": runtime["bootstrap"], "hold": runtime["hold"], "finalRuntime": runtime["finalRuntime"],
                 "repairs": [runtime["repair"]], "previousGrandpaSet": int(consensus["previousGrandpaSet"]),
-                "freshGrandpa": [[row["freshGrandpa"], int(entry[1])] for row, entry in zip(operators, active, strict=True)],
+                "freshGrandpa": active,
                 "fixtureCouncil": {"scheme": SCHEME, "provenance": public_provenance}, "steps": steps}
     output = root / (destination.relative_to(root).as_posix().replace("/", "-") + ".json")
     with output.open("x") as stream:

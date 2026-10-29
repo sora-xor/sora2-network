@@ -33,7 +33,7 @@ def replace_once(source: str, old: str, new: str) -> str:
 def patch_runtime(source: str, spec: int) -> str:
     if not re.search(r"spec_version:\s*134,", source) or not re.search(r"transaction_version:\s*131,", source):
         raise ValueError("source is not the deployed spec-134/transaction-131 runtime")
-    source = replace_once(source, "mod babe_config;", "mod babe_config;\nmod incident_recovery;\nmod incident_recovery_consensus;\npub mod incident_recovery_evm_source;\npub mod incident_recovery_incoming;\npub mod incident_recovery_outgoing;")
+    source = replace_once(source, "mod babe_config;", "mod babe_config;\nmod incident_recovery;\nmod incident_recovery_consensus;\nmod incident_recovery_babe_reports;\npub mod incident_recovery_evm_source;\npub mod incident_recovery_incoming;\npub mod incident_recovery_outgoing;")
     for method in ["execute_block(block)", "initialize_block(header)", "apply_extrinsic(extrinsic)", "finalize_block()",
                    "validate_transaction(source, tx, block_hash)", "offchain_worker(header)"]:
         source = replace_once(source, f"Executive::{method}", f"incident_recovery::{method}")
@@ -43,6 +43,16 @@ def patch_runtime(source: str, spec: int) -> str:
     if source.count(marker) != 2:
         raise ValueError("unexpected BABE/GRANDPA report adapter layout")
     source = source.replace(marker, "        liveness::EquivocationReports,\n        incident_recovery_consensus::RecoveryOwnership,\n        ReportLongevity,")
+    source = replace_once(source,
+        "    type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<\n"
+        "        Self,\n        liveness::EquivocationReports,\n"
+        "        incident_recovery_consensus::RecoveryOwnership,\n        ReportLongevity,\n    >;",
+        "    type EquivocationReportSystem = incident_recovery_consensus::RecoveryGrandpaReports;")
+    source = replace_once(source,
+        "    type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<\n"
+        "        Self,\n        liveness::EquivocationReports,\n"
+        "        incident_recovery_consensus::RecoveryOwnership,\n        ReportLongevity,\n    >;",
+        "    type EquivocationReportSystem = incident_recovery_babe_reports::RecoveryBabeReports;")
     source = replace_once(source, "            _set_id: fg_primitives::SetId,", "            set_id: fg_primitives::SetId,")
     source = replace_once(source, "Historical::prove((fg_primitives::KEY_TYPE, authority_id))", "incident_recovery_consensus::prove_grandpa(set_id, authority_id)")
     source = replace_once(source, "_slot_number: sp_consensus_babe::Slot,", "slot_number: sp_consensus_babe::Slot,")
@@ -188,6 +198,7 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
     manifest.write_text(text)
     for source, relative in [(HERE / "overlay/incident_recovery.rs", "runtime/src/incident_recovery.rs"),
         (ROOT / "runtime/src/incident_recovery_consensus.rs", "runtime/src/incident_recovery_consensus.rs"),
+        (ROOT / "runtime/src/incident_recovery_babe_reports.rs", "runtime/src/incident_recovery_babe_reports.rs"),
         (ROOT / "runtime/src/incident_recovery_evm_source.rs", "runtime/src/incident_recovery_evm_source.rs"),
         (ROOT / "runtime/src/incident_recovery_evm_source_tests.rs", "runtime/src/incident_recovery_evm_source_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming.rs", "runtime/src/incident_recovery_incoming.rs"),
@@ -214,7 +225,7 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
         generated.write_bytes((HERE / "overlay/generated.rs").read_bytes())
         evidence = None
     # Record every overlay file, including source files shared with runtime 138.
-    overlays = ["runtime/src/lib.rs", "runtime/src/incident_recovery.rs", "runtime/src/incident_recovery_consensus.rs",
+    overlays = ["runtime/src/lib.rs", "runtime/src/incident_recovery.rs", "runtime/src/incident_recovery_consensus.rs", "runtime/src/incident_recovery_babe_reports.rs",
         "runtime/src/incident_recovery/generated.rs", "runtime/Cargo.toml", "common/src/lib.rs", "common/src/recovery.rs"]
     overlays += [str(path.relative_to(destination)) for path in (destination / "common/src/recovery").rglob("*.rs")]
     overlays += [f"vendor/polkadot-sdk/frame/{pallet}/src/{file}" for pallet in ["babe", "grandpa"] for file in ["lib.rs", "recovery.rs"]]

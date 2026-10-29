@@ -24,7 +24,10 @@ use sp_runtime::DigestItem;
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, AtomicUsize, Ordering},
+    Arc,
+};
 
 const CHECKPOINT_IMPORTED_KEY: &[u8] = b"sora-nexus/recovery/checkpoint-imported/v1";
 const MAX_WARP_PROOF_BYTES: usize = 8 * 1024 * 1024;
@@ -342,23 +345,8 @@ pub fn validate_grandpa_keys(
     is_authority: bool,
     maintenance: bool,
 ) -> Result<(), String> {
-    if recovery.retired_grandpa_keys.iter().any(|key| {
-        local_keys
-            .iter()
-            .any(|local| local.as_slice() == key.as_slice())
-    }) {
-        return Err("remove old GRANDPA signing keys before opening the recovery node".into());
-    }
-    if maintenance
-        && local_keys.iter().any(|local| {
-            !recovery
-                .approved_grandpa_keys
-                .iter()
-                .any(|key| local.as_slice() == key.as_slice())
-        })
-    {
-        return Err("recovery keystore contains an unapproved GRANDPA signing key".into());
-    }
+    // Retain the operator's complete keystore. The SDK chooses only keys in
+    // its current voter set; unused historical keys do not authorize voting.
     if is_authority
         && maintenance
         && !recovery.approved_grandpa_keys.iter().any(|key| {
@@ -367,7 +355,7 @@ pub fn validate_grandpa_keys(
                 .any(|local| local.as_slice() == key.as_slice())
         })
     {
-        return Err("recovery validator has no manifest-listed fresh GRANDPA key".into());
+        return Err("recovery validator has no checkpoint-approved retained GRANDPA key".into());
     }
     Ok(())
 }
@@ -429,6 +417,144 @@ pub async fn wait_for_activation(
             ));
         }
     }
+}
+
+/// Opens only after an outer import has returned, when SDK authority commands
+/// are queued. On restart, persisted state was loaded before the link was built.
+#[derive(Clone)]
+pub struct GrandpaStartGate(Arc<GrandpaImportBarrier>);
+
+struct GrandpaImportBarrier {
+    verified_import: AtomicBool,
+    imports_in_flight: AtomicUsize,
+}
+
+struct GrandpaImportInFlight(GrandpaStartGate);
+
+impl Drop for GrandpaImportInFlight {
+    fn drop(&mut self) {
+        self.0 .0.imports_in_flight.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+impl GrandpaStartGate {
+    fn new(open: bool) -> Self {
+        Self(Arc::new(GrandpaImportBarrier {
+            verified_import: AtomicBool::new(open),
+            imports_in_flight: AtomicUsize::new(0),
+        }))
+    }
+    fn is_open(&self) -> bool {
+        self.0.verified_import.load(Ordering::Acquire)
+            && self.0.imports_in_flight.load(Ordering::Acquire) == 0
+    }
+    fn importing(&self) -> GrandpaImportInFlight {
+        self.0.imports_in_flight.fetch_add(1, Ordering::AcqRel);
+        GrandpaImportInFlight(self.clone())
+    }
+    fn imported(&self) {
+        self.0.verified_import.store(true, Ordering::Release);
+    }
+}
+
+// Public SDK accessors use separate locks. If a rotation intervenes, return an
+// old set sentinel and wait for another observation rather than mixing views.
+fn grandpa_authority_snapshot(
+    authorities: &SharedAuthoritySet<H256, u32>,
+) -> (u64, Vec<(sc_finality_grandpa::AuthorityId, u64)>) {
+    let set = authorities.set_id();
+    let keys = authorities
+        .current_authorities()
+        .iter()
+        .map(|(id, info)| (id.clone(), info.weight().get()))
+        .collect();
+    if authorities.set_id() != set {
+        return (0, Vec::new());
+    }
+    (set, keys)
+}
+
+// Readiness is retried while imports settle. Report each distinct failure once,
+// and permit it to be reported again only after a successful readiness check.
+fn grandpa_start_warning_changed(previous: &mut Option<String>, error: Option<&str>) -> bool {
+    let changed = error.is_some() && previous.as_deref() != error;
+    *previous = error.map(str::to_owned);
+    changed
+}
+
+/// Construct no voter until the checkpoint forced transition is fully imported.
+/// The patched SDK subsequently consumes its queued commands before polling it.
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve upstream service error type"
+)]
+pub async fn wait_for_grandpa_start(
+    client: Arc<crate::service::FullClient>,
+    recovery: &RecoveryConfig,
+    authorities: SharedAuthoritySet<H256, u32>,
+    gate: GrandpaStartGate,
+) -> Result<(), ServiceError> {
+    use futures::{FutureExt, StreamExt};
+    use sc_client_api::BlockchainEvents;
+    let mut imports = client.import_notification_stream();
+    let mut previous_error = None;
+    loop {
+        let (set_id, voters) = grandpa_authority_snapshot(&authorities);
+        match grandpa_start_ready(&*client, recovery, gate.is_open(), set_id, &voters) {
+            Ok(true) => return Ok(()),
+            Ok(false) => {
+                grandpa_start_warning_changed(&mut previous_error, None);
+            }
+            // Warp header import may not yet have imported its state. All
+            // unreadable/malformed inputs keep the signing service stopped.
+            Err(error) => {
+                let message = error.to_string();
+                if grandpa_start_warning_changed(&mut previous_error, Some(&message)) {
+                    log::warn!("GRANDPA remains stopped before verified recovery: {message}");
+                }
+            }
+        }
+        // The client notification precedes the outer-import completion barrier;
+        // retry even if no later block arrives after importing the checkpoint.
+        futures::select! {
+            imported = imports.next().fuse() => if imported.is_none() {
+                return Err(ServiceError::Other("recovery import stream closed before GRANDPA activation".into()));
+            },
+            _ = futures_timer::Delay::new(std::time::Duration::from_millis(500)).fuse() => {},
+        }
+    }
+}
+
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve upstream service error type"
+)]
+fn grandpa_start_ready(
+    client: &impl RecoveryDatabaseView,
+    recovery: &RecoveryConfig,
+    import_complete: bool,
+    set_id: u64,
+    authorities: &[(sc_finality_grandpa::AuthorityId, u64)],
+) -> Result<bool, ServiceError> {
+    let target = recovery.previous_grandpa_set_id + 1;
+    if !import_complete || client.recovery_info().heads[0].0 < CHECKPOINT_NUMBER || set_id < target
+    {
+        return Ok(false);
+    }
+    validate_database_view(client, recovery)?;
+    if set_id == target
+        && authorities.iter().cloned().collect::<BTreeSet<_>>()
+            != recovery
+                .grandpa_authorities
+                .iter()
+                .cloned()
+                .collect::<BTreeSet<_>>()
+    {
+        return Err(ServiceError::Other(
+            "forced recovery GRANDPA set has different authorities".into(),
+        ));
+    }
+    Ok(true)
 }
 
 // Narrow read-only database view. Production and missing-index regression tests
@@ -617,6 +743,7 @@ pub struct RecoveryBlockImport<I> {
     inner: I,
     recovery: Option<RecoveryConfig>,
     authorities: SharedAuthoritySet<H256, u32>,
+    voter_start: GrandpaStartGate,
     client: Arc<crate::service::FullClient>,
     evidence: Option<Arc<crate::recovery_evidence::Recorder>>,
 }
@@ -629,13 +756,24 @@ impl<I> RecoveryBlockImport<I> {
         authorities: SharedAuthoritySet<H256, u32>,
         client: Arc<crate::service::FullClient>,
     ) -> Self {
+        // Existing post-checkpoint databases have just loaded their persisted
+        // GRANDPA round state, so they have no historical startup command queue.
+        let (set_id, voters) = grandpa_authority_snapshot(&authorities);
+        let open = recovery.as_ref().is_none_or(|config| {
+            grandpa_start_ready(&*client, config, true, set_id, &voters).unwrap_or(false)
+        });
         Self {
             inner,
             recovery,
             authorities,
+            voter_start: GrandpaStartGate::new(open),
             client,
             evidence: None,
         }
+    }
+
+    pub fn grandpa_start_gate(&self) -> GrandpaStartGate {
+        self.voter_start.clone()
     }
 
     /// Attach a passive verification journal without changing ordinary imports.
@@ -674,6 +812,9 @@ where
         &self,
         mut block: BlockImportParams<Block>,
     ) -> Result<ImportResult, Self::Error> {
+        // A header-only warp import must not open the voter while a subsequent
+        // state import is still establishing the set and queueing its command.
+        let _in_flight = self.recovery.as_ref().map(|_| self.voter_start.importing());
         if let Some(recovery) = &self.recovery {
             validate_header(&block.header, block.post_hash(), recovery)
                 .map_err(sp_consensus::Error::ClientImport)?;
@@ -767,7 +908,19 @@ where
                 .record(value.clone(), None)
                 .map_err(sp_consensus::Error::ClientImport)?;
         }
+        let recovery_import =
+            self.recovery.is_some() && *block.header.number() >= CHECKPOINT_NUMBER;
         let result = self.inner.import_block(block).await;
+        if recovery_import && matches!(&result, Ok(ImportResult::Imported(_))) {
+            let (set_id, voters) = grandpa_authority_snapshot(&self.authorities);
+            if self.recovery.as_ref().is_some_and(|config| {
+                grandpa_start_ready(&*self.client, config, true, set_id, &voters).unwrap_or(false)
+            }) {
+                // The nested importer has queued its commands. All other
+                // outstanding imports must also return before voting can start.
+                self.voter_start.imported();
+            }
+        }
         if let (Some(recorder), Some(mut value)) = (&self.evidence, observation) {
             value["kind"] = "import-result".into();
             value["outcome"] = format!("{result:?}").into();
@@ -1052,7 +1205,7 @@ mod tests {
         };
         let key = |byte| sp_core::ed25519::Public::from_raw([byte; 32]).into();
         RecoveryConfig {
-            schema_version: 2,
+            schema_version: 3,
             checkpoint_hash: CHECKPOINT_HASH.into(),
             policy_commitment: policy.commitment().into(),
             policy_scale: sp_core::Bytes(policy.encode()),
@@ -1060,13 +1213,12 @@ mod tests {
             final_code_hash: [3; 32].into(),
             hold_code_hash: [4; 32].into(),
             evidence_commitment: [5; 32].into(),
-            previous_grandpa_set_id: 7,
+            previous_grandpa_set_id: framenode_chain_spec::recovery::PREVIOUS_GRANDPA_SET_ID,
             previous_grandpa_authorities: vec![(key(1), 1)],
-            grandpa_authorities: vec![(key(2), 1)],
-            retired_grandpa_keys: vec![key(1), key(3)],
-            approved_grandpa_keys: vec![key(2), key(4)],
-            last_abandoned_signed_slot: 99,
-            first_recovery_slot: 100,
+            grandpa_authorities: vec![(key(1), 1)],
+            approved_grandpa_keys: vec![key(1), key(4)],
+            last_observed_abandoned_slot: framenode_chain_spec::recovery::LAST_ABANDONED_SLOT,
+            first_recovery_slot: framenode_chain_spec::recovery::LAST_ABANDONED_SLOT + 1,
         }
     }
 
@@ -1156,6 +1308,112 @@ mod tests {
                 .into_iter()
                 .collect(),
         }
+    }
+
+    #[test]
+    fn grandpa_readiness_warns_on_changed_errors_without_retry_spam() {
+        let mut previous = None;
+        assert!(!grandpa_start_warning_changed(&mut previous, None));
+        assert!(grandpa_start_warning_changed(
+            &mut previous,
+            Some("missing lineage")
+        ));
+        assert!(!grandpa_start_warning_changed(
+            &mut previous,
+            Some("missing lineage")
+        ));
+        assert!(grandpa_start_warning_changed(
+            &mut previous,
+            Some("wrong authorities")
+        ));
+        assert!(!grandpa_start_warning_changed(
+            &mut previous,
+            Some("wrong authorities")
+        ));
+        assert!(!grandpa_start_warning_changed(&mut previous, None));
+        assert_eq!(previous, None);
+        assert!(grandpa_start_warning_changed(
+            &mut previous,
+            Some("wrong authorities")
+        ));
+    }
+
+    #[test]
+    fn grandpa_waits_for_import_completion_and_the_forced_set() {
+        let recovery = fixture();
+        let mut database = warp_restart_database(&recovery);
+        let set = recovery.previous_grandpa_set_id + 1;
+        let keys = &recovery.grandpa_authorities;
+        assert!(!grandpa_start_ready(&database, &recovery, false, set, keys).unwrap());
+        assert!(!grandpa_start_ready(&database, &recovery, true, set - 1, keys).unwrap());
+        assert!(grandpa_start_ready(&database, &recovery, true, set, keys).unwrap());
+        // A validated later recovery set can resume after normal rotations.
+        assert!(grandpa_start_ready(&database, &recovery, true, set + 1, keys).unwrap());
+        database.heads[0].0 = CHECKPOINT_NUMBER - 1;
+        assert!(!grandpa_start_ready(&database, &recovery, true, set, keys).unwrap());
+    }
+
+    #[test]
+    fn grandpa_start_requires_checkpoint_lineage_provenance_and_exact_forced_keys() {
+        let recovery = fixture();
+        let mut database = warp_restart_database(&recovery);
+        let set = recovery.previous_grandpa_set_id + 1;
+        assert!(grandpa_start_ready(&database, &recovery, true, set, &[]).is_err());
+        database.provenance = None;
+        assert!(grandpa_start_ready(
+            &database,
+            &recovery,
+            true,
+            set,
+            &recovery.grandpa_authorities
+        )
+        .is_err());
+        database = warp_restart_database(&recovery);
+        database.headers.remove(&H256::from(CHECKPOINT_HASH));
+        assert!(grandpa_start_ready(
+            &database,
+            &recovery,
+            true,
+            set,
+            &recovery.grandpa_authorities
+        )
+        .is_err());
+        database = warp_restart_database(&recovery);
+        database.policies.clear();
+        assert!(grandpa_start_ready(
+            &database,
+            &recovery,
+            true,
+            set,
+            &recovery.grandpa_authorities
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn grandpa_warp_barrier_waits_for_all_in_flight_imports() {
+        let gate = GrandpaStartGate::new(false);
+        let header = gate.importing();
+        let state = gate.importing();
+        gate.imported();
+        assert!(!gate.is_open());
+        drop(header);
+        assert!(!gate.is_open());
+        drop(state);
+        assert!(gate.is_open());
+        let later = gate.importing();
+        assert!(!gate.is_open());
+        drop(later);
+        assert!(gate.is_open());
+    }
+
+    #[test]
+    fn grandpa_import_barrier_is_shared_and_closed_until_outer_import_finishes() {
+        let gate = GrandpaStartGate::new(false);
+        let voter = gate.clone();
+        assert!(!voter.is_open());
+        gate.imported();
+        assert!(voter.is_open());
     }
 
     #[test]
@@ -1331,12 +1589,15 @@ mod tests {
     }
 
     #[test]
-    fn first_child_requires_fresh_slot() {
+    fn first_child_requires_a_slot_beyond_the_abandoned_head() {
         use sp_consensus_babe::digests::{
             CompatibleDigestItem, PreDigest, SecondaryPlainPreDigest,
         };
         let recovery = fixture();
-        for (slot, accepted) in [(99, false), (100, true)] {
+        for (slot, accepted) in [
+            (recovery.first_recovery_slot - 1, false),
+            (recovery.first_recovery_slot, true),
+        ] {
             let mut header = header(CHECKPOINT_NUMBER + 1);
             header
                 .digest_mut()
@@ -1415,7 +1676,7 @@ mod tests {
     fn sdk_fixture_verifier(
         boundary: &Header<u32, BlakeTwo256>,
         old: &sp_core::ed25519::Pair,
-        fresh: &sp_core::ed25519::Pair,
+        retained: &sp_core::ed25519::Pair,
     ) -> Box<dyn Verifier<Block>> {
         use sp_core::Pair;
         // Construct the SDK's persisted authority-set shape without accessing
@@ -1425,7 +1686,7 @@ mod tests {
             vec![(old.public().into(), 1)];
         let encoded = (
             authorities,
-            7u64,
+            7956u64,
             Vec::<u8>::new(),
             Option::<u32>::None,
             Vec::<u8>::new(),
@@ -1456,9 +1717,9 @@ mod tests {
             backend,
             authority_set.into(),
             vec![AuthoritySetHardFork {
-                set_id: 8,
+                set_id: 7957,
                 block: (boundary.hash(), CHECKPOINT_NUMBER),
-                authorities: vec![(fresh.public().into(), 1)],
+                authorities: vec![(retained.public().into(), 1)],
                 last_finalized: Some(CHECKPOINT_NUMBER - 1),
             }],
         )
@@ -1499,10 +1760,11 @@ mod tests {
     }
 
     #[test]
-    fn sdk_warp_boundary_requires_fresh_keys_and_the_sequential_set() {
+    fn sdk_warp_boundary_retains_keys_but_requires_the_sequential_set() {
         use sp_core::Pair;
         let old = sp_core::ed25519::Pair::from_seed(&[21; 32]);
-        let fresh = sp_core::ed25519::Pair::from_seed(&[22; 32]);
+        let retained = sp_core::ed25519::Pair::from_seed(&[21; 32]);
+        let wrong = sp_core::ed25519::Pair::from_seed(&[22; 32]);
         let boundary: <Block as BlockT>::Header =
             serde_json::from_str(include_str!("testdata/recovery_checkpoint_header.json")).unwrap();
         let mut target = header(CHECKPOINT_NUMBER + 2);
@@ -1520,18 +1782,22 @@ mod tests {
         };
         let skipped = EncodedProof(
             WarpProofWire {
-                proofs: vec![signed_fragment(target.clone(), &old, 7)],
+                proofs: vec![signed_fragment(target.clone(), &old, 7956)],
                 is_finished: true,
             }
             .encode(),
         );
         // The old set can sign a fabricated lineage digest. The mandatory
         // boundary guard rejects it before SDK old-set verification can pass.
-        let mut skipped_verifier = wrap(sdk_fixture_verifier(&boundary, &old, &fresh));
+        let mut skipped_verifier = wrap(sdk_fixture_verifier(&boundary, &old, &retained));
         assert!(skipped_verifier.verify(&skipped).is_err());
         assert!(!skipped_verifier.boundary_seen);
         assert!(skipped_verifier.last_number.is_none());
-        for (signer, set, accepted) in [(&fresh, 8, true), (&old, 8, false), (&fresh, 7, false)] {
+        for (signer, set, accepted) in [
+            (&retained, 7957, true),
+            (&wrong, 7957, false),
+            (&retained, 7956, false),
+        ] {
             let proof = EncodedProof(
                 WarpProofWire {
                     proofs: vec![
@@ -1542,7 +1808,7 @@ mod tests {
                 }
                 .encode(),
             );
-            let mut verifier = wrap(sdk_fixture_verifier(&boundary, &old, &fresh));
+            let mut verifier = wrap(sdk_fixture_verifier(&boundary, &old, &retained));
             let result = verifier.verify(&proof);
             assert_eq!(result.is_ok(), accepted);
             if accepted {
@@ -1551,9 +1817,9 @@ mod tests {
                 );
             }
         }
-        // A boundary-only partial response can resume with a real fresh-key
+        // A boundary-only partial response can resume with a real retained-key
         // proof. The wrapper separately forbids completing on that boundary.
-        let mut verifier = wrap(sdk_fixture_verifier(&boundary, &old, &fresh));
+        let mut verifier = wrap(sdk_fixture_verifier(&boundary, &old, &retained));
         let first = EncodedProof(
             WarpProofWire {
                 proofs: vec![trusted_boundary_fragment(boundary.clone())],
@@ -1575,7 +1841,7 @@ mod tests {
         assert!(verifier.boundary_seen);
         let second = EncodedProof(
             WarpProofWire {
-                proofs: vec![signed_fragment(target, &fresh, 8)],
+                proofs: vec![signed_fragment(target, &retained, 7957)],
                 is_finished: true,
             }
             .encode(),
@@ -1587,22 +1853,32 @@ mod tests {
     }
 
     #[test]
-    fn retired_grandpa_keys_are_rejected_even_on_non_authorities() {
+    fn retained_grandpa_keys_require_checkpoint_inventory_during_maintenance() {
         let recovery = fixture();
         let old = recovery.previous_grandpa_authorities[0]
             .0
             .as_slice()
             .to_vec();
-        let fresh = recovery.grandpa_authorities[0].0.as_slice().to_vec();
-        assert!(validate_grandpa_keys(&recovery, &[old], false, true).is_err());
+        let retained = recovery.grandpa_authorities[0].0.as_slice().to_vec();
+        assert!(validate_grandpa_keys(&recovery, &[old], false, true).is_ok());
         assert!(validate_grandpa_keys(&recovery, &[], true, true).is_err());
-        assert!(validate_grandpa_keys(&recovery, &[fresh], true, true).is_ok());
-        assert!(validate_grandpa_keys(&recovery, &[vec![3; 32]], false, true).is_err());
+        assert!(
+            validate_grandpa_keys(&recovery, std::slice::from_ref(&retained), true, true).is_ok()
+        );
+        assert!(validate_grandpa_keys(&recovery, &[vec![3; 32]], false, true).is_ok());
         assert!(validate_grandpa_keys(&recovery, &[vec![4; 32]], true, true).is_ok());
-        assert!(validate_grandpa_keys(&recovery, &[vec![5; 32]], false, true).is_err());
+        assert!(validate_grandpa_keys(&recovery, &[vec![5; 32]], false, true).is_ok());
+        assert!(validate_grandpa_keys(&recovery, &[vec![5; 32]], true, true).is_err());
+        assert!(validate_grandpa_keys(
+            &recovery,
+            &[retained, vec![3; 32], vec![5; 32]],
+            true,
+            true
+        )
+        .is_ok());
         assert!(validate_grandpa_keys(&recovery, &[], false, true).is_ok());
         assert!(validate_grandpa_keys(&recovery, &[vec![5; 32]], true, false).is_ok());
-        assert!(validate_grandpa_keys(&recovery, &[vec![3; 32]], true, false).is_err());
+        assert!(validate_grandpa_keys(&recovery, &[vec![3; 32]], true, false).is_ok());
     }
 
     #[test]

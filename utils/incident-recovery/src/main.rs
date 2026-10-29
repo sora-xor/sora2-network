@@ -250,6 +250,23 @@ enum Command {
         #[arg(long, requires_all = ["capture", "semantic"])]
         derived_inventory: Option<PathBuf>,
     },
+    /// Derive retained consensus key inventories from authenticated checkpoint state.
+    #[cfg(feature = "runtime-work-types")]
+    DeriveCheckpointConsensus {
+        #[arg(long)]
+        capture: PathBuf,
+    },
+    /// Admit the trusted release CSV and generate state-bearing utility mappings.
+    VerifyTrustedMapping {
+        #[arg(long)]
+        csv: PathBuf,
+        #[arg(long)]
+        capture: PathBuf,
+        #[arg(long)]
+        inventory: PathBuf,
+        #[arg(long)]
+        semantic: PathBuf,
+    },
     /// Enumerate every storage prefix and report unresolved semantic coverage.
     Inventory {
         #[arg(long)]
@@ -307,7 +324,7 @@ struct ComposeStorageWorkArgs {
     #[arg(long)]
     csv: PathBuf,
     #[arg(long)]
-    proofs: PathBuf,
+    proofs: Option<PathBuf>,
     #[arg(long)]
     inventory: PathBuf,
     #[arg(long)]
@@ -345,9 +362,9 @@ struct ComposeStorageWorkArgs {
     /// Exact stale Root schedule and retained preimage/deposit review.
     #[arg(long)]
     scheduler: Option<PathBuf>,
-    /// JSON array of recovered council AccountId32/SS58 public addresses.
+    /// Optional legacy consistency check; council is derived from checkpoint plus CSV.
     #[arg(long)]
-    council: PathBuf,
+    council: Option<PathBuf>,
     /// Commitment to the independently reviewed public evidence manifest.
     #[arg(long)]
     evidence_commitment: String,
@@ -385,6 +402,49 @@ fn read_mapping(
 ) -> incident_recovery::Result<Vec<common::recovery::AccountReplacement>> {
     let bytes = read_bounded(path, 2 * 1024 * 1024)?;
     incident_recovery::parse_mapping_csv(std::str::from_utf8(&bytes).map_err(|e| e.to_string())?)
+}
+
+struct TrustedMappingInput {
+    trusted: incident_recovery::trusted_mapping::TrustedMapping,
+    options: incident_recovery::inventory::InventoryOptions,
+    semantic: incident_recovery::substitution_semantics::SemanticPlan,
+    report: serde_json::Value,
+}
+
+fn trusted_mapping_input(
+    checkpoint: &incident_recovery::VerifiedCheckpoint,
+    csv: &Path,
+    inventory: &Path,
+    semantic: &Path,
+) -> incident_recovery::Result<TrustedMappingInput> {
+    use sha2::{Digest, Sha256};
+    let csv_bytes = read_bounded(csv, 2 * 1024 * 1024)?;
+    let inventory_bytes = read_bounded(inventory, 64 * 1024 * 1024)?;
+    let semantic_bytes = read_bounded(semantic, 64 * 1024 * 1024)?;
+    let map = incident_recovery::parse_mapping_csv(
+        std::str::from_utf8(&csv_bytes).map_err(|e| e.to_string())?,
+    )?;
+    let options = serde_json::from_slice(&inventory_bytes).map_err(|e| e.to_string())?;
+    let semantic = serde_json::from_slice(&semantic_bytes).map_err(|e| e.to_string())?;
+    let trusted = incident_recovery::trusted_mapping::verify(
+        &checkpoint.schema,
+        &checkpoint.storage,
+        &map,
+        &options,
+    )?;
+    let mut report = serde_json::to_value(&trusted.report).map_err(|e| e.to_string())?;
+    report["mappingCsvSha256"] = hex::encode(Sha256::digest(&csv_bytes)).into();
+    report["inventorySha256"] = hex::encode(Sha256::digest(&inventory_bytes)).into();
+    report["semanticPlanSha256"] = hex::encode(Sha256::digest(&semantic_bytes)).into();
+    report["checkpointStateRoot"] = checkpoint.state.state_root.clone().into();
+    report["captureManifestSha256"] = checkpoint.state.capture_manifest_sha256.clone().into();
+    report["checkpointMetadata"] = checkpoint.metadata_witness.clone();
+    Ok(TrustedMappingInput {
+        trusted,
+        options,
+        semantic,
+        report,
+    })
 }
 
 fn verify_ownership_command(
@@ -988,26 +1048,60 @@ fn run() -> incident_recovery::Result<()> {
             // Authenticate the registry against executed checkpoint Wasm,
             // not merely a caller-provided metadata hash or success flag.
             let verified = incident_recovery::verify_checkpoint(&capture)?;
+            let admitted = trusted_mapping_input(&verified, &csv, &inventory, &semantic)?;
+            let trusted_report = admitted.report;
+            let trusted = admitted.trusted;
+            let map = trusted.replacements().to_vec();
+            let recovered_council = trusted.council().to_vec();
             let (storage, schema) = (verified.storage, verified.schema);
             require_bridge_control_features(&storage, cfg!(feature = "runtime-work-types"))?;
-            let map = incident_recovery::parse_mapping_csv(
-                &fs::read_to_string(csv).map_err(|e| e.to_string())?,
-            )?;
-            let proofs: Vec<incident_recovery::OwnershipProof> = read_json(proofs)?;
-            let mut options = read_json(inventory)?;
+            // Retained for old command lines only. These records do not supply
+            // authorization under the explicit trusted-CSV release policy.
+            if let Some(path) = proofs {
+                let _: Vec<incident_recovery::OwnershipProof> = read_json(path)?;
+            }
+            let mut options = admitted.options;
             let mut economic_plan: incident_recovery::economics::EconomicPlan =
                 read_json(economic)?;
             economic_plan.protect_replacements(&map)?;
             incident_recovery::economics::require_attacker_watch(&economic_plan, &mut options)?;
-            let semantic_plan: incident_recovery::substitution_semantics::SemanticPlan =
-                read_json(semantic)?;
-            let mut semantics = incident_recovery::substitution_semantics::compile(
+            let semantic_plan = admitted.semantic;
+            let mut semantics = incident_recovery::substitution_semantics::compile_trusted(
                 &schema,
                 &storage,
-                &map,
-                &proofs,
+                &trusted,
                 &semantic_plan,
             )?;
+            let iroha_pending = incident_recovery::iroha_pending::compile(&schema, &storage, &map)?;
+            semantics.edits.extend(iroha_pending.edits.clone());
+            semantics.groups.extend(iroha_pending.groups.clone());
+            semantics
+                .resolutions
+                .extend(iroha_pending.resolutions.clone());
+            semantics
+                .preservation_witnesses
+                .extend(iroha_pending.witnesses.clone());
+            let session_controls =
+                incident_recovery::session_controls::compile(&schema, &storage, &map)?;
+            semantics.edits.extend(session_controls.edits.clone());
+            semantics.groups.extend(session_controls.groups.clone());
+            semantics
+                .resolutions
+                .extend(session_controls.resolutions.clone());
+            semantics
+                .preservation_witnesses
+                .extend(session_controls.witnesses.clone());
+            let permissions_controls = incident_recovery::permissions_controls::compile(
+                &schema, &storage, &map, &options,
+            )?;
+            semantics.edits.extend(permissions_controls.edits.clone());
+            semantics.groups.extend(permissions_controls.groups.clone());
+            semantics
+                .resolutions
+                .extend(permissions_controls.resolutions.clone());
+            semantics
+                .preservation_witnesses
+                .extend(permissions_controls.witnesses.clone());
             let governance = governance
                 .map(|path| {
                     let review = read_json::<incident_recovery::governance::Review>(path)?;
@@ -1314,6 +1408,9 @@ fn run() -> incident_recovery::Result<()> {
                 groups.push(economics.edits);
             }
             semantics.verify_membership_groups(&groups)?;
+            session_controls.verify_groups(&groups, &map)?;
+            permissions_controls.verify_groups(&groups, &map)?;
+            iroha_pending.verify_groups(&groups, &map)?;
             #[cfg(feature = "runtime-work-types")]
             if let Some(compiled) = &bridge_history {
                 compiled.verify_groups(&groups, &map)?;
@@ -1356,11 +1453,20 @@ fn run() -> incident_recovery::Result<()> {
                     .as_ref()
                     .map(|compiled| compiled.graph_certificate()),
             )?;
-            let mut council = read_json::<Vec<String>>(council)?
-                .iter()
-                .map(|s| incident_recovery::account(s))
-                .collect::<incident_recovery::Result<Vec<_>>>()?;
-            council.sort();
+            if let Some(path) = council {
+                let mut supplied = read_json::<Vec<String>>(path)?
+                    .iter()
+                    .map(|s| incident_recovery::account(s))
+                    .collect::<incident_recovery::Result<Vec<_>>>()?;
+                supplied.sort();
+                if supplied != recovered_council {
+                    return Err(
+                        "supplied council differs from checkpoint-derived CSV-remapped council"
+                            .into(),
+                    );
+                }
+            }
+            let council = recovered_council;
             let projection = incident_recovery::release_checks::check_with_governance_preservation(
                 &schema,
                 &storage,
@@ -1420,6 +1526,10 @@ fn run() -> incident_recovery::Result<()> {
                 projection.terminal,
             )?;
             let mut report = serde_json::to_value(&result.report).map_err(|e| e.to_string())?;
+            report["trustedMapping"] = trusted_report;
+            report["authorizationPolicy"] =
+                incident_recovery::trusted_mapping::AUTHORIZATION_POLICY.into();
+            report["legacyOwnershipProofsUsed"] = false.into();
             #[cfg(feature = "runtime-work-types")]
             {
                 report["incomingCheckpointPreservation"] =
@@ -1467,6 +1577,12 @@ fn run() -> incident_recovery::Result<()> {
                 report["stakingControls"] =
                     serde_json::to_value(staking.report).map_err(|e| e.to_string())?;
             }
+            report["irohaPendingCancellation"] =
+                serde_json::to_value(iroha_pending.report).map_err(|e| e.to_string())?;
+            report["sessionControls"] =
+                serde_json::to_value(session_controls.report).map_err(|e| e.to_string())?;
+            report["permissionsControls"] =
+                serde_json::to_value(permissions_controls.report).map_err(|e| e.to_string())?;
             if let Some(staking) = staking_roles {
                 report["stakingRoles"] =
                     serde_json::to_value(staking.report).map_err(|e| e.to_string())?;
@@ -1584,6 +1700,31 @@ fn run() -> incident_recovery::Result<()> {
                     .map_err(|e| e.to_string())?
             );
         }
+        #[cfg(feature = "runtime-work-types")]
+        Command::DeriveCheckpointConsensus { capture } => {
+            let checkpoint = incident_recovery::verify_checkpoint(&capture)?;
+            let mut report = incident_recovery::checkpoint_consensus::report(&checkpoint.storage)?;
+            report["checkpointStateRoot"] = checkpoint.state.state_root.into();
+            report["captureManifestSha256"] = checkpoint.state.capture_manifest_sha256.into();
+            report["checkpointMetadata"] = checkpoint.metadata_witness;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
+        }
+        Command::VerifyTrustedMapping {
+            csv,
+            capture,
+            inventory,
+            semantic,
+        } => {
+            let checkpoint = incident_recovery::verify_checkpoint(&capture)?;
+            let result = trusted_mapping_input(&checkpoint, &csv, &inventory, &semantic)?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&result.report).map_err(|e| e.to_string())?
+            );
+        }
         Command::VerifyOwnership {
             csv,
             proofs,
@@ -1616,6 +1757,58 @@ fn main() {
 #[cfg(test)]
 mod feature_tests {
     use super::*;
+
+    #[test]
+    fn trusted_mapping_cli_requires_checkpoint_inputs_not_ownership_signatures() {
+        assert!(Cli::try_parse_from([
+            "incident-recovery",
+            "verify-trusted-mapping",
+            "--csv",
+            "mapping.csv",
+            "--capture",
+            "capture",
+            "--inventory",
+            "inventory.json",
+            "--semantic",
+            "semantic.json",
+        ])
+        .is_ok());
+        assert!(Cli::try_parse_from([
+            "incident-recovery",
+            "verify-trusted-mapping",
+            "--csv",
+            "mapping.csv",
+        ])
+        .is_err());
+        assert!(Cli::try_parse_from([
+            "incident-recovery",
+            "compose-storage-work",
+            "--csv",
+            "mapping.csv",
+            "--capture",
+            "capture",
+            "--inventory",
+            "inventory.json",
+            "--semantic",
+            "semantic.json",
+            "--economic",
+            "economic.json",
+            "--evidence-commitment",
+            "0x01",
+            "--chain-spec-id",
+            "sora-nexus-recovery",
+            "--release-nonce",
+            "0x02",
+        ])
+        .is_ok());
+        assert!(Cli::try_parse_from([
+            "incident-recovery",
+            "verify-ownership",
+            "--csv",
+            "mapping.csv",
+        ])
+        .is_err());
+    }
 
     #[test]
     fn ownership_cli_requires_all_authenticated_derived_inputs_together() {

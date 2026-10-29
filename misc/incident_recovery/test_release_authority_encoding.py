@@ -54,7 +54,7 @@ class AuthorityEncodingTests(unittest.TestCase):
             elif change == 'duplicate':
                 config['approvedGrandpaKeys'].append(package_tests.hx(9))
             elif change == 'unsorted':
-                config['retiredGrandpaKeys'].reverse()
+                config['approvedGrandpaKeys'].reverse()
             else:
                 config['grandpaAuthorities'][1][0] = self.ss58(package_tests.hx(17))
             case.artifact('chainSpec', bad)

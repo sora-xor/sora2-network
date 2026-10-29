@@ -55,6 +55,7 @@ mod authorized_heartbeat_payment;
 pub mod constants;
 mod impls;
 pub mod incident_recovery;
+pub mod incident_recovery_babe_reports;
 #[cfg(test)]
 mod incident_recovery_bridge_history_tests;
 #[cfg(test)]
@@ -646,12 +647,7 @@ impl pallet_babe::Config for Runtime {
     type MaxNominators = MaxNominators;
     type KeyOwnerProof =
         <Historical as KeyOwnerProofSystem<(KeyTypeId, pallet_babe::AuthorityId)>>::Proof;
-    type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<
-        Self,
-        liveness::EquivocationReports,
-        incident_recovery_consensus::RecoveryOwnership,
-        ReportLongevity,
-    >;
+    type EquivocationReportSystem = incident_recovery_babe_reports::RecoveryBabeReports;
 }
 
 impl pallet_collective::Config<CouncilCollective> for Runtime {
@@ -779,12 +775,7 @@ impl pallet_grandpa::Config for Runtime {
     type MaxNominators = MaxNominators;
     type MaxSetIdSessionEntries = MaxSetIdSessionEntries;
     type KeyOwnerProof = <Historical as KeyOwnerProofSystem<(KeyTypeId, GrandpaId)>>::Proof;
-    type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<
-        Self,
-        liveness::EquivocationReports,
-        incident_recovery_consensus::RecoveryOwnership,
-        ReportLongevity,
-    >;
+    type EquivocationReportSystem = incident_recovery_consensus::RecoveryGrandpaReports;
 }
 
 parameter_types! {

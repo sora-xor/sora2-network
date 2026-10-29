@@ -915,6 +915,8 @@ where
 
     let (block_import, link_half, babe_link, beefy_links) = import_setup;
     let authoring_recovery = framenode_chain_spec::recovery::config(&*config.chain_spec).cloned();
+    let grandpa_recovery = authoring_recovery.clone();
+    let grandpa_start_gate = block_import.grandpa_start_gate();
 
     let _rpc_handlers = sc_service::spawn_tasks(sc_service::SpawnTasksParams {
         network: network.clone(),
@@ -1071,6 +1073,7 @@ where
         // and vote data availability than the observer. The observer has not
         // been tested extensively yet and having most nodes in a network run it
         // could lead to finality stalls.
+        let grandpa_authorities = link_half.shared_authority_set().clone();
         let grandpa_config = sc_finality_grandpa::GrandpaParams {
             config: grandpa_config,
             link: link_half,
@@ -1086,11 +1089,38 @@ where
 
         // the GRANDPA voter task is considered infallible, i.e.
         // if it fails we take down the service with it.
-        task_manager.spawn_essential_handle().spawn_blocking(
-            "sc_finality_grandpa-voter",
-            Some("sc_finality_grandpa-voter"),
-            sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
-        );
+        if let Some(recovery) = grandpa_recovery {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "sc_finality_grandpa-voter",
+                Some("sc_finality_grandpa-voter"),
+                async move {
+                    if let Err(error) = crate::recovery::wait_for_grandpa_start(
+                        client,
+                        &recovery,
+                        grandpa_authorities,
+                        grandpa_start_gate,
+                    )
+                    .await
+                    {
+                        log::error!("Recovery GRANDPA voter remains stopped: {error}");
+                        return;
+                    }
+                    // Construction itself must follow the verified import barrier.
+                    match sc_finality_grandpa::run_grandpa_voter(grandpa_config) {
+                        Ok(voter) => voter.await,
+                        Err(error) => {
+                            log::error!("Recovery GRANDPA voter failed to start: {error}")
+                        }
+                    }
+                },
+            );
+        } else {
+            task_manager.spawn_essential_handle().spawn_blocking(
+                "sc_finality_grandpa-voter",
+                Some("sc_finality_grandpa-voter"),
+                sc_finality_grandpa::run_grandpa_voter(grandpa_config)?,
+            );
+        }
     }
 
     Ok(task_manager)

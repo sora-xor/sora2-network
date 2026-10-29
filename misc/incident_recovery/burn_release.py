@@ -39,7 +39,10 @@ def bind_inputs(report, paths):
     for role in INPUTS:
         require(package.digest_file(paths[role])["sha256"] == bindings[role], "Burn input changed after candidate admission: " + role)
     policy = package.policy_identity(paths["policyScale"].read_bytes())
-    require(package.mapping_identity(paths["signedMappingCsv"]) == policy["mapping"], "Burn mapping differs from runtime policy")
+    # Automatic utility descendants are added by the native trusted-mapping
+    # verifier. Entitlements below must use the complete expanded policy, while
+    # every original CSV pair must still be retained unchanged.
+    require(set(package.mapping_identity(paths["signedMappingCsv"])).issubset(policy["mapping"]), "Burn mapping differs from runtime policy")
     allocation = scale.read_json(paths["burnAllocationPolicy"])
     require(isinstance(allocation, dict) and set(allocation) == {"version", "policyHash", "genesisHash", "checkpoint", "substitutions", "attackerAccounts"},
             "Burn allocation policy must exclude post-fork/circular release fields")

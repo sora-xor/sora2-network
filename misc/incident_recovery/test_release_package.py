@@ -21,6 +21,38 @@ def hx(byte):
     return "0x" + h(byte).hex()
 
 
+def operators(*rows):
+    """Synthetic checkpoint operator-v2 bytes, never consensus evidence."""
+    return b"snxops02" + scale.compact(len(rows)) + b"".join(
+        h(owner) + b"".join(scale.compact(len(keys)) + b"".join(h(key) for key in keys)
+                            for keys in (grandpa, babe, online))
+        for owner, grandpa, babe, online in rows)
+
+
+def trusted_witness(bindings, mapping=None, checkpoint_council=None):
+    """Synthetic report for host binding tests; not an executed state proof."""
+    mapping = [(h(1).hex(), h(2).hex())] if mapping is None else mapping
+    encoded = scale.compact(len(mapping)) + b"".join(bytes.fromhex(old + new) for old, new in mapping)
+    council = [hx(3)] if checkpoint_council is None else checkpoint_council
+    remapped = dict(mapping)
+    return {"schema": "sora-nexus-trusted-csv-mapping-v1", "authorizationPolicy": "trusted-csv-v1",
+        "ownershipSignaturesRequired": False, "productionReady": False,
+        "checkpointHash": scale.CHECKPOINT_HASH, "checkpointStateRoot": release.CHECKPOINT_ROOT,
+        "unusedDestinationsVerified": True, "allEntriesClassified": True,
+        "originalMappings": len(mapping), "expandedMappings": len(mapping), "automaticDerivativeCount": 0,
+        "explicitDerivativeCount": 0, "derivedAccounts": [], "directRowsWithoutDiscoverableAccountState": [],
+        "replacementsScale": "0x" + encoded.hex(),
+        "trustedCsvCommitment": "0x" + hashlib.blake2b(encoded, digest_size=32).hexdigest(),
+        "expandedMappingCommitment": "0x" + hashlib.blake2b(encoded, digest_size=32).hexdigest(),
+        "checkpointCouncil": council, "recoveredCouncil": sorted("0x" + remapped.get(row[2:], row[2:]) for row in council if row != scale.ATTACKER_SORA),
+        "excludedAttackerCouncilMembers": council.count(scale.ATTACKER_SORA),
+        **{field: bindings[role] for field, role in (("mappingCsvSha256", "signedMappingCsv"),
+            ("inventorySha256", "storageInventory"), ("semanticPlanSha256", "semanticPlan"),
+            ("captureManifestSha256", "checkpointCaptureManifest"))},
+        "checkpointMetadata": {"schema": "sora-nexus-checkpoint-metadata-witness-v1", "checkpointHash": scale.CHECKPOINT_HASH,
+            "stateRoot": release.CHECKPOINT_ROOT, "wasmExecutionVerified": True, "nativeExecution": False}}
+
+
 def leb(value):
     result = bytearray()
     while value >= 128:
@@ -75,7 +107,7 @@ class ReleaseTests(unittest.TestCase):
         for role, versions in release.RUNTIME_ROLES.items():
             self.artifact(role, wasm(*versions))
         self.artifact("policyScale", policy())
-        self.artifact("operatorsScale", scale.compact(1) + h(2) + scale.compact(1) + h(8) + h(9) + scale.compact(1) + h(10) + scale.compact(1) + h(11))
+        self.artifact("operatorsScale", operators((2, [8], [10], [11])))
         self.artifact("stakingRoleReview", {"evidenceHash": hx(12),
                       "operatorsHash": "0x" + self.inventory["operatorsScale"]["blake2_256"],
                       "records": [{"warning": "synthetic inventory; no native verification"}]})
@@ -83,10 +115,10 @@ class ReleaseTests(unittest.TestCase):
         self.artifact("semanticPlan", {"derivedAccounts": []})
         self.artifact("derivedAccountInventory", b"[]")
         policy_hash = hashlib.blake2b(policy(), digest_size=32).hexdigest()
-        config = {"schemaVersion": 2, "policyScale": "0x" + policy().hex(), "checkpointHash": scale.CHECKPOINT_HASH, "policyCommitment": "0x" + policy_hash,
-                  "evidenceCommitment": hx(6), "previousGrandpaSetId": 44, "previousGrandpaAuthorities": [[hx(8), 1]],
-                  "grandpaAuthorities": [[hx(9), 1]], "retiredGrandpaKeys": [hx(8)], "approvedGrandpaKeys": [hx(9)],
-                  "lastAbandonedSignedSlot": 100, "firstRecoverySlot": 101}
+        config = {"schemaVersion": 3, "policyScale": "0x" + policy().hex(), "checkpointHash": scale.CHECKPOINT_HASH, "policyCommitment": "0x" + policy_hash,
+                  "evidenceCommitment": hx(6), "previousGrandpaSetId": 7956, "previousGrandpaAuthorities": [[hx(8), 1]],
+                  "grandpaAuthorities": [[hx(8), 1]], "approvedGrandpaKeys": [hx(8)],
+                  "lastObservedAbandonedSlot": 298871044, "firstRecoverySlot": 298871045}
         for role, field in (("bootstrapWasm", "bootstrapCodeHash"), ("holdWasm", "holdCodeHash"), ("finalWasm", "finalCodeHash")):
             config[field] = "0x" + self.inventory[role]["blake2_256"]
         self.spec = {"id": "sora-nexus-recovery-28191817", "protocolId": "sora-nexus-recovery-28191817-v1", "forkId": "recovery-28191817-v1", "recovery": config,
@@ -94,7 +126,7 @@ class ReleaseTests(unittest.TestCase):
         self.artifact("chainSpec", self.spec)
         for spec, role in ((134, "bootstrapBinding"), (135, "holdBinding")):
             binding = {"policyScale": "0x" + policy().hex(), "policyCommitment": "0x" + policy_hash,
-                       "operatorsScale": "0x" + (self.root / "operatorsScale").read_bytes().hex(), "previousGrandpaSetId": 44, "firstRecoverySlot": 101, "finalWasm": "finalWasm"}
+                       "operatorsScale": "0x" + (self.root / "operatorsScale").read_bytes().hex(), "previousGrandpaSetId": 7956, "firstRecoverySlot": 298871045, "finalWasm": "finalWasm"}
             if spec == 134:
                 binding["holdWasm"] = "holdWasm"
             self.artifact(role, binding)
@@ -142,7 +174,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertFalse(report["productionReady"])
         self.assertEqual(report["missingArtifacts"], [])
         self.assertTrue(all(row["status"] == "unverified" for row in report["gates"].values()))
-        self.assertEqual(len(report["artifacts"]), len(release.REQUIRED) + 7)
+        self.assertEqual(len(report["artifacts"]), len(release.REQUIRED) + 8)
         for row in report["artifacts"]:
             self.assertEqual(release.digest_file(output / row["object"])["sha256"], row["sha256"])
         manifest = output / "release-manifest.json"
@@ -151,19 +183,15 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "new directory"):
             release.package(self.candidate, output)
 
-    def test_soratopia_reports_cannot_replace_checkpoint_replay(self):
+    def test_soratopia_is_deferred_without_claiming_verification(self):
         self.full_fixture()
-        # The fixture supplies success-looking JSON for every points role.
-        report = release.package(self.candidate, self.root / "points-unverified")
-        self.assertEqual(report["gates"]["soratopiaPointsOwnershipAndConservation"]["status"], "unverified")
+        report = release.package(self.candidate, self.root / "points-deferred")
+        self.assertNotIn("soratopiaPointsOwnershipAndConservation", report["gates"])
+        self.assertFalse(any(role.startswith("soratopia") for role in report["missingArtifacts"]))
+        self.assertNotIn("ownershipProofs", release.REQUIRED)
+        self.assertNotIn("derivedAccountInventory", release.REQUIRED)
+        self.assertNotIn("operatorSigningStop", release.REQUIRED)
         self.assertFalse(report["productionReady"])
-        # An otherwise populated package must still identify absent points
-        # evidence, including when on-chain account migration is configured.
-        del self.inventory["soratopiaCheckpointEvidenceManifest"]
-        self.write_candidate()
-        report = release.package(self.candidate, self.root / "points-missing")
-        self.assertIn("soratopiaCheckpointEvidenceManifest", report["missingArtifacts"])
-        self.assertEqual(report["gates"]["soratopiaPointsOwnershipAndConservation"]["status"], "unverified")
 
     def test_raw_burn_proof_dependencies_are_bound_and_mutation_or_missing_nodes_rejected(self):
         self.full_fixture()
@@ -290,6 +318,17 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "checksum"):
             release.account(attacker[:-1] + "7")
 
+    def test_mapping_accepts_the_operator_export_header(self):
+        rows = f"{hx(1)},{hx(2)}\n"
+        with tempfile.TemporaryDirectory() as directory:
+            release_csv, export_csv = Path(directory) / "release.csv", Path(directory) / "export.csv"
+            release_csv.write_text("old account address,new account address\n" + rows)
+            export_csv.write_text("\ufeffold_address,new_address\n" + rows)
+            self.assertEqual(release.mapping_identity(export_csv), release.mapping_identity(release_csv))
+            export_csv.write_text("old_address,new account address\n" + rows)
+            with self.assertRaisesRegex(ValueError, "Unexpected mapping CSV header"):
+                release.mapping_identity(export_csv)
+
     def test_unbound_or_inconsistent_build_provenance_rejected(self):
         self.full_fixture()
         path = self.root / "bootstrapProvenance"
@@ -304,50 +343,47 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Provenance binding"):
             release.verify_candidate(self.write_candidate())
 
-    def test_consensus_inventory_and_signing_stop_are_exact(self):
+    def test_consensus_inventory_and_public_slot_boundary_are_exact(self):
         self.full_fixture()
         self.spec["recovery"]["grandpaAuthorities"][0][1] = 2
         self.artifact("chainSpec", self.spec)
-        with self.assertRaisesRegex(ValueError, "weights/order"):
+        with self.assertRaisesRegex(ValueError, "weights or order"):
             release.verify_candidate(self.write_candidate())
         self.spec["recovery"]["grandpaAuthorities"][0][1] = 1
-        self.spec["recovery"]["firstRecoverySlot"] = 100
-        self.artifact("chainSpec", self.spec)
-        with self.assertRaisesRegex(ValueError, "signing-stop"):
-            release.verify_candidate(self.write_candidate())
+        for slot in (100, 298871046):
+            self.spec["recovery"]["firstRecoverySlot"] = slot
+            self.artifact("chainSpec", self.spec)
+            with self.subTest(slot=slot), self.assertRaisesRegex(ValueError, "public abandoned-chain"):
+                release.verify_candidate(self.write_candidate())
 
     def test_active_grandpa_keys_preserve_operator_association_and_voting_weight(self):
         self.full_fixture()
         # Deliberately use unequal active weights and an approved inactive
         # operator. Set membership alone admits both invalid configurations.
-        entries = [(2, [8, 10], 9, 20, 21), (3, [12], 13, 22, 23), (4, [16], 17, 24, 25)]
-        encoded = scale.compact(len(entries)) + b"".join(
-            h(owner) + scale.compact(len(retired)) + b"".join(h(key) for key in retired) + h(fresh) +
-            scale.compact(1) + h(babe) + scale.compact(1) + h(online)
-            for owner, retired, fresh, babe, online in entries)
+        encoded = operators((2, [8, 10], [20], [21]), (3, [12], [22], [23]), (4, [16], [24], [25]))
         self.artifact("operatorsScale", encoded)
         config = self.spec["recovery"]
         config.update(previousGrandpaAuthorities=[[hx(8), 1], [hx(12), 3]],
-                      grandpaAuthorities=[[hx(9), 1], [hx(13), 3]],
-                      retiredGrandpaKeys=[hx(8), hx(10), hx(12), hx(16)],
-                      approvedGrandpaKeys=[hx(9), hx(13), hx(17)])
+                      grandpaAuthorities=[[hx(8), 1], [hx(12), 3]],
+                      approvedGrandpaKeys=[hx(8), hx(10), hx(12), hx(16)])
         # These three raw artifacts intentionally form a partial candidate, so
         # this regression exercises the chain/operator relation independently
         # of source-provenance and omitted runtime execution gates.
         self.inventory = {role: self.inventory[role] for role in ("operatorsScale", "chainSpec", "bootstrapWasm")}
         self.artifact("chainSpec", self.spec)
         report, _ = release.verify_candidate(self.write_candidate())
-        self.assertEqual(report["operators"]["grandpaTransitions"][0],
-                         {"owner": h(2).hex(), "retired": [h(8).hex(), h(10).hex()], "fresh": h(9).hex()})
+        self.assertEqual(report["operators"]["checkpointOperators"][0],
+                         {"owner": h(2).hex(), "grandpa": [h(8).hex(), h(10).hex()], "babe": [h(20).hex()], "imOnline": [h(21).hex()]})
         for wrong in ([[hx(13), 1], [hx(9), 3]], [[hx(9), 1], [hx(17), 3]]):
             with self.subTest(fresh=wrong):
                 config["grandpaAuthorities"] = wrong
                 self.artifact("chainSpec", self.spec)
-                with self.assertRaisesRegex(ValueError, "compiled operator owner"):
+                with self.assertRaisesRegex(ValueError, "Checkpoint GRANDPA authorities"):
                     release.verify_candidate(self.write_candidate())
-        # An active key may be any exact member of its owner's retired union.
+        # Static checking binds an unchanged active list to the checkpoint union;
+        # the fresh native derivation establishes which member was active.
         config["previousGrandpaAuthorities"] = [[hx(10), 1], [hx(12), 3]]
-        config["grandpaAuthorities"] = [[hx(9), 1], [hx(13), 3]]
+        config["grandpaAuthorities"] = [[hx(10), 1], [hx(12), 3]]
         self.artifact("chainSpec", self.spec)
         report, _ = release.verify_candidate(self.write_candidate())
         self.assertFalse(report["productionReady"])
@@ -376,35 +412,21 @@ class ReleaseTests(unittest.TestCase):
             elif arguments[0] == "verify-incoming-coverage":
                 result = {}  # No synthetic report clears the incoming gate.
             else:
-                self.assertEqual(arguments, ["verify-ownership", "--csv", str(paths["signedMappingCsv"]),
-                    "--proofs", str(paths["ownershipProofs"]), "--capture", str(paths["checkpointCaptureManifest"].parent),
-                    "--semantic", str(paths["semanticPlan"]), "--derived-inventory", str(paths["derivedAccountInventory"])])
+                self.assertEqual(arguments, ["verify-trusted-mapping", "--csv", str(paths["signedMappingCsv"]),
+                    "--capture", str(paths["checkpointCaptureManifest"].parent), "--inventory", str(paths["storageInventory"]),
+                    "--semantic", str(paths["semanticPlan"]) ])
                 result = self.control_result()
             return subprocess.CompletedProcess(arguments, 0, json.dumps(result).encode(), b"")
         with patch.object(release, "execute_verifier", side_effect=execute) as runner:
             release.run_evidence_verifier(report, paths, binary, digest)
         self.assertEqual(runner.call_count, 4)
         self.assertEqual(report["gates"]["checkpointData"]["status"], "verified")
-        self.assertEqual(report["gates"]["accountOwnership"]["status"], "verified")
-        self.assertEqual(report["gates"]["derivedAccountControl"]["status"], "verified")
+        self.assertEqual(report["gates"]["trustedMappingSanity"]["status"], "verified")
         self.assertEqual(report["gates"]["executingArtifactIdentity"]["status"], "unverified")
         self.assertFalse(report["productionReady"])
 
     def control_result(self):
-        """Synthetic verifier output for binding tests, never actual crypto proof."""
-        return {"schema": "sora-nexus-account-control-verification-v1", "ownershipVerified": True,
-            "derivedControlVerified": True, "accounts": 1, "checkpointHash": scale.CHECKPOINT_HASH,
-            "checkpointStateRoot": release.CHECKPOINT_ROOT,
-            **{field: self.inventory[role]["sha256"] for field, role in (
-                ("mappingCsvSha256", "signedMappingCsv"), ("ownershipProofsSha256", "ownershipProofs"),
-                ("semanticPlanSha256", "semanticPlan"), ("derivedInventorySha256", "derivedAccountInventory"),
-                ("captureManifestSha256", "checkpointCaptureManifest"))},
-            "checkpointMetadata": {"schema": "sora-nexus-checkpoint-metadata-witness-v1",
-                "checkpointHash": scale.CHECKPOINT_HASH, "stateRoot": release.CHECKPOINT_ROOT,
-                "wasmExecutionVerified": True, "nativeExecution": False},
-            "controls": {"schema": "sora-nexus-semantic-ownership-verification-v1", "checkpointHash": scale.CHECKPOINT_HASH,
-                "mappedAccounts": 1, "directAccounts": [hx(1)], "derivedAccounts": [],
-                "replacementOwnershipVerified": True, "derivedControlGraphVerified": True}}
+        return trusted_witness({role: row["sha256"] for role, row in self.inventory.items()})
 
     def test_control_verifier_rejects_wrong_inputs_omitted_owners_and_old_direct_receipts(self):
         self.full_fixture()
@@ -413,12 +435,12 @@ class ReleaseTests(unittest.TestCase):
         binary.write_bytes(b"synthetic local verifier")
         digest = release.digest_file(binary)["sha256"]
         changed = []
-        for field in ("mappingCsvSha256", "ownershipProofsSha256", "semanticPlanSha256", "derivedInventorySha256", "captureManifestSha256"):
+        for field in ("mappingCsvSha256", "inventorySha256", "semanticPlanSha256", "captureManifestSha256"):
             result = self.control_result()
             result[field] = "ff" * 32
             changed.append(result)
         result = self.control_result()
-        result["controls"]["directAccounts"] = []
+        result["replacementsScale"] = "0x00"
         changed.append(result)
         result = self.control_result()
         result["checkpointMetadata"]["wasmExecutionVerified"] = False
@@ -428,8 +450,7 @@ class ReleaseTests(unittest.TestCase):
             report = copy.deepcopy(original)
             with patch.object(release, "execute_verifier", side_effect=lambda _, args: subprocess.CompletedProcess(args, 0, json.dumps(result).encode(), b"")):
                 release.run_evidence_verifier(report, paths, binary, digest)
-            self.assertEqual(report["gates"]["accountOwnership"]["status"], "failed")
-            self.assertEqual(report["gates"]["derivedAccountControl"]["status"], "failed")
+            self.assertEqual(report["gates"]["trustedMappingSanity"]["status"], "failed")
             self.assertFalse(report["productionReady"])
 
     def test_missing_semantic_inputs_do_not_fall_back_to_direct_only_verification(self):
@@ -441,9 +462,8 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(release, "execute_verifier", side_effect=lambda _, args: subprocess.CompletedProcess(args, 1, b"", b"synthetic")) as runner:
             release.run_evidence_verifier(report, paths, binary, release.digest_file(binary)["sha256"])
         self.assertEqual(runner.call_count, 3)
-        self.assertTrue(all(call.args[1][0] != "verify-ownership" for call in runner.call_args_list))
-        self.assertEqual(report["gates"]["accountOwnership"]["status"], "unverified")
-        self.assertEqual(report["gates"]["derivedAccountControl"]["status"], "unverified")
+        self.assertTrue(all(call.args[1][0] != "verify-trusted-mapping" for call in runner.call_args_list))
+        self.assertEqual(report["gates"]["trustedMappingSanity"]["status"], "unverified")
 
     def test_separate_derived_inventory_must_match_compiler_semantic_plan(self):
         self.full_fixture()
@@ -460,7 +480,7 @@ class ReleaseTests(unittest.TestCase):
         binary.write_bytes(b"synthetic local verifier")
         with patch.object(release, "execute_verifier", side_effect=lambda _, args: subprocess.CompletedProcess(args, 0, json.dumps(result).encode(), b"")):
             release.run_evidence_verifier(report, paths, binary, release.digest_file(binary)["sha256"])
-        self.assertEqual(report["gates"]["accountOwnership"]["status"], "failed")
+        self.assertEqual(report["gates"]["trustedMappingSanity"]["status"], "failed")
 
     def test_public_fixture_provenance_cannot_be_packaged(self):
         self.full_fixture()
@@ -475,19 +495,43 @@ class ReleaseTests(unittest.TestCase):
             data.pop("fixtureOnly")
             self.artifact(role, data)
 
-    def test_retained_key_approval_inventory_is_mandatory_and_unique(self):
-        old = h(2) + scale.compact(1) + h(8) + h(9)
-        with self.assertRaises(ValueError):
-            release.operator_identity(scale.compact(1) + old)
-        retained = scale.compact(1) + h(10) + scale.compact(1) + h(11)
-        identity = release.operator_identity(scale.compact(1) + old + retained)
+    def test_checkpoint_operator_v2_keys_are_complete_and_unique(self):
+        valid = operators((2, [8], [10], [11]))
+        identity = release.operator_identity(valid)
+        self.assertEqual(identity["approvedGrandpa"], [h(8).hex()])
         self.assertEqual(identity["approvedBabe"], [h(10).hex()])
+        for bad in (valid[8:], b"snxops01" + valid[8:], valid[:-32]):
+            with self.assertRaises(ValueError): release.operator_identity(bad)
         with self.assertRaisesRegex(ValueError, "multiple owners"):
-            release.operator_identity(scale.compact(2) + old + retained +
-                h(3) + scale.compact(1) + h(12) + h(13) + retained)
+            release.operator_identity(operators((2, [8], [10], [11]), (3, [12], [10], [13])))
         with self.assertRaisesRegex(ValueError, "canonical"):
-            release.operator_identity(scale.compact(1) + old +
-                scale.compact(2) + h(10) + h(10) + scale.compact(1) + h(11))
+            release.operator_identity(operators((2, [8], [10, 10], [11])))
+
+    def test_trusted_csv_expansion_and_checkpoint_council_are_independently_bound(self):
+        original = [(h(1).hex(), h(2).hex())]
+        expanded = original + [(h(4).hex(), h(5).hex())]
+        bindings = {role: "ab" * 32 for role in ("signedMappingCsv", "storageInventory", "semanticPlan", "checkpointCaptureManifest")}
+        witness = trusted_witness(bindings, expanded, sorted([hx(1), scale.ATTACKER_SORA]))
+        witness.update(originalMappings=1, automaticDerivativeCount=1,
+            trustedCsvCommitment="0x" + hashlib.blake2b(scale.compact(1) + h(1) + h(2), digest_size=32).hexdigest())
+        identity = {"mapping": expanded, "recoveredCouncil": [hx(2)]}
+        self.assertTrue(release.trusted_mapping_witness(witness, identity, bindings, original))
+        for field, bad in (("recoveredCouncil", [hx(3)]), ("checkpointCouncil", [hx(3)]),
+                           ("excludedAttackerCouncilMembers", 0), ("replacementsScale", "0x00"),
+                           ("trustedCsvCommitment", hx(8)), ("expandedMappingCommitment", hx(8)),
+                           ("originalMappings", True), ("automaticDerivativeCount", 0),
+                           ("unusedDestinationsVerified", False), ("allEntriesClassified", False),
+                           ("ownershipSignaturesRequired", True), ("productionReady", True)):
+            changed = copy.deepcopy(witness); changed[field] = bad
+            with self.subTest(field=field):
+                self.assertFalse(release.trusted_mapping_witness(changed, identity, bindings, original))
+
+    def test_csv_duplicate_destination_overlap_and_attacker_are_rejected(self):
+        rows = [(hx(1), hx(2)), (hx(1), hx(3))], [(hx(1), hx(2)), (hx(3), hx(2))], [(hx(1), hx(2)), (hx(2), hx(3))], [(hx(1), hx(1))], [(scale.ATTACKER_SORA, hx(2))]
+        for index, pairs in enumerate(rows):
+            path = self.root / f"mapping-{index}.csv"
+            path.write_text("old account address,new account address\n" + "".join(f"{old},{new}\n" for old, new in pairs))
+            with self.subTest(index=index), self.assertRaises(ValueError): release.mapping_identity(path)
 
     def test_policy_v2_has_explicit_network_nonce_and_no_legacy_default(self):
         raw = policy()

@@ -94,31 +94,49 @@ def fixture_operators(inventory):
     scale.require(inventory.get("checkpointHash") == scale.CHECKPOINT_HASH and inventory.get("stateRoot") == release.CHECKPOINT_ROOT, "Wrong fixture checkpoint")
     rows = inventory["observedSigningInventory"]
     scale.require(0 < len(rows) <= 1000 and [r["owner"] for r in rows] == inventory["validators"], "Incomplete or reordered fixture operator inventory")
-    # Construct deterministic test-only Ed25519 public keys with the built-in
-    # Node crypto implementation. No private material is read or written.
-    js = r'''
-const {createHash,createPrivateKey,createPublicKey}=require('node:crypto');
-let input=''; process.stdin.on('data',c=>input+=c); process.stdin.on('end',()=>{
-  const keys=JSON.parse(input).map(owner=>{
-    const seed=createHash('sha256').update('sora-nexus/PUBLIC-FIXTURE-ONLY/grandpa/v1/').update(owner).digest();
-    const key=createPrivateKey({key:Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),seed]),format:'der',type:'pkcs8'});
-    return '0x'+createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('hex');
-  }); process.stdout.write(JSON.stringify(keys));
-});'''
-    fresh = json.loads(subprocess.check_output(["node", "-e", js], input=json.dumps([r["owner"] for r in rows]).encode()))
-    encoded = bytearray(scale.compact(len(rows)))
+    # Preserve the checkpoint key unions. The older capture field name
+    # retiredGrandpa is historical vocabulary, not permission to rotate keys.
+    encoded = bytearray(b"snxops02" + scale.compact(len(rows)))
     output = []
-    for row, key in zip(rows, fresh, strict=True):
+    for row in sorted(rows, key=lambda row: scale.raw(row["owner"], 32, True)):
         encoded += scale.raw(row["owner"], 32, True)
         unions = {}
         for label in ("retiredGrandpa", "retainedBabe", "retainedImOnline"):
             values = [scale.raw(value, 32, True) for value in row[label]]
             scale.require(0 < len(values) <= 3 and values == sorted(set(values)), f"Invalid observed {label} union")
             unions[label] = scale.compact(len(values)) + b"".join(values)
-        encoded += unions["retiredGrandpa"] + scale.raw(key, 32, True) + unions["retainedBabe"] + unions["retainedImOnline"]
-        output.append({**row, "freshGrandpa": key, "operatorApproved": False, "fixtureOnly": True})
+        encoded += unions["retiredGrandpa"] + unions["retainedBabe"] + unions["retainedImOnline"]
+        output.append({**row, "retainedGrandpa": row["retiredGrandpa"], "operatorApproved": False, "fixtureOnly": True})
     release.operator_identity(bytes(encoded))
     return bytes(encoded), output
+
+
+def fixture_active_grandpa(consensus, operators):
+    """Preserve the checkpoint active order/weights despite sorted operator encoding."""
+    validators = [scale.raw(owner, 32, True) for owner in consensus['validators']]
+    owners = [scale.raw(row['owner'], 32, True) for row in operators]
+    scale.require(len(validators) == len(set(validators)) and len(owners) == len(set(owners))
+                  and set(owners) == set(validators)
+                  and all(row.get('fixtureOnly') is True and row.get('operatorApproved') is False for row in operators),
+                  'Public retained fixture operators required')
+    by_owner = dict(zip(owners, operators, strict=True))
+    inventories = []
+    for row in operators:
+        keys = [scale.raw(key, 32, True) for key in row['retainedGrandpa']]
+        scale.require(0 < len(keys) <= 3 and keys == sorted(set(keys)), 'Invalid retained fixture GRANDPA union')
+        inventories.extend(keys)
+    scale.require(len(inventories) == len(set(inventories)), 'Shared fixture GRANDPA key')
+    records = [row['value'] for row in consensus['records'] if row['storage'] == 'Grandpa.Authorities']
+    scale.require(len(records) == 1 and len(records[0]) == len(validators), 'Active GRANDPA weight inventory mismatch')
+    result = []
+    for owner, entry in zip(validators, records[0], strict=True):
+        scale.require(isinstance(entry, list) and len(entry) == 2 and type(entry[1]) is int and 0 < entry[1] < 2**64,
+                      'Invalid checkpoint GRANDPA key/weight pair')
+        key = scale.raw(entry[0], 32, True)
+        scale.require(key in [scale.raw(value, 32, True) for value in by_owner[owner]['retainedGrandpa']],
+                      'Active checkpoint GRANDPA key absent from retained owner union')
+        result.append(['0x' + key.hex(), entry[1]])
+    return result
 
 
 def write_operators(inventory_path, destination):

@@ -30,6 +30,8 @@ pub mod bridge_history;
 #[cfg(feature = "runtime-work-types")]
 pub mod bridge_signing;
 pub mod burn_history;
+#[cfg(feature = "runtime-work-types")]
+pub mod checkpoint_consensus;
 pub mod composer;
 pub mod democracy;
 pub mod economics;
@@ -46,22 +48,26 @@ pub mod incoming_coverage;
 #[cfg(feature = "runtime-work-types")]
 pub mod incoming_replay;
 pub mod inventory;
+pub mod iroha_pending;
 pub mod maintenance;
 #[cfg(feature = "bridge-fixture")]
 pub mod mixed_bridge_fixture;
 #[cfg(feature = "runtime-work-types")]
 pub mod mixed_work;
 pub mod offences;
+pub mod permissions_controls;
 pub mod referral;
 pub mod rehearsal;
 pub mod release_checks;
 pub mod repair_staging;
 pub mod replay;
 pub mod scheduler_controls;
+pub mod session_controls;
 pub mod staking_controls;
 pub mod staking_history;
 pub mod staking_roles;
 pub mod substitution_semantics;
+pub mod trusted_mapping;
 pub mod typed;
 
 pub type Result<T> = std::result::Result<T, String>;
@@ -167,6 +173,12 @@ fn csv_field(value: &str) -> Result<&str> {
     Ok(value)
 }
 
+/// The release format, and the operator's own export of the same two columns.
+const MAPPING_CSV_HEADERS: [[&str; 2]; 2] = [
+    ["old account address", "new account address"],
+    ["old_address", "new_address"],
+];
+
 /// Address fields cannot contain commas/newlines/escaped quotes; reject them
 /// rather than accidentally accepting extra columns or a truncated address.
 pub fn parse_mapping_csv(text: &str) -> Result<Vec<AccountReplacement>> {
@@ -177,8 +189,14 @@ pub fn parse_mapping_csv(text: &str) -> Result<Vec<AccountReplacement>> {
         .split(',')
         .map(csv_field)
         .collect::<Result<_>>()?;
-    if header != ["old account address", "new account address"] {
-        return Err("mapping CSV header must be old account address,new account address".into());
+    if !MAPPING_CSV_HEADERS
+        .iter()
+        .any(|accepted| header == *accepted)
+    {
+        return Err(
+            "mapping CSV header must be old account address,new account address or old_address,new_address"
+                .into(),
+        );
     }
     let mut map = Vec::new();
     for (index, line) in lines.enumerate() {
@@ -709,6 +727,24 @@ mod tests {
         );
         assert!(parse_mapping_csv("old,new\n1,2").is_err());
         assert!(parse_mapping_csv("old account address,new account address\n").is_err());
+    }
+
+    #[test]
+    fn csv_accepts_the_operator_export_header_unchanged() {
+        use sp_core::crypto::Ss58AddressFormat;
+        let old = AccountId32::from([1; 32]);
+        let new = AccountId32::from([2; 32]);
+        let sora = Ss58AddressFormat::custom(69);
+        let csv = format!(
+            "\u{feff}old_address,new_address\n{},{}\n",
+            old.to_ss58check_with_version(sora),
+            new.to_ss58check_with_version(sora)
+        );
+        assert_eq!(
+            parse_mapping_csv(&csv).unwrap(),
+            vec![AccountReplacement { old, new }]
+        );
+        assert!(parse_mapping_csv("old_address,new account address\n").is_err());
     }
 
     #[test]

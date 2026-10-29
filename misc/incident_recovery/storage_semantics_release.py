@@ -15,7 +15,7 @@ import bridge_state_release as bridge
 
 ROLE = 'storageCompositionInputs'
 GATE = 'completeStorageSemantics'
-JOINS = {'csv': 'signedMappingCsv', 'proofs': 'ownershipProofs', 'semantic': 'semanticPlan',
+JOINS = {'csv': 'signedMappingCsv', 'inventory': 'storageInventory', 'semantic': 'semanticPlan',
     'bridge-signing': 'bridgeSigningReview', 'bridge-hashi': 'nativeHashiReview',
     'staking-roles': 'stakingRoleReview'}
 REMAINING = [
@@ -48,9 +48,11 @@ def bind(root, records, paths, artifact_context, local_file, digest_file):
     for flag, role in JOINS.items():
         if flag in value['compose']:
             require(role in paths and graph[value['compose'][flag]] == paths[role], 'compose role differs: ' + role)
-    require(graph[value['operatorsScale']] == paths['operatorsScale'] and graph[value['derivedInventory']] == paths['derivedAccountInventory'], 'compose operators/derived inventory differs')
+    if 'operatorsScale' in value:
+        require(graph[value['operatorsScale']] == paths['operatorsScale'], 'compose checkpoint operator inventory differs')
     chain = history.read(paths['chainSpec'])['recovery']
-    require(all(value['consensus'][field] == chain[field] for field in value['consensus']), 'compose consensus differs')
+    consensus, _ = build.public_consensus(value, source.parent)
+    require(all(expected == chain[field] for field, expected in consensus.items()), 'compose consensus differs')
     indexed = {path: role for role, path in paths.items()}
     input_roles = set(artifact_context['inputRoles']) | {ROLE}
     graph_roles = {}
@@ -119,6 +121,8 @@ def prepare(context, verifier, directory, guard, keep, retain, pins):
     out.mkdir()
     policy, _ = build.compose_inputs(value, manifest.parent, out, verifier, guard, commitment,
         remember=keep, retain=retain)
+    require(build.read(out / 'checkpoint-operators.scale') == build.read(owned['operatorsScale']),
+        'fresh checkpoint operator derivation differs from packaged inventory')
     guard()
     composed = build.parse(build.read(out / 'compose/stdout.log', pins[str(out / 'compose/stdout.log')], 512*1024**2))
     mixed = build.parse(build.read(out / 'mixed/stdout.log', pins[str(out / 'mixed/stdout.log')], 512*1024**2)) if value['mixedLayout'] is not None else None

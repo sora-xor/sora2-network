@@ -32,13 +32,13 @@ class Fixture(unittest.TestCase):
         self.output = self.root / "execution"
         self.wasm = b"\0asm\x01\0\0\0"
         h = lambda byte: "0x" + byte * 64
-        self.config = {"schemaVersion": 2, "policyScale": "0x" + policy().hex(), "checkpointHash": n.CHECKPOINT_HASH,
+        self.config = {"schemaVersion": 3, "policyScale": "0x" + policy().hex(), "checkpointHash": n.CHECKPOINT_HASH,
                        "policyCommitment": "0x" + hashlib.blake2b(policy(), digest_size=32).hexdigest(), "bootstrapCodeHash": "0x" + hashlib.blake2b(self.wasm, digest_size=32).hexdigest(),
                        "holdCodeHash": h("2"), "finalCodeHash": h("3"), "evidenceCommitment": "0x" + (bytes([6]) * 32).hex(),
-                       "previousGrandpaSetId": 7, "previousGrandpaAuthorities": [[ss58_fixture(h("5")), 1]],
-                       "grandpaAuthorities": [[ss58_fixture(h("6")), 1]], "retiredGrandpaKeys": [ss58_fixture(h("5"))],
-                       "approvedGrandpaKeys": [ss58_fixture(h("6"))], "lastAbandonedSignedSlot": 100,
-                       "firstRecoverySlot": 101}
+                       "previousGrandpaSetId": 7956, "previousGrandpaAuthorities": [[ss58_fixture(h("5")), 1]],
+                       "grandpaAuthorities": [[ss58_fixture(h("5")), 1]],
+                       "approvedGrandpaKeys": [ss58_fixture(h("5"))], "lastObservedAbandonedSlot": 298871044,
+                       "firstRecoverySlot": 298871045}
         self.spec = {"name": "SORA Nexus synthetic offline template", "id": "sora-nexus-recovery-28191817",
                      "protocolId": "sora-nexus-recovery-28191817-v1", "forkId": "recovery-28191817-v1",
                      "recovery": self.config, "bootNodes": [], "telemetryEndpoints": [],
@@ -187,7 +187,7 @@ class Fixture(unittest.TestCase):
 
     def test_hex_authority_keys_rejected_before_mock_command(self):
         self.valid_control()
-        for name in ("previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys", "approvedGrandpaKeys"):
+        for name in ("previousGrandpaAuthorities", "grandpaAuthorities", "approvedGrandpaKeys"):
             saved = copy.deepcopy(self.config[name])
             if name.endswith("Authorities"):
                 self.config[name][0][0] = "0x" + "55" * 32
@@ -216,7 +216,7 @@ class Fixture(unittest.TestCase):
         original = copy.deepcopy(self.config)
         for name, value, reason in (("grandpaAuthorities", [[ss58_fixture("66" * 32), True]], "key/weight pair"),
                                     ("grandpaAuthorities", [[ss58_fixture("66" * 32), 2**64]], "key/weight pair"),
-                                    ("retiredGrandpaKeys", "invalid", "bounded GRANDPA key")):
+                                    ("approvedGrandpaKeys", "invalid", "bounded GRANDPA key")):
             self.config[name] = value
             self.refresh()
             with self.subTest(name=name, value=value), self.assertRaisesRegex(ValueError, reason):
@@ -224,6 +224,23 @@ class Fixture(unittest.TestCase):
             self.assertEqual(self.calls, [])
             self.config.clear()
             self.config.update(copy.deepcopy(original))
+
+    def test_retained_consensus_and_public_slot_policy_before_commands(self):
+        self.valid_control()
+        original = copy.deepcopy(self.config)
+        cases = [('schemaVersion', 2), ('previousGrandpaSetId', 7957),
+                 ('grandpaAuthorities', [[ss58_fixture('66' * 32), 1]]),
+                 ('grandpaAuthorities', [[ss58_fixture('55' * 32), 2]]),
+                 ('approvedGrandpaKeys', [ss58_fixture('66' * 32)]),
+                 ('approvedGrandpaKeys', [ss58_fixture('55' * 32)] * 2),
+                 ('lastObservedAbandonedSlot', 298871043), ('lastObservedAbandonedSlot', True),
+                 ('firstRecoverySlot', 298871044), ('firstRecoverySlot', 2**64),
+                 ('retiredGrandpaKeys', []), ('lastAbandonedSignedSlot', 298871044)]
+        for name, value in cases:
+            self.config.clear(); self.config.update(copy.deepcopy(original)); self.config[name] = value
+            self.refresh()
+            with self.subTest(name=name, value=value), self.assertRaises(ValueError): self.verify()
+            self.assertEqual(self.calls, [])
 
     def test_wrong_version_fails_before_prepare(self):
         self.valid_control()

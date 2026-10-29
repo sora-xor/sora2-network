@@ -13,6 +13,11 @@ pub const CHAIN_ID: &str = "sora-nexus-recovery-28191817";
 pub const PROTOCOL_ID: &str = "sora-nexus-recovery-28191817-v1";
 /// Network fork identity; the original genesis remains unchanged.
 pub const FORK_ID: &str = "recovery-28191817-v1";
+/// Client set immediately before the retained checkpoint forced transition.
+pub const PREVIOUS_GRANDPA_SET_ID: u64 = 7956;
+/// The public head admitted by this runtime's permanent equivocation backstop.
+pub const LAST_ABANDONED_SLOT: u64 =
+    framenode_runtime::incident_recovery_babe_reports::LAST_ABANDONED_BABE_SLOT;
 
 /// Optional extensions preserve compatibility with existing chain specifications.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, ChainSpecExtension)]
@@ -41,21 +46,19 @@ pub struct RecoveryConfig {
     pub previous_grandpa_set_id: u64,
     /// Ordered authorities immediately before checkpoint import, including weights.
     pub previous_grandpa_authorities: Vec<(AuthorityId, u64)>,
-    /// Fresh GRANDPA keys in the same operator order and with the same weights.
+    /// Identical retained GRANDPA keys, order and weights at the forced boundary.
     pub grandpa_authorities: Vec<(AuthorityId, u64)>,
-    /// Sorted complete old-key inventory, including announced and NextKeys keys.
-    pub retired_grandpa_keys: Vec<AuthorityId>,
-    /// Sorted fresh-key inventory for active and queued approved operators.
+    /// Sorted checkpoint key union, including active, queued and NextKeys keys.
     pub approved_grandpa_keys: Vec<AuthorityId>,
-    /// Maximum previously signed BABE slot reported by all restarting operators.
-    pub last_abandoned_signed_slot: u64,
+    /// Maximum abandoned BABE slot established by the retained public chain evidence.
+    pub last_observed_abandoned_slot: u64,
     pub first_recovery_slot: u64,
 }
 
 impl RecoveryConfig {
     /// Validate invariants that do not require access to the checkpoint database.
     pub fn validate(&self) -> Result<(), String> {
-        if self.schema_version != 2 {
+        if self.schema_version != 3 {
             return Err("unsupported recovery configuration schema".into());
         }
         if self.checkpoint_hash != H256::from(common::recovery::CHECKPOINT_HASH) {
@@ -94,66 +97,43 @@ impl RecoveryConfig {
         {
             return Err("recovery bootstrap, hold and final runtimes must be distinct".into());
         }
-        self.previous_grandpa_set_id
-            .checked_add(1)
-            .ok_or("GRANDPA recovery set ID overflows")?;
-        if self.last_abandoned_signed_slot == 0
-            || self.first_recovery_slot <= self.last_abandoned_signed_slot
+        if self.previous_grandpa_set_id != PREVIOUS_GRANDPA_SET_ID {
+            return Err("recovery must force the checkpoint GRANDPA set 7956 to 7957".into());
+        }
+        if self.last_observed_abandoned_slot != LAST_ABANDONED_SLOT
+            || self.first_recovery_slot <= self.last_observed_abandoned_slot
         {
             return Err(
-                "first recovery slot must exceed the reported abandoned signing maximum".into(),
+                "abandoned slot must match the runtime backstop and first recovery slot must exceed it".into(),
             );
         }
         if self.grandpa_authorities.is_empty()
-            || self.grandpa_authorities.len() != self.previous_grandpa_authorities.len()
+            || self.grandpa_authorities != self.previous_grandpa_authorities
         {
             return Err(
-                "recovery requires complete old and fresh GRANDPA authority inventories".into(),
+                "recovery must retain the exact checkpoint GRANDPA authorities and weights".into(),
             );
         }
-        let mut old = BTreeSet::new();
-        let mut fresh = BTreeSet::new();
-        for ((old_key, old_weight), (new_key, new_weight)) in self
-            .previous_grandpa_authorities
-            .iter()
-            .zip(&self.grandpa_authorities)
-        {
-            if *old_weight == 0 || old_weight != new_weight {
+        let mut retained = BTreeSet::new();
+        for (key, weight) in &self.grandpa_authorities {
+            if *weight == 0 || !retained.insert(key.clone()) {
                 return Err(
-                    "recovery must preserve nonzero GRANDPA weights and operator ordering".into(),
+                    "checkpoint GRANDPA authorities require unique keys and nonzero weights".into(),
                 );
             }
-            if !old.insert(old_key.clone()) || !fresh.insert(new_key.clone()) {
-                return Err("duplicate GRANDPA authority in recovery inventory".into());
-            }
         }
-        if !old.is_disjoint(&fresh) {
-            return Err("recovery GRANDPA keys must all be fresh".into());
-        }
-        if self.retired_grandpa_keys.is_empty()
-            || self.retired_grandpa_keys.len() > 3000
-            || self.approved_grandpa_keys.is_empty()
-            || self.approved_grandpa_keys.len() > 1000
-            || self
-                .retired_grandpa_keys
-                .windows(2)
-                .any(|keys| keys[0] >= keys[1])
+        if self.approved_grandpa_keys.is_empty()
+            || self.approved_grandpa_keys.len() > 3000
             || self
                 .approved_grandpa_keys
                 .windows(2)
                 .any(|keys| keys[0] >= keys[1])
         {
-            return Err("complete GRANDPA inventories must be bounded, sorted and unique".into());
+            return Err("checkpoint GRANDPA inventory must be bounded, sorted and unique".into());
         }
-        let retired: BTreeSet<_> = self.retired_grandpa_keys.iter().cloned().collect();
         let approved: BTreeSet<_> = self.approved_grandpa_keys.iter().cloned().collect();
-        if !old.is_subset(&retired)
-            || !fresh.is_subset(&approved)
-            || !retired.is_disjoint(&approved)
-        {
-            return Err(
-                "complete GRANDPA inventories omit active keys or reuse retired keys".into(),
-            );
+        if !retained.is_subset(&approved) {
+            return Err("checkpoint GRANDPA inventory omits an active retained key".into());
         }
         Ok(())
     }
@@ -234,7 +214,7 @@ mod tests {
             },
         };
         RecoveryConfig {
-            schema_version: 2,
+            schema_version: 3,
             checkpoint_hash: common::recovery::CHECKPOINT_HASH.into(),
             policy_commitment: policy.commitment().into(),
             policy_scale: sp_core::Bytes(policy.encode()),
@@ -242,23 +222,22 @@ mod tests {
             final_code_hash: [3; 32].into(),
             hold_code_hash: [4; 32].into(),
             evidence_commitment: [5; 32].into(),
-            previous_grandpa_set_id: 42,
+            previous_grandpa_set_id: PREVIOUS_GRANDPA_SET_ID,
             previous_grandpa_authorities: vec![(authority(1), 1), (authority(2), 2)],
-            grandpa_authorities: vec![(authority(3), 1), (authority(4), 2)],
-            retired_grandpa_keys: vec![authority(1), authority(2)],
-            approved_grandpa_keys: vec![authority(3), authority(4)],
-            last_abandoned_signed_slot: 100,
-            first_recovery_slot: 101,
+            grandpa_authorities: vec![(authority(1), 1), (authority(2), 2)],
+            approved_grandpa_keys: vec![authority(1), authority(2)],
+            last_observed_abandoned_slot: LAST_ABANDONED_SLOT,
+            first_recovery_slot: LAST_ABANDONED_SLOT + 1,
         }
     }
 
     #[test]
-    fn requires_fresh_complete_weight_preserving_authorities() {
+    fn requires_identical_retained_authorities_and_weights() {
         let valid = fixture();
         assert_eq!(valid.validate(), Ok(()));
         let mut reused = valid.clone();
         reused.grandpa_authorities[1].0 = reused.previous_grandpa_authorities[0].0.clone();
-        assert!(reused.validate().unwrap_err().contains("fresh"));
+        assert!(reused.validate().unwrap_err().contains("retain"));
         let mut reordered_weights = valid.clone();
         reordered_weights.grandpa_authorities.swap(0, 1);
         assert!(reordered_weights.validate().is_err());
@@ -273,7 +252,7 @@ mod tests {
         config.checkpoint_hash = H256::zero();
         assert!(config.validate().is_err());
         config = fixture();
-        config.first_recovery_slot = config.last_abandoned_signed_slot;
+        config.first_recovery_slot = config.last_observed_abandoned_slot;
         assert!(config.validate().is_err());
         config = fixture();
         config.evidence_commitment = H256::zero();
@@ -281,16 +260,24 @@ mod tests {
     }
 
     #[test]
-    fn inventories_cover_pending_keys_without_reusing_any_retired_key() {
+    fn retained_inventory_covers_active_and_pending_keys() {
         let mut config = fixture();
-        config.retired_grandpa_keys.push(authority(5));
         config.approved_grandpa_keys.push(authority(6));
         assert!(config.validate().is_ok());
-        config.approved_grandpa_keys.insert(2, authority(5));
+        config.approved_grandpa_keys.remove(0);
         assert!(config.validate().is_err());
         config = fixture();
-        config.retired_grandpa_keys.remove(0);
+        config.previous_grandpa_set_id += 1;
         assert!(config.validate().is_err());
+        config = fixture();
+        config.last_observed_abandoned_slot = LAST_ABANDONED_SLOT - 1;
+        assert!(config.validate().is_err());
+        config.last_observed_abandoned_slot = LAST_ABANDONED_SLOT + 1;
+        config.first_recovery_slot = LAST_ABANDONED_SLOT + 2;
+        assert!(config.validate().is_err());
+        let mut legacy = serde_json::to_value(fixture()).unwrap();
+        legacy["retiredGrandpaKeys"] = serde_json::json!([]);
+        assert!(serde_json::from_value::<RecoveryConfig>(legacy).is_err());
     }
 
     #[test]

@@ -75,7 +75,7 @@ sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", ta
 sc-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-consensus-slots = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-executor = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
-sc-finality-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sc-finality-grandpa = { package = "sc-consensus-grandpa", path = "vendor/polkadot-sdk/client/consensus/grandpa" }
 sc-informant = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
@@ -239,6 +239,7 @@ members = [
     "vendor/polkadot-sdk/frame/grandpa",
     "vendor/polkadot-sdk/frame/preimage",
     "vendor/polkadot-sdk/frame/staking-async",
+    "vendor/polkadot-sdk/client/consensus/grandpa",
     "vendor/polkadot-sdk/client/executor/wasmtime",
     "vendor/polkadot-sdk/primitives/wasm-interface",
     "vendor/polkadot-sdk/client/tracing",
@@ -376,6 +377,7 @@ frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk.git
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 
 [patch."https://github.com/paritytech/polkadot-sdk.git"]
+sc-consensus-grandpa = { path = "vendor/polkadot-sdk/client/consensus/grandpa" }
 sp-maybe-compressed-blob = { path = "vendor/polkadot-sdk/primitives/maybe-compressed-blob" }
 polkadot-node-primitives = { path = "vendor/polkadot-sdk/polkadot/node/primitives" }
 sc-network = { path = "vendor/polkadot-sdk/client/network" }
@@ -478,7 +480,7 @@ sc-consensus-aura = { git = "https://github.com/paritytech/polkadot-sdk.git", ta
 sc-consensus-babe = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-consensus-slots = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-executor = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
-sc-finality-grandpa = { package = "sc-consensus-grandpa", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
+sc-finality-grandpa = { package = "sc-consensus-grandpa", path = "vendor/polkadot-sdk/client/consensus/grandpa" }
 sc-informant = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-rpc = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }
 sc-rpc-api = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-stable2609" }

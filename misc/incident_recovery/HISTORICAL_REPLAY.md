@@ -49,7 +49,9 @@ it never opens a node database or submits transactions.
 The `sora-nexus-maintenance-replay-v1` manifest supplies `checkpointHash`, a
 relative `checkpointCapture` directory, `policy`, `bootstrap`, `hold`,
 `finalRuntime`, optional `repairs` artifact references, `previousGrandpaSet`,
-the ordered `freshGrandpa` public key/weight pairs, and `steps`. Each artifact
+the ordered `freshGrandpa` public key/weight pairs, and `steps`. The field name
+is retained for schema compatibility; current retained-key releases place the
+unchanged checkpoint authority list there, not newly generated keys. Each artifact
 reference uses `file` and `sha256`. Each step supplies `slot`, `timestamp`,
 `authorityIndex`, `recovery` (an artifact containing `encode_remark` bytes, or
 `null` after activation), `expectedSpec`, and `expectedPhase` using the runtime
@@ -68,7 +70,7 @@ raw-node inventory proves that reconstruction exactly matches the SDK snapshot;
 the state root must also match. Thus every block retains restart coverage without
 rewriting hundreds of full snapshots. It rejects ordinary
 remarks and repeated recovery envelopes during maintenance, verifies frozen
-session/era state, checks first-child fresh GRANDPA installation, confines
+session/era state, checks first-child retained GRANDPA set installation, confines
 non-incoming financial writes to committed edits, and requires persistent bridge
 halt and a unique lineage digest. The sequence must install the exact pinned
 138 artifact and execute at least one ordinary runtime block. The report records

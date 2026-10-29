@@ -12,6 +12,7 @@ from pathlib import Path
 import hashi_codec as scale
 import release_package as release
 import fixture_work_transport as transport
+import fixture_artifacts as fixture
 
 MIXED_SCHEMA = "sora-nexus-PUBLIC-FIXTURE-ONLY-mixed-bridge-v2"
 HASHI_SCHEMA = "sora-nexus-PUBLIC-FIXTURE-ONLY-hashi-bridge-v3"
@@ -142,10 +143,7 @@ def prepare(root, destination, work_path, consensus_path, operators_path, bootst
     consensus, operators = scale.read_json(consensus_path), scale.read_json(operators_path)
     scale.require(consensus["checkpointHash"] == scale.CHECKPOINT_HASH and consensus["stateRoot"] == release.CHECKPOINT_ROOT,
                   "Wrong consensus checkpoint")
-    scale.require([row["owner"] for row in operators] == consensus["validators"] and
-                  all(row["fixtureOnly"] and not row["operatorApproved"] for row in operators), "Public fixture operators required")
-    active = next(row["value"] for row in consensus["records"] if row["storage"] == "Grandpa.Authorities")
-    scale.require(len(active) == len(operators), "Active GRANDPA weight inventory mismatch")
+    active = fixture.fixture_active_grandpa(consensus, operators)
     destination.mkdir(parents=True)
 
     def artifact(name, data):
@@ -204,7 +202,7 @@ def prepare(root, destination, work_path, consensus_path, operators_path, bootst
     manifest = {"schema": "sora-nexus-maintenance-replay-v1", "checkpointHash": scale.CHECKPOINT_HASH,
                 "checkpointCapture": "checkpoint", "policy": artifact("policy.scale", policy), **wasm,
                 "repairs": [], "previousGrandpaSet": int(consensus["previousGrandpaSet"]),
-                "freshGrandpa": [[row["freshGrandpa"], int(entry[1])] for row, entry in zip(operators, active, strict=True)],
+                "freshGrandpa": active,
                 "steps": steps}
     if expectations is not None:
         manifest["fixtureExpectations"] = artifact("storage-expectations.json",

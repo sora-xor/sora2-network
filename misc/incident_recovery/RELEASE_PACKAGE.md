@@ -59,7 +59,7 @@ hashes with actual public release inputs):
 }
 ```
 
-The recovery chain extension uses schema version 2 and carries `policyScale` as
+The recovery chain extension uses schema version 3 and carries `policyScale` as
 hexadecimal bytes in addition to `policyCommitment`. Node admission decodes the
 bounded policy, checks its hash and evidence commitment, and requires its
 `authorizationDomain.chainSpecId` to match the recovery network ID. The packager
@@ -130,10 +130,10 @@ native recorder executable and engine binding under the candidate directory.
 The checkpoint capture must be the same bound capture. Native recorder binaries
 must be independent read-only executable copies with mode555. Public test
 councils, public fixture manifests/fields, fixture native bindings and fixture
-repair provenance are rejected. Real ownership proofs, recovered-council
-inventory, fresh operator keys/signing-stop evidence, per-network attacker
-registries and authenticated external reconciliation remain required release
-inputs. This option does not replace them or approve their provenance.
+repair provenance are rejected. The trusted CSV, authenticated checkpoint, derived consensus/council
+records, per-network attacker registries and authenticated external reconciliation
+remain bound release inputs. New-key signatures, an external derived-account
+inventory and operator signing-stop attestations are not required. This option does not replace the remaining evidence checks or authenticate input provenance.
 
 Each referenced repair136 or137 additionally needs four fixed roles (replace136
 with137 for that version):
@@ -173,10 +173,10 @@ python3 misc/incident_recovery/release_package.py \
 
 The verifier independently recomputes both hashes for every file. It validates
 native SCALE policy and operator inventories, including mapping uniqueness,
-attacker exclusion, council membership, fresh/retired key disjointness and exact
+attacker exclusion, derived checkpoint council membership and exact expanded
 CSV-to-policy pairs (SS58 and canonical hexadecimal addresses are supported).
-It checks the recovery network identity, authority weights, signing-stop slot
-boundary, distinct runtime versions and code hashes, duplicate substitute spec
+It checks the recovery network identity, unchanged authority keys/weights/order,
+public abandoned-chain slot boundary, distinct runtime versions and code hashes, duplicate substitute spec
 versions, and the exact bootstrap bytes at checkpoint height. Bootstrap and hold
 build bindings must pin the same policy/operators and exact destination Wasm.
 Their provenance must name the pinned deployed source tree and stable2603-3;
@@ -215,40 +215,41 @@ python3 misc/incident_recovery/release_package.py \
   --output /absolute/path/to/new-release-bundle
 ```
 
-Only fixed local `verify-capture`, `verify-metadata`, `verify-ownership` and
+Only fixed local `verify-capture`, `verify-metadata`, `verify-trusted-mapping` and
 `verify-incoming-coverage`
 commands are invoked; candidate files cannot supply executable commands. The
 checkpoint capture manifest must be named `capture-complete.json`. Every file
 and page referenced by that manifest is hashed and automatically included in the
 outer bundle. Fresh verifier results are bound to the supplied capture manifest
-and mapping. The required `semanticPlan` is the exact plan consumed by storage
-composition; `derivedAccountInventory` is its exact `derivedAccounts` JSON array
-(use `[]` when there are no derived entries). Both artifacts are required even
-for a direct-key-only release. They cannot contain alternative executable
-commands or approval booleans in place of native control evidence.
-
-For ownership verification, the packager always invokes the complete path:
+and mapping. The required `semanticPlan` and `storageInventory` are the exact machine-generated/reviewed
+state inputs used by composition. The CSV alone supplies account authorization;
+these plans establish state coverage and financial correctness.
+The legacy artifact role `signedMappingCsv` now names this trusted CSV. The role
+name is retained for manifest compatibility; it does not require or claim a
+signature from either account key.
 
 ```sh
-incident-recovery verify-ownership \
+incident-recovery verify-trusted-mapping \
   --csv /absolute/path/to/mapping.csv \
-  --proofs /absolute/path/to/ownership-proofs.json \
   --capture /absolute/path/to/checkpoint \
-  --semantic /absolute/path/to/semantic-plan.json \
-  --derived-inventory /absolute/path/to/derived-accounts.json
+  --inventory /absolute/path/to/storage-inventory.json \
+  --semantic /absolute/path/to/semantic-plan.json
 ```
 
-The native verifier reconstructs the checkpoint and executes its own Wasm to
-authenticate the metadata, then checks every CSV pair through the same bounded
-direct/derived control graph used by composition. It compares the independent
-derived inventory with the semantic plan. Fresh receipts bind the raw CSV,
-proofs, plan, derived inventory and capture manifest hashes to the originally
-admitted candidate; changing a file after candidate validation cannot clear a
-gate. The direct-only CLI remains available without the three graph flags, but
-the release packager never substitutes it for missing semantic/checkpoint inputs.
-These checks clear only ownership/control of the submitted graph. Discovering
-every derived account, unused destinations, historical control changes and full
-storage semantics remain independent gates.
+The verifier authenticates checkpoint state and executed metadata, rejects
+invalid/duplicate/overlapping CSV rows and occupied or protocol-owned replacement
+destinations, and automatically expands discoverable funded utility descendants.
+The report binds the original CSV, expanded SCALE mapping, checkpoint council,
+remapped council, complete inventory and semantic plan. Attacker identities are
+excluded from the council. The `trustedMappingSanity` gate validates these exact
+bytes against the compiled policy; it does not claim wallet-signature ownership.
+The legacy `verify-ownership` command remains available for historical proof
+inspection and is not the restart admission path. Historical control changes,
+shared positions and complete financial/storage semantics retain their own gates.
+
+Off-chain Soratopia points and frontend publication are deferred until after the
+update. They are not mandatory restart artifacts or release gates, and this
+package does not claim that their off-chain entitlements have been verified.
 
 Checkpoint metadata execution does not clear recovery-artifact
 execution. Header, extrinsics and state-root verification does not clear
@@ -280,21 +281,26 @@ python3 -m unittest discover -s misc/incident_recovery -p 'test_release_package.
 python3 -m unittest discover -s misc/incident_recovery -p 'test_hashi_codec.py'
 ```
 
-The `operatorsScale` artifact encodes a SCALE vector of operator records in this
-order: checkpoint `AccountId32`, `Vec<GrandpaId>` of retired active/queued/NextKeys
-keys (sorted, one to three), fresh `GrandpaId`, `Vec<BabeId>` of independently
-approved retained active/queued/NextKeys keys (sorted, one to three), and
-`Vec<ImOnlineId>` with the corresponding approval union (sorted, one to three).
-No key may belong to two operators within its signing domain. The bootstrap
-checks exact observed unions before writes; the package verifier rejects the
-older GRANDPA-only record layout. These are public keys, never keystore data.
+The derived `operatorsScale` artifact starts with the eight bytes `snxops02`,
+then a SCALE vector of records: checkpoint `AccountId32`, bounded GRANDPA, BABE
+and im-online key unions. Each union contains one to three sorted distinct keys;
+records are sorted by owner. No key belongs to multiple owners within a domain.
+All keys come from checkpoint active, queued and NextKeys state; no fresh key or
+retired-key field exists. The native derivation and runtime independently check
+these exact unions. Legacy unversioned bytes are rejected, never reinterpreted.
 
-The required `stakingRoleReview` artifact is the exact review consumed by the
-native role compiler. Its `operatorsHash` must equal the Blake2-256 digest of
-`operatorsScale`, which the bootstrap and hold bindings also pin. A different
-operator list cannot authorize retention of a staking role. This equality does
-not establish operator approval: the public approval evidence and native
-role/nomination proof checks remain release gates.
+Chain schema 3 keeps the active GRANDPA authority list and weights unchanged,
+uses checkpoint set 7956, and requires a first recovery slot exactly one after the
+retained public abandoned-chain bound (slot 298871044), matching the
+builder's fresh derivation from the raw public capture and the runtime's BABE
+equivocation backstop. A newer abandoned head requires an updated, tested
+backstop; increasing a configuration number alone is rejected. The old
+`retiredGrandpaKeys` field is rejected. These public artifacts contain no private
+keys and do not assert an operator signing-stop ceremony.
+
+The required `stakingRoleReview` hashes the same derived operator bytes. Its
+role/nomination checks protect the restored liabilities and permitted ownership
+relations; a different supplied operator list cannot replace checkpoint keys.
 
 The required `burnHistoryManifest` role binds the canonical raw Burn-event proof
 stream. A finite diagnostic capture can reference its initial header, compressed

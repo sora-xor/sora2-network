@@ -13,7 +13,7 @@ from unittest.mock import patch
 import burn_release as burn
 import hashi_codec as scale
 import release_package as release
-from test_release_package import policy, hx
+from test_release_package import policy, h, hx
 
 
 class BurnReleaseTests(unittest.TestCase):
@@ -54,6 +54,18 @@ class BurnReleaseTests(unittest.TestCase):
 
     def sha(self, role):
         return release.digest_file(self.paths[role])["sha256"]
+
+    def test_automatic_derivative_entitlements_use_full_policy_not_only_direct_csv(self):
+        raw = policy()
+        expanded = raw[:68] + scale.compact(2) + raw[69:133] + h(4) + h(5) + raw[133:]
+        self.put("policyScale", expanded)
+        self.allocation["policyHash"] = "0x" + hashlib.blake2b(expanded, digest_size=32).hexdigest()
+        self.put("burnAllocationPolicy", self.allocation)
+        with self.assertRaisesRegex(ValueError, "substitutions differ"):
+            burn.bind_inputs(self.report, self.paths)
+        self.allocation["substitutions"].append({"old": hx(4), "new": hx(5)})
+        self.put("burnAllocationPolicy", self.allocation)
+        burn.bind_inputs(self.report, self.paths)
 
     def invoke(self, **override):
         args = dict(native=self.paths["burnNativeVerifier"], native_sha256=self.sha("burnNativeVerifier"),

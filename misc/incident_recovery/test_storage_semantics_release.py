@@ -15,25 +15,36 @@ import production_build as build
 import release_package as release
 import hashi_codec as scale
 from test_artifact_identity_release import ArtifactIdentityTests
-from test_release_package import policy, h, hx
+from test_release_package import policy, h, hx, operators, trusted_witness
+from test_production_build import synthetic_public_consensus
 
 class StorageSemanticsTests(unittest.TestCase):
     def setUp(self):
         self.f = ArtifactIdentityTests('runTest'); self.f.setUp(); self.addCleanup(self.f.doCleanups)
-        self.f.put('operatorsScale', scale.compact(1)+h(2)+scale.compact(1)+h(8)+h(9)+scale.compact(1)+h(10)+scale.compact(1)+h(11))
-        self.f.chain['recovery']['lastAbandonedSignedSlot']=100
+        mock=patch.object(build.abandoned,'verify_directory',side_effect=synthetic_public_consensus)
+        mock.start();self.addCleanup(mock.stop)
+        self.f.put('operatorsScale', operators((2, [9], [10], [11])))
+        self.f.chain['recovery'].update(previousGrandpaSetId=7956, firstRecoverySlot=298871045, lastObservedAbandonedSlot=298871044)
+        for manifest in (self.f.activation,self.f.hold):
+            manifest['previousGrandpaSet']=7956
+            for step in manifest['steps']:
+                step['slot']+=298870944;step['timestamp']=step['slot']*6000+2
         self.f.put('chainSpec',self.f.chain)
         self.f.put('signedMappingCsv',f'"old account address","new account address"\n"{hx(1)}","{hx(2)}"\n'.encode(),'mapping.csv')
-        for role in ['ownershipProofs','semanticPlan','stakingRoleReview','inventory','economic']:
+        for role in ['semanticPlan','stakingRoleReview','storageInventory','economic']:
             self.f.put(role,{},role+'.json')
         self.f.put('derivedAccountInventory',b'[]','derived.json')
         self.f.put('council',json.dumps([hx(3)]).encode(),'council.json')
         self.f.put('apply',b'snxrec01\x01\x01synthetic-apply','apply.scale')
         self.f.put('audit',b'snxrec01\x01\x02synthetic-audit','audit.scale')
-        self.f.activation['steps']=[self.f.step(101,'apply',134,'Applying'),self.f.step(102,'audit',134,'Auditing'),self.f.step(103,'terminal',138,'Complete'),self.f.step(104,None,138,'Complete')]
-        compose={'capture':'capture','csv':'mapping.csv','proofs':'ownershipProofs.json','inventory':'inventory.json','economic':'economic.json','semantic':'semanticPlan.json','council':'council.json','staking-roles':'stakingRoleReview.json'}
-        roles=['checkpointCaptureManifest','checkpointCode','operatorsScale','derivedAccountInventory','signedMappingCsv','ownershipProofs','semanticPlan','stakingRoleReview','inventory','economic','council']
-        self.inputs={'schema':build.SCHEMA,'authorizationDomain':build.release.policy_identity(policy())['authorizationDomain'],'files':{self.f.records[r]['sourcePath']:{k:self.f.records[r][k] for k in ('sha256','blake2_256','bytes')} for r in roles},'compose':compose,'operatorsScale':'operatorsScale','derivedInventory':'derived.json','mixedLayout':None,'consensus':{k:self.f.chain['recovery'][k] for k in ('previousGrandpaSetId','firstRecoverySlot','lastAbandonedSignedSlot')}}
+        self.f.activation['steps']=[self.f.step(298871045,'apply',134,'Applying'),self.f.step(298871046,'audit',134,'Auditing'),self.f.step(298871047,'terminal',138,'Complete'),self.f.step(298871048,None,138,'Complete')]
+        compose={'capture':'capture','csv':'mapping.csv','inventory':'storageInventory.json','economic':'economic.json','semantic':'semanticPlan.json','staking-roles':'stakingRoleReview.json'}
+        roles=['checkpointCaptureManifest','checkpointCode','operatorsScale','signedMappingCsv','semanticPlan','stakingRoleReview','storageInventory','economic']
+        self.inputs={'schema':build.SCHEMA,'authorizationDomain':build.release.policy_identity(policy())['authorizationDomain'],'files':{self.f.records[r]['sourcePath']:{k:self.f.records[r][k] for k in ('sha256','blake2_256','bytes')} for r in roles},'compose':compose,'operatorsScale':'operatorsScale','mixedLayout':None,'consensus':{k:self.f.chain['recovery'][k] for k in ('previousGrandpaSetId','firstRecoverySlot','lastObservedAbandonedSlot')}}
+        self.inputs['consensus']={'publicCapture':'public-consensus'}
+        for name in ('started.json','headers.json','completion.json'):
+            role='public-'+name;self.f.put(role,{'syntheticUnexecutedCapture':name},'public-consensus/'+name)
+            self.inputs['files'][self.f.records[role]['sourcePath']]=build.digest(self.f.paths[role])
         self.save_inputs()
 
     def save_inputs(self):
@@ -54,7 +65,8 @@ class StorageSemanticsTests(unittest.TestCase):
             'applyEnvelopes':['0x'+self.f.paths['apply'].read_bytes().hex()],
             'auditEnvelopes':['0x'+self.f.paths['audit'].read_bytes().hex()],
             'terminalEnvelope':'0x'+self.f.paths['terminal'].read_bytes().hex(),
-            'storageEngineRehearsed':True,'productionReady':False}
+            'storageEngineRehearsed':True,'productionReady':False,
+            'trustedMapping':trusted_witness({role:row['sha256'] for role,row in self.f.records.items()})}
 
     def test_exact_input_graph_and_policy_bind_without_gate_authority(self):
         context=self.bind()
@@ -70,9 +82,9 @@ class StorageSemanticsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'omitted'):self.bind()
 
     def test_wrong_mapping_role_and_operator_context_fail(self):
-        self.f.put('other',b'[]','other.json');self.inputs['derivedInventory']='other.json'
+        self.f.put('other',b'[]','other.json');self.inputs['operatorsScale']='other.json'
         self.inputs['files']['other.json']=build.digest(self.f.paths['other']);self.save_inputs()
-        with self.assertRaisesRegex(ValueError,'derived inventory'):self.bind()
+        with self.assertRaises(ValueError):self.bind()
 
     def test_fixture_public_keys_and_unsafe_graph_paths_fail(self):
         for mutation in ('fixture','key','path'):
@@ -81,8 +93,8 @@ class StorageSemanticsTests(unittest.TestCase):
                 if mutation=='fixture': self.inputs['schema']='sora-nexus-fixture-v1'
                 elif mutation=='path': self.inputs['files']['../escape']={'sha256':'00'*32,'blake2_256':'00'*32,'bytes':0}
                 else:
-                    self.f.put('council',json.dumps(['0x'+next(iter(build.PUBLIC_SIGNING_KEYS))]).encode(),'council.json')
-                    self.inputs['files']['council.json']=build.digest(self.f.paths['council'])
+                    self.f.put('signedMappingCsv', ('old account address,new account address\n'+hx(1)+',0x'+next(iter(build.PUBLIC_SIGNING_KEYS))+'\n').encode(),'mapping.csv')
+                    self.inputs['files']['mapping.csv']=build.digest(self.f.paths['signedMappingCsv'])
                 self.save_inputs()
                 with self.assertRaises(ValueError): self.bind()
                 self.inputs=old
@@ -102,7 +114,16 @@ class StorageSemanticsTests(unittest.TestCase):
         context=self.bind();out=self.f.root/'real-compose-wrapper';out.mkdir();calls=[]
         def process(command,cwd,output,guard,**kwargs):
             calls.append((command[1],kwargs));guard()
-            if command[1]=='verify-ownership':return b'{}',{}
+            if command[1]=='verify-trusted-mapping':return json.dumps(self.composed()['trustedMapping']).encode(),{}
+            if command[1]=='derive-checkpoint-consensus':
+                raw=self.f.paths['operatorsScale'].read_bytes(); witness=self.composed()['trustedMapping']
+                return json.dumps({'schema':'sora-nexus-checkpoint-consensus-v2',
+                    'checkpointHash':scale.CHECKPOINT_HASH,'checkpointNumber':scale.CHECKPOINT,
+                    'checkpointStateRoot':release.CHECKPOINT_ROOT,'captureManifestSha256':self.f.records['checkpointCaptureManifest']['sha256'],
+                    'checkpointMetadata':witness['checkpointMetadata'],'checkpointCouncil':witness['checkpointCouncil'],
+                    'signingKeysPreserved':True,'manualOperatorApprovalRequired':False,'productionReady':False,'checkpointSlot':298870000,
+                    'previousGrandpaSetId':7956,'grandpaAuthorities':[[hx(9),1]],'previousGrandpaAuthorities':[[hx(9),1]],
+                    'approvedGrandpaKeys':[hx(9)],'operatorsScale':'0x'+raw.hex(),'operatorsBlake2':'0x'+build.pin_bytes(raw)['blake2_256']}).encode(),{}
             if command[1]=='compose-storage-work':return json.dumps(self.composed()).encode(),{}
             if command[1]=='emit-final-policy':
                 return ('pub const POLICY_SCALE: &[u8] = &['+', '.join(str(b) for b in self.policy)+'];').encode(),{}
@@ -110,10 +131,10 @@ class StorageSemanticsTests(unittest.TestCase):
         with patch.object(build,'process',side_effect=process):
             policy_bytes,_=build.compose_inputs(self.inputs,self.f.root,out,self.f.root/'unused-native',lambda:None,context['composeDataCommitment'])
         self.assertEqual(policy_bytes,self.policy)
-        self.assertEqual([name for name,_ in calls],['verify-ownership','compose-storage-work','emit-final-policy'])
-        self.assertEqual(calls[1][1]['maximum'],512*1024**2)
-        self.assertGreaterEqual(calls[1][1]['timeout'],6*3600)
-        self.assertNotIn('maximum',calls[0][1]);self.assertNotIn('maximum',calls[2][1])
+        self.assertEqual([name for name,_ in calls],['derive-checkpoint-consensus','verify-trusted-mapping','compose-storage-work','emit-final-policy'])
+        self.assertEqual(calls[2][1]['maximum'],512*1024**2)
+        self.assertGreaterEqual(calls[2][1]['timeout'],6*3600)
+        self.assertNotIn('maximum',calls[0][1]);self.assertNotIn('maximum',calls[3][1])
         with self.assertRaises(ValueError):build.compose_inputs({},self.f.root,out,Path('none'),lambda:None,'00'*32,composition_limit=2**64)
 
     def post(self,result,context):
@@ -142,6 +163,7 @@ class StorageSemanticsTests(unittest.TestCase):
             if compose_failure:raise ValueError('native composition rejected')
             remember(output/'compose/stdout.log',json.dumps(self.composed()).encode())
             remember(output/'policy.scale',self.policy)
+            remember(output/'checkpoint-operators.scale',self.f.paths['operatorsScale'].read_bytes())
             guard();return self.policy,b'generated'
         def process(command,cwd,output,guard,**kwargs):
             order.append('replay');self.assertEqual(command[1],'rehearse-storage-semantics');self.assertGreaterEqual(kwargs['timeout'],86400)

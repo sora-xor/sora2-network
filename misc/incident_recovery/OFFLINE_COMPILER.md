@@ -124,7 +124,21 @@ Collateral references remain unchanged and must cover the reviewed minimum; over
 with a burn/extinction or duplicate backing is rejected. Custody enforcement is not
 proven merely by recording a collateral hash.
 
-## Account-control adapters
+## Trusted CSV recovery authorization
+
+The current restart uses the explicitly authorized CSV, without replacement-key
+signatures. `verify-trusted-mapping` authenticates the checkpoint and inventory,
+checks unused destinations, automatically expands funded utility descendants,
+and derives checkpoint council membership after remapping and attacker exclusion.
+Composition binds that same report under `trusted-csv-v1`. A supplied council or
+operator roster cannot override checkpoint derivation. Economic/bridge evidence
+and storage coverage remain required; CSV authorization does not waive them.
+
+## Legacy account-control proof inspection
+
+The following `verify-ownership` signature format is retained for historical
+inspection only. It is not required by trusted CSV restart admission.
+
 
 Each `ownershipProofs` entry contains `old`, `new` and `signature`. The default
 signature is a SCALE `MultiSignature` over the checkpoint-bound replacement
@@ -154,8 +168,9 @@ graph. A direct signature from its proposed destination does not waive that
 graph. Derivatives absent from these maps remain allowed by this check; this
 bounded storage scan does not establish complete derived-control discovery.
 
-`substitution_semantics::compile` requires replacement ownership proofs and exact
-reviewed row/value hashes. It can reset `Staking.Payee` to the replacement account.
+The legacy `substitution_semantics::compile` signature path requires replacement
+ownership proofs. Production composition uses the trusted CSV path while retaining
+exact reviewed row/value hashes and the same typed control resets. It can reset `Staking.Payee` to the replacement account.
 Proxy and announcement suspension candidates preserve unrelated delegates when the
 owner is unchanged, but retained deposits remain custody/reclaim blockers. The old
 one-row `SuspendReferral` action remains blocked; use the paired `--referral`
@@ -440,7 +455,8 @@ review lists `Members`, `RunnersUp`, `Candidates`, `ElectionRounds` and every
 pins the checkpoint metadata and verifies native account key hashes, roster
 ordering/disjointness, stored vote bounds, recorded deposits, and the exact
 `phrelect` locks. The `evidenceHash` identifies the reviewed input; it does not
-replace new-key signatures or the account's pre-compromise control audit.
+establish the account's pre-compromise control history. Replacement authorization
+comes from the trusted CSV; no new-key signature is required.
 
 Mapped voter ownership moves to the replacement and its target vector becomes
 empty. Stake, deposit, account references and lock bytes remain unchanged, and

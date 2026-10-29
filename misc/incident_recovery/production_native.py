@@ -153,7 +153,7 @@ def validate_inputs(args):
             'actual Wasm version differs')
     generated = read(source / 'runtime/src/incident_recovery/generated.rs').decode()
     operators = repaired_validator.generated_bytes(generated, 'OPERATORS_SCALE')
-    require(not build.PUBLIC_SIGNING_KEYS.intersection(build.release.operator_identity(operators)['fresh']),
+    require(not build.PUBLIC_SIGNING_KEYS.intersection(build.release.operator_identity(operators)['approvedGrandpa']),
             'known public GRANDPA identity')
     require(all(build.pin_bytes(operators)[key] == provenance['bindingEvidence']['operators'][key]
                 for key in ('sha256', 'blake2_256')), 'compiled operator binding differs')
@@ -363,7 +363,7 @@ def build_engine_wasm(args):
                 and validator.generated_bytes(generated, prefix + 'POLICY_COMMITMENT').hex() == build.pin_bytes(raw)['blake2_256'],
                 'compiled original/active repair policy differs')
     operators = validator.generated_bytes(generated, 'OPERATORS_SCALE')
-    require(not build.PUBLIC_SIGNING_KEYS.intersection(build.release.operator_identity(operators)['fresh']),
+    require(not build.PUBLIC_SIGNING_KEYS.intersection(build.release.operator_identity(operators)['approvedGrandpa']),
             'public repair GRANDPA identity')
     final = read(args.final_wasm, args.final_wasm_sha256, 32 * 1024**2)
     final_identity = build.release.wasm_identity(final)

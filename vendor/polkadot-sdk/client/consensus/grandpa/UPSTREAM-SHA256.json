@@ -1,0 +1,36 @@
+{
+  "commit": "7a8daa68e18718c18823c1109513fdc1c8aa71fe",
+  "files": {
+    "Cargo.toml": "230c2b13480e8a3120f965801f0181039bc95837a536a4abaedcba1275ffd7ed",
+    "README.md": "9832ad0a1abf85d852fd95878b907ce1ea1e315efae69ce77907e39e2f753e32",
+    "rpc/Cargo.toml": "04fb89ea6839949580b08804d6877bd59c98c213935e884f2fd8964053040280",
+    "rpc/README.md": "c97d36500eabb06087202c1889709f1314a0cb56c68f3326e499ef0ed9937b15",
+    "rpc/src/error.rs": "fab38ebce1330da54390084ba384509eeeb52aa268d62d2affc8fb3ee3d85270",
+    "rpc/src/finality.rs": "8d0c755c2b43d618116b6ae5f4c2abee2ecb1c1235c48e94593c6a0b6c0856ae",
+    "rpc/src/lib.rs": "53e9d53297ef65e1baeec73c6f5d6a43fcfcec3b892a4fff796d9f9191456ead",
+    "rpc/src/notification.rs": "87f3b60c85bb449bd83f94173c335e34e08931199b05b6ce5ce43729e36e6191",
+    "rpc/src/report.rs": "2ffb7395c92bb6f501210a863a52b22d16ddf85c1cd1f85b057215a21008ecb2",
+    "src/authorities.rs": "eef1764d21ea939750d803312fe7c718123a4851537b1faa484a88895aade8ae",
+    "src/aux_schema.rs": "330e4df1a49c89a5a7e4eee0c2f67c84c6c96512a303a2195d2dc4737a91dd83",
+    "src/communication/gossip.rs": "e87393c79ea2aeebeceb389be2301ffd1a43108c7d719137e4e9a0f7c8a7d30c",
+    "src/communication/mod.rs": "89b0e60f6479596a3b5f483119db8498546ed76d29b479016129fb8f2722a6eb",
+    "src/communication/periodic.rs": "231624a4eba558177b5dc5837d9d7d24b1d57b9c6316eddc77d5def4fb919aef",
+    "src/communication/tests.rs": "1c38b5687179846b33586773d0b0a0c81d024ee5283803cc5cadc6b3d519444f",
+    "src/environment.rs": "3cda1eb21c305659c25885a7fa8286725d0a057cf5eb79ca7740e62a4694e936",
+    "src/finality_proof.rs": "9aef820be49c0801e45889b98704c4d6637095e8bc9b9edd3b3499b2130797cb",
+    "src/import.rs": "4a4ea949c8140e3c3cb217d9a9fc4634fec09e2151e6475a862077fb8335659c",
+    "src/justification.rs": "71b06f9dfe37f1a4b2f46bc126e80c0218dc1931ac6772a78775c54eb3bf0f11",
+    "src/lib.rs": "afd584454bb368b2fb4ee6468d8ffd8bf959cccbb5297725abb72b8e1d54cac3",
+    "src/notification.rs": "d9d45751dd83ac0d5892757d2cafc868b952c5ce80def664bc0bc53534d1cff6",
+    "src/observer.rs": "6c258add0a17ec607dda4e3d30ce84a37b37a58dcb49213dd3ca022edab29b88",
+    "src/tests.rs": "566520118dec2f79b384d62cc01344484afdd1382d96f3e3bb22ad9531528be5",
+    "src/until_imported.rs": "12ba97e51605acf22e00d4cdbc39607465f6c211329123d30097bc268af77944",
+    "src/voting_rule.rs": "2c09bddabf8c8bae5a08a0f9a239c91643bf764d819d543cb43872fb567a1189",
+    "src/warp_proof.rs": "bc53dec2862d800879e17ca8aca043d4b1e4e62cbcc86dede926f5185422bd8a"
+  },
+  "package": "sc-consensus-grandpa",
+  "version": "0.45.0",
+  "externalTestFixtures": {
+    "substrate/client/chain-spec/res/chain_spec.json": "e45d150706037747e932cabc3a39bab73658d5a447345366ad90202ef84d9bc0"
+  }
+}

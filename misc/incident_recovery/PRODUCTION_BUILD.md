@@ -3,10 +3,37 @@
 `production_build.py` creates isolated, nonfixture runtime artifacts in this order:
 final 138 / transaction 134, hold 135 / transaction 132, then immutable bootstrap
 134 / transaction 131. It does not sign, publish, change services, start nodes, or
-mark a release ready. Do not run it before the actual signed mapping, ownership
-proofs, recovered council, approved operator inventory and reviewed state plans
-have been assembled. Public test fixtures are rejected, including the known
+mark a release ready. The release-authorized old→new CSV is the mapping input;
+replacement-wallet signatures, a supplied council roster and operator signing-stop
+approvals are not required. Reviewed machine-generated state plans and the
+authenticated checkpoint remain required. Public test fixtures are rejected, including the known
 public test council, replacement destination and GRANDPA keys with labels removed.
+
+The compiler runs `verify-trusted-mapping` against the authenticated capture,
+expands funded utility descendants deterministically, and derives the recovered
+council from checkpoint membership after CSV remapping and attacker exclusion.
+The independent verification report must exactly equal composition's report.
+The original CSV and expanded mapping have separate commitments. No ownership
+signature is claimed by the `trusted-csv-v1` authorization policy.
+
+`derive-checkpoint-consensus --capture` generates `operatorsScale` from the
+checkpoint active, queued and NextKeys unions. The build retains the native
+report and `snxops02` bytes and uses those exact bytes throughout. An optional
+`operatorsScale` input is only an equality assertion against this derivation;
+no supplied inventory can replace it. Active GRANDPA keys, voting weights and
+order remain unchanged. The `consensus.publicCapture` path selects the generated
+public header capture: `started.json`, `headers.json` and `completion.json`, all
+pinned in the input graph. `capture_abandoned_consensus.cjs` collects these from
+the fixed approved public endpoint without signing or submitting transactions.
+The builder reruns `verify_abandoned_consensus.py` over those raw bytes and derives
+the first recovery slot as the last observed slot plus one; it accepts no caller
+slot or set-ID values. A later captured public head raises that bound. Header
+hashing/ancestry and reported state do not establish GRANDPA finality, private
+voting history or an operator signing-stop attestation; the native finality gate
+remains required.
+
+Frontend publication and off-chain Soratopia points are deferred until after
+the update. Existing on-chain storage transformations remain part of recovery.
 
 The node remains 4.8.13. This corridor builds runtime Wasm only; native recorder
 engines and the node have their own build and execution evidence.
@@ -30,7 +57,7 @@ there is no implicit conversion or reuse of their verification results.
 The data commitment is the Blake2-256 of the canonical input-manifest JSON
 (sorted keys, two-space indentation and one final newline). That manifest binds
 raw input file hashes, compiler argument selection, optional mixed-work layout
-and consensus numbers. It contains no generated policy or Wasm hash. Fresh
+and the raw public consensus capture. It contains no generated policy or Wasm hash. Fresh
 native compilation embeds this data commitment into the policy. Final138 embeds
 only the policy; hold135 binds final138; bootstrap134 binds final138 and hold135.
 The outer `BUILD-MANIFEST.json` is generated last and is never embedded in Wasm.
@@ -40,31 +67,25 @@ fields (all paths relative to its directory):
 
 ```json
 {
-  "schema": "sora-nexus-production-recovery-build-input-v1",
+  "schema": "sora-nexus-production-recovery-build-input-v2",
   "files": {
     "mapping.csv": {"sha256": "<64 lowercase hex>", "blake2_256": "<64 lowercase hex>", "bytes": 123}
   },
   "compose": {
     "capture": "checkpoint",
     "csv": "mapping.csv",
-    "proofs": "ownership-proofs.json",
     "inventory": "storage-inventory.json",
     "economic": "economic-plan.json",
     "semantic": "semantic-plan.json",
-    "council": "recovered-council.json",
     "staking-roles": "staking-roles.json"
   },
   "authorizationDomain": {
     "chainSpecId": "sora-nexus-recovery-28191817",
     "releaseNonce": "0x<64 lowercase hexadecimal digits; unique nonzero public nonce>"
   },
-  "operatorsScale": "operators.scale",
-  "derivedInventory": "derived-accounts.json",
   "mixedLayout": null,
   "consensus": {
-    "previousGrandpaSetId": 0,
-    "lastAbandonedSignedSlot": 0,
-    "firstRecoverySlot": 1
+    "publicCapture": "abandoned-consensus"
   }
 }
 ```
@@ -81,8 +102,8 @@ Additional recognized `compose` options are `bridge-history`, `bridge-signing`,
 `bridge-hashi`, `elections`, `offences`, `governance`, `referral`,
 `staking-controls`, `staking-history`, `democracy` and `scheduler`. The actual
 native composer requires applicable reviews for populated checkpoint storage;
-omitting a necessary review fails. It verifies the supplied mapping/control
-proofs, unused destinations, complete inventory, backing and guarded storage
+omitting a necessary review fails. It verifies trusted CSV syntax and uniqueness, unused destinations, complete
+inventory, backing and guarded storage
 work. An independent fresh `verify-ownership` invocation also binds the separate
 derived-account inventory to the same semantic plan and checkpoint.
 

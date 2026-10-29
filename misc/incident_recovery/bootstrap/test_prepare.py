@@ -41,6 +41,14 @@ class LegacyOverlayTests(unittest.TestCase):
         self.assertIn("transaction_version: 132,", result)
         self.assertIn("incident_recovery_consensus::prove_grandpa(set_id, authority_id)", result)
 
+    def test_all_maintenance_versions_use_the_abandoned_set_report_guard(self):
+        for version in (134, 135, 136, 137):
+            result = prepare.patch_runtime(self.legacy, version)
+            self.assertIn("type EquivocationReportSystem = incident_recovery_consensus::RecoveryGrandpaReports;", result)
+            self.assertNotIn("type EquivocationReportSystem = pallet_grandpa::EquivocationReportSystem<", result)
+            self.assertIn("type EquivocationReportSystem = incident_recovery_babe_reports::RecoveryBabeReports;", result)
+            self.assertNotIn("type EquivocationReportSystem = pallet_babe::EquivocationReportSystem<", result)
+
     def test_changed_or_duplicate_pinned_source_markers_fail_closed(self):
         with self.assertRaises(ValueError):
             prepare.patch_runtime(self.legacy.replace("spec_version: 134,", "spec_version: 138,"), 134)
@@ -73,7 +81,8 @@ class LegacyOverlayTests(unittest.TestCase):
             self.assertEqual((destination / guard).read_bytes(), (prepare.ROOT / guard).read_bytes())
             # Both maintenance and final runtimes must test the same authenticated
             # incoming path, including exact checkpoint-pending HASHI loads.
-            for relative in ["runtime/src/incident_recovery_evm_source.rs",
+            for relative in ["runtime/src/incident_recovery_babe_reports.rs",
+                             "runtime/src/incident_recovery_evm_source.rs",
                              "runtime/src/incident_recovery_evm_source_tests.rs",
                              "runtime/src/incident_recovery_incoming_hashi_source_tests.rs",
                              "runtime/src/incident_recovery_incoming_channel_tests.rs",

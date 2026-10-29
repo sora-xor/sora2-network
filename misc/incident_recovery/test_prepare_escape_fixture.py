@@ -15,7 +15,7 @@ class EscapeFixtureTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         self.operators = self.root / "operators.scale"
-        self.operators.write_bytes(scale.compact(1) + h(2) + scale.compact(1) + h(8) + h(9) + scale.compact(1) + h(10) + scale.compact(1) + h(11))
+        self.operators.write_bytes(b'snxops02' + scale.compact(1) + h(2) + scale.compact(1) + h(8) + scale.compact(1) + h(10) + scale.compact(1) + h(11))
         self.final = self.root / "unused-final.wasm"
         self.final.write_bytes(wasm(138, 134))
         self.inputs = self.root / "inputs"
@@ -46,7 +46,7 @@ class EscapeFixtureTests(unittest.TestCase):
             "validators": [hx(2)], "records": [{"storage": "Grandpa.Authorities", "value": [[hx(8), 1]]}],
             "checkpointSlot": 298823260, "checkpointTimestamp": 1792939560002, "previousGrandpaSet": 7956}))
         operators = self.root / "operators.json"
-        operators.write_text(json.dumps([{"owner": hx(2), "freshGrandpa": hx(9), "fixtureOnly": True, "operatorApproved": False}]))
+        operators.write_text(json.dumps([{"owner": hx(2), "retainedGrandpa": [hx(8)], "fixtureOnly": True, "operatorApproved": False}]))
         paths = []
         for spec, tx in ((134, 131), (135, 132), (136, 132)):
             path = self.root / f"runtime-{spec}.wasm"

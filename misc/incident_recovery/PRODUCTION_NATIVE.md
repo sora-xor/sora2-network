@@ -14,7 +14,7 @@ entry point is `production_native.py`.
 ## Required inputs
 
 First use `production_build.py` to compose and build the actual production release
-from its signed mapping and reviewed public evidence. Native preparation requires
+from its trusted CSV mapping and reviewed public evidence. Native preparation requires
 the actual source export, successful `build.json`, adjacent source inventory and
 provenance copy, nested launch/PID/execution receipts and logs, and the Wasm
 artifact from that exact build. A public fixture cannot stand in for those inputs.
@@ -22,8 +22,10 @@ artifact from that exact build. A public fixture cannot stand in for those input
 Supply the active and original policy SCALE files and their SHA-256 checksums. For
 134 these must be identical. Repairs retain the original checkpoint, mappings and
 recovered council. Known public fixture keys are rejected across replacement,
-council and fresh GRANDPA roles. Ownership proof validation and operator approval
-remain the responsibility of the existing production composition/release gates.
+council and retained GRANDPA roles. Production composition derives funded utility
+descendants, council membership and the checkpoint consensus-key unions, and
+checks unused destinations and complete storage classification. It requires no
+replacement-key ownership signatures or manual operator approval input.
 
 Pass a complete current root source inventory and its SHA-256 checksum. Source
 and build output paths must be absolute, canonical and separate. Each immutable
@@ -95,7 +97,7 @@ the reviewed repair binding to export its legacy engine. Then invoke
 ```
 
 This entry point supports only 136 and 137. It validates the compiled policies,
-fresh GRANDPA keys, pinned final-138 code and export provenance, applies only the
+checkpoint-derived retained GRANDPA keys, pinned final-138 code and export provenance, applies only the
 existing reviewed legacy-lock normalization, and calls the production Wasm
 builder with complete guards and retained inputs. Its actual build receipt is
 `wasm/build.json`. Pass that receipt and Wasm into native preparation. This command

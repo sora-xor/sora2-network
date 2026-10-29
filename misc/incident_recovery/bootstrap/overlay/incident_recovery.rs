@@ -133,11 +133,9 @@ pub fn initialize_block(header: &Header) -> ExtrinsicInclusionMode {
     sp_io::storage::clear(APPLIED);
     if *header.number() == CHECKPOINT_NUMBER + 1 {
         recovery::storage::initialize(&policy).expect("invalid recovery policy");
-        let mut encoded_operators = generated::OPERATORS_SCALE;
-        let operators = Vec::<crate::incident_recovery_consensus::OperatorReplacement>::decode_all(
-            &mut encoded_operators,
-        )
-        .expect("invalid operator inventory");
+        let operators =
+            crate::incident_recovery_consensus::decode_operators(generated::OPERATORS_SCALE)
+                .expect("invalid operator inventory");
         crate::incident_recovery_consensus::install(
             policy.commitment(),
             generated::PREVIOUS_GRANDPA_SET,
@@ -982,10 +980,8 @@ fn automatic_activation_with_artifacts(
     }
     validate_code(&code, 138)?;
     validate_fee_clocks()?;
-    let operators = Vec::<crate::incident_recovery_consensus::OperatorReplacement>::decode_all(
-        &mut &encoded_operators[..],
-    )
-    .map_err(|_| RecoveryError::WrongPreimage)?;
+    let operators = crate::incident_recovery_consensus::decode_operators(encoded_operators)
+        .map_err(|_| RecoveryError::WrongPreimage)?;
     crate::incident_recovery_consensus::validate_activation(&operators)
         .map_err(|_| RecoveryError::IncompleteAudit)?;
     complete_and_install(&policy, &code)
@@ -2187,12 +2183,12 @@ mod tests {
                     crate::incident_recovery_consensus::tests::pending_key_fixture(&policy);
                 crate::incident_recovery_consensus::install(
                     policy.commitment(),
-                    7,
+                    crate::incident_recovery_consensus::LAST_ABANDONED_GRANDPA_SET,
                     core::slice::from_ref(&operator),
                 )
                 .unwrap();
                 crate::incident_recovery_consensus::initialize_maintenance_epoch().unwrap();
-                let operators = vec![operator].encode();
+                let operators = crate::incident_recovery_consensus::encode_operators(&[operator]);
                 pallet_timestamp::Now::<Runtime>::put(400_000u64);
                 sp_io::storage::set(CHECKPOINT_TIME, &300_000u64.encode());
                 let activate = || {

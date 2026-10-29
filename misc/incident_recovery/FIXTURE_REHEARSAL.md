@@ -1,10 +1,12 @@
 # SORA Nexus recovery fixture artifacts
 
-These tools prepare isolated public fixtures while production substitutions,
-operator approvals and signing-stop evidence are still pending. **Never deploy
+These tools prepare isolated public fixtures while the final production CSV and
+complete release evidence are still pending. **Never deploy
 fixture artifacts.** Their policies may cancel actual checkpoint bookkeeping in
 a local replay, but they do not authorize a production state transformation.
-Their GRANDPA keys are deterministic, publicly derivable test keys.
+Historical fixtures may contain publicly derivable test GRANDPA keys. Current
+operator generation preserves the observed checkpoint signing-key unions; neither
+form authorizes production deployment.
 
 The native bootstrap tests cover maintenance author/import state-root agreement,
 periodic epoch progression with frozen sessions, persisted-trie restart between
@@ -64,15 +66,16 @@ python3 misc/incident_recovery/fixture_artifacts.py operators \
   --destination artifacts/recovery-28191817/fixtures/operators-v2
 ```
 
-Each record preserves the exact observed active/queued/NextKeys signing-key
-unions and assigns a deterministic fresh Ed25519 test public key. No keystore or
-production credential is read, and no private key file is written. The output
-explicitly says operator approval and signing-stop evidence are unverified.
+Each `snxops02` record preserves the exact observed active/queued/NextKeys
+signing-key unions. No fresh key is generated, no keystore or production credential
+is read, and no private key file is written. Historical output fields explicitly
+leave operator approval and signing-stop evidence unverified; those attestations
+are no longer required restart inputs.
 
 After building final 138, create hold-135 bindings using the local fixture's
 checkpoint GRANDPA set and first-slot values. These slot values are execution
-inputs only; production needs a slot beyond every reported abandoned-chain
-signature.
+inputs only; production derives a slot beyond the authenticated public abandoned-chain
+header bound. This does not prove private signing history.
 
 ```sh
 python3 misc/incident_recovery/fixture_artifacts.py bindings \

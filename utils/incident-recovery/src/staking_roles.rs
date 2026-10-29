@@ -189,49 +189,38 @@ pub fn nomination_confirmation_message(
 }
 #[cfg(feature = "runtime-work-types")]
 fn operators(bytes: &[u8]) -> Result<BTreeSet<AccountId32>> {
-    use codec::DecodeWithMemLimit;
-    use framenode_runtime::incident_recovery_consensus::OperatorReplacement;
+    use framenode_runtime::incident_recovery_consensus::{decode_operators, encode_operators};
     if bytes.len() > 1024 * 1024 {
         return Err("operator inventory exceeds bound".into());
     }
-    let mut input = bytes;
-    let records = Vec::<OperatorReplacement>::decode_with_mem_limit(&mut input, 4 * 1024 * 1024)
-        .map_err(|e| e.to_string())?;
-    if !input.is_empty() || records.encode() != bytes || records.len() > 1200 {
-        return Err("operator inventory is not canonical/bounded".into());
+    let records = decode_operators(bytes).map_err(str::to_owned)?;
+    if encode_operators(&records) != bytes {
+        return Err("noncanonical operator inventory".into());
     }
     let mut owners = BTreeSet::new();
-    let mut fresh = BTreeSet::new();
     let mut retired = BTreeSet::new();
     let mut babe = BTreeSet::new();
     let mut im_online = BTreeSet::new();
     for record in records {
         if !owners.insert(record.owner)
-            || !fresh.insert(record.fresh_grandpa)
-            || record.retired_grandpa.is_empty()
-            || record.approved_babe.is_empty()
-            || record.approved_im_online.is_empty()
-            || record.retired_grandpa.windows(2).any(|p| p[0] >= p[1])
-            || record.approved_babe.windows(2).any(|p| p[0] >= p[1])
-            || record.approved_im_online.windows(2).any(|p| p[0] >= p[1])
+            || record.grandpa_keys.is_empty()
+            || record.babe_keys.is_empty()
+            || record.im_online_keys.is_empty()
+            || record.grandpa_keys.windows(2).any(|p| p[0] >= p[1])
+            || record.babe_keys.windows(2).any(|p| p[0] >= p[1])
+            || record.im_online_keys.windows(2).any(|p| p[0] >= p[1])
             || record
-                .retired_grandpa
+                .grandpa_keys
                 .iter()
                 .any(|key| !retired.insert(key.clone()))
+            || record.babe_keys.iter().any(|key| !babe.insert(key.clone()))
             || record
-                .approved_babe
-                .iter()
-                .any(|key| !babe.insert(key.clone()))
-            || record
-                .approved_im_online
+                .im_online_keys
                 .iter()
                 .any(|key| !im_online.insert(key.clone()))
         {
             return Err("operator inventory has duplicate/unreviewed records".into());
         }
-    }
-    if !fresh.is_disjoint(&retired) {
-        return Err("fresh GRANDPA key overlaps retired operator inventory".into());
     }
     Ok(owners)
 }
@@ -611,7 +600,7 @@ pub fn compile(
 #[cfg(all(test, feature = "runtime-work-types"))]
 mod tests {
     use super::*;
-    use framenode_runtime::incident_recovery_consensus::OperatorReplacement;
+    use framenode_runtime::incident_recovery_consensus::{encode_operators, CheckpointOperator};
     use scale_info::{meta_type, PortableRegistry, Registry};
     use sp_core::Pair;
     #[derive(Encode, Decode, scale_info::TypeInfo)]
@@ -738,17 +727,16 @@ mod tests {
         );
         (s, st)
     }
-    fn operator(owner: AccountId32) -> OperatorReplacement {
-        OperatorReplacement {
+    fn operator(owner: AccountId32) -> CheckpointOperator {
+        CheckpointOperator {
             owner,
-            retired_grandpa: vec![sp_core::ed25519::Public::from_raw([4; 32]).into()]
+            grandpa_keys: vec![sp_core::ed25519::Public::from_raw([4; 32]).into()]
                 .try_into()
                 .unwrap(),
-            fresh_grandpa: sp_core::ed25519::Public::from_raw([5; 32]).into(),
-            approved_babe: vec![sp_core::sr25519::Public::from_raw([6; 32]).into()]
+            babe_keys: vec![sp_core::sr25519::Public::from_raw([6; 32]).into()]
                 .try_into()
                 .unwrap(),
-            approved_im_online: vec![sp_core::sr25519::Public::from_raw([7; 32]).into()]
+            im_online_keys: vec![sp_core::sr25519::Public::from_raw([7; 32]).into()]
                 .try_into()
                 .unwrap(),
         }
@@ -789,7 +777,7 @@ mod tests {
     fn unconfirmed_nominator_chills_with_exact_links_counters_and_private_certificate() {
         let (s, st) = fixture();
         let (map, _) = nom_map();
-        let ops = Vec::<OperatorReplacement>::new().encode();
+        let ops = encode_operators(&[]);
         let c = compile(&s, &st, &map, &ops, &review(&s, &st, &ops)).unwrap();
         assert_eq!(c.report.chilled_nominators, vec![hx(id(1).as_ref())]);
         assert_eq!(
@@ -843,7 +831,7 @@ mod tests {
             }
             .encode(),
         );
-        let ops = vec![operator(id(3))].encode();
+        let ops = encode_operators(&[operator(id(3))]);
         let c = compile(&s, &st, &[], &ops, &review(&s, &st, &ops)).unwrap();
         assert!(c.edits.is_empty());
         c.verify_groups(&[], &[]).unwrap();
@@ -864,7 +852,7 @@ mod tests {
     fn replacement_signature_reconfirms_only_exact_original_targets() {
         let (s, st) = fixture();
         let (map, pair) = nom_map();
-        let ops = vec![operator(id(3))].encode();
+        let ops = encode_operators(&[operator(id(3))]);
         let mut r = review(&s, &st, &ops);
         let old_key = account_key(descriptor(&s, "Staking.Nominators").unwrap(), &id(1));
         let message = nomination_confirmation_message(
@@ -896,9 +884,9 @@ mod tests {
             old: id(3),
             new: id(9),
         }];
-        let absent = Vec::<OperatorReplacement>::new().encode();
+        let absent = encode_operators(&[]);
         assert!(compile(&s, &st, &map, &absent, &review(&s, &st, &absent)).is_err());
-        let ops = vec![operator(id(3))].encode();
+        let ops = encode_operators(&[operator(id(3))]);
         let c = compile(&s, &st, &map, &ops, &review(&s, &st, &ops)).unwrap();
         assert_eq!(c.report.retained_mapped_validators, 1);
         let d = descriptor(&s, "Staking.Nominators").unwrap();
@@ -925,7 +913,7 @@ mod tests {
             old: id(3),
             new: id(9),
         }];
-        let ops = Vec::<OperatorReplacement>::new().encode();
+        let ops = encode_operators(&[]);
         let c = compile(&s, &st, &map, &ops, &review(&s, &st, &ops)).unwrap();
         assert_eq!(c.report.chilled_validators, vec![hx(id(3).as_ref())]);
         assert_eq!(
@@ -943,7 +931,7 @@ mod tests {
     fn unreviewed_removal_missing_counter_and_changed_mapping_fail() {
         let (s, st) = fixture();
         let (map, _) = nom_map();
-        let ops = Vec::<OperatorReplacement>::new().encode();
+        let ops = encode_operators(&[]);
         let c = compile(&s, &st, &map, &ops, &review(&s, &st, &ops)).unwrap();
         let mut missing = c.groups.clone();
         missing[0].pop();
@@ -967,14 +955,16 @@ mod tests {
         assert!(c.verify_groups(&bad, &map).is_err());
     }
     #[test]
-    fn malformed_operator_inventory_and_fresh_retired_reuse_fail() {
+    fn malformed_operator_inventory_and_duplicate_retained_keys_fail() {
         let mut row = operator(id(3));
-        row.fresh_grandpa = row.retired_grandpa[0].clone();
-        assert!(operators(&vec![row].encode()).is_err());
-        assert!(operators(&vec![operator(id(3)), operator(id(4))].encode()).is_err());
+        row.grandpa_keys
+            .try_push(row.grandpa_keys[0].clone())
+            .unwrap();
+        assert!(operators(&encode_operators(&[row])).is_err());
+        assert!(operators(&encode_operators(&[operator(id(3)), operator(id(4))])).is_err());
         assert!(operators(&[255; 16]).is_err());
         let (s, st) = fixture();
-        let ops = vec![operator(id(3))].encode();
+        let ops = encode_operators(&[operator(id(3))]);
         let mut r = review(&s, &st, &ops);
         r.operators_hash = hx(&[0; 32]);
         assert!(compile(&s, &st, &[], &ops, &r).is_err());

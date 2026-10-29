@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import hashi_codec as scale
 import production_build as build
-from test_release_package import policy, h, wasm
+from test_release_package import policy, h, hx, wasm, operators
 
 
 def env(tag, index=0, payload=b'x'):
@@ -22,11 +22,24 @@ def final_source(raw):
     return ('pub const POLICY_SCALE: &[u8] = &[' + ', '.join(map(str, raw)) + '];\n').encode()
 
 
+def synthetic_public_consensus(directory):
+    """Mock only for host joins; these placeholder files contain no chain evidence."""
+    return {'schema': 'sora-nexus-public-abandoned-consensus-v2',
+        'checkpointHash': scale.CHECKPOINT_HASH, 'setIds': {'checkpoint': 7956, 'finalized': 7956, 'best': 7969},
+        'firstRecoverySlot': 298871045, 'lastObservedAbandonedSlot': 298871044,
+        'finalityProofVerified': False, 'clientVotingHistoryProven': False,
+        'operatorSigningStopVerified': False, 'productionReady': False,
+        'captureSha256': {name: build.digest(directory / name)['sha256']
+            for name in ('started.json', 'headers.json', 'completion.json')}}
+
+
 class ProductionBuildTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='production-build-unit-')
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        mock = patch.object(build.abandoned, 'verify_directory', side_effect=synthetic_public_consensus)
+        self.public_verifier = mock.start(); self.addCleanup(mock.stop)
 
     def artifact(self, name, data):
         path = self.root / name
@@ -36,18 +49,19 @@ class ProductionBuildTests(unittest.TestCase):
     def bundle(self):
         files = {}
         values = {'capture/capture-complete.json': {'schema': 'sora-nexus-checkpoint-capture-v1'},
+            **{'public-consensus/' + name: {'syntheticUnexecutedCapture': name}
+               for name in ('started.json', 'headers.json', 'completion.json')},
             'mapping.csv': ('old account address,new account address\n0x' + h(1).hex() + ',0x' + h(2).hex() + '\n').encode(), 'proofs.json': [],
             'inventory.json': {}, 'economic.json': {}, 'semantic.json': {'derivedAccounts': []},
             'council.json': [], 'derived.json': [], 'staking.json': {},
-            'operators.scale': scale.compact(1) + h(1) + scale.compact(1) + h(2) + h(3)
-                + scale.compact(1) + h(4) + scale.compact(1) + h(5)}
+            'operators.scale': operators((1, [2], [4], [5]))}
         for name, value in values.items():
             files[name] = build.digest(self.artifact(name, value))
         value = {'schema': build.SCHEMA, 'files': files, 'authorizationDomain': build.release.policy_identity(policy())['authorizationDomain'], 'compose': {
-            'capture': 'capture', 'csv': 'mapping.csv', 'proofs': 'proofs.json', 'inventory': 'inventory.json',
-            'economic': 'economic.json', 'semantic': 'semantic.json', 'council': 'council.json', 'staking-roles': 'staking.json'},
-            'operatorsScale': 'operators.scale', 'derivedInventory': 'derived.json', 'mixedLayout': None,
-            'consensus': {'previousGrandpaSetId': 1, 'lastAbandonedSignedSlot': 7, 'firstRecoverySlot': 8}}
+            'capture': 'capture', 'csv': 'mapping.csv', 'inventory': 'inventory.json',
+            'economic': 'economic.json', 'semantic': 'semantic.json', 'staking-roles': 'staking.json'},
+            'operatorsScale': 'operators.scale', 'mixedLayout': None,
+            'consensus': {'publicCapture': 'public-consensus'}}
         path = self.artifact('inputs.json', value)
         return value, path
 
@@ -70,9 +84,45 @@ class ProductionBuildTests(unittest.TestCase):
         self.assertEqual(loaded, value)
         self.assertEqual(set(paths), set(value['files']))
         self.assertEqual(commitment, build.pin_bytes(build.serialized(value))['blake2_256'])
+
+    def test_checkpoint_operator_inventory_is_derived_without_manual_input(self):
+        value, path = self.bundle()
+        del value['operatorsScale']
+        del value['files']['operators.scale']
+        loaded, _, _, commitment = self.load(value, path)
+        self.assertNotIn('operatorsScale', loaded)
+        for legacy in ('proofs', 'council'):
+            changed = copy.deepcopy(value); changed['compose'][legacy] = legacy + '.json'
+            with self.subTest(legacy=legacy), self.assertRaises(ValueError): self.load(changed, path)
         changed = copy.deepcopy(value)
-        changed['consensus']['firstRecoverySlot'] += 1
+        changed['authorizationDomain']['releaseNonce'] = hx(22)
         self.assertNotEqual(self.load(changed, path)[3], commitment)
+
+    def test_derived_consensus_binds_checkpoint_capture_and_operator_bytes(self):
+        value, _ = self.bundle()
+        raw = operators((1, [2], [4], [5]))
+        witness = {'schema': 'sora-nexus-checkpoint-consensus-v2',
+            'checkpointHash': scale.CHECKPOINT_HASH, 'checkpointNumber': scale.CHECKPOINT,
+            'checkpointStateRoot': build.release.CHECKPOINT_ROOT, 'captureManifestSha256': 'ab' * 32,
+            'signingKeysPreserved': True, 'manualOperatorApprovalRequired': False, 'productionReady': False,
+            'checkpointSlot': 298870000, 'previousGrandpaSetId': 7956,
+            'grandpaAuthorities': [[hx(2), 1]], 'previousGrandpaAuthorities': [[hx(2), 1]],
+            'approvedGrandpaKeys': [hx(2)], 'operatorsScale': '0x' + raw.hex(),
+            'operatorsBlake2': '0x' + build.pin_bytes(raw)['blake2_256'],
+            'checkpointMetadata': {'schema': 'sora-nexus-checkpoint-metadata-witness-v1',
+                'checkpointHash': scale.CHECKPOINT_HASH, 'stateRoot': build.release.CHECKPOINT_ROOT,
+                'wasmExecutionVerified': True, 'nativeExecution': False}}
+        expected, _ = build.public_consensus(value, self.root)
+        self.assertEqual(build.checkpoint_consensus_witness(witness, expected, 'ab' * 32), raw)
+        for key, alternate in [('checkpointHash', hx(1)), ('checkpointNumber', scale.CHECKPOINT + 1),
+                ('checkpointStateRoot', hx(1)), ('captureManifestSha256', 'cd' * 32),
+                ('signingKeysPreserved', False), ('manualOperatorApprovalRequired', True),
+                ('productionReady', True), ('checkpointSlot', 298871045), ('checkpointSlot', True),
+                ('operatorsBlake2', hx(1)), ('approvedGrandpaKeys', [hx(2), hx(2)]),
+                ('previousGrandpaAuthorities', [[hx(2), 2]]), ('checkpointMetadata', {})]:
+            changed = copy.deepcopy(witness); changed[key] = alternate
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                build.checkpoint_consensus_witness(changed, expected, 'ab' * 32)
 
     def test_fixture_json_bytes_and_parent_markers_rejected(self):
         value, path = self.bundle()
@@ -90,15 +140,8 @@ class ProductionBuildTests(unittest.TestCase):
 
     def test_relocated_unlabeled_public_keys_rejected(self):
         value, path = self.bundle()
-        council = self.root / 'council.json'
-        council.write_bytes(build.serialized(['0x' + next(iter(build.PUBLIC_COUNCIL)).hex()]))
-        value['files']['council.json'] = build.digest(council)
-        with self.assertRaisesRegex(ValueError, 'public test council'):
-            self.load(value, path)
-        council.write_bytes(b'[]')
-        value['files']['council.json'] = build.digest(council)
         operators = self.root / 'operators.scale'
-        operators.write_bytes(scale.compact(1) + h(1) + scale.compact(1) + h(2)
+        operators.write_bytes(b'snxops02' + scale.compact(1) + h(1) + scale.compact(1)
             + bytes.fromhex(next(iter(build.PUBLIC_GRANDPA))) + scale.compact(1) + h(4) + scale.compact(1) + h(5))
         value['files']['operators.scale'] = build.digest(operators)
         with self.assertRaisesRegex(ValueError, 'public test GRANDPA'):
@@ -106,13 +149,6 @@ class ProductionBuildTests(unittest.TestCase):
 
     def test_public_signing_keys_cannot_cross_roles(self):
         value, path = self.bundle()
-        council = self.root / 'council.json'
-        council.write_bytes(build.serialized(['0x' + next(iter(build.PUBLIC_REPLACEMENTS))]))
-        value['files']['council.json'] = build.digest(council)
-        with self.assertRaisesRegex(ValueError, 'public test council'):
-            self.load(value, path)
-        council.write_bytes(b'[]')
-        value['files']['council.json'] = build.digest(council)
         mapping = self.root / 'mapping.csv'
         mapping.write_text('old account address,new account address\n0x' + h(1).hex() + ',0x' + next(iter(build.PUBLIC_COUNCIL)).hex() + '\n')
         value['files']['mapping.csv'] = build.digest(mapping)
@@ -132,13 +168,32 @@ class ProductionBuildTests(unittest.TestCase):
 
     def test_slot_and_set_boundaries(self):
         value, path = self.bundle()
-        for consensus in ({'previousGrandpaSetId': 2**64-1, 'firstRecoverySlot': 8, 'lastAbandonedSignedSlot': 7},
-            {'previousGrandpaSetId': 1, 'firstRecoverySlot': 7, 'lastAbandonedSignedSlot': 7},
-            {'previousGrandpaSetId': True, 'firstRecoverySlot': 8, 'lastAbandonedSignedSlot': 7}):
+        for consensus in ({'previousGrandpaSetId': 2**64-1, 'firstRecoverySlot': 8, 'lastObservedAbandonedSlot': 7},
+            {'previousGrandpaSetId': 1, 'firstRecoverySlot': 7, 'lastObservedAbandonedSlot': 7},
+            {'previousGrandpaSetId': True, 'firstRecoverySlot': 8, 'lastObservedAbandonedSlot': 7}):
             bad = copy.deepcopy(value)
             bad['consensus'] = consensus
             with self.assertRaises(ValueError):
                 self.load(bad, path)
+
+    def test_public_capture_is_recomputed_and_cannot_claim_finality(self):
+        value, path = self.bundle()
+        self.load(value, path)
+        genuine_mock = synthetic_public_consensus(self.root / 'public-consensus')
+        for name, alternate in [('firstRecoverySlot', 298871046), ('lastObservedAbandonedSlot', 298871043),
+                ('finalityProofVerified', True), ('clientVotingHistoryProven', True),
+                ('operatorSigningStopVerified', True), ('productionReady', True), ('captureSha256', {})]:
+            changed = copy.deepcopy(genuine_mock); changed[name] = alternate
+            with patch.object(build.abandoned, 'verify_directory', return_value=changed):
+                with self.subTest(name=name), self.assertRaises(ValueError): self.load(value, path)
+        later = copy.deepcopy(genuine_mock)
+        later.update(lastObservedAbandonedSlot=298871045, firstRecoverySlot=298871046)
+        with patch.object(build.abandoned, 'verify_directory', return_value=later):
+            with self.assertRaisesRegex(ValueError, 'BABE backstop'): self.load(value, path)
+        changed = copy.deepcopy(value); del changed['files']['public-consensus/headers.json']
+        with self.assertRaisesRegex(ValueError, 'capture missing'): self.load(changed, path)
+        changed = copy.deepcopy(value); changed['consensus']['firstRecoverySlot'] = 298871045
+        with self.assertRaisesRegex(ValueError, 'consensus input fields'): self.load(changed, path)
 
     def test_safe_paths_symlinks_duplicate_json(self):
         for name in ('../x', '/x', 'x/../z', 'x//z', 'fixtures/proof.json', 'private-key.json'):
@@ -360,6 +415,7 @@ class ProductionBuildTests(unittest.TestCase):
             generated = final_source(raw)
             remember(output / 'policy.scale', raw)
             remember(output / 'generated.rs', generated)
+            remember(output / 'checkpoint-operators.scale', (inputs / value['operatorsScale']).read_bytes())
             return raw, generated
         def fake_build(source, output, target, version, guard, retain, retain_source):
             guard(); order.append(version); output.mkdir()

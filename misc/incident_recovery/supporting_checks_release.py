@@ -90,11 +90,12 @@ def bind(manifest, report, paths):
     require(report.get('policy', {}).get('evidenceCommitment') == commitment,
             'production data commitment differs from release policy')
     for name, role in ((inputs['compose']['csv'], 'signedMappingCsv'),
-                       (inputs['operatorsScale'], 'operatorsScale'),
-                       (inputs['compose']['proofs'], 'ownershipProofs'),
-                       (inputs['derivedInventory'], 'derivedAccountInventory')):
+                       (inputs['compose']['inventory'], 'storageInventory')):
         require(role in paths and build.digest(input_paths[name]) == build.digest(paths[role]),
                 'production input differs from release: ' + role)
+    if 'operatorsScale' in inputs:
+        require('operatorsScale' in paths and build.digest(input_paths[inputs['operatorsScale']]) == build.digest(paths['operatorsScale']),
+                'optional operator assertion differs from release')
     require({'bootstrapWasm', 'holdWasm', 'finalWasm', 'policyScale'} <= paths.keys(),
             'exact recovery runtime artifacts required')
     return {'value': value, 'refs': refs, 'production': production, 'complete': complete,

@@ -38,23 +38,18 @@ MANIFEST = "sora-nexus-recovery-release-v1"
 CHECKPOINT_ROOT = "0x79bda41a1db53470463653f358890f2d1fca8ad622c33a1d7095294b0b140452"
 RUNTIME_ROLES = {"bootstrapWasm": (134, 131), "holdWasm": (135, 132), "finalWasm": (138, 134)}
 REQUIRED = set(RUNTIME_ROLES) | {"nodeBinary", "chainSpec", "policyScale", "operatorsScale", "bootstrapBinding", "holdBinding",
-    "bootstrapProvenance", "holdProvenance", "finalProvenance", "signedMappingCsv", "ownershipProofs", "derivedAccountInventory", "semanticPlan",
-    "checkpointCaptureManifest", "operatorSigningStop", "externalFinalizedHeads", "incomingReconciliation", "outgoingReconciliation",
+    "bootstrapProvenance", "holdProvenance", "finalProvenance", "signedMappingCsv", "storageInventory", "semanticPlan",
+    "checkpointCaptureManifest", "externalFinalizedHeads", "incomingReconciliation", "outgoingReconciliation",
     "attackerRegistry", "attackerCoverageEvidence", "bridgeSigningReview", "nativeHashiReview", "burnEntitlements", "burnHistoryManifest", "stakingRoleReview", "exchangeNotice", "operatorInstructions"}
 REQUIRED.update(burn_release.ROLES)
 REQUIRED.update(incoming_release.ROLES)
-# The rewards page derives Soratopia points from historical indexer activity,
-# account age and live positions. Moving runtime balances cannot certify the
-# off-chain projection. Bind its independent inputs even when no substitution
-# happens to have a Soratopia.LastCheckIn storage row at the checkpoint.
-REQUIRED.update({"soratopiaAllocationPolicy", "soratopiaCheckpointEvidenceManifest", "soratopiaEntitlements",
-                 "soratopiaRecoveryVerifier", "soratopiaRecoveryVerifierProvenance",
-                 "soratopiaNodeBinary", "soratopiaNativeVerifier"})
+# Off-chain Soratopia points and frontend publication are deferred until after
+# the update. Their earlier artifacts may be retained as optional evidence;
+# this restart package does not claim to have verified those entitlements.
 GATES = (
-    "checkpointData", "checkpointFinalityAndHistory", "executingArtifactIdentity", "accountOwnership", "derivedAccountControl",
+    "checkpointData", "checkpointFinalityAndHistory", "executingArtifactIdentity", "trustedMappingSanity",
     "completeStorageSemantics", "attackerAssetsDebtAndIssuance", "bridgeReconciliation", "incomingPendingCoverage", "burnEntitlementsAndClaimHolds",
-    "soratopiaPointsOwnershipAndConservation",
-    "operatorSigningStopAndFreshKeys", "retainedHistoryStateRootReplay", "fullAndWarpSynchronization",
+    "retainedHistoryStateRootReplay", "fullAndWarpSynchronization",
     "warpRestartBeforeGapCompletion",
     "chunksCrashesAndRestarts", "automaticActivationEscapeAndForwardRepair", "finalRuntimeActivationPostState", "maintenanceEpochLivenessAndStaking",
     "bridgeHaltNonceAndAcknowledgements", "fullClippyRuntimeAndProductionRehearsals",
@@ -141,6 +136,10 @@ def account(value):
     return data[prefix:-2]
 
 
+# The release format, and the operator's own export of the same two columns.
+MAPPING_HEADERS = (["old account address", "new account address"], ["old_address", "new_address"])
+
+
 def mapping_identity(path):
     reject(path.stat().st_size <= MAX_POLICY, "Mapping CSV exceeds bound")
     lines = path.read_text(encoding="utf-8-sig").splitlines()
@@ -154,14 +153,17 @@ def mapping_identity(path):
             reject(part and '"' not in part, "Invalid CSV field")
             result.append(part)
         return result
-    reject(lines and fields(lines[0]) == ["old account address", "new account address"], "Unexpected mapping CSV header")
+    reject(lines and fields(lines[0]) in MAPPING_HEADERS, "Unexpected mapping CSV header")
     pairs = []
     for line in lines[1:]:
         if line.strip():
             row = fields(line)
             reject(len(row) == 2, "Mapping CSV must have two columns")
             pairs.append(tuple(account(value).hex() for value in row))
-    reject(pairs and len(pairs) <= 4096, "Missing or oversized signed mapping")
+    reject(pairs and len(pairs) <= 4096, "Missing or oversized trusted mapping")
+    old, new = [row[0] for row in pairs], [row[1] for row in pairs]
+    reject(len(set(old)) == len(old) and len(set(new)) == len(new) and set(old).isdisjoint(new), "Duplicate, overlapping or identity CSV mapping")
+    reject(scale.raw(scale.ATTACKER_SORA).hex() not in old + new, "Attacker overlaps CSV mapping")
     return sorted(pairs)
 
 
@@ -209,37 +211,78 @@ def policy_identity(data):
     reader.end()
     return {"commitment": hashlib.blake2b(data, digest_size=32).hexdigest(), "evidenceCommitment": evidence.hex(),
             "authorizationDomain": {"chainSpecId": chain_id.decode("ascii"), "releaseNonce": "0x" + nonce.hex()},
-            "mapping": [(old.hex(), new.hex()) for old, new in mappings], "replacements": len(mappings), "council": len(council), "workChunks": len(chunks[0]), "auditChunks": len(chunks[1])}
+            "mapping": [(old.hex(), new.hex()) for old, new in mappings], "replacements": len(mappings), "council": len(council),
+            "recoveredCouncil": ["0x" + member.hex() for member in council], "workChunks": len(chunks[0]), "auditChunks": len(chunks[1])}
 
 
 def operator_identity(data):
     reader = scale.Reader(data)
+    reject(reader.take(8) == b"snxops02", "Checkpoint operator inventory requires snxops02 format")
     count = reader.compact()
     reject(0 < count <= 1000, "Missing or oversized operator inventory")
-    owners, retired, fresh, babe, online, transitions = [], [], [], [], [], []
+    owners, grandpa, babe, online, records = [], [], [], [], []
     for _ in range(count):
         owners.append(reader.take(32))
-        length = reader.compact()
-        reject(0 < length <= 3, "Missing or oversized retired-key union")
-        keys = [reader.take(32) for _ in range(length)]
-        reject(keys == sorted(set(keys)), "Retired operator keys are not canonical")
-        retired.extend(keys)
-        fresh.append(reader.take(32))
-        transitions.append({"owner": owners[-1].hex(), "retired": [key.hex() for key in keys],
-                            "fresh": fresh[-1].hex()})
-        for label, target in (("BABE", babe), ("im-online", online)):
+        record = {"owner": owners[-1].hex()}
+        for label, field, target in (("GRANDPA", "grandpa", grandpa), ("BABE", "babe", babe), ("im-online", "imOnline", online)):
             length = reader.compact()
             reject(0 < length <= 3, f"Missing or oversized approved {label} key union")
             keys = [reader.take(32) for _ in range(length)]
             reject(keys == sorted(set(keys)) and all(any(key) for key in keys), f"Approved {label} keys are not canonical")
             target.extend(keys)
+            record[field] = [key.hex() for key in keys]
+        records.append(record)
     reader.end()
-    reject(len(set(babe)) == len(babe) and len(set(online)) == len(online), "Retained signing key assigned to multiple owners")
-    reject(len(set(owners)) == count and len(set(fresh)) == count and len(set(retired)) == len(retired), "Duplicate owner/key inventory")
-    reject(set(retired).isdisjoint(fresh) and all(any(key) for key in retired + fresh), "Reused or empty GRANDPA keys")
-    return {"owners": count, "retired": sorted(value.hex() for value in retired), "fresh": sorted(value.hex() for value in fresh),
+    reject(all(len(set(keys)) == len(keys) for keys in (grandpa, babe, online)), "Retained signing key assigned to multiple owners")
+    reject(owners == sorted(set(owners)), "Duplicate or noncanonical operator owners")
+    return {"formatVersion": 2, "owners": count, "approvedGrandpa": sorted(value.hex() for value in grandpa),
             "approvedBabe": sorted(value.hex() for value in babe), "approvedImOnline": sorted(value.hex() for value in online),
-            "grandpaTransitions": transitions}
+            "checkpointOperators": records}
+
+
+def trusted_mapping_witness(result, policy, bindings, csv_mapping):
+    """Bind fresh automatic checks without claiming that CSV rows are signatures."""
+    if not isinstance(result, dict) or not policy:
+        return False
+    try:
+        reject(result.get("schema") == "sora-nexus-trusted-csv-mapping-v1"
+               and result.get("authorizationPolicy") == "trusted-csv-v1"
+               and result.get("ownershipSignaturesRequired") is False
+               and result.get("productionReady") is False
+               and result.get("unusedDestinationsVerified") is True
+               and result.get("allEntriesClassified") is True, "Trusted CSV witness scope differs")
+        reject(result.get("checkpointHash") == scale.CHECKPOINT_HASH
+               and result.get("checkpointStateRoot") == CHECKPOINT_ROOT, "Trusted mapping checkpoint differs")
+        for field, role in (("mappingCsvSha256", "signedMappingCsv"), ("inventorySha256", "storageInventory"),
+                            ("semanticPlanSha256", "semanticPlan"), ("captureManifestSha256", "checkpointCaptureManifest")):
+            reject(result.get(field) == bindings[role], "Trusted mapping input differs")
+        metadata = result.get("checkpointMetadata", {})
+        reject(metadata.get("schema") == "sora-nexus-checkpoint-metadata-witness-v1"
+               and metadata.get("checkpointHash") == scale.CHECKPOINT_HASH and metadata.get("stateRoot") == CHECKPOINT_ROOT
+               and metadata.get("wasmExecutionVerified") is True and metadata.get("nativeExecution") is False,
+               "Trusted mapping metadata execution differs")
+        def encoded(rows):
+            return scale.compact(len(rows)) + b"".join(bytes.fromhex(old) + bytes.fromhex(new) for old, new in rows)
+        expected = encoded(policy["mapping"])
+        reject(bounded_hex(result["replacementsScale"], MAX_POLICY) == expected
+               and result["expandedMappingCommitment"] == "0x" + hashlib.blake2b(expected, digest_size=32).hexdigest()
+               and result["trustedCsvCommitment"] == "0x" + hashlib.blake2b(encoded(csv_mapping), digest_size=32).hexdigest(),
+               "Trusted/expanded mapping commitment differs")
+        reject(type(result["originalMappings"]) is int and result["originalMappings"] == len(csv_mapping)
+               and type(result["expandedMappings"]) is int and result["expandedMappings"] == len(policy["mapping"])
+               and type(result["automaticDerivativeCount"]) is int
+               and result["automaticDerivativeCount"] == len(policy["mapping"]) - len(csv_mapping), "Trusted mapping counts differ")
+        checkpoint = [hex_bytes(member) for member in result["checkpointCouncil"]]
+        reject(0 < len(checkpoint) <= 100 and checkpoint == sorted(set(checkpoint)), "Checkpoint council is not canonical")
+        replacements = dict(policy["mapping"])
+        attacker = scale.raw(scale.ATTACKER_SORA)
+        recovered = sorted("0x" + replacements.get(member.hex(), member.hex()) for member in checkpoint if member != attacker)
+        reject(recovered == result["recoveredCouncil"] == policy["recoveredCouncil"]
+               and type(result["excludedAttackerCouncilMembers"]) is int
+               and result["excludedAttackerCouncilMembers"] == checkpoint.count(attacker), "Recovered checkpoint council differs")
+        return True
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return False
 
 
 def wasm_identity(blob):
@@ -427,7 +470,9 @@ def verify_candidate(path, previous_manifest=None):
         reject(isinstance(review["records"], list) and 0 < len(review["records"]) <= 100_000,
                "Missing or oversized staking role review")
     if policy and "signedMappingCsv" in paths:
-        reject(mapping_identity(paths["signedMappingCsv"]) == policy["mapping"], "Signed CSV differs from compiled policy mapping")
+        # The native verifier expands funded derivative accounts deterministically.
+        # The exact expanded equality is checked against its fresh witness below.
+        reject(set(mapping_identity(paths["signedMappingCsv"])).issubset(policy["mapping"]), "Trusted CSV differs from compiled policy mapping")
     if "semanticPlan" in paths and "derivedAccountInventory" in paths:
         semantic = scale.read_json(paths["semanticPlan"])
         derived = scale.read_json(paths["derivedAccountInventory"])
@@ -439,7 +484,7 @@ def verify_candidate(path, previous_manifest=None):
         spec = scale.read_json(paths["chainSpec"])
         reject(spec.get("id") == "sora-nexus-recovery-28191817" and spec.get("protocolId") == "sora-nexus-recovery-28191817-v1" and spec.get("forkId") == "recovery-28191817-v1", "Wrong recovery network identity")
         config = spec.get("recovery")
-        reject(isinstance(config, dict) and config.get("schemaVersion") == 2 and config.get("checkpointHash") == scale.CHECKPOINT_HASH, "Missing recovery chain extension")
+        reject(isinstance(config, dict) and config.get("schemaVersion") == 3 and config.get("checkpointHash") == scale.CHECKPOINT_HASH, "Missing recovery chain extension")
         for role, field in (("bootstrapWasm", "bootstrapCodeHash"), ("holdWasm", "holdCodeHash"), ("finalWasm", "finalCodeHash")):
             if role in records:
                 reject(config.get(field) == "0x" + records[role]["blake2_256"], f"Chain spec {role} mismatch")
@@ -453,36 +498,18 @@ def verify_candidate(path, previous_manifest=None):
             reject(chain_policy_raw == paths["policyScale"].read_bytes(), "Chain policy bytes differ")
             reject(config.get("policyCommitment") == "0x" + policy["commitment"] and config.get("evidenceCommitment") == "0x" + policy["evidenceCommitment"], "Chain policy/evidence mismatch")
         if operators:
-            reject(sorted(grandpa_key(value).hex() for value in config.get("retiredGrandpaKeys", [])) == operators["retired"] and sorted(grandpa_key(value).hex() for value in config.get("approvedGrandpaKeys", [])) == operators["fresh"], "Chain operator-key inventory mismatch")
-        reject(type(config.get("firstRecoverySlot")) is int and type(config.get("lastAbandonedSignedSlot")) is int and 0 < config["lastAbandonedSignedSlot"] < config["firstRecoverySlot"] < 2**64, "Invalid signing-stop slot boundary")
-        reject(type(config.get("previousGrandpaSetId")) is int and 0 <= config["previousGrandpaSetId"] < 2**64 - 1, "Invalid previous GRANDPA set")
-        required_config = {"schemaVersion", "checkpointHash", "policyCommitment", "policyScale", "bootstrapCodeHash", "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId", "previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys", "approvedGrandpaKeys", "lastAbandonedSignedSlot", "firstRecoverySlot"}
+            reject(sorted(grandpa_key(value).hex() for value in config.get("approvedGrandpaKeys", [])) == operators["approvedGrandpa"], "Chain checkpoint operator-key inventory mismatch")
+        reject(type(config.get("firstRecoverySlot")) is int and type(config.get("lastObservedAbandonedSlot")) is int
+               and config["lastObservedAbandonedSlot"] == 298871044 < config["firstRecoverySlot"] < 2**64
+               and config["firstRecoverySlot"] == config["lastObservedAbandonedSlot"] + 1, "Invalid public abandoned-chain slot boundary")
+        reject(type(config.get("previousGrandpaSetId")) is int and config["previousGrandpaSetId"] == 7956, "Invalid checkpoint GRANDPA set")
+        required_config = {"schemaVersion", "checkpointHash", "policyCommitment", "policyScale", "bootstrapCodeHash", "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId", "previousGrandpaAuthorities", "grandpaAuthorities", "approvedGrandpaKeys", "lastObservedAbandonedSlot", "firstRecoverySlot"}
         reject(set(config) == required_config, "Unknown recovery chain extension field")
-        inventories = []
-        for field, maximum in (("retiredGrandpaKeys", 3000), ("approvedGrandpaKeys", 1000)):
-            keys = [grandpa_key(value) for value in config[field]]
-            reject(0 < len(keys) <= maximum and keys == sorted(set(keys)), "Invalid complete GRANDPA inventory")
-            inventories.append(set(keys))
-        old_keys, new_keys = inventories
-        reject(old_keys.isdisjoint(new_keys), "Fresh GRANDPA inventory reuses retired keys")
-        prior, fresh = config["previousGrandpaAuthorities"], config["grandpaAuthorities"]
-        reject(0 < len(prior) == len(fresh) <= 1000, "Missing/mismatched active authority inventory")
-        prior_seen, fresh_seen = set(), set()
-        transitions = {old: row["fresh"] for row in operators["grandpaTransitions"] for old in row["retired"]} if operators else None
-        for before, after in zip(prior, fresh):
-            reject(isinstance(before, list) and isinstance(after, list) and len(before) == len(after) == 2, "Invalid authority/weight encoding")
-            old_key, new_key = grandpa_key(before[0]), grandpa_key(after[0])
-            reject(type(before[1]) is int and type(after[1]) is int and 0 < before[1] == after[1] < 2**64, "GRANDPA weights/order changed")
-            reject(old_key in old_keys and new_key in new_keys and old_key not in prior_seen and new_key not in fresh_seen, "Incomplete/duplicate active GRANDPA inventory")
-            # Runtime installation derives each fresh authority from its old
-            # owner. Aggregate key-set equality cannot bind that relationship:
-            # swapping two approved keys can attach the wrong voting weight, or
-            # select a fresh key belonging only to an inactive approved owner.
-            if transitions is not None:
-                reject(transitions.get(old_key.hex()) == new_key.hex(),
-                       "Active GRANDPA transition differs from the compiled operator owner")
-            prior_seen.add(old_key)
-            fresh_seen.add(new_key)
+        approved = [grandpa_key(value) for value in config["approvedGrandpaKeys"]]
+        reject(0 < len(approved) <= 3000 and approved == sorted(set(approved)), "Invalid complete GRANDPA inventory")
+        prior, current = grandpa_rows(config["previousGrandpaAuthorities"]), grandpa_rows(config["grandpaAuthorities"])
+        reject(prior == current, "Checkpoint GRANDPA authorities, weights or order changed")
+        reject(all(key in approved for key, _ in prior), "Incomplete active GRANDPA inventory")
         versions = set()
         for number, encoded in spec.get("codeSubstitutes", {}).items():
             reject(number == str(int(number)) and 0 <= int(number) < 2**32, "Noncanonical or out-of-range substitute height")
@@ -600,11 +627,11 @@ def run_evidence_verifier(report, paths, binary, expected_sha256, replay_scratch
         capture = paths["checkpointCaptureManifest"].parent
         checks += [("checkpointData", ["verify-capture", "--capture", str(capture)]),
                    ("checkpointMetadata", ["verify-metadata", "--capture", str(capture)])]
-    ownership_inputs = {"signedMappingCsv", "ownershipProofs", "checkpointCaptureManifest", "semanticPlan", "derivedAccountInventory"}
-    if ownership_inputs <= paths.keys():
-        checks.append(("accountOwnership", ["verify-ownership", "--csv", str(paths["signedMappingCsv"]),
-            "--proofs", str(paths["ownershipProofs"]), "--capture", str(paths["checkpointCaptureManifest"].parent),
-            "--semantic", str(paths["semanticPlan"]), "--derived-inventory", str(paths["derivedAccountInventory"])]))
+    mapping_inputs = {"signedMappingCsv", "storageInventory", "checkpointCaptureManifest", "semanticPlan"}
+    if mapping_inputs <= paths.keys():
+        checks.append(("trustedMappingSanity", ["verify-trusted-mapping", "--csv", str(paths["signedMappingCsv"]),
+            "--capture", str(paths["checkpointCaptureManifest"].parent), "--inventory", str(paths["storageInventory"]),
+            "--semantic", str(paths["semanticPlan"])]))
     incoming_arguments = incoming_release.arguments(paths)
     if incoming_arguments:
         if "recoveryParentReplay" in paths:
@@ -642,41 +669,14 @@ def run_evidence_verifier(report, paths, binary, expected_sha256, replay_scratch
             valid = incoming_release.valid_receipt(result, report, bindings, CHECKPOINT_ROOT)
             if "recoveryParentReplay" in paths:
                 incoming_replay_release.preserve_outputs(report, paths, replay_scratch, digest_file)
-        elif gate == "accountOwnership":
-            controls = result.get("controls", {}) if isinstance(result, dict) else {}
-            metadata = result.get("checkpointMetadata", {}) if isinstance(result, dict) else {}
-            controls = controls if isinstance(controls, dict) else {}
-            metadata = metadata if isinstance(metadata, dict) else {}
-            direct, derived = controls.get("directAccounts"), controls.get("derivedAccounts")
-            expected_owners = ["0x" + old for old, _ in report["policy"]["mapping"]] if report["policy"] else None
-            valid = bool(isinstance(result, dict) and report["policy"] and
-                result.get("schema") == "sora-nexus-account-control-verification-v1" and
-                result.get("ownershipVerified") is True and result.get("derivedControlVerified") is True and
-                type(result.get("accounts")) is int and result["accounts"] == report["policy"]["replacements"] and
-                result.get("checkpointHash") == scale.CHECKPOINT_HASH and result.get("checkpointStateRoot") == CHECKPOINT_ROOT and
-                all(result.get(field) == bindings[role] for field, role in (
-                    ("mappingCsvSha256", "signedMappingCsv"), ("ownershipProofsSha256", "ownershipProofs"),
-                    ("semanticPlanSha256", "semanticPlan"), ("derivedInventorySha256", "derivedAccountInventory"),
-                    ("captureManifestSha256", "checkpointCaptureManifest"))) and
-                metadata.get("schema") == "sora-nexus-checkpoint-metadata-witness-v1" and
-                metadata.get("checkpointHash") == scale.CHECKPOINT_HASH and metadata.get("stateRoot") == CHECKPOINT_ROOT and
-                metadata.get("wasmExecutionVerified") is True and metadata.get("nativeExecution") is False and
-                controls.get("schema") == "sora-nexus-semantic-ownership-verification-v1" and
-                controls.get("checkpointHash") == scale.CHECKPOINT_HASH and
-                type(controls.get("mappedAccounts")) is int and controls["mappedAccounts"] == result["accounts"] and
-                controls.get("replacementOwnershipVerified") is True and controls.get("derivedControlGraphVerified") is True and
-                isinstance(direct, list) and isinstance(derived, list) and
-                all(isinstance(owner, str) for owner in direct + derived) and sorted(direct + derived) == expected_owners)
+        elif gate == "trustedMappingSanity":
+            valid = trusted_mapping_witness(result, report["policy"], bindings, mapping_identity(paths["signedMappingCsv"]))
         else:
             valid = result and result.get("schema") == "sora-nexus-checkpoint-metadata-witness-v1" and result.get("checkpointHash") == scale.CHECKPOINT_HASH and result.get("stateRoot") == CHECKPOINT_ROOT and result.get("wasmExecutionVerified") is True and result.get("nativeExecution") is False
         receipt["result"] = result
         receipts.append(receipt)
         if gate in report["gates"]:
             report["gates"][gate] = {"status": "verified" if valid else "failed", "reason": "Fresh execution of explicitly pinned local native verifier", "receipt": receipt}
-        if gate == "accountOwnership":
-            report["gates"]["derivedAccountControl"] = {"status": "verified" if valid else "failed",
-                "reason": "Exact checkpoint and mapping-bound control graph; complete derived-account discovery remains a separate storage-coverage gate",
-                "receipt": receipt}
     # Metadata verification here executes checkpoint code only, not recovery artifacts.
     report["nativeVerifierReceipts"] = receipts
     report["productionReady"] = False

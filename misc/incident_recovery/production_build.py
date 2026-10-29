@@ -30,9 +30,10 @@ import release_package as release
 from incoming_replay_release import PUBLIC_COUNCIL
 from bootstrap import prepare as bootstrap
 import build_fixture_wasm as build_helpers
+import verify_abandoned_consensus as abandoned
 
 ROOT = bootstrap.ROOT
-SCHEMA = 'sora-nexus-production-recovery-build-input-v1'
+SCHEMA = 'sora-nexus-production-recovery-build-input-v2'
 SOURCE_PATHS = bootstrap.SOURCE_PATHS
 MAX_GRAPH = 64 * 1024**3
 MAX_FILE = 256 * 1024**2
@@ -61,7 +62,7 @@ PUBLIC_GRANDPA = {
 }
 PUBLIC_SIGNING_KEYS = PUBLIC_GRANDPA | PUBLIC_REPLACEMENTS | {key.hex() for key in PUBLIC_COUNCIL}
 
-REQUIRED_COMPOSE = {'capture', 'csv', 'proofs', 'inventory', 'economic', 'semantic', 'council'}
+REQUIRED_COMPOSE = {'capture', 'csv', 'inventory', 'economic', 'semantic'}
 OPTIONAL_COMPOSE = {'bridge-history', 'bridge-signing', 'bridge-hashi', 'elections', 'offences',
     'governance', 'referral', 'staking-controls', 'staking-roles', 'staking-history', 'democracy', 'scheduler'}
 
@@ -158,11 +159,41 @@ def check_parents(path):
             and not (parent / 'NEVER-DEPLOY.txt').exists(), 'public fixture marker rejected')
 
 
+def public_consensus(value, inputs):
+    """Recompute slot selection from the pinned public capture, never caller numbers."""
+    config = value['consensus']
+    require(isinstance(config, dict) and set(config) == {'publicCapture'}, 'consensus input fields')
+    name = relative(config['publicCapture'])
+    pins = {}
+    for filename in ('started.json', 'headers.json', 'completion.json'):
+        item = name + '/' + filename
+        require(item in value['files'], 'public consensus capture missing from exact input graph')
+        source = local(inputs, item)
+        read(source, value['files'][item], 128 * 1024**2)
+        pins[filename] = value['files'][item]['sha256']
+    report = abandoned.verify_directory(inputs / name)
+    require(report.get('schema') == 'sora-nexus-public-abandoned-consensus-v2'
+        and report.get('captureSha256') == pins and report.get('checkpointHash') == scale.CHECKPOINT_HASH
+        and report.get('finalityProofVerified') is False and report.get('clientVotingHistoryProven') is False
+        and report.get('operatorSigningStopVerified') is False and report.get('productionReady') is False,
+        'public consensus capture scope or hashes differ')
+    fields = {'previousGrandpaSetId': report['setIds']['checkpoint'],
+              'lastObservedAbandonedSlot': report['lastObservedAbandonedSlot'],
+              'firstRecoverySlot': report['firstRecoverySlot']}
+    require(type(fields['previousGrandpaSetId']) is int and fields['previousGrandpaSetId'] == 7956
+        and report['setIds']['finalized'] == fields['previousGrandpaSetId'], 'checkpoint GRANDPA set differs')
+    require(all(type(fields[k]) is int and 0 <= fields[k] < 2**64 for k in ('firstRecoverySlot', 'lastObservedAbandonedSlot'))
+        and fields['firstRecoverySlot'] == fields['lastObservedAbandonedSlot'] + 1
+        and fields['lastObservedAbandonedSlot'] == 298871044, 'public abandoned-chain slot differs from the runtime BABE backstop')
+    return fields, report
+
+
 def load_inputs(path, expected):
     check_parents(path)
     raw = read(path, expected, 16 * 1024**2)
     value = parse(raw)
-    require(set(value) == {'schema', 'files', 'compose', 'operatorsScale', 'derivedInventory', 'mixedLayout', 'consensus', 'authorizationDomain'}, 'unexpected build input fields')
+    mandatory = {'schema', 'files', 'compose', 'mixedLayout', 'consensus', 'authorizationDomain'}
+    require(mandatory <= set(value) <= mandatory | {'operatorsScale'}, 'unexpected build input fields')
     require(value['schema'] == SCHEMA, 'unknown production input schema')
     no_fixture(value)
     release.authorization_domain_scale(value['authorizationDomain'])
@@ -193,20 +224,16 @@ def load_inputs(path, expected):
             require(name + '/capture-complete.json' in files, 'capture manifest missing from exact input graph')
         else:
             require(name in files, 'compose input absent from file inventory')
-    for name in ('operatorsScale', 'derivedInventory'):
-        require(value[name] in files, name + ' missing from input inventory')
+    for name in ('operatorsScale',):
+        if name in value:
+            require(value[name] in files, name + ' missing from input inventory')
     require('staking-roles' in compose, 'production build requires operator-associated staking-role review')
     if value['mixedLayout'] is not None:
         require(value['mixedLayout'] in files, 'mixed layout absent from input inventory')
-    consensus = value['consensus']
-    require(set(consensus) == {'previousGrandpaSetId', 'firstRecoverySlot', 'lastAbandonedSignedSlot'}, 'consensus input fields')
-    require(type(consensus['previousGrandpaSetId']) is int and 0 <= consensus['previousGrandpaSetId'] < 2**64 - 1, 'GRANDPA set bound')
-    require(all(type(consensus[k]) is int and 0 <= consensus[k] < 2**64 for k in ('firstRecoverySlot', 'lastAbandonedSignedSlot'))
-        and consensus['firstRecoverySlot'] > consensus['lastAbandonedSignedSlot'], 'first recovery slot must follow supplied last abandoned signing slot')
-    operators = release.operator_identity(read(paths[value['operatorsScale']]))
-    require(not PUBLIC_SIGNING_KEYS.intersection(operators['fresh']), 'public test GRANDPA keys rejected')
-    council = parse(read(paths[compose['council']]))
-    require(isinstance(council, list) and not PUBLIC_SIGNING_KEYS.intersection(release.account(item).hex() for item in council), 'public test council rejected')
+    public_consensus(value, path.parent)
+    if 'operatorsScale' in value:
+        operators = release.operator_identity(read(paths[value['operatorsScale']]))
+        require(not PUBLIC_SIGNING_KEYS.intersection(operators['approvedGrandpa']), 'public test GRANDPA keys rejected')
     require(not PUBLIC_SIGNING_KEYS.intersection(new for _, new in release.mapping_identity(paths[compose['csv']])), 'public test replacement owner rejected')
     # This is a data commitment only. It contains no policy/Wasm/output hashes.
     return value, paths, pin_bytes(raw), pin_bytes(serialized(value))['blake2_256']
@@ -417,17 +444,69 @@ def validate_emitted(raw, policy):
     require('fixture' not in text.lower(), 'fixture-generated policy rejected')
 
 
+def checkpoint_consensus_witness(consensus, expected, capture_sha256):
+    """Bind freshly executed checkpoint derivation; this is not a finality proof."""
+    require(consensus.get('schema') == 'sora-nexus-checkpoint-consensus-v2'
+        and type(consensus.get('previousGrandpaSetId')) is int
+        and consensus.get('previousGrandpaSetId') == expected['previousGrandpaSetId']
+        and consensus.get('checkpointHash') == scale.CHECKPOINT_HASH
+        and type(consensus.get('checkpointNumber')) is int and consensus['checkpointNumber'] == scale.CHECKPOINT
+        and consensus.get('checkpointStateRoot') == release.CHECKPOINT_ROOT
+        and consensus.get('captureManifestSha256') == capture_sha256
+        and consensus.get('signingKeysPreserved') is True
+        and consensus.get('manualOperatorApprovalRequired') is False
+        and consensus.get('productionReady') is False
+        and type(consensus.get('checkpointSlot')) is int
+        and 0 < consensus['checkpointSlot'] <= expected['lastObservedAbandonedSlot']
+        and consensus.get('grandpaAuthorities') == consensus.get('previousGrandpaAuthorities'), 'derived checkpoint consensus differs')
+    metadata = consensus.get('checkpointMetadata', {})
+    require(metadata.get('schema') == 'sora-nexus-checkpoint-metadata-witness-v1'
+        and metadata.get('checkpointHash') == scale.CHECKPOINT_HASH and metadata.get('stateRoot') == release.CHECKPOINT_ROOT
+        and metadata.get('wasmExecutionVerified') is True and metadata.get('nativeExecution') is False,
+        'derived checkpoint metadata execution differs')
+    operators = release.bounded_hex(consensus['operatorsScale'], release.MAX_POLICY)
+    operator_info = release.operator_identity(operators)
+    require(consensus.get('operatorsBlake2') == '0x' + hashlib.blake2b(operators, digest_size=32).hexdigest()
+        and [release.grandpa_key(key).hex() for key in consensus['approvedGrandpaKeys']] == operator_info['approvedGrandpa']
+        and not PUBLIC_SIGNING_KEYS.intersection(operator_info['approvedGrandpa']), 'derived checkpoint operator keys differ')
+    rows = consensus['grandpaAuthorities']
+    require(isinstance(rows, list) and 0 < len(rows) <= 1000
+        and all(isinstance(row, list) and len(row) == 2 and type(row[1]) is int and 0 < row[1] < 2**64 for row in rows),
+        'derived checkpoint authority list differs')
+    active = [release.grandpa_key(row[0]).hex() for row in rows]
+    require(len(active) == len(set(active)) and set(active).issubset(operator_info['approvedGrandpa']),
+        'derived checkpoint active authorities differ')
+    return operators
+
+
 def compose_inputs(value, inputs, output, binary, guard, commitment, remember=write, retain=None, composition_limit=512 * 1024**2):
     require(type(composition_limit) is int and 128 * 1024**2 <= composition_limit <= 512 * 1024**2, 'composition output bound')
-    # Derived controls are verified by the same live compiler before composition.
-    args = [str(binary), 'verify-ownership', '--csv', str(inputs / value['compose']['csv']),
-        '--proofs', str(inputs / value['compose']['proofs']), '--capture', str(inputs / value['compose']['capture']),
-        '--semantic', str(inputs / value['compose']['semantic']), '--derived-inventory', str(inputs / value['derivedInventory'])]
-    process(args, output, output / 'ownership', guard, retain=retain)
+    capture = inputs / value['compose']['capture']
+    expected, observed = public_consensus(value, inputs)
+    remember(output / 'public-consensus.json', observed)
+    consensus_raw, _ = process([str(binary), 'derive-checkpoint-consensus', '--capture', str(capture)],
+        output, output / 'checkpoint-consensus', guard, retain=retain)
+    consensus = parse(consensus_raw)
+    operators = checkpoint_consensus_witness(consensus, expected, digest(capture / 'capture-complete.json')['sha256'])
+    if 'operatorsScale' in value:
+        require(read(inputs / value['operatorsScale']) == operators, 'supplied operator assertion differs from derived checkpoint')
+    operators_path = output / 'checkpoint-operators.scale'
+    remember(operators_path, operators)
+    # CSV authorization is trusted; state/destination/derived-account checks are
+    # executed afresh, without claiming replacement-key signature verification.
+    args = [str(binary), 'verify-trusted-mapping', '--csv', str(inputs / value['compose']['csv']),
+        '--capture', str(inputs / value['compose']['capture']), '--inventory', str(inputs / value['compose']['inventory']),
+        '--semantic', str(inputs / value['compose']['semantic'])]
+    mapping_raw, _ = process(args, output, output / 'trusted-mapping', guard, retain=retain)
+    mapping_witness = parse(mapping_raw)
+    council = consensus.get('checkpointCouncil', [])
+    require(isinstance(council, list) and 0 < len(council) <= 100 and len(council) == len(set(council))
+        and sorted(council) == mapping_witness.get('checkpointCouncil'),
+        'checkpoint consensus/mapping council differs')
     args = [str(binary), 'compose-storage-work']
     for flag, name in sorted(value['compose'].items()):
         args += ['--' + flag, str(inputs / name)]
-    args += ['--operators-scale', str(inputs / value['operatorsScale']), '--evidence-commitment', '0x' + commitment,
+    args += ['--operators-scale', str(operators_path), '--evidence-commitment', '0x' + commitment,
              '--chain-spec-id', value['authorizationDomain']['chainSpecId'], '--release-nonce', value['authorizationDomain']['releaseNonce']]
     raw, _ = process(args, output, output / 'compose', guard, timeout=6*3600, maximum=composition_limit, retain=retain)
     composed = parse(raw)
@@ -442,9 +521,15 @@ def compose_inputs(value, inputs, output, binary, guard, commitment, remember=wr
     policy_reader.take(policy_reader.compact() * 64)
     council = [policy_reader.take(32) for _ in range(policy_reader.compact())]
     require(not PUBLIC_SIGNING_KEYS.intersection(key.hex() for key in council), 'public test council policy rejected')
-    requested_council = [release.account(item) for item in parse(read(inputs / value['compose']['council']))]
-    require(len(requested_council) == len(set(requested_council)) and council == sorted(requested_council), 'compiled recovered council differs')
-    require(identity['evidenceCommitment'] == commitment and identity['mapping'] == release.mapping_identity(inputs / value['compose']['csv']), 'compiled mapping/data commitment differs')
+    require(composed.get('trustedMapping') == mapping_witness, 'fresh mapping expansion/council differs from composition')
+    require(release.trusted_mapping_witness(mapping_witness, identity,
+        {'signedMappingCsv': digest(inputs / value['compose']['csv'])['sha256'],
+         'storageInventory': digest(inputs / value['compose']['inventory'])['sha256'],
+         'semanticPlan': digest(inputs / value['compose']['semantic'])['sha256'],
+         'checkpointCaptureManifest': digest(inputs / value['compose']['capture'] / 'capture-complete.json')['sha256']},
+         release.mapping_identity(inputs / value['compose']['csv'])),
+         'trusted CSV mapping/checkpoint council witness differs')
+    require(identity['evidenceCommitment'] == commitment, 'compiled data commitment differs')
     if value['mixedLayout'] is not None:
         layout = parse(read(inputs / value['mixedLayout']))
         mixed = mixed_input(composed, layout)
@@ -643,7 +728,7 @@ def build_wasm(source, output, target, spec_version, guard, retain=None, retain_
 
 
 def helper_pins():
-    paths = [Path(__file__).resolve(), Path(scale.__file__).resolve(), Path(release.__file__).resolve(),
+    paths = [Path(__file__).resolve(), Path(scale.__file__).resolve(), Path(release.__file__).resolve(), Path(abandoned.__file__).resolve(),
         Path(bootstrap.__file__).resolve(), bootstrap.HERE / 'bridge-recovery.patch',
         Path(build_helpers.__file__).resolve(), build_helpers.ENVIRONMENT_HELPER, build_helpers.LLVM_WRAPPER,
         Path(os.sys.executable).resolve()]
@@ -727,11 +812,12 @@ def build(args):
         binding_dir.mkdir()
         remember(binding_dir / 'final138.wasm', read(final))
         remember(binding_dir / 'policy.scale', policy)
-        operators = read(inputs / value['operatorsScale'])
+        operators = read(output / 'checkpoint-operators.scale')
         remember(binding_dir / 'operators.scale', operators)
+        selected, _ = public_consensus(value, inputs)
         binding = {'policyScale': '0x' + policy.hex(), 'policyCommitment': '0x' + pin_bytes(policy)['blake2_256'],
-            'operatorsScale': '0x' + operators.hex(), 'previousGrandpaSetId': value['consensus']['previousGrandpaSetId'],
-            'firstRecoverySlot': value['consensus']['firstRecoverySlot'], 'finalWasm': 'final138.wasm'}
+            'operatorsScale': '0x' + operators.hex(), 'previousGrandpaSetId': selected['previousGrandpaSetId'],
+            'firstRecoverySlot': selected['firstRecoverySlot'], 'finalWasm': 'final138.wasm'}
         artifacts = {'final138': final}
         for version in (135, 134):
             if version == 134:

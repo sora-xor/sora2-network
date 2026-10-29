@@ -306,6 +306,9 @@ pub enum AdapterId {
     GovernanceV1,
     ReferralSuspensionV1,
     StakingControlV1,
+    SessionControlV1,
+    PermissionControlV1,
+    IrohaPendingCancellationV1,
     StakingHistoryV1,
     DemocracyV1,
     SchedulerCancellationV1,
@@ -1011,6 +1014,25 @@ pub fn inventory_with_resolutions(
     for resolution in resolutions {
         let key = hex_bytes(&resolution.key)?;
         let allowed = match resolution.adapter {
+            AdapterId::PermissionControlV1 => {
+                crate::permissions_controls::ITEMS.contains(&resolution.storage.as_str())
+                    && resolution.action == ResolutionAction::ReplaceControl
+            }
+            AdapterId::IrohaPendingCancellationV1 => match resolution.storage.as_str() {
+                "IrohaMigration.PendingMultiSigAccounts" => {
+                    resolution.action == ResolutionAction::CancelPending
+                        && resolution.expected_after_hash.is_none()
+                }
+                "IrohaMigration.PublicKeys" => {
+                    resolution.action == ResolutionAction::ReplaceControl
+                        && resolution.expected_after_hash.is_some()
+                }
+                _ => false,
+            },
+            AdapterId::SessionControlV1 => {
+                crate::session_controls::ITEMS.contains(&resolution.storage.as_str())
+                    && resolution.action == ResolutionAction::ReplaceControl
+            }
             AdapterId::HashiIncomingOwnershipV1 => {
                 resolution.action == ResolutionAction::ReplaceControl
                     && match resolution.storage.as_str() {
@@ -1615,7 +1637,7 @@ pub fn inventory_with_resolutions(
         semantic_dispositions_complete = false;
     }
     let unused_destinations_verified = all_entries_classified && used_destinations.is_empty();
-    let mut report = InventoryReport { schema: "sora-nexus-storage-inventory-v1", metadata_hash: schema.metadata_hash.clone(), top_entries: storage.top.len(), child_entries: storage.children_default.values().map(|c| c.data.len()).sum(), child_tries: storage.children_default.len(), all_entries_decoded, all_entries_classified, opaque_retained_entries, semantic_dispositions_complete, unused_destinations_verified, used_destinations, watched_accounts: options.watched_accounts.clone(), watched_references: watched_records, prefixes: reports.into_values().collect(), candidates, production_ready: false, remaining: "Proof of ownership, derived identities, reviewed economic/pointer semantics, consensus evidence, authenticated recovery chunks and exact-artifact rehearsals remain separate release gates.",
+    let mut report = InventoryReport { schema: "sora-nexus-storage-inventory-v1", metadata_hash: schema.metadata_hash.clone(), top_entries: storage.top.len(), child_entries: storage.children_default.values().map(|c| c.data.len()).sum(), child_tries: storage.children_default.len(), all_entries_decoded, all_entries_classified, opaque_retained_entries, semantic_dispositions_complete, unused_destinations_verified, used_destinations, watched_accounts: options.watched_accounts.clone(), watched_references: watched_records, prefixes: reports.into_values().collect(), candidates, production_ready: false, remaining: "Trusted CSV authorization, automatic funded derivative expansion, reviewed economic/pointer semantics, consensus evidence, authenticated recovery chunks and exact-artifact rehearsals remain separate release gates.",
         native_watch:NativeWatchCertificate {report_hash:[0;32],state_sha256:state_digest.finalize().into(),schema_sha256:{
             let mut digest=Sha256::new();
             digest.update(b"sora-nexus/native-storage-decoding-schema/v1");

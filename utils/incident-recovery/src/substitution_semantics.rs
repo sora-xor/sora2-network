@@ -87,7 +87,7 @@ pub struct BridgeCancellation {
     pub review_evidence_hash: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum DerivedKind {
     Utility {
@@ -106,7 +106,7 @@ pub enum DerivedKind {
         accounts_value_hash: String,
     },
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct DerivedAccount {
     pub old: String,
@@ -271,7 +271,7 @@ pub fn bridge_multisig_account(creator: [u8; 32], block: u32, nonce: u32) -> [u8
 /// registration can create an entitlement without either account row. This
 /// explicit prefix list does not establish complete derived-control discovery.
 /// A prefix absent from the supplied metadata contributes no owners.
-fn discoverable_utility_state_owners(
+pub(crate) fn discoverable_utility_state_owners(
     schema: &MetadataSchema,
     storage: &Storage,
 ) -> Result<std::collections::HashSet<[u8; 32]>> {
@@ -426,6 +426,7 @@ fn owned_key(descriptor: &Descriptor, owner: [u8; 32], schema: &MetadataSchema) 
 const MAX_DERIVED_CONTROL_DEPTH: usize = 32;
 
 struct VerifiedDerivedControls {
+    trusted_csv: bool,
     controls: BTreeMap<[u8; 32], [u8; 32]>,
     reported: Vec<String>,
     proof_only: Vec<String>,
@@ -442,13 +443,24 @@ impl VerifiedDerivedControls {
                 return Err("derived control certificate mapping differs".into());
             }
             Ok(*new)
+        } else if self.trusted_csv {
+            trusted_controller(old, mappings)
         } else {
             prove_controller(old, mappings, proofs)
         }
     }
 }
 
+fn trusted_controller(old: [u8; 32], mappings: &BTreeMap<[u8; 32], [u8; 32]>) -> Result<[u8; 32]> {
+    let new = mappings.get(&old).copied().unwrap_or(old);
+    if old == common::recovery::ATTACKER_ACCOUNT || new == common::recovery::ATTACKER_ACCOUNT {
+        return Err("attacker cannot control recovered membership".into());
+    }
+    Ok(new)
+}
+
 struct DerivedControlVerifier<'a> {
+    trusted_csv: bool,
     schema: &'a MetadataSchema,
     storage: &'a Storage,
     mappings: &'a BTreeMap<[u8; 32], [u8; 32]>,
@@ -467,7 +479,12 @@ impl DerivedControlVerifier<'_> {
             if depth > MAX_DERIVED_CONTROL_DEPTH {
                 return Err("derived control proof exceeds depth bound".into());
             }
-            Ok((prove_controller(old, self.mappings, self.proofs)?, 0))
+            let controller = if self.trusted_csv {
+                trusted_controller(old, self.mappings)?
+            } else {
+                prove_controller(old, self.mappings, self.proofs)?
+            };
+            Ok((controller, 0))
         }
     }
 
@@ -581,6 +598,17 @@ fn verify_derived(
     proofs: &[OwnershipProof],
     derived: &[DerivedAccount],
 ) -> Result<VerifiedDerivedControls> {
+    verify_derived_authorization(schema, storage, mappings, proofs, derived, false)
+}
+
+fn verify_derived_authorization(
+    schema: &MetadataSchema,
+    storage: &Storage,
+    mappings: &BTreeMap<[u8; 32], [u8; 32]>,
+    proofs: &[OwnershipProof],
+    derived: &[DerivedAccount],
+    trusted_csv: bool,
+) -> Result<VerifiedDerivedControls> {
     if derived.len() > common::recovery::MAX_REPLACEMENTS {
         return Err("derived control inventory exceeds node bound".into());
     }
@@ -605,6 +633,7 @@ fn verify_derived(
         }
     }
     let mut verifier = DerivedControlVerifier {
+        trusted_csv,
         schema,
         storage,
         mappings,
@@ -619,6 +648,7 @@ fn verify_derived(
         verifier.verify(account_bytes(&item.old)?, 0)?;
     }
     Ok(VerifiedDerivedControls {
+        trusted_csv,
         controls: verifier
             .verified
             .into_iter()
@@ -813,6 +843,69 @@ pub fn compile(
     plan: &SemanticPlan,
 ) -> Result<SemanticCompilation> {
     let ownership = verify_account_ownership(schema, storage, replacements, proofs, plan)?;
+    compile_verified(schema, storage, ownership, proofs, plan, false)
+}
+
+/// Compile control semantics under the explicit trusted-CSV restart policy.
+/// No ownership signatures are required; the constructor already verified the
+/// expanded map and complete unused-destination checkpoint inventory.
+pub fn compile_trusted(
+    schema: &MetadataSchema,
+    storage: &Storage,
+    trusted: &crate::trusted_mapping::TrustedMapping,
+    plan: &SemanticPlan,
+) -> Result<SemanticCompilation> {
+    let mappings = trusted
+        .replacements()
+        .iter()
+        .map(|r| {
+            (
+                *AsRef::<[u8; 32]>::as_ref(&r.old),
+                *AsRef::<[u8; 32]>::as_ref(&r.new),
+            )
+        })
+        .collect();
+    let mut derived = verify_derived_authorization(
+        schema,
+        storage,
+        &mappings,
+        &[],
+        &plan.derived_accounts,
+        true,
+    )?;
+    for row in trusted.derived() {
+        let old = account_bytes(&row.old)?;
+        let new = account_bytes(&row.new)?;
+        if derived
+            .controls
+            .insert(old, new)
+            .is_some_and(|prior| prior != new)
+        {
+            return Err(
+                "semantic derived inventory conflicts with automatic utility expansion".into(),
+            );
+        }
+        if !derived.reported.contains(&row.old) {
+            derived.reported.push(row.old.clone());
+        }
+    }
+    derived.reported.sort();
+    let ownership = VerifiedOwnership {
+        mappings,
+        derived,
+        direct_accounts: Vec::new(),
+    };
+    compile_verified(schema, storage, ownership, &[], plan, true)
+}
+
+fn compile_verified(
+    schema: &MetadataSchema,
+    storage: &Storage,
+    ownership: VerifiedOwnership,
+    proofs: &[OwnershipProof],
+    plan: &SemanticPlan,
+    trusted_csv: bool,
+) -> Result<SemanticCompilation> {
     let mappings = ownership.mappings;
     let derived = ownership.derived;
     let mut edits: BTreeMap<Vec<u8>, GuardedStorageEdit> = BTreeMap::new();
@@ -1129,7 +1222,15 @@ pub fn compile(
         suspended.push(serde_json::json!({"opaqueCallHash":cancellation.call_hash,"callPreimage":cancellation.recovered_call_preimage,"callsValueHash":cancellation.calls_value_hash,"refundGenerated":false}));
     }
     drop(put);
-    let membership = bridge_membership::compile(schema, storage, &mappings, proofs, plan, &edits)?;
+    let membership = bridge_membership::compile(
+        schema,
+        storage,
+        &mappings,
+        proofs,
+        plan,
+        &edits,
+        trusted_csv,
+    )?;
     let mut prefix_witnesses = Vec::new();
     let mut membership_resolutions = Vec::new();
     let mut membership_guard = None;
@@ -1501,6 +1602,53 @@ mod tests {
             (old, new) = (next_old, next_new);
         }
         (mapping, nodes)
+    }
+
+    #[test]
+    fn trusted_csv_leaf_authorization_preserves_exact_derived_address_checks() {
+        let controller = [1; 32];
+        let replacement = [2; 32];
+        let old = derivative_account(controller, 7);
+        let new = derivative_account(replacement, 7);
+        let mapping = BTreeMap::from([(controller, replacement), (old, new)]);
+        let mut rows = vec![DerivedAccount {
+            old: hx(&old),
+            new: hx(&new),
+            derivation: DerivedKind::Utility {
+                controller: hx(&controller),
+                index: 7,
+            },
+        }];
+        let verified = verify_derived_authorization(
+            &empty_schema(),
+            &Storage::default(),
+            &mapping,
+            &[],
+            &rows,
+            true,
+        )
+        .unwrap();
+        assert_eq!(
+            verified.controller(controller, &mapping, &[]).unwrap(),
+            replacement
+        );
+        assert!(
+            verify_derived(&empty_schema(), &Storage::default(), &mapping, &[], &rows).is_err()
+        );
+        rows[0].derivation = DerivedKind::Utility {
+            controller: hx(&controller),
+            index: 8,
+        };
+        assert!(verify_derived_authorization(
+            &empty_schema(),
+            &Storage::default(),
+            &mapping,
+            &[],
+            &rows,
+            true
+        )
+        .is_err());
+        assert!(trusted_controller(common::recovery::ATTACKER_ACCOUNT, &mapping).is_err());
     }
 
     #[test]

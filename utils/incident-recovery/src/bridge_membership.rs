@@ -129,6 +129,7 @@ pub(super) fn compile(
     proofs: &[OwnershipProof],
     plan: &SemanticPlan,
     cancelled: &BTreeMap<Vec<u8>, GuardedStorageEdit>,
+    trusted_csv: bool,
 ) -> Result<Option<Compilation>> {
     if plan.bridge_memberships.is_empty()
         && !plan
@@ -174,8 +175,14 @@ pub(super) fn compile(
     {
         return Err("unreviewed bridge membership/backing key layout".into());
     }
-    let derived_controls =
-        super::verify_derived(schema, storage, mappings, proofs, &plan.derived_accounts)?;
+    let derived_controls = super::verify_derived_authorization(
+        schema,
+        storage,
+        mappings,
+        proofs,
+        &plan.derived_accounts,
+        trusted_csv,
+    )?;
     let mut reviewed = BTreeMap::new();
     for row in &plan.bridge_memberships {
         commitment(&row.review_evidence_hash)?;
