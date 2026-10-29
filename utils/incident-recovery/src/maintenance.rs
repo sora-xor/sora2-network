@@ -65,6 +65,7 @@ mod state_observer;
 mod storage_semantics;
 #[path = "maintenance_supplied_escape.rs"]
 mod supplied_escape;
+use supplied_escape::public_repair;
 #[cfg(feature = "bridge-fixture")]
 #[path = "maintenance_try_runtime.rs"]
 pub mod try_runtime;
@@ -112,6 +113,8 @@ pub struct Manifest {
     pub supplied_council: Option<supplied_escape::Scenario>,
     /// Separate public mixed-account forward-repair fixture; raw public signatures only.
     pub public_dynamic_repair: Option<supplied_escape::Scenario>,
+    pub public_repair_prefix: Option<public_repair::PrefixPlan>,
+    pub public_rejected_handover: Option<public_repair::RejectedHandover>,
     pub fixture_hashi_peers: Option<hashi_fixture::Config>,
     /// Outer-bound finite raw-state expectations; explicitly public fixtures only.
     pub fixture_expectations: Option<replay::Artifact>,
@@ -189,6 +192,10 @@ pub struct Report {
     pub post_state_semantics: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub activation_validation: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_repair_signing_context: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub rejected_handover_observations: Vec<serde_json::Value>,
 }
 
 fn value(ext: &mut sp_io::TestExternalities, key: &[u8]) -> Option<Vec<u8>> {
@@ -541,7 +548,10 @@ fn run_inner(
     }
     let manifest: Manifest = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
     let prefix_only = manifest.schema == prefix::SCHEMA;
-    if prefix_only
+    let public_prefix_only = manifest.schema == public_repair::PREFIX_SCHEMA;
+    let public_negative_only = manifest.schema == public_repair::NEGATIVE_SCHEMA;
+    public_repair::validate_manifest(&manifest, base)?;
+    if (prefix_only || public_prefix_only)
         && (request_incoming_evidence
             || request_storage_semantics
             || request_public_storage_semantics)
@@ -573,9 +583,11 @@ fn run_inner(
     let hashi_fixture_only = manifest.schema == hashi_fixture::SCHEMA;
     let public_dynamic_only = manifest.schema == supplied_escape::PUBLIC_DYNAMIC_SCHEMA;
     let public_historical_audit_only = manifest.schema == historical_audit::SCHEMA;
-    let public_prior_audit_only =
-        manifest.schema == native_lane::PUBLIC_PRIOR_AUDIT_SCHEMA || public_historical_audit_only;
-    let public_repair_fixture = public_dynamic_only || public_prior_audit_only;
+    let public_prior_audit_only = manifest.schema == native_lane::PUBLIC_PRIOR_AUDIT_SCHEMA
+        || public_historical_audit_only
+        || public_negative_only;
+    let public_repair_fixture =
+        public_dynamic_only || public_prior_audit_only || public_prefix_only;
     let supplied_council_only = manifest.schema == supplied_escape::SCHEMA;
     if request_incoming_evidence && !supplied_council_only && !public_repair_fixture {
         return Err("prior incoming coverage requires an authenticated supplied-council or explicit public repair replay".into());
@@ -607,12 +619,14 @@ fn run_inner(
         || manifest.fresh_grandpa.len() > 1000
         || fixture_only != manifest.fixture_council.is_some()
         || supplied_council_only != manifest.supplied_council.is_some()
-        || public_repair_fixture != manifest.public_dynamic_repair.is_some()
+        || (public_repair_fixture && !public_prefix_only)
+            != manifest.public_dynamic_repair.is_some()
         || manifest.native_operation_recorders_v2.len() > 2
         || (!manifest.native_operation_recorders_v2.is_empty()
             && ((manifest.native_operation_recorder.is_some() && !allow_dual_lanes)
                 || (!supplied_council_only && !public_repair_fixture)))
         || (public_repair_fixture
+            && !public_prefix_only
             && (manifest.native_operation_recorders_v2.is_empty()
                 || manifest.fixture_expectations.is_some()))
         || (public_prior_audit_only
@@ -665,8 +679,24 @@ fn run_inner(
         .map(|scenario| supplied_escape::Session::new(scenario, &policy, &manifest.steps))
         .transpose()?;
     if let Some(scenario) = &manifest.public_dynamic_repair {
-        supplied_council = Some(supplied_escape::Session::public_dynamic(
-            scenario,
+        supplied_council = Some(if public_negative_only {
+            supplied_escape::Session::public_negative(
+                scenario,
+                manifest
+                    .public_rejected_handover
+                    .as_ref()
+                    .ok_or("negative handover descriptor absent")?,
+                &policy,
+                &manifest.steps,
+            )?
+        } else {
+            supplied_escape::Session::public_dynamic(scenario, &policy, &manifest.steps)?
+        });
+    }
+    if let Some(plan) = &manifest.public_repair_prefix {
+        supplied_council = Some(supplied_escape::Session::public_prefix(
+            plan,
+            manifest.public_rejected_handover.as_ref(),
             &policy,
             &manifest.steps,
         )?);
@@ -920,6 +950,7 @@ fn run_inner(
     let mut parent = H256::from(recovery::CHECKPOINT_HASH);
     let mut witnesses = Vec::new();
     let mut repair_staging_authorizations = Vec::new();
+    let mut rejected_handover_observations = Vec::new();
     let mut public_post_state_semantics = None;
     let mut state_observer = if request_storage_semantics {
         Some(state_observer::Track::new_nonfixture(
@@ -1028,9 +1059,12 @@ fn run_inner(
         if maintenance && inclusion != ExtrinsicInclusionMode::OnlyInherents {
             return Err("maintenance allowed ordinary extrinsics".into());
         }
-        if let (Some(session), Some(context)) = (&supplied_council, &repaired_work_context) {
-            session.after_initialize(&mut ext, context)?;
-        }
+        let rejected_initialization =
+            if let (Some(session), Some(context)) = (&supplied_council, &repaired_work_context) {
+                session.after_initialize_observed(&mut ext, context)?
+            } else {
+                None
+            };
         let time = timestamp(step.timestamp)?;
         if apply(&executor, &mut ext, code, &time)? != Ok(Ok(())) {
             return Err("timestamp rejected".into());
@@ -1549,7 +1583,7 @@ fn run_inner(
             return Err("unexpected actual runtime activation version".into());
         }
         if let (Some(session), Some(context)) = (&mut supplied_council, &repaired_work_context) {
-            session.imported_initialized_block(context)?;
+            session.imported_observed_block(context, rejected_initialization.as_ref())?;
         }
         if let Some(prepared) = supplied_authorization {
             let session = supplied_council
@@ -1596,6 +1630,17 @@ fn run_inner(
             disk_restart_root_matches: true,
             generated_authorization_sha256: authorization_sha256,
         });
+
+        if let Some(observed) = rejected_initialization {
+            rejected_handover_observations.push(
+                observed.accepted(
+                    &mut ext,
+                    witnesses
+                        .last()
+                        .ok_or("negative handover block witness absent")?,
+                )?,
+            );
+        }
 
         if let Some(prepared) = staging_authorization {
             repair_staging_authorizations.push(prepared.accepted(
@@ -1790,7 +1835,7 @@ fn run_inner(
         if completed || ordinary != 0 || hold_observed || repair_observed {
             return Err("first-child prefix changed maintenance execution scope".into());
         }
-    } else if !supplied_council_only && !completed {
+    } else if !supplied_council_only && !public_prefix_only && !completed {
         return Err("rehearsal must automatically activate the pinned final code and execute an ordinary block".into());
     }
     #[cfg(feature = "runtime-work-types")]
@@ -1803,12 +1848,24 @@ fn run_inner(
         completed,
         witnesses.last(),
     )?;
+    let mut public_repair_signing_context = None;
     let supplied_council = supplied_council
         .map(|session| {
             let stored = replay::code(&mut ext)?;
             let code = select_code(&stored, &deployed, &bootstrap, &known)?;
             let version = replay::version(&executor, &mut ext, code)?;
-            session.finish(&mut ext, version.spec_version, ordinary, completed)
+            if public_prefix_only {
+                let (report, context) = session.finish_prefix(&mut ext, version.spec_version, ordinary, completed,
+                    witnesses.last().ok_or("public prefix has no imported child")?, rejected_handover_observations.len())?;
+                public_repair_signing_context = Some(context);
+                Ok(report)
+            } else {
+                if public_negative_only && (rejected_handover_observations.is_empty()
+                    || !rejected_handover_observations.iter().any(|row| row["forwardEscapeTo137Observed"] == true)) {
+                    return Err("negative handover replay did not observe its frozen136 and forward137 escape".into());
+                }
+                session.finish(&mut ext, version.spec_version, ordinary, completed)
+            }
         })
         .transpose()?;
 
@@ -1941,6 +1998,10 @@ fn run_inner(
         Report {
             schema: if prefix_only {
                 prefix::REPORT_SCHEMA
+            } else if public_prefix_only {
+                public_repair::PREFIX_REPORT_SCHEMA
+            } else if public_negative_only {
+                public_repair::NEGATIVE_REPORT_SCHEMA
             } else if signed_fixture_only {
                 "sora-nexus-public-fixture-signed-maintenance-replay-witness-v1"
             } else if public_historical_audit_only {
@@ -1993,6 +2054,8 @@ fn run_inner(
             public_signed_transactions,
             post_state_semantics,
             activation_validation,
+            public_repair_signing_context,
+            rejected_handover_observations,
         },
         incoming_evidence,
     ))

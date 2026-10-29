@@ -5,6 +5,9 @@
 use super::*;
 use common::recovery::{RecoveryAction, RepairAuthorization};
 
+#[path = "maintenance_public_repair.rs"]
+pub(super) mod public_repair;
+
 pub const PUBLIC_DYNAMIC_SCHEMA: &str = "sora-nexus-public-fixture-dynamic-repair-maintenance-v1";
 const REPAIR_AUTH: &[u8] = b":sora-nexus:recovery:repair-authorization:v1";
 
@@ -106,6 +109,7 @@ pub struct Session {
     witnesses: Vec<Witness>,
     pending_handover: Option<Vec<u8>>,
     public_dynamic: bool,
+    public_scope: Option<public_repair::Scope>,
 }
 
 #[derive(Clone)]
@@ -127,6 +131,7 @@ pub struct WorkContext {
     counter: u64,
     parent_authorization: Option<Vec<u8>>,
     accepted_escapes_sha256: String,
+    parent_status: RecoveryStatus,
 }
 impl WorkContext {
     pub fn original(&self) -> &RecoveryPolicy {
@@ -272,6 +277,7 @@ impl Session {
             witnesses: Vec::new(),
             pending_handover: None,
             public_dynamic,
+            public_scope: None,
         })
     }
 
@@ -327,6 +333,7 @@ impl Session {
             accepted_escapes_sha256: sha(
                 &serde_json::to_vec(&self.witnesses).map_err(|e| e.to_string())?
             ),
+            parent_status: current,
         }))
     }
     pub fn after_initialize(
@@ -582,6 +589,15 @@ impl Session {
         ordinary: usize,
         completed: bool,
     ) -> Result<Report> {
+        if self
+            .public_scope
+            .as_ref()
+            .is_some_and(|scope| scope.is_prefix())
+        {
+            return Err(
+                "public signing prefix cannot produce an activation terminal report".into(),
+            );
+        }
         let terminal = &self.scenario.expected_terminal;
         let current = status(ext)?;
         let audit_bytes =
@@ -1254,6 +1270,7 @@ mod tests {
             witnesses: vec![],
             pending_handover: None,
             public_dynamic: false,
+            public_scope: None,
         };
         let prepared = inspect(&s, &envelope, &observed(&p)).unwrap().unwrap();
         s.witnesses = vec![prepared.witness.clone(), prepared.witness];
@@ -1367,6 +1384,7 @@ mod tests {
             witnesses,
             pending_handover: Some(auth.encode()),
             public_dynamic: false,
+            public_scope: None,
         };
         let mut ext = sp_io::TestExternalities::default();
         ext.execute_with(|| {
