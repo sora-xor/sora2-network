@@ -1,7 +1,0 @@
-{
-  "status": "failed-diagnostic-attempt",
-  "mainnet": "passed",
-  "try-runtime": "passed",
-  "extended": "test helper needs same private-net feature guard as its caller",
-  "scope": "Final verification requires all three modes to pass on one frozen source."
-}

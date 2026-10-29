@@ -1,6 +1,0 @@
-{
-  "status": "verified-historical-source-evidence",
-  "source": "runtime-rehearsal-sdk2609-2026-10-25/validation/imported-migration-evidence",
-  "summarySha256": "4f797e6313ce67a2a0927ba8e8e39983d07401bc9fa889d6f6262d6aeecc3fee",
-  "scope": "Prior SDK2609 source/harness review with unchanged reviewed package sources. Its old root lock audit and whole-workspace compilation are historical; current dependency audits and runtime validation are separate."
-}

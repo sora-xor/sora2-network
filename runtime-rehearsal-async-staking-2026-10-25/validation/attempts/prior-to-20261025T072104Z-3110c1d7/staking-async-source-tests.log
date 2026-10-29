@@ -1,9 +1,0 @@
-{
-  "status": "passed",
-  "testsRun": 6,
-  "failures": 0,
-  "errors": 0,
-  "verifierSha256": "7050f128bffe0f630268cd6751bf6ab2e0eb878f5f9ffc702f598280b55ade47",
-  "testScriptSha256": "4dc4981c448498cbb23f2d976ce2914312f8311d255e5eee7f0ab6823ef2b05c",
-  "details": "test_directory_symlink_cannot_escape_source_inventory (__main__.SourceVerifierTests.test_directory_symlink_cannot_escape_source_inventory) ... ok\ntest_exact_recorded_source_passes (__main__.SourceVerifierTests.test_exact_recorded_source_passes) ... ok\ntest_extra_local_crate_source_cannot_hide_in_excluded_upstream_scope (__main__.SourceVerifierTests.test_extra_local_crate_source_cannot_hide_in_excluded_upstream_scope) ... ok\ntest_manifest_hash_cannot_authorize_unlisted_policy_change (__main__.SourceVerifierTests.test_manifest_hash_cannot_authorize_unlisted_policy_change) ... ok\ntest_source_patch_cannot_hide_non_rust_changes (__main__.SourceVerifierTests.test_source_patch_cannot_hide_non_rust_changes) ... ok\ntest_unchanged_source_mutation_is_rejected (__main__.SourceVerifierTests.test_unchanged_source_mutation_is_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 2.139s\n\nOK\n"
-}

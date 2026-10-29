@@ -1,4 +1,0 @@
-{
-  "reason": "Native frame-decode tests exposed duplicate keys in embedded legacy YAML after maintained parser migration. Preserve pre-fix build and native diagnostic evidence; main Wasm runner will separately archive its own reports when rerun.",
-  "recordedAt": "2026-10-25T02:02:58.577414+00:00"
-}
