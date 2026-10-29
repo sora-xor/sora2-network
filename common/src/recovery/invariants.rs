@@ -410,12 +410,16 @@ fn field_keys(page: &TerminalAuditPage, policy: &RecoveryPolicy, counter: u64) -
     for absent in &page.audit.absent {
         identities.push((1u8, &absent.scope, &absent.key, None::<u32>).encode());
     }
+    // Hash the (up to ~1 MB) policy and the page manifest once per page, not per
+    // field: the overlay's weight for this action is linear in fields only.
+    let policy = policy.commitment();
+    let manifest = page.commitment();
     identities
         .into_iter()
         .map(|id| {
             let mut key = PAGE_FIELD_PREFIX.to_vec();
             key.extend(sp_io::hashing::blake2_256(
-                &(policy.commitment(), counter, page.commitment(), id).encode(),
+                &(policy, counter, manifest, id).encode(),
             ));
             key
         })
