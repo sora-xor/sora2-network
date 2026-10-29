@@ -67,6 +67,7 @@ pub struct Compilation {
     pub report: Report,
     protected: BTreeMap<Vec<u8>, Option<Vec<u8>>>,
     protected_prefixes: Vec<Vec<u8>>,
+    remapped: BTreeSet<Vec<u8>>,
 }
 impl Compilation {
     /// The complete static write set must preserve retained preimage namespaces
@@ -77,6 +78,13 @@ impl Compilation {
             .flatten()
             .filter(|edit| edit.scope == StorageScope::Top)
         {
+            // A replaced provider's status may change only to its exact
+            // remapped owner, which preimage_ownership requires and verifies.
+            if self.remapped.contains(&edit.key)
+                && self.protected.get(&edit.key) == Some(&edit.after)
+            {
+                continue;
+            }
             if self
                 .protected_prefixes
                 .iter()
@@ -276,6 +284,7 @@ pub fn compile(
     changes.push((incomplete, incomplete.prefix.clone(), since.clone()));
     let mut protected = BTreeMap::new();
     let mut protected_prefixes = Vec::new();
+    let mut remapped = BTreeSet::new();
     let mut providers = BTreeSet::new();
     let mut preserved_bytes = 0usize;
     for name in [
@@ -306,19 +315,20 @@ pub fn compile(
                     .filter(|bytes| *bytes <= MAX_PRESERVED_BYTES)
                     .ok_or("scheduler preimage custody exceeds aggregate bound")?;
                 bind(d, key, value)?;
-                if name != "Preimage.PreimageFor" {
-                    let (transformed, accounts) =
-                        typed::transform_value(value, d.value_type, &schema.registry, &mapping)?;
-                    if transformed != *value
-                        || accounts.iter().any(|account| {
-                            mapping.contains_key(account) || *account == recovery::ATTACKER_ACCOUNT
-                        })
-                    {
-                        return Err("preimage provider/control needs a separate remap or attacker-claim adapter; cancellation cannot silently preserve it".into());
-                    }
-                    providers.extend(accounts);
+                if name == "Preimage.PreimageFor" {
+                    protected.insert(key.clone(), Some(value.clone()));
+                    continue;
                 }
-                protected.insert(key.clone(), Some(value.clone()));
+                let (transformed, accounts) =
+                    typed::transform_value(value, d.value_type, &schema.registry, &mapping)?;
+                if accounts.contains(&recovery::ATTACKER_ACCOUNT) {
+                    return Err("preimage provider/control needs a separate attacker-claim adapter; cancellation cannot silently preserve it".into());
+                }
+                if transformed != *value {
+                    remapped.insert(key.clone());
+                }
+                providers.extend(accounts);
+                protected.insert(key.clone(), Some(transformed));
             }
         }
     }
@@ -329,19 +339,29 @@ pub fn compile(
     {
         return Err("unreviewed preimage backing account codec".into());
     }
-    for provider in &providers {
-        let key = [
+    let backing = |account: &[u8; 32]| {
+        [
             accounts.prefix.clone(),
-            sp_io::hashing::blake2_128(provider).to_vec(),
-            provider.to_vec(),
+            sp_io::hashing::blake2_128(account).to_vec(),
+            account.to_vec(),
         ]
-        .concat();
+        .concat()
+    };
+    for provider in &providers {
+        let key = backing(provider);
         let value = storage.top.get(&key).cloned();
         if let Some(value) = &value {
             typed::decode_exact(value, accounts.value_type, &schema.registry)?;
             bind(accounts, &key, value)?;
         }
-        protected.insert(key, value);
+        // A replaced provider's reserve moves whole with its System.Account.
+        if let Some(new) = mapping.get(provider) {
+            let value = value.ok_or("replaced preimage provider lacks its deposit backing")?;
+            protected.insert(key, None);
+            protected.insert(backing(new), Some(value));
+        } else {
+            protected.insert(key, value);
+        }
     }
     drop(bind);
     if used.len() != reviewed.len() {
@@ -406,6 +426,7 @@ pub fn compile(
         report,
         protected,
         protected_prefixes,
+        remapped,
     })
 }
 
@@ -632,18 +653,68 @@ mod tests {
         assert!(compile(&s, &storage, &[], &r).is_err());
     }
     #[test]
-    fn compromised_or_attacker_provider_requires_separate_custody_adapter() {
+    fn attacker_provider_requires_separate_custody_adapter() {
+        let (s, storage) = fixture(recovery::ATTACKER_ACCOUNT);
+        assert!(compile(&s, &storage, &[], &review(&s, &storage))
+            .err()
+            .unwrap()
+            .contains("attacker-claim"));
+    }
+    #[test]
+    fn replaced_provider_keeps_custody_only_at_its_exact_remapped_owner_and_backing() {
         let (s, storage) = fixture([1; 32]);
         let replacements = [AccountReplacement {
             old: AccountId32::from([1; 32]),
             new: AccountId32::from([2; 32]),
         }];
-        assert!(compile(&s, &storage, &replacements, &review(&s, &storage))
-            .err()
-            .unwrap()
-            .contains("separate remap"));
-        let (s, storage) = fixture(recovery::ATTACKER_ACCOUNT);
-        assert!(compile(&s, &storage, &[], &review(&s, &storage)).is_err());
+        let c = compile(&s, &storage, &replacements, &review(&s, &storage)).unwrap();
+        let statuses = desc(&s, "Preimage.StatusFor").unwrap().prefix.clone();
+        let accounts = desc(&s, "System.Account").unwrap().prefix.clone();
+        let backing = |account: [u8; 32]| {
+            [
+                accounts.clone(),
+                sp_io::hashing::blake2_128(&account).to_vec(),
+                account.to_vec(),
+            ]
+            .concat()
+        };
+        let status = [statuses, vec![1; 32]].concat();
+        let remapped = Some((AccountId32::from([2; 32]), 123u128)).encode();
+        assert_eq!(c.protected[&status], Some(remapped.clone()));
+        assert_eq!(c.protected[&backing([1; 32])], None);
+        assert_eq!(c.protected[&backing([2; 32])], Some(999u128.encode()));
+        let edit = |key: &Vec<u8>, after: Option<Vec<u8>>| GuardedStorageEdit {
+            scope: StorageScope::Top,
+            key: key.clone(),
+            before: storage.top.get(key).map(|v| hash(v)),
+            after,
+        };
+        // The owner remap and the unchanged-byte backing move are accepted.
+        c.verify_preservation(&[vec![
+            edit(&status, Some(remapped)),
+            edit(&backing([1; 32]), None),
+            edit(&backing([2; 32]), Some(999u128.encode())),
+        ]])
+        .unwrap();
+        // Any other status value, deletion or changed backing is rejected.
+        for e in [
+            edit(
+                &status,
+                Some(Some((AccountId32::from([9; 32]), 123u128)).encode()),
+            ),
+            edit(
+                &status,
+                Some(Some((AccountId32::from([2; 32]), 1u128)).encode()),
+            ),
+            edit(&status, None),
+            edit(&backing([2; 32]), Some(1u128.encode())),
+        ] {
+            assert!(c.verify_preservation(&[vec![e]]).is_err());
+        }
+        // Reserve backing must exist for a replaced provider.
+        let mut unbacked = storage.clone();
+        unbacked.top.remove(&backing([1; 32]));
+        assert!(compile(&s, &unbacked, &replacements, &review(&s, &unbacked)).is_err());
     }
     #[test]
     fn forbids_custody_edits_including_creation_under_absent_preimage_namespace() {

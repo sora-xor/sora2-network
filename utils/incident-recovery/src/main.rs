@@ -1102,6 +1102,16 @@ fn run() -> incident_recovery::Result<()> {
             semantics
                 .preservation_witnesses
                 .extend(permissions_controls.witnesses.clone());
+            let preimage_ownership =
+                incident_recovery::preimage_ownership::compile(&schema, &storage, &map)?;
+            semantics.edits.extend(preimage_ownership.edits.clone());
+            semantics.groups.extend(preimage_ownership.groups.clone());
+            semantics
+                .resolutions
+                .extend(preimage_ownership.resolutions.clone());
+            semantics
+                .preservation_witnesses
+                .extend(preimage_ownership.witnesses.clone());
             let governance = governance
                 .map(|path| {
                     let review = read_json::<incident_recovery::governance::Review>(path)?;
@@ -1410,6 +1420,7 @@ fn run() -> incident_recovery::Result<()> {
             semantics.verify_membership_groups(&groups)?;
             session_controls.verify_groups(&groups, &map)?;
             permissions_controls.verify_groups(&groups, &map)?;
+            preimage_ownership.verify_groups(&groups, &map)?;
             iroha_pending.verify_groups(&groups, &map)?;
             #[cfg(feature = "runtime-work-types")]
             if let Some(compiled) = &bridge_history {
@@ -1583,6 +1594,8 @@ fn run() -> incident_recovery::Result<()> {
                 serde_json::to_value(session_controls.report).map_err(|e| e.to_string())?;
             report["permissionsControls"] =
                 serde_json::to_value(permissions_controls.report).map_err(|e| e.to_string())?;
+            report["preimageOwnership"] =
+                serde_json::to_value(preimage_ownership.report).map_err(|e| e.to_string())?;
             if let Some(staking) = staking_roles {
                 report["stakingRoles"] =
                     serde_json::to_value(staking.report).map_err(|e| e.to_string())?;

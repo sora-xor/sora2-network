@@ -56,6 +56,7 @@ pub mod mixed_bridge_fixture;
 pub mod mixed_work;
 pub mod offences;
 pub mod permissions_controls;
+pub mod preimage_ownership;
 pub mod referral;
 pub mod rehearsal;
 pub mod release_checks;

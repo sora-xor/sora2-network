@@ -308,6 +308,7 @@ pub enum AdapterId {
     StakingControlV1,
     SessionControlV1,
     PermissionControlV1,
+    PreimageOwnershipV1,
     IrohaPendingCancellationV1,
     StakingHistoryV1,
     DemocracyV1,
@@ -1017,6 +1018,11 @@ pub fn inventory_with_resolutions(
             AdapterId::PermissionControlV1 => {
                 crate::permissions_controls::ITEMS.contains(&resolution.storage.as_str())
                     && resolution.action == ResolutionAction::ReplaceControl
+            }
+            AdapterId::PreimageOwnershipV1 => {
+                crate::preimage_ownership::ITEMS.contains(&resolution.storage.as_str())
+                    && resolution.action == ResolutionAction::ReplaceControl
+                    && resolution.expected_after_hash.is_some()
             }
             AdapterId::IrohaPendingCancellationV1 => match resolution.storage.as_str() {
                 "IrohaMigration.PendingMultiSigAccounts" => {
