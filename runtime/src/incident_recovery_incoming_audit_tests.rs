@@ -383,6 +383,97 @@ mod tests {
     }
 
     #[test]
+    fn native_incoming_issuance_reaches_terminal_audit_without_predicted_mints() {
+        use recovery::invariants::{IssuanceInvariant, StoredAmount, TerminalAudit};
+
+        for hashi in [false, true] {
+            for excluded in [false, true] {
+                sp_io::TestExternalities::default().execute_with(|| {
+                    let (mut policy, operation) = if hashi {
+                        let (policy, operation, _) = hashi_fixture(excluded);
+                        (policy, operation)
+                    } else {
+                        let recipient = if excluded {
+                            AccountId::new(recovery::ATTACKER_ACCOUNT)
+                        } else {
+                            AccountId::new([7; 32])
+                        };
+                        let (policy, operation, _) = fixture(recipient);
+                        (policy, operation)
+                    };
+                    let asset = if hashi { common::DAI } else { common::XOR };
+                    let key = if hashi {
+                        tokens::TotalIssuance::<Runtime>::hashed_key_for(asset)
+                    } else {
+                        pallet_balances::TotalIssuance::<Runtime>::hashed_key().to_vec()
+                    };
+                    let baseline = crate::Assets::total_issuance(&asset).unwrap();
+                    let terminal = TerminalAudit {
+                        issuance: vec![IssuanceInvariant {
+                            asset: asset.encode().try_into().unwrap(),
+                            current: StoredAmount {
+                                scope: recovery::StorageScope::Top,
+                                key: key.clone(),
+                                record_hash: sp_io::hashing::blake2_256(&baseline.encode()),
+                                offset: 0,
+                            },
+                            checkpoint_issuance: baseline,
+                            authenticated_mints: 0,
+                            burned: 0,
+                        }],
+                        collateral: vec![],
+                        zero_claims: vec![],
+                        absent: vec![],
+                    };
+                    let audit = make_audit(&policy, &operation);
+                    policy.audit_chunk_hashes = vec![audit.commitment()];
+                    policy.terminal_audit_commitment = terminal.commitment();
+                    crate::incident_recovery::with_test_policy(&policy, || {
+                        recovery::storage::initialize(&policy).unwrap();
+                        apply_operation(&policy, &operation).unwrap();
+                        run(&policy, &audit).unwrap();
+                        assert_eq!(pending().unwrap(), 0);
+                        let actual = crate::Assets::total_issuance(&asset).unwrap();
+                        assert_eq!(
+                            actual,
+                            baseline
+                                + if excluded {
+                                    0
+                                } else {
+                                    1_000_000_000_000_000_000
+                                }
+                        );
+                        // The immutable terminal baseline remains pre-incoming;
+                        // only the native journal can account for the real mint.
+                        // Exercise a corrupted branch through the public gate,
+                        // then discard that branch to test successful activation.
+                        sp_io::storage::start_transaction();
+                        sp_io::storage::set(&key, &(actual + 1).encode());
+                        assert_eq!(
+                            recovery::invariants::verify_and_record(&policy, &terminal),
+                            Err(RecoveryError::WrongPreimage)
+                        );
+                        assert_eq!(
+                            recovery::storage::status().unwrap().unwrap().phase,
+                            RecoveryPhase::Failed
+                        );
+                        sp_io::storage::rollback_transaction();
+                        assert_eq!(
+                            recovery::invariants::verify_and_record(&policy, &terminal)
+                                .unwrap()
+                                .phase,
+                            RecoveryPhase::Ready
+                        );
+                        recovery::storage::mark_complete(&policy).unwrap();
+                        recovery::invariants::verify_completed_read_only(&policy, &terminal)
+                            .unwrap();
+                    });
+                });
+            }
+        }
+    }
+
+    #[test]
     fn compact_audit_has_no_original_proof_size_amplification_and_rejects_bad_bounds() {
         sp_io::TestExternalities::default().execute_with(|| {
             let (policy, operation, _) = fixture(AccountId::new([7; 32]));

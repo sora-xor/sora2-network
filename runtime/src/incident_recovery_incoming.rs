@@ -8,13 +8,24 @@
 #[cfg(test)]
 #[path = "incident_recovery_incoming_channel_tests.rs"]
 mod channel_tests;
+#[cfg(test)]
+#[path = "incident_recovery_hashi_custody_tests.rs"]
+mod hashi_custody_tests;
 
 #[path = "incident_recovery_incoming_audit.rs"]
 mod audit;
+#[path = "incident_recovery_incoming_balance.rs"]
+mod balance_audit;
+#[path = "incident_recovery_incoming_issuance.rs"]
+mod issuance_journal;
 pub use audit::{
     audit_dynamic_keys, audit_encoded_with_policy, audit_marker_key, audit_request_key,
     audit_targets, expected_requests, incoming_audit_weight, validate_incoming_audit,
     IncomingAudit, IncomingAuditTarget, IncomingRequestExpectation, ValidatedIncomingAudit,
+};
+pub use balance_audit::{
+    audit_native_balances_with_policy, native_balance_audit_encoded_weight, request_balance_keys,
+    AuditedIncomingSource, NativeBalanceAudit, MAX_BALANCE_SOURCES,
 };
 
 #[cfg(feature = "std")]
@@ -45,6 +56,7 @@ use crate::{
 const ACTIVE_KEY: &[u8] = b":sora-nexus:recovery:incoming-active:v1";
 const FAILED_KEY: &[u8] = b":sora-nexus:recovery:incoming-failed:v1";
 const RECEIPT_PREFIX: &[u8] = b":sora-nexus:recovery:incoming-receipt:v1:";
+const CONTROL_RECEIPT_PREFIX: &[u8] = b":sora-nexus:recovery:incoming-control:v1:";
 const MAX_REGISTRY_ACCOUNTS: usize = 128;
 const MAX_HASHI_APPROVALS: usize = 100;
 
@@ -214,9 +226,10 @@ impl IncomingOperation {
             | IncomingChannel::HashiAuthenticatedSource { approvals, .. } => {
                 approvals.iter().fold(
                     // Bounded source/destination query-index reads and the
-                    // authenticated replacement move after native finalization.
+                    // authenticated replacement move after native finalization,
+                    // plus guarded reversal of an extinguished owned preparation.
                     Weight::from_parts(50_000_000, (MAX_CHUNK_BYTES / 2) as u64).saturating_add(
-                        <Runtime as frame_system::Config>::DbWeight::get().reads_writes(8, 2),
+                        <Runtime as frame_system::Config>::DbWeight::get().reads_writes(13, 3),
                     ),
                     |weight, approval| {
                         weight
@@ -255,6 +268,8 @@ impl IncomingOperation {
             .saturating_add(Weight::from_parts(100_000_000, MAX_CHUNK_BYTES as u64))
             .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads_writes(64, 64))
             .saturating_add(audit::consumption_weight())
+            .saturating_add(balance_audit::consumption_weight())
+            .saturating_add(issuance_journal::consumption_weight())
     }
 }
 
@@ -271,13 +286,32 @@ struct ExpectedTransfer {
     delivered: bool,
 }
 
-#[derive(Encode, Decode, DecodeWithMemTracking)]
+/// Control messages retain their authenticated bytes. Status reports and outbound
+/// configuration are deliberately journaled, never applied as refunds or sends.
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking)]
+pub enum ControlDisposition {
+    Deferred,
+    VerifierPeer,
+}
+
+#[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking)]
+struct ExpectedControl {
+    network: GenericNetworkId,
+    id: H256,
+    payload: Vec<u8>,
+    origin_hash: [u8; 32],
+    disposition: ControlDisposition,
+    delivered: bool,
+}
+
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking)]
 struct ActiveOperation {
     lineage: [u8; 32],
     policy: [u8; 32],
     operation: [u8; 32],
     index: u32,
     transfers: Vec<ExpectedTransfer>,
+    controls: Vec<ExpectedControl>,
 }
 
 fn decode_bounded<T: DecodeWithMemTracking>(bytes: &[u8]) -> Result<T, RecoveryError> {
@@ -584,9 +618,10 @@ fn validate_registries(
         return Err(RecoveryError::WrongPreimage);
     }
     let source = registry(operation, operation.network())?;
-    if matches!(operation.network(), GenericNetworkId::EVMLegacy(network) if network == crate::GetEthNetworkId::get())
-        || operation.network() == GenericNetworkId::EVM(H256::from_low_u64_be(1))
-    {
+    if matches!(
+        operation.network(),
+        GenericNetworkId::EVM(_) | GenericNetworkId::EVMLegacy(_)
+    ) {
         if !source
             .accounts
             .contains(&GenericAccount::EVM(bridge_types::H160::from(
@@ -597,6 +632,64 @@ fn validate_registries(
         }
     }
     Ok(())
+}
+
+/// Only known Substrate control variants have an explicit recovery disposition.
+/// Registration and local signer changes need a separately reviewed reopening or
+/// setup action. Journal them so they cannot issue outbound work or reinterpret
+/// abandoned status reports. Verifier rotations must run natively so subsequent
+/// commitments can authenticate; their native outbound ACK is deferred.
+fn control_disposition(call: &BridgeCall) -> Option<ControlDisposition> {
+    match call {
+        BridgeCall::MultisigVerifier(_) => Some(ControlDisposition::VerifierPeer),
+        BridgeCall::DataSigner(_)
+        | BridgeCall::SubstrateApp(
+            SubstrateAppCall::RegisterAsset { .. }
+            | SubstrateAppCall::FinalizeAssetRegistration { .. }
+            | SubstrateAppCall::ReportTransferResult { .. },
+        )
+        | BridgeCall::ParachainApp(
+            ParachainAppCall::FinalizeAssetRegistration { .. }
+            | ParachainAppCall::ReportXCMTransferResult { .. },
+        ) => Some(ControlDisposition::Deferred),
+        _ => None,
+    }
+}
+
+/// Structural classification shared with release coverage. This does not
+/// authenticate a message or authorize dispatch; only native channel execution does.
+pub fn classify_substrate_control(
+    payload: &[u8],
+) -> Result<Option<ControlDisposition>, RecoveryError> {
+    let call = decode_call(payload)?;
+    if call.encode() != payload || payload.len() > BridgeMaxMessagePayloadSize::get() as usize {
+        return Err(RecoveryError::WrongPreimage);
+    }
+    Ok(control_disposition(&call))
+}
+
+fn expected_control(
+    network: GenericNetworkId,
+    id: MessageId,
+    payload: &[u8],
+    timepoint: GenericTimepoint,
+) -> Result<Option<ExpectedControl>, RecoveryError> {
+    let call = decode_call(payload)?;
+    if call.encode() != payload || payload.len() > BridgeMaxMessagePayloadSize::get() as usize {
+        return Err(RecoveryError::WrongPreimage);
+    }
+    Ok(
+        control_disposition(&call).map(|disposition| ExpectedControl {
+            network,
+            id: id.hash(),
+            payload: payload.to_vec(),
+            origin_hash: sp_io::hashing::blake2_256(
+                &(timepoint, GenericAdditionalInboundData::Sub).encode(),
+            ),
+            disposition,
+            delivered: false,
+        }),
+    )
 }
 
 fn parties(call: &BridgeCall) -> Result<(GenericAccount, AccountId), RecoveryError> {
@@ -716,6 +809,7 @@ fn prepare(
     }
     let network = operation.network();
     let mut transfers = Vec::new();
+    let mut controls = Vec::new();
     match &operation.channel {
         IncomingChannel::Hashi {
             network,
@@ -801,15 +895,21 @@ fn prepare(
             for (index, message) in batch.messages.iter().enumerate() {
                 let id =
                     MessageId::batched(network, ThisNetworkId::get(), batch.nonce, index as u64);
-                transfers.push(expected_transfer(
-                    operation,
-                    policy,
-                    id,
-                    &message.payload,
-                    message.timepoint,
-                    GenericAdditionalInboundData::Sub,
-                    true,
-                )?);
+                if let Some(control) =
+                    expected_control(network, id.clone(), &message.payload, message.timepoint)?
+                {
+                    controls.push(control);
+                } else {
+                    transfers.push(expected_transfer(
+                        operation,
+                        policy,
+                        id,
+                        &message.payload,
+                        message.timepoint,
+                        GenericAdditionalInboundData::Sub,
+                        true,
+                    )?);
+                }
             }
         }
         IncomingChannel::Generic {
@@ -852,7 +952,8 @@ fn prepare(
         }
         _ => return Err(RecoveryError::WrongPreimage),
     }
-    if transfers.is_empty() || transfers.len() > BridgeMaxMessagesPerCommit::get() as usize {
+    let count = transfers.len().saturating_add(controls.len());
+    if count == 0 || count > BridgeMaxMessagesPerCommit::get() as usize {
         return Err(RecoveryError::ChunkBounds);
     }
     Ok(ActiveOperation {
@@ -861,6 +962,7 @@ fn prepare(
         operation: operation.commitment(),
         index: operation.index,
         transfers,
+        controls,
     })
 }
 
@@ -958,6 +1060,19 @@ fn apply_operation(
                     return frame_support::storage::TransactionOutcome::Rollback(Err(error));
                 }
             };
+            let balance_journal = match balance_audit::prepare(operation, &active, &status, policy)
+            {
+                Ok(value) => value,
+                Err(error) => {
+                    return frame_support::storage::TransactionOutcome::Rollback(Err(error))
+                }
+            };
+            let issuance = match issuance_journal::prepare(operation, &active, policy) {
+                Ok(value) => value,
+                Err(error) => {
+                    return frame_support::storage::TransactionOutcome::Rollback(Err(error));
+                }
+            };
             sp_io::storage::set(ACTIVE_KEY, &active.encode());
             sp_io::storage::set(
                 BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
@@ -997,7 +1112,10 @@ fn apply_operation(
             };
             let completed = sp_io::storage::get(ACTIVE_KEY)
                 .and_then(|bytes| decode_bounded::<ActiveOperation>(&bytes).ok())
-                .is_some_and(|active| active.transfers.iter().all(|entry| entry.delivered));
+                .is_some_and(|active| {
+                    active.transfers.iter().all(|entry| entry.delivered)
+                        && active.controls.iter().all(|entry| entry.delivered)
+                });
             if !dispatched || sp_io::storage::exists(FAILED_KEY) || !completed {
                 return frame_support::storage::TransactionOutcome::Rollback(Err(
                     RecoveryError::WrongPreimage,
@@ -1008,6 +1126,12 @@ fn apply_operation(
                 .and_then(|bytes| decode_bounded::<ActiveOperation>(&bytes))
                 .and_then(|active| audit::record_consumption(consumption, &active));
             if let Err(error) = consumed {
+                return frame_support::storage::TransactionOutcome::Rollback(Err(error));
+            }
+            if let Err(error) = balance_audit::record(balance_journal) {
+                return frame_support::storage::TransactionOutcome::Rollback(Err(error));
+            }
+            if let Err(error) = issuance_journal::record(policy, issuance) {
                 return frame_support::storage::TransactionOutcome::Rollback(Err(error));
             }
             sp_io::storage::clear(ACTIVE_KEY);
@@ -1028,6 +1152,12 @@ fn apply_operation(
         return Err(error);
     }
     Ok((status, weight))
+}
+
+fn control_receipt_key(network: GenericNetworkId, id: H256) -> Vec<u8> {
+    let mut key = CONTROL_RECEIPT_PREFIX.to_vec();
+    key.extend((network, id).encode());
+    key
 }
 
 fn receipt_key(network: GenericNetworkId, id: H256) -> Vec<u8> {
@@ -1133,6 +1263,17 @@ fn dispatch_hashi(
         || eth_bridge::RequestsQueue::<Runtime>::get(network).contains(&incoming_hash)
     {
         return Err(RecoveryError::WrongPreimage);
+    }
+    if entry.excluded && transfer.asset_kind.is_owned() {
+        // Both fresh and retained prepared owned claims reached native finalize:
+        // its unreserve preserves pooled custody. Undo exactly the associated
+        // before_asset_unlock decrement after the consumed/Done checks above.
+        crate::BridgeProxy::recovery_restore_extinguished_hashi_owned(
+            GenericNetworkId::EVMLegacy(network),
+            transfer.asset_id,
+            transfer.amount,
+        )
+        .map_err(|_| RecoveryError::WrongPreimage)?;
     }
     if was_prepared && entry.excluded && !transfer.asset_kind.is_owned() {
         crate::BridgeProxy::recovery_extinguish_prepared_sidechain(
@@ -1395,6 +1536,37 @@ fn dispatch_authenticated(
         {
             return Err(RecoveryError::WrongPolicy);
         }
+        if let Some(entry) = active.controls.iter_mut().find(|entry| {
+            entry.network == network
+                && entry.id == id.hash()
+                && entry.payload == payload
+                && entry.origin_hash
+                    == sp_io::hashing::blake2_256(&(timepoint, additional).encode())
+        }) {
+            let key = control_receipt_key(network, id.hash());
+            if !matches!(network, GenericNetworkId::Sub(_))
+                || !matches!(additional, GenericAdditionalInboundData::Sub)
+                || entry.delivered
+                || sp_io::storage::exists(&key)
+                || control_disposition(&decode_call(payload)?) != Some(entry.disposition.clone())
+            {
+                return Err(RecoveryError::WrongPreimage);
+            }
+            let outcome = match entry.disposition {
+                ControlDisposition::Deferred => MessageDispatchOutcome::Applied,
+                ControlDisposition::VerifierPeer => forward(payload),
+            };
+            if outcome != MessageDispatchOutcome::Applied {
+                return Err(RecoveryError::WrongPreimage);
+            }
+            entry.delivered = true;
+            sp_io::storage::set(
+                &key,
+                &(active.lineage, active.policy, active.operation, &*entry).encode(),
+            );
+            sp_io::storage::set(ACTIVE_KEY, &active.encode());
+            return Ok(outcome);
+        }
         let entry = active
             .transfers
             .iter_mut()
@@ -1609,7 +1781,8 @@ mod tests {
             ],
         };
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![AccountReplacement {
@@ -1640,7 +1813,7 @@ mod tests {
         (policy, operation, payload)
     }
 
-    fn sign_hashi(approval: &mut HashiPeerApproval, key: &sr25519::Pair) {
+    pub(super) fn sign_hashi(approval: &mut HashiPeerApproval, key: &sr25519::Pair) {
         let call = decode_runtime_call(&approval.call).unwrap();
         let (extra, _, _) = hashi_extra(&approval.extra).unwrap();
         approval.signature = sp_runtime::generic::SignedPayload::new(call, extra)
@@ -1649,7 +1822,7 @@ mod tests {
             .into();
     }
 
-    fn hashi_fixture_with_kind(
+    pub(super) fn hashi_fixture_with_kind(
         attacker: bool,
         kind: eth_bridge::requests::AssetKind,
     ) -> (RecoveryPolicy, IncomingOperation, Vec<sr25519::Pair>) {
@@ -2542,7 +2715,7 @@ mod tests {
     }
 
     #[test]
-    fn recovery_hashi_owned_attacker_entitlement_burns_reserved_assets_and_issuance() {
+    fn recovery_hashi_owned_attacker_claim_preserves_pooled_assets_and_issuance() {
         use common::AssetInfoProvider;
         sp_io::TestExternalities::default().execute_with(|| {
             let (policy, operation, _) =
@@ -2552,11 +2725,11 @@ mod tests {
                 assert_ok!(apply_operation(&policy, &operation));
                 assert_eq!(
                     crate::Assets::total_issuance(&common::DAI).unwrap(),
-                    1_000_000_000_000_000_000
+                    2_000_000_000_000_000_000
                 );
                 assert_eq!(
                     crate::Assets::free_balance(&common::DAI, &AccountId::new([55; 32])).unwrap(),
-                    1_000_000_000_000_000_000
+                    2_000_000_000_000_000_000
                 );
                 assert_eq!(
                     crate::Assets::free_balance(&common::DAI, &AccountId::new([8; 32])).unwrap(),
@@ -2564,7 +2737,7 @@ mod tests {
                 );
                 assert_eq!(
                     crate::BridgeProxy::locked_assets(GenericNetworkId::EVMLegacy(0), common::DAI),
-                    1_000_000_000_000_000_000
+                    2_000_000_000_000_000_000
                 );
             });
         });

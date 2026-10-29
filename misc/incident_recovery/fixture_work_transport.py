@@ -22,8 +22,8 @@ MAX_FIELD_BYTES = 64 * 1024 * 1024
 MAX_ENVELOPE_BYTES = 576 * 1024
 MAX_ENVELOPES = 16_384
 READ_BYTES = 64 * 1024
-ARRAYS = ("applyEnvelopes", "auditEnvelopes")
-SPECIAL = {*ARRAYS, "terminalEnvelope", "policyScale"}
+ARRAYS = ("applyEnvelopes", "auditEnvelopes", "terminalPreludeEnvelopes")
+SPECIAL = {"applyEnvelopes", "auditEnvelopes", "terminalEnvelope", "policyScale"}
 
 
 def artifact_limit(key):
@@ -124,7 +124,7 @@ def parse_report(path, envelope):
                 count = 0
                 for count, value in enumerate(reader.array(), 1):
                     envelope(key, count - 1, checked_hex(value, MAX_ENVELOPE_BYTES))
-                scale.require(count > 0, "Incomplete fixture work")
+                scale.require(count > 0 or key == "terminalPreludeEnvelopes", "Incomplete fixture work")
             elif key in ("terminalEnvelope", "policyScale"):
                 limit = artifact_limit(key)
                 data = checked_hex(reader.value(limit * 2 + 4), limit)
@@ -256,14 +256,15 @@ def pack(source, destination):
 def load(path, document):
     expected = {"schema", "fixtureOnly", "productionReady", "victimAuthorizationVerified",
                 "exactWasmRehearsed", "warning", "nativeReport", "metadata", *SPECIAL}
-    scale.require(set(document) == expected and document.get("schema") == SCHEMA and
+    scale.require(set(document) in (expected, expected | {"terminalPreludeEnvelopes"}) and document.get("schema") == SCHEMA and
                   document.get("fixtureOnly") is True and document.get("productionReady") is False and
                   document.get("victimAuthorizationVerified") is False and document.get("exactWasmRehearsed") is False,
                   "Explicit public fixture transport required")
     root = path.resolve().parent
     report = checked_reference(root, document["nativeReport"], MAX_REPORT_BYTES)
+    document = {"terminalPreludeEnvelopes": [], **document}
     for key in ARRAYS:
-        scale.require(isinstance(document[key], list) and 0 < len(document[key]) <= MAX_ENVELOPES,
+        scale.require(isinstance(document[key], list) and (len(document[key]) > 0 or key == "terminalPreludeEnvelopes") and len(document[key]) <= MAX_ENVELOPES,
                       "Invalid fixture envelope count")
     counts, small = {key: 0 for key in ARRAYS}, {}
 

@@ -28,6 +28,12 @@ class ForwardRepairTests(unittest.TestCase):
         raw = bytes.fromhex(original) + bytes([['Applying', 'Auditing', 'Ready', 'Hold', 'Complete', 'Failed'].index(phase)])
         raw += scale.u32(cursor) + counter.to_bytes(8, 'little') + bytes.fromhex(stored + executing + target)
         raw += scale.u32(destination) + (bytes(32) if destination == 135 else bytes.fromhex(active['commitment']))
+        raw += release.authorization_domain_scale(release.policy_identity(self.paths['policyScale'].read_bytes())['authorizationDomain'])
+        lineage = scale.MAGIC + bytes.fromhex(scale.CHECKPOINT_HASH[2:]) + bytes.fromhex(original)
+        logs = [b'\x06BABE' + scale.vec(b'\x02' + scale.u32(0) + (101).to_bytes(8, 'little')), b'\x00' + scale.vec(lineage)]
+        first_header = (bytes.fromhex(scale.CHECKPOINT_HASH[2:]) + scale.compact(scale.CHECKPOINT + 1)
+                        + bytes.fromhex(hx(90)[2:]) + bytes(32) + scale.compact(len(logs)) + b''.join(logs))
+        raw += bytes.fromhex(identity.blake(first_header))
         council = identity.policy_controls(self.paths['policyScale'].read_bytes())[1]
         signatures = scale.compact(len(council)) + b''.join(bytes.fromhex(key) + b'\x01' + b'\x77' * 64 for key in council)
         envelope = b'snxrec01\x01\x04' + raw + signatures + (b'\0' if destination == 135 else b'\1' + self.paths['incomingActivePolicyScale'].read_bytes())
@@ -154,13 +160,14 @@ class ForwardRepairTests(unittest.TestCase):
             destination, version = detail['step']['expectedSpec'], detail['executingSpec']
             raw, envelope = self.auth_bytes(destination, version, prior['phase'], detail['counterBefore'], prior['cursor'], context['policies']['136'])
             number = scale.CHECKPOINT + index + 1; prefix = f'{number}.supplied.'
-            message = scale.vec(b'sora-nexus/recovery-forward-upgrade/v1') + bytes.fromhex(scale.GENESIS_HASH[2:]) + bytes.fromhex(scale.CHECKPOINT_HASH[2:]) + raw
+            message = scale.vec(b'sora-nexus/recovery-forward-upgrade/v2') + bytes.fromhex(scale.GENESIS_HASH[2:]) + bytes.fromhex(scale.CHECKPOINT_HASH[2:]) + raw
             witness = {'step': index, 'blockNumber': number, 'parentHash': prior['hash'],
                 'envelopeSha256': emit(prefix + 'escape.scale', envelope), 'authorizationSha256': emit(prefix + 'authorization.scale', raw),
                 'signingMessageSha256': emit(prefix + 'signing-message.scale', message), 'phase': prior['phase'], 'cursor': prior['cursor'],
                 'operationCounter': detail['counterBefore'], 'storedCodeBlake2': '0x' + (context['checkpointCodeBlake2'] if version == 134 else context['wasm'][str(version)]['blake2']),
                 'executingCodeBlake2': '0x' + context['wasm'][str(version)]['blake2'], 'destinationCodeBlake2': '0x' + context['wasm'][str(destination)]['blake2'],
                 'destinationSpec': destination, 'revisedPolicyCommitment': hx(0) if destination == 135 else '0x' + context['policies']['136']['commitment'],
+                'recoveryAnchor': rows[0]['hash'],
                 'signers': ['0x' + key for key in context['council']]}
             emit(prefix + 'authorization.json', witness); witnesses.append(witness)
         replay['suppliedCouncil'] = {'schema': 'sora-nexus-supplied-council-replay-witness-v1', 'authorizations': witnesses,

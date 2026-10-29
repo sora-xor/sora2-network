@@ -43,8 +43,9 @@ pub struct IncomingAudit {
 }
 impl IncomingAudit {
     pub fn validate(&self) -> Result<(), RecoveryError> {
-        if self.requests.is_empty()
-            || self.requests.len() > BridgeMaxMessagesPerCommit::get() as usize
+        // A control-only batch has no financial requests. Its nonempty, bounded
+        // authenticated control journal is required by the consumption companion.
+        if self.requests.len() > BridgeMaxMessagesPerCommit::get() as usize
             || self.operation_index as usize >= recovery::MAX_WORK_CHUNKS
             || self.operation_commitment == [0; 32]
             || self.prior_policy == Some([0; 32])
@@ -127,6 +128,7 @@ pub(super) struct Consumption {
     execution_block: u32,
     native: NativeConsumption,
     transfers: Vec<ConsumedTransfer>,
+    controls: Vec<ExpectedControl>,
 }
 
 fn read(key: &[u8], budget: &mut usize) -> Result<Option<Vec<u8>>, RecoveryError> {
@@ -252,12 +254,12 @@ pub fn expected_requests(
     let active = prepare(operation, policy)?;
     derive_requests(operation, &active)
 }
-fn derive_requests(
+pub(super) fn derive_requests(
     operation: &IncomingOperation,
     active: &ActiveOperation,
 ) -> Result<Vec<Option<IncomingRequestExpectation>>, RecoveryError> {
     let mut result = Vec::with_capacity(active.transfers.len());
-    for (i, entry) in active.transfers.iter().enumerate() {
+    for entry in &active.transfers {
         // Excluded callbacks authenticate assets/amounts in the native path, but
         // deliberately create no BridgeProxy request or credited entitlement.
         if entry.excluded {
@@ -279,7 +281,22 @@ fn derive_requests(
                 commitment: GenericCommitment::Sub(batch),
                 ..
             } => {
-                let m = batch.messages.get(i).ok_or(RecoveryError::WrongPreimage)?;
+                let m = batch
+                    .messages
+                    .iter()
+                    .enumerate()
+                    .find_map(|(index, message)| {
+                        (MessageId::batched(
+                            entry.network,
+                            ThisNetworkId::get(),
+                            batch.nonce,
+                            index as u64,
+                        )
+                        .hash()
+                            == entry.id)
+                            .then_some(message)
+                    })
+                    .ok_or(RecoveryError::WrongPreimage)?;
                 payload_request(
                     entry.network,
                     &m.payload,
@@ -545,14 +562,30 @@ pub(super) fn prepare_consumption(
     }
     .validate()?;
     let mut transfers = Vec::with_capacity(active.transfers.len());
-    for (i, (transfer, request)) in active.transfers.iter().cloned().zip(requests).enumerate() {
+    for (transfer, request) in active.transfers.iter().cloned().zip(requests) {
         let deferred_substrate_ack = if let IncomingChannel::Substrate {
             commitment: GenericCommitment::Sub(batch),
             ..
         } = &operation.channel
         {
+            let message = batch
+                .messages
+                .iter()
+                .enumerate()
+                .find_map(|(index, message)| {
+                    (MessageId::batched(
+                        transfer.network,
+                        ThisNetworkId::get(),
+                        batch.nonce,
+                        index as u64,
+                    )
+                    .hash()
+                        == transfer.id)
+                        .then_some(message)
+                })
+                .ok_or(RecoveryError::WrongPreimage)?;
             matches!(
-                decode_call(&batch.messages[i].payload)?,
+                decode_call(&message.payload)?,
                 BridgeCall::SubstrateApp(SubstrateAppCall::Transfer { .. })
             )
         } else {
@@ -567,7 +600,7 @@ pub(super) fn prepare_consumption(
         });
     }
     let value = Consumption {
-        format_version: 1,
+        format_version: 2,
         lineage: active.lineage,
         policy: active.policy,
         operation: active.operation,
@@ -576,6 +609,7 @@ pub(super) fn prepare_consumption(
         execution_block: System::block_number(),
         native: native(operation)?,
         transfers,
+        controls: active.controls.clone(),
     };
     // Reserve every optional request hash in this preflight, not its currently None size.
     if value
@@ -599,6 +633,7 @@ pub(super) fn record_consumption(
         || active.operation != value.operation
         || active.index != value.index
         || active.transfers.len() != value.transfers.len()
+        || active.controls.len() != value.controls.len()
         || System::block_number() != value.execution_block
         || sp_io::storage::get(BRIDGE_INBOUND_CONTEXT_STORAGE_KEY).as_deref()
             != Some(value.execution_block.encode().as_slice())
@@ -636,6 +671,13 @@ pub(super) fn record_consumption(
         )?;
         ack_check(stored)?;
     }
+    for (stored, actual) in value.controls.iter_mut().zip(&active.controls) {
+        stored.delivered = true;
+        if stored.encode() != actual.encode() {
+            return Err(RecoveryError::WrongPreimage);
+        }
+    }
+    validate_controls(&value, &mut budget)?;
     let bytes = value.encode();
     if bytes.len() > MAX_CHUNK_BYTES {
         return Err(RecoveryError::ChunkBounds);
@@ -644,6 +686,54 @@ pub(super) fn record_consumption(
     sp_io::storage::set(recovery::INCOMING_AUDIT_PENDING_KEY, &next.encode());
     Ok(())
 }
+fn validate_controls(value: &Consumption, budget: &mut usize) -> Result<(), RecoveryError> {
+    let count = value.transfers.len().saturating_add(value.controls.len());
+    if count == 0 || count > BridgeMaxMessagesPerCommit::get() as usize {
+        return Err(RecoveryError::ChunkBounds);
+    }
+    let mut ids = BTreeSet::new();
+    for transfer in &value.transfers {
+        if !ids.insert((transfer.transfer.network.encode(), transfer.transfer.id)) {
+            return Err(RecoveryError::DuplicateEdit);
+        }
+    }
+    for control in &value.controls {
+        let NativeConsumption::Substrate(network, _) = &value.native else {
+            return Err(RecoveryError::WrongPreimage);
+        };
+        let call = decode_call(&control.payload)?;
+        if !control.delivered
+            || control.network != GenericNetworkId::Sub(*network)
+            || control.payload.len() > BridgeMaxMessagePayloadSize::get() as usize
+            || call.encode() != control.payload
+            || control_disposition(&call) != Some(control.disposition.clone())
+            || !ids.insert((control.network.encode(), control.id))
+        {
+            return Err(RecoveryError::WrongPreimage);
+        }
+        let receipt = read(&control_receipt_key(control.network, control.id), budget)?
+            .ok_or(RecoveryError::IncompleteAudit)?;
+        if receipt != (value.lineage, value.policy, value.operation, control).encode() {
+            return Err(RecoveryError::WrongPreimage);
+        }
+        if let BridgeCall::MultisigVerifier(peer) = call {
+            use bridge_types::substrate::{DataSignerCall, MultisigVerifierCall};
+            let acknowledgement = match peer {
+                MultisigVerifierCall::AddPeer { peer } => DataSignerCall::AddPeer { peer },
+                MultisigVerifierCall::RemovePeer { peer } => DataSignerCall::RemovePeer { peer },
+            };
+            if read(
+                &multisig_verifier::recovery_peer_ack_key(*network, control.id),
+                budget,
+            )? != Some(acknowledgement.encode())
+            {
+                return Err(RecoveryError::WrongPreimage);
+            }
+        }
+    }
+    Ok(())
+}
+
 fn ack_check(transfer: &ConsumedTransfer) -> Result<(), RecoveryError> {
     if transfer.deferred_substrate_ack {
         let GenericNetworkId::Sub(network) = transfer.transfer.network else {
@@ -725,23 +815,19 @@ fn audit_context(
     Ok((audit, status, cursor, weight))
 }
 
-// Host-only mirror of validate_companion's bounded business checks. Keep the
-// deployed dispatch body unchanged; candidate validation compares this mirror
-// against that body, allowing only the supplied accepted-block upper bound.
-#[cfg(feature = "std")]
-fn validate_completed_consumption(
-    policy: &RecoveryPolicy,
+// Read-only companion/receipt checks shared by accepted-audit inspection and native balance audits.
+fn validate_consumption_at(
+    consumed_policy: [u8; 32],
     audit: &IncomingAudit,
     status: &RecoveryStatus,
     latest_consumption_block: u32,
 ) -> Result<Consumption, RecoveryError> {
-    let consumed_policy = audit.prior_policy.unwrap_or(policy.commitment());
     let mut budget = MAX_CHUNK_BYTES * 2;
     let value: Consumption = required(
         &companion_key(consumed_policy, audit.operation_commitment),
         &mut budget,
     )?;
-    if value.format_version != 1
+    if value.format_version != 2
         || value.lineage != status.policy
         || value.policy != consumed_policy
         || value.operation != audit.operation_commitment
@@ -755,6 +841,7 @@ fn validate_completed_consumption(
         return Err(RecoveryError::WrongPreimage);
     }
     native_check(&value.native, value.execution_block, &mut budget)?;
+    validate_controls(&value, &mut budget)?;
     for (entry, expected) in value.transfers.iter().zip(&audit.requests) {
         if &entry.request != expected || !entry.transfer.delivered {
             return Err(RecoveryError::WrongPreimage);
@@ -787,6 +874,77 @@ fn validate_completed_consumption(
     Ok(value)
 }
 
+#[cfg(feature = "std")]
+fn validate_completed_consumption(
+    policy: &RecoveryPolicy,
+    audit: &IncomingAudit,
+    status: &RecoveryStatus,
+    latest_consumption_block: u32,
+) -> Result<Consumption, RecoveryError> {
+    validate_consumption_at(
+        audit.prior_policy.unwrap_or(policy.commitment()),
+        audit,
+        status,
+        latest_consumption_block,
+    )
+}
+
+/// A permanent accepted marker, never caller flags, authorizes reuse of this native receipt.
+/// Read-only and restricted to the current original lineage and monotonic repair counter.
+pub(super) fn validate_audited_balance_source(
+    policy: &RecoveryPolicy,
+    audit: &IncomingAudit,
+    historical_audit_policy: Option<[u8; 32]>,
+) -> Result<ValidatedIncomingAudit, RecoveryError> {
+    audit.validate()?;
+    let status = recovery::storage::status()?.ok_or(RecoveryError::WrongPolicy)?;
+    let audited_policy = historical_audit_policy.unwrap_or(policy.commitment());
+    let consumed_policy = audit.prior_policy.unwrap_or(audited_policy);
+    if historical_audit_policy == Some(policy.commitment())
+        || audit.prior_policy == Some(audited_policy)
+    {
+        return Err(RecoveryError::WrongPolicy);
+    }
+    let marker: ([u8; 32], [u8; 32], [u8; 32], u64) = required(
+        &audit_marker_key(consumed_policy, audit.operation_commitment),
+        &mut 104usize,
+    )?;
+    let cursor: u32 = required(recovery::AUDIT_CURSOR_STORAGE_KEY, &mut 4usize)?;
+    if marker.0 != status.policy
+        || marker.1 != audited_policy
+        || marker.2 != audit.commitment()
+        || marker.3 > status.operation_counter
+        || (historical_audit_policy.is_some() && marker.3 >= status.operation_counter)
+        || (historical_audit_policy.is_none()
+            && (marker.3 != status.operation_counter
+                || audit.index >= cursor
+                || policy.audit_chunk_hashes.get(audit.index as usize)
+                    != Some(&audit.commitment())))
+    {
+        return Err(RecoveryError::WrongPreimage);
+    }
+    let mut audited_status = status.clone();
+    audited_status.operation_counter = marker.3;
+    let value = validate_consumption_at(
+        consumed_policy,
+        audit,
+        &audited_status,
+        System::block_number(),
+    )?;
+    Ok(ValidatedIncomingAudit {
+        lineage: status.policy,
+        active_policy: policy.commitment(),
+        consumed_policy,
+        operation_index: value.index,
+        operation_commitment: value.operation,
+        operation_counter: status.operation_counter,
+        consumption_counter: value.operation_counter,
+        execution_block: value.execution_block,
+        audit_index: audit.index,
+        pending_before: 0,
+    })
+}
+
 fn validate_companion(
     policy: &RecoveryPolicy,
     audit: &IncomingAudit,
@@ -811,7 +969,7 @@ fn validate_companion(
         &companion_key(consumed_policy, audit.operation_commitment),
         &mut budget,
     )?;
-    if value.format_version != 1
+    if value.format_version != 2
         || value.lineage != status.policy
         || value.policy != consumed_policy
         || value.operation != audit.operation_commitment
@@ -825,6 +983,7 @@ fn validate_companion(
         return Err(RecoveryError::WrongPreimage);
     }
     native_check(&value.native, value.execution_block, &mut budget)?;
+    validate_controls(&value, &mut budget)?;
     for (entry, expected) in value.transfers.iter().zip(&audit.requests) {
         if &entry.request != expected || !entry.transfer.delivered {
             return Err(RecoveryError::WrongPreimage);

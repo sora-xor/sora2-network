@@ -68,12 +68,47 @@ def elf(raw, machine):
             and int.from_bytes(raw[18:20], 'little') == machine, 'node is not the expected 64-bit Linux ELF')
 
 
+def copy_cargo_artifact(source, destination, target_root, target):
+    """Detach Cargo's hard-linked output without relaxing release-file guards.
+
+    Only the exact executable reported by the completed Cargo invocation is
+    eligible. The caller holds the target lane lock. Read through one no-follow
+    descriptor, reject concurrent mutation/replacement, and pin the independent
+    copy; later builds may legitimately replace the warm target's artifact.
+    """
+    require(source == target_root / target / 'release/framenode'
+            and source.resolve(strict=True) == source and not source.is_symlink(),
+            'Cargo executable path differs or is aliased')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with os.fdopen(os.open(source, os.O_RDONLY | os.O_NOFOLLOW), 'rb') as original:
+        before = os.fstat(original.fileno())
+        require(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= MAX_MEMBER,
+                'Cargo executable must be a bounded regular file')
+        def identity(value):
+            return (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns)
+        require(identity(source.lstat()) == identity(before), 'Cargo executable replaced before copy')
+        sha = hashlib.sha256(); blake = hashlib.blake2b(digest_size=32); size = 0
+        with destination.open('xb') as copied:
+            while chunk := original.read(1024 * 1024):
+                size += len(chunk)
+                require(size <= before.st_size, 'Cargo executable grew during copy')
+                sha.update(chunk); blake.update(chunk); copied.write(chunk)
+            copied.flush(); os.fsync(copied.fileno())
+        require(size == before.st_size and identity(os.fstat(original.fileno())) == identity(before)
+                and identity(source.lstat()) == identity(before), 'Cargo executable changed during copy')
+    expected = {'sha256': sha.hexdigest(), 'blake2_256': blake.hexdigest(), 'bytes': size}
+    require(build.digest(destination) == expected, 'independent Cargo executable copy differs')
+    destination.chmod(0o555)
+    return expected
+
+
 def version(raw, fingerprint, target):
     expected = f'framenode 4.8.13-src-{fingerprint[:16]}-{target}\n'.encode()
     require(raw in (expected, expected + b'\n'), 'node version/source/target differs')
 
 
 def member_name(name):
+    require(isinstance(name, str) and '\\' not in name and '\0' not in name, 'unsafe archive member')
     p = PurePosixPath(name)
     require(name and not p.is_absolute() and '..' not in p.parts and str(p) == name, 'unsafe archive member')
     return name
@@ -98,6 +133,156 @@ def tar_add(archive, name, source, size, *, mode=0o444):
     archive.addfile(info, source)
 
 
+# Accepted local save formats. Unknown compression/external descriptors fail closed.
+OCI_INDEX = 'application/vnd.oci.image.index.v1+json'
+OCI_MANIFEST = 'application/vnd.oci.image.manifest.v1+json'
+INDEX_TYPES = {OCI_INDEX, 'application/vnd.docker.distribution.manifest.list.v2+json'}
+MANIFEST_TYPES = {OCI_MANIFEST, 'application/vnd.docker.distribution.manifest.v2+json'}
+CONFIG_TYPES = {'application/vnd.oci.image.config.v1+json', 'application/vnd.docker.container.image.v1+json'}
+LAYER_TYPES = {'application/vnd.oci.image.layer.v1.tar': False,
+               'application/vnd.oci.image.layer.v1.tar+gzip': True,
+               'application/vnd.docker.image.rootfs.diff.tar': False,
+               'application/vnd.docker.image.rootfs.diff.tar.gzip': True}
+MAX_METADATA = 16 * 1024**2
+MAX_GRAPH = 128
+MAX_GRAPH_DEPTH = 4
+
+
+def saved_base_graph(small, index, base_id, architecture):
+    """Authenticate the selected base graph; the layout root is only a lookup.
+
+    The trusted identity is base_id, independently obtained by exact image inspect.
+    Non-selected platform descriptors (including attestations) cannot become layers.
+    No referenced URLs/data, unknown compression, or ambiguous selection is admitted.
+    """
+    image_id(base_id)
+    manifest = build.parse(small('manifest.json'))
+    require(isinstance(manifest, list) and len(manifest) == 1 and isinstance(manifest[0], dict), 'one saved base image required')
+    row = manifest[0]
+    require(set(row) == {'Config', 'RepoTags', 'Layers'} and isinstance(row['Layers'], list)
+            and len(row['Layers']) <= 256 and len(set(row['Layers'])) == len(row['Layers']), 'saved image manifest shape')
+    config_bytes = small(row['Config'])
+    config_id = 'sha256:' + hashlib.sha256(config_bytes).hexdigest()
+    graph = []
+    descriptors = None
+    selected_manifest = None
+    if config_id != base_id:
+        require('index.json' in index and 'oci-layout' in index, 'saved base configuration differs from pinned ID without OCI graph')
+        require(build.parse(small('oci-layout')) == {'imageLayoutVersion': '1.0.0'}, 'unsupported OCI layout')
+        layout = build.parse(small('index.json'))
+        require(isinstance(layout, dict) and type(layout.get('schemaVersion')) is int and layout['schemaVersion'] == 2
+                and layout.get('mediaType', OCI_INDEX) == OCI_INDEX
+                and set(layout) <= {'schemaVersion', 'mediaType', 'manifests', 'annotations'}
+                and isinstance(layout.get('manifests'), list) and len(layout['manifests']) == 1,
+                'one pinned OCI layout root required')
+        require(layout['manifests'][0].get('digest') == base_id, 'OCI root does not match pinned base ID')
+        seen = set()
+        selected = []
+        def descriptor(d, allowed, maximum):
+            require(isinstance(d, dict) and {'mediaType', 'digest', 'size'} <= set(d)
+                    and set(d) <= {'mediaType', 'digest', 'size', 'platform', 'annotations'}
+                    and d['mediaType'] in allowed and type(d['size']) is int and 0 < d['size'] <= maximum,
+                    'unsupported or oversized OCI descriptor')
+            image_id(d['digest'])
+            name = 'blobs/sha256/' + d['digest'][7:]
+            require(name in index and index[name].isfile() and index[name].size == d['size'], 'OCI descriptor size/blob differs')
+            return name
+        def document(d, allowed):
+            name = descriptor(d, allowed, MAX_METADATA)
+            raw = small(name)
+            require('sha256:' + hashlib.sha256(raw).hexdigest() == d['digest'], 'OCI descriptor digest differs')
+            graph.append({'digest': d['digest'], 'size': d['size'], 'mediaType': d['mediaType']})
+            value = build.parse(raw)
+            require(isinstance(value, dict), 'OCI document object required')
+            return value
+        def visit(d, depth):
+            require(depth <= MAX_GRAPH_DEPTH and len(seen) < MAX_GRAPH, 'OCI graph bound')
+            require(isinstance(d, dict) and isinstance(d.get('digest'), str) and d['digest'] not in seen, 'duplicate/cyclic OCI graph descriptor')
+            seen.add(d['digest'])
+            # Descriptors must be structurally valid even when their platform is skipped.
+            require(d.get('mediaType') in INDEX_TYPES | MANIFEST_TYPES, 'unsupported OCI graph media type')
+            platform = d.get('platform')
+            if platform is not None:
+                require(isinstance(platform, dict) and set(platform) <= {'os', 'architecture', 'variant'}
+                        and isinstance(platform.get('os'), str) and isinstance(platform.get('architecture'), str), 'OCI platform shape')
+                if platform['os'] != 'linux' or platform['architecture'] != architecture:
+                    # Only a descriptor in the authenticated parent is ignored; no blob is used.
+                    require(type(d.get('size')) is int and 0 < d['size'] <= MAX_METADATA, 'unselected OCI descriptor size')
+                    image_id(d['digest'])
+                    require({'mediaType', 'digest', 'size'} <= set(d)
+                            and set(d) <= {'mediaType', 'digest', 'size', 'platform', 'annotations'}, 'unselected OCI descriptor shape')
+                    return
+                require('variant' not in platform or (architecture == 'arm64' and platform['variant'] == 'v8'), 'unsupported selected OCI platform variant')
+            value = document(d, INDEX_TYPES | MANIFEST_TYPES)
+            require(type(value.get('schemaVersion')) is int and value['schemaVersion'] == 2
+                    and value.get('mediaType') == d['mediaType'], 'OCI document schema/media type differs')
+            if d['mediaType'] in INDEX_TYPES:
+                require(set(value) <= {'schemaVersion', 'mediaType', 'manifests', 'annotations'}
+                        and isinstance(value.get('manifests'), list) and 0 < len(value['manifests']) <= MAX_GRAPH,
+                        'OCI index shape/bound')
+                for child in value['manifests']:
+                    visit(child, depth + 1)
+            else:
+                require(set(value) <= {'schemaVersion', 'mediaType', 'config', 'layers', 'annotations'}
+                        and isinstance(value.get('layers'), list) and len(value['layers']) <= 256, 'OCI image manifest shape')
+                candidate_config = document(value.get('config'), CONFIG_TYPES)
+                if candidate_config.get('os') != 'linux' or candidate_config.get('architecture') != architecture:
+                    require(platform is None, 'OCI descriptor/config platform differs')
+                    return
+                selected.append((d['digest'], value))
+        visit(layout['manifests'][0], 0)
+        require(len(selected) == 1, 'unique selected OCI platform image required')
+        selected_manifest, value = selected[0]
+        require(value['config']['digest'] == config_id
+                and row['Config'] == 'blobs/sha256/' + config_id[7:], 'saved Docker/OCI configuration differs')
+        descriptors = value['layers']
+        require(len(descriptors) == len(row['Layers']), 'saved Docker/OCI layer count differs')
+        for name, d in zip(row['Layers'], descriptors):
+            require(descriptor(d, LAYER_TYPES, MAX_MEMBER) == name, 'saved Docker/OCI layer order differs')
+    config = build.parse(config_bytes)
+    require(isinstance(config, dict) and config.get('os') == 'linux' and config.get('architecture') == architecture, 'saved base platform differs')
+    rootfs = config.get('rootfs', {})
+    require(isinstance(rootfs, dict) and rootfs.get('type') == 'layers' and isinstance(rootfs.get('diff_ids'), list)
+            and len(rootfs['diff_ids']) == len(row['Layers']) <= 256, 'base rootfs differs')
+    require(isinstance(config.get('history', []), list), 'base history shape')
+    layers = []
+    for position, (name, diff_id) in enumerate(zip(row['Layers'], rootfs['diff_ids'])):
+        member_name(name); image_id(diff_id)
+        require(name in index and index[name].isfile(), 'saved layer missing')
+        d = descriptors[position] if descriptors is not None else None
+        layers.append({'name': name, 'diffId': diff_id, 'gzip': LAYER_TYPES[d['mediaType']] if d else False,
+                       'blobDigest': d['digest'] if d else diff_id, 'bytes': index[name].size})
+    return config, layers, {'inputImageId': base_id, 'configId': config_id,
+                           'selectedManifestDigest': selected_manifest, 'authenticatedDocuments': graph,
+                           'format': 'oci-descriptor-graph' if descriptors is not None else 'docker-config-id'}
+
+
+def normalized_layer(base, member, info, destination, remaining):
+    """Authenticate compressed bytes first, then bound and authenticate plaintext.
+
+    Layer tar entries are never extracted. This copies one opaque layer stream to
+    a fresh file, so compressed blob hashes are never confused with rootfs diff IDs.
+    """
+    with base.extractfile(member) as source:
+        require('sha256:' + sha_stream(source) == info['blobDigest'], 'saved layer blob digest differs from pinned rootfs/descriptor')
+    sha = hashlib.sha256(); blake = hashlib.blake2b(digest_size=32); count = 0
+    with base.extractfile(member) as source, destination.open('xb') as sink:
+        stream = gzip.GzipFile(fileobj=source, mode='rb') if info['gzip'] else source
+        try:
+            while chunk := stream.read(1024 * 1024):
+                count += len(chunk)
+                require(count <= MAX_MEMBER and count <= remaining, 'expanded layer byte bound')
+                sha.update(chunk); blake.update(chunk); sink.write(chunk)
+        finally:
+            if info['gzip']:
+                stream.close()
+        sink.flush(); os.fsync(sink.fileno())
+    require('sha256:' + sha.hexdigest() == info['diffId'], 'saved layer differs from pinned rootfs diff ID')
+    expected = {'sha256': sha.hexdigest(), 'blake2_256': blake.hexdigest(), 'bytes': count}
+    require(build.digest(destination) == expected, 'normalized layer changed')
+    return expected
+
+
 def archives(base_archive, base_id, binary, output, architecture, fingerprint, epoch):
     """Create deterministic Docker and OCI archives from exact verified layers.
 
@@ -106,6 +291,8 @@ def archives(base_archive, base_id, binary, output, architecture, fingerprint, e
     the pinned image configuration's uncompressed diff IDs.
     """
     require(base_archive.stat().st_size <= MAX_ARCHIVE, 'base archive byte bound')
+    base_pin = build.digest(base_archive)
+    node_pin = build.digest(binary)
     output.mkdir(parents=True, exist_ok=False)
     layout = output / 'oci'
     blobs = layout / 'blobs/sha256'
@@ -114,41 +301,37 @@ def archives(base_archive, base_id, binary, output, architecture, fingerprint, e
     with tarfile.open(layer, 'w', format=tarfile.USTAR_FORMAT) as tar:
         with binary.open('rb') as source:
             tar_add(tar, 'usr/local/bin/framenode', source, binary.stat().st_size, mode=0o555)
-    new_diff = build.digest(layer)['sha256']
+    node_layer_pin = build.digest(layer)
+    new_diff = node_layer_pin['sha256']
+    created_pins = {layer: node_layer_pin}
     with tarfile.open(base_archive, 'r:') as base:
-        members = base.getmembers()
-        require(len(members) <= 65536 and sum(m.size for m in members) <= MAX_ARCHIVE, 'base archive bounds')
         index = {}
-        for member in members:
+        member_bytes = 0
+        for member in base:
+            member_bytes += member.size
+            require(len(index) < 65536 and member_bytes <= MAX_ARCHIVE, 'base archive bounds')
             name = member_name(member.name.rstrip('/'))
-            require(name not in index and (member.isfile() or member.isdir()) and member.size <= MAX_MEMBER,
+            require(name not in index and (member.isfile() or member.isdir()) and 0 <= member.size <= MAX_MEMBER,
                     'duplicate/linked/oversized base archive member')
             index[name] = member
         def small(name):
             member_name(name)
-            require(name in index and index[name].isfile() and index[name].size <= 16 * 1024**2, 'base metadata missing/oversized')
+            require(name in index and index[name].isfile() and index[name].size <= MAX_METADATA, 'base metadata missing/oversized')
             with base.extractfile(index[name]) as stream:
                 return stream.read()
-        manifest = build.parse(small('manifest.json'))
-        require(isinstance(manifest, list) and len(manifest) == 1 and isinstance(manifest[0], dict), 'one saved base image required')
-        row = manifest[0]
-        require(set(row) == {'Config', 'RepoTags', 'Layers'} and isinstance(row['Layers'], list), 'saved image manifest shape')
-        config_bytes = small(row['Config'])
-        require('sha256:' + hashlib.sha256(config_bytes).hexdigest() == base_id, 'saved base configuration differs from pinned ID')
-        config = build.parse(config_bytes)
-        require(config.get('os') == 'linux' and config.get('architecture') == architecture, 'saved base platform differs')
-        rootfs = config.get('rootfs', {})
-        require(rootfs.get('type') == 'layers' and isinstance(rootfs.get('diff_ids'), list)
-                and len(rootfs['diff_ids']) == len(row['Layers']) <= 256, 'base rootfs differs')
+        config, layer_infos, base_identity = saved_base_graph(small, index, base_id, architecture)
+        rootfs = config['rootfs']
         layers = []
-        for name, diff_id in zip(row['Layers'], rootfs['diff_ids']):
-            member_name(name); image_id(diff_id)
-            require(name in index and index[name].isfile(), 'saved layer missing')
-            with base.extractfile(index[name]) as source:
-                require('sha256:' + sha_stream(source) == diff_id, 'saved layer differs from pinned rootfs')
-            layers.append((name, diff_id, index[name].size))
+        expanded = 0
+        normalized = output / 'base-layers'
+        normalized.mkdir()
+        for position, info in enumerate(layer_infos):
+            path = normalized / f'{position:03d}.tar'
+            pin = normalized_layer(base, index[info['name']], info, path, MAX_ARCHIVE - expanded)
+            expanded += pin['bytes']
+            layers.append((path, info['diffId'], pin))
+            created_pins[path] = pin
         created = datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
-        node_pin = build.digest(binary)
         labels = {'org.opencontainers.image.title': 'SORA Nexus node', 'org.opencontainers.image.version': '4.8.13',
                   'org.sora-nexus.source-sha256': fingerprint, 'org.sora-nexus.node-sha256': node_pin['sha256']}
         final_config = {'architecture': architecture, 'os': 'linux', 'created': created,
@@ -158,22 +341,26 @@ def archives(base_archive, base_id, binary, output, architecture, fingerprint, e
             'history': config.get('history', []) + [{'created': created, 'created_by': 'SORA Nexus verified node layer'}]}
         config_raw = build.serialized(final_config)
         config_sha = hashlib.sha256(config_raw).hexdigest()
-        build.write(blobs / config_sha, config_raw)
+        created_pins[blobs / config_sha] = build.write(blobs / config_sha, config_raw)
         descriptors = []
         docker_path = output / 'node.docker.tar'
         with tarfile.open(docker_path, 'w', format=tarfile.USTAR_FORMAT) as docker:
             names = []
-            for position, (name, diff_id, size) in enumerate(layers + [(None, 'sha256:' + new_diff, layer.stat().st_size)]):
+            for position, (path, diff_id, layer_pin) in enumerate(layers + [(layer, 'sha256:' + new_diff, node_layer_pin)]):
+                require(build.digest(path) == layer_pin, 'normalized layer changed before packaging')
+                size = layer_pin['bytes']
                 normalized = f'layers/{position:03d}-{diff_id[7:]}/layer.tar'
                 names.append(normalized)
-                with (base.extractfile(index[name]) if name is not None else layer.open('rb')) as stream:
+                with path.open('rb') as stream:
                     tar_add(docker, normalized, stream, size)
                 compressed = output / f'compressed-{position:03d}.gz'
                 with compressed.open('xb') as sink, gzip.GzipFile(filename='', mode='wb', fileobj=sink, mtime=0) as zipper:
-                    with (base.extractfile(index[name]) if name is not None else layer.open('rb')) as source:
+                    with path.open('rb') as source:
                         require('sha256:' + sha_stream(source, zipper) == diff_id, 'layer changed while compressing')
+                require(build.digest(path) == layer_pin, 'normalized layer changed during packaging')
                 pin = build.digest(compressed)
                 compressed.rename(blobs / pin['sha256'])
+                created_pins[blobs / pin['sha256']] = pin
                 descriptors.append({'mediaType': 'application/vnd.oci.image.layer.v1.tar+gzip',
                                     'digest': 'sha256:' + pin['sha256'], 'size': pin['bytes']})
             tar_add(docker, config_sha + '.json', io.BytesIO(config_raw), len(config_raw))
@@ -183,19 +370,31 @@ def archives(base_archive, base_id, binary, output, architecture, fingerprint, e
             'config': {'mediaType': 'application/vnd.oci.image.config.v1+json', 'digest': 'sha256:' + config_sha, 'size': len(config_raw)},
             'layers': descriptors})
         om_sha = hashlib.sha256(om).hexdigest()
-        build.write(blobs / om_sha, om)
-        build.write(layout / 'oci-layout', {'imageLayoutVersion': '1.0.0'})
-        build.write(layout / 'index.json', {'schemaVersion': 2, 'manifests': [{'mediaType': 'application/vnd.oci.image.manifest.v1+json',
+        created_pins[docker_path] = build.digest(docker_path)
+        created_pins[blobs / om_sha] = build.write(blobs / om_sha, om)
+        created_pins[layout / 'oci-layout'] = build.write(layout / 'oci-layout', {'imageLayoutVersion': '1.0.0'})
+        index_pin = build.write(layout / 'index.json', {'schemaVersion': 2, 'manifests': [{'mediaType': 'application/vnd.oci.image.manifest.v1+json',
             'digest': 'sha256:' + om_sha, 'size': len(om), 'platform': {'os': 'linux', 'architecture': architecture}}]})
+        created_pins[layout / 'index.json'] = index_pin
+        for path, expected in created_pins.items():
+            require(build.digest(path) == expected, 'image component changed before OCI packaging')
         with tarfile.open(output / 'node.oci.tar', 'w', format=tarfile.USTAR_FORMAT) as tar:
             for path in sorted(layout.rglob('*')):
                 if path.is_file():
                     with path.open('rb') as source:
                         tar_add(tar, path.relative_to(layout).as_posix(), source, path.stat().st_size)
-    return {'imageId': 'sha256:' + config_sha, 'ociManifestDigest': 'sha256:' + om_sha,
-            'node': node_pin, 'labels': labels, 'dockerArchive': build.digest(docker_path),
-            'ociArchive': build.digest(output / 'node.oci.tar'), 'created': created,
-            'files': {p.relative_to(output).as_posix(): build.digest(p) for p in output.rglob('*') if p.is_file()}}
+    require(build.digest(base_archive) == base_pin and build.digest(binary) == node_pin, 'archive/node input changed during assembly')
+    created_pins[output / 'node.oci.tar'] = build.digest(output / 'node.oci.tar')
+    require({p for p in output.rglob('*') if p.is_file()} == set(created_pins), 'unexpected image assembly output')
+    for path, expected in created_pins.items():
+        require(build.digest(path) == expected, 'image component changed after packaging')
+    return {'imageId': 'sha256:' + om_sha, 'loadedImageReference': 'sha256:' + om_sha,
+            'configId': 'sha256:' + config_sha, 'ociManifestDigest': 'sha256:' + om_sha,
+            'ociIndexDigest': 'sha256:' + index_pin['sha256'], 'baseIdentity': base_identity,
+            'loadedArchiveFormat': 'oci-layout', 'dockerArchiveLoadVerified': False,
+            'node': node_pin, 'labels': labels, 'dockerArchive': created_pins[docker_path],
+            'ociArchive': created_pins[output / 'node.oci.tar'], 'created': created,
+            'files': {p.relative_to(output).as_posix(): expected for p, expected in created_pins.items()}}
 
 
 def run(args):
@@ -339,11 +538,12 @@ def run(args):
             require(len(candidates) == 1 and any(row.get('reason') == 'build-finished' and row.get('success') is True for row in messages), 'Cargo did not report exact completed node artifact')
             native = args.target / target / 'release/framenode'
             node = args.output / 'bin/framenode'
-            copy(native, node, build.digest(native)); node.chmod(0o555)
+            native_pin = copy_cargo_artifact(native, node, args.target, target)
+            retain(node, native_pin)
             with node.open('rb') as stream:
                 elf(stream.read(64), machine)
-            version(container('node-version', args.base_image, '/node', ['--version'],
-                [f'type=bind,source={node},target=/node,readonly']), fingerprint, target)
+            version(container('node-version', args.base_image, '/framenode', ['--version'],
+                [f'type=bind,source={node},target=/framenode,readonly']), fingerprint, target)
             base_archive = args.output / 'base.docker.tar'
             command('base-save', ['image', 'save', '--output', str(base_archive), args.base_image])
             retain(base_archive, build.digest(base_archive))
@@ -353,7 +553,7 @@ def run(args):
                 require(build.digest(path) == expected, 'image output changed after assembly')
                 retain(path, expected)
             guard()
-            command('image-load', ['image', 'load', '--input', str(args.output / 'images/node.docker.tar')])
+            command('image-load', ['image', 'load', '--input', str(args.output / 'images/node.oci.tar')])
             inspection = inspect_image(command('result-image', ['image', 'inspect', images['imageId']]), images['imageId'], architecture)
             require(inspection.get('Config', {}).get('Labels') == images['labels'], 'loaded image labels differ')
             extracted = args.output / 'image-node'

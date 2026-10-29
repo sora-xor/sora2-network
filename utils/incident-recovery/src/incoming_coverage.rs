@@ -21,7 +21,8 @@ use eth_bridge::requests::{
 };
 use framenode_runtime::{
     incident_recovery_incoming::{
-        authenticated_hashi_source, IncomingAudit, IncomingChannel, IncomingOperation,
+        authenticated_hashi_source, classify_substrate_control, ControlDisposition, IncomingAudit,
+        IncomingChannel, IncomingOperation,
     },
     incident_recovery_outgoing::OutgoingOperation,
     Runtime,
@@ -48,6 +49,8 @@ pub struct WorkIndex {
     pub work: Vec<WorkFile>,
     pub audits: Vec<WorkFile>,
     pub terminal: WorkFile,
+    #[serde(default)]
+    pub terminal_prelude: Vec<WorkFile>,
 }
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -96,6 +99,7 @@ fn load_work_inner(
         || index.audits.len() != policy.audit_chunk_hashes.len()
         || index.work.len() > MAX_ITEMS
         || index.audits.len() > MAX_ITEMS
+        || index.terminal_prelude.len() >= recovery::invariants::MAX_TERMINAL_PAGES
     {
         return Err("incoming complete work-index/policy mismatch".into());
     }
@@ -162,7 +166,14 @@ fn load_work_inner(
                 .enumerate()
                 .map(|(i, file)| (1, i, file)),
         )
-        .chain(std::iter::once((2, 0, index.terminal)))
+        .chain(
+            index
+                .terminal_prelude
+                .into_iter()
+                .chain(std::iter::once(index.terminal))
+                .enumerate()
+                .map(|(i, file)| (2, i, file)),
+        )
         .map(|(kind, index, file)| read(file).map(|envelope| (kind, index, envelope)));
     check_stream_with_replay(policy, work_count, audit_count, stream, replay)
 }
@@ -201,6 +212,7 @@ fn check_stream_with_replay(
     };
     let (mut work_seen, mut audits_seen, mut terminal_seen) = (0usize, 0usize, false);
     let mut incoming_commitments = BTreeMap::new();
+    let mut terminal_pages = Vec::new();
     for item in stream {
         let (kind, index, envelope) = item?;
         if terminal_seen {
@@ -260,6 +272,26 @@ fn check_stream_with_replay(
                         }
                         result
                     }
+                    RecoveryAction::NativeBalanceAudit(bytes) => {
+                        let audit: framenode_runtime::incident_recovery_incoming::NativeBalanceAudit = decode(&bytes)?;
+                        audit
+                            .validate()
+                            .map_err(|e| format!("native balance audit shape: {e:?}"))?;
+                        let result = (audit.baseline.index, audit.commitment());
+                        // Only account-value witnesses may be rebased by this action.
+                        // Retained bridge/request witnesses still require their exact bytes.
+                        for witness in audit.baseline.witnesses {
+                            if witness.scope == StorageScope::Top
+                                && checked
+                                    .witnesses
+                                    .insert(witness.key, witness.value_hash)
+                                    .is_some()
+                            {
+                                return Err("duplicate incoming preservation audit witness".into());
+                            }
+                        }
+                        result
+                    }
                     RecoveryAction::PrefixAudit(audit) => (audit.index, audit.commitment()),
                     RecoveryAction::IncomingAudit(bytes) => {
                         let audit: IncomingAudit = decode(&bytes)?;
@@ -300,14 +332,32 @@ fn check_stream_with_replay(
                 audits_seen += 1;
             }
             2 => {
-                if index != 0
-                    || work_seen != work_count
-                    || audits_seen != audit_count
-                    || !matches!(envelope.action, RecoveryAction::TerminalAudit(audit) if audit.commitment() == policy.terminal_audit_commitment)
-                {
+                if work_seen != work_count || audits_seen != audit_count {
                     return Err("incoming terminal-index commitment mismatch".into());
                 }
-                terminal_seen = true;
+                match envelope.action {
+                    RecoveryAction::TerminalAudit(audit)
+                        if index == 0
+                            && terminal_pages.is_empty()
+                            && audit.commitment() == policy.terminal_audit_commitment =>
+                    {
+                        terminal_seen = true;
+                    }
+                    RecoveryAction::TerminalAuditPage(page)
+                        if index == terminal_pages.len()
+                            && page.index as usize == index
+                            && page.commitment() == policy.terminal_audit_commitment =>
+                    {
+                        let last = page.is_last();
+                        terminal_pages.push(page);
+                        if last {
+                            recovery::invariants::join_terminal_pages(&terminal_pages)
+                                .map_err(|e| format!("incoming terminal pages: {e:?}"))?;
+                            terminal_seen = true;
+                        }
+                    }
+                    _ => return Err("incoming terminal-index commitment mismatch".into()),
+                }
             }
             _ => return Err("unknown incoming work-index stream kind".into()),
         }
@@ -414,6 +464,8 @@ pub enum Action {
     Exclude,
     RetainConsumed,
     Quarantine,
+    JournalControl,
+    ApplyVerifierPeer,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -476,6 +528,8 @@ pub struct Report {
     pub checkpoint_request_commitment: String,
     pub external_deliveries: usize,
     pub work_deliveries: usize,
+    pub work_control_messages: usize,
+    pub deferred_control_execution_verified: bool,
     pub evidence_hashes: Vec<String>,
     pub deliveries: Vec<CoveredDelivery>,
     pub local_pending_coverage_verified: bool,
@@ -502,6 +556,13 @@ struct LocalDelivery {
     payload_hash: Option<[u8; 32]>,
     historical_adapter_required: bool,
 }
+struct PlannedControl {
+    operation_index: u32,
+    operation_commitment: [u8; 32],
+    disposition: ControlDisposition,
+    evidence: [u8; 32],
+}
+
 struct PlannedDelivery {
     operation_index: u32,
     operation_commitment: [u8; 32],
@@ -693,6 +754,19 @@ fn add_planned(
         } => (sender, GenericTimepoint::TON(message.transaction_id), None),
         _ => return Err("incoming audit has no static native request adapter".into()),
     };
+    let message_index = match &operation.channel {
+        IncomingChannel::Substrate {
+            commitment: GenericCommitment::Sub(batch),
+            ..
+        } => batch.messages[..message_index]
+            .iter()
+            .try_fold(0usize, |count, message| {
+                classify_substrate_control(&message.payload)
+                    .map(|control| count + usize::from(control.is_none()))
+                    .map_err(|e| format!("incoming control shape: {e:?}"))
+            })?,
+        _ => message_index,
+    };
     if out.len() >= MAX_ITEMS {
         return Err("incoming work message bound".into());
     }
@@ -727,6 +801,11 @@ fn add_payload(
     substrate: bool,
 ) -> Result<()> {
     let (sender, beneficiary) = match decode::<BridgeCall>(payload)? {
+        BridgeCall::SubstrateApp(SubstrateAppCall::Transfer {
+            sender: GenericAccount::Unknown | GenericAccount::Root, ..
+        }) if substrate => return Err("incoming transfer requires an independently authenticated source-attribution adapter; Unknown/Root is not an attacker-exclusion proof".into()),
+        BridgeCall::ParachainApp(ParachainAppCall::Transfer { sender: None, .. }) if substrate =>
+            return Err("incoming transfer requires an independently authenticated source-attribution adapter; absent parachain sender is not an attacker-exclusion proof".into()),
         BridgeCall::SubstrateApp(SubstrateAppCall::Transfer {
             sender,
             recipient: GenericAccount::Sora(recipient),
@@ -1016,6 +1095,7 @@ pub fn verify(
         commitment,
     } = scan_checkpoint(schema, storage)?;
     let mut planned = BTreeMap::new();
+    let mut controls = BTreeMap::<Identity, PlannedControl>::new();
     if let Some(replay) = &work.replay {
         replay.verify_checkpoint_storage(storage)?;
     }
@@ -1080,21 +1160,40 @@ pub fn verify(
                 commitment: GenericCommitment::Sub(batch),
                 ..
             } => {
+                // Substrate preparation is read-only structural admission: it
+                // validates both registries, mapping conflicts and every payload.
+                // Native proof/nonce execution remains an independent release gate.
+                framenode_runtime::incident_recovery_incoming::audit_targets(op, policy)
+                    .map_err(|e| format!("incoming Substrate admission shape (including source attribution): {e:?}"))?;
                 let network = GenericNetworkId::Sub(*network);
                 for (index, message) in batch.messages.iter().enumerate() {
-                    add_payload(
-                        &mut planned,
-                        op,
+                    let id = MessageId::batched(
                         network,
-                        MessageId::batched(
-                            network,
-                            GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                            batch.nonce,
-                            index as u64,
-                        ),
-                        &message.payload,
-                        true,
-                    )?;
+                        GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                        batch.nonce,
+                        index as u64,
+                    );
+                    if let Some(disposition) = classify_substrate_control(&message.payload)
+                        .map_err(|e| format!("incoming control shape: {e:?}"))?
+                    {
+                        if controls.len() >= MAX_ITEMS
+                            || controls
+                                .insert(
+                                    (network.encode(), id.hash().0),
+                                    PlannedControl {
+                                        operation_index: op.index,
+                                        operation_commitment: op.commitment(),
+                                        disposition,
+                                        evidence: op.finalized_source_evidence,
+                                    },
+                                )
+                                .is_some()
+                        {
+                            return Err("duplicate or excessive incoming control message".into());
+                        }
+                    } else {
+                        add_payload(&mut planned, op, network, id, &message.payload, true)?;
+                    }
                 }
             }
             IncomingChannel::Generic {
@@ -1119,7 +1218,20 @@ pub fn verify(
             _ => return Err("incoming coverage has no production adapter for this channel".into()),
         }
     }
+    if controls
+        .keys()
+        .any(|id| planned.contains_key(id) || local.contains_key(id))
+    {
+        return Err("incoming control overlaps a financial receipt".into());
+    }
     let mut audited_messages = BTreeMap::<(u32, [u8; 32]), usize>::new();
+    for control in controls.values() {
+        let id = (control.operation_index, control.operation_commitment);
+        if !work.incoming_audits.contains_key(&id) {
+            return Err("incoming control lacks its semantic consumption audit".into());
+        }
+        audited_messages.entry(id).or_default();
+    }
     for delivery in planned.values() {
         let audit = work
             .incoming_audits
@@ -1184,6 +1296,7 @@ pub fn verify(
         .map(|(id, _)| id.clone())
         .chain(inventory.keys().cloned())
         .chain(planned.keys().cloned())
+        .chain(controls.keys().cloned())
         .collect();
     if required != decisions.keys().cloned().collect() {
         return Err("incomplete or extraneous incoming dispositions".into());
@@ -1195,6 +1308,7 @@ pub fn verify(
         let source = local.get(&id);
         let instruction = inventory.get(&id);
         let operation = planned.get(&id);
+        let control = controls.get(&id);
         let mut records = source.map(|s| s.records.clone()).unwrap_or_default();
         if decision.action == Action::RetainConsumed {
             records.extend(
@@ -1243,7 +1357,39 @@ pub fn verify(
         if original != expected {
             return Err("incoming beneficiary has no payload or source evidence".into());
         }
+        if control.is_some()
+            && !matches!(
+                decision.action,
+                Action::JournalControl | Action::ApplyVerifierPeer
+            )
+        {
+            return Err("incoming control requires its explicit non-financial disposition".into());
+        }
         match decision.action {
+            Action::JournalControl | Action::ApplyVerifierPeer => {
+                let control =
+                    control.ok_or("control disposition has no executable control work")?;
+                let expected = match control.disposition {
+                    ControlDisposition::Deferred => Action::JournalControl,
+                    ControlDisposition::VerifierPeer => Action::ApplyVerifierPeer,
+                };
+                if decision.action != expected
+                    || original.is_some()
+                    || effective.is_some()
+                    || instruction.is_none_or(|i| {
+                        i.obligation != Obligation::Admit || i.original_beneficiary.is_some()
+                    })
+                    || control.evidence != h32(&decision.evidence_hash)?
+                    || decision.quarantine_reason.is_some()
+                    || !records.is_empty()
+                    || operation.is_some()
+                {
+                    return Err(
+                        "incoming control disposition/evidence or financial attribution differs"
+                            .into(),
+                    );
+                }
+            }
             Action::Process | Action::Exclude => {
                 let operation = operation.ok_or("incoming disposition has no executable work")?;
                 if source.is_some_and(|s| s.consumed) {
@@ -1337,6 +1483,8 @@ pub fn verify(
         checkpoint_request_commitment: hx(&commitment),
         external_deliveries: external.deliveries.len(),
         work_deliveries: planned.len(),
+        work_control_messages: controls.len(),
+        deferred_control_execution_verified: false,
         evidence_hashes: evidence.into_iter().collect(),
         deliveries,
         local_pending_coverage_verified: true,

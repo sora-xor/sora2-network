@@ -435,6 +435,7 @@ mod tests {
                 key.sign(&common::recovery::replacement_ownership_message(&pair)),
             )
             .encode()),
+            intake: None,
         }
     }
     fn fixture(

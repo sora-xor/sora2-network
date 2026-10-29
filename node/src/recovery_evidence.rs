@@ -2,7 +2,6 @@
 
 use codec::{DecodeAll, Encode};
 use common::recovery::{RecoveryStatus, CHECKPOINT_HASH, CHECKPOINT_NUMBER, GENESIS_HASH};
-use framenode_runtime::opaque::Block;
 use sc_client_api::{AuxStore, ProofProvider, StorageProvider};
 use sc_network_sync::strategy::warp::{EncodedProof, VerificationResult, WarpSyncProvider};
 use sp_blockchain::HeaderBackend;
@@ -69,7 +68,7 @@ mod tests {
         assert_eq!(first["sequence"], 0);
         assert_eq!(
             first["proofBlake2"],
-            hex(&sp_core::blake2_256(b"public synthetic proof"))
+            hex(&sp_io::hashing::blake2_256(b"public synthetic proof"))
         );
         assert_eq!(
             fs::read(path.join("00000000.scale")).unwrap(),
@@ -139,6 +138,35 @@ impl Recorder {
         }))
     }
 
+    /// Record the database only after its recovery startup guard succeeds.
+    /// A missing number index is explicit and distinct from a missing header.
+    pub fn record_database_admission(
+        &self,
+        client: &crate::service::FullClient,
+    ) -> Result<(), String> {
+        let info = client.info();
+        let checkpoint_number_index = client.hash(CHECKPOINT_NUMBER).map_err(|e| e.to_string())?;
+        let checkpoint_header = client
+            .header(H256::from(CHECKPOINT_HASH))
+            .map_err(|e| e.to_string())?;
+        let checkpoint_import_policy = client
+            .get_aux(b"sora-nexus/recovery/checkpoint-imported/v1")
+            .map_err(|e| e.to_string())?;
+        self.record(
+            serde_json::json!({
+                "kind": "database-admitted",
+                "bestHash": format!("{:#x}", info.best_hash),
+                "bestNumber": info.best_number,
+                "finalizedHash": format!("{:#x}", info.finalized_hash),
+                "finalizedNumber": info.finalized_number,
+                "checkpointNumberIndexHash": checkpoint_number_index.map(|hash| format!("{hash:#x}")),
+                "checkpointHeaderPresentByHash": checkpoint_header.is_some(),
+                "checkpointImportPolicy": checkpoint_import_policy.as_deref().map(hex),
+            }),
+            None,
+        )
+    }
+
     /// Retain an actual observation and optional raw proof with no overwrite.
     pub fn record(&self, mut value: serde_json::Value, proof: Option<&[u8]>) -> Result<(), String> {
         let mut sequence = self
@@ -155,7 +183,7 @@ impl Recorder {
             let name = format!("{:08}.scale", *sequence);
             write_new(&self.directory.join(&name), proof)?;
             value["proofFile"] = name.into();
-            value["proofBlake2"] = hex(&sp_core::blake2_256(proof)).into();
+            value["proofBlake2"] = hex(&sp_io::hashing::blake2_256(proof)).into();
         }
         write_new(
             &self.directory.join(format!("{:08}.json", *sequence)),
@@ -232,8 +260,8 @@ fn storage_keys() -> Vec<Vec<u8>> {
         ("Babe", "NextEpochConfig"),
         ("Liveness", "DisabledDuringSession"),
     ] {
-        let mut key = sp_core::twox_128(pallet.as_bytes()).to_vec();
-        key.extend_from_slice(&sp_core::twox_128(item.as_bytes()));
+        let mut key = sp_io::hashing::twox_128(pallet.as_bytes()).to_vec();
+        key.extend_from_slice(&sp_io::hashing::twox_128(item.as_bytes()));
         keys.push(key);
     }
     keys
@@ -273,6 +301,10 @@ impl VerifyRecoveryDatabaseCmd {
             .header(H256::from(CHECKPOINT_HASH))
             .map_err(|e| e.to_string())?
             .ok_or("missing checkpoint")?;
+        let checkpoint_number_index = client.hash(CHECKPOINT_NUMBER).map_err(|e| e.to_string())?;
+        let checkpoint_import_policy = client
+            .get_aux(b"sora-nexus/recovery/checkpoint-imported/v1")
+            .map_err(|e| e.to_string())?;
         fs::create_dir(&self.output).map_err(|e| e.to_string())?;
         write_new(&self.output.join("target-header.scale"), &header.encode())?;
         write_new(
@@ -299,7 +331,7 @@ impl VerifyRecoveryDatabaseCmd {
             if values.get(key) != Some(&actual) {
                 return Err("persisted storage proof mismatch".into());
             }
-            storage.insert(hex(key), match actual { Some(value) if key == b":code" => serde_json::json!({"blake2":hex(&sp_core::blake2_256(&value)), "bytes":value.len()}),
+            storage.insert(hex(key), match actual { Some(value) if key == b":code" => serde_json::json!({"blake2":hex(&sp_io::hashing::blake2_256(&value)), "bytes":value.len()}),
                 Some(value) => serde_json::Value::String(hex(&value)), None => serde_json::Value::Null });
         }
         let status = values
@@ -332,7 +364,7 @@ impl VerifyRecoveryDatabaseCmd {
             let result = verifier.verify(&raw).map_err(|e| e.to_string())?;
             let name = format!("finality-{:04}.scale", finality.len());
             write_new(&self.output.join(&name), &raw.0)?;
-            finality.push(serde_json::json!({"file":name,"context":format!("{context:#x}"),"blake2":hex(&sp_core::blake2_256(&raw.0))}));
+            finality.push(serde_json::json!({"file":name,"context":format!("{context:#x}"),"blake2":hex(&sp_io::hashing::blake2_256(&raw.0))}));
             match result {
                 VerificationResult::Complete(final_header, _) => {
                     if final_header.hash() != expected {
@@ -399,7 +431,7 @@ impl VerifyRecoveryDatabaseCmd {
                     return Err("invalid proof size/type".into());
                 }
                 let bytes = fs::read(raw_path).map_err(|e| e.to_string())?;
-                if record["proofBlake2"] != hex(&sp_core::blake2_256(&bytes))
+                if record["proofBlake2"] != hex(&sp_io::hashing::blake2_256(&bytes))
                     || record["context"] != format!("{:#x}", observed.next_proof_context())
                 {
                     return Err("recorded warp proof binding mismatch".into());
@@ -450,7 +482,7 @@ impl VerifyRecoveryDatabaseCmd {
             write_new(&self.output.join(format!("aux-{}.scale", hex(key))), &value)?;
             auxiliaries.insert(
                 hex(key),
-                serde_json::json!({"blake2":hex(&sp_core::blake2_256(&value)),"bytes":value.len()}),
+                serde_json::json!({"blake2":hex(&sp_io::hashing::blake2_256(&value)),"bytes":value.len()}),
             );
         }
         let mut history = Vec::new();
@@ -482,11 +514,18 @@ impl VerifyRecoveryDatabaseCmd {
         let info_after = client.info();
         if info_after.best_hash != info.best_hash
             || info_after.finalized_hash != info.finalized_hash
+            || client.hash(CHECKPOINT_NUMBER).map_err(|e| e.to_string())? != checkpoint_number_index
+            || client
+                .get_aux(b"sora-nexus/recovery/checkpoint-imported/v1")
+                .map_err(|e| e.to_string())?
+                != checkpoint_import_policy
         {
             return Err("database changed during verification".into());
         }
         let report = serde_json::json!({"schema":"sora-nexus-persisted-recovery-database-v1", "genesisHash":format!("{:#x}",info.genesis_hash),
             "checkpointHash":format!("{:#x}",H256::from(CHECKPOINT_HASH)),"checkpointParentHash":format!("{:#x}",checkpoint.parent_hash()),"policyCommitment":format!("{:#x}",recovery.policy_commitment),
+            "checkpointNumberIndexHash":checkpoint_number_index.map(|hash|format!("{hash:#x}")),
+            "checkpointHeaderPresentByHash":true,"checkpointImportPolicy":checkpoint_import_policy.as_deref().map(hex),
             "bestHash":format!("{expected:#x}"),"finalizedHash":format!("{expected:#x}"),"number":info.finalized_number,
             "stateRoot":format!("{:#x}",header.state_root()),"storage":storage,"auxiliaries":auxiliaries,
             "grandpaSetId":authorities.set_id(),"grandpaAuthorities":authorities.current_authorities().iter().map(|(id,v)| (hex(id.as_ref()),v.weight().get())).collect::<Vec<_>>(),

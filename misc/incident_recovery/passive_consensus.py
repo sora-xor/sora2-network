@@ -186,9 +186,83 @@ def validate_manifest(value):
     return value
 
 
+def check_checkpoint_evidence(value, policy, *, missing_index=False):
+    need('checkpointNumberIndexHash' in value, 'checkpoint number-index observation missing')
+    need(value['checkpointNumberIndexHash'] in (None, CHECKPOINT_HASH), 'checkpoint number index differs')
+    need(value.get('checkpointHeaderPresentByHash') is True
+         and value.get('checkpointImportPolicy') == policy, 'checkpoint header/import provenance differs')
+    if missing_index:
+        need(value['checkpointNumberIndexHash'] is None,
+             'warp gap already completed; require a fresh pre-gap restart trial')
+
+
+def database_admission(directory, pid):
+    rows = [identity.strict_json(path.read_bytes()) for path in sorted(directory.glob('*.json'))]
+    need(0 < len(rows) <= 300_000 and all(
+        row.get('schema') == 'sora-nexus-passive-node-observation-v1' and row.get('pid') == pid
+        for row in rows), 'database admission observer process differs')
+    opened = [row for row in rows if row.get('kind') == 'database-open']
+    admitted = [row for row in rows if row.get('kind') == 'database-admitted']
+    need(len(opened) == len(admitted) == 1
+         and type(opened[0].get('sequence')) is int and type(admitted[0].get('sequence')) is int
+         and opened[0]['sequence'] < admitted[0]['sequence'], 'successful database admission receipt missing')
+    return admitted[0]
+
+
+def check_warp_restart(value, warped, expected, policy, node):
+    """Validate fresh process/state observations, never a supplied success flag."""
+    exact(value, {'initialProcess', 'restartProcess', 'admission', 'peerObservation', 'persistedAfter'})
+    initial, restarted = value['initialProcess'], value['restartProcess']
+    need(isinstance(initial, dict) and isinstance(restarted, dict), 'warp process receipts missing')
+    need(type(initial.get('pid')) is int and type(restarted.get('pid')) is int
+         and initial['pid'] > 0 and restarted['pid'] > 0 and initial['pid'] != restarted['pid'],
+         'warp restart requires a distinct actual process')
+    for process in (initial, restarted):
+        need(process.get('modeRequested') == 'warp' and process.get('executable') == node
+             and process.get('deliberateCrash') is False and process.get('signalSent') == signal.SIGTERM
+             and process.get('exitCode') in (0, -signal.SIGTERM), 'warp process did not finish the fixed trial')
+    def option(process, name):
+        command = process.get('command')
+        need(isinstance(command, list) and all(isinstance(part, str) for part in command)
+             and command.count(name) == 1 and command.index(name) + 1 < len(command),
+             'warp restart command binding missing')
+        return command[command.index(name) + 1]
+    for name in ('--base-path', '--chain'):
+        need(option(initial, name) == option(restarted, name), 'warp restart changed its database/chain')
+    need(option(restarted, '--sync') == 'warp', 'warp restart changed synchronization mode')
+    command = restarted['command']
+    need(command.count('--reserved-only') == 1 and command.count('--no-mdns') == 1
+         and not any(part == name or part.startswith(name+'=')
+                     for part in command for name in ('--reserved-nodes', '--bootnodes')),
+         'warp restart must have no peers or discovery routes')
+    peers = value['peerObservation']
+    need(isinstance(peers, dict) and peers == {'pid': restarted['pid'], 'method': 'system_peers', 'result': []},
+         'warp restart has no actual empty-peer observation')
+    admission = value['admission']
+    need(isinstance(admission, dict) and admission.get('schema') == 'sora-nexus-passive-node-observation-v1'
+         and admission.get('kind') == 'database-admitted' and admission.get('pid') == restarted['pid'],
+         'warp restart lacks successful new-process database admission')
+    need(admission.get('bestHash') == admission.get('finalizedHash') == expected['hash']
+         and admission.get('bestNumber') == admission.get('finalizedNumber') == expected['number'],
+         'warp restart admission head differs')
+    check_checkpoint_evidence(admission, policy, missing_index=True)
+    check_report(warped, expected, policy, initial['pid'])
+    after = value['persistedAfter']
+    need(isinstance(after, dict), 'warp restart persisted report missing')
+    check_report(after, expected, policy)
+    for report in (warped, after):
+        check_checkpoint_evidence(report, policy, missing_index=True)
+        need(all(key in report for key in ('storage', 'auxiliaries', 'grandpaSetId', 'grandpaAuthorities', 'persistedFinality')),
+             'warp restart consensus/state comparison fields missing')
+    need({k: v for k, v in warped.items() if k != 'observedWarp'}
+         == {k: v for k, v in after.items() if k != 'observedWarp'},
+         'warp restart changed persisted runtime or consensus state')
+
+
 def check_report(report, expected, policy, warp_pid=None, full=False):
     need(report.get('schema') == 'sora-nexus-persisted-recovery-database-v1', 'persisted report schema')
     need(report.get('checkpointHash') == CHECKPOINT_HASH and report.get('policyCommitment') == policy, 'persisted lineage differs')
+    check_checkpoint_evidence(report, policy)
     need(report.get('bestHash') == report.get('finalizedHash') == expected['hash'], 'persisted exact finality differs')
     for name in ('number', 'stateRoot', 'phase', 'cursor', 'operationCounter'):
         need(report.get(name) == expected[name], 'persisted ' + name + ' differs')
@@ -446,9 +520,20 @@ class Harness:
                           for i, lane in enumerate(providers)]
         client_procs = [self.command(lane, mode, ports[2*(i+3)], ports[2*(i+3)+1], addresses[:3])
                         for i, (lane, mode) in enumerate(zip(clients, modes[3:]))]
-        for proc in provider_procs + client_procs:
+        for proc in provider_procs:
             self.wait(proc, expected)
+        # Stop the warp lane as soon as the target state arrives. Waiting for the
+        # full lane or copying its database must not let gap sync hide this trial.
+        warped = None
+        warp_receipt = None
+        if not crash:
+            warp = client_procs[1]
+            self.wait(warp, expected)
+            warp_receipt = self.stop(warp)
+            warped = self.verify(clients[1], expected, name + '-warp', observed=warp)
+            check_checkpoint_evidence(warped, self.policy, missing_index=True)
         full = client_procs[0]
+        self.wait(full, expected)
         # The deliberate crash scope is after this exact accepted import receipt
         # and finality observation. Waiting here excludes a torn observer record
         # from being mistaken for an in-commit crash experiment.
@@ -478,11 +563,26 @@ class Harness:
                       'timing':'SIGKILL after observed committed/finalized target; no in-commit claim',
                       'persistedReport':after}
         else:
-            warp = client_procs[1]; self.stop(warp)
-            warped = self.verify(clients[1], expected, name + '-warp', observed=warp)
             need({k: before[k] for k in ('bestHash','finalizedHash','stateRoot','storage','grandpaSetId','grandpaAuthorities')}
                  == {k: warped[k] for k in ('bestHash','finalizedHash','stateRoot','storage','grandpaSetId','grandpaAuthorities')}, 'full/warp persisted consensus differs')
-            result = {'full':before,'warp':warped,'acceptedFullImportCount':len(before['recoveryHeaders'])+1}
+            # No peer process remains while the same warp database is restarted.
+            # Never remove or fabricate its missing number index to obtain this evidence.
+            for proc in provider_procs:
+                self.stop(proc)
+            provider_procs = []
+            restarted = self.command(clients[1], 'warp', ports[8], ports[9], [])
+            self.wait(restarted, expected)
+            peer_observation = {'pid': restarted['start']['pid'], 'method': 'system_peers',
+                                'result': self.rpc(restarted, 'system_peers')}
+            restart_receipt = self.stop(restarted)
+            admission = database_admission(restarted['evidence'], restarted['start']['pid'])
+            check_checkpoint_evidence(admission, self.policy, missing_index=True)
+            after = self.verify(clients[1], expected, name + '-warp-after-restart')
+            trial = {'initialProcess': warp_receipt, 'restartProcess': restart_receipt,
+                     'admission': admission, 'peerObservation': peer_observation, 'persistedAfter': after}
+            check_warp_restart(trial, warped, expected, self.policy, digest(self.files['node']))
+            result = {'full':before,'warp':warped,'acceptedFullImportCount':len(before['recoveryHeaders'])+1,
+                      'warpRestartBeforeGapCompletion': trial}
         for proc in provider_procs: self.stop(proc)
         self.originals()
         self.save(self.output / name / 'result.json', result)

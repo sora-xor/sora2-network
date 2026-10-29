@@ -40,7 +40,7 @@ def wasm(spec, transaction, suffix=b""):
 
 
 def policy():
-    return scale.u32(1) + scale.raw(scale.CHECKPOINT_HASH) + scale.raw(release.CHECKPOINT_ROOT) + scale.compact(1) + h(1) + h(2) + scale.compact(1) + h(3) + scale.compact(1) + h(4) + scale.compact(1) + h(5) + h(6) + h(7)
+    return scale.u32(2) + scale.raw(scale.CHECKPOINT_HASH) + scale.raw(release.CHECKPOINT_ROOT) + scale.compact(1) + h(1) + h(2) + scale.compact(1) + h(3) + scale.compact(1) + h(4) + scale.compact(1) + h(5) + release.authorization_domain_scale({"chainSpecId": "sora-nexus-recovery-28191817", "releaseNonce": hx(8)}) + h(6) + h(7)
 
 
 class ReleaseTests(unittest.TestCase):
@@ -83,7 +83,7 @@ class ReleaseTests(unittest.TestCase):
         self.artifact("semanticPlan", {"derivedAccounts": []})
         self.artifact("derivedAccountInventory", b"[]")
         policy_hash = hashlib.blake2b(policy(), digest_size=32).hexdigest()
-        config = {"schemaVersion": 1, "checkpointHash": scale.CHECKPOINT_HASH, "policyCommitment": "0x" + policy_hash,
+        config = {"schemaVersion": 2, "policyScale": "0x" + policy().hex(), "checkpointHash": scale.CHECKPOINT_HASH, "policyCommitment": "0x" + policy_hash,
                   "evidenceCommitment": hx(6), "previousGrandpaSetId": 44, "previousGrandpaAuthorities": [[hx(8), 1]],
                   "grandpaAuthorities": [[hx(9), 1]], "retiredGrandpaKeys": [hx(8)], "approvedGrandpaKeys": [hx(9)],
                   "lastAbandonedSignedSlot": 100, "firstRecoverySlot": 101}
@@ -150,6 +150,20 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn("NOT READY FOR PRODUCTION", (output / "README.txt").read_text())
         with self.assertRaisesRegex(ValueError, "new directory"):
             release.package(self.candidate, output)
+
+    def test_soratopia_reports_cannot_replace_checkpoint_replay(self):
+        self.full_fixture()
+        # The fixture supplies success-looking JSON for every points role.
+        report = release.package(self.candidate, self.root / "points-unverified")
+        self.assertEqual(report["gates"]["soratopiaPointsOwnershipAndConservation"]["status"], "unverified")
+        self.assertFalse(report["productionReady"])
+        # An otherwise populated package must still identify absent points
+        # evidence, including when on-chain account migration is configured.
+        del self.inventory["soratopiaCheckpointEvidenceManifest"]
+        self.write_candidate()
+        report = release.package(self.candidate, self.root / "points-missing")
+        self.assertIn("soratopiaCheckpointEvidenceManifest", report["missingArtifacts"])
+        self.assertEqual(report["gates"]["soratopiaPointsOwnershipAndConservation"]["status"], "unverified")
 
     def test_raw_burn_proof_dependencies_are_bound_and_mutation_or_missing_nodes_rejected(self):
         self.full_fixture()
@@ -474,6 +488,43 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "canonical"):
             release.operator_identity(scale.compact(1) + old +
                 scale.compact(2) + h(10) + h(10) + scale.compact(1) + h(11))
+
+    def test_policy_v2_has_explicit_network_nonce_and_no_legacy_default(self):
+        raw = policy()
+        identity = release.policy_identity(raw)
+        self.assertEqual(identity["authorizationDomain"], {"chainSpecId": "sora-nexus-recovery-28191817", "releaseNonce": hx(8)})
+        with self.assertRaisesRegex(ValueError, "Unknown policy format"):
+            release.policy_identity(scale.u32(1) + raw[4:])
+        encoded = release.authorization_domain_scale(identity["authorizationDomain"])
+        for chain_id, nonce in [("other-chain", hx(8)), (identity["authorizationDomain"]["chainSpecId"], hx(9))]:
+            changed = raw.replace(encoded, release.authorization_domain_scale({"chainSpecId": chain_id, "releaseNonce": nonce}), 1)
+            self.assertNotEqual(release.policy_identity(changed)["commitment"], identity["commitment"])
+        for domain in [
+            {}, {"chainSpecId": "", "releaseNonce": hx(8)},
+            {"chainSpecId": "x" * 129, "releaseNonce": hx(8)},
+            {"chainSpecId": "bad chain", "releaseNonce": hx(8)},
+            {"chainSpecId": "chain", "releaseNonce": hx(0)},
+        ]:
+            with self.assertRaises(ValueError):
+                release.authorization_domain_scale(domain)
+        empty_nonce = raw.replace(encoded, encoded[:-32] + bytes(32), 1)
+        with self.assertRaisesRegex(ValueError, "nonzero"):
+            release.policy_identity(empty_nonce)
+
+    def test_chain_extension_must_carry_exact_domain_bound_policy(self):
+        self.full_fixture()
+        baseline = copy.deepcopy(self.spec)
+        for mutate in [
+            lambda spec: spec["recovery"].update(schemaVersion=1),
+            lambda spec: spec["recovery"].pop("policyScale"),
+            lambda spec: spec["recovery"].update(policyScale="0x" + (policy() + b"\0").hex()),
+        ]:
+            self.spec = copy.deepcopy(baseline)
+            mutate(self.spec)
+            self.artifact("chainSpec", self.spec)
+            self.write_candidate()
+            with self.assertRaises(ValueError):
+                release.verify_candidate(self.candidate)
 
     def test_attacker_council_and_noncanonical_policy_rejected(self):
         data = policy().replace(h(3), scale.raw(scale.ATTACKER_SORA), 1)

@@ -41,7 +41,8 @@ mod post_complete_bridge_tests {
         sp_io::TestExternalities::default().execute_with(|| {
             let old = AccountId::from([21; 32]);
             let policy = RecoveryPolicy {
-                format_version: 1,
+                format_version: 2,
+                authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
                 checkpoint_hash: recovery::CHECKPOINT_HASH,
                 checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
                 replacements: vec![AccountReplacement {
@@ -111,7 +112,8 @@ mod tests {
 
     fn with_retired(old: AccountId, run: impl FnOnce()) {
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: common::recovery::CHECKPOINT_HASH,
             checkpoint_state_root: common::recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![AccountReplacement {

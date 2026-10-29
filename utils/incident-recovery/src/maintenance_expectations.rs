@@ -247,7 +247,8 @@ mod tests {
     use super::*;
     fn policy() -> RecoveryPolicy {
         RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],

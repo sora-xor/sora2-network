@@ -16,7 +16,9 @@
       "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-candidate-v1/template/recorder/Cargo.toml"
     },
     "original/template/recorder/src/main.rs": {
-      "sha256": "74b1c25592437668d02a2a67c86d9f2609cb84886f150bbe2e63dae68d0970cd",
+      "authorizationDomainAmendment": "Policy format v2 and forward-upgrade v2: explicit chain-spec/release nonce and persisted first-child branch anchor; preserve both through native repair handover; synthetic fixture constructors only.",
+      "beforeAuthorizationDomainSha256": "74b1c25592437668d02a2a67c86d9f2609cb84886f150bbe2e63dae68d0970cd",
+      "sha256": "87a3500a8acbe9d78b0a231e551bd9bff46f7f257cd843f192e07ecd29bf79a1",
       "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-sdk-repair-v1/after/utils/native-operation-recorder/src/main.rs"
     },
     "original/template/recorder/src/replay.rs": {
@@ -60,7 +62,9 @@
       "upstream": "artifacts/recovery-28191817/fixtures/native-post-repair-candidate-v2/template/recorder/Cargo.toml"
     },
     "repaired/template/recorder/src/main.rs": {
-      "sha256": "2727a64c1f337eb69b929240b681abad207340659d25f705e47ad5904213f025",
+      "authorizationDomainAmendment": "Policy format v2 and forward-upgrade v2: explicit chain-spec/release nonce and persisted first-child branch anchor; preserve both through native repair handover; synthetic fixture constructors only.",
+      "beforeAuthorizationDomainSha256": "2727a64c1f337eb69b929240b681abad207340659d25f705e47ad5904213f025",
+      "sha256": "691c70984420abbced077652ec57be15d2e477b0d3642d41ee5fe023619d9119",
       "upstream": "artifacts/recovery-28191817/fixtures/native-recorder-timepoint-json-repair-v1/after/utils/native-operation-recorder/src/main.rs"
     },
     "repaired/template/recorder/src/replay.rs": {

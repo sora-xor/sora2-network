@@ -9,7 +9,7 @@ use sp_core::{
     storage::{StateVersion, Storage},
     H256,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 type OperationKey = ([u8; 32], u32, [u8; 32]);
 fn decode<T: DecodeWithMemTracking + Encode>(bytes: &[u8]) -> Result<T> {
@@ -99,6 +99,10 @@ struct Proof {
     audit: IncomingAudit,
     audited_counter: u64,
     audited_block: u32,
+    consumed_block: u32,
+    consumed_counter: u64,
+    consumed_initialized_root: H256,
+    consumed_state_root: H256,
     witness: Value,
 }
 /// No public constructor and no Deserialize implementation. Only a successful
@@ -158,6 +162,125 @@ impl VerifiedReplay {
             .map(|proof| (&proof.operation, &proof.audit))
             .collect())
     }
+    /// Read-only public-fixture funding projection from the opaque, final-state
+    /// revalidated certificate. Never accepts a serialized certificate or caller receipts.
+    #[cfg(feature = "bridge-fixture")]
+    pub(crate) fn public_fixture_funding(
+        &self,
+        policy: &RecoveryPolicy,
+        final_root: sp_core::H256,
+    ) -> Result<Vec<(&IncomingOperation, &IncomingAudit, u32)>> {
+        if !self.binding.chain_local_replay_verified
+            || !self.binding.public_test_council_fixture
+            || self.final_policy.as_deref() != Some(policy.encode().as_slice())
+            || self.binding.final_policy_commitment.as_deref()
+                != Some(hex::encode(policy.commitment()).as_str())
+            || self.binding.final_state_root.as_deref() != Some(format!("{final_root:#x}").as_str())
+        {
+            return Err("public funding lacks exact opaque final-policy/root validation".into());
+        }
+        let encoded = policy.encode();
+        Ok(self
+            .proofs
+            .values()
+            .filter(|proof| proof.policy == encoded && proof.audit.prior_policy.is_none())
+            .map(|proof| (&proof.operation, &proof.audit, proof.audited_block))
+            .collect())
+    }
+    /// Normal-only real bridge projection. Only this invocation's opaque accepted
+    /// audits can supply operations; JSON reports cannot construct this value.
+    pub(crate) fn normal_bridge_operations(
+        &self,
+        policy: &RecoveryPolicy,
+        root: H256,
+        expected: &BTreeMap<u32, [u8; 32]>,
+    ) -> Result<Vec<&IncomingOperation>> {
+        if !self.binding.chain_local_replay_verified
+            || self.binding.public_test_council_fixture
+            || self.proofs.len() != expected.len()
+        {
+            return Err("real bridge projection lacks complete nonfixture replay".into());
+        }
+        if !expected.is_empty()
+            && (self.final_policy.as_deref() != Some(policy.encode().as_slice())
+                || self.binding.final_policy_commitment.as_deref()
+                    != Some(hex::encode(policy.commitment()).as_str())
+                || self.binding.final_state_root.as_deref() != Some(format!("{root:#x}").as_str()))
+        {
+            return Err("real bridge projection final policy/root differs".into());
+        }
+        let mut ordered = BTreeMap::new();
+        for proof in self.proofs.values() {
+            if proof.policy != policy.encode()
+                || proof.audit.prior_policy.is_some()
+                || proof.audited_counter != 0
+                || proof.audit.operation_index != proof.operation.index
+                || proof.audit.operation_commitment != proof.operation.commitment()
+                || expected.get(&proof.operation.index) != Some(&proof.operation.commitment())
+                || ordered
+                    .insert(proof.operation.index, &proof.operation)
+                    .is_some()
+            {
+                return Err(
+                    "real bridge projection has a missing/duplicate/repaired operation".into(),
+                );
+            }
+        }
+        Ok(ordered.into_values().collect())
+    }
+    /// Authorize only this invocation's complete, normal-policy consuming blocks.
+    /// Position deltas are separately captured from actual states, never report JSON.
+    pub(crate) fn verify_position_consumptions(
+        &self,
+        policy: &RecoveryPolicy,
+        terminal_root: H256,
+        fixture: bool,
+        inspected_block: u32,
+        expected: &BTreeMap<u32, ([u8; 32], u32, H256, H256)>,
+    ) -> Result<()> {
+        if !self.binding.chain_local_replay_verified
+            || self.binding.public_test_council_fixture != fixture
+            || self.binding.checkpoint_state_root
+                != format!("{:#x}", H256::from(recovery::CHECKPOINT_STATE_ROOT))
+            || self.proofs.len() != expected.len()
+        {
+            return Err("position journal lacks complete same-checkpoint opaque replay".into());
+        }
+        if !expected.is_empty()
+            && (self.final_policy.as_deref() != Some(policy.encode().as_slice())
+                || self.binding.final_policy_commitment.as_deref()
+                    != Some(hex::encode(policy.commitment()).as_str())
+                || self.binding.final_state_root.as_deref()
+                    != Some(format!("{terminal_root:#x}").as_str()))
+        {
+            return Err("position journal final policy/terminal root differs".into());
+        }
+        let mut seen = BTreeSet::new();
+        for proof in self.proofs.values() {
+            if proof.policy != policy.encode()
+                || proof.audit.prior_policy.is_some()
+                || proof.audited_counter != 0
+                || proof.consumed_counter != 0
+                || proof.audit.operation_index != proof.operation.index
+                || proof.audit.operation_commitment != proof.operation.commitment()
+                || proof.audited_block > inspected_block
+                || proof.consumed_block >= proof.audited_block
+                || !seen.insert(proof.operation.index)
+                || expected.get(&proof.operation.index)
+                    != Some(&(
+                        proof.operation.commitment(),
+                        proof.consumed_block,
+                        proof.consumed_initialized_root,
+                        proof.consumed_state_root,
+                    ))
+            {
+                return Err(
+                    "position journal missing/repaired/post-inspection consuming proof".into(),
+                );
+            }
+        }
+        Ok(())
+    }
     pub(crate) fn coverage_binding(&self) -> CoverageBinding {
         self.binding.clone()
     }
@@ -177,6 +300,8 @@ struct AcceptedIncoming {
     policy: [u8; 32],
     counter: u64,
     block: u32,
+    initialized_root: H256,
+    state_root: H256,
     witness: Value,
 }
 pub(crate) struct Context {
@@ -428,6 +553,8 @@ impl Collector {
                         policy: active,
                         counter: after.operation_counter,
                         block: witness.number,
+                        initialized_root: context.initialized_root,
+                        state_root: replay::root(ext),
                         witness: receipt,
                     },
                 )
@@ -478,6 +605,10 @@ impl Collector {
                 audit,
                 audited_counter: after.operation_counter,
                 audited_block: witness.number,
+                consumed_block: prior.block,
+                consumed_counter: prior.counter,
+                consumed_initialized_root: prior.initialized_root,
+                consumed_state_root: prior.state_root,
                 witness: receipt,
             };
             if self
@@ -638,6 +769,10 @@ pub(crate) fn test_certificate(
                 audit: audit.clone(),
                 audited_counter: 2,
                 audited_block: recovery::CHECKPOINT_NUMBER + 2,
+                consumed_block: recovery::CHECKPOINT_NUMBER + 1,
+                consumed_counter: 0,
+                consumed_initialized_root: H256::zero(),
+                consumed_state_root: H256::zero(),
                 witness: json!({"testOnly":true}),
             },
         )]),
@@ -662,9 +797,84 @@ pub(crate) fn test_historical_certificate(
 mod tests {
     use super::*;
     use framenode_runtime::incident_recovery_incoming::IncomingChannel;
+    #[test]
+    fn owner_positions_require_exact_opaque_consumption_roots_and_preinspection_audit() {
+        let p = policy();
+        let op = operation();
+        let audit = IncomingAudit {
+            index: 0,
+            operation_index: op.index,
+            operation_commitment: op.commitment(),
+            requests: vec![None],
+            prior_policy: None,
+        };
+        let mut certificate = test_certificate(&p, &audit, op.clone());
+        certificate.binding.checkpoint_state_root =
+            format!("{:#x}", H256::from(recovery::CHECKPOINT_STATE_ROOT));
+        certificate
+            .proofs
+            .values_mut()
+            .next()
+            .unwrap()
+            .audited_counter = 0;
+        let inspected = recovery::CHECKPOINT_NUMBER + 3;
+        let expected = BTreeMap::from([(
+            op.index,
+            (
+                op.commitment(),
+                recovery::CHECKPOINT_NUMBER + 1,
+                H256::zero(),
+                H256::zero(),
+            ),
+        )]);
+        certificate
+            .verify_position_consumptions(&p, H256::zero(), true, inspected, &expected)
+            .unwrap();
+        for field in 0..5 {
+            let mut wrong = expected.clone();
+            let row = wrong.get_mut(&op.index).unwrap();
+            match field {
+                0 => row.0[0] ^= 1,
+                1 => row.1 += 1,
+                2 => row.2 = H256::repeat_byte(7),
+                3 => row.3 = H256::repeat_byte(8),
+                _ => {
+                    wrong.clear();
+                }
+            }
+            assert!(certificate
+                .verify_position_consumptions(&p, H256::zero(), true, inspected, &wrong)
+                .is_err());
+        }
+        assert!(certificate
+            .verify_position_consumptions(&p, H256::repeat_byte(9), true, inspected, &expected)
+            .is_err());
+        assert!(certificate
+            .verify_position_consumptions(&p, H256::zero(), false, inspected, &expected)
+            .is_err());
+        assert!(certificate
+            .verify_position_consumptions(
+                &p,
+                H256::zero(),
+                true,
+                recovery::CHECKPOINT_NUMBER + 1,
+                &expected
+            )
+            .is_err());
+        certificate
+            .proofs
+            .values_mut()
+            .next()
+            .unwrap()
+            .consumed_counter = 1;
+        assert!(certificate
+            .verify_position_consumptions(&p, H256::zero(), true, inspected, &expected)
+            .is_err());
+    }
     fn policy() -> RecoveryPolicy {
         RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],
@@ -697,6 +907,115 @@ mod tests {
             true,
         )
     }
+    #[cfg(feature = "bridge-fixture")]
+    #[test]
+    fn public_funding_projection_requires_opaque_final_identity_and_fixture_scope() {
+        let policy = policy();
+        let operation = operation();
+        let audit = IncomingAudit {
+            index: 0,
+            operation_index: 0,
+            operation_commitment: operation.commitment(),
+            requests: vec![None],
+            prior_policy: None,
+        };
+        let valid = || test_certificate(&policy, &audit, operation.clone());
+        assert_eq!(
+            valid()
+                .public_fixture_funding(&policy, H256::zero())
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(valid()
+            .public_fixture_funding(&policy, H256::repeat_byte(1))
+            .is_err());
+        let mut changed = valid();
+        changed.binding.public_test_council_fixture = false;
+        assert!(changed
+            .public_fixture_funding(&policy, H256::zero())
+            .is_err());
+        changed = valid();
+        changed.binding.chain_local_replay_verified = false;
+        assert!(changed
+            .public_fixture_funding(&policy, H256::zero())
+            .is_err());
+        changed = valid();
+        changed.final_policy = None;
+        assert!(changed
+            .public_fixture_funding(&policy, H256::zero())
+            .is_err());
+        let mut other = policy.clone();
+        other.evidence_commitment = [99; 32];
+        assert!(valid()
+            .public_fixture_funding(&other, H256::zero())
+            .is_err());
+        changed = valid();
+        changed.binding.final_state_root = None;
+        assert!(changed
+            .public_fixture_funding(&policy, H256::zero())
+            .is_err());
+    }
+    #[test]
+    fn real_bridge_projection_requires_exact_opaque_normal_operation_set() {
+        // Synthetic private constructor only; never serialized as real replay proof.
+        let policy = policy();
+        let operation = operation();
+        let audit = IncomingAudit {
+            index: 0,
+            operation_index: 0,
+            operation_commitment: operation.commitment(),
+            requests: vec![None],
+            prior_policy: None,
+        };
+        let expected = BTreeMap::from([(0, operation.commitment())]);
+        let valid = || {
+            let mut c = test_certificate(&policy, &audit, operation.clone());
+            c.binding.public_test_council_fixture = false;
+            c.proofs.values_mut().next().unwrap().audited_counter = 0;
+            c
+        };
+        assert_eq!(
+            valid()
+                .normal_bridge_operations(&policy, H256::zero(), &expected)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(valid()
+            .normal_bridge_operations(&policy, H256::repeat_byte(1), &expected)
+            .is_err());
+        assert!(valid()
+            .normal_bridge_operations(&policy, H256::zero(), &BTreeMap::new())
+            .is_err());
+        assert!(valid()
+            .normal_bridge_operations(
+                &policy,
+                H256::zero(),
+                &BTreeMap::from([(1, operation.commitment())])
+            )
+            .is_err());
+        let mut c = valid();
+        c.binding.public_test_council_fixture = true;
+        assert!(c
+            .normal_bridge_operations(&policy, H256::zero(), &expected)
+            .is_err());
+        c = valid();
+        c.proofs.values_mut().next().unwrap().audited_counter = 1;
+        assert!(c
+            .normal_bridge_operations(&policy, H256::zero(), &expected)
+            .is_err());
+        c = valid();
+        c.proofs.values_mut().next().unwrap().audit.prior_policy = Some([42; 32]);
+        assert!(c
+            .normal_bridge_operations(&policy, H256::zero(), &expected)
+            .is_err());
+        c = valid();
+        c.final_policy = None;
+        assert!(c
+            .normal_bridge_operations(&policy, H256::zero(), &expected)
+            .is_err());
+    }
     // These are isolated private-certificate guard tests, not replay evidence.
     fn certificate() -> (VerifiedReplay, RecoveryPolicy, IncomingAudit) {
         let mut policy = policy();
@@ -718,6 +1037,10 @@ mod tests {
                 audit: audit.clone(),
                 audited_counter: 2,
                 audited_block: recovery::CHECKPOINT_NUMBER + 2,
+                consumed_block: recovery::CHECKPOINT_NUMBER + 1,
+                consumed_counter: 0,
+                consumed_initialized_root: H256::zero(),
+                consumed_state_root: H256::zero(),
                 witness: json!({"testOnly":true}),
             },
         );

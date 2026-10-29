@@ -34,6 +34,25 @@ enum Command {
         #[arg(long)]
         capture: PathBuf,
     },
+    /// Published test-key replacement proof; never victim authorization.
+    #[cfg(feature = "bridge-fixture")]
+    PrepareFundedStakingIdentity {
+        /// Root-verified typed checkpoint council, separate from the public signer.
+        #[arg(long)]
+        capture: Option<PathBuf>,
+        #[arg(long)]
+        old: String,
+        #[arg(long, default_value_t = 0)]
+        signer_index: usize,
+    },
+    /// PUBLIC FIXTURE ONLY: fund a typed mapped public signer through native HASHI.
+    #[cfg(feature = "bridge-fixture")]
+    PrepareFundedStakingFixture {
+        #[arg(long)]
+        capture: PathBuf,
+        #[arg(long)]
+        manifest: PathBuf,
+    },
     /// Check native economic/control relationships without a release mapping.
     VerifyCheckpointControls {
         #[arg(long)]
@@ -116,6 +135,21 @@ enum Command {
     },
     /// Execute exact recovery Wasm with persisted-state restart after every block.
     RehearseMaintenance {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// Fresh normal activation and read-only final typed-ownership/financial checks.
+    RehearseStorageSemantics {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+    },
+    /// PUBLIC TEST KEYS ONLY: inspect full-base final state before signed staking calls.
+    #[cfg(feature = "bridge-fixture")]
+    RehearsePublicStorageSemantics {
         #[arg(long)]
         manifest: PathBuf,
         #[arg(long)]
@@ -266,6 +300,10 @@ struct ComposeStorageWorkArgs {
     /// Optional create-new JSON artifact for the complete native attacker watch.
     #[arg(long)]
     attacker_coverage_output: Option<PathBuf>,
+    /// Create-new typed-interest diagnostic from this complete native inventory.
+    /// Does not authorize economic actions or waive later composition failures.
+    #[arg(long)]
+    attacker_interest_output: Option<PathBuf>,
     #[arg(long)]
     semantic: PathBuf,
     /// Exact roster/pending-collective inventory for governance substitutions.
@@ -298,6 +336,13 @@ struct ComposeStorageWorkArgs {
     /// Commitment to the independently reviewed public evidence manifest.
     #[arg(long)]
     evidence_commitment: String,
+    /// Exact chain-spec ID. Synthetic fixtures use a separate domain; exact-artifact
+    /// rehearsals retain the production policy and separate signatures by branch hash.
+    #[arg(long)]
+    chain_spec_id: String,
+    /// Unique, independently chosen nonzero 32-byte public release nonce (hex).
+    #[arg(long)]
+    release_nonce: String,
 }
 
 fn read_bounded(path: &Path, limit: u64) -> incident_recovery::Result<Vec<u8>> {
@@ -472,6 +517,37 @@ fn run() -> incident_recovery::Result<()> {
         Command::PrepareHashiBridgeFixture { capture } => {
             let result = incident_recovery::hashi_bridge_fixture::generate(
                 incident_recovery::verify_checkpoint(&capture)?,
+            )?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&result).map_err(|e| e.to_string())?
+            );
+        }
+        #[cfg(feature = "bridge-fixture")]
+        Command::PrepareFundedStakingIdentity {
+            old,
+            signer_index,
+            capture,
+        } => {
+            let result = if let Some(capture) = capture {
+                incident_recovery::funded_staking_fixture::identity_at(
+                    incident_recovery::verify_checkpoint(&capture)?,
+                    &old,
+                    signer_index,
+                )?
+            } else {
+                incident_recovery::funded_staking_fixture::identity(&old, signer_index)?
+            };
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&result).map_err(|e| e.to_string())?
+            );
+        }
+        #[cfg(feature = "bridge-fixture")]
+        Command::PrepareFundedStakingFixture { capture, manifest } => {
+            let result = incident_recovery::funded_staking_fixture::generate(
+                incident_recovery::verify_checkpoint(&capture)?,
+                &manifest,
             )?;
             println!(
                 "{}",
@@ -749,6 +825,23 @@ fn run() -> incident_recovery::Result<()> {
                 serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
             );
         }
+        Command::RehearseStorageSemantics { manifest, output } => {
+            let report =
+                incident_recovery::maintenance::run_with_storage_semantics(&manifest, &output)?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
+        }
+        #[cfg(feature = "bridge-fixture")]
+        Command::RehearsePublicStorageSemantics { manifest, output } => {
+            let report =
+                incident_recovery::maintenance::run_public_storage_semantics(&manifest, &output)?;
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?
+            );
+        }
         #[cfg(all(unix, feature = "runtime-work-types"))]
         Command::RehearseMaintenanceCrashes {
             manifest,
@@ -839,6 +932,7 @@ fn run() -> incident_recovery::Result<()> {
                 inventory,
                 economic,
                 attacker_coverage_output,
+                attacker_interest_output,
                 semantic,
                 governance,
                 referral,
@@ -850,6 +944,8 @@ fn run() -> incident_recovery::Result<()> {
                 scheduler,
                 council,
                 evidence_commitment,
+                chain_spec_id,
+                release_nonce,
             } = *args;
             // Authenticate the registry against executed checkpoint Wasm,
             // not merely a caller-provided metadata hash or success flag.
@@ -1135,6 +1231,31 @@ fn run() -> incident_recovery::Result<()> {
             {
                 return Err("incomplete typed inventory or unresolved semantic dispositions; no work policy emitted".into());
             }
+            if let Some(path) = attacker_interest_output {
+                use std::io::Write;
+                let assessment = incident_recovery::economics::assess_attacker_interests(
+                    &economic_plan,
+                    &inventory,
+                )?;
+                let report = serde_json::json!({
+                    "schema": "sora-nexus-checkpoint-attacker-interest-assessment-v1",
+                    "checkpoint": verified.state,
+                    "metadataWitness": verified.metadata_witness,
+                    "assessment": assessment,
+                    "compositionSucceeded": false,
+                    "scope": "Diagnostic after complete native inventory with source-proven adapter resolutions. Later economic/compilation checks remain mandatory; this artifact cannot certify composition success.",
+                    "productionReady": false,
+                });
+                let bytes = serde_json::to_vec_pretty(&report).map_err(|e| e.to_string())?;
+                let mut file = fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(path)
+                    .map_err(|e| e.to_string())?;
+                file.write_all(&bytes).map_err(|e| e.to_string())?;
+                file.write_all(b"\n").map_err(|e| e.to_string())?;
+                file.sync_all().map_err(|e| e.to_string())?;
+            }
             let attacker_coverage = incident_recovery::economics::validate_attacker_coverage(
                 &economic_plan,
                 &inventory,
@@ -1244,7 +1365,15 @@ fn run() -> incident_recovery::Result<()> {
                 &storage,
                 map,
                 council,
-                commitment,
+                incident_recovery::composer::PolicyIdentity {
+                    evidence_commitment: commitment,
+                    authorization_domain: common::recovery::RecoveryDomain {
+                        chain_spec_id: chain_spec_id.into_bytes(),
+                        release_nonce: incident_recovery::hex_bytes(&release_nonce)?
+                            .try_into()
+                            .map_err(|_| "release nonce must be 32 bytes")?,
+                    },
+                },
                 groups,
                 incident_recovery::composer::AuditRequests {
                     keys: witnesses,

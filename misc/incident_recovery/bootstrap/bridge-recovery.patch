@@ -120,10 +120,31 @@ diff --git a/pallets/bridge-proxy/src/lib.rs b/pallets/bridge-proxy/src/lib.rs
          Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
          Senders::<T>::insert(&network_id, &message_id, &source);
          Transactions::<T>::insert(
-@@ -534,6 +590,25 @@
+@@ -534,6 +590,46 @@
          LockedAssets::<T>::remove(network_id, asset_id);
          Ok(())
      }
++
++    /// Restore only the lock accounting of an authenticated owned HASHI claim
++    /// extinguished by recovery. Native finalization has already unreserved the
++    /// same amount into shared custody; no token issuance or user balance changes.
++    /// This is not a new outbound lock: do not charge limits or schedule unlocks.
++    pub fn recovery_restore_extinguished_hashi_owned(
++        network_id: GenericNetworkId,
++        asset_id: AssetIdOf<T>,
++        amount: Balance,
++    ) -> DispatchResult {
++        ensure!(
++            recovery_halted()
++                && recovery_inbound_allowed::<T>()
++                && matches!(network_id, GenericNetworkId::EVMLegacy(_)),
++            Error::<T>::RecoveryHalted
++        );
++        LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
++            *value = value.checked_add(amount).ok_or(Error::<T>::Overflow)?;
++            DispatchResult::Ok(())
++        })
++    }
 +
 +    /// Reverse only the preparation accounting of a proven, already prepared
 +    /// HASHI sidechain claim extinguished by the recovery executive. No mint/refund.
@@ -146,7 +167,7 @@ diff --git a/pallets/bridge-proxy/src/lib.rs b/pallets/bridge-proxy/src/lib.rs
  }
  
  impl<T: Config> BridgeAssetLocker<T::AccountId> for Pallet<T> {
-@@ -590,6 +665,7 @@
+@@ -590,6 +686,7 @@
          asset_id: &Self::AssetId,
          amount: &Self::Balance,
      ) -> DispatchResult {
@@ -154,7 +175,7 @@ diff --git a/pallets/bridge-proxy/src/lib.rs b/pallets/bridge-proxy/src/lib.rs
          let bridge_account = Self::bridge_fee_tech_account(network_id);
          technical::Pallet::<T>::transfer_out(&asset_id, &bridge_account, who, *amount)?;
          Ok(())
-@@ -601,6 +677,7 @@
+@@ -601,6 +698,7 @@
          asset_id: &Self::AssetId,
          amount: &Self::Balance,
      ) -> DispatchResult {
@@ -162,7 +183,7 @@ diff --git a/pallets/bridge-proxy/src/lib.rs b/pallets/bridge-proxy/src/lib.rs
          let bridge_account = Self::bridge_fee_tech_account(network_id);
          technical::Pallet::<T>::transfer_in(&asset_id, who, &bridge_account, *amount)?;
          Ok(())
-@@ -614,6 +691,7 @@
+@@ -614,6 +712,7 @@
          asset_id: &AssetIdOf<T>,
          amount: &Balance,
      ) -> DispatchResult {
@@ -170,7 +191,7 @@ diff --git a/pallets/bridge-proxy/src/lib.rs b/pallets/bridge-proxy/src/lib.rs
          LockedAssets::<T>::try_mutate::<_, _, (), DispatchError, _>(
              network_id,
              asset_id,
-@@ -671,6 +749,7 @@
+@@ -671,6 +770,7 @@
          asset_id: &AssetIdOf<T>,
          amount: &Balance,
      ) -> DispatchResult {
@@ -190,7 +211,15 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
  extern crate jsonrpc_core as jsonrpc;
  
  use crate::offchain::SignatureParams;
-@@ -380,7 +382,7 @@
+@@ -128,2 +130,7 @@
+ mod contract;
++// Public host fixture tooling uses the exact native event decoder; no Wasm API changes.
++#[cfg(feature = "std")]
++pub use contract::{
++    ContractEvent as PublicFixtureContractEvent, DepositEvent as PublicFixtureDepositEvent,
++};
+ mod macros;
+@@ -380,7 +387,7 @@
      use common::{ContentSource, Description};
      use frame_support::__private::log;
      use frame_support::pallet_prelude::*;
@@ -199,7 +228,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
      use frame_support::transactional;
      use frame_support::weights::WeightToFeePolynomial;
      use frame_system::pallet_prelude::*;
-@@ -403,6 +405,8 @@
+@@ -403,6 +410,8 @@
          /// The overarching dispatch call type.
          type RuntimeCall: From<Call<Self>>
              + From<bridge_multisig::Call<Self>>
@@ -208,7 +237,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              + Codec
              + Clone
              + GetCallMetadata
-@@ -430,6 +434,9 @@
+@@ -430,6 +439,9 @@
  
          type BridgeAssetLockChecker: BridgeAssetLockChecker<Self::AssetId, Balance>;
  
@@ -218,7 +247,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          type WeightToFee: WeightToFeePolynomial<Balance = Balance>;
  
          /// To retrieve asset info
-@@ -471,6 +478,9 @@
+@@ -471,6 +483,9 @@
          ///
          /// Note: only one worker is expected to be used.
          fn offchain_worker(block_number: frame_system::pallet_prelude::BlockNumberFor<T>) {
@@ -228,7 +257,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("Entering off-chain workers {:?}", block_number);
              let marker_ref = StorageValueRef::persistent(STORAGE_PEER_MARKER_KEY);
              let legacy_ref = StorageValueRef::persistent(STORAGE_PEER_SECRET_KEY);
-@@ -557,6 +567,7 @@
+@@ -557,6 +572,7 @@
              initial_peers: Vec<<T as frame_system::pallet::Config>::AccountId>,
              signature_version: BridgeSignatureVersion,
          ) -> DispatchResultWithPostInfo {
@@ -236,7 +265,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              ensure_root(origin)?;
              let net_id = NextNetworkId::<T>::get();
              ensure!(!initial_peers.is_empty(), Error::<T>::NotEnoughPeers);
-@@ -593,6 +604,7 @@
+@@ -593,6 +609,7 @@
              asset_id: AssetIdOf<T>,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -244,7 +273,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              ensure_root(origin)?;
              let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
              let nonce = frame_system::Pallet::<T>::account_nonce(&from);
-@@ -630,6 +642,7 @@
+@@ -630,6 +647,7 @@
              decimals: u8,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -252,7 +281,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called add_sidechain_token");
              ensure_root(origin)?;
              let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
-@@ -675,6 +688,7 @@
+@@ -675,6 +693,7 @@
              amount: Balance,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -260,7 +289,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called transfer_to_sidechain");
              let from = ensure_signed(origin)?;
              let nonce = frame_system::Pallet::<T>::account_nonce(&from);
-@@ -703,13 +717,17 @@
+@@ -703,13 +722,17 @@
  
          #[transactional]
          #[pallet::call_index(4)]
@@ -279,7 +308,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called request_from_sidechain");
              let from = ensure_signed(origin)?;
              let timepoint = bridge_multisig::Pallet::<T>::thischain_timepoint();
-@@ -756,12 +774,16 @@
+@@ -756,12 +779,16 @@
          /// - `request` - an incoming request.
          /// - `network_id` - network identifier.
          #[pallet::call_index(5)]
@@ -297,7 +326,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called finalize_incoming_request");
              let _ = Self::ensure_bridge_account(origin, network_id)?;
              let request =
-@@ -791,6 +813,7 @@
+@@ -791,6 +818,7 @@
              address: EthAddress,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -305,7 +334,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called change_peers_out");
              ensure_root(origin)?;
              let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
-@@ -840,6 +863,7 @@
+@@ -840,6 +868,7 @@
              peer_address: Option<EthAddress>,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -313,7 +342,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called change_peers_out");
              ensure_root(origin)?;
              let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
-@@ -906,6 +930,7 @@
+@@ -906,6 +935,7 @@
              origin: OriginFor<T>,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -321,7 +350,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called prepare_for_migration");
              ensure_root(origin)?;
              if BridgeSignatureVersions::<T>::get(network_id) == BridgeSignatureVersion::V1
-@@ -948,6 +973,7 @@
+@@ -948,6 +978,7 @@
              network_id: BridgeNetworkId<T>,
              new_signature_version: BridgeSignatureVersion,
          ) -> DispatchResultWithPostInfo {
@@ -329,7 +358,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called prepare_for_migration");
              ensure_root(origin)?;
              let from = Self::authority_account().ok_or(Error::<T>::AuthorityAccountNotSet)?;
-@@ -975,11 +1001,15 @@
+@@ -975,11 +1006,15 @@
          ///
          /// Can only be called by a bridge account.
          #[pallet::call_index(10)]
@@ -346,7 +375,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called register_incoming_request");
              let net_id = incoming_request.network_id();
              let _ = Self::ensure_bridge_account(origin, net_id)?;
-@@ -1000,6 +1030,7 @@
+@@ -1000,6 +1035,7 @@
          #[pallet::call_index(11)]
          #[pallet::weight({
              <T as Config>::WeightInfo::request_from_sidechain()
@@ -354,7 +383,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
                  .saturating_add(<T as Config>::WeightInfo::register_incoming_request())
                  .saturating_add(if incoming_request_result.is_ok() {
                      <T as Config>::WeightInfo::finalize_incoming_request()
-@@ -1012,6 +1043,10 @@
+@@ -1012,6 +1048,10 @@
              load_incoming_request: LoadIncomingRequest<T>,
              incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
          ) -> DispatchResultWithPostInfo {
@@ -365,7 +394,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              debug!("called import_incoming_request");
              let net_id = load_incoming_request.network_id();
              let _ = Self::ensure_bridge_account(origin, net_id)?;
-@@ -1093,6 +1128,7 @@
+@@ -1093,6 +1133,7 @@
              address: EthAddress,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -373,7 +402,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              let _ = ensure_root(origin)?;
              let mut peers = Peers::<T>::get(network_id);
              if !peers.contains(&who) {
-@@ -1127,6 +1163,7 @@
+@@ -1127,6 +1168,7 @@
              asset_id: AssetIdOf<T>,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -381,7 +410,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              log::debug!("called remove_sidechain_asset. asset_id: {:?}", asset_id);
              ensure_root(origin)?;
              ensure!(
-@@ -1155,6 +1192,7 @@
+@@ -1155,6 +1197,7 @@
              token_address: EthAddress,
              network_id: BridgeNetworkId<T>,
          ) -> DispatchResultWithPostInfo {
@@ -389,7 +418,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              log::debug!(
                  "called register_existing_sidechain_asset. asset_id: {:?}",
                  asset_id
-@@ -1194,7 +1232,9 @@
+@@ -1194,7 +1237,9 @@
              network_id: BridgeNetworkId<T>,
              hash: H256,
          ) -> DispatchResultWithPostInfo {
@@ -399,7 +428,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              let status =
                  RequestStatuses::<T>::get(network_id, &hash).ok_or(Error::<T>::UnknownRequest)?;
              ensure!(
-@@ -1458,6 +1498,8 @@
+@@ -1458,6 +1503,8 @@
          /// The request has reached the maximum number of stored approvals.
          TooManyApprovals,
          DuplicateApproval,
@@ -408,7 +437,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
      }
  
      impl<T: Config> Error<T> {
-@@ -1927,8 +1969,9 @@
+@@ -1927,8 +1974,9 @@
              } => {
                  load_incoming_request.validate()?;
                  let hash = load_incoming_request.hash();
@@ -419,7 +448,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
                      Error::<T>::DuplicatedRequest
                  );
                  ensure!(
-@@ -1958,9 +2001,13 @@
+@@ -1958,9 +2006,13 @@
                      RequestStatuses::<T>::get(network, hash) == Some(RequestStatus::Pending),
                      Error::<T>::ExpectedPendingRequest
                  );
@@ -433,7 +462,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
                  ensure!(
                      Requests::<T>::contains_key(network, hash),
                      Error::<T>::UnknownRequest
-@@ -1979,6 +2026,11 @@
+@@ -1979,6 +2031,11 @@
          incoming: &IncomingRequest<T>,
          network: T::NetworkId,
      ) -> DispatchResult {
@@ -445,7 +474,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          ensure!(
              !LoadToIncomingRequestHash::<T>::contains_key(network, incoming.hash()),
              Error::<T>::RequestIsAlreadyRegistered
-@@ -2007,6 +2059,8 @@
+@@ -2007,6 +2064,8 @@
          author: &T::AccountId,
          network: T::NetworkId,
      ) -> DispatchResult {
@@ -454,7 +483,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          Self::ensure_peer(author, network)?;
          let request = Requests::<T>::get(network, hash)
              .and_then(|request| request.into_outgoing().map(|x| x.0))
-@@ -2053,7 +2107,14 @@
+@@ -2053,7 +2112,14 @@
      /// 4. There is no registered request with the same hash.
      /// 5. The request's `validate` and `prepare` should pass.
      fn add_request(request: &OffchainRequest<T>) -> Result<(), DispatchError> {
@@ -469,7 +498,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          let bridge_status = BridgeStatuses::<T>::get(net_id).ok_or(Error::<T>::UnknownNetwork)?;
          if request.is_incoming() {
              Self::register_incoming_request_inner(request, net_id)?;
-@@ -2104,10 +2165,11 @@
+@@ -2104,10 +2170,11 @@
              queue_len < T::MaxRequestsPerQueue::get() as usize,
              Error::<T>::RequestsQueueFull
          );
@@ -482,7 +511,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          Requests::<T>::insert(net_id, &hash, request);
          RequestsQueue::<T>::mutate(net_id, |queue| queue.push(hash));
          RequestStatuses::<T>::insert(net_id, &hash, RequestStatus::Pending);
-@@ -2123,13 +2185,18 @@
+@@ -2123,13 +2190,18 @@
          incoming_request: &OffchainRequest<T>,
          network_id: T::NetworkId,
      ) -> Result<H256, DispatchError> {
@@ -502,7 +531,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          ensure!(
              !LoadToIncomingRequestHash::<T>::contains_key(network_id, replay_key),
              Error::<T>::RequestIsAlreadyRegistered
-@@ -2210,13 +2277,30 @@
+@@ -2210,13 +2282,30 @@
          hash: H256,
          network_id: T::NetworkId,
      ) -> DispatchResult {
@@ -533,7 +562,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
              error!("Incoming request failed {:?} {:?}", hash, e);
              Self::deposit_event(Event::IncomingRequestFinalizationFailed(hash));
              RequestStatuses::<T>::insert(network_id, hash, RequestStatus::Failed(e));
-@@ -2245,6 +2329,9 @@
+@@ -2245,6 +2334,9 @@
  
      #[inline]
      pub(crate) fn clear_request_signatures(network_id: T::NetworkId, hash: &H256) {
@@ -543,7 +572,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          RequestApprovals::<T>::remove(network_id, hash);
          RequestApprovers::<T>::remove(network_id, hash);
      }
-@@ -2400,15 +2487,47 @@
+@@ -2400,15 +2492,47 @@
          error: DispatchError,
          network_id: T::NetworkId,
      ) -> Result<(), DispatchError> {
@@ -591,7 +620,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
      }
  
      fn inner_import_incoming_request(
-@@ -2416,9 +2535,34 @@
+@@ -2416,9 +2540,34 @@
          load_incoming_request: LoadIncomingRequest<T>,
          incoming_request_result: Result<IncomingRequest<T>, DispatchError>,
      ) -> Result<(), DispatchError> {
@@ -627,7 +656,7 @@ diff --git a/pallets/eth-bridge/src/lib.rs b/pallets/eth-bridge/src/lib.rs
          match incoming_request_result {
              Ok(incoming_request) => {
                  if net_id != incoming_request.network_id() {
-@@ -2486,6 +2630,8 @@
+@@ -2486,6 +2635,8 @@
          author: <T as frame_system::pallet::Config>::AccountId,
          net_id: T::NetworkId,
      ) -> Result<Option<Weight>, DispatchError> {
@@ -1029,20 +1058,21 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          ensure!(
              !crate::Pallet::<T>::is_decommissioned_legacy_ethereum_xor_asset(
                  self.network_id,
-@@ -355,6 +356,12 @@
+@@ -355,6 +356,13 @@
  
      /// If the asset kind is owned, then the `amount` of funds is reserved on the bridge account.
      pub fn prepare(&self) -> Result<(), DispatchError> {
 +        let resolution = crate::recovery::transfer_resolution(self)?;
 +        // An excluded sidechain claim never creates locally issued backing. An owned
-+        // asset still reserves its exact entitlement, which finalize burns in place.
++        // claim uses native reservation admission; excluded finalization returns that
++        // reservation to pooled custody, and recovery restores its lock accounting.
 +        if !self.asset_kind.is_owned() && resolution.as_ref().is_some_and(|value| value.excluded) {
 +            return Ok(());
 +        }
          let generic_network_id =
              GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
          let asset_kind = if self.asset_kind.is_owned() {
-@@ -380,6 +387,7 @@
+@@ -380,6 +388,7 @@
  
      /// Unreserves previously reserved amount of funds if the asset kind is owned.
      pub fn unreserve(&self) -> DispatchResult {
@@ -1050,7 +1080,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          if self.asset_kind.is_owned() {
              let bridge_acc = crate::Pallet::<T>::bridge_account(self.network_id)
                  .ok_or(Error::<T>::UnknownNetwork)?;
-@@ -391,6 +399,7 @@
+@@ -391,6 +400,7 @@
  
      /// Calls `.unreserve`.
      pub fn cancel(&self) -> Result<(), DispatchError> {
@@ -1058,7 +1088,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          let generic_network_id =
              GenericNetworkId::EVMLegacy(self.network_id.unique_saturated_into());
          let asset_kind = if self.asset_kind.is_owned() {
-@@ -413,8 +422,31 @@
+@@ -413,8 +423,27 @@
      /// otherwise the amount is minted.
      pub fn finalize(&self) -> Result<H256, DispatchError> {
          self.validate()?;
@@ -1067,15 +1097,11 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
              .ok_or(Error::<T>::UnknownNetwork)?;
 +        if let Some(resolution) = resolution.as_ref().filter(|value| value.excluded) {
 +            if self.asset_kind.is_owned() {
-+                common::with_transaction(|| -> Result<_, DispatchError> {
-+                    self.unreserve()?;
-+                    assets::Pallet::<T>::burn_from(
-+                        &self.asset_id,
-+                        &bridge_account_id,
-+                        &bridge_account_id,
-+                        self.amount,
-+                    )
-+                })?;
++                // Authentication establishes the incoming claim, not title to the
++                // bridge's pooled checkpoint assets. Extinguish it without burning
++                // custody or crediting a recipient. The recovery executive restores
++                // this native preparation's lock counter in the same outer transaction.
++                self.unreserve()?;
 +            }
 +            crate::recovery::consume_transfer(resolution.clone());
 +            return Ok(self.tx_hash);
@@ -1090,7 +1116,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          let transfer_fee = Self::fee_amount();
          let amount = if self.should_take_fee {
              self.amount - transfer_fee
-@@ -432,22 +464,30 @@
+@@ -432,22 +461,30 @@
                          transfer_fee,
                      )?;
                  }
@@ -1124,7 +1150,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          Ok(self.tx_hash)
      }
  
-@@ -513,6 +553,7 @@
+@@ -513,6 +550,7 @@
      /// with the `tx_input`, otherwise an error is thrown. After that, a status of the request
      /// is changed to `Frozen` to stop receiving approvals.
      pub fn prepare(&self) -> Result<(), DispatchError> {
@@ -1132,7 +1158,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          ensure!(
              !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
              Error::<T>::DeprecatedLegacyXor
-@@ -543,6 +584,7 @@
+@@ -543,6 +581,7 @@
  
      /// Changes the request's status back to `ApprovalsReady`.
      pub fn cancel(&self) -> Result<(), DispatchError> {
@@ -1140,7 +1166,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          if self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer() {
              crate::RequestStatuses::<T>::insert(
                  self.network_id,
-@@ -566,6 +608,7 @@
+@@ -566,6 +605,7 @@
      /// Calls `cancel` on the request, changes its status to `Failed` and takes it approvals to
      /// make it available for resubmission.
      pub fn finalize(&self) -> Result<H256, DispatchError> {
@@ -1148,7 +1174,7 @@ diff --git a/pallets/eth-bridge/src/requests/incoming.rs b/pallets/eth-bridge/sr
          ensure!(
              !self.is_decommissioned_legacy_ethereum_xor_outgoing_transfer(),
              Error::<T>::DeprecatedLegacyXor
-@@ -610,6 +653,7 @@
+@@ -610,6 +650,7 @@
  impl<T: Config> IncomingMarkAsDoneRequest<T> {
      /// Checks that the marking request status is `ApprovalsReady`.
      pub fn validate(&self) -> Result<(), DispatchError> {
@@ -2642,3 +2668,80 @@ diff --git a/pallets/eth-bridge/src/tests/mock.rs b/pallets/eth-bridge/src/tests
              if self.endow_reserve_assets {
                  endowed_accounts.extend(ext_network.config.reserves.iter().cloned().map(
                      |(asset_id, _balance)| {
+diff --git a/vendor/sora2-common/pallets/multisig-verifier/src/lib.rs b/vendor/sora2-common/pallets/multisig-verifier/src/lib.rs
+index 9a7d39cc8..e93b853a7 100644
+--- a/vendor/sora2-common/pallets/multisig-verifier/src/lib.rs
++++ b/vendor/sora2-common/pallets/multisig-verifier/src/lib.rs
+@@ -64,1 +64,9 @@ pub use weights::WeightInfo;
++/// Exact, authenticated peer acknowledgements retained while recovery halts all
++/// outbound commitments. No worker consumes this journal automatically.
++pub fn recovery_peer_ack_key(network: bridge_types::SubNetworkId, id: H256) -> Vec<u8> {
++    let mut key = b":sora-nexus:recovery:peer-ack:v1:".to_vec();
++    key.extend((network, id).encode());
++    key
++}
++
+ #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+@@ -150,2 +158,4 @@ pub mod pallet {
+         PeerRegisteredInOtherNetwork,
++        RecoveryHalted,
++        RecoveryAcknowledgementExists,
+     }
+@@ -193,7 +203,6 @@ pub mod pallet {
+             })?;
+-            T::OutboundChannel::submit(
++            Self::submit_peer_ack(
+                 output.network_id,
+-                &frame_system::RawOrigin::Root,
+-                &bridge_types::substrate::DataSignerCall::AddPeer { peer }.prepare_message(),
+-                (),
++                output.message_id,
++                bridge_types::substrate::DataSignerCall::AddPeer { peer },
+             )?;
+@@ -232,6 +241,5 @@ pub mod pallet {
+-            T::OutboundChannel::submit(
++            Self::submit_peer_ack(
+                 output.network_id,
+-                &frame_system::RawOrigin::Root,
+-                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
+-                (),
++                output.message_id,
++                bridge_types::substrate::DataSignerCall::RemovePeer { peer },
+             )?;
+@@ -260,2 +268,36 @@ pub mod pallet {
+     impl<T: Config> Pallet<T> {
++        fn submit_peer_ack(
++            network: SubNetworkId,
++            id: H256,
++            acknowledgement: bridge_types::substrate::DataSignerCall,
++        ) -> DispatchResult {
++            if !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1") {
++                return T::OutboundChannel::submit(
++                    network,
++                    &frame_system::RawOrigin::Root,
++                    &acknowledgement.prepare_message(),
++                    (),
++                )
++                .map(drop);
++            }
++            ensure!(
++                sp_io::storage::exists(b":sora-nexus:recovery:incoming-active:v1")
++                    && sp_io::storage::get(b":sora-nexus:recovery:bridge-inbound-context:v1")
++                        .as_deref()
++                        == Some(
++                            frame_system::Pallet::<T>::block_number()
++                                .encode()
++                                .as_slice()
++                        ),
++                Error::<T>::RecoveryHalted
++            );
++            let key = recovery_peer_ack_key(network, id);
++            ensure!(
++                !sp_io::storage::exists(&key),
++                Error::<T>::RecoveryAcknowledgementExists
++            );
++            sp_io::storage::set(&key, &acknowledgement.encode());
++            Ok(())
++        }
++
+         fn canonicalize_peers(

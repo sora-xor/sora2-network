@@ -771,7 +771,8 @@ pub(crate) mod tests {
 
     fn policy() -> common::recovery::RecoveryPolicy {
         common::recovery::RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: CHECKPOINT_HASH,
             checkpoint_state_root: common::recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],

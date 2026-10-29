@@ -31,11 +31,97 @@ class PassiveConsensusTests(unittest.TestCase):
         value = self.target()
         return {'schema':'sora-nexus-persisted-recovery-database-v1','checkpointHash':p.CHECKPOINT_HASH,
             'policyCommitment':'0x'+'44'*32,'bestHash':value['hash'],'finalizedHash':value['hash'],
+            'checkpointNumberIndexHash':None,'checkpointHeaderPresentByHash':True,
+            'checkpointImportPolicy':'0x'+'44'*32,'auxiliaries':{'synthetic':'unchanged'},
+            'grandpaSetId':8,'grandpaAuthorities':[['synthetic-public-key',1]],
+            'persistedFinality':[{'synthetic':'not real finality evidence'}],
             **{k:value[k] for k in ('number','stateRoot','phase','cursor','operationCounter')},
             'storage':{'0x3a636f6465':{'blake2':value['codeHash']}},'storageProofVerified':True,
             'finalityProofVerified':True,'productionReady':False,'operatorApprovalVerified':False,
             'recoveryHeaders':[{'number':value['number'],'hash':value['hash'],'parentHash':p.CHECKPOINT_HASH}],
             'observedWarp':{'pid':123,'target':value['hash'],'sdkReverified':True,'proofs':1}}
+
+    def restart_trial(self, node=None):
+        node = node if node is not None else {'sha256': 'synthetic-never-executed'}
+        command = ['/synthetic/node', '--base-path', '/synthetic/warp/base', '--chain', '/synthetic/spec',
+                   '--sync', 'warp', '--reserved-only', '--no-mdns']
+        initial = {'pid':123,'command':command.copy(),'modeRequested':'warp','executable':node,
+                   'deliberateCrash':False,'signalSent':signal.SIGTERM,'exitCode':0}
+        restarted = {**initial,'pid':124,'command':command.copy()}
+        value = self.target()
+        admission = {'schema':'sora-nexus-passive-node-observation-v1','kind':'database-admitted',
+                     'pid':124,'sequence':1,'bestHash':value['hash'],'bestNumber':value['number'],
+                     'finalizedHash':value['hash'],'finalizedNumber':value['number'],
+                     'checkpointNumberIndexHash':None,'checkpointHeaderPresentByHash':True,
+                     'checkpointImportPolicy':'0x'+'44'*32}
+        after = self.report(); after['observedWarp'] = None
+        return {'initialProcess':initial,'restartProcess':restarted,'admission':admission,
+                'peerObservation':{'pid':124,'method':'system_peers','result':[]},'persistedAfter':after}
+
+    def test_warp_restart_requires_fresh_pid_and_still_absent_number_index(self):
+        node = {'sha256':'synthetic-never-executed'}
+        trial = self.restart_trial(node)
+        p.check_warp_restart(trial,self.report(),self.target(),'0x'+'44'*32,node)
+        for key in ('admission','persistedAfter'):
+            for replacement in (p.CHECKPOINT_HASH,'0x'+'55'*32):
+                bad=copy.deepcopy(trial);bad[key]['checkpointNumberIndexHash']=replacement
+                with self.subTest(key=key,replacement=replacement),self.assertRaises(ValueError):
+                    p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+            bad=copy.deepcopy(trial);del bad[key]['checkpointNumberIndexHash']
+            with self.assertRaisesRegex(ValueError,'number-index observation missing'):
+                p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+        before=self.report();before['checkpointNumberIndexHash']=p.CHECKPOINT_HASH
+        with self.assertRaisesRegex(ValueError,'gap already completed'):
+            p.check_warp_restart(trial,before,self.target(),'0x'+'44'*32,node)
+        bad=copy.deepcopy(trial);bad['restartProcess']['pid']=123
+        with self.assertRaisesRegex(ValueError,'distinct actual process'):
+            p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+
+    def test_warp_restart_rejects_stale_admission_peers_or_changed_consensus(self):
+        node = {'sha256':'synthetic-never-executed'}
+        trial = self.restart_trial(node)
+        mutations = [
+            ('admission','kind','database-open'),('admission','pid',123),
+            ('admission','checkpointHeaderPresentByHash',False),
+            ('admission','checkpointImportPolicy','0x'+'55'*32),
+            ('admission','bestNumber',p.CHECKPOINT),
+            ('restartProcess','modeRequested','full'),('restartProcess','executable',{}),
+            ('restartProcess','exitCode',1),('peerObservation','result',[{'peerId':'unexpected'}]),
+            ('peerObservation','pid',123),('persistedAfter','grandpaSetId',9),
+            ('persistedAfter','grandpaAuthorities',[['another-public-key',1]]),
+            ('persistedAfter','auxiliaries',{'synthetic':'changed'}),
+        ]
+        for section,field,value in mutations:
+            bad=copy.deepcopy(trial);bad[section][field]=value
+            with self.subTest(section=section,field=field),self.assertRaises(ValueError):
+                p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+        for flag in ('--reserved-nodes','--reserved-nodes=/synthetic/peer','--bootnodes'):
+            bad=copy.deepcopy(trial);bad['restartProcess']['command'].extend([flag,'/synthetic/peer'])
+            with self.assertRaisesRegex(ValueError,'no peers or discovery'):
+                p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+        for flag in ('--base-path','--chain','--sync'):
+            bad=copy.deepcopy(trial);command=bad['restartProcess']['command'];command[command.index(flag)+1]='changed'
+            with self.assertRaises(ValueError):p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+        bad=copy.deepcopy(trial);del bad['persistedAfter']['auxiliaries']
+        with self.assertRaisesRegex(ValueError,'comparison fields missing'):
+            p.check_warp_restart(bad,self.report(),self.target(),'0x'+'44'*32,node)
+
+    def test_database_admission_requires_post_guard_record_for_exact_process(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            admitted=self.restart_trial()['admission']
+            opened={**admitted,'kind':'database-open','sequence':0}
+            def save(rows):
+                for path in root.glob('*.json'):path.unlink()
+                for index,row in enumerate(rows):(root/f'{index:08}.json').write_text(json.dumps(row))
+            save([opened,admitted]);self.assertEqual(p.database_admission(root,124),admitted)
+            for rows in ([opened],[admitted,admitted],[opened,{**admitted,'pid':123}],
+                         [{**opened,'sequence':2},admitted]):
+                save(rows)
+                with self.assertRaises(ValueError):p.database_admission(root,124)
+
+    def test_warp_restart_is_a_mandatory_release_gate(self):
+        self.assertIn('warpRestartBeforeGapCompletion',p.build.release.GATES)
 
     def test_real_warp_binding_required_even_with_mode_or_proof_claim(self):
         report = self.report()
@@ -209,7 +295,8 @@ class PassiveConsensusTests(unittest.TestCase):
             original_report=copy.deepcopy(report)
             output=root/'out';output.mkdir();completion=output/'completion.json';completion.write_text('{}')
             result={'node':p.digest(node),'chainSpec':p.digest(spec),'policyCommitment':'0x'+'44'*32,
-                'fullAndWarpSynchronization':{'full':self.report(),'warp':self.report()},
+                'fullAndWarpSynchronization':{'full':self.report(),'warp':self.report(),
+                    'warpRestartBeforeGapCompletion':self.restart_trial(p.digest(node))},
                 'committedBoundaryCrashes':[],'allRecoveryBlocksKilledAfterCommit':False}
             class SyntheticHarness:
                 def __init__(self,*_):
@@ -222,6 +309,23 @@ class PassiveConsensusTests(unittest.TestCase):
             self.assertEqual(paths,original_paths)
             self.assertEqual(report,original_report)
 
+    def test_release_hook_rejects_missing_warp_restart_before_registering_gates(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp).resolve();manifest=root/'input.json';manifest.write_text('{}')
+            node=root/'node';node.write_bytes(b'synthetic node never executed')
+            spec=root/'spec';spec.write_bytes(b'synthetic spec')
+            paths={'nodeBinary':node,'chainSpec':spec};original_paths=paths.copy()
+            report={'artifacts':[],'gates':{},'productionReady':False};original_report=copy.deepcopy(report)
+            result={'node':p.digest(node),'chainSpec':p.digest(spec),'policyCommitment':'0x'+'44'*32,
+                'fullAndWarpSynchronization':{'full':self.report(),'warp':self.report()}}
+            class SyntheticHarness:
+                def __init__(self,*_):pass
+                def run(self):return result
+            with patch.object(release,'validate_release',return_value={'target':self.target()}),patch.object(p,'Harness',SyntheticHarness):
+                with self.assertRaisesRegex(ValueError,'restart before gap completion is mandatory'):
+                    release.package_hook(report,paths,manifest,release.source_binding(),root/'unused')
+            self.assertEqual(paths,original_paths);self.assertEqual(report,original_report)
+
     def test_failed_completion_digest_does_not_register_partial_gate(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp).resolve();manifest=root/'input.json';manifest.write_text('{}')
@@ -232,7 +336,8 @@ class PassiveConsensusTests(unittest.TestCase):
             original_report=copy.deepcopy(report)
             output=root/'out';output.mkdir();completion=output/'completion.json';completion.write_text('{}')
             result={'node':p.digest(node),'chainSpec':p.digest(spec),'policyCommitment':'0x'+'44'*32,
-                'fullAndWarpSynchronization':{'full':self.report(),'warp':self.report()},
+                'fullAndWarpSynchronization':{'full':self.report(),'warp':self.report(),
+                    'warpRestartBeforeGapCompletion':self.restart_trial(p.digest(node))},
                 'committedBoundaryCrashes':[],'allRecoveryBlocksKilledAfterCommit':False}
             pins={str(completion):p.digest(completion)};original_digest=p.digest;reads=0
             class SyntheticHarness:

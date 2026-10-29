@@ -433,6 +433,11 @@ pub fn new_partial(
     .map_err(ServiceError::Other)?;
     if let Some(recovery) = &recovery {
         crate::recovery::validate_database(&client, recovery)?;
+        if let Some(recorder) = &recovery_evidence {
+            recorder
+                .record_database_admission(&client)
+                .map_err(ServiceError::Other)?;
+        }
         let grandpa_keys = keystore_container
             .keystore()
             .keys(sp_core::crypto::key_types::GRANDPA)

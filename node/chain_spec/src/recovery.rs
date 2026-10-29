@@ -1,5 +1,6 @@
 //! Public, non-secret admission data for the checkpoint recovery network.
 
+use codec::DecodeWithMemLimit;
 use sc_chain_spec::ChainSpecExtension;
 use sc_finality_grandpa::AuthorityId;
 use serde::{Deserialize, Serialize};
@@ -29,6 +30,8 @@ pub struct RecoveryConfig {
     pub schema_version: u32,
     pub checkpoint_hash: H256,
     pub policy_commitment: H256,
+    /// Full bounded policy allows admission to bind its signature domain to this network.
+    pub policy_scale: sp_core::Bytes,
     pub bootstrap_code_hash: H256,
     pub final_code_hash: H256,
     pub hold_code_hash: H256,
@@ -52,7 +55,7 @@ pub struct RecoveryConfig {
 impl RecoveryConfig {
     /// Validate invariants that do not require access to the checkpoint database.
     pub fn validate(&self) -> Result<(), String> {
-        if self.schema_version != 1 {
+        if self.schema_version != 2 {
             return Err("unsupported recovery configuration schema".into());
         }
         if self.checkpoint_hash != H256::from(common::recovery::CHECKPOINT_HASH) {
@@ -69,6 +72,21 @@ impl RecoveryConfig {
         .any(H256::is_zero)
         {
             return Err("recovery requires nonzero policy, code and evidence commitments".into());
+        }
+        if self.policy_scale.0.len() > 2 * 1024 * 1024 {
+            return Err("recovery policy exceeds admission bound".into());
+        }
+        let mut input = self.policy_scale.0.as_slice();
+        let policy =
+            common::recovery::RecoveryPolicy::decode_with_mem_limit(&mut input, 16 * 1024 * 1024)
+                .map_err(|_| "invalid recovery policy encoding")?;
+        policy.validate().map_err(|_| "invalid recovery policy")?;
+        if !input.is_empty()
+            || policy.commitment() != self.policy_commitment.0
+            || policy.evidence_commitment != self.evidence_commitment.0
+            || policy.authorization_domain.chain_spec_id != CHAIN_ID.as_bytes()
+        {
+            return Err("recovery policy commitment or authorization network differs".into());
         }
         if self.bootstrap_code_hash == self.final_code_hash
             || self.bootstrap_code_hash == self.hold_code_hash
@@ -199,10 +217,27 @@ mod tests {
     }
 
     fn fixture() -> RecoveryConfig {
+        use codec::Encode;
+        let policy = common::recovery::RecoveryPolicy {
+            format_version: 2,
+            checkpoint_hash: common::recovery::CHECKPOINT_HASH,
+            checkpoint_state_root: common::recovery::CHECKPOINT_STATE_ROOT,
+            replacements: vec![],
+            council: vec![sp_runtime::AccountId32::new([7; 32])],
+            chunk_hashes: vec![[8; 32]],
+            audit_chunk_hashes: vec![[9; 32]],
+            evidence_commitment: [5; 32],
+            terminal_audit_commitment: [10; 32],
+            authorization_domain: common::recovery::RecoveryDomain {
+                chain_spec_id: CHAIN_ID.as_bytes().to_vec(),
+                release_nonce: [11; 32],
+            },
+        };
         RecoveryConfig {
-            schema_version: 1,
+            schema_version: 2,
             checkpoint_hash: common::recovery::CHECKPOINT_HASH.into(),
-            policy_commitment: [1; 32].into(),
+            policy_commitment: policy.commitment().into(),
+            policy_scale: sp_core::Bytes(policy.encode()),
             bootstrap_code_hash: [2; 32].into(),
             final_code_hash: [3; 32].into(),
             hold_code_hash: [4; 32].into(),
@@ -255,6 +290,35 @@ mod tests {
         assert!(config.validate().is_err());
         config = fixture();
         config.retired_grandpa_keys.remove(0);
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn policy_bytes_bind_the_authorization_network_and_reject_legacy_domains() {
+        use codec::{DecodeAll, Encode};
+        let valid = fixture();
+        let mut config = valid.clone();
+        config.schema_version = 1;
+        assert!(config.validate().is_err());
+        let mut policy =
+            common::recovery::RecoveryPolicy::decode_all(&mut valid.policy_scale.0.as_slice())
+                .unwrap();
+        policy.authorization_domain.chain_spec_id = b"sora-nexus-PUBLIC-FIXTURE-ONLY".to_vec();
+        config = valid.clone();
+        config.policy_scale = sp_core::Bytes(policy.encode());
+        config.policy_commitment = policy.commitment().into();
+        assert!(config.validate().unwrap_err().contains("network"));
+        config = valid.clone();
+        config.policy_scale.0.push(0);
+        assert!(config.validate().is_err());
+        config = valid.clone();
+        config.policy_commitment = H256::zero();
+        assert!(config.validate().is_err());
+        policy.authorization_domain.chain_spec_id = CHAIN_ID.as_bytes().to_vec();
+        policy.authorization_domain.release_nonce = [0; 32];
+        config = valid;
+        config.policy_scale = sp_core::Bytes(policy.encode());
+        config.policy_commitment = policy.commitment().into();
         assert!(config.validate().is_err());
     }
 

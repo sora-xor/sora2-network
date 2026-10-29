@@ -829,7 +829,7 @@ mod tests {
             &storage,
             map,
             vec![AccountId::new([29; 32])],
-            [3; 32],
+            crate::composer::PolicyIdentity::public_fixture([3; 32]),
             c.groups,
             crate::composer::AuditRequests {
                 keys: c.witnesses,

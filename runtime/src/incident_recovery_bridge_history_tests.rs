@@ -193,7 +193,8 @@ fn terminal_history_marker_blocks_native_status_refund_and_recreation_after_glob
         let chunk = RecoveryChunk { index: 0, edits };
         assert_ok!(chunk.validate());
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![AccountReplacement {

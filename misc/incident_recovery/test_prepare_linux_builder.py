@@ -31,7 +31,8 @@ class PreparationTests(unittest.TestCase):
         self.inventory = self.root / 'inventory.json'
         self.inventory.write_text(json.dumps(self.source_pins(), sort_keys=True))
         self.ca = self.root / 'public-ca.pem'
-        self.ca.write_text('# Synthetic public certificate bytes; never used for TLS.\n-----BEGIN CERTIFICATE-----\nYWJj\n-----END CERTIFICATE-----\n')
+        # Public root certificate fixture; HTTP and Docker are always mocked.
+        self.ca.write_bytes((Path(__file__).parent / 'testdata/openbsd-public-ca.pem').read_bytes())
         elf = bytearray(64); elf[:7] = b'\x7fELF\x02\x01\x01'; elf[16:18] = (3).to_bytes(2,'little'); elf[18:20] = (62).to_bytes(2,'little')
         self.rustup = bytes(elf)
         self.manifest = ('manifest-version = "2"\ndate = "2026-10-23"\n' + ''.join(
@@ -83,8 +84,10 @@ class PreparationTests(unittest.TestCase):
             result=json.dumps([self.inspected(identity)]).encode()
         elif args[:2]==['buildx','build']:
             self.assertIn('--load',args);self.assertIn('--pull=false',args);self.assertIn('--network=default',args)
+            self.assertIn('--progress=plain',args);self.assertNotIn('--quiet',args)
             stage=args[args.index('--target')+1]
-            result=(self.builder_id if stage=='builder' else self.runtime_id).encode()+b'\n'
+            Path(args[args.index('--iidfile')+1]).write_text((self.builder_id if stage=='builder' else self.runtime_id)+'\n')
+            result=b'Synthetic build progress; image identity comes only from the pinned IID file.\n'
         elif args[0]=='create':
             self.assertEqual(args[args.index('--network')+1],'none')
             self.owner=args[args.index('--label')+1].split('=',1)[1]
@@ -110,6 +113,71 @@ class PreparationTests(unittest.TestCase):
     def run_fake(self):
         with patch.object(p.build,'source_names',return_value=self.names), patch.object(p.build,'source_inventory',side_effect=lambda _root:self.source_pins()), patch.object(p.build,'helper_pins',return_value={}), patch.object(p.image,'socket_identity',return_value=(1,2,3)), patch.object(p.build,'process',side_effect=self.fake_process):
             return p.prepare(self.args)
+
+    def test_annotated_ca_normalizes_to_exact_verified_der_with_provenance(self):
+        raw = self.ca.read_bytes()
+        normalized, provenance = p.ca_normalization(self.ca)
+        self.assertTrue(normalized.startswith(b'-----BEGIN CERTIFICATE-----\n'))
+        self.assertNotIn(b'Certificate:', normalized)
+        self.assertNotIn(b'Fingerprint', normalized)
+        self.assertEqual(provenance['source'], p.build.pin_bytes(raw))
+        self.assertEqual(provenance['normalized'], p.build.pin_bytes(normalized))
+        self.assertEqual(provenance['certificateCount'], 1)
+        entry = provenance['certificates'][0]
+        original = raw[entry['sourceStart']:entry['sourceEnd']].decode()
+        der = p.ssl.PEM_cert_to_DER_cert(original)
+        self.assertEqual(p.ssl.PEM_cert_to_DER_cert(normalized.decode()), der)
+        self.assertEqual(entry['derSha256'], hashlib.sha256(der).hexdigest())
+        self.assertTrue(entry['annotated'])
+        self.ca.write_bytes(normalized)
+        repeated, plain = p.ca_normalization(self.ca)
+        self.assertEqual(repeated, normalized)
+        self.assertFalse(plain['certificates'][0]['annotated'])
+
+    def test_public_ca_rejects_non_der_unknown_pem_and_contradictory_annotations(self):
+        original = self.ca.read_bytes()
+        bad = [b'-----BEGIN CERTIFICATE-----\nYWJj\n-----END CERTIFICATE-----\n',
+            original + b'-----BEGIN PUBLIC KEY-----\nYWJj\n-----END PUBLIC KEY-----\n',
+            original + b'-----BEGIN PRIVATE KEY-----\nnot-a-key\n-----END PRIVATE KEY-----\n',
+            original.replace(b'SHA256 Fingerprint=', b'SHA256 Fingerprint=00:'),
+            b'unrecognized prefix\n' + original, original + b'unrecognized suffix\n',
+            original.replace(b'-----END CERTIFICATE-----', b'-----END CERTIFICATE---'),
+            original + b'\0']
+        for raw in bad:
+            self.ca.write_bytes(raw)
+            with self.subTest(raw=raw[:30]), self.assertRaises((ValueError, p.ssl.SSLError)):
+                p.ca_bundle(self.ca)
+
+    def test_public_ca_preserves_certificate_order_and_duplicates(self):
+        normalized = p.ca_bundle(self.ca)
+        self.ca.write_bytes(b'# explicit public roots\n' + normalized + normalized)
+        actual, provenance = p.ca_normalization(self.ca)
+        self.assertEqual(actual, normalized + normalized)
+        self.assertEqual(provenance['certificateCount'], 2)
+        self.assertEqual(len(provenance['certificates']), 2)
+        self.assertLess(provenance['certificates'][0]['sourceStart'], provenance['certificates'][1]['sourceStart'])
+
+    def test_resolution_retains_original_ca_pin_and_only_normalized_payload(self):
+        original = p.digest(self.ca)
+        value = self.resolve()
+        resolution = json.loads((self.resolve_args.output / 'PUBLIC-RESOLUTION.json').read_text())
+        witness = resolution['caNormalization']
+        self.assertEqual(witness['source'], original)
+        self.assertEqual(witness['sourcePath'], str(self.ca))
+        self.assertEqual(witness['normalized'], p.digest(self.resolve_args.output / 'tls-ca.pem'))
+        self.assertEqual({key: value['files']['tls-ca.pem'][key] for key in witness['normalized']}, witness['normalized'])
+        self.assertNotIn(b'Fingerprint', (self.resolve_args.output / 'tls-ca.pem').read_bytes())
+        self.assertEqual(p.digest(self.ca), original)
+
+    def test_ca_change_during_download_cannot_produce_resolution_receipt(self):
+        def fetch(url, ca):
+            result = self.fake_fetch(url, ca)
+            self.ca.write_bytes(self.ca.read_bytes() + b'# changed\n')
+            return result
+        with patch.object(p.build,'source_names',return_value=self.names), patch.object(p.build,'source_inventory',side_effect=lambda _root:self.source_pins()), patch.object(p,'fetch',side_effect=fetch):
+            with self.assertRaisesRegex(ValueError, 'CA source/normalized input changed'):
+                p.resolve(self.resolve_args)
+        self.assertFalse((self.resolve_args.output / 'PUBLIC-RESOLUTION.json').exists())
 
     def test_complete_public_resolution_and_mock_preparation(self):
         self.arguments(); result=self.run_fake()
@@ -156,6 +224,25 @@ class PreparationTests(unittest.TestCase):
         self.inspected=lambda identity:{**previous(identity),'Architecture':'arm64'}
         with self.assertRaisesRegex(ValueError,'platform differs'):self.run_fake()
         self.assertFalse(any(row[:2]==['buildx','build'] for row in self.calls))
+
+    def test_invalid_image_id_file_is_rejected_even_with_success_stdout(self):
+        self.arguments()
+        def mutate(args, result):
+            if args[:2] == ['buildx', 'build']:
+                Path(args[args.index('--iidfile')+1]).write_text('unbound-image\n')
+                return self.runtime_id.encode()
+            return result
+        self.mutation = mutate
+        with self.assertRaisesRegex(ValueError, 'image ID file malformed'): self.run_fake()
+
+    def test_admitted_image_id_file_cannot_change_later(self):
+        self.arguments()
+        def mutate(args, result):
+            if args[:2] == ['image', 'inspect'] and args[2] == self.runtime_id:
+                (self.args.output/'runtime.iid').write_text(self.builder_id+'\n')
+            return result
+        self.mutation = mutate
+        with self.assertRaisesRegex(ValueError, 'bound file changed'): self.run_fake()
 
     def test_nonzero_container_exit_fails_despite_docker_success(self):
         self.arguments();self.container_exit=1
@@ -310,6 +397,75 @@ class ManifestNormalizationTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.module.verify_manifest(public, installed)
         public, installed = self.values(); public['pkg']['rustc']['unreviewed']='must retain'
         with self.assertRaises(ValueError): self.module.verify_manifest(public, installed)
+
+    def test_reviewed_standalone_archive_index_can_be_omitted_by_rustup(self):
+        public, installed = self.values()
+        public['artifacts'] = {'source-code': {'target': {'*': [{
+            'url': 'https://static.rust-lang.org/dist/2026-10-23/rustc-nightly-src.tar.xz',
+            'hash-sha256': 'a'*64}]}}}
+        self.module.verify_manifest(public, installed)
+        installed['artifacts'] = copy.deepcopy(public['artifacts'])
+        installed['artifacts']['source-code']['target']['*'][0]['hash-sha256'] = 'b'*64
+        with self.assertRaises(ValueError): self.module.verify_manifest(public, installed)
+
+    def test_omitted_archive_index_cannot_hide_unknown_payloads(self):
+        valid = {'source-code': {'target': {'*': [{
+            'url': 'https://static.rust-lang.org/dist/2026-10-23/rustc-nightly-src.tar.xz',
+            'hash-sha256': 'a'*64}]}}}
+        cases = [
+            {'compiler': valid['source-code']},
+            {'source-code': {'target': {'linux': valid['source-code']['target']['*']}}},
+            {'source-code': {'target': {'*': [{'url': 'https://example.invalid/source.tar.xz', 'hash-sha256': 'a'*64}]}}},
+            {'source-code': {'target': {'*': [{'url': valid['source-code']['target']['*'][0]['url'], 'hash-sha256': 'not-a-hash'}]}}},
+        ]
+        for index in cases:
+            with self.subTest(index=index):
+                public, installed = self.values(); public['artifacts'] = index
+                with self.assertRaises(ValueError): self.module.verify_manifest(public, installed)
+
+
+class BuildkitSeedTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.seed = self.root / '.token_seed'
+        self.valid = {'registry-1.docker.io': {'Seed': 'AAAAAAAAAAAAAAAAAAAAAA=='}}
+
+    def put(self, value):
+        self.seed.write_text(json.dumps(value))
+        self.seed.chmod(0o600)
+
+    def test_generated_public_registry_entropy_and_empty_lock_are_accepted(self):
+        self.put(self.valid)
+        self.assertTrue(p.buildkit_seed_state(self.seed, Path('.token_seed')))
+        lock = self.root / '.token_seed.lock'; lock.touch()
+        self.assertTrue(p.buildkit_seed_state(lock, Path('.token_seed.lock')))
+        self.assertFalse(p.buildkit_seed_state(self.seed, Path('buildx/refs/default/test')))
+
+    def test_other_registry_credentials_and_wrong_encoding_are_rejected(self):
+        invalid = [
+            {'example.invalid': self.valid['registry-1.docker.io']},
+            {**self.valid, 'example.invalid': self.valid['registry-1.docker.io']},
+            {'registry-1.docker.io': {'Seed': 'AAAAAAAAAAAAAAAAAAAAAA==', 'Auth': 'forbidden'}},
+            {'registry-1.docker.io': {'Seed': 'YWJj'}},
+            {'registry-1.docker.io': {'Seed': 'bad?'}},
+        ]
+        for value in invalid:
+            with self.subTest(value=value):
+                self.put(value)
+                with self.assertRaises(ValueError): p.buildkit_seed_state(self.seed, Path('.token_seed'))
+
+    def test_permissions_duplicate_keys_nonempty_lock_and_alias_are_rejected(self):
+        self.put(self.valid); self.seed.chmod(0o644)
+        with self.assertRaises(ValueError): p.buildkit_seed_state(self.seed, Path('.token_seed'))
+        self.seed.chmod(0o600)
+        self.seed.write_text('{"registry-1.docker.io":{"Seed":"AAAAAAAAAAAAAAAAAAAAAA==","Seed":"AAAAAAAAAAAAAAAAAAAAAA=="}}')
+        with self.assertRaises(ValueError): p.buildkit_seed_state(self.seed, Path('.token_seed'))
+        lock = self.root / '.token_seed.lock'; lock.write_text('not a lock')
+        with self.assertRaises(ValueError): p.buildkit_seed_state(lock, Path('.token_seed.lock'))
+        alias = self.root / 'alias'; alias.symlink_to(self.seed)
+        with self.assertRaises(ValueError): p.buildkit_seed_state(alias, Path('.token_seed'))
 
 
 if __name__ == '__main__':unittest.main()

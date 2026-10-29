@@ -152,6 +152,8 @@ def prepare(root, destination, work_path, consensus_path, operators_path, bootst
         # RecoveryInherent v1, RecoveryAction::StageCode(3), Final(0).
         payload = b"snxrec01\x01\x03\x00" + scale.u32(index) + scale.vec(chunk)
         previous = step(f"final-code-{index:05}", payload, "Auditing", rejected=[previous] if previous else [])
+    for index, payload in enumerate(work.get("terminalPreludeEnvelopes", [])):
+        step(f"terminal-page-{index:05}", scale.raw(payload), "Auditing")
     step("terminal", scale.raw(work["terminalEnvelope"]), "Complete", expected_spec=138)
     slot += 600
     step("ordinary", None, "Complete", expected_spec=138)

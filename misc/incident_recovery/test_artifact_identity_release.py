@@ -46,8 +46,8 @@ class ArtifactIdentityTests(unittest.TestCase):
         self.activation = {**copy.deepcopy(base), 'schema': 'sora-nexus-maintenance-replay-v1',
             'steps': [self.step(101, 'terminal', 138, 'Complete'), self.step(102, None, 138, 'Complete')]}
         self.hold = {**copy.deepcopy(base), 'schema': 'sora-nexus-supplied-council-maintenance-replay-v1',
-            'steps': [self.step(101, 'escape', 135, 'Hold'), self.step(102, 'tick', 135, 'Hold')],
-            'suppliedCouncil': {'escapes': [{'step': 0, 'envelopeSha256': self.records['escape']['sha256'], 'destinationSpec': 135}],
+            'steps': [self.step(101, 'tick', 134, 'Applying'), self.step(102, 'escape', 135, 'Hold'), self.step(103, 'tick', 135, 'Hold')],
+            'suppliedCouncil': {'escapes': [{'step': 1, 'envelopeSha256': self.records['escape']['sha256'], 'destinationSpec': 135}],
                 'expectedTerminal': {'specVersion': 135, 'phase': 'Hold', 'cursor': 0, 'auditCursor': 0,
                     'operationCounter': 1, 'ordinaryBlocks': 0, 'activePolicyCommitment': '0x' + identity.blake(policy()),
                     'stateRoot': hx(88), 'terminalAuditBlake2': None}}}
@@ -248,9 +248,9 @@ class ArtifactIdentityTests(unittest.TestCase):
             row = {'number': number, 'hash': '0x' + identity.blake(header), 'stateRoot': state,
                 'executingCodeBlake2': context['wasm'][str(version)]['blake2'], 'resultingSpec': step['expectedSpec'],
                 'phase': step['expectedPhase'], 'cursor': context['workChunks'] if scenario == 'activation' else 0,
-                'operationCounter': 1 if scenario == 'hold' else 0, 'blockSha256': block_sha,
+                'operationCounter': 1 if scenario == 'hold' and index >= 1 else 0, 'blockSha256': block_sha,
                 'diskSnapshotManifestSha256': previous_snapshot['sha256'],
-                'forbiddenExtrinsicsRejected': 0 if version == 138 else 2 + len(detail['negativeRoles']) + (1 if scenario == 'hold' and index > 0 else 0),
+                'forbiddenExtrinsicsRejected': 0 if version == 138 else 2 + len(detail['negativeRoles']) + (1 if scenario == 'hold' and index > 1 else 0),
                 'maintenanceSessionFrozen': version != 138, 'independentImportRootMatches': True,
                 'diskRestartRootMatches': True, 'generatedAuthorizationSha256': None}
             rows.append(row); parent = row['hash']
@@ -265,8 +265,8 @@ class ArtifactIdentityTests(unittest.TestCase):
             'fixtureGovernanceStateUnchanged': None, 'fixtureStateExpectationChecks': 0,
             'nativeOperationDerivations': [], 'repairedNativeOperationDerivations': []}
         if scenario == 'hold':
-            prefix = f'{scale.CHECKPOINT + 1}.supplied.'
-            auth = {'step': 0, 'blockNumber': scale.CHECKPOINT + 1, 'parentHash': scale.CHECKPOINT_HASH,
+            prefix = f'{scale.CHECKPOINT + 2}.supplied.'
+            auth = {'step': 1, 'blockNumber': scale.CHECKPOINT + 2, 'parentHash': rows[0]['hash'], 'recoveryAnchor': rows[0]['hash'],
                 'envelopeSha256': emit(prefix + 'escape.scale', self.paths['escape'].read_bytes()),
                 'authorizationSha256': emit(prefix + 'authorization.scale', b'synthetic authorization'),
                 'signingMessageSha256': emit(prefix + 'signing-message.scale', b'synthetic signing message'),
@@ -320,6 +320,7 @@ class ArtifactIdentityTests(unittest.TestCase):
     def test_validate_hold_signers_counter_and_destination_are_exact(self):
         result, context, output, pins = self.witness('hold')
         for mutate in [lambda w: w.update(operationCounter=1), lambda w: w.update(destinationSpec=136),
+            lambda w: w.update(recoveryAnchor=scale.CHECKPOINT_HASH),
             lambda w: w.update(signers=[]), lambda w: w.update(signers=[hx(1)]),
             lambda w: w.update(signers=w['signers']*2), lambda w: w.update(storedCodeBlake2=hx(2))]:
             altered = copy.deepcopy(result); mutate(altered['suppliedCouncil']['authorizations'][0])

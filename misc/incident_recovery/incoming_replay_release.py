@@ -32,12 +32,14 @@ def controls(raw):
     for _ in range(r.compact()):r.take(64)
     council=[r.take(32) for _ in range(r.compact())]
     scale.require(not PUBLIC_COUNCIL.intersection(council),'public test council cannot enter release replay')
-    return raw[:r.offset]
+    from release_package import authorization_domain_scale, policy_identity
+    return raw[:r.offset] + authorization_domain_scale(policy_identity(raw)['authorizationDomain'])
 
 def bind(root,records,paths,original,local_file,digest_file,policy_identity,wasm_identity):
     if not (ROLES & paths.keys()):return None
     scale.require(ROLES<=paths.keys() and original is not None and {'policyScale','checkpointCaptureManifest','bootstrapWasm','holdWasm','finalWasm'}<=paths.keys(),'paired recovery replay/active policy and original release inputs required')
     active_raw=read_bytes(paths['incomingActivePolicyScale'],2*1024**2);active=policy_identity(active_raw)
+    scale.require(active['authorizationDomain']==original['authorizationDomain'],'repair authorization domain differs')
     scale.require(controls(read_bytes(paths['policyScale'],2*1024**2))==controls(active_raw),'repaired policy changes checkpoint/mapping/council controls')
     source=paths['recoveryParentReplay'];manifest=read_json(source)
     allowed={'schema','checkpointHash','checkpointCapture','policy','bootstrap','hold','finalRuntime','repairs','previousGrandpaSet','freshGrandpa','suppliedCouncil','nativeOperationRecorder','nativeOperationRecordersV2','steps'}
@@ -70,6 +72,7 @@ def bind(root,records,paths,original,local_file,digest_file,policy_identity,wasm
         required={prefix+suffix for suffix in ['PolicyScale','Binding','Provenance','BuildReceipt']}
         scale.require(required<=paths.keys(),'repair source/build provenance roles required')
         repair_raw=read_bytes(paths[prefix+'PolicyScale'],2*1024**2);repair_policy=policy_identity(repair_raw)
+        scale.require(repair_policy['authorizationDomain']==original['authorizationDomain'],'repair authorization domain differs')
         scale.require(controls(repair_raw)==controls(active_raw),'repair checkpoint/mapping/council controls differ')
         binding_path=paths[prefix+'Binding'];binding=read_json(binding_path)
         required_binding={'policyScale','policyCommitment','originalPolicyScale','originalPolicyCommitment','operatorsScale','previousGrandpaSetId','firstRecoverySlot','finalWasm'}

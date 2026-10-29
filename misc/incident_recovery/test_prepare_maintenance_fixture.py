@@ -104,6 +104,16 @@ class MaintenanceFixtureTests(unittest.TestCase):
             self.assertEqual(hashlib.sha256(data).hexdigest(), reference["sha256"])
             self.assertEqual(json.loads(data), hashi()["fixtureHashiProvenance"])
             self.assertFalse(result["productionReady"])
+            # Every prelude page executes before the final activation envelope.
+            paged = hashi()
+            paged['work']['terminalPreludeEnvelopes'] = ['0x0b00', '0x0b01']
+            work.write_text(json.dumps(paged))
+            page_result = maintenance.prepare(root, root / 'paged-diagnostic', work, consensus, operators, *paths)
+            page_manifest = json.loads((root / page_result['manifest']).read_text())
+            page_steps = [step for step in page_manifest['steps'] if step.get('recovery')
+                          and 'terminal-page' in step['recovery']['file']]
+            self.assertEqual([step['expectedPhase'] for step in page_steps], ['Auditing', 'Auditing'])
+            self.assertEqual([step['expectedPhase'] for step in page_manifest['steps'][-3:]], ['Complete'] * 3)
 
     def test_source_hashi_scope_and_three_incoming_steps_are_bound(self):
         document=hashi_source()

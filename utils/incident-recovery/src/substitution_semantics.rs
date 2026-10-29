@@ -267,6 +267,78 @@ pub fn bridge_multisig_account(creator: [u8; 32], block: u32, nonce: u32) -> [u8
     digest(&(b"modlpy/utilisuba", creator, block, nonce).encode())
 }
 
+/// Owners of a native or token balance, read from the reversible owner key of
+/// System.Account and Tokens.Accounts. Unit fixtures without those maps
+/// contribute no holders; the checkpoint metadata always has both.
+fn balance_holders(
+    schema: &MetadataSchema,
+    storage: &Storage,
+) -> Result<std::collections::HashSet<[u8; 32]>> {
+    use crate::inventory::Hasher;
+    let mut holders = std::collections::HashSet::new();
+    for name in ["System.Account", "Tokens.Accounts"] {
+        let Ok(d) = descriptor(schema, name) else {
+            continue;
+        };
+        if d.hashers.first() != Some(&Hasher::Blake2_128Concat)
+            || !d
+                .key_types
+                .first()
+                .is_some_and(|id| typed::account_type(&schema.registry, *id))
+        {
+            return Err(format!("{name} owner key codec differs"));
+        }
+        let start = d.prefix.len();
+        for key in storage
+            .top
+            .range(d.prefix.clone()..)
+            .map(|(key, _)| key)
+            .take_while(|key| key.starts_with(&d.prefix))
+        {
+            let owner: [u8; 32] = key
+                .get(start + 16..start + 48)
+                .and_then(|bytes| bytes.try_into().ok())
+                .ok_or_else(|| format!("truncated {name} owner key"))?;
+            if Hasher::Blake2_128Concat.apply(&owner) != key[start..start + 48] {
+                return Err(format!("{name} owner key hash differs"));
+            }
+            holders.insert(owner);
+        }
+    }
+    Ok(holders)
+}
+
+/// A utility derivative is controlled only through its owner's key, so one left
+/// out of the mapping would stay bound to the retired identity. Every funded
+/// derivative of a mapped account must be mapped and proven like any other.
+fn reject_unmapped_derivatives(
+    schema: &MetadataSchema,
+    storage: &Storage,
+    mappings: &BTreeMap<[u8; 32], [u8; 32]>,
+    verified_derived: &BTreeMap<[u8; 32], [u8; 32]>,
+) -> Result<()> {
+    let holders = balance_holders(schema, storage)?;
+    if holders.is_empty() {
+        return Ok(());
+    }
+    for owner in mappings.keys() {
+        for index in 0..=u16::MAX {
+            let derived = derivative_account(*owner, index);
+            if holders.contains(&derived)
+                && (mappings.get(&derived).is_none()
+                    || verified_derived.get(&derived) != mappings.get(&derived))
+            {
+                return Err(format!(
+                    "utility derivative {} (index {index}) of replaced account {} holds a balance; add it to the mapping and derived inventory",
+                    hx(&derived),
+                    hx(owner)
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 type PendingCallIndex = BTreeMap<[u8; 32], BTreeSet<Vec<u8>>>;
 
 /// Index only the exact storage prefix once. Scanning the complete checkpoint
@@ -576,6 +648,7 @@ fn verify_account_ownership(
         })
         .collect();
     let derived = verify_derived(schema, storage, &mappings, proofs, &plan.derived_accounts)?;
+    reject_unmapped_derivatives(schema, storage, &mappings, &derived.controls)?;
     let mut direct_accounts = Vec::new();
     for old in mappings
         .keys()
@@ -1170,6 +1243,7 @@ mod tests {
                 key.sign(&common::recovery::replacement_ownership_message(&pair)),
             )
             .encode()),
+            intake: None,
         }
     }
 
@@ -1179,6 +1253,60 @@ mod tests {
             descriptors: vec![],
             metadata_hash: hx(&[1; 32]),
         }
+    }
+
+    #[test]
+    fn funded_utility_derivative_of_a_replaced_account_must_be_mapped() {
+        use crate::inventory::Hasher;
+        let mut registry = Registry::new();
+        let account = registry.register_type(&meta_type::<AccountId32>()).id;
+        let balance = registry.register_type(&meta_type::<u128>()).id;
+        let system = Descriptor {
+            trie: "top".into(),
+            name: "System.Account".into(),
+            prefix: [
+                sp_io::hashing::twox_128(b"System"),
+                sp_io::hashing::twox_128(b"Account"),
+            ]
+            .concat(),
+            key_types: vec![account],
+            hashers: vec![Hasher::Blake2_128Concat],
+            value_type: balance,
+        };
+        let schema = MetadataSchema {
+            registry: registry.into(),
+            descriptors: vec![system.clone()],
+            metadata_hash: hx(&[1; 32]),
+        };
+        let owner = [1; 32];
+        let derived = derivative_account(owner, 3);
+        let mut storage = Storage::default();
+        let mut key = system.prefix.clone();
+        key.extend(Hasher::Blake2_128Concat.apply(&derived));
+        storage.top.insert(key, 5u128.encode());
+
+        let only_owner = BTreeMap::from([(owner, [2; 32])]);
+        let error = reject_unmapped_derivatives(&schema, &storage, &only_owner, &BTreeMap::new())
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("(index 3)"), "{error}");
+        let both = BTreeMap::from([(owner, [2; 32]), (derived, [3; 32])]);
+        // A new key's direct signature cannot replace the controlling-key graph.
+        assert!(reject_unmapped_derivatives(&schema, &storage, &both, &BTreeMap::new()).is_err());
+        let verified = BTreeMap::from([(derived, [3; 32])]);
+        reject_unmapped_derivatives(&schema, &storage, &both, &verified).unwrap();
+        // An unfunded derivative needs no mapping.
+        reject_unmapped_derivatives(&schema, &Storage::default(), &only_owner, &BTreeMap::new())
+            .unwrap();
+        // A corrupted owner key is rejected rather than skipped.
+        let mut corrupt = Storage::default();
+        let mut bad = system.prefix.clone();
+        bad.extend([0; 16]);
+        bad.extend(derived);
+        corrupt.top.insert(bad, 5u128.encode());
+        assert!(
+            reject_unmapped_derivatives(&schema, &corrupt, &only_owner, &BTreeMap::new()).is_err()
+        );
     }
 
     fn utility_chain(

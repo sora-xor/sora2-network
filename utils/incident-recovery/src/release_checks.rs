@@ -381,6 +381,31 @@ pub fn check_with_governance_preservation(
                 .map_err(|_| "mapped asset must encode exactly 32 bytes")?,
         );
     }
+    // Catch-up can mint an asset not owned by a mapped account at checkpoint.
+    // Cover all registered checkpoint assets plus every retained issuance row.
+    // Terminal paging keeps this complete inventory bounded per recovery block.
+    for name in ["Tokens.TotalIssuance", "Assets.AssetInfosV2"] {
+        if let Some(d) = schema
+            .descriptors
+            .iter()
+            .find(|d| d.trie == "top" && d.name == name)
+        {
+            if d.key_types.len() != 1 {
+                return Err("asset inventory key codec differs".into());
+            }
+            for key in storage.top.keys().filter(|key| key.starts_with(&d.prefix)) {
+                let parts = components(schema, d, key)?;
+                assets.insert(
+                    parts
+                        .first()
+                        .ok_or("asset inventory key absent")?
+                        .as_slice()
+                        .try_into()
+                        .map_err(|_| "registered asset must encode exactly 32 bytes")?,
+                );
+            }
+        }
+    }
     let mut added = Vec::new();
     for asset in assets {
         if !terminal.issuance.iter().any(|i| i.asset == asset) {
@@ -393,11 +418,17 @@ pub fn check_with_governance_preservation(
     // Check every supply projection against post-state, preserving existing
     // authenticated mint/burn arithmetic rather than replacing it with zero.
     for issuance in &terminal.issuance {
+        if issuance.authenticated_mints != 0 {
+            return Err(
+                "incoming issuance must be derived by native execution, not supplied amounts"
+                    .into(),
+            );
+        }
         if issuance.current.scope != StorageScope::Top {
             return Err("supply projection is not top-level storage".into());
         }
-        let bytes = read(storage, &overlay, &issuance.current.key)
-            .ok_or("projected issuance record missing")?;
+        let zero = 0u128.encode();
+        let bytes = read(storage, &overlay, &issuance.current.key).unwrap_or(&zero);
         let offset = issuance.current.offset as usize;
         if hash(bytes) != issuance.current.record_hash
             || offset.checked_add(16).is_none_or(|end| end > bytes.len())
@@ -418,8 +449,7 @@ pub fn check_with_governance_preservation(
             return Err("projected issuance violates conservation".into());
         }
     }
-    terminal
-        .validate_bounds()
+    common::recovery::invariants::terminal_pages(&terminal)
         .map_err(|e| format!("projected audit bounds: {e:?}"))?;
     let governance_witnesses = vec![
         (council_witness, council_bytes),

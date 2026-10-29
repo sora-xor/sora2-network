@@ -31,6 +31,7 @@ import execution_release
 import history_release
 import artifact_identity_release
 import forward_repair_release
+import storage_semantics_release
 
 FORMAT = "sora-nexus-recovery-release-candidate-v1"
 MANIFEST = "sora-nexus-recovery-release-v1"
@@ -42,11 +43,20 @@ REQUIRED = set(RUNTIME_ROLES) | {"nodeBinary", "chainSpec", "policyScale", "oper
     "attackerRegistry", "attackerCoverageEvidence", "bridgeSigningReview", "nativeHashiReview", "burnEntitlements", "burnHistoryManifest", "stakingRoleReview", "exchangeNotice", "operatorInstructions"}
 REQUIRED.update(burn_release.ROLES)
 REQUIRED.update(incoming_release.ROLES)
+# The rewards page derives Soratopia points from historical indexer activity,
+# account age and live positions. Moving runtime balances cannot certify the
+# off-chain projection. Bind its independent inputs even when no substitution
+# happens to have a Soratopia.LastCheckIn storage row at the checkpoint.
+REQUIRED.update({"soratopiaAllocationPolicy", "soratopiaCheckpointEvidenceManifest", "soratopiaEntitlements",
+                 "soratopiaRecoveryVerifier", "soratopiaRecoveryVerifierProvenance",
+                 "soratopiaNodeBinary", "soratopiaNativeVerifier"})
 GATES = (
     "checkpointData", "checkpointFinalityAndHistory", "executingArtifactIdentity", "accountOwnership", "derivedAccountControl",
     "completeStorageSemantics", "attackerAssetsDebtAndIssuance", "bridgeReconciliation", "incomingPendingCoverage", "burnEntitlementsAndClaimHolds",
+    "soratopiaPointsOwnershipAndConservation",
     "operatorSigningStopAndFreshKeys", "retainedHistoryStateRootReplay", "fullAndWarpSynchronization",
-    "chunksCrashesAndRestarts", "automaticActivationEscapeAndForwardRepair", "maintenanceEpochLivenessAndStaking",
+    "warpRestartBeforeGapCompletion",
+    "chunksCrashesAndRestarts", "automaticActivationEscapeAndForwardRepair", "finalRuntimeActivationPostState", "maintenanceEpochLivenessAndStaking",
     "bridgeHaltNonceAndAcknowledgements", "fullClippyRuntimeAndProductionRehearsals",
 )
 MAX_FILE = 2 * 1024**3
@@ -155,10 +165,20 @@ def mapping_identity(path):
     return sorted(pairs)
 
 
+def authorization_domain_scale(domain):
+    """Encode an explicit, bounded release identity; never supply a default nonce."""
+    reject(isinstance(domain, dict) and set(domain) == {"chainSpecId", "releaseNonce"}, "Recovery authorization domain fields")
+    reject(isinstance(domain["chainSpecId"], str) and re.fullmatch(r"[A-Za-z0-9_-]{1,128}", domain["chainSpecId"]) is not None, "Invalid recovery chain-spec ID")
+    reject(isinstance(domain["releaseNonce"], str) and re.fullmatch(r"0x[0-9a-f]{64}", domain["releaseNonce"]) is not None, "Invalid recovery release nonce")
+    nonce = bytes.fromhex(domain["releaseNonce"][2:])
+    reject(any(nonce), "Recovery release nonce must be nonzero")
+    return scale.vec(domain["chainSpecId"].encode("ascii")) + nonce
+
+
 def policy_identity(data):
     reject(len(data) <= MAX_POLICY, "Policy SCALE exceeds bound")
     reader = scale.Reader(data)
-    reject(int.from_bytes(reader.take(4), "little") == 1, "Unknown policy format")
+    reject(int.from_bytes(reader.take(4), "little") == 2, "Unknown policy format; rebuild recovery artifacts with domain-bound policy v2")
     reject(reader.take(32) == scale.raw(scale.CHECKPOINT_HASH), "Wrong policy checkpoint")
     reject(reader.take(32) == scale.raw(CHECKPOINT_ROOT), "Wrong policy checkpoint state root")
     count = reader.compact()
@@ -178,10 +198,17 @@ def policy_identity(data):
         hashes = [reader.take(32) for _ in range(count)]
         reject(all(any(value) for value in hashes), "Empty work/audit commitment")
         chunks.append(hashes)
+    length = reader.compact()
+    reject(0 < length <= 128, "Recovery chain-spec ID bound")
+    chain_id = reader.take(length)
+    reject(re.fullmatch(rb"[A-Za-z0-9_-]+", chain_id) is not None, "Invalid recovery chain-spec ID")
+    nonce = reader.take(32)
+    reject(any(nonce), "Recovery release nonce must be nonzero")
     evidence, audit = reader.take(32), reader.take(32)
     reject(any(evidence) and any(audit), "Missing evidence/terminal audit commitment")
     reader.end()
     return {"commitment": hashlib.blake2b(data, digest_size=32).hexdigest(), "evidenceCommitment": evidence.hex(),
+            "authorizationDomain": {"chainSpecId": chain_id.decode("ascii"), "releaseNonce": "0x" + nonce.hex()},
             "mapping": [(old.hex(), new.hex()) for old, new in mappings], "replacements": len(mappings), "council": len(council), "workChunks": len(chunks[0]), "auditChunks": len(chunks[1])}
 
 
@@ -412,17 +439,24 @@ def verify_candidate(path, previous_manifest=None):
         spec = scale.read_json(paths["chainSpec"])
         reject(spec.get("id") == "sora-nexus-recovery-28191817" and spec.get("protocolId") == "sora-nexus-recovery-28191817-v1" and spec.get("forkId") == "recovery-28191817-v1", "Wrong recovery network identity")
         config = spec.get("recovery")
-        reject(isinstance(config, dict) and config.get("schemaVersion") == 1 and config.get("checkpointHash") == scale.CHECKPOINT_HASH, "Missing recovery chain extension")
+        reject(isinstance(config, dict) and config.get("schemaVersion") == 2 and config.get("checkpointHash") == scale.CHECKPOINT_HASH, "Missing recovery chain extension")
         for role, field in (("bootstrapWasm", "bootstrapCodeHash"), ("holdWasm", "holdCodeHash"), ("finalWasm", "finalCodeHash")):
             if role in records:
                 reject(config.get(field) == "0x" + records[role]["blake2_256"], f"Chain spec {role} mismatch")
+        chain_policy_raw = bounded_hex(config.get("policyScale"), MAX_POLICY)
+        chain_policy = policy_identity(chain_policy_raw)
+        reject(chain_policy["authorizationDomain"]["chainSpecId"] == spec["id"]
+               and config.get("policyCommitment") == "0x" + chain_policy["commitment"]
+               and config.get("evidenceCommitment") == "0x" + chain_policy["evidenceCommitment"],
+               "Chain authorization domain or policy binding differs")
         if policy:
+            reject(chain_policy_raw == paths["policyScale"].read_bytes(), "Chain policy bytes differ")
             reject(config.get("policyCommitment") == "0x" + policy["commitment"] and config.get("evidenceCommitment") == "0x" + policy["evidenceCommitment"], "Chain policy/evidence mismatch")
         if operators:
             reject(sorted(grandpa_key(value).hex() for value in config.get("retiredGrandpaKeys", [])) == operators["retired"] and sorted(grandpa_key(value).hex() for value in config.get("approvedGrandpaKeys", [])) == operators["fresh"], "Chain operator-key inventory mismatch")
         reject(type(config.get("firstRecoverySlot")) is int and type(config.get("lastAbandonedSignedSlot")) is int and 0 < config["lastAbandonedSignedSlot"] < config["firstRecoverySlot"] < 2**64, "Invalid signing-stop slot boundary")
         reject(type(config.get("previousGrandpaSetId")) is int and 0 <= config["previousGrandpaSetId"] < 2**64 - 1, "Invalid previous GRANDPA set")
-        required_config = {"schemaVersion", "checkpointHash", "policyCommitment", "bootstrapCodeHash", "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId", "previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys", "approvedGrandpaKeys", "lastAbandonedSignedSlot", "firstRecoverySlot"}
+        required_config = {"schemaVersion", "checkpointHash", "policyCommitment", "policyScale", "bootstrapCodeHash", "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId", "previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys", "approvedGrandpaKeys", "lastAbandonedSignedSlot", "firstRecoverySlot"}
         reject(set(config) == required_config, "Unknown recovery chain extension field")
         inventories = []
         for field, maximum in (("retiredGrandpaKeys", 3000), ("approvedGrandpaKeys", 1000)):
@@ -500,6 +534,7 @@ def verify_candidate(path, previous_manifest=None):
                    "Public diagnostic fixture artifacts cannot be packaged for production")
     historical_replay = history_release.bind(root, records, paths, local_file, digest_file)
     artifact_identity = artifact_identity_release.bind(root, records, paths, local_file, digest_file)
+    storage_semantics = storage_semantics_release.bind(root, records, paths, artifact_identity, local_file, digest_file)
     forward_repair = forward_repair_release.bind(root, records, paths, policy, artifact_identity, incoming_replay, local_file, digest_file)
     previous_hash = None
     if previous_manifest:
@@ -528,6 +563,8 @@ def verify_candidate(path, previous_manifest=None):
         report["historicalReplay"] = historical_replay
     if artifact_identity is not None:
         report["artifactIdentityReplay"] = artifact_identity
+    if storage_semantics is not None:
+        report["storageSemanticsReplay"] = storage_semantics
     if forward_repair is not None:
         report["forwardRepairReplay"] = forward_repair
     report["blockers"] += ["Missing required artifact: " + role for role in missing]
@@ -650,6 +687,7 @@ def package(candidate, output, previous_manifest=None, verifier=None, verifier_s
             burn_verification_output=None, burn_timeout=86400,
             execution_verifier_sha256=None, execution_verification_output=None,
             passive_consensus_manifest=None, passive_consensus_source_sha256=None, passive_consensus_output=None,
+            maintenance_crash_source_sha256=None, maintenance_crash_output=None,
             supporting_check_manifest=None, supporting_check_source_sha256=None, supporting_check_output=None,
             supporting_check_target=None, supporting_final_target=None, supporting_legacy_target=None):
     reject(not output.exists(), "Release output must be a new directory")
@@ -667,6 +705,7 @@ def package(candidate, output, previous_manifest=None, verifier=None, verifier_s
         history_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
         artifact_identity_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
         forward_repair_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
+        storage_semantics_release.run(report, paths, verifier, verifier_sha256, output.parent, local_file, digest_file)
     else:
         reject(verifier_sha256 is None, "Verifier digest without executable")
     burn_options = (burn_node, burn_node_sha256, burn_verifier_sha256, burn_verification_output)
@@ -688,6 +727,13 @@ def package(candidate, output, previous_manifest=None, verifier=None, verifier_s
         import passive_consensus_release
         passive_consensus_release.package_hook(report, paths, passive_consensus_manifest,
             passive_consensus_source_sha256, passive_consensus_output)
+    crash_options = (maintenance_crash_source_sha256, maintenance_crash_output)
+    if any(value is not None for value in crash_options):
+        reject(all(value is not None for value in crash_options) and verifier is not None,
+               "Maintenance crash verification requires a pinned native verifier, exact source binding and fresh output")
+        import maintenance_crash_release
+        maintenance_crash_release.package_hook(report, paths, verifier, verifier_sha256,
+            maintenance_crash_source_sha256, maintenance_crash_output)
     supporting_options = (supporting_check_manifest, supporting_check_source_sha256, supporting_check_output,
                           supporting_check_target, supporting_final_target, supporting_legacy_target)
     if any(value is not None for value in supporting_options):
@@ -746,6 +792,8 @@ def main():
     parser.add_argument("--passive-consensus-manifest", type=Path)
     parser.add_argument("--passive-consensus-source-sha256")
     parser.add_argument("--passive-consensus-output", type=Path)
+    parser.add_argument("--maintenance-crash-source-sha256")
+    parser.add_argument("--maintenance-crash-output", type=Path)
     parser.add_argument("--supporting-check-manifest", type=Path)
     parser.add_argument("--supporting-check-source-sha256")
     parser.add_argument("--supporting-check-output", type=Path)
@@ -762,6 +810,8 @@ def main():
                      passive_consensus_manifest=args.passive_consensus_manifest,
                      passive_consensus_source_sha256=args.passive_consensus_source_sha256,
                      passive_consensus_output=args.passive_consensus_output,
+                     maintenance_crash_source_sha256=args.maintenance_crash_source_sha256,
+                     maintenance_crash_output=args.maintenance_crash_output,
                      supporting_check_manifest=args.supporting_check_manifest,
                      supporting_check_source_sha256=args.supporting_check_source_sha256,
                      supporting_check_output=args.supporting_check_output,

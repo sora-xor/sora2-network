@@ -132,10 +132,27 @@ pub struct WorkReport {
     pub apply_envelopes: Vec<String>,
     pub audit_envelopes: Vec<String>,
     pub terminal_envelope: String,
+    pub terminal_prelude_envelopes: Vec<String>,
     pub changed_keys: usize,
     pub storage_engine_rehearsed: bool,
     pub production_ready: bool,
     pub remaining: &'static str,
+}
+
+/// Acyclic public inputs fixed before any recovery Wasm is built. The nonce is
+/// unique to this release/network; fixture compilers must identify themselves.
+pub struct PolicyIdentity {
+    pub evidence_commitment: [u8; 32],
+    pub authorization_domain: recovery::RecoveryDomain,
+}
+
+impl PolicyIdentity {
+    pub fn public_fixture(evidence_commitment: [u8; 32]) -> Self {
+        Self {
+            evidence_commitment,
+            authorization_domain: recovery::RecoveryDomain::public_fixture(),
+        }
+    }
 }
 
 pub struct CompiledWork {
@@ -170,7 +187,7 @@ pub fn compose(
     storage: &Storage,
     replacements: Vec<AccountReplacement>,
     council: Vec<AccountId32>,
-    evidence_commitment: [u8; 32],
+    identity: PolicyIdentity,
     groups: Vec<Vec<GuardedStorageEdit>>,
     additional_audits: Vec<StorageWitness>,
     terminal: TerminalAudit,
@@ -179,7 +196,7 @@ pub fn compose(
         storage,
         replacements,
         council,
-        evidence_commitment,
+        identity,
         groups,
         AuditRequests {
             keys: additional_audits,
@@ -193,13 +210,12 @@ pub fn compose_with_audits(
     storage: &Storage,
     replacements: Vec<AccountReplacement>,
     council: Vec<AccountId32>,
-    evidence_commitment: [u8; 32],
+    identity: PolicyIdentity,
     groups: Vec<Vec<GuardedStorageEdit>>,
     audit_requests: AuditRequests,
     terminal: TerminalAudit,
 ) -> Result<CompiledWork> {
-    terminal
-        .validate_bounds()
+    let terminal_actions = recovery::invariants::terminal_actions(&terminal)
         .map_err(|e| format!("terminal audit: {e:?}"))?;
     let mut seen = BTreeSet::new();
     let mut ordered = BTreeMap::new();
@@ -360,7 +376,8 @@ pub fn compose_with_audits(
         prefix_audits.push(current);
     }
     let policy = RecoveryPolicy {
-        format_version: 1,
+        format_version: 2,
+        authorization_domain: identity.authorization_domain,
         checkpoint_hash: recovery::CHECKPOINT_HASH,
         checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
         replacements,
@@ -375,8 +392,9 @@ pub fn compose_with_audits(
                     .map(RecoveryPrefixAuditChunk::commitment),
             )
             .collect(),
-        evidence_commitment,
-        terminal_audit_commitment: terminal.commitment(),
+        evidence_commitment: identity.evidence_commitment,
+        terminal_audit_commitment: recovery::invariants::terminal_commitment(&terminal)
+            .map_err(|e| format!("terminal commitment: {e:?}"))?,
     };
     policy
         .validate()
@@ -406,8 +424,18 @@ pub fn compose_with_audits(
             recovery::storage::audit_prefix_chunk(&policy, audit)
                 .map_err(|e| format!("prefix audit {}: {e:?}", audit.index))?;
         }
-        recovery::invariants::verify_and_record(&policy, &terminal)
+        for action in &terminal_actions {
+            match action {
+                RecoveryAction::TerminalAudit(audit) => {
+                    recovery::invariants::verify_and_record(&policy, audit)
+                }
+                RecoveryAction::TerminalAuditPage(page) => {
+                    recovery::invariants::verify_page_and_record(&policy, page)
+                }
+                _ => unreachable!("terminal actions are typed"),
+            }
             .map_err(|e| format!("terminal: {e:?}"))?;
+        }
         recovery::storage::mark_complete(&policy).map_err(|e| format!("complete: {e:?}"))?;
         Ok(())
     })?;
@@ -417,7 +445,8 @@ pub fn compose_with_audits(
         apply_envelopes: chunks.iter().cloned().map(|c| envelope(RecoveryAction::Apply(c))).collect::<Result<_>>()?,
         audit_envelopes: audits.iter().cloned().map(RecoveryAction::Audit)
             .chain(prefix_audits.iter().cloned().map(RecoveryAction::PrefixAudit)).map(envelope).collect::<Result<_>>()?,
-        terminal_envelope: envelope(RecoveryAction::TerminalAudit(terminal.clone()))?,
+        terminal_envelope: envelope(terminal_actions.last().expect("nonempty terminal").clone())?,
+        terminal_prelude_envelopes: terminal_actions[..terminal_actions.len()-1].iter().cloned().map(envelope).collect::<Result<_>>()?,
         changed_keys: seen.len(), storage_engine_rehearsed: true, production_ready: false,
         remaining: "Bind and rehearse exact consensus/runtime artifacts, incoming/outgoing reconciliation, entitlement ledger and all release evidence; storage composition alone does not authorize recovery",
     };
@@ -488,12 +517,59 @@ mod tests {
             storage,
             vec![],
             vec![AccountId32::from([9; 32])],
-            [8; 32],
+            PolicyIdentity::public_fixture([8; 32]),
             groups,
             vec![],
             terminal,
         )
     }
+    #[test]
+    fn compiler_executes_and_emits_all_terminal_pages() {
+        let (mut storage, edits, mut terminal) = fixture();
+        for n in 0..128u32 {
+            let key = format!("supply-{n}").into_bytes();
+            storage.top.insert(key.clone(), u128::from(n).encode());
+            terminal.issuance.push(IssuanceInvariant {
+                asset: hash(&key),
+                current: StoredAmount {
+                    scope: StorageScope::Top,
+                    key,
+                    record_hash: hash(&u128::from(n).encode()),
+                    offset: 0,
+                },
+                checkpoint_issuance: u128::from(n),
+                authenticated_mints: 0,
+                burned: 0,
+            });
+        }
+        let compiled = run(&storage, vec![edits], terminal.clone()).unwrap();
+        assert_eq!(compiled.report.terminal_prelude_envelopes.len(), 1);
+        assert_ne!(
+            compiled.policy.terminal_audit_commitment,
+            terminal.commitment()
+        );
+        assert!(compiled.report.storage_engine_rehearsed);
+        let pages = compiled
+            .report
+            .terminal_prelude_envelopes
+            .iter()
+            .chain([&compiled.report.terminal_envelope])
+            .map(|text| {
+                let raw = hex_bytes(text).unwrap();
+                let RecoveryAction::TerminalAuditPage(page) =
+                    RecoveryInherent::decode_remark(&raw).unwrap().action
+                else {
+                    panic!("terminal page required")
+                };
+                page
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            recovery::invariants::join_terminal_pages(&pages).unwrap(),
+            terminal
+        );
+    }
+
     #[test]
     fn prefix_audits_share_cursor_and_rehearse_the_complete_namespace() {
         let (storage, edits, terminal) = fixture();
@@ -502,7 +578,7 @@ mod tests {
                 &storage,
                 vec![],
                 vec![AccountId32::from([9; 32])],
-                [8; 32],
+                PolicyIdentity::public_fixture([8; 32]),
                 vec![edits.clone()],
                 AuditRequests {
                     keys: vec![],
@@ -603,7 +679,7 @@ mod tests {
             &storage,
             vec![],
             vec![AccountId32::from([9; 32])],
-            [8; 32],
+            PolicyIdentity::public_fixture([8; 32]),
             vec![edits],
             AuditRequests {
                 keys,

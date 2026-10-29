@@ -591,6 +591,27 @@ impl<T: Config> Pallet<T> {
         Ok(())
     }
 
+    /// Restore only the lock accounting of an authenticated owned HASHI claim
+    /// extinguished by recovery. Native finalization has already unreserved the
+    /// same amount into shared custody; no token issuance or user balance changes.
+    /// This is not a new outbound lock: do not charge limits or schedule unlocks.
+    pub fn recovery_restore_extinguished_hashi_owned(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+        amount: Balance,
+    ) -> DispatchResult {
+        ensure!(
+            recovery_halted()
+                && recovery_inbound_allowed::<T>()
+                && matches!(network_id, GenericNetworkId::EVMLegacy(_)),
+            Error::<T>::RecoveryHalted
+        );
+        LockedAssets::<T>::try_mutate(network_id, asset_id, |value| {
+            *value = value.checked_add(amount).ok_or(Error::<T>::Overflow)?;
+            DispatchResult::Ok(())
+        })
+    }
+
     /// Reverse only the preparation accounting of a proven, already prepared
     /// HASHI sidechain claim extinguished by the recovery executive. No mint/refund.
     pub fn recovery_extinguish_prepared_sidechain(

@@ -302,7 +302,8 @@ impl Fixture {
                 .collect(),
         };
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![AccountReplacement {
@@ -464,6 +465,27 @@ impl Fixture {
                 continue;
             };
             let operation: IncomingOperation = decode(bytes)?;
+            if let IncomingChannel::Substrate {
+                commitment: GenericCommitment::Sub(batch),
+                ..
+            } = &operation.channel
+            {
+                if !batch.messages.iter().all(|message| {
+                    classify_substrate_control(&message.payload)
+                        .is_ok_and(|control| control.is_some())
+                }) {
+                    return Err("test Substrate fixture supports controls only".into());
+                }
+                let audit = IncomingAudit {
+                    index: audits.len() as u32,
+                    operation_index: operation.index,
+                    operation_commitment: operation.commitment(),
+                    requests: vec![],
+                    prior_policy: None,
+                };
+                audits.push(envelope(RecoveryAction::IncomingAudit(audit.encode())));
+                continue;
+            }
             let (network, request, actor) = match &operation.channel {
                 IncomingChannel::Hashi {
                     network, request, ..
@@ -929,6 +951,7 @@ fn work_index_checks_every_shard_slot_and_never_accepts_a_filtered_incoming_list
         }
     };
     let index = WorkIndex {
+        terminal_prelude: vec![],
         schema: "sora-nexus-recovery-work-index-v1".into(),
         policy_sha256: hex::encode(Sha256::digest(f.policy.encode())),
         work: f
@@ -1052,7 +1075,7 @@ fn storage_composer_rehearses_preservation_and_rejects_conflicting_status_edits(
             &f.storage,
             f.policy.replacements.clone(),
             f.policy.council.clone(),
-            [4; 32],
+            crate::composer::PolicyIdentity::public_fixture([4; 32]),
             vec![edits],
             crate::composer::AuditRequests {
                 keys: retained.witnesses.clone(),
@@ -1364,4 +1387,227 @@ fn completed_same_policy_incoming_audit_is_preserved_by_later_repair_coverage() 
     assert_eq!(checked.prior_incoming.len(), 1);
     assert_eq!(checked.incoming_audits.len(), 1);
     assert_eq!(certificate.reports().len(), 1);
+}
+
+fn control_fixture() -> Fixture {
+    use bridge_types::substrate::{BridgeMessage, MultisigVerifierCall};
+    let mut fixture = Fixture::new();
+    let network = GenericNetworkId::Sub(SubNetworkId::Liberland);
+    let calls = [
+        BridgeCall::SubstrateApp(SubstrateAppCall::ReportTransferResult {
+            message_id: H256::repeat_byte(55),
+            message_status: bridge_types::types::MessageStatus::Failed,
+        }),
+        BridgeCall::MultisigVerifier(MultisigVerifierCall::AddPeer {
+            peer: sp_core::ecdsa::Public::from_raw([3; 33]),
+        }),
+    ];
+    let operation = IncomingOperation {
+        index: fixture.work.len() as u32,
+        channel: IncomingChannel::Substrate {
+            network: SubNetworkId::Liberland,
+            commitment: GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: calls
+                    .iter()
+                    .map(|call| BridgeMessage {
+                        payload: call.encode().try_into().unwrap(),
+                        timepoint: GenericTimepoint::Sora(1),
+                    })
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap(),
+            }),
+            proof: framenode_runtime::MultiProof::EVMMultisig(multisig_verifier::MultiEVMProof {
+                proof: vec![],
+            }),
+        },
+        registries: vec![
+            NetworkAttackerRegistry {
+                network,
+                accounts: vec![],
+                no_known_attackers: true,
+                attestation: [6; 32],
+            },
+            NetworkAttackerRegistry {
+                network: GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                accounts: vec![GenericAccount::Sora(AccountId32::new(
+                    recovery::ATTACKER_ACCOUNT,
+                ))],
+                no_known_attackers: false,
+                attestation: [6; 32],
+            },
+        ], // Proofs remain empty: this structural fixture is never executable evidence.
+        finalized_source_evidence: [5; 32],
+    };
+    fixture
+        .work
+        .push(envelope(RecoveryAction::Incoming(operation.encode())));
+    for (index, action) in [Action::JournalControl, Action::ApplyVerifierPeer]
+        .into_iter()
+        .enumerate()
+    {
+        let id = MessageId::batched(
+            network,
+            GenericNetworkId::Sub(SubNetworkId::Mainnet),
+            1,
+            index as u64,
+        )
+        .hash();
+        fixture.external.deliveries.push(ExternalDelivery {
+            network_scale: hx(&network.encode()),
+            message_id: hx(id.as_bytes()),
+            evidence_hash: hx(&[5; 32]),
+            original_beneficiary: None,
+            obligation: Obligation::Admit,
+        });
+        fixture.review.decisions.push(Decision {
+            network_scale: hx(&network.encode()),
+            message_id: hx(id.as_bytes()),
+            action,
+            evidence_hash: hx(&[5; 32]),
+            original_beneficiary: None,
+            effective_beneficiary: None,
+            checkpoint_records: vec![],
+            quarantine_reason: None,
+        });
+    }
+    fixture
+}
+
+#[test]
+fn control_coverage_requires_explicit_nonfinancial_dispositions_without_claiming_execution() {
+    let mut fixture = control_fixture();
+    let report = fixture.verify().unwrap();
+    assert_eq!(report.work_deliveries, 0);
+    assert_eq!(report.work_control_messages, 2);
+    assert_eq!(report.deliveries.len(), 2);
+    assert!(!report.deferred_control_execution_verified);
+    assert!(
+        !report.authentication_verified
+            && !report.exact_artifact_execution_verified
+            && !report.production_ready
+    );
+    for action in [
+        Action::Process,
+        Action::Exclude,
+        Action::Quarantine,
+        Action::RetainConsumed,
+        Action::ApplyVerifierPeer,
+    ] {
+        let mut invalid = control_fixture();
+        invalid.review.decisions[0].action = action;
+        assert!(invalid.verify().is_err());
+    }
+    let mut invalid = control_fixture();
+    invalid.review.decisions[0].original_beneficiary = Some(hx(&[1; 32]));
+    invalid.review.decisions[0].effective_beneficiary = Some(hx(&[2; 32]));
+    assert!(invalid.verify().is_err());
+    let mut invalid = control_fixture();
+    invalid.external.deliveries[0].obligation = Obligation::Unresolved;
+    assert!(invalid.verify().is_err());
+    let mut invalid = control_fixture();
+    invalid.external.deliveries.pop();
+    assert!(invalid.verify().is_err());
+    let mut invalid = control_fixture();
+    edit_source_operation(&mut invalid, |operation| operation.registries.clear());
+    assert!(invalid.verify().is_err());
+}
+
+#[test]
+fn financial_audit_index_skips_control_messages_without_changing_native_message_id() {
+    let fixture = control_fixture();
+    let RecoveryAction::Incoming(raw) = &fixture.work[1].action else {
+        unreachable!()
+    };
+    let mut operation: IncomingOperation = decode(raw).unwrap();
+    let network = GenericNetworkId::Sub(SubNetworkId::Liberland);
+    operation.registries = vec![
+        NetworkAttackerRegistry {
+            network,
+            accounts: vec![],
+            no_known_attackers: true,
+            attestation: [6; 32],
+        },
+        NetworkAttackerRegistry {
+            network: GenericNetworkId::Sub(SubNetworkId::Mainnet),
+            accounts: vec![GenericAccount::Sora(AccountId32::new(
+                recovery::ATTACKER_ACCOUNT,
+            ))],
+            no_known_attackers: false,
+            attestation: [6; 32],
+        },
+    ];
+    let payload = BridgeCall::SubstrateApp(SubstrateAppCall::Transfer {
+        sender: GenericAccount::Liberland(AccountId32::new([4; 32])),
+        recipient: GenericAccount::Sora(AccountId32::new([1; 32])),
+        asset_id: bridge_types::GenericAssetId::Sora(common::DAI.into()),
+        amount: bridge_types::GenericBalance::Substrate(1),
+    })
+    .encode();
+    let IncomingChannel::Substrate {
+        commitment: GenericCommitment::Sub(batch),
+        ..
+    } = &mut operation.channel
+    else {
+        unreachable!()
+    };
+    batch
+        .messages
+        .try_push(bridge_types::substrate::BridgeMessage {
+            payload: payload.clone().try_into().unwrap(),
+            timepoint: GenericTimepoint::Sora(9),
+        })
+        .unwrap();
+    let id = MessageId::batched(network, GenericNetworkId::Sub(SubNetworkId::Mainnet), 1, 2);
+    let mut planned = BTreeMap::new();
+    add_payload(&mut planned, &operation, network, id, &payload, true).unwrap();
+    let value = planned.get(&(network.encode(), id.hash().0)).unwrap();
+    assert_eq!(value.message_index, 0);
+    assert_eq!(value.start_timepoint, GenericTimepoint::Sora(9));
+}
+
+#[test]
+fn unattributed_transfer_coverage_never_promotes_an_unknown_sender_to_attacker_clearance() {
+    let fixture = control_fixture();
+    let RecoveryAction::Incoming(bytes) = &fixture.work[1].action else {
+        unreachable!()
+    };
+    let operation: IncomingOperation = decode(bytes).unwrap();
+    for sender in [
+        Some(GenericAccount::Unknown),
+        Some(GenericAccount::Root),
+        None,
+    ] {
+        let call = match sender {
+            Some(sender) => BridgeCall::SubstrateApp(SubstrateAppCall::Transfer {
+                sender,
+                recipient: GenericAccount::Sora(AccountId32::new([1; 32])),
+                asset_id: bridge_types::GenericAssetId::Sora(common::DAI.into()),
+                amount: bridge_types::GenericBalance::Substrate(1),
+            }),
+            None => BridgeCall::ParachainApp(ParachainAppCall::Transfer {
+                sender: None,
+                recipient: AccountId32::new([1; 32]),
+                asset_id: common::DAI.into(),
+                amount: 1,
+            }),
+        };
+        let mut out = BTreeMap::new();
+        let error = add_payload(
+            &mut out,
+            &operation,
+            GenericNetworkId::Sub(SubNetworkId::Liberland),
+            MessageId::basic(
+                GenericNetworkId::Sub(SubNetworkId::Liberland),
+                GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                1,
+            ),
+            &call.encode(),
+            true,
+        )
+        .unwrap_err();
+        assert!(error.contains("source-attribution adapter"));
+        assert!(out.is_empty());
+    }
 }

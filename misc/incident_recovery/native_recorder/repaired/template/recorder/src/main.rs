@@ -258,7 +258,8 @@ fn policy_pair(
         original.checkpoint_hash == active.checkpoint_hash
             && original.checkpoint_state_root == active.checkpoint_state_root
             && original.replacements == active.replacements
-            && original.council == active.council,
+            && original.council == active.council
+            && original.authorization_domain == active.authorization_domain,
         "repair policy changes original ownership/council/checkpoint",
     )
 }
@@ -288,6 +289,8 @@ fn parent_handover(
             decode_bounded(bytes, recovery::MAX_INHERENT_BYTES)?;
         require(
             matches!(spec, 136 | 137)
+                && auth.recovery_anchor == ext.execute_with(recovery::storage::recovery_anchor).map_err(|e| format!("recovery anchor:{e:?}"))?
+                && auth.authorization_domain == original.authorization_domain
                 && auth.policy == original.commitment()
                 && auth.revised_policy == active.commitment()
                 && auth.destination_spec == spec
@@ -795,7 +798,8 @@ mod tests {
     use super::*;
     fn public_policy() -> recovery::RecoveryPolicy {
         recovery::RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],
@@ -987,6 +991,8 @@ mod tests {
         active.chunk_hashes = vec![[8; 32]];
         let code = b"pinned-test-code";
         let auth = recovery::RepairAuthorization {
+            recovery_anchor: [0x42; 32],
+            authorization_domain: original.authorization_domain.clone(),
             policy: original.commitment(),
             phase: RecoveryPhase::Hold,
             cursor: 0,
@@ -1002,6 +1008,7 @@ mod tests {
         ext.execute_with(|| {
             sp_io::storage::set(b":code", code);
             sp_io::storage::set(REPAIR_AUTH, &bytes);
+            sp_io::storage::set(recovery::RECOVERY_ANCHOR_STORAGE_KEY, &[0x42; 32]);
         });
         parent_handover(&mut ext, Some(&bytes), &original, &active, 136, 2, code).unwrap();
         assert!(parent_handover(&mut ext, None, &original, &active, 136, 2, code).is_err());

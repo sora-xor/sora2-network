@@ -132,6 +132,7 @@ impl Track {
                         if self.final_policy.is_some()
                             || authorization.destination_spec != 137
                             || revised.replacements != self.original.replacements
+                            || revised.authorization_domain != self.original.authorization_domain
                             || revised.council != self.original.council
                             || revised.chunk_hashes
                                 != vec![probe(0).commitment(), probe(1).commitment()]
@@ -175,6 +176,7 @@ impl Track {
                     ..
                 }
                 | RecoveryAction::TerminalAudit(_)
+                | RecoveryAction::TerminalAuditPage(_)
                     if self.probe_cursor == 2 && self.audited137 => {}
                 _ => return Err(
                     "repair137 fixture forbids financial work or changes to preserved witnesses"
@@ -248,7 +250,8 @@ mod tests {
                 .collect(),
         };
         let original = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: common::recovery::CHECKPOINT_HASH,
             checkpoint_state_root: common::recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],
@@ -286,6 +289,8 @@ mod tests {
     fn escape(original: &RecoveryPolicy, revised: &RecoveryPolicy) -> RecoveryAction {
         RecoveryAction::Escape {
             authorization: Box::new(common::recovery::RepairAuthorization {
+                recovery_anchor: [0x42; 32],
+                authorization_domain: original.authorization_domain.clone(),
                 policy: original.commitment(),
                 phase: RecoveryPhase::Auditing,
                 cursor: 2,

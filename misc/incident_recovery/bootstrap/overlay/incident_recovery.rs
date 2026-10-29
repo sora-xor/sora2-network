@@ -144,6 +144,12 @@ pub fn initialize_block(header: &Header) -> ExtrinsicInclusionMode {
         .expect("consensus checkpoint mismatch");
         sp_io::storage::set(CHECKPOINT_TIME, &Timestamp::get().encode());
     } else {
+        if *header.number() == CHECKPOINT_NUMBER + 2 {
+            recovery::storage::record_recovery_anchor(*header.parent_hash().as_fixed_bytes())
+                .expect("recovery branch anchor already exists or is invalid");
+        } else {
+            recovery::storage::recovery_anchor().expect("missing recovery branch anchor");
+        }
         accept_forward_repair(&policy).expect("invalid forward repair handover");
         assert_eq!(
             sp_io::storage::get(recovery::POLICY_STORAGE_KEY).as_deref(),
@@ -256,6 +262,9 @@ fn checked_storage_weight(action: &RecoveryAction) -> Result<Weight, RecoveryErr
         RecoveryAction::Outgoing(payload) => {
             crate::incident_recovery_outgoing::outgoing_encoded_weight(payload)?
         }
+        RecoveryAction::NativeBalanceAudit(payload) => {
+            crate::incident_recovery_incoming::native_balance_audit_encoded_weight(payload)?
+        }
         _ => return Ok(committed_storage_weight(action)),
     };
     if !weight.all_lte(<Runtime as frame_system::Config>::BlockWeights::get().max_block) {
@@ -271,11 +280,16 @@ fn checked_storage_weight(action: &RecoveryAction) -> Result<Weight, RecoveryErr
 /// incoming/outgoing operations are charged even when committed work freezes
 /// recovery. No native action registers a duplicate success-only charge.
 fn committed_storage_weight(action: &RecoveryAction) -> Weight {
-    let fixed_reads = 8u64.saturating_add(if matches!(action, RecoveryAction::TerminalAudit(_)) {
-        recovery::TRANSIENT_CONTEXT_KEYS.len() as u64
-    } else {
-        0
-    });
+    let fixed_reads = 8u64.saturating_add(
+        if matches!(
+            action,
+            RecoveryAction::TerminalAudit(_) | RecoveryAction::TerminalAuditPage(_)
+        ) {
+            recovery::TRANSIENT_CONTEXT_KEYS.len() as u64
+        } else {
+            0
+        },
+    );
     let (items, reads, writes) = match action {
         RecoveryAction::Incoming(payload) => {
             // The executable path uses checked_storage_weight to reject malformed
@@ -287,12 +301,17 @@ fn committed_storage_weight(action: &RecoveryAction) -> Weight {
             return crate::incident_recovery_outgoing::outgoing_encoded_weight(payload)
                 .unwrap_or(Weight::MAX);
         }
+        RecoveryAction::NativeBalanceAudit(payload) => {
+            return crate::incident_recovery_incoming::native_balance_audit_encoded_weight(payload)
+                .unwrap_or(Weight::MAX);
+        }
         RecoveryAction::IncomingAudit(_) => {
             return crate::incident_recovery_incoming::incoming_audit_weight()
         }
         RecoveryAction::Audit(chunk) => {
             let n = chunk.witnesses.len() as u64;
-            (n, n.saturating_mul(2), 1)
+            // Exact issuance witnesses also probe the native-only journal index/head.
+            (n, n.saturating_mul(8), 1)
         }
         RecoveryAction::Apply(chunk) => {
             let n = chunk.edits.len() as u64;
@@ -302,7 +321,11 @@ fn committed_storage_weight(action: &RecoveryAction) -> Weight {
             let n = chunk.prefixes.len() as u64;
             (n, n.saturating_mul(2), 1)
         }
-        RecoveryAction::TerminalAudit(audit) => {
+        RecoveryAction::TerminalAudit(audit)
+        | RecoveryAction::TerminalAuditPage(recovery::invariants::TerminalAuditPage {
+            audit,
+            ..
+        }) => {
             let n = audit
                 .issuance
                 .len()
@@ -315,7 +338,12 @@ fn committed_storage_weight(action: &RecoveryAction) -> Weight {
                         .map(|item| item.retained.len())
                         .sum::<usize>(),
                 ) as u64;
-            (n, n.saturating_mul(2), 2)
+            // Paged mode also checks/records one marker per position and asset.
+            (
+                n,
+                n.saturating_mul(8),
+                n.saturating_mul(2).saturating_add(3),
+            )
         }
         _ => return Weight::zero(),
     };
@@ -465,6 +493,11 @@ fn apply_action_with_artifacts(
         work_policy,
     } = action
     {
+        // No first-child signatures: its final header hash (and BABE seal) does
+        // not exist yet. An established branch is required for every upgrade.
+        if System::block_number() <= CHECKPOINT_NUMBER + 1 {
+            return Err(RecoveryError::Replay);
+        }
         let original = original_policy()?;
         let code = if executing_spec == 134 {
             if work_policy.is_some()
@@ -539,6 +572,11 @@ fn apply_action_with_artifacts(
                 .map(|_| ())
                 .or_else(allow_new_failure)
         }
+        RecoveryAction::TerminalAuditPage(page) => {
+            recovery::invariants::verify_page_and_record(policy, &page)
+                .map(|_| ())
+                .or_else(allow_new_failure)
+        }
         RecoveryAction::Incoming(payload) => {
             // committed_storage_weight includes native/bookkeeping work for
             // both success and accepted frozen failure, without double charging.
@@ -549,6 +587,11 @@ fn apply_action_with_artifacts(
         RecoveryAction::IncomingAudit(payload) => {
             // committed_storage_weight charges before execution, including failure.
             crate::incident_recovery_incoming::audit_encoded_with_policy(policy, &payload)
+                .map(|_| ())
+                .or_else(allow_new_failure)
+        }
+        RecoveryAction::NativeBalanceAudit(payload) => {
+            crate::incident_recovery_incoming::audit_native_balances_with_policy(policy, &payload)
                 .map(|_| ())
                 .or_else(allow_new_failure)
         }
@@ -588,17 +631,35 @@ fn stage_key(kind: RecoveryCodeKind, index: Option<u32>) -> Vec<u8> {
     key.extend((kind, index).encode());
     key
 }
+// A quorum-approved repair pins its own final artifact. Keep each immutable
+// artifact's cursor and chunks in a separate namespace so an old, fully staged
+// final runtime cannot lock out a corrected final runtime or contaminate it.
+fn artifact_stage_key(kind: RecoveryCodeKind, hash: [u8; 32], index: Option<u32>) -> Vec<u8> {
+    if kind == RecoveryCodeKind::Repair {
+        return stage_key(kind, index);
+    }
+    let mut key = STAGE_PREFIX.to_vec();
+    key.extend((b"artifact-v2".as_slice(), kind, hash, index).encode());
+    key
+}
 fn stage(kind: RecoveryCodeKind, index: u32, bytes: &[u8]) -> Result<(), RecoveryError> {
-    let committed = match kind {
-        RecoveryCodeKind::Final => Some(generated::FINAL_CHUNK_HASHES),
-        RecoveryCodeKind::Hold => Some(generated::HOLD_CHUNK_HASHES),
-        RecoveryCodeKind::Repair => None,
+    let (hash, committed) = match kind {
+        RecoveryCodeKind::Final => (
+            generated::FINAL_CODE_HASH,
+            Some(generated::FINAL_CHUNK_HASHES),
+        ),
+        RecoveryCodeKind::Hold => (
+            generated::HOLD_CODE_HASH,
+            Some(generated::HOLD_CHUNK_HASHES),
+        ),
+        RecoveryCodeKind::Repair => ([0; 32], None),
     };
-    stage_with_commitments(kind, index, bytes, committed)
+    stage_with_commitments(kind, hash, index, bytes, committed)
 }
 
 fn stage_with_commitments(
     kind: RecoveryCodeKind,
+    artifact_hash: [u8; 32],
     index: u32,
     bytes: &[u8],
     committed: Option<&[[u8; 32]]>,
@@ -609,7 +670,10 @@ fn stage_with_commitments(
     {
         return Err(RecoveryError::ChunkBounds);
     }
-    let cursor = stage_count(kind)?.unwrap_or(0);
+    if kind != RecoveryCodeKind::Repair && (artifact_hash == [0; 32] || committed.is_none()) {
+        return Err(RecoveryError::BadCode);
+    }
+    let cursor = stage_count(kind, artifact_hash)?.unwrap_or(0);
     if let Some(hashes) = committed {
         if hashes.get(index as usize) != Some(&sp_io::hashing::blake2_256(bytes)) || index != cursor
         {
@@ -619,22 +683,31 @@ fn stage_with_commitments(
         return Err(RecoveryError::WrongChunk);
     }
     if index > 0
-        && sp_io::storage::read(&stage_key(kind, Some(index - 1)), &mut [], 0)
-            != Some(recovery::MAX_CODE_CHUNK_BYTES as u32)
+        && sp_io::storage::read(
+            &artifact_stage_key(kind, artifact_hash, Some(index - 1)),
+            &mut [],
+            0,
+        ) != Some(recovery::MAX_CODE_CHUNK_BYTES as u32)
     {
         return Err(RecoveryError::ChunkBounds);
     }
-    sp_io::storage::set(&stage_key(kind, Some(index)), bytes);
+    sp_io::storage::set(&artifact_stage_key(kind, artifact_hash, Some(index)), bytes);
     let next = if kind == RecoveryCodeKind::Repair && index == 0 {
         1
     } else {
         core::cmp::max(cursor, index + 1)
     };
-    sp_io::storage::set(&stage_key(kind, None), &next.encode());
+    sp_io::storage::set(
+        &artifact_stage_key(kind, artifact_hash, None),
+        &next.encode(),
+    );
     Ok(())
 }
-fn stage_count(kind: RecoveryCodeKind) -> Result<Option<u32>, RecoveryError> {
-    let key = stage_key(kind, None);
+fn stage_count(
+    kind: RecoveryCodeKind,
+    artifact_hash: [u8; 32],
+) -> Result<Option<u32>, RecoveryError> {
+    let key = artifact_stage_key(kind, artifact_hash, None);
     let Some(len) = sp_io::storage::read(&key, &mut [], 0) else {
         return Ok(None);
     };
@@ -665,7 +738,7 @@ fn assembled_with_commitment(
     hash: [u8; 32],
     len: Option<u32>,
 ) -> Result<Vec<u8>, RecoveryError> {
-    let count = stage_count(kind)?.ok_or(RecoveryError::BadCode)?;
+    let count = stage_count(kind, hash)?.ok_or(RecoveryError::BadCode)?;
     if count == 0 {
         return Err(RecoveryError::BadCode);
     }
@@ -673,7 +746,7 @@ fn assembled_with_commitment(
     // rejects corrupted staging data after a crash or an authorized repair.
     let mut total = 0usize;
     for index in 0..count {
-        let len = sp_io::storage::read(&stage_key(kind, Some(index)), &mut [], 0)
+        let len = sp_io::storage::read(&artifact_stage_key(kind, hash, Some(index)), &mut [], 0)
             .ok_or(RecoveryError::BadCode)? as usize;
         if len == 0
             || len > recovery::MAX_CODE_CHUNK_BYTES
@@ -689,7 +762,8 @@ fn assembled_with_commitment(
     let mut code = Vec::with_capacity(total);
     for index in 0..count {
         code.extend_from_slice(
-            &sp_io::storage::get(&stage_key(kind, Some(index))).ok_or(RecoveryError::BadCode)?,
+            &sp_io::storage::get(&artifact_stage_key(kind, hash, Some(index)))
+                .ok_or(RecoveryError::BadCode)?,
         );
     }
     if hash == [0; 32]
@@ -792,7 +866,9 @@ fn accept_forward_repair_at(
     };
     let authorization = recovery::RepairAuthorization::decode_all(&mut bytes.as_ref())
         .map_err(|_| RecoveryError::BadCode)?;
-    if authorization.destination_spec != executing_spec
+    if authorization.recovery_anchor != recovery::storage::recovery_anchor()?
+        || authorization.authorization_domain != policy.authorization_domain
+        || authorization.destination_spec != executing_spec
         || authorization.revised_policy != policy.commitment()
         || authorization.destination_code_hash
             != sp_io::hashing::blake2_256(
@@ -945,7 +1021,8 @@ mod tests {
             absent: vec![],
         };
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: CHECKPOINT_HASH,
             checkpoint_state_root: CHECKPOINT_STATE_ROOT,
             replacements: vec![],
@@ -1505,6 +1582,79 @@ mod tests {
     }
 
     #[test]
+    fn corrected_final_artifact_has_an_independent_cursor_and_never_reuses_old_chunks() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let old = b"old final runtime";
+            let corrected = b"corrected final runtime";
+            let old_hash = sp_io::hashing::blake2_256(old);
+            let new_hash = sp_io::hashing::blake2_256(corrected);
+            stage_with_commitments(RecoveryCodeKind::Final, old_hash, 0, old, Some(&[old_hash]))
+                .unwrap();
+            assert_eq!(
+                stage_count(RecoveryCodeKind::Final, old_hash).unwrap(),
+                Some(1)
+            );
+            assert_eq!(
+                stage_count(RecoveryCodeKind::Final, new_hash).unwrap(),
+                None
+            );
+            assert_eq!(
+                assembled_with_commitment(RecoveryCodeKind::Final, new_hash, None),
+                Err(RecoveryError::BadCode)
+            );
+            // A caller cannot reset even the approved artifact's cursor, or
+            // supply stale bytes under the corrected runtime's chunk commitments.
+            assert_eq!(
+                stage_with_commitments(
+                    RecoveryCodeKind::Final,
+                    old_hash,
+                    0,
+                    old,
+                    Some(&[old_hash])
+                ),
+                Err(RecoveryError::WrongChunk)
+            );
+            assert_eq!(
+                stage_with_commitments(
+                    RecoveryCodeKind::Final,
+                    new_hash,
+                    0,
+                    old,
+                    Some(&[new_hash])
+                ),
+                Err(RecoveryError::WrongChunk)
+            );
+            stage_with_commitments(
+                RecoveryCodeKind::Final,
+                new_hash,
+                0,
+                corrected,
+                Some(&[new_hash]),
+            )
+            .unwrap();
+            assert_eq!(
+                assembled_with_commitment(
+                    RecoveryCodeKind::Final,
+                    new_hash,
+                    Some(corrected.len() as u32)
+                )
+                .unwrap(),
+                corrected
+            );
+            assert_eq!(
+                assembled_with_commitment(
+                    RecoveryCodeKind::Final,
+                    old_hash,
+                    Some(old.len() as u32)
+                )
+                .unwrap(),
+                old
+            );
+            assert_eq!(stage_count(RecoveryCodeKind::Hold, new_hash).unwrap(), None);
+        });
+    }
+
+    #[test]
     fn staging_rejects_corrupted_lengths_and_nonfinal_short_chunks_before_assembly() {
         sp_io::TestExternalities::default().execute_with(|| {
             let cursor = stage_key(RecoveryCodeKind::Repair, None);
@@ -1620,7 +1770,11 @@ mod tests {
                 assert_eq!(state.phase, RecoveryPhase::Failed);
                 // A poisoned or absent staging area cannot prevent the embedded hold escape.
                 sp_io::storage::set(&stage_key(RecoveryCodeKind::Repair, None), &[0; 5]);
+                System::set_block_number(CHECKPOINT_NUMBER + 2);
+                recovery::storage::record_recovery_anchor([0x42; 32]).unwrap();
                 let authorization = recovery::RepairAuthorization {
+                    recovery_anchor: [0x42; 32],
+                    authorization_domain: original.authorization_domain.clone(),
                     policy: original.commitment(),
                     phase: state.phase,
                     cursor: state.next_chunk,
@@ -1651,6 +1805,26 @@ mod tests {
                     signatures,
                     work_policy: None,
                 };
+                // Even a valid quorum and a preseeded anchor cannot authorize
+                // an escape in the first child, whose final hash is not known.
+                System::set_block_number(CHECKPOINT_NUMBER + 1);
+                let first_child = sp_io::storage::root(sp_runtime::StateVersion::V0);
+                assert_eq!(
+                    apply_action_with_artifacts(
+                        &original,
+                        action(signatures.clone()),
+                        134,
+                        &hold,
+                        hold_hash,
+                        hold.len() as u32,
+                    ),
+                    Err(RecoveryError::Replay)
+                );
+                assert_eq!(
+                    sp_io::storage::root(sp_runtime::StateVersion::V0),
+                    first_child
+                );
+                System::set_block_number(CHECKPOINT_NUMBER + 2);
                 let before = sp_io::storage::root(sp_runtime::StateVersion::V0);
                 assert_eq!(
                     apply_action_with_artifacts(
@@ -1710,6 +1884,8 @@ mod tests {
                 revised.chunk_hashes[0] = broken.commitment();
                 revised.evidence_commitment = [42; 32];
                 let forward = recovery::RepairAuthorization {
+                    recovery_anchor: [0x42; 32],
+                    authorization_domain: original.authorization_domain.clone(),
                     policy: original.commitment(),
                     phase: state.phase,
                     cursor: state.next_chunk,
@@ -1823,6 +1999,7 @@ mod tests {
                 assert_eq!(
                     stage_with_commitments(
                         RecoveryCodeKind::Final,
+                        final_hash,
                         0,
                         b"wrong",
                         Some(&[final_hash])
@@ -1832,6 +2009,7 @@ mod tests {
                 assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), before);
                 stage_with_commitments(
                     RecoveryCodeKind::Final,
+                    final_hash,
                     0,
                     &final_code,
                     Some(&[final_hash]),

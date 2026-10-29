@@ -358,7 +358,8 @@ impl<T: Config> IncomingTransfer<T> {
     pub fn prepare(&self) -> Result<(), DispatchError> {
         let resolution = crate::recovery::transfer_resolution(self)?;
         // An excluded sidechain claim never creates locally issued backing. An owned
-        // asset still reserves its exact entitlement, which finalize burns in place.
+        // claim uses native reservation admission; excluded finalization returns that
+        // reservation to pooled custody, and recovery restores its lock accounting.
         if !self.asset_kind.is_owned() && resolution.as_ref().is_some_and(|value| value.excluded) {
             return Ok(());
         }
@@ -427,15 +428,11 @@ impl<T: Config> IncomingTransfer<T> {
             .ok_or(Error::<T>::UnknownNetwork)?;
         if let Some(resolution) = resolution.as_ref().filter(|value| value.excluded) {
             if self.asset_kind.is_owned() {
-                common::with_transaction(|| -> Result<_, DispatchError> {
-                    self.unreserve()?;
-                    assets::Pallet::<T>::burn_from(
-                        &self.asset_id,
-                        &bridge_account_id,
-                        &bridge_account_id,
-                        self.amount,
-                    )
-                })?;
+                // Authentication establishes the incoming claim, not title to the
+                // bridge's pooled checkpoint assets. Extinguish it without burning
+                // custody or crediting a recipient. The recovery executive restores
+                // this native preparation's lock counter in the same outer transaction.
+                self.unreserve()?;
             }
             crate::recovery::consume_transfer(resolution.clone());
             return Ok(self.tx_hash);

@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 import node_identity as n
+from test_release_package import policy
 
 
 def ss58_fixture(raw, prefix=42):
@@ -31,9 +32,9 @@ class Fixture(unittest.TestCase):
         self.output = self.root / "execution"
         self.wasm = b"\0asm\x01\0\0\0"
         h = lambda byte: "0x" + byte * 64
-        self.config = {"schemaVersion": 1, "checkpointHash": n.CHECKPOINT_HASH,
-                       "policyCommitment": h("1"), "bootstrapCodeHash": "0x" + hashlib.blake2b(self.wasm, digest_size=32).hexdigest(),
-                       "holdCodeHash": h("2"), "finalCodeHash": h("3"), "evidenceCommitment": h("4"),
+        self.config = {"schemaVersion": 2, "policyScale": "0x" + policy().hex(), "checkpointHash": n.CHECKPOINT_HASH,
+                       "policyCommitment": "0x" + hashlib.blake2b(policy(), digest_size=32).hexdigest(), "bootstrapCodeHash": "0x" + hashlib.blake2b(self.wasm, digest_size=32).hexdigest(),
+                       "holdCodeHash": h("2"), "finalCodeHash": h("3"), "evidenceCommitment": "0x" + (bytes([6]) * 32).hex(),
                        "previousGrandpaSetId": 7, "previousGrandpaAuthorities": [[ss58_fixture(h("5")), 1]],
                        "grandpaAuthorities": [[ss58_fixture(h("6")), 1]], "retiredGrandpaKeys": [ss58_fixture(h("5"))],
                        "approvedGrandpaKeys": [ss58_fixture(h("6"))], "lastAbandonedSignedSlot": 100,

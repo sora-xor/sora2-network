@@ -899,8 +899,15 @@ pub(crate) fn sensitive(descriptor: &Descriptor, registry: &PortableRegistry) ->
     {
         return true;
     }
+    // Farming.PoolFarmers is an unordered roster of position owners: the pallet
+    // only looks farmers up with a linear find and rebuilds the list on every
+    // refresh, so replacing an owner in place cannot change its meaning.
+    let unordered_owner_list = name == "farming.poolfarmers";
     // Calls/signatures nested in otherwise innocent-looking structures still
     // require an authorization-aware adapter, not recursive byte replacement.
+    // BTreeMap/BTreeSet encode as sequences, so the sequence rule below still
+    // flags any ordered collection whose elements contain an account; ones
+    // without accounts move unchanged with their key.
     let mut pending = vec![descriptor.value_type];
     let mut visited = BTreeSet::new();
     while let Some(id) = pending.pop() {
@@ -911,11 +918,7 @@ pub(crate) fn sensitive(descriptor: &Descriptor, registry: &PortableRegistry) ->
             return true;
         };
         if ty.path.segments.last().is_some_and(|name| {
-            name.ends_with("Call")
-                || name.ends_with("Signature")
-                || name.contains("Extrinsic")
-                || name == "BTreeMap"
-                || name == "BTreeSet"
+            name.ends_with("Call") || name.ends_with("Signature") || name.contains("Extrinsic")
         }) {
             return true;
         }
@@ -927,7 +930,9 @@ pub(crate) fn sensitive(descriptor: &Descriptor, registry: &PortableRegistry) ->
                     .flat_map(|v| v.fields.iter().map(|f| f.ty.id)),
             ),
             TypeDef::Sequence(s) => {
-                if type_contains_account(registry, s.type_param.id, &mut BTreeSet::new()) {
+                if !unordered_owner_list
+                    && type_contains_account(registry, s.type_param.id, &mut BTreeSet::new())
+                {
                     return true;
                 }
                 pending.push(s.type_param.id);
@@ -1672,6 +1677,55 @@ mod tests {
         }
     }
     #[test]
+    fn soratopia_check_in_moves_owner_without_resetting_eligibility() {
+        let mut registry = Registry::new();
+        let account = registry.register_type(&meta_type::<AccountId32>()).id;
+        let block = registry.register_type(&meta_type::<u32>()).id;
+        let descriptor = Descriptor {
+            trie: "top".into(),
+            name: "Soratopia.LastCheckIn".into(),
+            prefix: [
+                sp_io::hashing::twox_128(b"Soratopia"),
+                sp_io::hashing::twox_128(b"LastCheckIn"),
+            ]
+            .concat(),
+            key_types: vec![account],
+            hashers: vec![Hasher::Blake2_128Concat],
+            value_type: block,
+        };
+        let schema = MetadataSchema {
+            registry: registry.into(),
+            descriptors: vec![descriptor.clone()],
+            metadata_hash: hx(&[0; 32]),
+        };
+        let old_key = key(&descriptor, [1; 32]);
+        let new_key = key(&descriptor, [2; 32]);
+        let value = 28_191_816u32.encode();
+        let mut storage = Storage::default();
+        storage.top.insert(old_key.clone(), value.clone());
+        let mapping = BTreeMap::from([([1; 32], [2; 32])]);
+        let review = options(&descriptor.name, Disposition::MutableOwnership);
+        let report = inventory(&schema, &storage, &mapping, &review).unwrap();
+        assert!(report.semantic_dispositions_complete);
+        assert!(report.unused_destinations_verified);
+        assert_eq!(report.candidates.len(), 1);
+        let candidate = &report.candidates[0];
+        assert_eq!(candidate.source_key, hx(&old_key));
+        assert_eq!(candidate.destination_key, hx(&new_key));
+        assert_eq!(candidate.replacement_value, hx(&value));
+        assert_eq!(
+            candidate.expected_source_value_hash,
+            hx(&sp_io::hashing::blake2_256(&value))
+        );
+        assert!(candidate.require_destination_absent);
+
+        storage.top.insert(new_key, 28_191_817u32.encode());
+        let occupied = inventory(&schema, &storage, &mapping, &review).unwrap();
+        assert!(!occupied.semantic_dispositions_complete);
+        assert!(!occupied.unused_destinations_verified);
+        assert!(occupied.candidates.is_empty());
+    }
+    #[test]
     fn scalar_payout_and_delegation_pointers_cannot_use_generic_ownership_moves() {
         for name in [
             "Staking.Payee",
@@ -1980,6 +2034,92 @@ mod tests {
         assert!(!report.unused_destinations_verified);
         assert!(report.candidates.is_empty());
         assert!(!report.production_ready);
+    }
+
+    #[test]
+    fn ordered_collections_need_adapters_only_when_they_hold_accounts() {
+        #[allow(dead_code)]
+        #[derive(scale_info::TypeInfo)]
+        struct Farmer {
+            account: AccountId32,
+            weight: u128,
+        }
+        let mut registry = Registry::new();
+        let account = registry.register_type(&meta_type::<AccountId32>()).id;
+        let asset = registry.register_type(&meta_type::<u32>()).id;
+        let pools = registry.register_type(&meta_type::<BTreeSet<u32>>()).id;
+        let rewards = registry
+            .register_type(&meta_type::<BTreeMap<u8, u128>>())
+            .id;
+        let owners = registry
+            .register_type(&meta_type::<BTreeSet<AccountId32>>())
+            .id;
+        let farmers = registry.register_type(&meta_type::<Vec<Farmer>>()).id;
+        let registry = PortableRegistry::from(registry);
+        let descriptor = |name: &str, value_type| Descriptor {
+            trie: "top".into(),
+            name: name.into(),
+            prefix: vec![9; 32],
+            key_types: vec![account, asset],
+            hashers: vec![Hasher::Identity, Hasher::Blake2_128Concat],
+            value_type,
+        };
+        assert!(!sensitive(
+            &descriptor("PoolXYK.AccountPools", pools),
+            &registry
+        ));
+        assert!(!sensitive(
+            &descriptor("VestedRewards.Rewards", rewards),
+            &registry
+        ));
+        // Replacing an account inside an ordered collection can reorder it.
+        assert!(sensitive(&descriptor("Example.Owners", owners), &registry));
+        assert!(!sensitive(
+            &descriptor("Farming.PoolFarmers", farmers),
+            &registry
+        ));
+        assert!(sensitive(
+            &descriptor("Example.Farmers", farmers),
+            &registry
+        ));
+    }
+
+    #[test]
+    fn liquidity_pool_index_moves_with_its_owner() {
+        let mut registry = Registry::new();
+        let account = registry.register_type(&meta_type::<AccountId32>()).id;
+        let asset = registry.register_type(&meta_type::<u32>()).id;
+        let pools = registry.register_type(&meta_type::<BTreeSet<u32>>()).id;
+        let descriptor = Descriptor {
+            trie: "top".into(),
+            name: "PoolXYK.AccountPools".into(),
+            prefix: vec![9; 32],
+            key_types: vec![account, asset],
+            hashers: vec![Hasher::Identity, Hasher::Blake2_128Concat],
+            value_type: pools,
+        };
+        let schema = MetadataSchema {
+            registry: PortableRegistry::from(registry),
+            descriptors: vec![descriptor.clone()],
+            metadata_hash: hx(&[0; 32]),
+        };
+        let row = |owner: [u8; 32]| {
+            let mut key = descriptor.prefix.clone();
+            key.extend(Hasher::Identity.apply(&owner));
+            key.extend(Hasher::Blake2_128Concat.apply(&5u32.encode()));
+            key
+        };
+        let mut storage = Storage::default();
+        storage
+            .top
+            .insert(row([1; 32]), BTreeSet::from([7u32, 9]).encode());
+        let map = BTreeMap::from([([1; 32], [2; 32])]);
+        let options = options(&descriptor.name, Disposition::MutableOwnership);
+        let report = inventory(&schema, &storage, &map, &options).unwrap();
+        assert_eq!(report.prefixes[0].affected_entries, 1);
+        assert!(report.prefixes[0].issues.is_empty());
+        assert_eq!(report.candidates.len(), 1);
+        assert_eq!(report.candidates[0].destination_key, hx(&row([2; 32])));
     }
 
     #[test]

@@ -32,7 +32,7 @@ VERSION_TIMEOUT_SECONDS = 900
 PREPARE_TIMEOUT_SECONDS = 3600
 MAX_WASM_BYTES = 50 * 1024**2
 SDK_ZSTD_PREFIX = bytes([82, 188, 83, 118, 70, 219, 142, 5])
-CONFIG_FIELDS = {"schemaVersion", "checkpointHash", "policyCommitment", "bootstrapCodeHash",
+CONFIG_FIELDS = {"schemaVersion", "checkpointHash", "policyCommitment", "policyScale", "bootstrapCodeHash",
                  "finalCodeHash", "holdCodeHash", "evidenceCommitment", "previousGrandpaSetId",
                  "previousGrandpaAuthorities", "grandpaAuthorities", "retiredGrandpaKeys",
                  "approvedGrandpaKeys", "lastAbandonedSignedSlot", "firstRecoverySlot"}
@@ -257,7 +257,7 @@ def template_inputs(spec, config, bootstrap):
     need(isinstance(spec, dict), "chain spec must be an object")
     exact(config, CONFIG_FIELDS)
     authority_json(config)
-    need(type(config["schemaVersion"]) is int and config["schemaVersion"] == 1
+    need(type(config["schemaVersion"]) is int and config["schemaVersion"] == 2
          and config["checkpointHash"] == CHECKPOINT_HASH, "recovery checkpoint identity")
     need(spec.get("id") == "sora-nexus-recovery-28191817"
          and spec.get("protocolId") == "sora-nexus-recovery-28191817-v1"
@@ -266,6 +266,12 @@ def template_inputs(spec, config, bootstrap):
     need(spec.get("bootNodes") == [] and spec.get("telemetryEndpoints") == [],
          "offline template must have empty discovery and telemetry lists")
     need(spec.get("recovery") == config, "config differs from chain extension")
+    from release_package import bounded_hex, policy_identity
+    policy = policy_identity(bounded_hex(config["policyScale"], 2 * 1024**2))
+    need(policy["authorizationDomain"]["chainSpecId"] == spec["id"]
+         and config["policyCommitment"] == "0x" + policy["commitment"]
+         and config["evidenceCommitment"] == "0x" + policy["evidenceCommitment"],
+         "recovery policy/domain differs from chain specification")
     validate_bootstrap(bootstrap)
     code_hash = "0x" + hashlib.blake2b(bootstrap, digest_size=32).hexdigest()
     need(config["bootstrapCodeHash"] == code_hash, "bootstrap code hash mismatch")

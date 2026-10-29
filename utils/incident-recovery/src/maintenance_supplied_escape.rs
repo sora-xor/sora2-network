@@ -46,6 +46,7 @@ pub struct Witness {
     pub step: usize,
     pub block_number: u32,
     pub parent_hash: String,
+    pub recovery_anchor: String,
     pub envelope_sha256: String,
     pub authorization_sha256: String,
     pub signing_message_sha256: String,
@@ -223,7 +224,8 @@ impl Session {
         }
         let mut previous = None;
         for escape in &scenario.escapes {
-            if escape.step >= steps.len()
+            if escape.step == 0
+                || escape.step >= steps.len()
                 || previous.is_some_and(|p| p >= escape.step)
                 || steps[escape.step].recovery.as_ref().map(|a| &a.sha256)
                     != Some(&escape.envelope_sha256)
@@ -308,6 +310,8 @@ impl Session {
                 != Some(self.original.commitment().as_slice())
             || value(ext, recovery::ACTIVE_POLICY_STORAGE_KEY).as_deref()
                 != Some(self.active.commitment().as_slice())
+            || value(ext, recovery::RECOVERY_ANCHOR_STORAGE_KEY).as_deref()
+                != Some(hash32(&last.recovery_anchor)?.as_slice())
             || hash32(&last.revised_policy_commitment)? != self.active.commitment()
             || value(ext, recovery::BRIDGE_HALT_STORAGE_KEY).as_deref() != Some(&[1][..])
         {
@@ -331,7 +335,15 @@ impl Session {
         context: &WorkContext,
     ) -> Result<()> {
         let current = status(ext)?;
-        if value(ext, REPAIR_AUTH).is_some()
+        let anchor = hash32(
+            &self
+                .witnesses
+                .last()
+                .ok_or("missing accepted escape anchor")?
+                .recovery_anchor,
+        )?;
+        if value(ext, recovery::RECOVERY_ANCHOR_STORAGE_KEY).as_deref() != Some(anchor.as_slice())
+            || value(ext, REPAIR_AUTH).is_some()
             || current.format_version != 1
             || current.operation_counter != context.counter
             || current.policy != context.original.commitment()
@@ -372,6 +384,7 @@ impl Session {
         payload: &[u8],
         action: &RecoveryAction,
         observed: &RecoveryStatus,
+        expected_anchor: Option<[u8; 32]>,
         stored: &[u8],
         executing: &[u8],
         executing_spec: u32,
@@ -409,7 +422,12 @@ impl Session {
             return Err("supplied escape ordering or envelope binding differs".into());
         }
         authorization
-            .verify_quorum(&self.original, observed, signatures)
+            .verify_quorum(
+                &self.original,
+                observed,
+                expected_anchor.ok_or("escape requires an established first recovery child")?,
+                signatures,
+            )
             .map_err(|e| format!("supplied council quorum failed: {e:?}"))?;
         let destination = destinations
             .get(&authorization.destination_spec)
@@ -446,6 +464,7 @@ impl Session {
                 || authorization.current_executor_hash != authorization.current_code_hash
                 || authorization.revised_policy != revised.commitment()
                 || revised.replacements != self.original.replacements
+                || revised.authorization_domain != self.original.authorization_domain
                 || revised.council != self.original.council
             {
                 return Err("supplied repair changes identity/ownership or is not a forward code transition".into());
@@ -457,6 +476,7 @@ impl Session {
                 .checked_add(step as u32 + 1)
                 .ok_or("block overflow")?,
             parent_hash: format!("{parent:#x}"),
+            recovery_anchor: hx(&authorization.recovery_anchor),
             envelope_sha256: sha(payload),
             authorization_sha256: sha(&authorization.encode()),
             signing_message_sha256: sha(&authorization.signing_message()),
@@ -658,7 +678,8 @@ mod tests {
 
     fn policy() -> RecoveryPolicy {
         RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],
@@ -700,6 +721,8 @@ mod tests {
     fn hold(policy: &RecoveryPolicy) -> RecoveryInherent {
         sign(
             RepairAuthorization {
+                recovery_anchor: [0x42; 32],
+                authorization_domain: policy.authorization_domain.clone(),
                 policy: policy.commitment(),
                 phase: RecoveryPhase::Applying,
                 cursor: 0,
@@ -732,10 +755,21 @@ mod tests {
         }
     }
 
+    fn tick() -> Step {
+        step(
+            &RecoveryInherent {
+                format_version: 1,
+                action: RecoveryAction::Tick,
+            },
+            134,
+            "Applying",
+        )
+    }
+
     fn scenario(policy: &RecoveryPolicy, envelope: &RecoveryInherent) -> Scenario {
         Scenario {
             escapes: vec![ExpectedEscape {
-                step: 0,
+                step: 1,
                 envelope_sha256: sha(&envelope.encode_remark()),
                 destination_spec: 135,
             }],
@@ -759,11 +793,12 @@ mod tests {
         observed: &RecoveryStatus,
     ) -> Result<Option<Prepared>> {
         session.inspect(
-            0,
+            1,
             H256::from(recovery::CHECKPOINT_HASH),
             &envelope.encode_remark(),
             &envelope.action,
             observed,
+            Some([0x42; 32]),
             b"deployed",
             b"bootstrap",
             134,
@@ -776,7 +811,7 @@ mod tests {
         let p = policy();
         let envelope = hold(&p);
         let sc = scenario(&p, &envelope);
-        let session = Session::new(&sc, &p, &[step(&envelope, 135, "Hold")]).unwrap();
+        let session = Session::new(&sc, &p, &[tick(), step(&envelope, 135, "Hold")]).unwrap();
         let prepared = inspect(&session, &envelope, &observed(&p))
             .unwrap()
             .unwrap();
@@ -797,11 +832,12 @@ mod tests {
         assert_eq!(
             session
                 .inspect(
-                    0,
+                    1,
                     H256::zero(),
                     &envelope.encode_remark(),
                     &envelope.action,
                     &observed(&p),
+                    Some([0x42; 32]),
                     b"deployed",
                     b"different substitute",
                     134,
@@ -821,7 +857,7 @@ mod tests {
             let control = Session::new(
                 &scenario(&p, &envelope),
                 &p,
-                &[step(&envelope, 135, "Hold")],
+                &[tick(), step(&envelope, 135, "Hold")],
             )
             .unwrap();
             assert!(inspect(&control, &envelope, &observed(&p))
@@ -843,7 +879,7 @@ mod tests {
             let session = Session::new(
                 &scenario(&p, &envelope),
                 &p,
-                &[step(&envelope, 135, "Hold")],
+                &[tick(), step(&envelope, 135, "Hold")],
             )
             .unwrap();
             assert_eq!(
@@ -858,25 +894,25 @@ mod tests {
         let mut p = policy();
         let envelope = hold(&p);
         let original = scenario(&p, &envelope);
-        assert!(Session::new(&original, &p, &[step(&envelope, 135, "Hold")]).is_ok());
+        assert!(Session::new(&original, &p, &[tick(), step(&envelope, 135, "Hold")]).is_ok());
         let mut sc = original.clone();
         sc.expected_terminal.spec_version = 138;
         sc.expected_terminal.phase = "Complete".into();
         sc.expected_terminal.ordinary_blocks = 1;
         assert_eq!(
-            Session::new(&sc, &p, &[step(&envelope, 138, "Complete")])
+            Session::new(&sc, &p, &[tick(), step(&envelope, 138, "Complete")])
                 .err()
                 .as_deref(),
             Some("supplied scenario has an invalid explicit terminal")
         );
-        assert!(Session::new(&original, &p, &[step(&envelope, 135, "Hold")]).is_ok());
+        assert!(Session::new(&original, &p, &[tick(), step(&envelope, 135, "Hold")]).is_ok());
         p.council = fixture::pairs().into_iter().map(|(a, _)| a).collect();
         let envelope = hold(&p);
         assert_eq!(
             Session::new(
                 &scenario(&p, &envelope),
                 &p,
-                &[step(&envelope, 135, "Hold")]
+                &[tick(), step(&envelope, 135, "Hold")]
             )
             .err()
             .as_deref(),
@@ -889,33 +925,33 @@ mod tests {
         let p = policy();
         let envelope = hold(&p);
         let base = scenario(&p, &envelope);
-        assert!(Session::new(&base, &p, &[step(&envelope, 135, "Hold")]).is_ok());
+        assert!(Session::new(&base, &p, &[tick(), step(&envelope, 135, "Hold")]).is_ok());
         let mut sc = base.clone();
         sc.escapes[0].envelope_sha256 = "0".repeat(64);
         assert_eq!(
-            Session::new(&sc, &p, &[step(&envelope, 135, "Hold")])
+            Session::new(&sc, &p, &[tick(), step(&envelope, 135, "Hold")])
                 .err()
                 .as_deref(),
             Some("supplied escape must bind a unique ordered raw-envelope step")
         );
-        assert!(Session::new(&base, &p, &[step(&envelope, 135, "Hold")]).is_ok());
+        assert!(Session::new(&base, &p, &[tick(), step(&envelope, 135, "Hold")]).is_ok());
         let mut sc = base.clone();
         sc.expected_terminal.state_root = "0xAA".into();
         assert_eq!(
-            Session::new(&sc, &p, &[step(&envelope, 135, "Hold")])
+            Session::new(&sc, &p, &[tick(), step(&envelope, 135, "Hold")])
                 .err()
                 .as_deref(),
             Some("expected canonical lowercase 0x-prefixed 32-byte hash")
         );
-        assert!(Session::new(&base, &p, &[step(&envelope, 135, "Hold")]).is_ok());
+        assert!(Session::new(&base, &p, &[tick(), step(&envelope, 135, "Hold")]).is_ok());
         let mut sc = base;
         sc.escapes.push(ExpectedEscape {
-            step: 0,
+            step: 1,
             envelope_sha256: sha(&envelope.encode_remark()),
             destination_spec: 136,
         });
         assert_eq!(
-            Session::new(&sc, &p, &[step(&envelope, 135, "Hold")])
+            Session::new(&sc, &p, &[tick(), step(&envelope, 135, "Hold")])
                 .err()
                 .as_deref(),
             Some("supplied escape must bind a unique ordered raw-envelope step")
@@ -938,6 +974,8 @@ mod tests {
             }
             let repair = sign(
                 RepairAuthorization {
+                    recovery_anchor: [0x42; 32],
+                    authorization_domain: original.authorization_domain.clone(),
                     policy: original.commitment(),
                     phase: RecoveryPhase::Hold,
                     cursor: 0,
@@ -952,7 +990,7 @@ mod tests {
             );
             let mut sc = scenario(&original, &hold);
             sc.escapes.push(ExpectedEscape {
-                step: 1,
+                step: 2,
                 envelope_sha256: sha(&repair.encode_remark()),
                 destination_spec: 136,
             });
@@ -963,7 +1001,11 @@ mod tests {
             let mut session = Session::new(
                 &sc,
                 &original,
-                &[step(&hold, 135, "Hold"), step(&repair, 136, "Applying")],
+                &[
+                    tick(),
+                    step(&hold, 135, "Hold"),
+                    step(&repair, 136, "Applying"),
+                ],
             )
             .unwrap();
             session.witnesses.push(
@@ -978,11 +1020,12 @@ mod tests {
                 ..observed(&original)
             };
             let result = session.inspect(
-                1,
+                2,
                 H256::zero(),
                 &repair.encode_remark(),
                 &repair.action,
                 &state,
+                Some([0x42; 32]),
                 b"hold",
                 b"hold",
                 135,
@@ -1021,7 +1064,7 @@ mod tests {
         let p = policy();
         let envelope = hold(&p);
         let sc = scenario(&p, &envelope);
-        let mut session = Session::new(&sc, &p, &[step(&envelope, 135, "Hold")]).unwrap();
+        let mut session = Session::new(&sc, &p, &[tick(), step(&envelope, 135, "Hold")]).unwrap();
         let prepared = inspect(&session, &envelope, &observed(&p))
             .unwrap()
             .unwrap();
@@ -1059,7 +1102,7 @@ mod tests {
         );
         assert!(session.witnesses.is_empty());
         assert_eq!(
-            fs::read(output.0.join("28191818.supplied.escape.scale")).unwrap(),
+            fs::read(output.0.join("28191819.supplied.escape.scale")).unwrap(),
             envelope.encode_remark()
         );
     }
@@ -1072,6 +1115,8 @@ mod tests {
         revised.chunk_hashes = vec![[6; 32]];
         let repair = sign(
             RepairAuthorization {
+                recovery_anchor: [0x42; 32],
+                authorization_domain: original.authorization_domain.clone(),
                 policy: original.commitment(),
                 phase: RecoveryPhase::Hold,
                 cursor: 0,
@@ -1086,7 +1131,7 @@ mod tests {
         );
         let mut sc = scenario(&original, &hold);
         sc.escapes.push(ExpectedEscape {
-            step: 1,
+            step: 2,
             envelope_sha256: sha(&repair.encode_remark()),
             destination_spec: 136,
         });
@@ -1097,7 +1142,11 @@ mod tests {
         let mut session = Session::new(
             &sc,
             &original,
-            &[step(&hold, 135, "Hold"), step(&repair, 136, "Applying")],
+            &[
+                tick(),
+                step(&hold, 135, "Hold"),
+                step(&repair, 136, "Applying"),
+            ],
         )
         .unwrap();
         let first = inspect(&session, &hold, &observed(&original))
@@ -1111,11 +1160,12 @@ mod tests {
         };
         let prepared = session
             .inspect(
-                1,
+                2,
                 H256::zero(),
                 &repair.encode_remark(),
                 &repair.action,
                 &state,
+                Some([0x42; 32]),
                 b"hold",
                 b"hold",
                 135,
@@ -1134,6 +1184,7 @@ mod tests {
             sp_io::storage::set(recovery::ACTIVE_POLICY_STORAGE_KEY, &revised.commitment());
             sp_io::storage::set(b":code", b"repair");
             sp_io::storage::set(REPAIR_AUTH, &prepared.authorization.encode());
+            sp_io::storage::set(recovery::RECOVERY_ANCHOR_STORAGE_KEY, &[0x42; 32]);
         });
         for kind in 0..3 {
             ext.execute_with(|| {
@@ -1181,7 +1232,7 @@ mod tests {
         let envelope = hold(&p);
         let mut sc = scenario(&p, &envelope);
         sc.escapes.push(ExpectedEscape {
-            step: 1,
+            step: 2,
             envelope_sha256: "0".repeat(64),
             destination_spec: 136,
         });
@@ -1282,7 +1333,7 @@ mod tests {
             &Session::new(
                 &scenario(&original, &hold),
                 &original,
-                &[step(&hold, 135, "Hold")],
+                &[tick(), step(&hold, 135, "Hold")],
             )
             .unwrap(),
             &hold,
@@ -1291,6 +1342,8 @@ mod tests {
         .unwrap()
         .unwrap();
         let auth = RepairAuthorization {
+            recovery_anchor: [0x42; 32],
+            authorization_domain: original.authorization_domain.clone(),
             policy: original.commitment(),
             phase: RecoveryPhase::Hold,
             cursor: 0,
@@ -1319,6 +1372,7 @@ mod tests {
         ext.execute_with(|| {
             sp_io::storage::set(b":code", b"repair");
             sp_io::storage::set(REPAIR_AUTH, &auth.encode());
+            sp_io::storage::set(recovery::RECOVERY_ANCHOR_STORAGE_KEY, &[0x42; 32]);
             sp_io::storage::set(
                 recovery::STATUS_STORAGE_KEY,
                 &RecoveryStatus {
@@ -1413,7 +1467,7 @@ mod tests {
         let envelope = hold(&p);
         let mut sc = scenario(&p, &envelope);
         sc.escapes.push(ExpectedEscape {
-            step: 1,
+            step: 2,
             envelope_sha256: sha(b"repair-placeholder"),
             destination_spec: 136,
         });
@@ -1423,7 +1477,7 @@ mod tests {
         sc.expected_terminal.ordinary_blocks = 1;
         let mut repair_step = step(&envelope, 138, "Complete");
         repair_step.recovery.as_mut().unwrap().sha256 = sha(b"repair-placeholder");
-        let steps = vec![step(&envelope, 135, "Hold"), repair_step];
+        let steps = vec![tick(), step(&envelope, 135, "Hold"), repair_step];
         Session::public_dynamic(&sc, &p, &steps).unwrap();
         assert!(Session::new(&sc, &p, &steps)
             .err()

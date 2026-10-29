@@ -1,8 +1,10 @@
 """Synthetic files and fake Docker process backend only; no Docker/Cargo run."""
 import copy
 import hashlib
+import gzip
 import io
 import json
+import os
 from pathlib import Path
 import socket
 import tarfile
@@ -102,7 +104,7 @@ class NodeImageTests(unittest.TestCase):
                     'executable':'/target/x86_64-unknown-linux-gnu/release/framenode','fresh':False})+'\n'+
                     json.dumps({'reason':'build-finished','success':True})+'\n').encode()
             else:
-                raw = f'framenode 4.8.13-src-{self.args.source_inventory_sha256[:16]}-x86_64-unknown-linux-gnu\n'.encode()
+                raw = f'{Path(entry).name} 4.8.13-src-{self.args.source_inventory_sha256[:16]}-x86_64-unknown-linux-gnu\n'.encode()
         elif args[:2] == ['container', 'inspect']:
             matched = [value for key, value in self.containers.items() if key == args[2] or value['Name'] == '/' + args[2]]
             raw = json.dumps(matched).encode()
@@ -114,10 +116,14 @@ class NodeImageTests(unittest.TestCase):
             Path(args[3]).write_bytes(self.base_raw)
         elif args[:2] == ['image', 'load']:
             with tarfile.open(args[3]) as tar:
-                manifest = json.load(tar.extractfile('manifest.json'))
-                config = json.load(tar.extractfile(manifest[0]['Config']))
-                cid = 'sha256:' + manifest[0]['Config'].removesuffix('.json')
-                self.images[cid] = {'Id': cid, 'Os': 'linux', 'Architecture': 'amd64', 'Config': config['config']}
+                self.assertTrue(args[3].endswith('/node.oci.tar'))
+                index = json.load(tar.extractfile('index.json'))
+                descriptor = index['manifests'][0]
+                cid = descriptor['digest']
+                manifest = json.load(tar.extractfile('blobs/sha256/' + cid[7:]))
+                config = json.load(tar.extractfile('blobs/sha256/' + manifest['config']['digest'][7:]))
+                self.images[cid] = {'Id': cid, 'Os': 'linux', 'Architecture': 'amd64',
+                    'Config': config['config'], 'Descriptor': descriptor}
             raw = ('Loaded image ID: ' + cid).encode()
         else:
             self.fail('unexpected command: ' + repr(args))
@@ -144,6 +150,51 @@ class NodeImageTests(unittest.TestCase):
         self.assertTrue((self.args.output/'images/node.oci.tar').is_file())
         self.assertTrue((self.args.output/'images/node.docker.tar').is_file())
         self.assertFalse(any('push' in c or 'pull' in c or 'login' in c for c in self.commands))
+
+    def test_version_probe_uses_release_executable_basename(self):
+        self.run_fake()
+        probes = [c for c in self.commands if c[5:7] == ['container', 'create'] and c[-1] == '--version']
+        self.assertEqual(len(probes), 2)
+        entries = [c[c.index('--entrypoint') + 1] for c in probes]
+        self.assertEqual(entries, ['/framenode', '/usr/local/bin/framenode'])
+        self.assertTrue(any(value.endswith('target=/framenode,readonly') for value in probes[0]))
+        wrong_name = f'node 4.8.13-src-{self.args.source_inventory_sha256[:16]}-x86_64-unknown-linux-gnu\n'.encode()
+        with self.assertRaisesRegex(ValueError, 'version/source/target differs'):
+            image.version(wrong_name, self.args.source_inventory_sha256, 'x86_64-unknown-linux-gnu')
+
+    def test_cargo_hardlink_is_copied_to_independent_release_file(self):
+        def hardlink(stage, args):
+            if stage == 'cargo-build-start':
+                node = self.target/'x86_64-unknown-linux-gnu/release/framenode'
+                deps = node.parent/'deps'; deps.mkdir()
+                os.link(node, deps/'framenode-cargo-hash')
+        self.mutate = hardlink
+        result = self.run_fake()
+        self.assertEqual(result['status'], 'passed')
+        node = self.args.output/'bin/framenode'
+        self.assertEqual(node.stat().st_nlink, 1)
+        native = self.target/'x86_64-unknown-linux-gnu/release/framenode'
+        self.assertEqual(native.stat().st_nlink, 2)
+        self.assertNotEqual(node.stat().st_ino, native.stat().st_ino)
+        with self.assertRaisesRegex(ValueError, 'file alias'):
+            image.build.digest(native)
+
+    def test_cargo_copy_rejects_symlink_wrong_path_and_source_mutation(self):
+        native = self.target/'x86_64-unknown-linux-gnu/release/framenode'
+        native.parent.mkdir(parents=True)
+        original = self.root/'original'; original.write_bytes(self.node())
+        native.symlink_to(original)
+        with self.assertRaisesRegex(ValueError, 'aliased'):
+            image.copy_cargo_artifact(native, self.root/'copy', self.target, 'x86_64-unknown-linux-gnu')
+        native.unlink(); native.write_bytes(self.node())
+        with self.assertRaisesRegex(ValueError, 'path differs'):
+            image.copy_cargo_artifact(original, self.root/'copy', self.target, 'x86_64-unknown-linux-gnu')
+        real_fsync = os.fsync
+        def mutate(fd):
+            real_fsync(fd)
+            native.write_bytes(b'changed during copy')
+        with patch.object(image.os, 'fsync', side_effect=mutate), self.assertRaisesRegex(ValueError, 'changed during copy'):
+            image.copy_cargo_artifact(native, self.root/'copy', self.target, 'x86_64-unknown-linux-gnu')
 
     def test_rejects_mutable_images_and_non_socket_endpoints_before_commands(self):
         self.args.builder_image = 'builder:latest'
@@ -261,6 +312,150 @@ class NodeImageTests(unittest.TestCase):
         with self.assertRaises(ValueError): image.elf(self.node(),183)
         with self.assertRaises(ValueError): image.elf(b'not ELF',62)
         with self.assertRaises(ValueError): image.version(b'framenode 4.8.13-wrong\n','1'*64,'x86_64-unknown-linux-gnu')
+
+
+    def oci_base_archive(self, *, transform=None, tar_transform=None, direct=False):
+        with tarfile.open(fileobj=io.BytesIO(self.base_raw)) as old:
+            legacy = json.load(old.extractfile('manifest.json'))[0]
+            config = json.load(old.extractfile(legacy['Config']))
+            layer = old.extractfile(legacy['Layers'][0]).read()
+        payload = {'config': config, 'layer': gzip.compress(layer, mtime=123), 'diff': layer,
+                   'layerType': 'application/vnd.oci.image.layer.v1.tar+gzip', 'duplicatePlatform': False}
+        if transform:
+            transform(payload)
+        blobs = {}
+        def blob(raw, media):
+            sha = hashlib.sha256(raw).hexdigest(); blobs['blobs/sha256/' + sha] = raw
+            return {'mediaType': media, 'digest': 'sha256:' + sha, 'size': len(raw)}
+        cd = blob(image.build.serialized(payload['config']), 'application/vnd.oci.image.config.v1+json')
+        ld = blob(payload['layer'], payload['layerType'])
+        if payload.get('badLayerSize'): ld['size'] += 1
+        if payload.get('badLayerDigest'): ld['digest'] = 'sha256:' + 'e' * 64
+        manifest = {'schemaVersion': 2, 'mediaType': image.OCI_MANIFEST, 'config': cd, 'layers': [ld]}
+        md = blob(image.build.serialized(manifest), image.OCI_MANIFEST)
+        md['platform'] = {'os': 'linux', 'architecture': payload.get('architecture', 'amd64')}
+        children = [md]
+        # Unselected attestations remain references inside the authenticated index.
+        children.append({'mediaType': image.OCI_MANIFEST, 'digest': 'sha256:' + 'b'*64, 'size': 42,
+                         'platform': {'os': 'unknown', 'architecture': 'unknown'}})
+        if payload['duplicatePlatform']:
+            children.append(copy.deepcopy(md))
+        if payload.get('secondPlatform'):
+            second = copy.deepcopy(manifest); second['annotations'] = {'synthetic': 'second matching image'}
+            second_d = blob(image.build.serialized(second), image.OCI_MANIFEST); second_d['platform'] = md['platform']
+            children.append(second_d)
+        root = md if direct else blob(image.build.serialized({'schemaVersion': 2, 'mediaType': image.OCI_INDEX,
+                                                            'manifests': children}), image.OCI_INDEX)
+        blobs['index.json'] = image.build.serialized({'schemaVersion': 2, 'manifests': [root]})
+        blobs['oci-layout'] = image.build.serialized({'imageLayoutVersion': '1.0.0'})
+        blobs['manifest.json'] = image.build.serialized([{'Config': 'blobs/sha256/' + cd['digest'][7:],
+            'RepoTags': None, 'Layers': ['blobs/sha256/' + ld['digest'][7:]]}])
+        if tar_transform:
+            tar_transform(blobs, root, md, cd, ld)
+        result = io.BytesIO()
+        with tarfile.open(fileobj=result, mode='w') as tar:
+            for name, raw in blobs.items():
+                image.tar_add(tar, name, io.BytesIO(raw), len(raw))
+        return result.getvalue(), root['digest']
+
+    def assemble_oci(self, **kwargs):
+        raw, identity = self.oci_base_archive(**kwargs)
+        base = self.root/'base-oci.tar'; base.write_bytes(raw)
+        node = self.root/'oci-node'; node.write_bytes(self.node())
+        return image.archives(base, identity, node, self.root/'assembled', 'amd64', '1'*64, 0)
+
+    def test_oci_index_graph_decompresses_and_preserves_content_identities(self):
+        value = self.assemble_oci()
+        self.assertEqual(value['baseIdentity']['format'], 'oci-descriptor-graph')
+        self.assertNotEqual(value['baseIdentity']['inputImageId'], value['baseIdentity']['configId'])
+        self.assertEqual(value['imageId'], value['ociManifestDigest'])
+        self.assertEqual(value['imageId'], value['loadedImageReference'])
+        self.assertNotEqual(value['imageId'], value['configId'])
+        self.assertNotEqual(value['imageId'], value['ociIndexDigest'])
+        with tarfile.open(self.root/'assembled/node.docker.tar') as tar:
+            row = json.load(tar.extractfile('manifest.json'))[0]
+            config = json.load(tar.extractfile(row['Config']))
+            for name, diff in zip(row['Layers'], config['rootfs']['diff_ids']):
+                self.assertEqual('sha256:' + hashlib.sha256(tar.extractfile(name).read()).hexdigest(), diff)
+        legacy = self.root/'legacy.tar'; legacy.write_bytes(self.base_raw)
+        legacy_value = image.archives(legacy, self.base_id, self.root/'oci-node', self.root/'legacy-result', 'amd64', '1'*64, 0)
+        self.assertEqual(value['dockerArchive'], legacy_value['dockerArchive'])
+        self.assertEqual(value['ociArchive'], legacy_value['ociArchive'])
+
+    def test_direct_oci_manifest_is_authenticated(self):
+        value = self.assemble_oci(direct=True)
+        self.assertEqual(value['baseIdentity']['inputImageId'], value['baseIdentity']['selectedManifestDigest'])
+
+    def test_oci_duplicate_or_ambiguous_platform_is_rejected(self):
+        for field in ('duplicatePlatform', 'secondPlatform'):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temp:
+                old = self.root; self.root = Path(temp).resolve()
+                try:
+                    with self.assertRaisesRegex(ValueError, 'duplicate|unique selected'):
+                        self.assemble_oci(transform=lambda p: p.update({field: True}))
+                finally: self.root = old
+
+    def test_oci_config_platform_diffid_compression_and_blob_bounds_fail_closed(self):
+        cases = [('config platform', lambda p: p['config'].update({'architecture': 'arm64'}), 'platform'),
+                 ('wrong diff', lambda p: p['config']['rootfs'].update({'diff_ids':['sha256:'+'f'*64]}), 'diff ID'),
+                 ('zstd', lambda p: p.update({'layerType':'application/vnd.oci.image.layer.v1.tar+zstd'}), 'descriptor'),
+                 ('size', lambda p: p.update({'badLayerSize':True}), 'size/blob'),
+                 ('missing blob', lambda p: p.update({'badLayerDigest':True}), 'size/blob')]
+        for label, transform, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temp:
+                old = self.root; self.root = Path(temp).resolve()
+                try:
+                    with self.assertRaisesRegex(ValueError, error): self.assemble_oci(transform=transform)
+                finally: self.root = old
+
+    def test_oci_digest_mutations_are_rejected_at_each_selected_graph_level(self):
+        for field in ('root', 'manifest', 'config', 'layer'):
+            def mutate(blobs, root, manifest, config, layer):
+                selected = {'root':root,'manifest':manifest,'config':config,'layer':layer}[field]
+                name = 'blobs/sha256/' + selected['digest'][7:]
+                raw = bytearray(blobs[name]); raw[len(raw)//2] ^= 1; blobs[name] = bytes(raw)
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temp:
+                old = self.root; self.root = Path(temp).resolve()
+                try:
+                    with self.assertRaises((ValueError, json.JSONDecodeError)):
+                        self.assemble_oci(tar_transform=mutate)
+                finally: self.root = old
+
+    def test_oci_saved_manifest_cannot_reorder_or_rebind_graph(self):
+        def change(blobs, root, manifest, config, layer):
+            row = json.loads(blobs['manifest.json']); row[0]['Layers'] = ['blobs/sha256/' + config['digest'][7:]]
+            blobs['manifest.json'] = image.build.serialized(row)
+        with self.assertRaisesRegex(ValueError, 'layer order'): self.assemble_oci(tar_transform=change)
+
+    def test_oci_expansion_bound_is_enforced_before_large_write(self):
+        with patch.object(image, 'MAX_MEMBER', 4096):
+            with self.assertRaisesRegex(ValueError, 'expanded layer byte bound'): self.assemble_oci()
+
+    def test_oci_unknown_root_and_external_descriptor_fields_are_rejected(self):
+        def change(blobs, root, manifest, config, layer):
+            value = json.loads(blobs['index.json']); value['manifests'][0]['urls'] = ['https://untrusted.invalid/blob']
+            blobs['index.json'] = image.build.serialized(value)
+        with self.assertRaisesRegex(ValueError, 'descriptor'): self.assemble_oci(tar_transform=change)
+
+    def test_loaded_result_uses_manifest_reference_and_rejects_config_id(self):
+        self.base_raw, self.base_id = self.oci_base_archive()
+        self.args.base_image = self.base_id
+        self.images[self.base_id] = {'Id':self.base_id, 'Os':'linux', 'Architecture':'amd64'}
+        result = self.run_fake()
+        images = result['images']
+        self.assertNotIn(images['configId'], self.images)
+        self.assertIn(images['loadedImageReference'], self.images)
+        generated = [c for c in self.commands if c[5:7] == ['container','create'] and '/usr/local/bin/framenode' in c]
+        self.assertEqual(len(generated), 2)
+        for command in generated: self.assertIn(images['ociManifestDigest'], command)
+
+    def test_loaded_result_inspection_does_not_accept_different_digest(self):
+        def changed(stage, args):
+            if stage == 'image-load':
+                for key, value in self.images.items():
+                    if key not in (self.base_id, self.builder_id): value['Id'] = 'sha256:' + 'f' * 64
+        self.mutate = changed
+        with self.assertRaisesRegex(ValueError, 'identity/platform'): self.run_fake()
 
 
 if __name__ == '__main__':

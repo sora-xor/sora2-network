@@ -43,7 +43,7 @@ class ProductionBuildTests(unittest.TestCase):
                 + scale.compact(1) + h(4) + scale.compact(1) + h(5)}
         for name, value in values.items():
             files[name] = build.digest(self.artifact(name, value))
-        value = {'schema': build.SCHEMA, 'files': files, 'compose': {
+        value = {'schema': build.SCHEMA, 'files': files, 'authorizationDomain': build.release.policy_identity(policy())['authorizationDomain'], 'compose': {
             'capture': 'capture', 'csv': 'mapping.csv', 'proofs': 'proofs.json', 'inventory': 'inventory.json',
             'economic': 'economic.json', 'semantic': 'semantic.json', 'council': 'council.json', 'staking-roles': 'staking.json'},
             'operatorsScale': 'operators.scale', 'derivedInventory': 'derived.json', 'mixedLayout': None,
@@ -151,6 +151,19 @@ class ProductionBuildTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'duplicate'):
             build.parse(b'{"x":1,"x":2}')
 
+    def test_production_input_requires_explicit_nonfixture_authorization_domain(self):
+        value, path = self.bundle()
+        for change in [
+            lambda v: v.pop('authorizationDomain'),
+            lambda v: v['authorizationDomain'].update(chainSpecId='sora-nexus-PUBLIC-FIXTURE-ONLY'),
+            lambda v: v['authorizationDomain'].update(releaseNonce='0x' + '00' * 32),
+            lambda v: v['authorizationDomain'].update(releaseNonce='0x' + '46' * 32),
+        ]:
+            candidate = copy.deepcopy(value)
+            change(candidate)
+            with self.assertRaises(ValueError):
+                self.load(candidate, path)
+
     def test_mixed_layout_preserves_composed_bodies_and_order(self):
         composed = self.composed()
         result = build.mixed_input(composed, self.layout())
@@ -178,6 +191,21 @@ class ProductionBuildTests(unittest.TestCase):
         value['audits'].append({'envelope': env(2, 3)})
         with self.assertRaises(ValueError):
             build.mixed_input(self.composed(), value)
+
+    def test_terminal_pages_keep_exact_order_and_reject_single_final(self):
+        composed = self.composed()
+        composed['terminalPreludeEnvelopes'] = [env(11, 0), env(11, 1)]
+        composed['terminalEnvelope'] = env(11, 2)
+        result = build.mixed_input(composed, self.layout())
+        self.assertEqual(result['terminalPreludeEnvelopes'], composed['terminalPreludeEnvelopes'])
+        for prelude, final in [([env(11, 1), env(11, 0)], env(11, 2)),
+                               ([env(11, 0)], env(5)), ([env(11, 0)], env(11, 2)),
+                               ([], env(11, 0))]:
+            layout = self.layout()
+            layout['terminalPreludeEnvelopes'] = prelude
+            layout['terminalEnvelope'] = final
+            with self.assertRaises(ValueError):
+                build.mixed_input(composed, layout)
 
     def test_terminal_must_be_terminal_and_policy_emission_exact(self):
         value = self.layout()

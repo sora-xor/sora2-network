@@ -621,6 +621,8 @@ pub fn run(manifest_path: &Path, output: &Path, require_prior_incoming: bool) ->
         manifest_path,
         &output.join("baseline"),
         require_prior_incoming,
+        false,
+        false,
     )?;
     need(
         sha(&bounded(manifest_path, 64 * 1024 * 1024)?) == sha(&manifest_bytes)

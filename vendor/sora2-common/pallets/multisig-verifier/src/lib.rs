@@ -61,6 +61,14 @@ mod benchmarking;
 pub mod weights;
 pub use weights::WeightInfo;
 
+/// Exact, authenticated peer acknowledgements retained while recovery halts all
+/// outbound commitments. No worker consumes this journal automatically.
+pub fn recovery_peer_ack_key(network: bridge_types::SubNetworkId, id: H256) -> Vec<u8> {
+    let mut key = b":sora-nexus:recovery:peer-ack:v1:".to_vec();
+    key.extend((network, id).encode());
+    key
+}
+
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct Proof {
     pub digest: AuxiliaryDigest,
@@ -148,6 +156,8 @@ pub mod pallet {
         DuplicatedPeer,
         NotEnoughPeers,
         PeerRegisteredInOtherNetwork,
+        RecoveryHalted,
+        RecoveryAcknowledgementExists,
     }
 
     #[pallet::hooks]
@@ -191,11 +201,10 @@ pub mod pallet {
                 }
                 Ok(())
             })?;
-            T::OutboundChannel::submit(
+            Self::submit_peer_ack(
                 output.network_id,
-                &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::AddPeer { peer }.prepare_message(),
-                (),
+                output.message_id,
+                bridge_types::substrate::DataSignerCall::AddPeer { peer },
             )?;
             Self::deposit_event(Event::PeerAdded(peer));
             Ok(().into())
@@ -229,11 +238,10 @@ pub mod pallet {
                 },
             )?;
 
-            T::OutboundChannel::submit(
+            Self::submit_peer_ack(
                 output.network_id,
-                &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
-                (),
+                output.message_id,
+                bridge_types::substrate::DataSignerCall::RemovePeer { peer },
             )?;
 
             Self::deposit_event(Event::PeerRemoved(peer));
@@ -258,6 +266,40 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
+        fn submit_peer_ack(
+            network: SubNetworkId,
+            id: H256,
+            acknowledgement: bridge_types::substrate::DataSignerCall,
+        ) -> DispatchResult {
+            if !sp_io::storage::exists(b":sora-nexus:recovery:bridge-halt:v1") {
+                return T::OutboundChannel::submit(
+                    network,
+                    &frame_system::RawOrigin::Root,
+                    &acknowledgement.prepare_message(),
+                    (),
+                )
+                .map(drop);
+            }
+            ensure!(
+                sp_io::storage::exists(b":sora-nexus:recovery:incoming-active:v1")
+                    && sp_io::storage::get(b":sora-nexus:recovery:bridge-inbound-context:v1")
+                        .as_deref()
+                        == Some(
+                            frame_system::Pallet::<T>::block_number()
+                                .encode()
+                                .as_slice()
+                        ),
+                Error::<T>::RecoveryHalted
+            );
+            let key = recovery_peer_ack_key(network, id);
+            ensure!(
+                !sp_io::storage::exists(&key),
+                Error::<T>::RecoveryAcknowledgementExists
+            );
+            sp_io::storage::set(&key, &acknowledgement.encode());
+            Ok(())
+        }
+
         fn canonicalize_peers(
             peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
             require_minimum: bool,

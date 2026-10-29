@@ -29,6 +29,7 @@ pub fn run(policy: &RecoveryPolicy, envelopes: &[Vec<u8>]) -> Result<(), String>
             RecoveryAction::Audit(_)
                 | RecoveryAction::PrefixAudit(_)
                 | RecoveryAction::IncomingAudit(_)
+                | RecoveryAction::NativeBalanceAudit(_)
         ) {
             return Err("preview accepts only ordered audit actions".into());
         }
@@ -50,6 +51,12 @@ pub fn run(policy: &RecoveryPolicy, envelopes: &[Vec<u8>]) -> Result<(), String>
                 crate::incident_recovery_incoming::audit_encoded_with_policy(policy, &payload)
                     .map(|_| ())
             }
+            RecoveryAction::NativeBalanceAudit(payload) => {
+                crate::incident_recovery_incoming::audit_native_balances_with_policy(
+                    policy, &payload,
+                )
+                .map(|_| ())
+            }
             _ => unreachable!("prechecked audit action"),
         }
         .map_err(|e| format!("preview ordered audit {e:?}"))?;
@@ -68,7 +75,8 @@ pub fn run(policy: &RecoveryPolicy, envelopes: &[Vec<u8>]) -> Result<(), String>
 fn preview_audit_codec_rejects_forbidden_trailing_and_mismatched_streams() {
     use common::recovery::AccountReplacement;
     let policy = RecoveryPolicy {
-        format_version: 1,
+        format_version: 2,
+        authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
         checkpoint_hash: recovery::CHECKPOINT_HASH,
         checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
         replacements: vec![AccountReplacement {

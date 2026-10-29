@@ -36,7 +36,7 @@ use std::{
 };
 
 #[path = "../../../runtime/src/incident_recovery_hashi_preview_codec.rs"]
-mod wire;
+pub(crate) mod wire;
 const MINT: u128 = 1;
 
 fn envelope(action: RecoveryAction) -> String {
@@ -488,7 +488,8 @@ fn preview(
 pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
     let setup = setup(&verified.storage)?;
     let mut policy = RecoveryPolicy {
-        format_version: 1,
+        format_version: 2,
+        authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
         checkpoint_hash: recovery::CHECKPOINT_HASH,
         checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
         replacements: vec![AccountReplacement {
@@ -542,20 +543,13 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
     }
     let mut issuance = Vec::new();
     for asset in [common::XOR, common::DAI] {
-        let mut invariant = economics::issuance_baseline(
+        let invariant = economics::issuance_baseline(
             &verified.schema,
             &verified.storage,
             asset.encode().try_into().map_err(|_| "asset codec")?,
         )?;
-        let final_bytes = stable
-            .get(&invariant.current.key)
-            .and_then(Option::as_ref)
-            .or_else(|| verified.storage.top.get(&invariant.current.key))
-            .ok_or("fixture issuance missing")?;
-        invariant.current.record_hash = hash(final_bytes);
-        if asset == common::DAI {
-            invariant.authenticated_mints = MINT * wire::CREDITED_COUNT;
-        }
+        // Native execution journals exact issuance deltas and final record hashes;
+        // never hardcode a gross transfer amount into terminal conservation.
         issuance.push(invariant);
     }
     let terminal = TerminalAudit {

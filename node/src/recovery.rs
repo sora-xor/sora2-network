@@ -431,6 +431,67 @@ pub async fn wait_for_activation(
     }
 }
 
+// Narrow read-only database view. Production and missing-index regression tests
+// run the same guard; the test adapter cannot bypass any admission decision.
+struct RecoveryDatabaseInfo {
+    genesis_hash: H256,
+    heads: [(u32, H256); 2],
+}
+
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
+trait RecoveryDatabaseView {
+    fn recovery_info(&self) -> RecoveryDatabaseInfo;
+    fn recovery_header(
+        &self,
+        hash: H256,
+    ) -> Result<Option<<Block as BlockT>::Header>, ServiceError>;
+    fn recovery_number_hash(&self, number: u32) -> Result<Option<H256>, ServiceError>;
+    fn recovery_provenance(&self) -> Result<Option<Vec<u8>>, ServiceError>;
+    fn recovery_policy(&self, hash: H256) -> Result<Option<Vec<u8>>, ServiceError>;
+}
+
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
+impl RecoveryDatabaseView for crate::service::FullClient {
+    fn recovery_info(&self) -> RecoveryDatabaseInfo {
+        let info = self.info();
+        RecoveryDatabaseInfo {
+            genesis_hash: info.genesis_hash,
+            heads: [
+                (info.best_number, info.best_hash),
+                (info.finalized_number, info.finalized_hash),
+            ],
+        }
+    }
+
+    fn recovery_header(
+        &self,
+        hash: H256,
+    ) -> Result<Option<<Block as BlockT>::Header>, ServiceError> {
+        self.header(hash).map_err(ServiceError::from)
+    }
+
+    fn recovery_number_hash(&self, number: u32) -> Result<Option<H256>, ServiceError> {
+        self.hash(number).map_err(ServiceError::from)
+    }
+
+    fn recovery_provenance(&self) -> Result<Option<Vec<u8>>, ServiceError> {
+        self.get_aux(CHECKPOINT_IMPORTED_KEY)
+            .map_err(ServiceError::from)
+    }
+
+    fn recovery_policy(&self, hash: H256) -> Result<Option<Vec<u8>>, ServiceError> {
+        self.storage(hash, &StorageKey(POLICY_STORAGE_KEY.to_vec()))
+            .map(|value| value.map(|data| data.0))
+            .map_err(ServiceError::from)
+    }
+}
+
 /// Refuse a reused old-chain database, including an already-imported checkpoint.
 #[allow(
     clippy::result_large_err,
@@ -440,43 +501,61 @@ pub fn validate_database(
     client: &crate::service::FullClient,
     recovery: &RecoveryConfig,
 ) -> Result<(), ServiceError> {
-    let info = client.info();
+    validate_database_view(client, recovery)
+}
+
+#[allow(
+    clippy::result_large_err,
+    reason = "preserve the upstream SDK service error type at the node integration boundary"
+)]
+fn validate_database_view(
+    client: &impl RecoveryDatabaseView,
+    recovery: &RecoveryConfig,
+) -> Result<(), ServiceError> {
+    let info = client.recovery_info();
     if info.genesis_hash != H256::from(GENESIS_HASH) {
         return Err(ServiceError::Other(
             "recovery database has a different genesis".into(),
         ));
     }
-    for (number, hash) in [
-        (info.best_number, info.best_hash),
-        (info.finalized_number, info.finalized_hash),
-    ] {
+    for (number, hash) in info.heads {
         if number < CHECKPOINT_NUMBER {
             continue;
         }
+        // Warp sync stores the checkpoint header but indexes it by number only
+        // once gap sync reaches that height, so look it up by hash. Where the
+        // number index exists, it must still name the checkpoint.
         let checkpoint = client
-            .hash(CHECKPOINT_NUMBER)?
+            .recovery_header(H256::from(CHECKPOINT_HASH))?
             .ok_or_else(|| ServiceError::Other("recovery checkpoint header is missing".into()))?;
-        if checkpoint != H256::from(CHECKPOINT_HASH) {
+        if *checkpoint.number() != CHECKPOINT_NUMBER
+            || checkpoint.hash() != H256::from(CHECKPOINT_HASH)
+        {
+            return Err(ServiceError::Other(
+                "block does not match the recovery checkpoint header and state root".into(),
+            ));
+        }
+        validate_header(&checkpoint, checkpoint.hash(), recovery).map_err(ServiceError::Other)?;
+        if client
+            .recovery_number_hash(CHECKPOINT_NUMBER)?
+            .is_some_and(|canonical| canonical != H256::from(CHECKPOINT_HASH))
+        {
             return Err(ServiceError::Other(
                 "database checkpoint hash is not canonical".into(),
             ));
         }
-        if client.get_aux(CHECKPOINT_IMPORTED_KEY)?.as_deref()
-            != Some(recovery.policy_commitment.as_bytes())
-        {
+        if client.recovery_provenance()?.as_deref() != Some(recovery.policy_commitment.as_bytes()) {
             return Err(ServiceError::Other(
                 "checkpoint lacks recovery import provenance; prepare a separate database ending before the checkpoint".into(),
             ));
         }
         let header = client
-            .header(hash)?
+            .recovery_header(hash)?
             .ok_or_else(|| ServiceError::Other("recovery database head is missing".into()))?;
         validate_header(&header, hash, recovery).map_err(ServiceError::Other)?;
         if number > CHECKPOINT_NUMBER {
-            let policy = client.storage(hash, &StorageKey(POLICY_STORAGE_KEY.to_vec()))?;
-            if policy.as_ref().map(|data| data.0.as_slice())
-                != Some(recovery.policy_commitment.as_bytes())
-            {
+            let policy = client.recovery_policy(hash)?;
+            if policy.as_deref() != Some(recovery.policy_commitment.as_bytes()) {
                 return Err(ServiceError::Other(
                     "recovery database policy commitment differs".into(),
                 ));
@@ -956,11 +1035,27 @@ mod tests {
     }
 
     fn fixture() -> RecoveryConfig {
+        let policy = common::recovery::RecoveryPolicy {
+            format_version: 2,
+            checkpoint_hash: CHECKPOINT_HASH,
+            checkpoint_state_root: CHECKPOINT_STATE_ROOT,
+            replacements: vec![],
+            council: vec![sp_runtime::AccountId32::new([7; 32])],
+            chunk_hashes: vec![[8; 32]],
+            audit_chunk_hashes: vec![[9; 32]],
+            evidence_commitment: [5; 32],
+            terminal_audit_commitment: [10; 32],
+            authorization_domain: common::recovery::RecoveryDomain {
+                chain_spec_id: CHAIN_ID.as_bytes().to_vec(),
+                release_nonce: [11; 32],
+            },
+        };
         let key = |byte| sp_core::ed25519::Public::from_raw([byte; 32]).into();
         RecoveryConfig {
-            schema_version: 1,
+            schema_version: 2,
             checkpoint_hash: CHECKPOINT_HASH.into(),
-            policy_commitment: [1; 32].into(),
+            policy_commitment: policy.commitment().into(),
+            policy_scale: sp_core::Bytes(policy.encode()),
             bootstrap_code_hash: [2; 32].into(),
             final_code_hash: [3; 32].into(),
             hold_code_hash: [4; 32].into(),
@@ -983,6 +1078,187 @@ mod tests {
             CHECKPOINT_HASH.into(),
             Default::default(),
         )
+    }
+
+    struct MockRecoveryDatabase {
+        genesis: H256,
+        heads: [(u32, H256); 2],
+        headers: BTreeMap<H256, <Block as BlockT>::Header>,
+        checkpoint_number_hash: Option<H256>,
+        provenance: Option<Vec<u8>>,
+        policies: BTreeMap<H256, Vec<u8>>,
+    }
+
+    #[allow(
+        clippy::result_large_err,
+        reason = "exercise the production database guard with its SDK error type"
+    )]
+    impl RecoveryDatabaseView for MockRecoveryDatabase {
+        fn recovery_info(&self) -> RecoveryDatabaseInfo {
+            RecoveryDatabaseInfo {
+                genesis_hash: self.genesis,
+                heads: self.heads,
+            }
+        }
+
+        fn recovery_header(
+            &self,
+            hash: H256,
+        ) -> Result<Option<<Block as BlockT>::Header>, ServiceError> {
+            Ok(self.headers.get(&hash).cloned())
+        }
+
+        fn recovery_number_hash(&self, number: u32) -> Result<Option<H256>, ServiceError> {
+            assert_eq!(number, CHECKPOINT_NUMBER);
+            Ok(self.checkpoint_number_hash)
+        }
+
+        fn recovery_provenance(&self) -> Result<Option<Vec<u8>>, ServiceError> {
+            Ok(self.provenance.clone())
+        }
+
+        fn recovery_policy(&self, hash: H256) -> Result<Option<Vec<u8>>, ServiceError> {
+            Ok(self.policies.get(&hash).cloned())
+        }
+    }
+
+    fn warp_restart_database(recovery: &RecoveryConfig) -> MockRecoveryDatabase {
+        use sp_consensus_babe::digests::{
+            CompatibleDigestItem, PreDigest, SecondaryPlainPreDigest,
+        };
+        let checkpoint: <Block as BlockT>::Header =
+            serde_json::from_str(include_str!("testdata/recovery_checkpoint_header.json")).unwrap();
+        assert_eq!(checkpoint.hash(), H256::from(CHECKPOINT_HASH));
+        let mut child = header(CHECKPOINT_NUMBER + 1);
+        child
+            .digest_mut()
+            .push(DigestItem::Other(common::recovery::lineage_marker(
+                recovery.policy_commitment.0,
+            )));
+        child
+            .digest_mut()
+            .push(DigestItem::babe_pre_digest(PreDigest::SecondaryPlain(
+                SecondaryPlainPreDigest {
+                    authority_index: 0,
+                    slot: recovery.first_recovery_slot.into(),
+                },
+            )));
+        let child_hash = child.hash();
+        MockRecoveryDatabase {
+            genesis: H256::from(GENESIS_HASH),
+            heads: [(CHECKPOINT_NUMBER + 1, child_hash); 2],
+            headers: [(checkpoint.hash(), checkpoint), (child_hash, child)]
+                .into_iter()
+                .collect(),
+            checkpoint_number_hash: None,
+            provenance: Some(recovery.policy_commitment.as_bytes().to_vec()),
+            policies: [(child_hash, recovery.policy_commitment.as_bytes().to_vec())]
+                .into_iter()
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn warp_restart_accepts_checkpoint_header_before_number_index_is_rebuilt() {
+        let recovery = fixture();
+        let mut database = warp_restart_database(&recovery);
+        assert!(database.checkpoint_number_hash.is_none());
+        assert!(database.headers.contains_key(&H256::from(CHECKPOINT_HASH)));
+        assert!(validate_database_view(&database, &recovery).is_ok());
+        database.checkpoint_number_hash = Some(H256::from(CHECKPOINT_HASH));
+        assert!(validate_database_view(&database, &recovery).is_ok());
+    }
+
+    #[test]
+    fn warp_restart_missing_number_index_does_not_bypass_other_guards() {
+        let recovery = fixture();
+        let reject = |database: MockRecoveryDatabase, expected: &str| {
+            let error = validate_database_view(&database, &recovery).unwrap_err();
+            assert!(
+                error.to_string().contains(expected),
+                "unexpected error: {error}"
+            );
+        };
+        let mut database = warp_restart_database(&recovery);
+        database.checkpoint_number_hash = Some(H256::repeat_byte(42));
+        reject(database, "database checkpoint hash is not canonical");
+        let mut database = warp_restart_database(&recovery);
+        database.headers.remove(&H256::from(CHECKPOINT_HASH));
+        reject(database, "recovery checkpoint header is missing");
+        let mut database = warp_restart_database(&recovery);
+        database
+            .headers
+            .get_mut(&H256::from(CHECKPOINT_HASH))
+            .unwrap()
+            .set_state_root(H256::zero());
+        reject(database, "block does not match the recovery checkpoint");
+        let mut database = warp_restart_database(&recovery);
+        database
+            .headers
+            .get_mut(&H256::from(CHECKPOINT_HASH))
+            .unwrap()
+            .set_number(CHECKPOINT_NUMBER - 1);
+        reject(database, "block does not match the recovery checkpoint");
+        for provenance in [None, Some(vec![0; 32])] {
+            let mut database = warp_restart_database(&recovery);
+            database.provenance = provenance;
+            reject(database, "checkpoint lacks recovery import provenance");
+        }
+        for policy in [None, Some(vec![0; 32])] {
+            let mut database = warp_restart_database(&recovery);
+            let hash = database.heads[0].1;
+            match policy {
+                Some(value) => {
+                    database.policies.insert(hash, value);
+                }
+                None => {
+                    database.policies.remove(&hash);
+                }
+            }
+            reject(database, "recovery database policy commitment differs");
+        }
+        let mut database = warp_restart_database(&recovery);
+        database.genesis = H256::zero();
+        reject(database, "recovery database has a different genesis");
+        let mut database = warp_restart_database(&recovery);
+        let head = database.heads[0].1;
+        database.headers.remove(&head);
+        reject(database, "recovery database head is missing");
+        let mut database = warp_restart_database(&recovery);
+        let head = database.heads[0].1;
+        database
+            .headers
+            .get_mut(&head)
+            .unwrap()
+            .digest_mut()
+            .logs
+            .clear();
+        reject(
+            database,
+            "recovery descendant lacks its unique policy lineage marker",
+        );
+    }
+
+    #[test]
+    fn warp_restart_validates_finalized_head_independently_of_best_head() {
+        let recovery = fixture();
+        let mut database = warp_restart_database(&recovery);
+        let finalized = database.heads[1].1;
+        let mut best = database.headers[&finalized].clone();
+        best.set_number(CHECKPOINT_NUMBER + 2);
+        best.set_parent_hash(finalized);
+        let best_hash = best.hash();
+        database.heads[0] = (CHECKPOINT_NUMBER + 2, best_hash);
+        database.headers.insert(best_hash, best);
+        database
+            .policies
+            .insert(best_hash, recovery.policy_commitment.as_bytes().to_vec());
+        assert!(validate_database_view(&database, &recovery).is_ok());
+        database.policies.insert(finalized, vec![0; 32]);
+        assert!(validate_database_view(&database, &recovery)
+            .unwrap_err()
+            .to_string()
+            .contains("recovery database policy commitment differs"));
     }
 
     #[test]

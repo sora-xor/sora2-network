@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tarfile
 import tempfile
 
@@ -105,6 +106,14 @@ def bind_inputs(path: Path, spec: int) -> tuple[str, dict, bytes | None]:
     original_commitment = bytes.fromhex(config.get("originalPolicyCommitment", config["policyCommitment"]).removeprefix("0x"))
     if not original or len(original_commitment) != 32 or hashlib.blake2b(original, digest_size=32).digest() != original_commitment:
         raise ValueError("original policy hash mismatch")
+    # Parsing happens before reading artifact paths. Old policies have no safe
+    # implicit domain upgrade: retain their artifacts, then explicitly rebuild.
+    if str(HERE.parent) not in sys.path:
+        sys.path.insert(0, str(HERE.parent))
+    from release_package import policy_identity
+    policy_identity_value, original_identity = policy_identity(policy), policy_identity(original)
+    if policy_identity_value["authorizationDomain"] != original_identity["authorizationDomain"]:
+        raise ValueError("repair cannot change the original recovery authorization domain")
     previous, slot = config["previousGrandpaSetId"], config["firstRecoverySlot"]
     if type(previous) is not int or not 0 <= previous < 2**64-1 or type(slot) is not int or not 0 < slot < 2**64:
         raise ValueError("invalid GRANDPA set or first recovery slot")
@@ -183,6 +192,10 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
         (ROOT / "runtime/src/incident_recovery_evm_source_tests.rs", "runtime/src/incident_recovery_evm_source_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming.rs", "runtime/src/incident_recovery_incoming.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_audit.rs", "runtime/src/incident_recovery_incoming_audit.rs"),
+        (ROOT / "runtime/src/incident_recovery_incoming_balance.rs", "runtime/src/incident_recovery_incoming_balance.rs"),
+        (ROOT / "runtime/src/incident_recovery_incoming_issuance.rs", "runtime/src/incident_recovery_incoming_issuance.rs"),
+        (ROOT / "runtime/src/incident_recovery_incoming_balance_tests.rs", "runtime/src/incident_recovery_incoming_balance_tests.rs"),
+        (ROOT / "runtime/src/incident_recovery_hashi_custody_tests.rs", "runtime/src/incident_recovery_hashi_custody_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_audit_tests.rs", "runtime/src/incident_recovery_incoming_audit_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_hashi_source_tests.rs", "runtime/src/incident_recovery_incoming_hashi_source_tests.rs"),
         (ROOT / "runtime/src/incident_recovery_incoming_channel_tests.rs", "runtime/src/incident_recovery_incoming_channel_tests.rs"),
@@ -211,6 +224,10 @@ def prepare(destination: Path, spec: int, binding: Path | None) -> dict:
     overlays.append("runtime/src/incident_recovery_evm_source_tests.rs")
     overlays.append("runtime/src/incident_recovery_incoming.rs")
     overlays.append("runtime/src/incident_recovery_incoming_audit.rs")
+    overlays.append("runtime/src/incident_recovery_incoming_balance.rs")
+    overlays.append("runtime/src/incident_recovery_incoming_issuance.rs")
+    overlays.append("runtime/src/incident_recovery_incoming_balance_tests.rs")
+    overlays.append("runtime/src/incident_recovery_hashi_custody_tests.rs")
     overlays.append("runtime/src/incident_recovery_incoming_audit_tests.rs")
     overlays.append("runtime/src/incident_recovery_incoming_hashi_source_tests.rs")
     overlays.append("runtime/src/incident_recovery_incoming_channel_tests.rs")

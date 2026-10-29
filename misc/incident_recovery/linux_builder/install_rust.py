@@ -3,8 +3,47 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import tomllib
+
+
+def standalone_artifacts(value, date):
+    """Validate the non-component archive index omitted by Rustup 1.29.2.
+
+    Rustup's Manifest type has no `artifacts` field. This permits only the
+    reviewed installer/source indexes; package download metadata stays exact.
+    """
+    targets = {
+        'installer-msi': {'aarch64-pc-windows-gnullvm', 'aarch64-pc-windows-msvc',
+            'x86_64-pc-windows-gnu', 'x86_64-pc-windows-gnullvm', 'x86_64-pc-windows-msvc'},
+        'installer-pkg': {'aarch64-apple-darwin', 'x86_64-apple-darwin'},
+        'source-code': {'*'},
+    }
+    if not isinstance(date, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
+        raise ValueError('standalone artifact date differs')
+    if not isinstance(value, dict) or not set(value) <= set(targets):
+        raise ValueError('unrecognized standalone artifact category')
+    for kind, artifact in value.items():
+        if (not isinstance(artifact, dict) or set(artifact) != {'target'}
+            or not isinstance(artifact['target'], dict) or not artifact['target']
+            or not set(artifact['target']) <= targets[kind]):
+            raise ValueError('unrecognized standalone artifact target')
+        for target, entries in artifact['target'].items():
+            names = ({'rustc-nightly-src.tar.gz', 'rustc-nightly-src.tar.xz'} if kind == 'source-code'
+                else {f'rust-nightly-{target}.' + ('msi' if kind == 'installer-msi' else 'pkg')})
+            allowed = {f'https://static.rust-lang.org/dist/{date}/{name}' for name in names}
+            if not isinstance(entries, list) or not 0 < len(entries) <= len(allowed):
+                raise ValueError('standalone artifact list bound')
+            seen = set()
+            for entry in entries:
+                if (not isinstance(entry, dict) or set(entry) != {'url', 'hash-sha256'}
+                    or not isinstance(entry['url'], str) or entry['url'] not in allowed or entry['url'] in seen
+                    or not isinstance(entry['hash-sha256'], str)
+                    or not re.fullmatch(r'[0-9a-f]{64}', entry['hash-sha256'])):
+                    raise ValueError('unrecognized standalone artifact entry')
+                seen.add(entry['url'])
+
 
 def verify_manifest(public, installed):
     """Allow only Rustup's known metadata serialization normalization.
@@ -13,6 +52,9 @@ def verify_manifest(public, installed):
     targets, order, profiles and every other field must still agree exactly.
     """
     expected = copy.deepcopy(public)
+    if 'artifacts' in expected and 'artifacts' not in installed:
+        standalone_artifacts(expected['artifacts'], expected.get('date'))
+        del expected['artifacts']
     for name, package in expected.get('pkg', {}).items():
         observed = installed.get('pkg', {}).get(name, {})
         if 'git_commit_hash' in package and 'git_commit_hash' not in observed:

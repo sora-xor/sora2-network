@@ -6,6 +6,7 @@ Public resolution/preparation is separate from the offline release build.
 """
 from __future__ import annotations
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -67,18 +68,83 @@ def source_policy(root):
     return {'toolchain': toolchain['channel'], 'cargoLock': digest(root / 'Cargo.lock'), 'cargoSources': sources}
 
 
-def ca_bundle(path):
+def ca_normalization(path):
+    """Extract only verified public CA certificates; annotations are not trust data."""
     data = build.read(path, maximum=8 * 1024**2)
     text = data.decode('ascii')
-    certificates = re.findall(r'-----BEGIN CERTIFICATE-----\s+[A-Za-z0-9+/=\s]+-----END CERTIFICATE-----', text)
-    need(certificates and 'PRIVATE KEY' not in text, 'public PEM certificate bundle required')
-    remaining = text
-    for certificate in certificates:
-        ssl.PEM_cert_to_DER_cert(certificate)
-        remaining = remaining.replace(certificate, '', 1)
-    need(all(not line.strip() or line.lstrip().startswith('#') for line in remaining.splitlines()),
-        'certificate bundle has non-public/unrecognized content')
-    return data
+    need('PRIVATE KEY' not in text and all(char in '\n\r\t' or 32 <= ord(char) <= 126 for char in text),
+         'public PEM certificate bundle required')
+    matches = list(re.finditer(r'-----BEGIN CERTIFICATE-----\s+[A-Za-z0-9+/=\s]+-----END CERTIFICATE-----', text))
+    need(0 < len(matches) <= 4096, 'bounded public CA certificate bundle required')
+    previous, normalized, entries = 0, [], []
+    for match in matches:
+        certificate = match[0]
+        need(len(certificate) <= 128 * 1024, 'public certificate size bound')
+        der = ssl.PEM_cert_to_DER_cert(certificate)
+        canonical = ssl.DER_cert_to_PEM_cert(der)
+        # PEM/base64 decoding alone accepts arbitrary bytes. OpenSSL must parse
+        # exactly one CA certificate and return those complete DER bytes.
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.load_verify_locations(cadata=canonical)
+        need(context.get_ca_certs(binary_form=True) == [der], 'one exact X.509 CA certificate required')
+        prefix = text[previous:match.start()]
+        lines = [line for line in prefix.splitlines() if line.strip() and not line.lstrip().startswith('#')]
+        annotated = bool(lines)
+        need('-----' not in prefix, 'unknown or malformed PEM content')
+        if annotated:
+            # macOS/OpenBSD bundles carry a textual certificate rendering. Its
+            # middle is discarded, not interpreted; fingerprints bind the frame
+            # to the following DER and prevent accidental certificate mismatch.
+            fingerprint = lambda value: ':'.join(value[i:i + 2] for i in range(0, len(value), 2)).upper()
+            need(len(lines) >= 5 and lines[0].startswith('=== ') and len(lines[0]) > 4
+                and lines[1] == 'Certificate:' and lines[2] == '    Data:'
+                and lines[-2] == 'SHA1 Fingerprint=' + fingerprint(hashlib.sha1(der).hexdigest())
+                and lines[-1] == 'SHA256 Fingerprint=' + fingerprint(hashlib.sha256(der).hexdigest()),
+                'unrecognized or contradictory public certificate annotation')
+        entries.append({'sourceStart': match.start(), 'sourceEnd': match.end(),
+            'derSha256': hashlib.sha256(der).hexdigest(), 'pemSha256': hashlib.sha256(canonical.encode()).hexdigest(),
+            'annotationSha256': hashlib.sha256(prefix.encode()).hexdigest(), 'annotated': annotated})
+        normalized.append(canonical)
+        previous = match.end()
+    tail = text[previous:]
+    need('-----' not in tail and all(not line.strip() or line.lstrip().startswith('#') for line in tail.splitlines()),
+         'trailing non-certificate content')
+    result = ''.join(normalized).encode('ascii')
+    return result, {'schema': 'sora-nexus-public-ca-normalization-v1',
+        'sourcePath': str(path), 'source': build.pin_bytes(data), 'normalized': build.pin_bytes(result),
+        'method': 'ordered exact X.509 CA DER to certificate-only canonical PEM; annotations discarded',
+        'certificates': entries, 'sourceTailSha256': hashlib.sha256(tail.encode()).hexdigest(),
+        'certificateCount': len(entries), 'productionReady': False}
+
+
+def ca_bundle(path):
+    return ca_normalization(path)[0]
+
+
+def buildkit_seed_state(path, relative):
+    """Admit only BuildKit's generated entropy for the public Docker registry.
+
+    Upstream: moby/buildkit/session/auth/authprovider/tokenseed.go.
+    This runs only inside the fresh owned Docker configuration; ambient
+    credentials, configured builders and other registry entries stay forbidden.
+    """
+    if relative == Path('.token_seed.lock'):
+        need(path.stat().st_size == 0, 'unexpected token seed lock contents')
+        return True
+    if relative != Path('.token_seed'):
+        return False
+    raw = build.read(path, maximum=4096)
+    value = build.parse(raw)
+    need(isinstance(value, dict) and set(value) == {'registry-1.docker.io'},
+         'unexpected token seed registry')
+    entry = value['registry-1.docker.io']
+    need(isinstance(entry, dict) and set(entry) == {'Seed'} and isinstance(entry['Seed'], str),
+         'unexpected token seed schema')
+    seed = base64.b64decode(entry['Seed'], validate=True)
+    need(len(seed) == 16 and base64.b64encode(seed).decode('ascii') == entry['Seed'],
+         'unexpected token seed encoding')
+    need(path.stat().st_mode & 0o777 == 0o600, 'token seed permissions differ')
+    return True
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -109,9 +175,10 @@ def resolve(args):
     need(re.fullmatch(r'\d{8}T\d{6}Z', args.debian_snapshot), 'dated Debian snapshot required')
     need(re.fullmatch(r'[1-9][0-9]*\.[0-9]+\.[0-9]+', args.rustup_version), 'explicit rustup release required')
     target = image.ARCH[args.platform][1]
-    ca = ca_bundle(args.ca_bundle)
+    ca, ca_provenance = ca_normalization(args.ca_bundle)
     args.output.mkdir(parents=True)
     build.write(args.output / 'tls-ca.pem', ca)
+    need(digest(args.ca_bundle) == ca_provenance['source'], 'public CA source changed during normalization')
     urls = {'rustup-init': f'https://static.rust-lang.org/rustup/archive/{args.rustup_version}/{target}/rustup-init',
         'rust-manifest.toml': f'https://static.rust-lang.org/dist/{policy["toolchain"][8:]}/channel-rust-nightly.toml'}
     files = {'tls-ca.pem': {'origin': 'explicit public trust bundle', **digest(args.output / 'tls-ca.pem')}}
@@ -128,13 +195,15 @@ def resolve(args):
             files[name + '.sha256'] = {'origin': url + '.sha256', **digest(args.output / (name + '.sha256'))}
     except BaseException as error:
         build.write(args.output / 'failure.json', {'pid': os.getpid(), 'startedAt': started,
-            'finishedAt': build.now(), 'error': str(error), 'retainedFiles': files, 'productionReady': False})
+            'finishedAt': build.now(), 'error': str(error), 'retainedFiles': files, 'caNormalization': ca_provenance, 'productionReady': False})
         raise
     manifest = tomllib.loads((args.output / 'rust-manifest.toml').read_text())
     need(manifest['date'] == policy['toolchain'][8:] and manifest['manifest-version'] == '2', 'wrong dated Rust manifest')
     for package in ('rustc', 'cargo', 'rust-std'):
         need(manifest['pkg'][package]['target'][target]['available'] is True, 'required native Rust package unavailable')
     need(build.source_inventory(args.source_root) == source, 'source changed during public resolution')
+    need(digest(args.ca_bundle) == ca_provenance['source'] and digest(args.output / 'tls-ca.pem') == ca_provenance['normalized'],
+         'public CA source/normalized input changed during resolution')
     recipe = {'schema': SCHEMA, **policy, 'platform': args.platform, 'rustTarget': target,
         'rustupVersion': args.rustup_version, 'debianBase': args.debian_base, 'debianSnapshot': args.debian_snapshot,
         'sourceInventorySha256': args.source_inventory_sha256, 'files': files, 'productionReady': False}
@@ -143,7 +212,7 @@ def resolve(args):
         'pid': os.getpid(), 'startedAt': started, 'finishedAt': build.now(), 'fixedTool': digest(Path(__file__).resolve()),
         'method': 'explicit checksum-verified HTTPS; no redirects or ambient proxies',
         'recipe': digest(args.output / 'recipe.json'), 'sourceInventory': digest(args.source_inventory),
-        'files': files, 'productionReady': False})
+        'files': files, 'caNormalization': ca_provenance, 'productionReady': False})
     return recipe
 
 
@@ -182,7 +251,8 @@ def recipe_input(path, expected, root, inventory_sha):
             for child in item: check_urls(child)
     check_urls(manifest)
     image.elf((path.parent / 'rustup-init').read_bytes(), image.ARCH[value['platform']][2])
-    ca_bundle(path.parent / 'tls-ca.pem')
+    need(ca_bundle(path.parent / 'tls-ca.pem') == build.read(path.parent / 'tls-ca.pem'),
+         'TLS payload must contain canonical certificate-only bytes')
     return value
 
 
@@ -250,6 +320,8 @@ def prepare(args):
             relative = path.relative_to(config.parent)
             need(not path.is_symlink() and path.resolve(strict=True) == path, 'owned Docker state alias')
             if path.is_file() and str(path) not in control:
+                if buildkit_seed_state(path, relative):
+                    continue
                 need(relative.parts[0] == 'buildx' and 'instances' not in relative.parts
                     and not any(part in ('contexts', 'credentials', 'credentials.json', 'config.json') for part in relative.parts)
                     and path.stat().st_size <= 16 * 1024**2, 'unexpected Docker credential/context/builder configuration')
@@ -280,10 +352,18 @@ def prepare(args):
         need(any(item.endswith('@' + value['debianBase'].split('@')[1]) for item in base[0].get('RepoDigests', [])), 'Debian digest admission differs')
         images = {}
         for stage in ('runtime', 'builder'):
-            raw = run('build-' + stage, ['buildx', 'build', '--builder', 'default', '--load', '--quiet',
+            iid = args.output / (stage + '.iid')
+            need(not os.path.lexists(iid), 'fresh image ID output required')
+            run('build-' + stage, ['buildx', 'build', '--builder', 'default', '--load', '--progress=plain',
+                '--iidfile', str(iid),
                 '--pull=false', '--network=default', '--platform', value['platform'], '--target', stage,
                 '--build-arg', 'DEBIAN_BASE=' + value['debianBase'], '--build-arg', 'RECIPE_SHA256=' + args.inputs_sha256,
                 '--file', str(args.output / 'context/Dockerfile'), str(args.output / 'context')])
+            raw = build.read(iid, maximum=128)
+            need(re.fullmatch(rb'sha256:[0-9a-f]{64}\n?', raw), 'build image ID file malformed')
+            iid_pin = build.pin_bytes(raw)
+            need(digest(iid) == iid_pin, 'build image ID changed during admission')
+            retain(iid, iid_pin)
             image_id = raw.decode().strip(); image.image_id(image_id)
             inspected = inspect(image_id)
             need(inspected['Config']['Labels'].get('org.sora-nexus.preparation.recipe') == args.inputs_sha256,

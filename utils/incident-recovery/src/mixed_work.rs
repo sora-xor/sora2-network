@@ -9,7 +9,10 @@ use crate::{hex_bytes, Result};
 use codec::{DecodeWithMemLimit, DecodeWithMemTracking, Encode};
 use common::recovery::{self, RecoveryAction, RecoveryInherent, RecoveryPolicy, StorageScope};
 use framenode_runtime::{
-    incident_recovery_incoming::{IncomingAudit, IncomingOperation},
+    incident_recovery_incoming::{
+        request_balance_keys, AuditedIncomingSource, IncomingAudit, IncomingOperation,
+        NativeBalanceAudit, MAX_BALANCE_SOURCES,
+    },
     incident_recovery_outgoing::OutgoingOperation,
 };
 use serde::{Deserialize, Serialize};
@@ -17,24 +20,139 @@ use sha2::{Digest as _, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
-    io::Read,
+    io::{self, BufReader, Read},
     path::Path,
 };
 
-const MAX_DOCUMENT: usize = 64 * 1024 * 1024;
+// Complete checkpoint composition contains ~193 MiB of envelope text. Keep an
+// explicit aggregate cap independent of the unchanged per-envelope runtime bound.
+const MAX_ENVELOPE_TEXT: usize = 256 * 1024 * 1024;
+// JSON whitespace/field overhead has a separate finite stream budget. The raw
+// document is never buffered in a second Vec alongside its decoded strings.
+const MAX_DOCUMENT: usize = 512 * 1024 * 1024;
+const MAX_TEXT_ITEM: usize = recovery::MAX_INHERENT_BYTES * 2 + 2;
 
-#[derive(Debug, Deserialize)]
+fn text_budget<'a>(values: impl IntoIterator<Item = &'a str>) -> Result<usize> {
+    values.into_iter().try_fold(0usize, |sum, text| {
+        if text.len() > MAX_TEXT_ITEM {
+            return Err("mixed-work envelope exceeds per-item transport bound".into());
+        }
+        let next = sum
+            .checked_add(text.len())
+            .ok_or("mixed-work input size overflow")?;
+        if next > MAX_ENVELOPE_TEXT {
+            return Err("mixed-work input exceeds aggregate envelope text budget".into());
+        }
+        Ok(next)
+    })
+}
+
+fn bounded_text<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<String, D::Error> {
+    let text = String::deserialize(deserializer)?;
+    text_budget([text.as_str()]).map_err(serde::de::Error::custom)?;
+    Ok(text)
+}
+
+fn bounded_envelopes<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Vec<String>, D::Error> {
+    struct Envelopes;
+    impl<'de> serde::de::Visitor<'de> for Envelopes {
+        type Value = Vec<String>;
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("a bounded sequence of recovery envelopes")
+        }
+        fn visit_seq<A: serde::de::SeqAccess<'de>>(
+            self,
+            mut sequence: A,
+        ) -> std::result::Result<Self::Value, A::Error> {
+            if sequence
+                .size_hint()
+                .is_some_and(|count| count > recovery::MAX_WORK_CHUNKS)
+            {
+                return Err(serde::de::Error::custom(
+                    "mixed-work envelope count exceeds bound",
+                ));
+            }
+            let mut values = Vec::new();
+            let mut total = 0usize;
+            while let Some(text) = sequence.next_element::<String>()? {
+                if values.len() >= recovery::MAX_WORK_CHUNKS {
+                    return Err(serde::de::Error::custom(
+                        "mixed-work envelope count exceeds bound",
+                    ));
+                }
+                let bytes = text_budget([text.as_str()]).map_err(serde::de::Error::custom)?;
+                total = total
+                    .checked_add(bytes)
+                    .ok_or_else(|| serde::de::Error::custom("mixed-work input size overflow"))?;
+                if total > MAX_ENVELOPE_TEXT {
+                    return Err(serde::de::Error::custom(
+                        "mixed-work sequence exceeds aggregate envelope text budget",
+                    ));
+                }
+                values.push(text);
+            }
+            Ok(values)
+        }
+    }
+    deserializer.deserialize_seq(Envelopes)
+}
+
+struct DocumentReader<R> {
+    inner: R,
+    maximum: usize,
+    bytes: usize,
+}
+impl<R: Read> Read for DocumentReader<R> {
+    fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
+        let remaining = self.maximum.saturating_sub(self.bytes);
+        let length = output.len().min(remaining.saturating_add(1));
+        let count = self.inner.read(&mut output[..length])?;
+        if count > remaining {
+            return Err(io::Error::other(
+                "mixed-work JSON document exceeds byte bound",
+            ));
+        }
+        self.bytes += count;
+        Ok(count)
+    }
+}
+fn parse_manifest<R: Read>(reader: R, maximum: usize) -> Result<Manifest> {
+    let reader = DocumentReader {
+        inner: reader,
+        maximum,
+        bytes: 0,
+    };
+    // serde_json reads individual bytes; the outer buffer keeps file reads bounded
+    // and efficient. from_reader also rejects any trailing non-whitespace input.
+    serde_json::from_reader(BufReader::with_capacity(64 * 1024, reader))
+        .map_err(|error| format!("mixed-work JSON document: {error}"))
+}
+
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Manifest {
     pub schema: String,
     /// Canonical SCALE RecoveryPolicy. Work/audit hashes may be empty, and the
     /// terminal hash zero, or each must exactly match the supplied work. Stale
     /// commitments are rejected rather than silently replaced.
+    #[serde(deserialize_with = "bounded_text")]
     pub policy_template_scale: String,
     /// Full encode_remark envelopes, in caller-reviewed execution order.
+    #[serde(deserialize_with = "bounded_envelopes")]
     pub work_envelopes: Vec<String>,
+    #[serde(deserialize_with = "bounded_envelopes")]
     pub audit_envelopes: Vec<String>,
+    #[serde(deserialize_with = "bounded_text")]
     pub terminal_envelope: String,
+    #[serde(default, deserialize_with = "bounded_envelopes")]
+    pub terminal_prelude_envelopes: Vec<String>,
+    /// Derive explicit account-balance audit substitutions from unchanged baseline witnesses.
+    #[serde(default)]
+    pub derive_native_balance_audits: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -57,7 +175,11 @@ pub struct Report {
     pub work_envelopes: Vec<String>,
     pub audit_envelopes: Vec<String>,
     pub terminal_envelope: String,
+    pub terminal_prelude_envelopes: Vec<String>,
     pub work: Vec<WorkEntry>,
+    pub baseline_audit_envelopes: Vec<String>,
+    pub native_balance_audit_indices: Vec<u32>,
+    pub native_balance_audits_derived: bool,
     pub structural_validation_only: bool,
     pub authentication_verified: bool,
     pub economic_completion_verified: bool,
@@ -99,7 +221,7 @@ fn envelope(text: &str) -> Result<(RecoveryInherent, Vec<u8>)> {
 
 /// Preserve every caller-selected index and byte. Only the explicitly blank
 /// policy commitment slots are filled. No operation is sorted, split or signed.
-pub fn compile(manifest: Manifest) -> Result<Report> {
+pub fn compile(mut manifest: Manifest) -> Result<Report> {
     if manifest.schema != "sora-nexus-mixed-work-input-v1"
         || manifest.work_envelopes.is_empty()
         || manifest.work_envelopes.len() > recovery::MAX_WORK_CHUNKS
@@ -108,18 +230,15 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
     {
         return Err("unknown mixed-work schema or work count outside bounds".into());
     }
-    let text_bytes = manifest
-        .work_envelopes
-        .iter()
-        .chain(&manifest.audit_envelopes)
-        .chain([&manifest.policy_template_scale, &manifest.terminal_envelope])
-        .try_fold(0usize, |sum, text| sum.checked_add(text.len()))
-        .ok_or("mixed-work input size overflow")?;
-    if text_bytes > MAX_DOCUMENT
-        || manifest.policy_template_scale.len() > recovery::MAX_INHERENT_BYTES * 2 + 2
-    {
-        return Err("mixed-work input exceeds bounded document budget".into());
-    }
+    text_budget(
+        manifest
+            .work_envelopes
+            .iter()
+            .chain(&manifest.audit_envelopes)
+            .chain(&manifest.terminal_prelude_envelopes)
+            .chain([&manifest.policy_template_scale, &manifest.terminal_envelope])
+            .map(String::as_str),
+    )?;
     let template_bytes = hex_bytes(&manifest.policy_template_scale)?;
     let mut policy: RecoveryPolicy = decode(&template_bytes, recovery::MAX_INHERENT_BYTES)?;
     let mut work = Vec::new();
@@ -180,6 +299,124 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
         });
     }
 
+    let baseline_audit_envelopes = manifest.audit_envelopes.clone();
+    let mut native_balance_audit_indices = Vec::new();
+    if manifest.derive_native_balance_audits {
+        // The caller provides only the original exact audit stream. These are structural
+        // source associations; their authentication and final values are established on-chain.
+        let mut sources = Vec::new();
+        for (position, text) in baseline_audit_envelopes.iter().enumerate() {
+            match envelope(text)?.0.action {
+                RecoveryAction::IncomingAudit(bytes) => {
+                    let audit: IncomingAudit = decode(&bytes, recovery::MAX_CHUNK_BYTES)?;
+                    audit
+                        .validate()
+                        .map_err(|e| format!("incoming audit shape: {e:?}"))?;
+                    if audit.prior_policy.is_some() {
+                        return Err("automatic balance audit derivation requires current-policy incoming work".into());
+                    }
+                    sources.push((position, audit));
+                }
+                RecoveryAction::NativeBalanceAudit(_) => {
+                    return Err(
+                        "caller-provided balance audit cannot replace compiler baseline".into(),
+                    )
+                }
+                _ => {}
+            }
+        }
+        // Reject oversized mapped-recipient cohorts before emitting a policy. The runtime
+        // checks the same bound against its actual journal, including across policy repairs.
+        let mut key_counts = BTreeMap::<Vec<u8>, usize>::new();
+        for (_, source) in &sources {
+            let keys: BTreeSet<_> = source
+                .requests
+                .iter()
+                .flatten()
+                .filter(|request| {
+                    policy
+                        .replacements
+                        .iter()
+                        .any(|entry| entry.new == request.beneficiary)
+                })
+                .flat_map(request_balance_keys)
+                .collect();
+            for key in keys {
+                let count = key_counts.entry(key).or_default();
+                *count += 1;
+                if *count > MAX_BALANCE_SOURCES {
+                    return Err(
+                        "mapped recipient exceeds the complete native balance journal bound".into(),
+                    );
+                }
+            }
+        }
+        // Work cursors are the already-reviewed actual native execution order. No work moves.
+        sources.sort_by_key(|(_, source)| source.operation_index);
+        for (position, text) in baseline_audit_envelopes.iter().enumerate() {
+            let RecoveryAction::Audit(baseline) = envelope(text)?.0.action else {
+                continue;
+            };
+            let keys: BTreeSet<_> = baseline
+                .witnesses
+                .iter()
+                .filter(|w| w.scope == StorageScope::Top && w.value_hash.is_some())
+                .map(|w| w.key.clone())
+                .collect();
+            let selected: Vec<_> = sources
+                .iter()
+                .filter(|(_, source)| {
+                    source
+                        .requests
+                        .iter()
+                        .flatten()
+                        .filter(|request| {
+                            policy
+                                .replacements
+                                .iter()
+                                .any(|entry| entry.new == request.beneficiary)
+                        })
+                        .flat_map(request_balance_keys)
+                        .any(|key| keys.contains(&key))
+                })
+                .collect();
+            if selected.is_empty() {
+                continue;
+            }
+            if selected
+                .iter()
+                .any(|(source_position, _)| *source_position >= position)
+                || sources
+                    .iter()
+                    .any(|(source_position, _)| *source_position >= position)
+            {
+                return Err(
+                    "all native IncomingAudit actions must precede a derived account balance audit"
+                        .into(),
+                );
+            }
+            let audit = NativeBalanceAudit {
+                baseline,
+                sources: selected
+                    .into_iter()
+                    .map(|(_, source)| AuditedIncomingSource {
+                        audit: source.clone(),
+                        audited_policy: None,
+                    })
+                    .collect(),
+            };
+            audit
+                .validate()
+                .map_err(|e| format!("native balance audit derivation: {e:?}"))?;
+            native_balance_audit_indices.push(audit.baseline.index);
+            manifest.audit_envelopes[position] = hx(&RecoveryInherent {
+                format_version: 1,
+                action: RecoveryAction::NativeBalanceAudit(audit.encode()),
+            }
+            .encode_remark());
+        }
+    }
+    let mut admitted_incoming_audits = BTreeMap::<u32, IncomingAudit>::new();
     let mut audit_hashes = Vec::new();
     let mut audit_locations = BTreeMap::new();
     let mut empty_prefixes = BTreeSet::new();
@@ -201,6 +438,24 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
                     }
                 }
                 (audit.index, audit.commitment())
+            }
+            RecoveryAction::NativeBalanceAudit(bytes) => {
+                let audit: NativeBalanceAudit = decode(&bytes, recovery::MAX_CHUNK_BYTES)?;
+                audit.validate().map_err(|e| format!("native balance audit shape: {e:?}"))?;
+                for source in &audit.sources {
+                    if source.audited_policy.is_none() && admitted_incoming_audits.get(&source.audit.index)
+                        .is_none_or(|accepted| accepted.encode() != source.audit.encode()) {
+                        return Err("native balance source is not an earlier exact incoming audit".into());
+                    }
+                }
+                for witness in &audit.baseline.witnesses {
+                    let child = match &witness.scope { StorageScope::Top => None,
+                        StorageScope::Child(child) => Some(child.clone()) };
+                    if audit_locations.insert((child, witness.key.clone()), witness.value_hash).is_some() {
+                        return Err("duplicate storage witness across audit chunks".into());
+                    }
+                }
+                (audit.baseline.index, audit.commitment())
             }
             RecoveryAction::PrefixAudit(audit) => {
                 for witness in &audit.prefixes {
@@ -231,11 +486,12 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
                 // A prior-policy companion is verified only by runtime execution
                 // against an authenticated recovery parent. Structural assembly
                 // cannot establish that it exists or was consumed on this branch.
+                admitted_incoming_audits.insert(audit.index, audit.clone());
                 (audit.index, audit.commitment())
             }
             _ => {
                 return Err(
-                    "audit list permits only Audit, PrefixAudit and IncomingAudit actions".into(),
+                    "audit list permits only Audit, PrefixAudit, IncomingAudit and NativeBalanceAudit actions".into(),
                 )
             }
         };
@@ -263,10 +519,28 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
         }
     }
     let (terminal, _) = envelope(&manifest.terminal_envelope)?;
-    let RecoveryAction::TerminalAudit(terminal) = terminal.action else {
-        return Err("terminal envelope must contain TerminalAudit".into());
+    let terminal_hash = if manifest.terminal_prelude_envelopes.is_empty() {
+        let RecoveryAction::TerminalAudit(terminal) = terminal.action else {
+            return Err("single terminal envelope must contain TerminalAudit".into());
+        };
+        terminal.commitment()
+    } else {
+        let mut pages = Vec::new();
+        for text in &manifest.terminal_prelude_envelopes {
+            let (value, _) = envelope(text)?;
+            let RecoveryAction::TerminalAuditPage(page) = value.action else {
+                return Err("terminal prelude requires only terminal pages".into());
+            };
+            pages.push(page);
+        }
+        let RecoveryAction::TerminalAuditPage(last) = terminal.action else {
+            return Err("paged terminal requires its last page".into());
+        };
+        pages.push(last);
+        recovery::invariants::join_terminal_pages(&pages)
+            .map_err(|e| format!("terminal page sequence: {e:?}"))?;
+        pages[0].commitment()
     };
-    let terminal_hash = terminal.commitment();
     if (!policy.chunk_hashes.is_empty() && policy.chunk_hashes != commitments)
         || (!policy.audit_chunk_hashes.is_empty() && policy.audit_chunk_hashes != audit_hashes)
         || (policy.terminal_audit_commitment != [0; 32]
@@ -293,7 +567,11 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
         work_envelopes: manifest.work_envelopes,
         audit_envelopes: manifest.audit_envelopes,
         terminal_envelope: manifest.terminal_envelope,
+        terminal_prelude_envelopes: manifest.terminal_prelude_envelopes,
         work,
+        baseline_audit_envelopes,
+        native_balance_audit_indices,
+        native_balance_audits_derived: manifest.derive_native_balance_audits,
         structural_validation_only: true,
         authentication_verified: false,
         economic_completion_verified: false,
@@ -305,19 +583,11 @@ pub fn compile(manifest: Manifest) -> Result<Report> {
 }
 
 pub fn compile_file(path: &Path) -> Result<Report> {
-    let mut file = fs::File::open(path).map_err(|error| error.to_string())?;
+    let file = fs::File::open(path).map_err(|error| error.to_string())?;
     if file.metadata().map_err(|error| error.to_string())?.len() > MAX_DOCUMENT as u64 {
-        return Err("mixed-work manifest exceeds 64 MiB".into());
+        return Err("mixed-work JSON document exceeds byte bound".into());
     }
-    let mut bytes = Vec::new();
-    file.by_ref()
-        .take(MAX_DOCUMENT as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|error| error.to_string())?;
-    if bytes.len() > MAX_DOCUMENT {
-        return Err("mixed-work manifest exceeds 64 MiB".into());
-    }
-    compile(serde_json::from_slice(&bytes).map_err(|error| error.to_string())?)
+    compile(parse_manifest(file, MAX_DOCUMENT)?)
 }
 
 #[cfg(test)]
@@ -376,7 +646,8 @@ mod tests {
     }
     fn fixture() -> Manifest {
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: Vec::new(),
@@ -401,6 +672,7 @@ mod tests {
         Manifest {
             schema: "sora-nexus-mixed-work-input-v1".into(),
             policy_template_scale: hx(&policy.encode()),
+            derive_native_balance_audits: false,
             work_envelopes: vec![
                 wrap(RecoveryAction::Apply(RecoveryChunk {
                     index: 0,
@@ -427,6 +699,7 @@ mod tests {
                     incoming_audit(1, &incoming(1, 8)).encode(),
                 )),
             ],
+            terminal_prelude_envelopes: vec![],
             terminal_envelope: wrap(RecoveryAction::TerminalAudit(TerminalAudit {
                 issuance: vec![IssuanceInvariant {
                     asset: [0; 32],
@@ -444,6 +717,130 @@ mod tests {
                 zero_claims: Vec::new(),
                 absent: Vec::new(),
             })),
+        }
+    }
+
+    fn fixture_json() -> Vec<u8> {
+        let value = fixture();
+        serde_json::to_vec(&serde_json::json!({
+            "schema": value.schema,
+            "policyTemplateScale": value.policy_template_scale,
+            "workEnvelopes": value.work_envelopes,
+            "auditEnvelopes": value.audit_envelopes,
+            "terminalEnvelope": value.terminal_envelope,
+            "deriveNativeBalanceAudits": value.derive_native_balance_audits,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn paginated_terminal_requires_complete_ordered_prelude() {
+        let mut manifest = fixture();
+        let (single, _) = envelope(&manifest.terminal_envelope).unwrap();
+        let RecoveryAction::TerminalAudit(mut audit) = single.action else {
+            panic!("fixture terminal")
+        };
+        let base = audit.issuance[0].clone();
+        for n in 0..128u32 {
+            let mut item = base.clone();
+            item.asset = sp_io::hashing::blake2_256(&n.encode());
+            item.current.key = n.encode();
+            audit.issuance.push(item);
+        }
+        let actions = recovery::invariants::terminal_actions(&audit).unwrap();
+        manifest.terminal_prelude_envelopes = actions[..actions.len() - 1]
+            .iter()
+            .cloned()
+            .map(wrap)
+            .collect();
+        manifest.terminal_envelope = wrap(actions.last().unwrap().clone());
+        let report = compile(manifest.clone()).unwrap();
+        assert_eq!(report.terminal_prelude_envelopes.len(), 1);
+        manifest.terminal_prelude_envelopes.clear();
+        assert!(compile(manifest).is_err());
+    }
+
+    #[test]
+    fn complete_checkpoint_sized_transport_keeps_every_work_and_audit_entry() {
+        // These counts and maximum item lengths come from the retained successful
+        // full checkpoint composition. Reuse borrowed strings to exercise the
+        // whole aggregate admission without allocating a 250 MiB unit fixture.
+        let work = "0".repeat(85_538);
+        let audit = "0".repeat(173_090);
+        let texts = std::iter::repeat_n(work.as_str(), 738)
+            .chain(std::iter::repeat_n(audit.as_str(), 1144));
+        let accepted = text_budget(texts).unwrap();
+        assert_eq!(accepted, 738 * 85_538 + 1144 * 173_090);
+        assert!(accepted > 64 * 1024 * 1024);
+        assert!(accepted < MAX_ENVELOPE_TEXT);
+        assert_eq!(MAX_ENVELOPE_TEXT, 256 * 1024 * 1024);
+    }
+
+    #[test]
+    fn aggregate_budget_rejects_overflow_without_changing_per_envelope_limits() {
+        let text = "0".repeat(MAX_TEXT_ITEM);
+        assert_eq!(text_budget([text.as_str()]).unwrap(), MAX_TEXT_ITEM);
+        assert!(text_budget(["0".repeat(MAX_TEXT_ITEM + 1).as_str()])
+            .unwrap_err()
+            .contains("per-item"));
+        let count = MAX_ENVELOPE_TEXT / MAX_TEXT_ITEM + 1;
+        assert!(count < recovery::MAX_WORK_CHUNKS);
+        assert!(text_budget(std::iter::repeat_n(text.as_str(), count))
+            .unwrap_err()
+            .contains("aggregate"));
+        // Direct callers bypassing JSON still receive the same early admission.
+        let mut value = fixture();
+        value.terminal_envelope = "0".repeat(MAX_TEXT_ITEM + 1);
+        assert!(compile(value).unwrap_err().contains("per-item"));
+    }
+
+    #[test]
+    fn streamed_manifest_preserves_compilation_and_rejects_truncation_and_trailing_data() {
+        let raw = fixture_json();
+        let report = compile(parse_manifest(raw.as_slice(), raw.len()).unwrap()).unwrap();
+        let original = compile(fixture()).unwrap();
+        assert_eq!(report.policy_scale, original.policy_scale);
+        assert_eq!(report.work_envelopes, original.work_envelopes);
+        assert_eq!(report.audit_envelopes, original.audit_envelopes);
+        assert_eq!(report.terminal_envelope, original.terminal_envelope);
+        assert!(parse_manifest(raw.as_slice(), raw.len() - 1).is_err());
+        let mut trailing = raw.clone();
+        trailing.extend_from_slice(b"{}");
+        assert!(parse_manifest(trailing.as_slice(), trailing.len()).is_err());
+        let mut padded = raw.clone();
+        padded.extend_from_slice(b"   ");
+        assert!(parse_manifest(padded.as_slice(), raw.len()).is_err());
+        assert!(parse_manifest(padded.as_slice(), padded.len()).is_ok());
+    }
+
+    #[test]
+    fn streamed_manifest_rejects_excess_counts_and_oversized_fields_before_compilation() {
+        let raw = fixture_json();
+        for field in ["workEnvelopes", "auditEnvelopes"] {
+            let mut json: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+            json[field] = serde_json::json!(vec![""; recovery::MAX_WORK_CHUNKS + 1]);
+            let bytes = serde_json::to_vec(&json).unwrap();
+            assert!(parse_manifest(bytes.as_slice(), MAX_DOCUMENT)
+                .unwrap_err()
+                .contains("count"));
+        }
+        for field in [
+            "policyTemplateScale",
+            "terminalEnvelope",
+            "workEnvelopes",
+            "auditEnvelopes",
+        ] {
+            let mut json: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+            let text = serde_json::json!("0".repeat(MAX_TEXT_ITEM + 1));
+            if field.ends_with("Envelopes") {
+                json[field][0] = text;
+            } else {
+                json[field] = text;
+            }
+            let bytes = serde_json::to_vec(&json).unwrap();
+            assert!(parse_manifest(bytes.as_slice(), MAX_DOCUMENT)
+                .unwrap_err()
+                .contains("per-item"));
         }
     }
 
@@ -645,5 +1042,119 @@ mod tests {
             }],
         }));
         assert!(compile(manifest).is_err());
+    }
+    #[test]
+    fn native_balance_derivation_preserves_original_witnesses_and_exact_accepted_source() {
+        let mut value = fixture();
+        value.derive_native_balance_audits = true;
+        let mut template: RecoveryPolicy = decode(
+            &hex_bytes(&value.policy_template_scale).unwrap(),
+            recovery::MAX_INHERENT_BYTES,
+        )
+        .unwrap();
+        template.replacements = vec![recovery::AccountReplacement {
+            old: AccountId32::new([8; 32]),
+            new: AccountId32::new([9; 32]),
+        }];
+        value.policy_template_scale = hx(&template.encode());
+        let source = incoming_audit(0, &incoming(1, 8));
+        let baseline = RecoveryAuditChunk {
+            index: 1,
+            witnesses: vec![StorageWitness {
+                scope: StorageScope::Top,
+                key: request_balance_keys(source.requests[0].as_ref().unwrap())[0].clone(),
+                value_hash: Some([31; 32]),
+            }],
+        };
+        value.audit_envelopes = vec![
+            wrap(RecoveryAction::IncomingAudit(source.encode())),
+            wrap(RecoveryAction::Audit(baseline.clone())),
+        ];
+        let originals = value.audit_envelopes.clone();
+        let report = compile(value).unwrap();
+        assert_eq!(report.baseline_audit_envelopes, originals);
+        assert_eq!(report.native_balance_audit_indices, vec![1]);
+        assert_eq!(report.audit_envelopes[0], originals[0]);
+        let RecoveryAction::NativeBalanceAudit(bytes) =
+            envelope(&report.audit_envelopes[1]).unwrap().0.action
+        else {
+            panic!("derived action");
+        };
+        let derived: NativeBalanceAudit = decode(&bytes, recovery::MAX_CHUNK_BYTES).unwrap();
+        assert_eq!(derived.baseline.encode(), baseline.encode());
+        assert_eq!(derived.sources.len(), 1);
+        assert_eq!(derived.sources[0].audit.encode(), source.encode());
+        assert!(derived.sources[0].audited_policy.is_none());
+    }
+
+    #[test]
+    fn native_balance_derivation_refuses_unaudited_source_and_caller_replacement() {
+        let mut value = fixture();
+        value.derive_native_balance_audits = true;
+        let mut template: RecoveryPolicy = decode(
+            &hex_bytes(&value.policy_template_scale).unwrap(),
+            recovery::MAX_INHERENT_BYTES,
+        )
+        .unwrap();
+        template.replacements = vec![recovery::AccountReplacement {
+            old: AccountId32::new([8; 32]),
+            new: AccountId32::new([9; 32]),
+        }];
+        value.policy_template_scale = hx(&template.encode());
+        let source = incoming_audit(1, &incoming(1, 8));
+        let baseline = RecoveryAuditChunk {
+            index: 0,
+            witnesses: vec![StorageWitness {
+                scope: StorageScope::Top,
+                key: request_balance_keys(source.requests[0].as_ref().unwrap())[0].clone(),
+                value_hash: Some([31; 32]),
+            }],
+        };
+        value.audit_envelopes = vec![
+            wrap(RecoveryAction::Audit(baseline.clone())),
+            wrap(RecoveryAction::IncomingAudit(source.encode())),
+        ];
+        assert!(compile(value).unwrap_err().contains("must precede"));
+        let mut value = fixture();
+        value.derive_native_balance_audits = true;
+        value.audit_envelopes[0] = wrap(RecoveryAction::NativeBalanceAudit(
+            NativeBalanceAudit {
+                baseline,
+                sources: vec![AuditedIncomingSource {
+                    audit: source,
+                    audited_policy: None,
+                }],
+            }
+            .encode(),
+        ));
+        assert!(compile(value).unwrap_err().contains("caller-provided"));
+    }
+    #[test]
+    fn native_balance_derivation_rejects_oversized_recipient_before_emitting_policy() {
+        let mut value = fixture();
+        value.derive_native_balance_audits = true;
+        let mut template: RecoveryPolicy = decode(
+            &hex_bytes(&value.policy_template_scale).unwrap(),
+            recovery::MAX_INHERENT_BYTES,
+        )
+        .unwrap();
+        template.replacements = vec![recovery::AccountReplacement {
+            old: AccountId32::new([8; 32]),
+            new: AccountId32::new([9; 32]),
+        }];
+        value.policy_template_scale = hx(&template.encode());
+        let source = incoming_audit(0, &incoming(1, 8));
+        value.audit_envelopes = (0..=MAX_BALANCE_SOURCES)
+            .map(|index| {
+                let mut source = source.clone();
+                source.index = index as u32;
+                source.operation_index = index as u32;
+                source.operation_commitment = sp_io::hashing::blake2_256(&(index as u32).encode());
+                wrap(RecoveryAction::IncomingAudit(source.encode()))
+            })
+            .collect();
+        assert!(compile(value)
+            .unwrap_err()
+            .contains("complete native balance journal bound"));
     }
 }

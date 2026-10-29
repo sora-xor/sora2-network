@@ -71,6 +71,8 @@ def reviewed_assets():
 
 def nonfixture_policy(raw):
     identity = build.release.policy_identity(raw)
+    require(identity['authorizationDomain']['chainSpecId'] == 'sora-nexus-recovery-28191817'
+        and identity['authorizationDomain']['releaseNonce'] != '0x' + '46' * 32, 'public fixture or foreign recovery domain rejected')
     controls = incoming.controls(raw)
     reader = build.scale.Reader(raw)
     reader.take(68)
@@ -319,6 +321,7 @@ def commands():
     return [('metadata', prefix + ['metadata', '--offline', '--locked', '--format-version', '1']),
             ('tests', prefix + ['test'] + package + ['--bin', PACKAGE]),
             ('incoming-audit-tests', prefix + ['test', '--offline', '--locked', '-p', 'framenode-runtime', '--lib', 'incident_recovery_incoming::audit']),
+            ('incoming-balance-audit-tests', prefix + ['test', '--offline', '--locked', '-p', 'framenode-runtime', '--lib', 'incident_recovery_incoming::balance_audit']),
             ('failed-incoming-tests', prefix + ['test', '--offline', '--locked', '-p', 'framenode-runtime', '--lib', 'incident_recovery::tests::committed_failed_incoming']),
             ('clippy', prefix + ['clippy'] + package + ['--all-targets', '--no-deps', '--', '-D', 'warnings']),
             ('build', prefix + ['build'] + package + ['--message-format', 'json-render-diagnostics'])]

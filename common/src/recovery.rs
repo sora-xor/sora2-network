@@ -11,6 +11,7 @@ use sp_core::crypto::AccountId32;
 use sp_runtime::{traits::Verify, MultiSignature};
 
 pub mod invariants;
+pub mod issuance;
 pub mod storage;
 
 pub const CHECKPOINT_NUMBER: u32 = 28_191_817;
@@ -25,6 +26,8 @@ pub const ATTACKER_ACCOUNT: [u8; 32] =
 pub const ATTACKER_EVM: [u8; 20] = hex_literal::hex!("af6fd7a11087bfbaddc5c4e1ab14ab0c592af63f");
 pub const POLICY_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:policy:v1";
 pub const STATUS_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:status:v1";
+/// First recovery child hash, recorded from its child after that header exists.
+pub const RECOVERY_ANCHOR_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:branch-anchor:v1";
 pub const BRIDGE_HALT_STORAGE_KEY: &[u8] = b":sora-nexus:recovery:bridge-halt:v1";
 pub const BRIDGE_INBOUND_CONTEXT_STORAGE_KEY: &[u8] =
     b":sora-nexus:recovery:bridge-inbound-context:v1";
@@ -330,6 +333,39 @@ fn structural_storage(key: &[u8]) -> bool {
     })
 }
 
+/// Independent, acyclic identity for one recovery network/release. Synthetic
+/// releases use distinct domains; exact-artifact rehearsals additionally bind
+/// their unsealed first-child hash, distinct from a sealed production branch.
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
+pub struct RecoveryDomain {
+    pub chain_spec_id: Vec<u8>,
+    pub release_nonce: [u8; 32],
+}
+
+impl RecoveryDomain {
+    pub fn validate(&self) -> Result<(), RecoveryError> {
+        if self.chain_spec_id.is_empty()
+            || self.chain_spec_id.len() > 128
+            || !self
+                .chain_spec_id
+                .iter()
+                .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'-' || *byte == b'_')
+            || self.release_nonce == [0; 32]
+        {
+            return Err(RecoveryError::InvalidPolicy);
+        }
+        Ok(())
+    }
+
+    /// Public synthetic identity. Never an implicit production compiler default.
+    pub fn public_fixture() -> Self {
+        Self {
+            chain_spec_id: b"sora-nexus-PUBLIC-FIXTURE-ONLY".to_vec(),
+            release_nonce: [0x46; 32],
+        }
+    }
+}
+
 /// Data/policy commitment only. Artifact hashes are recorded in an outer signed
 /// release manifest; the bootstrap separately pins final/hold Wasm hashes.
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
@@ -341,6 +377,7 @@ pub struct RecoveryPolicy {
     pub council: Vec<AccountId32>,
     pub chunk_hashes: Vec<[u8; 32]>,
     pub audit_chunk_hashes: Vec<[u8; 32]>,
+    pub authorization_domain: RecoveryDomain,
     pub evidence_commitment: [u8; 32],
     pub terminal_audit_commitment: [u8; 32],
 }
@@ -351,7 +388,7 @@ impl RecoveryPolicy {
     }
 
     pub fn validate(&self) -> Result<(), RecoveryError> {
-        if self.format_version != 1
+        if self.format_version != 2
             || self.checkpoint_hash != CHECKPOINT_HASH
             || self.checkpoint_state_root != CHECKPOINT_STATE_ROOT
             || self.chunk_hashes.is_empty()
@@ -366,6 +403,7 @@ impl RecoveryPolicy {
         {
             return Err(RecoveryError::InvalidPolicy);
         }
+        self.authorization_domain.validate()?;
         validate_replacements(&self.replacements)?;
         let retired: BTreeSet<_> = self.replacements.iter().map(|e| &e.old).collect();
         let council: BTreeSet<_> = self.council.iter().collect();
@@ -450,6 +488,10 @@ pub enum RecoveryAction {
     PrefixAudit(RecoveryPrefixAuditChunk),
     /// Typed authenticated incoming post-state audit. Appended at index9.
     IncomingAudit(Vec<u8>),
+    /// Explicit native-derived account balance audit; appended at index 10.
+    NativeBalanceAudit(Vec<u8>),
+    /// Bounded terminal-audit page; appended at index 11 for codec stability.
+    TerminalAuditPage(invariants::TerminalAuditPage),
 }
 
 /// Transported as a bare System::remark only by the recovery executive, above
@@ -482,14 +524,17 @@ impl RecoveryInherent {
             RecoveryAction::Incoming(bytes)
             | RecoveryAction::Outgoing(bytes)
             | RecoveryAction::IncomingAudit(bytes)
+            | RecoveryAction::NativeBalanceAudit(bytes)
                 if bytes.is_empty() || bytes.len() > MAX_CHUNK_BYTES =>
             {
                 return Err(RecoveryError::ChunkBounds);
             }
             RecoveryAction::Incoming(_)
             | RecoveryAction::Outgoing(_)
-            | RecoveryAction::IncomingAudit(_) => {}
+            | RecoveryAction::IncomingAudit(_)
+            | RecoveryAction::NativeBalanceAudit(_) => {}
             RecoveryAction::TerminalAudit(audit) => audit.validate_bounds()?,
+            RecoveryAction::TerminalAuditPage(page) => page.validate()?,
             RecoveryAction::Apply(chunk) => chunk.validate()?,
             RecoveryAction::StageCode { bytes, .. } => {
                 if bytes.is_empty() || bytes.len() > MAX_CODE_CHUNK_BYTES {
@@ -529,12 +574,15 @@ pub struct RepairAuthorization {
     pub destination_spec: u32,
     /// Zero for the pinned hold runtime; a repair binds reviewed new data here.
     pub revised_policy: [u8; 32],
+    pub authorization_domain: RecoveryDomain,
+    /// Canonical first recovery child (including its production seal, if present).
+    pub recovery_anchor: [u8; 32],
 }
 
 impl RepairAuthorization {
     pub fn signing_message(&self) -> Vec<u8> {
         (
-            b"sora-nexus/recovery-forward-upgrade/v1".as_slice(),
+            b"sora-nexus/recovery-forward-upgrade/v2".as_slice(),
             GENESIS_HASH,
             CHECKPOINT_HASH,
             self,
@@ -546,13 +594,19 @@ impl RepairAuthorization {
         &self,
         policy: &RecoveryPolicy,
         status: &RecoveryStatus,
+        expected_anchor: [u8; 32],
         signatures: &[(AccountId32, MultiSignature)],
     ) -> Result<(), RecoveryError> {
         policy.validate()?;
-        if self.policy != policy.commitment() || self.policy != status.policy {
+        if self.authorization_domain != policy.authorization_domain
+            || self.policy != policy.commitment()
+            || self.policy != status.policy
+        {
             return Err(RecoveryError::WrongPolicy);
         }
-        if self.phase != status.phase
+        if expected_anchor == [0; 32]
+            || self.recovery_anchor != expected_anchor
+            || self.phase != status.phase
             || self.cursor != status.next_chunk
             || self.operation_counter != status.operation_counter
         {
@@ -682,7 +736,8 @@ mod tests {
             .collect();
         council.sort();
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: crate::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: CHECKPOINT_HASH,
             checkpoint_state_root: CHECKPOINT_STATE_ROOT,
             replacements: Vec::new(),
@@ -701,6 +756,8 @@ mod tests {
             failure: Some(RecoveryError::WrongPreimage),
         };
         let auth = RepairAuthorization {
+            recovery_anchor: [0x42; 32],
+            authorization_domain: policy.authorization_domain.clone(),
             policy: status.policy,
             phase: status.phase,
             cursor: status.next_chunk,
@@ -721,19 +778,123 @@ mod tests {
                 )
             })
             .collect();
-        assert_eq!(auth.verify_quorum(&policy, &status, &signatures), Ok(()));
+        assert_eq!(
+            auth.verify_quorum(&policy, &status, [0x42; 32], &signatures),
+            Ok(())
+        );
         assert_eq!(
             auth.verify_quorum(
                 &policy,
                 &status,
+                [0x42; 32],
                 &[signatures[0].clone(), signatures[0].clone()]
             ),
             Err(RecoveryError::BadQuorum)
         );
+        // Even at the identical phase/cursor/counter with the same council,
+        // code hashes and economic work, another network or release is distinct.
+        for domain in [
+            RecoveryDomain {
+                chain_spec_id: b"another-network".to_vec(),
+                ..policy.authorization_domain.clone()
+            },
+            RecoveryDomain {
+                release_nonce: [0x47; 32],
+                ..policy.authorization_domain.clone()
+            },
+        ] {
+            let mut other_policy = policy.clone();
+            other_policy.authorization_domain = domain.clone();
+            let mut other_status = status.clone();
+            other_status.policy = other_policy.commitment();
+            assert_eq!(
+                auth.verify_quorum(&other_policy, &other_status, [0x42; 32], &signatures),
+                Err(RecoveryError::WrongPolicy)
+            );
+            let mut other_auth = auth.clone();
+            other_auth.policy = other_status.policy;
+            other_auth.authorization_domain = domain;
+            assert_ne!(auth.signing_message(), other_auth.signing_message());
+            assert_eq!(
+                other_auth.verify_quorum(&other_policy, &other_status, [0x42; 32], &signatures),
+                Err(RecoveryError::BadQuorum)
+            );
+            let fresh: Vec<_> = keys
+                .iter()
+                .take(2)
+                .map(|key| {
+                    (
+                        AccountId32::from(key.public().0),
+                        MultiSignature::from(key.sign(&other_auth.signing_message())),
+                    )
+                })
+                .collect();
+            assert_eq!(
+                other_auth.verify_quorum(&other_policy, &other_status, [0x42; 32], &fresh),
+                Ok(())
+            );
+        }
+        assert_eq!(
+            auth.verify_quorum(&policy, &status, [0; 32], &signatures),
+            Err(RecoveryError::Replay)
+        );
+        assert_eq!(
+            auth.verify_quorum(&policy, &status, [0x43; 32], &signatures),
+            Err(RecoveryError::Replay)
+        );
+        let mut different_branch = auth.clone();
+        different_branch.recovery_anchor = [0x43; 32];
+        assert_eq!(
+            different_branch.verify_quorum(&policy, &status, [0x43; 32], &signatures),
+            Err(RecoveryError::BadQuorum)
+        );
+        let mut legacy = policy.clone();
+        legacy.format_version = 1;
+        assert_eq!(legacy.validate(), Err(RecoveryError::InvalidPolicy));
+        for domain in [
+            RecoveryDomain {
+                chain_spec_id: vec![],
+                ..policy.authorization_domain.clone()
+            },
+            RecoveryDomain {
+                chain_spec_id: vec![b'x'; 129],
+                ..policy.authorization_domain.clone()
+            },
+            RecoveryDomain {
+                chain_spec_id: b"ambiguous chain".to_vec(),
+                ..policy.authorization_domain.clone()
+            },
+            RecoveryDomain {
+                release_nonce: [0; 32],
+                ..policy.authorization_domain.clone()
+            },
+        ] {
+            assert_eq!(domain.validate(), Err(RecoveryError::InvalidPolicy));
+        }
         status.next_chunk += 1;
         assert_eq!(
-            auth.verify_quorum(&policy, &status, &signatures),
+            auth.verify_quorum(&policy, &status, [0x42; 32], &signatures),
             Err(RecoveryError::Replay)
+        );
+    }
+    #[test]
+    fn native_balance_audit_is_appended_without_changing_older_audit_transport() {
+        assert_eq!(RecoveryAction::IncomingAudit(vec![1]).encode()[0], 9);
+        assert_eq!(RecoveryAction::NativeBalanceAudit(vec![1]).encode()[0], 10);
+        for payload in [vec![], vec![1; MAX_CHUNK_BYTES + 1]] {
+            let envelope = RecoveryInherent {
+                format_version: 1,
+                action: RecoveryAction::NativeBalanceAudit(payload),
+            };
+            assert!(RecoveryInherent::decode_remark(&envelope.encode_remark()).is_err());
+        }
+        let envelope = RecoveryInherent {
+            format_version: 1,
+            action: RecoveryAction::NativeBalanceAudit(vec![1]),
+        };
+        assert_eq!(
+            RecoveryInherent::decode_remark(&envelope.encode_remark()).unwrap(),
+            envelope
         );
     }
 }

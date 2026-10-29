@@ -104,15 +104,20 @@ pub struct Prepared {
     pub negative: Vec<(String, RecoveryInherent)>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn prepare(
     base: &Path,
     request: &Escape,
     original: &RecoveryPolicy,
     current: &RecoveryStatus,
+    expected_anchor: [u8; 32],
     stored_code: &[u8],
     executing_code: &[u8],
     destination_code: &[u8],
 ) -> Result<Prepared> {
+    if expected_anchor == [0; 32] {
+        return Err("escape requires an established first recovery child".into());
+    }
     let revised = if let Some(reference) = &request.work_policy {
         let bytes = replay::artifact(base, reference, recovery::MAX_INHERENT_BYTES)?;
         let mut input = bytes.as_slice();
@@ -123,6 +128,7 @@ pub fn prepare(
             .validate()
             .map_err(|error| format!("invalid fixture repair policy: {error:?}"))?;
         if !input.is_empty()
+            || revised.authorization_domain != original.authorization_domain
             || revised.council != original.council
             || revised.replacements != original.replacements
         {
@@ -138,6 +144,8 @@ pub fn prepare(
         return Err("escape-only fixture supports the pinned hold then one 136 repair".into());
     }
     let authorization = RepairAuthorization {
+        recovery_anchor: expected_anchor,
+        authorization_domain: original.authorization_domain.clone(),
         policy: original.commitment(),
         phase: current.phase,
         cursor: current.next_chunk,
@@ -154,6 +162,11 @@ pub fn prepare(
     let envelope = signed(authorization.clone(), revised.clone());
     let mut negative = Vec::new();
     for (name, mutate) in [
+        (
+            "wrong-recovery-anchor",
+            (|a: &mut RepairAuthorization| a.recovery_anchor = [0; 32])
+                as fn(&mut RepairAuthorization),
+        ),
         (
             "wrong-policy",
             (|a: &mut RepairAuthorization| a.policy = [0; 32]) as fn(&mut RepairAuthorization),
@@ -277,7 +290,8 @@ mod tests {
             ]
         );
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: recovery::CHECKPOINT_HASH,
             checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
             replacements: vec![],
@@ -303,6 +317,7 @@ mod tests {
             },
             &policy,
             &observed,
+            [0x42; 32],
             b"actual stored code",
             b"actual substitute code",
             b"actual hold code",
@@ -328,7 +343,7 @@ mod tests {
             sp_io::hashing::blake2_256(b"actual substitute code")
         );
         assert!(authorization
-            .verify_quorum(&policy, &observed, signatures)
+            .verify_quorum(&policy, &observed, [0x42; 32], signatures)
             .is_ok());
         for (name, envelope) in &result.negative {
             let RecoveryAction::Escape {
@@ -340,6 +355,7 @@ mod tests {
                 panic!()
             };
             if [
+                "wrong-recovery-anchor",
                 "wrong-policy",
                 "wrong-phase",
                 "wrong-cursor",
@@ -353,7 +369,7 @@ mod tests {
             {
                 assert!(
                     authorization
-                        .verify_quorum(&policy, &observed, signatures)
+                        .verify_quorum(&policy, &observed, [0x42; 32], signatures)
                         .is_err(),
                     "{name}"
                 );
@@ -364,7 +380,7 @@ mod tests {
             ..observed
         };
         assert!(authorization
-            .verify_quorum(&policy, &changed, signatures)
+            .verify_quorum(&policy, &changed, [0x42; 32], signatures)
             .is_err());
     }
 

@@ -128,6 +128,11 @@ pub mod weights;
 
 mod benchmarking;
 mod contract;
+// Public host fixture tooling uses the exact native event decoder; no Wasm API changes.
+#[cfg(feature = "std")]
+pub use contract::{
+    ContractEvent as PublicFixtureContractEvent, DepositEvent as PublicFixtureDepositEvent,
+};
 mod macros;
 pub mod migration;
 pub mod offchain;

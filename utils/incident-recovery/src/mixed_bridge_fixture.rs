@@ -623,7 +623,8 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
     let setup = setup(&verified.storage)?;
     let council = release_checks::checkpoint_council(&verified.schema, &verified.storage)?;
     let mut policy = RecoveryPolicy {
-        format_version: 1,
+        format_version: 2,
+        authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
         checkpoint_hash: recovery::CHECKPOINT_HASH,
         checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
         replacements: vec![AccountReplacement {
@@ -680,7 +681,7 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
             .validate()
             .map_err(|e| format!("fixture audit bounds: {e:?}"))?;
     }
-    let mut issuance = economics::issuance_baseline(
+    let issuance = economics::issuance_baseline(
         &verified.schema,
         &verified.storage,
         common::XOR
@@ -688,12 +689,6 @@ pub fn generate(verified: VerifiedCheckpoint) -> Result<Value> {
             .try_into()
             .map_err(|_| "native asset codec")?,
     )?;
-    let final_issuance = stable
-        .get(&issuance.current.key)
-        .and_then(Option::as_ref)
-        .ok_or("fixture native issuance missing")?;
-    issuance.current.record_hash = hash(final_issuance);
-    issuance.authenticated_mints = MINT;
     let terminal = TerminalAudit {
         issuance: vec![issuance],
         collateral: vec![],

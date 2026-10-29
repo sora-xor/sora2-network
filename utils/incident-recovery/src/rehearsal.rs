@@ -114,7 +114,7 @@ pub fn bridge_cancellations(
         &verified.storage,
         vec![],
         council,
-        evidence,
+        composer::PolicyIdentity::public_fixture(evidence),
         compiled.groups,
         witnesses,
         terminal,

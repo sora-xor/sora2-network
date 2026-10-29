@@ -21,10 +21,15 @@ use std::{
 
 type Header = replay::ReplayHeader;
 type RuntimeBlock = Block<Header, OpaqueExtrinsic>;
+#[path = "maintenance_activation.rs"]
+mod activation;
+#[cfg(feature = "runtime-work-types")]
+#[path = "maintenance_bridge_state.rs"]
+mod bridge_state;
 #[path = "maintenance_expectations.rs"]
 mod expectations;
 #[path = "maintenance_fixture.rs"]
-mod fixture;
+pub(crate) mod fixture;
 #[path = "maintenance_hashi_fixture.rs"]
 pub(crate) mod hashi_fixture;
 #[path = "maintenance_historical_audit.rs"]
@@ -35,6 +40,9 @@ mod native_expectations;
 mod native_expectations_v2;
 #[path = "maintenance_native_lane.rs"]
 mod native_lane;
+#[cfg(feature = "runtime-work-types")]
+#[path = "maintenance_position_conservation.rs"]
+mod position_conservation;
 #[cfg(feature = "bridge-fixture")]
 #[path = "maintenance_post_complete.rs"]
 pub mod post_complete;
@@ -44,8 +52,15 @@ pub mod post_complete_channel;
 #[cfg(all(unix, feature = "runtime-work-types"))]
 #[path = "maintenance_process_death.rs"]
 pub mod process_death;
+#[cfg(feature = "bridge-fixture")]
+#[path = "maintenance_signed_fixture.rs"]
+mod signed_fixture;
 #[path = "maintenance_snapshot.rs"]
 mod snapshot;
+#[path = "maintenance_state_observer.rs"]
+mod state_observer;
+#[path = "maintenance_storage_semantics.rs"]
+mod storage_semantics;
 #[path = "maintenance_supplied_escape.rs"]
 mod supplied_escape;
 
@@ -99,6 +114,8 @@ pub struct Manifest {
     pub native_operation_recorder: Option<native_expectations::Config>,
     #[serde(default)]
     pub native_operation_recorders_v2: Vec<native_expectations_v2::Config>,
+    /// Separate opt-in public-key staking plan. No default replay path signs.
+    pub fixture_signed_transactions: Option<replay::Artifact>,
     pub steps: Vec<Step>,
 }
 
@@ -159,10 +176,22 @@ pub struct Report {
     #[cfg(feature = "runtime-work-types")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub incoming_replay_binding: Option<crate::incoming_replay::CoverageBinding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub public_signed_transactions: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post_state_semantics: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub activation_validation: Option<serde_json::Value>,
 }
 
 fn value(ext: &mut sp_io::TestExternalities, key: &[u8]) -> Option<Vec<u8>> {
     ext.execute_with(|| sp_io::storage::get(key).map(|bytes| bytes.to_vec()))
+}
+
+fn recovery_anchor(ext: &mut sp_io::TestExternalities) -> Result<Option<[u8; 32]>> {
+    value(ext, recovery::RECOVERY_ANCHOR_STORAGE_KEY)
+        .map(|bytes| <[u8; 32]>::decode_all(&mut bytes.as_slice()).map_err(|e| e.to_string()))
+        .transpose()
 }
 
 fn storage_key(pallet: &[u8], item: &[u8]) -> Vec<u8> {
@@ -300,6 +329,50 @@ fn confined_writes(
                 };
                 Some(keys)
             }
+        } else if let recovery::RecoveryAction::NativeBalanceAudit(bytes) = action {
+            #[cfg(not(feature = "runtime-work-types"))]
+            {
+                let _ = bytes;
+                return Err("native balance audit requires runtime-work-types".into());
+            }
+            #[cfg(feature = "runtime-work-types")]
+            {
+                use framenode_runtime::incident_recovery_incoming::NativeBalanceAudit;
+                let mut input = bytes.as_slice();
+                let audit = NativeBalanceAudit::decode_with_mem_limit(
+                    &mut input,
+                    recovery::MAX_CHUNK_BYTES * 4,
+                )
+                .map_err(|e| format!("native balance audit decode: {e}"))?;
+                if !input.is_empty() || audit.encode() != *bytes {
+                    return Err("noncanonical native balance audit".into());
+                }
+                audit
+                    .validate()
+                    .map_err(|e| format!("native balance audit shape: {e:?}"))?;
+                let before = status(parent)?;
+                let after = status(ext)?;
+                if before.phase != RecoveryPhase::Auditing {
+                    return Err("native balance audit parent is not auditing".into());
+                }
+                let keys = if after.phase == RecoveryPhase::Failed {
+                    let mut frozen = before;
+                    frozen.phase = RecoveryPhase::Failed;
+                    frozen.failure = after.failure;
+                    if after.failure.is_none() || frozen != after {
+                        return Err(
+                            "native balance audit failure changed lineage/counter/cursor".into(),
+                        );
+                    }
+                    BTreeSet::from([recovery::STATUS_STORAGE_KEY.to_vec()])
+                } else {
+                    if after != before {
+                        return Err("native balance audit changed recovery status".into());
+                    }
+                    BTreeSet::from([recovery::AUDIT_CURSOR_STORAGE_KEY.to_vec()])
+                };
+                Some(keys)
+            }
         } else {
             None
         };
@@ -390,7 +463,7 @@ type IncomingEvidence = crate::incoming_replay::VerifiedReplay;
 type IncomingEvidence = ();
 
 pub fn run(manifest_path: &Path, output: &Path) -> Result<Report> {
-    run_inner(manifest_path, output, false).map(|(report, _)| report)
+    run_inner(manifest_path, output, false, false, false).map(|(report, _)| report)
 }
 
 /// Re-execute the pinned recovery prefix and return an opaque, same-process
@@ -400,13 +473,44 @@ pub fn run_with_incoming_evidence(
     manifest_path: &Path,
     output: &Path,
 ) -> Result<(Report, crate::incoming_replay::VerifiedReplay)> {
-    run_inner(manifest_path, output, true)
+    run_inner(manifest_path, output, true, false, false)
+}
+
+/// Normal nonfixture activation with same-process, final-state semantic checks.
+/// Neither archived reports nor a caller-supplied final snapshot can enter here.
+pub fn run_with_storage_semantics(manifest_path: &Path, output: &Path) -> Result<Report> {
+    run_inner(manifest_path, output, false, true, false).map(|(report, _)| report)
+}
+
+/// Explicit public-key fixture only. Inspect the first ordinary final138 block
+/// before any signed staking transaction, then finish the entire signed replay.
+#[cfg(feature = "bridge-fixture")]
+pub fn run_public_storage_semantics(manifest_path: &Path, output: &Path) -> Result<Report> {
+    run_inner(manifest_path, output, false, false, true).map(|(report, _)| report)
+}
+
+fn inspect_public_storage_block(
+    requested: bool,
+    already_inspected: bool,
+    maintenance: bool,
+    ordinary_blocks: usize,
+    extrinsics: usize,
+) -> Result<bool> {
+    if !requested || already_inspected || maintenance {
+        return Ok(false);
+    }
+    if ordinary_blocks != 1 || extrinsics != 1 {
+        return Err("public storage diagnostic requires the first ordinary138 block to contain only timestamp; reserve it before all signed calls".into());
+    }
+    Ok(true)
 }
 
 fn run_inner(
     manifest_path: &Path,
     output: &Path,
     request_incoming_evidence: bool,
+    request_storage_semantics: bool,
+    request_public_storage_semantics: bool,
 ) -> Result<(Report, IncomingEvidence)> {
     let base = manifest_path
         .parent()
@@ -429,6 +533,25 @@ fn run_inner(
         return Err("maintenance manifest exceeds 64 MiB".into());
     }
     let manifest: Manifest = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+    if request_storage_semantics
+        && (manifest.schema != "sora-nexus-maintenance-replay-v1"
+            || !manifest.repairs.is_empty()
+            || manifest.supplied_council.is_some())
+    {
+        return Err(
+            "storage semantics requires ordinary nonfixture activation without repair".into(),
+        );
+    }
+    if request_storage_semantics && !cfg!(feature = "runtime-work-types") {
+        return Err("real bridge state verification requires runtime-work-types".into());
+    }
+    let signed_fixture_only = manifest.schema == "sora-nexus-public-fixture-signed-maintenance-v1";
+    if request_public_storage_semantics && (!signed_fixture_only || request_storage_semantics) {
+        return Err(
+            "public storage diagnostic admits only the explicit public signed fixture schema"
+                .into(),
+        );
+    }
     let fixture_only = manifest.schema == fixture::SCHEMA;
     let hashi_fixture_only = manifest.schema == hashi_fixture::SCHEMA;
     let public_dynamic_only = manifest.schema == supplied_escape::PUBLIC_DYNAMIC_SCHEMA;
@@ -449,7 +572,15 @@ fn run_inner(
         && !fixture_only
         && !hashi_fixture_only
         && !supplied_council_only
-        && !public_repair_fixture)
+        && !public_repair_fixture
+        && !signed_fixture_only)
+        || signed_fixture_only != manifest.fixture_signed_transactions.is_some()
+        || (signed_fixture_only
+            && (!cfg!(feature = "bridge-fixture")
+                || manifest.native_operation_recorder.is_none()
+                || !manifest.native_operation_recorders_v2.is_empty()
+                || !manifest.repairs.is_empty()
+                || manifest.fixture_expectations.is_some()))
         || hex_bytes(&manifest.checkpoint_hash)?.as_slice() != recovery::CHECKPOINT_HASH
         || manifest.steps.is_empty()
         || manifest.steps.len() > 100_000
@@ -470,7 +601,8 @@ fn run_inner(
             && (manifest.native_operation_recorder.is_none()
                 || !cfg!(feature = "runtime-work-types")))
         || (supplied_council_only && manifest.fixture_expectations.is_some())
-        || hashi_fixture_only != manifest.fixture_hashi_peers.is_some()
+        || (hashi_fixture_only && manifest.fixture_hashi_peers.is_none())
+        || (!hashi_fixture_only && !signed_fixture_only && manifest.fixture_hashi_peers.is_some())
         || (hashi_fixture_only
             && (!cfg!(feature = "bridge-fixture")
                 || manifest.fixture_expectations.is_none()
@@ -478,7 +610,8 @@ fn run_inner(
         || manifest.steps.iter().any(|step| {
             (step.fixture_escape.is_some() && step.recovery.is_some())
                 || (step.fixture_hashi
-                    && (!hashi_fixture_only
+                    && ((!hashi_fixture_only && !signed_fixture_only)
+                        || manifest.fixture_hashi_peers.is_none()
                         || step.recovery.is_none()
                         || step.fixture_escape.is_some()))
                 || (!fixture_only && step.fixture_escape.is_some())
@@ -501,6 +634,12 @@ fn run_inner(
     policy
         .validate()
         .map_err(|error| format!("invalid policy: {error:?}"))?;
+    #[cfg(feature = "bridge-fixture")]
+    let mut signed_session = manifest
+        .fixture_signed_transactions
+        .as_ref()
+        .map(|reference| signed_fixture::Session::load(base, reference, &policy, &manifest.steps))
+        .transpose()?;
     let mut supplied_council = manifest
         .supplied_council
         .as_ref()
@@ -530,7 +669,11 @@ fn run_inner(
         fixture::validate(base, council, &policy)?;
     }
     if let Some(config) = &manifest.fixture_hashi_peers {
-        hashi_fixture::validate(base, config, &policy)?;
+        if signed_fixture_only {
+            hashi_fixture::validate_funded(base, config, &policy)?;
+        } else {
+            hashi_fixture::validate(base, config, &policy)?;
+        }
     }
     let fixture_expectations = manifest
         .fixture_expectations
@@ -552,6 +695,32 @@ fn run_inner(
         verified.storage,
         StateVersion::V0,
     );
+    #[cfg(feature = "runtime-work-types")]
+    let mut bridge_state = if request_storage_semantics {
+        Some(bridge_state::Track::checkpoint(&mut ext, &policy)?)
+    } else {
+        None
+    };
+    let checkpoint_ledger = if request_storage_semantics || request_public_storage_semantics {
+        Some(storage_semantics::capture_ledger(
+            &mut ext,
+            &verified.schema,
+        )?)
+    } else {
+        None
+    };
+    #[cfg(feature = "runtime-work-types")]
+    let mut position_conservation = if request_storage_semantics || request_public_storage_semantics
+    {
+        Some(position_conservation::Track::checkpoint(
+            &mut ext,
+            &verified.schema,
+            &policy,
+            request_public_storage_semantics,
+        )?)
+    } else {
+        None
+    };
     let executor = replay::Executor::builder().build();
     let import_executor = replay::Executor::builder().build();
     let bootstrap = replay::artifact(base, &manifest.bootstrap, 32 * 1024 * 1024)?;
@@ -567,6 +736,7 @@ fn run_inner(
                 &policy,
                 fixture_only
                     || hashi_fixture_only
+                    || signed_fixture_only
                     || public_prior_audit_only
                     || fixture_expectations.is_some(),
             )
@@ -626,6 +796,12 @@ fn run_inner(
         hashes.insert(
             format!("repaired-native-{index}-binding"),
             config.engine_binding.sha256.clone(),
+        );
+    }
+    if let Some(reference) = &manifest.fixture_signed_transactions {
+        hashes.insert(
+            "public-signed-transaction-plan".into(),
+            reference.sha256.clone(),
         );
     }
     if let Some(reference) = &manifest.fixture_expectations {
@@ -723,7 +899,27 @@ fn run_inner(
     let (mut ext, mut parent_snapshot_sha256) = snapshots.persist(ext)?;
     let mut parent = H256::from(recovery::CHECKPOINT_HASH);
     let mut witnesses = Vec::new();
+    let mut public_post_state_semantics = None;
+    let mut state_observer = if request_storage_semantics {
+        Some(state_observer::Track::new_nonfixture(
+            &executor,
+            &mut ext,
+            &bootstrap,
+            policy.commitment(),
+        )?)
+    } else if request_public_storage_semantics {
+        Some(state_observer::Track::new(
+            &executor,
+            &mut ext,
+            &bootstrap,
+            policy.commitment(),
+        )?)
+    } else {
+        None
+    };
+
     let mut ordinary = 0;
+    let mut activation_validation = None;
     let mut hold_observed = false;
     let mut repair_observed = false;
     let mut last_slot = 0;
@@ -734,12 +930,15 @@ fn run_inner(
     let mut expectation_checks = 0usize;
     #[cfg(feature = "runtime-work-types")]
     let mut incoming_evidence = crate::incoming_replay::Collector::new(
-        request_incoming_evidence || public_prior_audit_only,
+        request_incoming_evidence
+            || public_prior_audit_only
+            || signed_fixture_only
+            || request_storage_semantics,
         policy.commitment(),
         verified.state.state_root.clone(),
         verified.state.capture_manifest_sha256.clone(),
         hex::encode(Sha256::digest(&bytes)),
-        fixture_only || public_repair_fixture || hashi_fixture_only,
+        fixture_only || public_repair_fixture || hashi_fixture_only || signed_fixture_only,
     );
     for (index, step) in manifest.steps.iter().enumerate() {
         if step.slot <= last_slot || step.rejected_recovery.len() > 128 {
@@ -753,8 +952,24 @@ fn run_inner(
         let code = select_code(&stored, &deployed, &bootstrap, &known)?;
         let executing_version = replay::version(&executor, &mut ext, code)?;
         let maintenance = executing_version.spec_version != 138;
+        let first_final_block = !maintenance && activation_validation.is_none();
+        if first_final_block {
+            let active_policy = status(&mut ext)?.policy;
+            activation_validation = Some(activation::Track::before(
+                &mut ext,
+                number,
+                parent,
+                &parent_snapshot_sha256,
+                active_policy,
+                code,
+                &executing_version,
+            )?);
+        }
         if maintenance != (step.recovery.is_some() || step.fixture_escape.is_some()) {
             return Err("recovery envelope presence differs from executing runtime phase".into());
+        }
+        if let Some(observer) = &mut state_observer {
+            observer.before_block(&mut ext, step.slot, maintenance)?;
         }
         let header = Header::new(
             number,
@@ -782,6 +997,12 @@ fn run_inner(
         )?;
         let inclusion = ExtrinsicInclusionMode::decode_all(&mut initialized.as_slice())
             .map_err(|error| error.to_string())?;
+        if first_final_block {
+            activation_validation
+                .as_mut()
+                .ok_or("activation observer absent")?
+                .initialized(&mut ext)?;
+        }
         if maintenance && inclusion != ExtrinsicInclusionMode::OnlyInherents {
             return Err("maintenance allowed ordinary extrinsics".into());
         }
@@ -831,8 +1052,17 @@ fn run_inner(
                 let target = by_version
                     .get(&request.destination_spec)
                     .ok_or("unlisted fixture destination code")?;
-                let prepared =
-                    fixture::prepare(base, request, &policy, &observed, &stored, code, target)?;
+                let prepared = fixture::prepare(
+                    base,
+                    request,
+                    &policy,
+                    &observed,
+                    recovery_anchor(&mut ext)?
+                        .ok_or("escape requires an established first recovery child")?,
+                    &stored,
+                    code,
+                    target,
+                )?;
                 for (name, negative) in prepared.negative {
                     let bytes = negative.encode_remark();
                     fs::write(
@@ -857,6 +1087,7 @@ fn run_inner(
                 let context = serde_json::json!({
                     "schema": "sora-nexus-public-fixture-generated-authorization-v1", "fixtureOnly": true, "productionReady": false,
                     "parentHash": format!("{parent:#x}"), "stateRootBeforeAuthorization": format!("{:#x}", replay::root(&mut ext)),
+                    "recoveryAnchor": format!("0x{}", hex::encode(authorization.recovery_anchor)),
                     "phase": format!("{:?}", observed.phase), "cursor": observed.next_chunk, "operationCounter": observed.operation_counter,
                     "storedCodeBlake2": hex::encode(authorization.current_code_hash),
                     "executingCodeBlake2": hex::encode(authorization.current_executor_hash),
@@ -898,7 +1129,12 @@ fn run_inner(
             };
             #[cfg(feature = "bridge-fixture")]
             let payload = if step.fixture_hashi {
-                let prepared = hashi_fixture::prepare(
+                let prepare = if signed_fixture_only {
+                    hashi_fixture::prepare_funded
+                } else {
+                    hashi_fixture::prepare
+                };
+                let prepared = prepare(
                     &mut ext,
                     &policy,
                     &executing_version,
@@ -965,6 +1201,7 @@ fn run_inner(
                     &payload,
                     action.as_ref().ok_or("missing supplied action")?,
                     &status(&mut ext)?,
+                    recovery_anchor(&mut ext)?,
                     &stored,
                     code,
                     executing_version.spec_version,
@@ -1025,9 +1262,24 @@ fn run_inner(
                     code,
                 )?;
             }
+            #[cfg(feature = "runtime-work-types")]
+            if let Some(track) = &mut position_conservation {
+                track.before_work(
+                    &executor,
+                    &mut ext,
+                    code,
+                    action.as_ref().ok_or("position action absent")?,
+                    number,
+                    executing_version.spec_version,
+                )?;
+            }
             let before_work_root = replay::root(&mut ext);
             if apply(&executor, &mut ext, code, &work)? != Ok(Ok(())) {
                 return Err("committed recovery envelope rejected".into());
+            }
+            #[cfg(feature = "runtime-work-types")]
+            if let Some(track) = &mut position_conservation {
+                track.after_work(&mut ext)?;
             }
             if dynamic_native {
                 native_context = Some((
@@ -1041,6 +1293,20 @@ fn run_inner(
             rejected += 1;
             extrinsics.push(work);
         } else {
+            #[cfg(feature = "bridge-fixture")]
+            if let Some(session) = &mut signed_session {
+                session.apply(
+                    index,
+                    number,
+                    parent,
+                    &executor,
+                    &mut ext,
+                    code,
+                    &executing_version,
+                    &mut extrinsics,
+                    request_public_storage_semantics,
+                )?;
+            }
             ordinary += 1;
         }
         let encoded = replay::call(
@@ -1297,6 +1563,85 @@ fn run_inner(
             generated_authorization_sha256: authorization_sha256,
         });
 
+        if let Some(observer) = &mut state_observer {
+            observer.accepted(
+                &executor,
+                &mut ext,
+                code,
+                witnesses.last().ok_or("observer block witness absent")?,
+                &finalized,
+                step.slot,
+                maintenance,
+            )?;
+        }
+        #[cfg(feature = "runtime-work-types")]
+        if let Some(track) = &mut bridge_state {
+            track.accepted(
+                &mut ext,
+                action.as_ref(),
+                witnesses.last().ok_or("bridge witness absent")?,
+            )?;
+        }
+
+        #[cfg(feature = "runtime-work-types")]
+        if let Some(track) = &mut position_conservation {
+            track.accepted(
+                &mut ext,
+                witnesses.last().ok_or("position block witness absent")?,
+            )?;
+        }
+
+        if inspect_public_storage_block(
+            request_public_storage_semantics,
+            public_post_state_semantics.is_some(),
+            maintenance,
+            ordinary,
+            block.extrinsics.len(),
+        )? {
+            #[cfg(feature = "runtime-work-types")]
+            position_conservation
+                .as_mut()
+                .ok_or("public position observer absent")?
+                .inspect(
+                    &executor,
+                    &mut ext,
+                    code,
+                    witnesses
+                        .last()
+                        .ok_or("public position inspection witness absent")?,
+                )?;
+            let mut observed = storage_semantics::verify(
+                &executor,
+                &mut ext,
+                storage_semantics::Context {
+                    policy: &policy,
+                    manifest: &manifest,
+                    base,
+                    checkpoint: &verified.state,
+                    checkpoint_metadata: &verified.metadata_witness,
+                    checkpoint_ledger: checkpoint_ledger
+                        .as_ref()
+                        .ok_or("checkpoint ledger baseline absent")?,
+                    last: witnesses.last(),
+                    output,
+                },
+            )?;
+            observed["schema"] =
+                serde_json::json!("sora-nexus-public-fixture-post-state-semantics-v1");
+            observed["fixtureOnly"] = serde_json::json!(true);
+            observed["inspectionStep"] = serde_json::json!(index);
+            observed["inspectionSnapshotManifestSha256"] = serde_json::json!(
+                witnesses
+                    .last()
+                    .ok_or("missing inspection witness")?
+                    .disk_snapshot_manifest_sha256
+            );
+            observed["inspectionBeforeSignedTransactions"] = serde_json::json!(true);
+            observed["inspectionIsReplayTerminal"] = serde_json::json!(false);
+            observed["signedExtrinsicsInInspectedBlock"] = serde_json::json!(0);
+            public_post_state_semantics = Some(observed);
+        }
+
         #[cfg(feature = "runtime-work-types")]
         if let Some(prepared) = pending_incoming_evidence {
             let native = if let Some(value) = native_derivations
@@ -1332,7 +1677,7 @@ fn run_inner(
         }
         eprintln!("Rehearsed maintenance block {number}: {:?}, spec {}, cursor {}, disk restart and independent import agree", current.phase, next_version.spec_version, current.next_chunk);
         #[cfg(feature = "bridge-fixture")]
-        if hashi_fixture_only {
+        if hashi_fixture_only || (signed_fixture_only && manifest.fixture_hashi_peers.is_some()) {
             hashi_birth_headers.insert(number, finalized);
         }
         parent = hash;
@@ -1400,6 +1745,19 @@ fn run_inner(
         replay_transcript.clone(),
         request_incoming_evidence || public_prior_audit_only,
     )?;
+    #[cfg(feature = "bridge-fixture")]
+    let public_signed_transactions = signed_session
+        .map(|session| {
+            session.finish(
+                &policy,
+                replay::root(&mut ext),
+                &incoming_evidence,
+                &witnesses,
+            )
+        })
+        .transpose()?;
+    #[cfg(not(feature = "bridge-fixture"))]
+    let public_signed_transactions = None;
     #[cfg(feature = "runtime-work-types")]
     let prior_policy_incoming_audits = incoming_evidence.reports();
     #[cfg(feature = "runtime-work-types")]
@@ -1415,9 +1773,102 @@ fn run_inner(
             &prior_policy_incoming_audits,
         )?;
     }
+    if request_public_storage_semantics {
+        let observed = public_post_state_semantics
+            .as_mut()
+            .ok_or("public diagnostic never inspected an ordinary138 block")?;
+        if public_signed_transactions.is_none() {
+            return Err("public diagnostic did not finish its full signed fixture replay".into());
+        }
+        #[cfg(feature = "bridge-fixture")]
+        {
+            observed["maintenanceStateObservations"] = state_observer
+                .take()
+                .ok_or("public state observer absent")?
+                .finish(
+                    public_signed_transactions
+                        .as_ref()
+                        .ok_or("signed result absent")?,
+                )?;
+        }
+        #[cfg(feature = "runtime-work-types")]
+        {
+            observed["positionConservation"] = position_conservation
+                .take()
+                .ok_or("public position observer absent")?
+                .finish(&policy, replay::root(&mut ext), &incoming_evidence)?;
+        }
+        observed["subsequentSignedReplayCompleted"] = serde_json::json!(true);
+        observed["replayTerminalStateRoot"] =
+            serde_json::json!(format!("{:#x}", replay::root(&mut ext)));
+    }
+    let post_state_semantics = if request_storage_semantics {
+        #[cfg(feature = "runtime-work-types")]
+        {
+            let code = replay::code(&mut ext)?;
+            position_conservation
+                .as_mut()
+                .ok_or("position observer absent")?
+                .inspect(
+                    &executor,
+                    &mut ext,
+                    &code,
+                    witnesses
+                        .last()
+                        .ok_or("position inspection witness absent")?,
+                )?;
+        }
+        let mut observed = storage_semantics::verify(
+            &executor,
+            &mut ext,
+            storage_semantics::Context {
+                policy: &policy,
+                manifest: &manifest,
+                base,
+                checkpoint: &verified.state,
+                checkpoint_metadata: &verified.metadata_witness,
+                checkpoint_ledger: checkpoint_ledger
+                    .as_ref()
+                    .ok_or("checkpoint ledger baseline absent")?,
+                last: witnesses.last(),
+                output,
+            },
+        )?;
+        #[cfg(feature = "runtime-work-types")]
+        {
+            observed["positionConservation"] = position_conservation
+                .take()
+                .ok_or("position observer absent")?
+                .finish(&policy, replay::root(&mut ext), &incoming_evidence)?;
+        }
+        observed["maintenanceStateObservations"] = state_observer
+            .take()
+            .ok_or("nonfixture state observer absent")?
+            .finish_nonfixture()?;
+        #[cfg(feature = "runtime-work-types")]
+        {
+            observed["bridgeStateEquations"] = bridge_state
+                .take()
+                .ok_or("bridge observer absent")?
+                .finish(
+                    &mut ext,
+                    &policy,
+                    &incoming_evidence,
+                    witnesses.last().ok_or("bridge final witness absent")?,
+                )?;
+        }
+        Some(observed)
+    } else {
+        public_post_state_semantics
+    };
+    let activation_validation = activation_validation
+        .map(|track| track.finish(&witnesses, ordinary))
+        .transpose()?;
     Ok((
         Report {
-            schema: if public_historical_audit_only {
+            schema: if signed_fixture_only {
+                "sora-nexus-public-fixture-signed-maintenance-replay-witness-v1"
+            } else if public_historical_audit_only {
                 historical_audit::REPORT_SCHEMA
             } else if public_prior_audit_only {
                 "sora-nexus-public-fixture-prior-policy-audit-maintenance-witness-v1"
@@ -1463,6 +1914,9 @@ fn run_inner(
             prior_policy_incoming_audits,
             #[cfg(feature = "runtime-work-types")]
             incoming_replay_binding,
+            public_signed_transactions,
+            post_state_semantics,
+            activation_validation,
         },
         incoming_evidence,
     ))
@@ -1471,6 +1925,16 @@ fn run_inner(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn public_storage_inspection_requires_a_reserved_first_ordinary_block() {
+        assert!(!inspect_public_storage_block(false, false, false, 1, 5).unwrap());
+        assert!(!inspect_public_storage_block(true, false, true, 0, 2).unwrap());
+        assert!(inspect_public_storage_block(true, false, false, 1, 1).unwrap());
+        assert!(inspect_public_storage_block(true, false, false, 1, 2).is_err());
+        assert!(inspect_public_storage_block(true, false, false, 2, 1).is_err());
+        assert!(!inspect_public_storage_block(true, true, false, 2, 2).unwrap());
+    }
 
     #[test]
     #[cfg(feature = "runtime-work-types")]

@@ -12,7 +12,7 @@ ROLE = 'forwardRepairReplay'
 GATE = 'automaticActivationEscapeAndForwardRepair'
 AUTH_FIELDS = ['step', 'blockNumber', 'parentHash', 'envelopeSha256', 'authorizationSha256', 'signingMessageSha256',
     'phase', 'cursor', 'operationCounter', 'storedCodeBlake2', 'executingCodeBlake2', 'destinationCodeBlake2',
-    'destinationSpec', 'revisedPolicyCommitment', 'signers']
+    'destinationSpec', 'revisedPolicyCommitment', 'recoveryAnchor', 'signers']
 require = identity.require
 keys = identity.keys
 uint = identity.uint
@@ -154,11 +154,13 @@ def bind(root, records, paths, original, identity_context, incoming_context, loc
 
 
 def authorization(witness, index, rows, plan, context, evidence):
+    import release_package as package
     keys(witness, AUTH_FIELDS)
     detail = plan['steps'][index]
+    require(index > 0, 'first-child escape has no established recovery anchor')
     before = rows[index - 1] if index else {'hash': scale.CHECKPOINT_HASH, 'phase': 'Applying', 'cursor': 0}
     version, destination = detail['executingSpec'], detail['step']['expectedSpec']
-    expected = {'step': index, 'blockNumber': scale.CHECKPOINT + index + 1, 'parentHash': before['hash'],
+    expected = {'recoveryAnchor': rows[0]['hash'], 'step': index, 'blockNumber': scale.CHECKPOINT + index + 1, 'parentHash': before['hash'],
         'phase': before['phase'], 'cursor': before['cursor'], 'operationCounter': detail['counterBefore'],
         'storedCodeBlake2': '0x' + (context['checkpointCodeBlake2'] if version == 134 else context['wasm'][str(version)]['blake2']),
         'executingCodeBlake2': '0x' + context['wasm'][str(version)]['blake2'],
@@ -172,8 +174,10 @@ def authorization(witness, index, rows, plan, context, evidence):
     raw = (bytes.fromhex(context['policyCommitment']) + bytes([phase]) + scale.u32(witness['cursor'])
         + witness['operationCounter'].to_bytes(8, 'little')
         + b''.join(bytes.fromhex(witness[key][2:]) for key in ('storedCodeBlake2', 'executingCodeBlake2', 'destinationCodeBlake2'))
-        + scale.u32(destination) + bytes.fromhex(witness['revisedPolicyCommitment'][2:]))
-    message = scale.vec(b'sora-nexus/recovery-forward-upgrade/v1') + bytes.fromhex(scale.GENESIS_HASH[2:]) + bytes.fromhex(scale.CHECKPOINT_HASH[2:]) + raw
+        + scale.u32(destination) + bytes.fromhex(witness['revisedPolicyCommitment'][2:])
+        + package.authorization_domain_scale(context['originalPolicy']['authorizationDomain'])
+        + bytes.fromhex(witness['recoveryAnchor'][2:]))
+    message = scale.vec(b'sora-nexus/recovery-forward-upgrade/v2') + bytes.fromhex(scale.GENESIS_HASH[2:]) + bytes.fromhex(scale.CHECKPOINT_HASH[2:]) + raw
     prefix = f'{witness["blockNumber"]}.supplied.'
     require(evidence.document(prefix + 'authorization.json') == witness
         and evidence.pinned(evidence.local(prefix + 'authorization.scale'), witness['authorizationSha256']) == raw
@@ -203,7 +207,16 @@ def validate(result, context, scenario, output, pins):
     report_context = {'policy': context['originalPolicy'], 'incomingRecoveryReplay': context['incomingContext'],
         'artifacts': [{'blake2_256': value} for value in context['artifactBlakes']]}
     require(incoming_release.valid_receipt(result, report_context, context['artifactBindings'], history.ROOT), 'fresh opaque incoming certificate/coverage/retained audits failed')
-    result = result['recoveryReplay']
+    return validate_baseline(result['recoveryReplay'], context, scenario, output, pins)
+
+
+def validate_baseline(result, context, scenario, output, pins):
+    """Validate raw baseline witnesses emitted by a fresh pinned native process.
+
+    This does not deserialize or establish an incoming certificate. The caller
+    must separately require its fresh native opaque-backed binding.
+    """
+    require(scenario == 'repair', 'unknown repair scenario')
     plan = context['scenarios'][scenario]
     expected_fields = {'schema', 'manifestSha256', 'captureManifestSha256', 'policyCommitment', 'artifactSha256', 'blocks',
         'automaticActivationObserved', 'councilHoldObserved', 'forwardRepairObserved', 'ordinaryRuntimeBlocks',
@@ -212,6 +225,8 @@ def validate(result, context, scenario, output, pins):
         'publicTestHashiFixture', 'fixtureGovernanceStateUnchanged', 'fixtureStateExpectationChecks',
         'nativeOperationDerivations', 'repairedNativeOperationDerivations', 'replayTranscriptSha256',
         'suppliedCouncil', 'priorPolicyIncomingAudits', 'incomingReplayBinding'}
+    if 'activationValidation' in result:
+        expected_fields.add('activationValidation')
     keys(result, expected_fields)
     require(result['schema'] == 'sora-nexus-supplied-council-maintenance-replay-witness-v1'
         and result['manifestSha256'] == plan['manifestSha256'] and result['captureManifestSha256'] == context['captureManifestSha256']
@@ -244,6 +259,8 @@ def validate(result, context, scenario, output, pins):
         require(type(row['forbiddenExtrinsicsRejected']) is int and row['forbiddenExtrinsicsRejected'] == rejected, 'escape replay/ordinary transaction rejection count differs')
         raw = evidence.pinned(evidence.local(f'{number}.block.scale'), row['blockSha256'], 2 * 1024**2)
         block = identity.block_header(raw)
+        if index == 0:
+            require(not any(tag == 5 for tag, _, _ in block['logs']), 'rehearsal branch anchor must be unsealed and distinct from valid production BABE blocks')
         require(block['number'] == number and block['parentHash'] == parent and block['hash'] == row['hash'] and block['stateRoot'] == row['stateRoot'], 'repair block bytes/ancestry/state differ')
         require([data for tag, engine, data in block['logs'] if tag == 6 and engine == b'BABE'] == [b'\x02' + scale.u32(step['authorityIndex']) + step['slot'].to_bytes(8, 'little')]
             and [data for tag, _, data in block['logs'] if tag == 0 and data.startswith(scale.MAGIC)] == [lineage], 'repair BABE or immutable lineage differs')

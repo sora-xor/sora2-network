@@ -15,7 +15,7 @@ def bind_work(root, records, paths, policy, local_file, digest_file):
         return
     source = paths["recoveryWorkIndex"]
     index = scale.read_json(source)
-    scale.require(isinstance(index, dict) and set(index) == {"schema", "policySha256", "work", "audits", "terminal"}
+    scale.require(isinstance(index, dict) and set(index) in ({"schema", "policySha256", "work", "audits", "terminal"}, {"schema", "policySha256", "work", "audits", "terminal", "terminalPrelude"})
                   and index["schema"] == "sora-nexus-recovery-work-index-v1", "Invalid recovery work index")
     scale.require(isinstance(index["policySha256"], str) and re.fullmatch(r"[0-9a-f]{64}", index["policySha256"]), "Invalid work policy hash")
     policy_role = "incomingActivePolicyScale" if "incomingActivePolicyScale" in paths else "policyScale"
@@ -25,7 +25,9 @@ def bind_work(root, records, paths, policy, local_file, digest_file):
         scale.require(isinstance(index[field], list) and 0 < len(index[field]) <= 16_384, "Recovery work shard count bound")
     if policy:
         scale.require(len(index["work"]) == policy["workChunks"] and len(index["audits"]) == policy["auditChunks"], "Incomplete policy work/audit shard coverage")
-    references = [*index["work"], *index["audits"], index["terminal"]]
+    prelude = index.get("terminalPrelude", [])
+    scale.require(isinstance(prelude, list) and len(prelude) < 1024, "Recovery terminal page bound")
+    references = [*index["work"], *index["audits"], *prelude, index["terminal"]]
     scale.require(len(references) + len(records) <= 16_384, "Recovery shard artifact inventory bound")
     indexed = {path: role for role, path in paths.items()}
     seen, total = set(), 0

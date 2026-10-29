@@ -2,6 +2,10 @@
 //! burns and unissued entitlement extinction are different operations. Shared,
 //! encumbered, LP and debt positions never become unconditional token burns.
 
+#[path = "attacker_interests.rs"]
+mod interests;
+pub use interests::{assess_attacker_interests, AttackerInterestAssessment};
+
 use crate::{
     account, hex_bytes,
     inventory::{
@@ -408,7 +412,8 @@ pub fn issuance_baseline(
         vec![asset.to_vec()]
     };
     let key = storage_key(schema, descriptor, &components)?;
-    let before = record(storage, &key)?;
+    let zero = 0u128.encode();
+    let before = storage.top.get(&key).map(Vec::as_slice).unwrap_or(&zero);
     let (checkpoint_issuance, current) = projection(schema, descriptor, &key, before, &[])?;
     Ok(IssuanceInvariant {
         asset,
@@ -1184,5 +1189,196 @@ mod tests {
         );
         assert!(proportional_lp_entitlement(&[10], 2, 1).is_err());
         assert!(proportional_lp_entitlement(&[10], 0, 0).is_err());
+    }
+    #[test]
+    fn interest_assessment_preserves_absence_limits_and_unrelated_supply_counts() {
+        let (schema, storage, plan, mut options) = coverage_fixture();
+        require_attacker_watch(&plan, &mut options).unwrap();
+        let inventory =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        let assessment = assess_attacker_interests(&plan, &inventory).unwrap();
+        assert_eq!(assessment.native_inventory.top_entries, 3);
+        assert!(assessment.no_observed_direct_typed_identity_references);
+        assert!(assessment.economic_plan_consistent_with_observed_absence);
+        assert!(!assessment.beneficial_or_derived_ownership_established);
+        assert!(!assessment.external_network_assets_inspected);
+        assert!(!assessment.external_claim_entitlements_verified);
+        assert!(!assessment.issuance_disposition_verified);
+        assert!(!assessment.attacker_assets_debt_and_issuance_verified);
+        assert!(!assessment.production_ready);
+        assert_eq!(
+            assessment
+                .families
+                .iter()
+                .map(|family| family.captured_rows)
+                .sum::<usize>(),
+            3
+        );
+        let issuance = assessment
+            .families
+            .iter()
+            .find(|family| family.family == "issuance_aggregates")
+            .unwrap();
+        assert_eq!(issuance.captured_rows, 2);
+        let lp = assessment
+            .families
+            .iter()
+            .find(|family| family.family == "lp_shares_and_locks")
+            .unwrap();
+        assert!(lp.stores.iter().all(|store| !store.captured_prefix_present));
+        assert!(!lp.positive_ownership_established);
+        assert!(validate_attacker_coverage(&plan, &inventory).is_ok());
+    }
+
+    #[test]
+    fn interest_assessment_reports_positive_balances_but_never_authorizes_a_burn() {
+        let (schema, storage, mut plan, mut options) = coverage_fixture();
+        plan.attackers.push(hx(&[3; 32]));
+        require_attacker_watch(&plan, &mut options).unwrap();
+        let inventory =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        let assessment = assess_attacker_interests(&plan, &inventory).unwrap();
+        assert!(!assessment.no_observed_direct_typed_identity_references);
+        assert_eq!(assessment.total_typed_reference_rows, 1);
+        assert_eq!(
+            assessment.references[0].family,
+            "balances_and_account_lifecycle"
+        );
+        assert_eq!(assessment.references[0].storage, "Tokens.Accounts");
+        assert_eq!(
+            assessment.references[0].references[0].identity,
+            hx(&[3; 32])
+        );
+        assert!(!assessment.attacker_assets_debt_and_issuance_verified);
+        assert!(validate_attacker_coverage(&plan, &inventory)
+            .unwrap_err()
+            .contains("unresolved attacker typed reference"));
+    }
+
+    #[test]
+    fn interest_assessment_does_not_treat_lp_pool_identity_as_provider_ownership() {
+        let (mut schema, mut storage, plan, mut options) = coverage_fixture();
+        let mut registry = Registry::new();
+        let account = registry.register_type(&meta_type::<AccountId32>()).id;
+        let balance = registry.register_type(&meta_type::<u128>()).id;
+        schema.registry = registry.into();
+        schema.descriptors = vec![Descriptor {
+            trie: "top".into(),
+            name: "PoolXYK.PoolProviders".into(),
+            prefix: vec![7; 32],
+            key_types: vec![account, account],
+            hashers: vec![Hasher::Identity, Hasher::Identity],
+            value_type: balance,
+        }];
+        options.dispositions.truncate(1);
+        options.dispositions[0].storage = "PoolXYK.PoolProviders".into();
+        storage.top.clear();
+        let key = storage_key(
+            &schema,
+            &schema.descriptors[0],
+            &[common::recovery::ATTACKER_ACCOUNT.to_vec(), vec![3; 32]],
+        )
+        .unwrap();
+        storage.top.insert(key, 70u128.encode());
+        require_attacker_watch(&plan, &mut options).unwrap();
+        let inventory =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        let assessment = assess_attacker_interests(&plan, &inventory).unwrap();
+        assert_eq!(assessment.references.len(), 1);
+        assert_eq!(assessment.references[0].family, "lp_shares_and_locks");
+        assert_eq!(assessment.references[0].references[0].path[0], "key[0]");
+        assert!(assessment
+            .families
+            .iter()
+            .all(|family| !family.positive_ownership_established));
+        assert!(validate_attacker_coverage(&plan, &inventory).is_err());
+    }
+
+    #[test]
+    fn interest_assessment_keeps_h160_claim_and_uncatalogued_references_blocked() {
+        let (mut schema, mut storage, plan, mut options) = coverage_fixture();
+        let mut registry = Registry::new();
+        let address = registry.register_type(&meta_type::<sp_core::H160>()).id;
+        let balance = registry.register_type(&meta_type::<u128>()).id;
+        schema.registry = registry.into();
+        schema.descriptors = vec![Descriptor {
+            trie: "top".into(),
+            name: "Rewards.ValOwners".into(),
+            prefix: vec![11; 32],
+            key_types: vec![address],
+            hashers: vec![Hasher::Identity],
+            value_type: balance,
+        }];
+        storage.top.clear();
+        let key = storage_key(
+            &schema,
+            &schema.descriptors[0],
+            &[common::recovery::ATTACKER_EVM.to_vec()],
+        )
+        .unwrap();
+        storage.top.insert(key, 17u128.encode());
+        options.dispositions.truncate(1);
+        options.dispositions[0].storage = "Rewards.ValOwners".into();
+        require_attacker_watch(&plan, &mut options).unwrap();
+        for (name, family) in [
+            ("Rewards.ValOwners", "rewards_and_claims"),
+            ("FutureLedger.Claims", "other_storage"),
+        ] {
+            schema.descriptors[0].name = name.into();
+            options.dispositions[0].storage = name.into();
+            let inventory =
+                crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+            let assessment = assess_attacker_interests(&plan, &inventory).unwrap();
+            assert_eq!(assessment.references[0].family, family);
+            assert_eq!(
+                assessment.references[0].references[0].kind,
+                "h160_address_reference"
+            );
+            assert!(!assessment.external_network_assets_inspected);
+            assert!(validate_attacker_coverage(&plan, &inventory).is_err());
+        }
+    }
+
+    #[test]
+    fn interest_assessment_rejects_modified_certificate_and_unwatched_registry() {
+        let (schema, storage, mut plan, mut options) = coverage_fixture();
+        let unwatched =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        assert!(assess_attacker_interests(&plan, &unwatched).is_err());
+        require_attacker_watch(&plan, &mut options).unwrap();
+        let mut inventory =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        plan.attackers.push(hx(&[44; 32]));
+        assert!(assess_attacker_interests(&plan, &inventory).is_err());
+        plan.attackers.pop();
+        inventory.prefixes[0].entries += 1;
+        assert!(assess_attacker_interests(&plan, &inventory).is_err());
+        let mut inventory =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        inventory.watched_references.clear();
+        inventory.top_entries -= 1;
+        assert!(assess_attacker_interests(&plan, &inventory).is_err());
+    }
+
+    #[test]
+    fn interest_assessment_marks_claimed_positions_inconsistent_with_observed_absence() {
+        let (schema, storage, mut plan, mut options) = coverage_fixture();
+        require_attacker_watch(&plan, &mut options).unwrap();
+        let inventory =
+            crate::inventory::inventory(&schema, &storage, &BTreeMap::new(), &options).unwrap();
+        plan.quarantine.push(QuarantinedPosition {
+            position_id: "unproven-pool".into(),
+            owner: hx(&common::recovery::ATTACKER_ACCOUNT),
+            asset: hx(&[4; 32]),
+            kind: PositionKind::LiquidityPool,
+            ownership_evidence_hash: hx(&[9; 32]),
+            collateral: None,
+            underlying_position_ids: vec!["unproven-backing".into()],
+        });
+        let assessment = assess_attacker_interests(&plan, &inventory).unwrap();
+        assert_eq!(assessment.claimed_economic_operations, 1);
+        assert!(assessment.no_observed_direct_typed_identity_references);
+        assert!(!assessment.economic_plan_consistent_with_observed_absence);
+        assert!(validate_attacker_coverage(&plan, &inventory).is_err());
     }
 }

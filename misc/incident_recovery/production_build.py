@@ -162,9 +162,12 @@ def load_inputs(path, expected):
     check_parents(path)
     raw = read(path, expected, 16 * 1024**2)
     value = parse(raw)
-    require(set(value) == {'schema', 'files', 'compose', 'operatorsScale', 'derivedInventory', 'mixedLayout', 'consensus'}, 'unexpected build input fields')
+    require(set(value) == {'schema', 'files', 'compose', 'operatorsScale', 'derivedInventory', 'mixedLayout', 'consensus', 'authorizationDomain'}, 'unexpected build input fields')
     require(value['schema'] == SCHEMA, 'unknown production input schema')
     no_fixture(value)
+    release.authorization_domain_scale(value['authorizationDomain'])
+    require(value['authorizationDomain']['chainSpecId'] == 'sora-nexus-recovery-28191817', 'production authorization network differs')
+    require(value['authorizationDomain']['releaseNonce'] != '0x' + '46' * 32, 'public fixture nonce rejected')
     files = value['files']
     require(isinstance(files, dict) and 0 < len(files) <= 32768, 'input inventory count bound')
     total = 0
@@ -315,10 +318,14 @@ def clear_work_policy(raw):
     prefix_end = reader.offset
     for _ in range(2):
         reader.take(reader.compact() * 32)
+    domain_start = reader.offset
+    reader.take(reader.compact())
+    reader.take(32)
+    domain = raw[domain_start:reader.offset]
     evidence = reader.take(32)
     reader.take(32)
     reader.end()
-    return raw[:prefix_end] + b'\0\0' + evidence + bytes(32)
+    return raw[:prefix_end] + b'\0\0' + domain + evidence + bytes(32)
 
 
 def remap_index(text, index, allowed):
@@ -328,9 +335,10 @@ def remap_index(text, index, allowed):
 
 
 def mixed_input(composed, layout):
-    require(set(layout) == {'schema', 'work', 'audits', 'terminalEnvelope'}
+    require(set(layout) in ({'schema', 'work', 'audits', 'terminalEnvelope'}, {'schema', 'work', 'audits', 'terminalEnvelope', 'terminalPreludeEnvelopes'})
         and layout['schema'] == 'sora-nexus-production-mixed-layout-v1', 'mixed layout fields')
     result = {'schema': 'sora-nexus-mixed-work-input-v1',
+        'deriveNativeBalanceAudits': True,
         'policyTemplateScale': '0x' + clear_work_policy(release.bounded_hex(composed['policyScale'], release.MAX_POLICY)).hex()}
     for name, base_name, output_name, tags, inserted in (
         ('work', 'applyEnvelopes', 'workEnvelopes', {1}, {6, 7}),
@@ -352,9 +360,48 @@ def mixed_input(composed, layout):
         result[output_name] = values
     # A changed terminal must be committed in raw input and proved by exact replay.
     result['terminalEnvelope'] = layout['terminalEnvelope'] or composed['terminalEnvelope']
+    prelude = layout.get('terminalPreludeEnvelopes', composed.get('terminalPreludeEnvelopes', []))
+    require(isinstance(prelude, list) and len(prelude) < 1024, 'terminal page prelude bound')
+    result['terminalPreludeEnvelopes'] = prelude
+    for index, value in enumerate(prelude):
+        raw = release.bounded_hex(value, 2 * 1024**2)
+        require(raw[:10] == b'snxrec01\x01\x0b' and len(raw) >= 14 and int.from_bytes(raw[10:14], 'little') == index, 'terminal prelude page identity/order')
     raw = release.bounded_hex(result['terminalEnvelope'], 2 * 1024**2)
-    require(raw[:10] == b'snxrec01\x01\x05', 'terminal envelope required')
+    require(raw[:10] == (b'snxrec01\x01\x0b' if prelude else b'snxrec01\x01\x05'), 'terminal envelope required')
+    if prelude:
+        require(len(raw) >= 14 and int.from_bytes(raw[10:14], 'little') == len(prelude), 'terminal final page order')
     return result
+
+
+def validate_native_balance_derivation(mixed, report):
+    """Fresh native compiler may wrap an exact baseline, never replace its values."""
+    require(mixed.get('deriveNativeBalanceAudits') is True
+        and report.get('nativeBalanceAuditsDerived') is True
+        and report.get('baselineAuditEnvelopes') == mixed['auditEnvelopes'],
+        'native balance derivation lost original audit baseline')
+    indices = report.get('nativeBalanceAuditIndices')
+    require(isinstance(indices, list) and all(type(i) is int for i in indices)
+        and indices == sorted(set(indices))
+        and all(0 <= i < len(mixed['auditEnvelopes']) for i in indices),
+        'native balance audit derivation indices differ')
+    actual = report.get('auditEnvelopes')
+    require(isinstance(actual, list) and len(actual) == len(mixed['auditEnvelopes']),
+        'native balance derivation changed audit count')
+    for index, (before, after) in enumerate(zip(mixed['auditEnvelopes'], actual)):
+        if index not in indices:
+            require(before == after, 'unlisted audit changed')
+            continue
+        baseline = release.bounded_hex(before, 2 * 1024**2)
+        derived = release.bounded_hex(after, 2 * 1024**2)
+        require(baseline[:10] == b'snxrec01\x01\x02'
+            and derived[:10] == b'snxrec01\x01\x0a', 'native balance derivation action differs')
+        reader = scale.Reader(derived[10:])
+        payload = reader.vector(512 * 1024)
+        reader.end()
+        require(payload.startswith(baseline[10:]) and len(payload) > len(baseline[10:]),
+            'native balance derivation changed exact baseline witness bytes')
+        require(int.from_bytes(baseline[10:14], 'little') == index,
+            'native balance derivation changed audit index')
 
 
 def validate_emitted(raw, policy):
@@ -366,7 +413,8 @@ def validate_emitted(raw, policy):
     require('fixture' not in text.lower(), 'fixture-generated policy rejected')
 
 
-def compose_inputs(value, inputs, output, binary, guard, commitment, remember=write, retain=None):
+def compose_inputs(value, inputs, output, binary, guard, commitment, remember=write, retain=None, composition_limit=512 * 1024**2):
+    require(type(composition_limit) is int and 128 * 1024**2 <= composition_limit <= 512 * 1024**2, 'composition output bound')
     # Derived controls are verified by the same live compiler before composition.
     args = [str(binary), 'verify-ownership', '--csv', str(inputs / value['compose']['csv']),
         '--proofs', str(inputs / value['compose']['proofs']), '--capture', str(inputs / value['compose']['capture']),
@@ -375,13 +423,15 @@ def compose_inputs(value, inputs, output, binary, guard, commitment, remember=wr
     args = [str(binary), 'compose-storage-work']
     for flag, name in sorted(value['compose'].items()):
         args += ['--' + flag, str(inputs / name)]
-    args += ['--operators-scale', str(inputs / value['operatorsScale']), '--evidence-commitment', '0x' + commitment]
-    raw, _ = process(args, output, output / 'compose', guard, timeout=6*3600, retain=retain)
+    args += ['--operators-scale', str(inputs / value['operatorsScale']), '--evidence-commitment', '0x' + commitment,
+             '--chain-spec-id', value['authorizationDomain']['chainSpecId'], '--release-nonce', value['authorizationDomain']['releaseNonce']]
+    raw, _ = process(args, output, output / 'compose', guard, timeout=6*3600, maximum=composition_limit, retain=retain)
     composed = parse(raw)
     require(composed.get('storageEngineRehearsed') is True and composed.get('productionReady') is False,
         'compiler did not perform storage rehearsal')
     policy = release.bounded_hex(composed['policyScale'], release.MAX_POLICY)
     identity = release.policy_identity(policy)
+    require(identity['authorizationDomain'] == value['authorizationDomain'], 'compiler authorization domain differs')
     require(not PUBLIC_SIGNING_KEYS.intersection(new for _, new in identity['mapping']), 'public test replacement policy rejected')
     policy_reader = scale.Reader(policy)
     policy_reader.take(68)
@@ -396,11 +446,12 @@ def compose_inputs(value, inputs, output, binary, guard, commitment, remember=wr
         mixed = mixed_input(composed, layout)
         manifest = output / 'mixed-input.json'
         remember(manifest, mixed)
-        raw, _ = process([str(binary), 'compile-mixed-work', '--manifest', str(manifest)], output, output / 'mixed', guard, retain=retain)
+        raw, _ = process([str(binary), 'compile-mixed-work', '--manifest', str(manifest)], output, output / 'mixed', guard, maximum=composition_limit, retain=retain)
         report = parse(raw)
         require(report.get('structuralValidationOnly') is True and all(report.get(k) is False for k in
             ('authenticationVerified', 'economicCompletionVerified', 'storageEngineRehearsed', 'exactArtifactRehearsed', 'productionReady')), 'mixed compiler scope differs')
-        require(all(report[k] == mixed[k] for k in ('workEnvelopes', 'auditEnvelopes', 'terminalEnvelope')), 'mixed compiler reordered work')
+        require(all(report[k] == mixed[k] for k in ('workEnvelopes', 'terminalEnvelope', 'terminalPreludeEnvelopes')), 'mixed compiler reordered work')
+        validate_native_balance_derivation(mixed, report)
         candidate = release.bounded_hex(report['policyScale'], release.MAX_POLICY)
         require(clear_work_policy(candidate) == clear_work_policy(policy), 'mixed compiler changed control/data policy')
         policy = candidate

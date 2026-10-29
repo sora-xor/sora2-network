@@ -65,7 +65,7 @@ def policy_controls(raw):
 def action(raw):
     require(10 <= len(raw) <= MAX_ENVELOPE and raw[:9] == b'snxrec01\x01', 'recovery envelope identity/size')
     tag = raw[9]
-    require(tag <= 9, 'unknown recovery action')
+    require(tag <= 11, 'unknown recovery action')
     index = None
     if tag in (6, 7):
         reader = scale.Reader(raw[10:])
@@ -192,8 +192,11 @@ def bind(root, records, paths, local_file, digest_file):
                     and step['expectedPhase'] in ('Applying', 'Auditing', 'Ready', 'Complete')
                     and (recovery_role is not None) == (prior_version == 134) and tag != 4, 'normal activation path changed')
             else:
-                require(step['expectedSpec'] == 135 and step['expectedPhase'] == 'Hold' and tag == (4 if index == 0 else 0)
-                    and (index != 0 or not step.get('rejectPreviousEscapes', False)), 'hold path requires first-child escape and subsequent hold execution')
+                require(step['expectedSpec'] == (134 if index == 0 else 135)
+                    and step['expectedPhase'] == ('Applying' if index == 0 else 'Hold')
+                    and tag == (4 if index == 1 else 0)
+                    and (index > 1 or not step.get('rejectPreviousEscapes', False)),
+                    'hold path requires first-child Tick, branch-bound second-child escape and subsequent hold execution')
             details.append({'step': step, 'recoveryRole': recovery_role, 'negativeRoles': negative_roles, 'action': tag, 'operationIndex': operation_index, 'executingSpec': prior_version})
             if tag in (6, 7):
                 dynamic.append(index)
@@ -219,7 +222,7 @@ def bind(root, records, paths, local_file, digest_file):
         else:
             supplied = manifest.get('suppliedCouncil')
             keys(supplied, {'escapes', 'expectedTerminal'})
-            require(supplied['escapes'] == [{'step': 0, 'envelopeSha256': records[details[0]['recoveryRole']]['sha256'], 'destinationSpec': 135}], 'only the exact first-child hold authorization is admitted')
+            require(len(details) >= 3 and supplied['escapes'] == [{'step': 1, 'envelopeSha256': records[details[1]['recoveryRole']]['sha256'], 'destinationSpec': 135}], 'only the exact second-child hold authorization is admitted')
             terminal = supplied['expectedTerminal']
             keys(terminal, {'specVersion', 'phase', 'cursor', 'auditCursor', 'operationCounter', 'activePolicyCommitment', 'stateRoot', 'terminalAuditBlake2', 'ordinaryBlocks'})
             require(terminal['specVersion'] == 135 and terminal['phase'] == 'Hold' and all(type(terminal[name]) is int and terminal[name] == value for name, value in [('cursor', 0), ('auditCursor', 0), ('operationCounter', 1), ('ordinaryBlocks', 0)])
@@ -334,7 +337,8 @@ def validate(result, context, scenario, output, pins):
         'consensusSealsVerified', 'operatorApprovalVerified', 'productionReady', 'publicTestCouncilFixture',
         'publicTestHashiFixture', 'fixtureGovernanceStateUnchanged', 'fixtureStateExpectationChecks',
         'nativeOperationDerivations', 'repairedNativeOperationDerivations', 'replayTranscriptSha256'}
-    keys(result, mandatory | ({'suppliedCouncil'} if scenario == 'hold' else set()))
+    keys(result, mandatory | ({'suppliedCouncil'} if scenario == 'hold' else set())
+         | ({'activationValidation'} if 'activationValidation' in result else set()))
     require(result['schema'] == ('sora-nexus-maintenance-replay-witness-v1' if scenario == 'activation' else 'sora-nexus-supplied-council-maintenance-replay-witness-v1'), 'fresh native report schema')
     require(result['manifestSha256'] == plan['manifestSha256'] and result['captureManifestSha256'] == context['captureManifestSha256']
         and result['policyCommitment'] == context['policyCommitment'] and result['artifactSha256'] == plan['expectedArtifacts'], 'fresh report/package artifact identities differ')
@@ -365,11 +369,14 @@ def validate(result, context, scenario, output, pins):
         require(type(row['resultingSpec']) is int and row['resultingSpec'] == step['expectedSpec'] and row['phase'] == step['expectedPhase'], 'actual runtime/phase differs from manifest')
         require(row['independentImportRootMatches'] is True and row['diskRestartRootMatches'] is True
             and row['maintenanceSessionFrozen'] is (version != 138) and row['generatedAuthorizationSha256'] is None, 'missing Wasm import/restart/frozen evidence or fixture authorization')
-        require(uint(row['cursor'], context['workChunks']) >= 0 and uint(row['operationCounter']) == (1 if scenario == 'hold' else 0), 'unexpected cursor/escape counter')
-        expected_rejected = (2 + len(detail['negativeRoles']) + (1 if scenario == 'hold' and index > 0 else 0)) if version != 138 else 0
+        require(uint(row['cursor'], context['workChunks']) >= 0 and uint(row['operationCounter']) == (1 if scenario == 'hold' and index >= 1 else 0), 'unexpected cursor/escape counter')
+        expected_rejected = (2 + len(detail['negativeRoles']) + (1 if scenario == 'hold' and index > 1 else 0)) if version != 138 else 0
         require(type(row['forbiddenExtrinsicsRejected']) is int and row['forbiddenExtrinsicsRejected'] == expected_rejected, 'native negative-check count differs')
         raw = pinned(local(f'{number}.block.scale'), row['blockSha256'], 2 * 1024**2)
         header = block_header(raw)
+        if scenario == 'hold' and index == 0:
+            require(not any(tag == 5 for tag, _, _ in header['logs']),
+                    'rehearsal branch anchor must be an unsealed child, distinct from any valid production BABE block')
         require(header['number'] == number and header['parentHash'] == parent and header['hash'] == row['hash'] and header['stateRoot'] == row['stateRoot'], 'actual block ancestry/hash/state witness differs')
         require([data for tag, engine, data in header['logs'] if tag == 6 and engine == b'BABE'] == [b'\x02' + scale.u32(step['authorityIndex']) + step['slot'].to_bytes(8, 'little')], 'block BABE input differs')
         require([data for tag, _, data in header['logs'] if tag == 0 and data.startswith(scale.MAGIC)] == [lineage], 'actual block policy lineage differs')
@@ -398,9 +405,9 @@ def validate(result, context, scenario, output, pins):
         require(supplied['terminal'] == plan['manifest']['suppliedCouncil']['expectedTerminal'] and supplied['terminal']['stateRoot'] == rows[-1]['stateRoot'], 'hold terminal differs from actual restored state')
         require(isinstance(supplied['authorizations'], list) and len(supplied['authorizations']) == 1, 'one supplied hold authorization required')
         witness = supplied['authorizations'][0]
-        keys(witness, {'step', 'blockNumber', 'parentHash', 'envelopeSha256', 'authorizationSha256', 'signingMessageSha256', 'phase', 'cursor', 'operationCounter', 'storedCodeBlake2', 'executingCodeBlake2', 'destinationCodeBlake2', 'destinationSpec', 'revisedPolicyCommitment', 'signers'})
-        require(all(type(witness[name]) is int and witness[name] == value for name, value in [('step', 0), ('blockNumber', scale.CHECKPOINT + 1), ('cursor', 0), ('operationCounter', 0), ('destinationSpec', 135)])
-            and witness['parentHash'] == scale.CHECKPOINT_HASH and witness['phase'] == 'Applying'
+        keys(witness, {'step', 'blockNumber', 'parentHash', 'recoveryAnchor', 'envelopeSha256', 'authorizationSha256', 'signingMessageSha256', 'phase', 'cursor', 'operationCounter', 'storedCodeBlake2', 'executingCodeBlake2', 'destinationCodeBlake2', 'destinationSpec', 'revisedPolicyCommitment', 'signers'})
+        require(all(type(witness[name]) is int and witness[name] == value for name, value in [('step', 1), ('blockNumber', scale.CHECKPOINT + 2), ('cursor', 0), ('operationCounter', 0), ('destinationSpec', 135)])
+            and witness['parentHash'] == rows[0]['hash'] and witness['recoveryAnchor'] == rows[0]['hash'] and witness['phase'] == 'Applying'
             and witness['storedCodeBlake2'] == '0x' + context['checkpointCodeBlake2']
             and witness['executingCodeBlake2'] == '0x' + context['wasm']['134']['blake2']
             and witness['destinationCodeBlake2'] == '0x' + context['wasm']['135']['blake2']
@@ -408,7 +415,7 @@ def validate(result, context, scenario, output, pins):
         signers = witness['signers']
         require(isinstance(signers, list) and all(isinstance(s, str) and s in ['0x' + key for key in context['council']] for s in signers)
             and len(set(signers)) == len(signers) and len(signers) > len(context['council']) // 2, 'hold signer membership/quorum differs')
-        prefix = f'{scale.CHECKPOINT + 1}.supplied.'
+        prefix = f'{scale.CHECKPOINT + 2}.supplied.'
         require(document(prefix + 'authorization.json') == witness, 'authorization witness output differs')
         for suffix, field in [('escape.scale', 'envelopeSha256'), ('authorization.scale', 'authorizationSha256'), ('signing-message.scale', 'signingMessageSha256')]:
             pinned(local(prefix + suffix), witness[field], MAX_ENVELOPE)
@@ -507,6 +514,10 @@ def run_owned(report, paths, binary, expected_sha256, parent, local_file, digest
 
     verification = {**context, 'inputPaths': owned_paths}
     try:
+        preparation = None
+        if 'prepare' in profile:
+            preparation = profile['prepare'](verification, verifier, directory, guard, keep, retain, pins)
+            guard()
         for scenario in profile['scenarios']:
             plan = context['scenarios'][scenario]
             output = directory / scenario
@@ -532,7 +543,8 @@ def run_owned(report, paths, binary, expected_sha256, parent, local_file, digest
         guard()
         keep(directory / 'verification.json', {'schema': profile['schema'], 'scenarios': generated,
             'wasmAuthorImportVerifiedByFreshNativeReplay': True, 'requiredExecutingVersions': profile['versions'](context),
-            'consensusSealsVerified': False, 'operatorApprovalVerified': False, 'sourceBuildAuthenticityVerified': False, 'productionReady': False})
+            'consensusSealsVerified': False, 'operatorApprovalVerified': False, 'sourceBuildAuthenticityVerified': False, 'productionReady': False,
+            **({'preparation': preparation} if preparation is not None else {})})
         entries = list(directory.rglob('*'))
         require(len(entries) <= 2 * MAX_FILES and all(not path.is_symlink() and path.resolve(strict=True) == path for path in entries), 'output graph alias/bound')
         files = sorted(path for path in entries if path.is_file())
@@ -548,11 +560,13 @@ def run_owned(report, paths, binary, expected_sha256, parent, local_file, digest
             additions.append({'role': role, **actual, 'object': 'objects/' + actual['sha256'],
                 'sourcePath': 'generated-' + profile['label'] + '/' + str(path.relative_to(directory)), 'executable': bool(path.stat().st_mode & 0o111)})
             added_paths[role] = path
+        gate = profile['gate_result'](context, generated, preparation) if 'gate_result' in profile else {'status': 'verified', 'reason': profile['reason']}
+        gate = {**gate, 'verifierSha256': expected_sha256, 'scenarios': generated,
+            'verificationSha256': pins[str(directory / 'verification.json')]['sha256']}
         guard()
         report['artifacts'].extend(additions)
         paths.update(added_paths)
-        report['gates'][profile['gate']] = {'status': 'verified', 'reason': profile['reason'],
-            'verifierSha256': expected_sha256, 'scenarios': generated, 'verificationSha256': pins[str(directory / 'verification.json')]['sha256']}
+        report['gates'][profile['gate']] = gate
         report['productionReady'] = False
     except BaseException as error:
         process_tools.write(directory / 'failure.json', {'schema': profile['failureSchema'], 'error': str(error), 'completedScenarios': generated, 'productionReady': False})
@@ -560,11 +574,23 @@ def run_owned(report, paths, binary, expected_sha256, parent, local_file, digest
 
 
 def run(report, paths, binary, expected_sha256, parent, local_file, digest_file):
+    import activation_post_state_release as activation
+    observed = {}
+    def checked(result, context, scenario, output, pins):
+        validate(result, context, scenario, output, pins)
+        if scenario == 'activation':
+            observed['activation'] = activation.validate(result, context)
     profile = {'context': 'artifactIdentityReplay', 'gate': GATE, 'label': 'artifact-identity',
         'schema': 'sora-nexus-executing-artifact-identity-v1', 'outputRole': 'artifactIdentityOutput',
         'directoryField': 'artifactIdentityOutputDirectory', 'failureSchema': 'sora-nexus-executing-artifact-identity-failure-v1',
-        'scenarios': ('activation', 'hold'), 'sources': [],
+        'scenarios': ('activation', 'hold'), 'sources': [Path(activation.__file__).resolve()],
         'command': lambda verifier, owned, plan, output: [str(verifier), 'rehearse-maintenance', '--manifest', owned[plan['manifestRole']], '--output', str(output / 'replay')],
-        'validate': validate, 'select': lambda result: result, 'versions': lambda context: [134, 135, 138],
+        'validate': checked, 'select': lambda result: result, 'versions': lambda context: [134, 135, 138],
         'reason': 'Fresh native replay executed the package exact134/135/138 Wasm, verified actual Core_version/transaction versions, independent import and persisted-state restoration; consensus/build/operator approval remain separate'}
-    return run_owned(report, paths, binary, expected_sha256, parent, local_file, digest_file, profile)
+    run_owned(report, paths, binary, expected_sha256, parent, local_file, digest_file, profile)
+    # Registration happens only after the fresh process and its entire closure
+    # pass the final guard. No candidate report can enter this path.
+    if observed:
+        parent_gate = report['gates'][GATE]
+        report['gates'][activation.GATE] = {**observed['activation'],
+            **{key: parent_gate[key] for key in ('verificationSha256', 'verifierSha256', 'scenarios')}}

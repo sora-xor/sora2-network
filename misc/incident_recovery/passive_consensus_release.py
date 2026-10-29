@@ -45,6 +45,10 @@ def package_hook(report, paths, manifest, expected_source_sha256, output):
     observed = warped.get('observedWarp')
     passive.need(isinstance(observed,dict) and type(observed.get('pid')) is int, 'actual warp process absent')
     passive.check_report(warped,value['target'],result['policyCommitment'],observed['pid'])
+    passive.need('warpRestartBeforeGapCompletion' in result['fullAndWarpSynchronization'],
+                 'fresh warp restart before gap completion is mandatory')
+    restart = result['fullAndWarpSynchronization']['warpRestartBeforeGapCompletion']
+    passive.check_warp_restart(restart, warped, value['target'], result['policyCommitment'], original['nodeBinary'])
     additions=[]
     added_paths={}
     total=0
@@ -72,6 +76,9 @@ def package_hook(report, paths, manifest, expected_source_sha256, output):
     report['artifacts'].extend(additions)
     paths.update(added_paths)
     report['gates']['fullAndWarpSynchronization']=gate
+    report['gates']['warpRestartBeforeGapCompletion']={**gate,
+        'reason':'Fresh warp process restarted its unchanged database with no peers while the checkpoint number index remained absent; post-guard admission and persisted runtime/consensus state were reverified',
+        'initialPid':restart['initialProcess']['pid'],'restartPid':restart['restartProcess']['pid']}
     report['passiveCommittedBoundaryCrashCoverage']=crash_coverage
     # This limited host corridor cannot clear the broader chunk/escape/repair
     # failure-injection gate. Existing independently established gates stay intact.

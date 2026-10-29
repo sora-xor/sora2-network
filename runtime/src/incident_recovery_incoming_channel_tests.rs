@@ -305,7 +305,8 @@ fn fixture(kind: ChannelKind, recipient: AccountId) -> (RecoveryPolicy, Incoming
         finalized_source_evidence: [3; 32],
     };
     let policy = RecoveryPolicy {
-        format_version: 1,
+        format_version: 2,
+        authorization_domain: common::recovery::RecoveryDomain::public_fixture(),
         checkpoint_hash: recovery::CHECKPOINT_HASH,
         checkpoint_state_root: recovery::CHECKPOINT_STATE_ROOT,
         replacements: vec![AccountReplacement {
@@ -632,7 +633,7 @@ fn recovery_thischain_exclusion_preserves_pooled_custody_and_consumes_claim_once
                     backing
                 );
                 assert_eq!(
-                    crate::BridgeProxy::locked_assets(network.into(), common::DAI),
+                    crate::BridgeProxy::locked_assets(GenericNetworkId::from(network), common::DAI),
                     backing
                 );
                 assert_eq!(
@@ -646,9 +647,11 @@ fn recovery_thischain_exclusion_preserves_pooled_custody_and_consumes_claim_once
                     );
                     assert!(!frame_system::Account::<Runtime>::contains_key(account));
                 }
-                assert!(crate::BridgeProxy::sender(network.into(), entry.id).is_none());
+                assert!(
+                    crate::BridgeProxy::sender(GenericNetworkId::from(network), entry.id).is_none()
+                );
                 assert!(crate::BridgeProxy::transactions(
-                    (network.into(), entry.beneficiary.clone()),
+                    (GenericNetworkId::from(network), entry.beneficiary.clone()),
                     entry.id
                 )
                 .is_none());
@@ -882,5 +885,413 @@ fn recovery_channels_typed_audits_allow_delay_and_consumption_registry_cleanup()
                 });
             });
         }
+    }
+}
+
+fn set_substrate_messages(operation: &mut IncomingOperation, calls: Vec<BridgeCall>) {
+    let IncomingChannel::Substrate {
+        commitment: GenericCommitment::Sub(batch),
+        ..
+    } = &mut operation.channel
+    else {
+        panic!("Substrate fixture required");
+    };
+    batch.messages = calls
+        .into_iter()
+        .map(|call| BridgeMessage {
+            payload: call.encode().try_into().unwrap(),
+            timepoint: GenericTimepoint::Sora(2),
+        })
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    sign(&mut operation.channel);
+}
+
+fn transfer_call(operation: &IncomingOperation) -> BridgeCall {
+    let IncomingChannel::Substrate {
+        commitment: GenericCommitment::Sub(batch),
+        ..
+    } = &operation.channel
+    else {
+        panic!("Substrate fixture required");
+    };
+    decode_call(&batch.messages[0].payload).unwrap()
+}
+
+fn make_audit(policy: &RecoveryPolicy, operation: &IncomingOperation, index: u32) -> IncomingAudit {
+    IncomingAudit {
+        index,
+        operation_index: operation.index,
+        operation_commitment: operation.commitment(),
+        requests: expected_requests(operation, policy).unwrap(),
+        prior_policy: None,
+    }
+}
+
+#[test]
+fn recovery_channels_mixed_controls_are_journaled_without_refunds_or_registration_effects() {
+    use bridge_types::substrate::DataSignerCall;
+    for tamper in [false, true] {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
+            let transfer = transfer_call(&operation);
+            let result_id = H256::repeat_byte(99);
+            let peer = ecdsa::Pair::from_seed(&[9; 32]).public();
+            set_substrate_messages(
+                &mut operation,
+                vec![
+                    BridgeCall::SubstrateApp(SubstrateAppCall::ReportTransferResult {
+                        message_id: result_id,
+                        message_status: MessageStatus::Failed,
+                    }),
+                    BridgeCall::SubstrateApp(SubstrateAppCall::FinalizeAssetRegistration {
+                        asset_id: GenericAssetId::Sora(common::DAI.into()),
+                        sidechain_asset: GenericAssetId::Sora(common::DAI.into()),
+                        asset_kind: AssetKind::Thischain,
+                        precision: 1,
+                    }),
+                    transfer,
+                    BridgeCall::DataSigner(DataSignerCall::AddPeer { peer }),
+                ],
+            );
+            policy.chunk_hashes = vec![operation.commitment()];
+            let expected = prepare(&operation, &policy).unwrap();
+            assert_eq!(expected.transfers.len(), 1);
+            assert_eq!(expected.controls.len(), 3);
+            let audit = make_audit(&policy, &operation, 0);
+            policy.audit_chunk_hashes = vec![audit.commitment()];
+            crate::incident_recovery::with_test_policy(&policy, || {
+                recovery::storage::initialize(&policy).unwrap();
+                <crate::BridgeProxy as bridge_types::traits::MessageStatusNotifier<
+                    crate::AssetId,
+                    AccountId,
+                    crate::Balance,
+                >>::outbound_request(
+                    operation.network(),
+                    result_id,
+                    replacement(),
+                    GenericAccount::Liberland(AccountId::new([16; 32])),
+                    common::DAI,
+                    AMOUNT,
+                    MessageStatus::Committed,
+                );
+                let outgoing_before = crate::BridgeProxy::transactions(
+                    (operation.network(), replacement()),
+                    result_id,
+                )
+                .unwrap()
+                .encode();
+                let initial_registration =
+                    crate::SubstrateBridgeApp::asset_kind(SubNetworkId::Liberland, common::DAI);
+                let initial_precision = crate::SubstrateBridgeApp::sidechain_precision(
+                    SubNetworkId::Liberland,
+                    common::DAI,
+                );
+                assert_ok!(apply_operation(&policy, &operation));
+                assert_eq!(native_nonce(&operation), 1);
+                assert_eq!(
+                    crate::Assets::free_balance(&common::DAI, &replacement()).unwrap(),
+                    AMOUNT
+                );
+                assert_eq!(
+                    crate::Assets::free_balance(&common::DAI, &old()).unwrap(),
+                    0
+                );
+                assert_eq!(
+                    crate::SubstrateBridgeApp::asset_kind(SubNetworkId::Liberland, common::DAI),
+                    initial_registration
+                );
+                assert_eq!(
+                    crate::SubstrateBridgeApp::sidechain_precision(
+                        SubNetworkId::Liberland,
+                        common::DAI
+                    ),
+                    initial_precision
+                );
+                assert_eq!(
+                    crate::BridgeProxy::transactions(
+                        (operation.network(), replacement()),
+                        result_id
+                    )
+                    .unwrap()
+                    .encode(),
+                    outgoing_before
+                );
+                assert_eq!(crate::Assets::total_issuance(&common::DAI).unwrap(), AMOUNT);
+                assert!(crate::SubstrateBridgeOutboundChannel::recovery_queue(
+                    SubNetworkId::Liberland
+                )
+                .is_empty());
+                assert_eq!(
+                    substrate_bridge_channel::outbound::ChannelNonces::<Runtime>::get(
+                        SubNetworkId::Liberland
+                    ),
+                    0
+                );
+                for expected_control in &expected.controls {
+                    let bytes = sp_io::storage::get(&control_receipt_key(
+                        expected_control.network,
+                        expected_control.id,
+                    ))
+                    .unwrap();
+                    let (_, _, _, actual): ([u8; 32], [u8; 32], [u8; 32], ExpectedControl) =
+                        decode_bounded(&bytes).unwrap();
+                    assert!(actual.delivered);
+                    assert_eq!(actual.payload, expected_control.payload);
+                    assert_eq!(actual.disposition, ControlDisposition::Deferred);
+                }
+                if tamper {
+                    sp_io::storage::clear(&control_receipt_key(
+                        expected.controls[0].network,
+                        expected.controls[0].id,
+                    ));
+                    assert!(audit_encoded_with_policy(&policy, &audit.encode()).is_err());
+                    assert_eq!(
+                        sp_io::storage::get(recovery::INCOMING_AUDIT_PENDING_KEY)
+                            .unwrap()
+                            .to_vec(),
+                        1u32.encode()
+                    );
+                } else {
+                    assert_ok!(audit_encoded_with_policy(&policy, &audit.encode()));
+                }
+            });
+        });
+    }
+}
+
+fn sign_existing_peers(channel: &mut IncomingChannel, seeds: &[u8]) {
+    let IncomingChannel::Substrate {
+        commitment, proof, ..
+    } = channel
+    else {
+        panic!("Substrate fixture required");
+    };
+    let digest = AuxiliaryDigest {
+        logs: vec![AuxiliaryDigestItem::Commitment(
+            ThisNetworkId::get(),
+            commitment.hash(),
+        )],
+    };
+    let hash = Keccak256::hash_of(&digest);
+    *proof = MultiProof::Multisig(multisig_verifier::Proof {
+        digest,
+        proof: seeds
+            .iter()
+            .map(|seed| ecdsa::Pair::from_seed(&[*seed; 32]).sign_prehashed(hash.as_fixed_bytes()))
+            .collect(),
+    });
+}
+
+#[test]
+fn recovery_channels_control_only_peer_rotation_preserves_next_batch_authentication() {
+    use bridge_types::substrate::{DataSignerCall, MultisigVerifierCall};
+    for old_keys in [false, true] {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
+            let transfer = transfer_call(&operation);
+            let new_peer = ecdsa::Pair::from_seed(&[9; 32]).public();
+            let retired_peer = ecdsa::Pair::from_seed(&[1; 32]).public();
+            set_substrate_messages(
+                &mut operation,
+                vec![
+                    BridgeCall::MultisigVerifier(MultisigVerifierCall::AddPeer { peer: new_peer }),
+                    BridgeCall::MultisigVerifier(MultisigVerifierCall::RemovePeer {
+                        peer: retired_peer,
+                    }),
+                ],
+            );
+            let expected = prepare(&operation, &policy).unwrap();
+            assert!(expected.transfers.is_empty());
+            assert_eq!(expected.controls.len(), 2);
+            let mut next = operation.clone();
+            next.index = 1;
+            set_substrate_messages(&mut next, vec![transfer]);
+            let IncomingChannel::Substrate {
+                commitment: GenericCommitment::Sub(batch),
+                ..
+            } = &mut next.channel
+            else {
+                unreachable!()
+            };
+            batch.nonce = 2;
+            sign_existing_peers(
+                &mut next.channel,
+                if old_keys {
+                    &[1, 2, 3, 4]
+                } else {
+                    &[2, 3, 4, 9]
+                },
+            );
+            policy.chunk_hashes = vec![operation.commitment(), next.commitment()];
+            let first_audit = make_audit(&policy, &operation, 0);
+            assert!(first_audit.requests.is_empty());
+            let next_audit = make_audit(&policy, &next, 1);
+            policy.audit_chunk_hashes = vec![first_audit.commitment(), next_audit.commitment()];
+            crate::incident_recovery::with_test_policy(&policy, || {
+                recovery::storage::initialize(&policy).unwrap();
+                assert_ok!(apply_operation(&policy, &operation));
+                let peers =
+                    multisig_verifier::PeerKeys::<Runtime>::get(operation.network()).unwrap();
+                assert!(peers.contains(&new_peer));
+                assert!(!peers.contains(&retired_peer));
+                for (entry, ack) in expected.controls.iter().zip([
+                    DataSignerCall::AddPeer { peer: new_peer },
+                    DataSignerCall::RemovePeer { peer: retired_peer },
+                ]) {
+                    assert_eq!(
+                        sp_io::storage::get(&multisig_verifier::recovery_peer_ack_key(
+                            SubNetworkId::Liberland,
+                            entry.id
+                        ))
+                        .unwrap()
+                        .to_vec(),
+                        ack.encode()
+                    );
+                }
+                assert!(crate::SubstrateBridgeOutboundChannel::recovery_queue(
+                    SubNetworkId::Liberland
+                )
+                .is_empty());
+                assert_eq!(
+                    substrate_bridge_channel::outbound::ChannelNonces::<Runtime>::get(
+                        SubNetworkId::Liberland
+                    ),
+                    0
+                );
+                System::set_block_number(System::block_number() + 1);
+                if old_keys {
+                    assert!(apply_operation(&policy, &next).is_err());
+                    assert_eq!(native_nonce(&next), 1);
+                    assert_eq!(crate::Assets::total_issuance(&common::DAI).unwrap(), 0);
+                } else {
+                    assert_ok!(apply_operation(&policy, &next));
+                    assert_eq!(native_nonce(&next), 2);
+                    assert_eq!(
+                        crate::Assets::free_balance(&common::DAI, &replacement()).unwrap(),
+                        AMOUNT
+                    );
+                    assert_ok!(audit_encoded_with_policy(&policy, &first_audit.encode()));
+                    assert_ok!(audit_encoded_with_policy(&policy, &next_audit.encode()));
+                }
+            });
+        });
+    }
+}
+
+#[test]
+fn recovery_channels_failed_control_rolls_back_the_whole_mixed_batch() {
+    use bridge_types::substrate::MultisigVerifierCall;
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
+        let transfer = transfer_call(&operation);
+        set_substrate_messages(
+            &mut operation,
+            vec![
+                BridgeCall::SubstrateApp(SubstrateAppCall::ReportTransferResult {
+                    message_id: H256::repeat_byte(99),
+                    message_status: MessageStatus::Failed,
+                }),
+                transfer,
+                BridgeCall::MultisigVerifier(MultisigVerifierCall::AddPeer {
+                    peer: ecdsa::Pair::from_seed(&[1; 32]).public(),
+                }),
+            ],
+        );
+        policy.chunk_hashes = vec![operation.commitment()];
+        crate::incident_recovery::with_test_policy(&policy, || {
+            recovery::storage::initialize(&policy).unwrap();
+            let before = batch_storage_without_status();
+            assert!(apply_operation(&policy, &operation).is_err());
+            assert_eq!(native_nonce(&operation), 0);
+            assert_eq!(batch_storage_without_status(), before);
+        });
+    });
+}
+
+#[test]
+fn recovery_registries_require_known_evm_attacker_on_every_evm_chain() {
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (policy, template) = fixture(ChannelKind::Substrate, old());
+        for network in [
+            GenericNetworkId::EVM(H256::from_low_u64_be(1)),
+            GenericNetworkId::EVM(H256::from_low_u64_be(42161)),
+            GenericNetworkId::EVMLegacy(0),
+            GenericNetworkId::EVMLegacy(9),
+        ] {
+            let mut operation = template.clone();
+            operation.channel = match network {
+                GenericNetworkId::EVMLegacy(network) => IncomingChannel::Hashi {
+                    network,
+                    request: vec![],
+                    approvals: vec![],
+                },
+                _ => IncomingChannel::Generic {
+                    network,
+                    commitment: match &template.channel {
+                        IncomingChannel::Substrate { commitment, .. } => commitment.clone(),
+                        _ => unreachable!(),
+                    },
+                    proof: empty_proof(),
+                },
+            };
+            operation.registries[0].network = network;
+            operation.registries[0].accounts.clear();
+            operation.registries[0].no_known_attackers = true;
+            assert_eq!(
+                validate_registries(&operation, &policy),
+                Err(RecoveryError::WrongPreimage)
+            );
+            operation.registries[0].accounts = vec![GenericAccount::EVM(bridge_types::H160::from(
+                recovery::ATTACKER_EVM,
+            ))];
+            operation.registries[0].no_known_attackers = false;
+            assert_ok!(validate_registries(&operation, &policy));
+        }
+    });
+}
+
+#[test]
+fn recovery_channels_unattributed_transfers_require_evidence_before_nonce_consumption() {
+    for case in 0..3 {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let kind = if case == 2 {
+                ChannelKind::Parachain
+            } else {
+                ChannelKind::Substrate
+            };
+            let (mut policy, mut operation) = fixture(kind, old());
+            let mut call = transfer_call(&operation);
+            match &mut call {
+                BridgeCall::SubstrateApp(SubstrateAppCall::Transfer { sender, .. }) => {
+                    *sender = if case == 0 {
+                        GenericAccount::Unknown
+                    } else {
+                        GenericAccount::Root
+                    };
+                }
+                BridgeCall::ParachainApp(ParachainAppCall::Transfer { sender, .. }) => {
+                    *sender = None
+                }
+                _ => unreachable!(),
+            }
+            set_substrate_messages(&mut operation, vec![call]);
+            policy.chunk_hashes = vec![operation.commitment()];
+            crate::incident_recovery::with_test_policy(&policy, || {
+                recovery::storage::initialize(&policy).unwrap();
+                let before = sp_io::storage::root(sp_runtime::StateVersion::V1);
+                assert_eq!(
+                    apply_operation(&policy, &operation),
+                    Err(RecoveryError::WrongPreimage)
+                );
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V1), before);
+                assert_eq!(native_nonce(&operation), 0);
+                assert_eq!(
+                    recovery::storage::status().unwrap().unwrap().phase,
+                    RecoveryPhase::Applying
+                );
+            });
+        });
     }
 }

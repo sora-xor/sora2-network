@@ -65,6 +65,31 @@ pub fn status() -> Result<Option<RecoveryStatus>, RecoveryError> {
         .transpose()
 }
 
+/// The first child cannot know its own final header hash. Only the maintenance
+/// executive at child two records its parent, before accepting any escape.
+pub fn record_recovery_anchor(anchor: [u8; 32]) -> Result<(), RecoveryError> {
+    if anchor == [0; 32]
+        || status()?.is_none()
+        || sp_io::storage::exists(RECOVERY_ANCHOR_STORAGE_KEY)
+    {
+        return Err(RecoveryError::Replay);
+    }
+    sp_io::storage::set(RECOVERY_ANCHOR_STORAGE_KEY, &anchor);
+    Ok(())
+}
+
+pub fn recovery_anchor() -> Result<[u8; 32], RecoveryError> {
+    let bytes = sp_io::storage::get(RECOVERY_ANCHOR_STORAGE_KEY).ok_or(RecoveryError::Replay)?;
+    let anchor: [u8; 32] = bytes
+        .as_ref()
+        .try_into()
+        .map_err(|_| RecoveryError::Replay)?;
+    if anchor == [0; 32] {
+        return Err(RecoveryError::Replay);
+    }
+    Ok(anchor)
+}
+
 pub(super) fn put_status(status: &RecoveryStatus) {
     sp_io::storage::set(STATUS_STORAGE_KEY, &status.encode());
 }
@@ -184,6 +209,9 @@ pub fn audit_chunk(
     }
     let mut read_budget = MAX_CHUNK_BYTES;
     for witness in &audit.witnesses {
+        if issuance::check_witness(witness).map_err(|error| freeze(status.clone(), error))? {
+            continue;
+        }
         let value = read_bounded(&witness.scope, &witness.key, &mut read_budget)
             .map_err(|error| freeze(status.clone(), error))?;
         if hash(value) != witness.value_hash {
@@ -245,7 +273,7 @@ pub fn authorize_escape(
     code: &[u8],
 ) -> Result<RecoveryStatus, RecoveryError> {
     let status = checked_status(policy)?;
-    authorization.verify_quorum(policy, &status, signatures)?;
+    authorization.verify_quorum(policy, &status, recovery_anchor()?, signatures)?;
     let current = hash(sp_io::storage::get(b":code").map(|value| value.to_vec()))
         .ok_or(RecoveryError::BadCode)?;
     if status.phase == RecoveryPhase::Complete
@@ -297,13 +325,14 @@ pub fn install_work_policy(
     let mut state = status()?.ok_or(RecoveryError::WrongPolicy)?;
     original.validate()?;
     revised.validate()?;
-    authorization.verify_quorum(original, &state, signatures)?;
+    authorization.verify_quorum(original, &state, recovery_anchor()?, signatures)?;
     if state.phase == RecoveryPhase::Complete
         || sp_io::storage::get(POLICY_STORAGE_KEY).as_deref()
             != Some(original.commitment().as_slice())
         || authorization.revised_policy != revised.commitment()
         || original.replacements != revised.replacements
         || original.council != revised.council
+        || original.authorization_domain != revised.authorization_domain
         || authorization.destination_spec <= HOLD_SPEC_VERSION
         || authorization.destination_spec >= FINAL_SPEC_VERSION
     {
@@ -361,7 +390,8 @@ mod tests {
             ],
         };
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: crate::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: CHECKPOINT_HASH,
             checkpoint_state_root: CHECKPOINT_STATE_ROOT,
             replacements: Vec::new(),
@@ -372,6 +402,40 @@ mod tests {
             terminal_audit_commitment: [3; 32],
         };
         (policy, chunk, audit)
+    }
+
+    #[test]
+    fn recovery_branch_anchor_requires_initialized_state_and_cannot_be_replaced() {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let (policy, _, _) = fixture();
+            assert_eq!(recovery_anchor(), Err(RecoveryError::Replay));
+            assert_eq!(
+                record_recovery_anchor([0x42; 32]),
+                Err(RecoveryError::Replay)
+            );
+            assert!(!sp_io::storage::exists(RECOVERY_ANCHOR_STORAGE_KEY));
+            initialize(&policy).unwrap();
+            let unanchored = sp_io::storage::root(sp_runtime::StateVersion::V0);
+            assert_eq!(record_recovery_anchor([0; 32]), Err(RecoveryError::Replay));
+            assert_eq!(
+                sp_io::storage::root(sp_runtime::StateVersion::V0),
+                unanchored
+            );
+            record_recovery_anchor([0x42; 32]).unwrap();
+            assert_eq!(recovery_anchor(), Ok([0x42; 32]));
+            let anchored = sp_io::storage::root(sp_runtime::StateVersion::V0);
+            for replacement in [[0; 32], [0x42; 32], [0x43; 32]] {
+                assert_eq!(
+                    record_recovery_anchor(replacement),
+                    Err(RecoveryError::Replay)
+                );
+                assert_eq!(sp_io::storage::root(sp_runtime::StateVersion::V0), anchored);
+            }
+            for corrupt in [vec![], vec![0; 32], vec![0x42; 31], vec![0x42; 33]] {
+                sp_io::storage::set(RECOVERY_ANCHOR_STORAGE_KEY, &corrupt);
+                assert_eq!(recovery_anchor(), Err(RecoveryError::Replay));
+            }
+        });
     }
 
     #[test]
@@ -548,9 +612,12 @@ mod tests {
             let mut revised = original.clone();
             revised.chunk_hashes = vec![[9; 32]];
             let state = initialize(&original).unwrap();
+            record_recovery_anchor([0x42; 32]).unwrap();
             record_hold(state).unwrap();
             let state = status().unwrap().unwrap();
             let auth = RepairAuthorization {
+                recovery_anchor: [0x42; 32],
+                authorization_domain: original.authorization_domain.clone(),
                 policy: original.commitment(),
                 phase: state.phase,
                 cursor: state.next_chunk,
@@ -571,6 +638,19 @@ mod tests {
                 install_work_policy(&original, &invalid, &auth, &signatures),
                 Err(RecoveryError::WrongPolicy)
             );
+            let mut foreign = revised.clone();
+            foreign.authorization_domain.release_nonce = [99; 32];
+            let mut foreign_auth = auth.clone();
+            foreign_auth.revised_policy = foreign.commitment();
+            let foreign_signatures = vec![(
+                AccountId32::from(signer.public().0),
+                MultiSignature::from(signer.sign(&foreign_auth.signing_message())),
+            )];
+            assert_eq!(
+                install_work_policy(&original, &foreign, &foreign_auth, &foreign_signatures),
+                Err(RecoveryError::WrongPolicy)
+            );
+            assert_eq!(status().unwrap().unwrap(), state);
             install_work_policy(&original, &revised, &auth, &signatures).unwrap();
             let new_state = checked_status(&revised).unwrap();
             assert_eq!(new_state.policy, original.commitment());
@@ -610,7 +690,8 @@ mod prefix_tests {
         };
         let prefix = RecoveryPrefixAuditChunk { index: 1, prefixes };
         let policy = RecoveryPolicy {
-            format_version: 1,
+            format_version: 2,
+            authorization_domain: crate::recovery::RecoveryDomain::public_fixture(),
             checkpoint_hash: CHECKPOINT_HASH,
             checkpoint_state_root: CHECKPOINT_STATE_ROOT,
             replacements: vec![],

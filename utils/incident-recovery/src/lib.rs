@@ -34,6 +34,8 @@ pub mod composer;
 pub mod democracy;
 pub mod economics;
 pub mod elections;
+#[cfg(feature = "bridge-fixture")]
+pub mod funded_staking_fixture;
 pub mod governance;
 #[cfg(feature = "runtime-work-types")]
 pub mod hashi_association;
@@ -209,8 +211,93 @@ pub fn parse_mapping_csv(text: &str) -> Result<Vec<AccountReplacement>> {
 pub struct OwnershipProof {
     pub old: String,
     pub new: String,
-    /// SCALE MultiSignature, including its signature-scheme discriminant.
+    /// SCALE MultiSignature, including its signature-scheme discriminant, over
+    /// `replacement_ownership_message`; with `intake`, the new wallet's
+    /// signature of that polkaswap.io migration request instead.
     pub signature: String,
+    #[serde(default)]
+    pub intake: Option<IntakeRequest>,
+}
+
+/// The request fields of a polkaswap.io migration submission that are not
+/// already bound by the CSV pair. Only v1 requests carry a new-key signature.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct IntakeRequest {
+    pub version: u8,
+    pub nonce: String,
+    pub created_at: String,
+}
+
+/// The exact text `migrationMessage` in polkaswap-exchange-web asks wallets to
+/// sign. Like `replacement_ownership_message` it binds the genesis, checkpoint
+/// and old/new pair; the fixed field shapes keep the lines unambiguous.
+fn intake_message(entry: &AccountReplacement, request: &IntakeRequest) -> Result<Vec<u8>> {
+    if request.version != 1 {
+        return Err("only v1 migration requests carry a new-key signature".into());
+    }
+    let nonce = request.nonce.as_bytes();
+    let uuid_v4 = nonce.len() == 36
+        && nonce.iter().enumerate().all(|(i, c)| match i {
+            8 | 13 | 18 | 23 => *c == b'-',
+            14 => *c == b'4',
+            19 => matches!(c, b'8' | b'9' | b'a' | b'b'),
+            _ => matches!(c, b'0'..=b'9' | b'a'..=b'f'),
+        });
+    let created = request.created_at.as_bytes();
+    let iso_millis = created.len() == 24
+        && created.iter().enumerate().all(|(i, c)| match i {
+            4 | 7 => *c == b'-',
+            10 => *c == b'T',
+            13 | 16 => *c == b':',
+            19 => *c == b'.',
+            23 => *c == b'Z',
+            _ => c.is_ascii_digit(),
+        });
+    if !uuid_v4 || !iso_millis {
+        return Err("malformed migration request nonce or timestamp".into());
+    }
+    let address = |account: &AccountId32| account.to_ss58check_with_version(69u16.into());
+    Ok([
+        "Polkaswap migration request v1".to_string(),
+        "Domain: polkaswap.io".into(),
+        "Network: SORA Nexus mainnet".into(),
+        format!("Genesis: 0x{}", hex::encode(recovery::GENESIS_HASH)),
+        format!("Checkpoint block: {}", recovery::CHECKPOINT_NUMBER),
+        format!(
+            "Checkpoint hash: 0x{}",
+            hex::encode(recovery::CHECKPOINT_HASH)
+        ),
+        format!("Old account: {}", address(&entry.old)),
+        format!("New account: {}", address(&entry.new)),
+        format!("Request nonce: {}", request.nonce),
+        format!("Created at: {}", request.created_at),
+        "I request review of the account replacement above.".into(),
+        "This off-chain message does not authorize a transaction or transfer funds.".into(),
+    ]
+    .join("\n")
+    .into_bytes())
+}
+
+/// Wallets sign the request as `<Bytes>`-wrapped or raw bytes, with or without
+/// a scheme discriminant, matching the page's own `signatureVerify` check.
+fn intake_signature_valid(message: &[u8], bytes: &[u8], signer: &AccountId32) -> bool {
+    use sp_runtime::traits::Verify;
+    let wrapped = [b"<Bytes>".as_slice(), message, b"</Bytes>"].concat();
+    let mut candidates = Vec::new();
+    if let Ok(signature) = MultiSignature::decode_all(&mut &bytes[..]) {
+        candidates.push(signature);
+    }
+    if let Ok(raw) = <[u8; 64]>::try_from(bytes) {
+        candidates.push(sp_core::sr25519::Signature::from_raw(raw).into());
+        candidates.push(sp_core::ed25519::Signature::from_raw(raw).into());
+    }
+    if let Ok(raw) = <[u8; 65]>::try_from(bytes) {
+        candidates.push(sp_core::ecdsa::Signature::from_raw(raw).into());
+    }
+    candidates.iter().any(|signature| {
+        signature.verify(wrapped.as_slice(), signer) || signature.verify(message, signer)
+    })
 }
 
 pub fn verify_ownership_proofs(
@@ -238,9 +325,17 @@ pub fn verify_ownership_proofs(
         if bytes.len() > 66 {
             return Err("oversized ownership signature".into());
         }
-        let mut input = bytes.as_slice();
-        let signature = MultiSignature::decode(&mut input).map_err(|e| e.to_string())?;
-        if !input.is_empty() || !recovery::verify_replacement_ownership(entry, &signature) {
+        let valid = match &proof.intake {
+            None => {
+                let mut input = bytes.as_slice();
+                let signature = MultiSignature::decode(&mut input).map_err(|e| e.to_string())?;
+                input.is_empty() && recovery::verify_replacement_ownership(entry, &signature)
+            }
+            Some(request) => {
+                intake_signature_valid(&intake_message(entry, request)?, &bytes, &entry.new)
+            }
+        };
+        if !valid {
             return Err("invalid replacement ownership proof".into());
         }
     }
@@ -634,8 +729,58 @@ mod tests {
                     .encode()
                 )
             ),
+            intake: None,
         };
         assert!(verify_ownership_proofs(&map, &[proof]).is_ok());
         assert!(verify_ownership_proofs(&map, &[]).is_err());
+    }
+
+    #[test]
+    fn polkaswap_migration_request_signature_proves_the_new_key() {
+        // Produced by polkaswap-exchange-web's own polkadot-js signing path for
+        // ed25519 seed [7; 32]: `<Bytes>`-wrapped request, scheme-prefixed.
+        let page = "0x00639b5894fd12978e77d1ff19793046d45680380592bf4dc6f541f6ad9e6e42f12c7d4b11f14bd6a941254f4a9bd428ea209e2d2f2a61225e3625fdb676edf70e";
+        let key = sp_core::ed25519::Pair::from_seed(&[7; 32]);
+        let map = vec![AccountReplacement {
+            old: AccountId32::from([1; 32]),
+            new: AccountId32::from(key.public().0),
+        }];
+        assert_eq!(
+            map[0].new.to_ss58check_with_version(69u16.into()),
+            "cnWnUnj4w6PzqBXDBMZzbPGFW6Gh6693ZEVf49cbMyiDWYRQQ"
+        );
+        let nonce = "123e4567-e89b-42d3-a456-426614174000";
+        let request = |version: u8, nonce: &str| IntakeRequest {
+            version,
+            nonce: nonce.into(),
+            created_at: "2026-10-27T01:02:03.004Z".into(),
+        };
+        let proof = |signature: String, intake: IntakeRequest| OwnershipProof {
+            old: map[0].old.to_ss58check(),
+            new: map[0].new.to_ss58check(),
+            signature,
+            intake: Some(intake),
+        };
+        verify_ownership_proofs(&map, &[proof(page.into(), request(1, nonce))]).unwrap();
+        // The signature vouches for exactly one request.
+        let other = "123e4567-e89b-42d3-a456-426614174001";
+        assert!(verify_ownership_proofs(&map, &[proof(page.into(), request(1, other))]).is_err());
+        // v2 requests carry no new-key proof.
+        assert!(verify_ownership_proofs(&map, &[proof(page.into(), request(2, nonce))]).is_err());
+        // Request fields cannot inject extra message lines.
+        let injected = "123e4567-e89b-42d3-a456-42661417400\n";
+        assert!(
+            verify_ownership_proofs(&map, &[proof(page.into(), request(1, injected))]).is_err()
+        );
+
+        let message = intake_message(&map[0], &request(1, nonce)).unwrap();
+        let raw = key.sign(&message);
+        let raw = format!("0x{}", hex::encode(AsRef::<[u8]>::as_ref(&raw)));
+        verify_ownership_proofs(&map, &[proof(raw, request(1, nonce))]).unwrap();
+        // Only the replacement key can vouch for the replacement.
+        let other_key = sp_core::ed25519::Pair::from_seed(&[8; 32]);
+        let forged = other_key.sign(&message);
+        let forged = format!("0x{}", hex::encode(AsRef::<[u8]>::as_ref(&forged)));
+        assert!(verify_ownership_proofs(&map, &[proof(forged, request(1, nonce))]).is_err());
     }
 }

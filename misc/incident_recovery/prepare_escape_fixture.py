@@ -49,9 +49,10 @@ def audit():
 
 
 def policy(keys, failing):
-    result = (scale.u32(1) + scale.raw(scale.CHECKPOINT_HASH) + scale.raw(release.CHECKPOINT_ROOT) + scale.compact(0)
+    result = (scale.u32(2) + scale.raw(scale.CHECKPOINT_HASH) + scale.raw(release.CHECKPOINT_ROOT) + scale.compact(0)
               + scale.compact(len(keys)) + b"".join(keys) + scale.compact(1) + hash_bytes(chunk(failing))
               + scale.compact(1) + hash_bytes(audit())
+              + release.authorization_domain_scale({"chainSpecId": "sora-nexus-PUBLIC-FIXTURE-ONLY", "releaseNonce": "0x" + (bytes([0x46]) * 32).hex()})
               + hash_bytes(b"SORA Nexus PUBLIC FIXTURE ONLY; observed governance unchanged; " + (b"failing" if failing else b"repaired"))
               + hash_bytes(b"SORA Nexus escape-only fixture; no terminal audit or final activation"))
     release.policy_identity(result)

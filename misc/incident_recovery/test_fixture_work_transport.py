@@ -53,6 +53,21 @@ class TransportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must be new"):
             transport.pack(self.root / "source.json", self.root / "bundle")
 
+    def test_terminal_pages_roundtrip_and_omission_are_bound(self):
+        document = report()
+        document['terminalPreludeEnvelopes'] = ['0x0b0000', '0x0b0100']
+        path, index, _ = self.bundle(document)
+        loaded = transport.load(path, index)
+        self.assertEqual(list(loaded['work']['terminalPreludeEnvelopes']), document['terminalPreludeEnvelopes'])
+        wrong = copy.deepcopy(index)
+        wrong['terminalPreludeEnvelopes'].pop()
+        with self.assertRaisesRegex(ValueError, 'Missing indexed'):
+            transport.load(path, wrong)
+        wrong = copy.deepcopy(index)
+        wrong['terminalPreludeEnvelopes'].reverse()
+        with self.assertRaisesRegex(ValueError, 'differs from native report'):
+            transport.load(path, wrong)
+
     def test_shard_tamper_is_rejected_even_after_initial_load(self):
         path, index, _ = self.bundle()
         loaded = transport.load(path, index)
