@@ -123,14 +123,16 @@ fn record_matches(raw: &[u8], record: &Value) -> bool {
         && record["blake2_256"] == hex::encode(sp_io::hashing::blake2_256(raw))
 }
 
-fn companion_policy(receipt: &Value, active_raw: &[u8], active: &RecoveryPolicy) -> Result<()> {
+fn companion_policy(receipt: &Value, original_raw: &[u8], original: &RecoveryPolicy) -> Result<()> {
+    // Final-runtime admission binds its compiled POLICY_SCALE to the immutable
+    // original lineage. Revised work is checked separately by `admission`.
     need(
         receipt["artifactRole"] == "tryRuntimeCompanion"
             && receipt["tryRuntimeCompanion"] == true
-            && record_matches(active_raw, &receipt["companionFixturePolicy"]["policy"])
+            && record_matches(original_raw, &receipt["companionFixturePolicy"]["policy"])
             && receipt["companionFixturePolicy"]["policyCommitment"]
-                == hex::encode(active.commitment()),
-        "try-runtime companion active fixture policy differs",
+                == hex::encode(original.commitment()),
+        "try-runtime companion original fixture policy differs",
     )
 }
 
@@ -430,7 +432,7 @@ pub fn run(manifest_path: &Path) -> Result<Value> {
     let original = policy(&original_raw)?;
     let active_raw = artifact(base, &manifest.active_policy, 2 * 1024 * 1024)?;
     let active = policy(&active_raw)?;
-    companion_policy(&companion_build, &active_raw, &active)?;
+    companion_policy(&companion_build, &original_raw, &original)?;
     let report = json_bytes(&artifact(base, &manifest.production_replay, MAX_JSON)?)?;
     let observation = &report["activationValidation"];
     need(
@@ -633,18 +635,18 @@ mod tests {
         }
     }
     #[test]
-    fn repaired_companion_binds_active_policy_separately_from_original_lineage() {
+    fn repaired_companion_keeps_original_lineage_separate_from_active_work() {
         let original = fixture();
         let mut active = original.clone();
         active.evidence_commitment = [8; 32];
-        let raw = active.encode();
+        let raw = original.encode();
         let receipt = json!({"artifactRole":"tryRuntimeCompanion","tryRuntimeCompanion":true,
-            "companionFixturePolicy":{"policyCommitment":hex::encode(active.commitment()),
+            "companionFixturePolicy":{"policyCommitment":hex::encode(original.commitment()),
                 "policy":{"sha256":sha(&raw),"bytes":raw.len(),
                     "blake2_256":hex::encode(sp_io::hashing::blake2_256(&raw))}}});
-        companion_policy(&receipt, &raw, &active).unwrap();
-        assert!(companion_policy(&receipt, &original.encode(), &original).is_err());
-        assert!(companion_policy(&receipt, &raw, &original).is_err());
+        companion_policy(&receipt, &raw, &original).unwrap();
+        assert!(companion_policy(&receipt, &active.encode(), &active).is_err());
+        assert!(companion_policy(&receipt, &raw, &active).is_err());
     }
     #[test]
     fn execute_arguments_bind_canonical_block_and_all_checks() {

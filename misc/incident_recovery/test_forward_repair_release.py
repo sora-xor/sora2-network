@@ -54,7 +54,7 @@ class ForwardRepairTests(unittest.TestCase):
         self.assertEqual(len(chunks), 1)
         self.put('repairStageCode', b'snxrec01\x01\x03\x02' + scale.u32(0) + scale.vec(chunks[0]))
 
-    def prepare(self):
+    def prepare(self, maintenance_gap=14_400):
         original_raw = self.paths['policyScale'].read_bytes()
         active_raw = original_raw[:167] + bytes([44]) * 32 + original_raw[199:]
         self.put('incomingActivePolicyScale', active_raw)
@@ -109,8 +109,21 @@ class ForwardRepairTests(unittest.TestCase):
                 'expectedTerminal': {'specVersion': 138, 'phase': 'Complete', 'cursor': active['workChunks'], 'auditCursor': active['auditChunks'],
                     'operationCounter': 2, 'activePolicyCommitment': '0x' + active['commitment'], 'stateRoot': hx(100), 'ordinaryBlocks': 3,
                     'terminalAuditBlake2': '0x' + identity.blake(bytes.fromhex(active['commitment']) + active_raw[-32:] + scale.u32(active['workChunks']))}}}
+        self.schedule_repair(maintenance_gap)
         self.save_repair()
         return self.bind_repair()
+
+    def schedule_repair(self, maintenance_gap=14_400):
+        # Keep the signed first-child anchor unchanged. Like the real fixture,
+        # exercise the long pause in a later maintenance child.
+        for index, step in enumerate(self.repair_manifest['steps']):
+            step['slot'] = 101 + index + (maintenance_gap - 1 if index else 0)
+            step['timestamp'] = step['slot'] * 6000
+        normal = self.repair_manifest['steps'][-3:]
+        boundary = (normal[0]['slot'] // 600 + 1) * 600
+        for offset, step in enumerate(normal[1:]):
+            step['slot'] = boundary + offset
+            step['timestamp'] = step['slot'] * 6000
 
     def save_repair(self):
         self.put('recoveryParentReplay', self.repair_manifest, 'repair-replay.json')
@@ -294,6 +307,14 @@ class ForwardRepairTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'activation policy or exact runtime differs'):
             repair.validate(result, context, 'repair', output, pins)
 
+    def test_repaired_138_rejects_short_maintenance_with_complete_boundary_observations(self):
+        result, context, output, pins = self.witness(self.prepare(maintenance_gap=14_399))
+        maintenance = result['recoveryReplay']['activationValidation']['maintenance']
+        self.assertEqual(maintenance['maximumSlotGap'], 14_399)
+        self.assertFalse(maintenance['coverage']['complete'])
+        with self.assertRaisesRegex(ValueError, 'repaired final runtime activation gate failed'):
+            repair.validate(result, context, 'repair', output, pins)
+
     def test_repaired_138_requires_session_era_and_followup_execution(self):
         result, context, output, pins = self.witness()
         for transition_in_last_block in (False, True):
@@ -308,7 +329,7 @@ class ForwardRepairTests(unittest.TestCase):
                 'postFirstSessionBlocks': 0, 'postFirstActiveEraBlocks': 0}
             if transition_in_last_block:
                 last = witness['rows'][-1]
-                last.update(epoch=3, session=101, activeEra=7, activeEraStart=last['timestamp'])
+                last.update(epoch=initial['epoch'] + 1, session=101, activeEra=7, activeEraStart=last['timestamp'])
                 last['asyncState'].update(queuedSession=None, queuedEra=None)
                 last['lastValidatorEra']['queued'] = []
                 witness['transitions'].update(
@@ -386,8 +407,7 @@ class ForwardRepairTests(unittest.TestCase):
     def test_native_handover_is_null_after_first_repaired_child(self):
         self.prepare()
         self.repair_manifest['steps'].insert(5, self.step(106, 'tick', 136, 'Applying'))
-        for index, step in enumerate(self.repair_manifest['steps']):
-            step['slot'] = 101 + index; step['timestamp'] = step['slot'] * 6000
+        self.schedule_repair()
         self.repair_manifest['suppliedCouncil']['expectedTerminal']['stateRoot'] = hx(101)
         self.save_repair()
         result, context, output, pins = self.witness(self.bind_repair())

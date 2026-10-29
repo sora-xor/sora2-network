@@ -8,6 +8,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 const MAX_VALIDATORS: usize = 1200;
 const MAX_RECENCY: usize = 100_000;
+// The preserved production clock has 6-second slots and 600-slot epochs.
+// Coverage is diagnostic here; the release gate requires both minima.
+const MIN_MAINTENANCE_SLOT_GAP: u64 = 14_400;
+const MIN_MAINTENANCE_EPOCH_ADVANCE: u64 = 24;
 pub(super) const MAX_ROWS: usize = 10_000;
 pub(super) const MAX_REPORT_BYTES: usize = 128 * 1024 * 1024;
 type Account = [u8; 32];
@@ -137,12 +141,22 @@ impl Maintenance {
             .first
             .as_ref()
             .ok_or("activation maintenance observation absent")?;
+        let epoch_advance = self
+            .previous
+            .epoch
+            .checked_sub(self.checkpoint.epoch)
+            .ok_or("activation maintenance epoch regressed")?;
         Ok(
             json!({"checkpointSlot":self.checkpoint.slot,"checkpointEpoch":self.checkpoint.epoch,
             "checkpointSession":self.checkpoint.session,"checkpointActiveEra":self.checkpoint.active,
             "checkpointCurrentEra":self.checkpoint.current,"firstRecoverySlot":first.slot,
             "firstRecoveryEpoch":first.epoch,"lastSlot":self.previous.slot,"lastEpoch":self.previous.epoch,
-            "blocks":self.blocks,"maximumSlotGap":self.maximum_gap}),
+            "blocks":self.blocks,"maximumSlotGap":self.maximum_gap,
+            "coverage":{"minimumSlotGap":MIN_MAINTENANCE_SLOT_GAP,
+                "minimumEpochAdvance":MIN_MAINTENANCE_EPOCH_ADVANCE,
+                "observedEpochAdvance":epoch_advance,
+                "complete":self.maximum_gap>=MIN_MAINTENANCE_SLOT_GAP
+                    && epoch_advance>=MIN_MAINTENANCE_EPOCH_ADVANCE}}),
         )
     }
 }
@@ -513,6 +527,8 @@ mod tests {
         assert_eq!(report["maximumSlotGap"], 6000);
         assert_eq!(report["firstRecoveryEpoch"], 20);
         assert_eq!(report["checkpointSession"], 10);
+        assert_eq!(report["coverage"]["observedEpochAdvance"], 10);
+        assert_eq!(report["coverage"]["complete"], false);
         track.parent(H256::repeat_byte(1), &after).unwrap();
         assert!(track.parent(H256::repeat_byte(2), &after).is_err());
         after.slot += 1;
@@ -521,5 +537,75 @@ mod tests {
         witness.number += 1;
         witness.state_root = format!("{:#x}", replay::root(&mut ext));
         assert!(track.accepted(&mut ext, &witness, after.slot).is_err());
+    }
+
+    fn maintenance_step(
+        track: &mut Maintenance,
+        ext: &mut sp_io::TestExternalities,
+        state: &Core,
+        offset: u32,
+    ) -> Result<()> {
+        fixture(ext, state);
+        let witness = BlockWitness {
+            number: common::recovery::CHECKPOINT_NUMBER + offset,
+            hash: format!("{:#x}", H256::repeat_byte(offset as u8)),
+            state_root: format!("{:#x}", replay::root(ext)),
+            executing_code_blake2: "01".repeat(32),
+            resulting_spec: 134,
+            phase: "Applying".into(),
+            cursor: 0,
+            operation_counter: 0,
+            block_sha256: "02".repeat(32),
+            disk_snapshot_manifest_sha256: "03".repeat(32),
+            forbidden_extrinsics_rejected: 0,
+            maintenance_session_frozen: true,
+            independent_import_root_matches: true,
+            disk_restart_root_matches: true,
+            generated_authorization_sha256: None,
+        };
+        track.accepted(ext, &witness, state.slot)
+    }
+
+    #[test]
+    fn maintenance_coverage_requires_both_observed_slot_gap_and_epoch_advance() {
+        for (gap, epochs, complete) in [
+            (14_399, 24, false),
+            (14_400, 23, false),
+            (14_400, 24, true),
+            (14_401, 25, true),
+        ] {
+            let mut ext = sp_io::TestExternalities::default();
+            let mut state = core();
+            fixture(&mut ext, &state);
+            let mut track = Maintenance::checkpoint(&mut ext).unwrap();
+            state.slot += gap;
+            state.epoch += epochs;
+            maintenance_step(&mut track, &mut ext, &state, 1).unwrap();
+            let report = track.report().unwrap();
+            assert_eq!(report["maximumSlotGap"], gap);
+            assert_eq!(report["coverage"]["minimumSlotGap"], 14_400);
+            assert_eq!(report["coverage"]["minimumEpochAdvance"], 24);
+            assert_eq!(report["coverage"]["observedEpochAdvance"], epochs);
+            assert_eq!(report["coverage"]["complete"], complete);
+        }
+    }
+
+    #[test]
+    fn maintenance_coverage_accepts_a_later_child_gap_and_rejects_epoch_regression() {
+        let mut ext = sp_io::TestExternalities::default();
+        let mut state = core();
+        fixture(&mut ext, &state);
+        let mut track = Maintenance::checkpoint(&mut ext).unwrap();
+        state.slot += 1;
+        maintenance_step(&mut track, &mut ext, &state, 1).unwrap();
+        state.slot += 14_400;
+        state.epoch -= 1;
+        assert!(maintenance_step(&mut track, &mut ext, &state, 2).is_err());
+        state.epoch = core().epoch + 24;
+        maintenance_step(&mut track, &mut ext, &state, 2).unwrap();
+        let report = track.report().unwrap();
+        assert_eq!(report["firstRecoveryEpoch"], core().epoch);
+        assert_eq!(report["coverage"]["observedEpochAdvance"], 24);
+        assert_eq!(report["coverage"]["complete"], true);
     }
 }

@@ -5,6 +5,9 @@ owned process. An imported witness or success flag is never a release input.
 """
 GATE = 'finalRuntimeActivationPostState'
 SCHEMA = 'sora-nexus-exact-post-maintenance-activation-v2'
+# Preserved production protocol: six-second slots, 600 slots per epoch.
+MIN_MAINTENANCE_SLOT_GAP = 14_400
+MIN_MAINTENANCE_EPOCH_ADVANCE = 24
 
 
 def validate(result, context, scenario='activation'):
@@ -68,8 +71,8 @@ def validate(result, context, scenario='activation'):
                 'activation continuation did not execute/import/restore exact runtime')
     boundaries = validate_boundaries(witness, rows, details, first)
     return {'status': 'verified' if boundaries else 'unverified',
-            'reason': ('Exact production Wasm migrated the completed maintenance state, crossed the first session and active-era transitions, and executed a subsequent block with checked async staking state, independent import and disk restoration'
-                       if boundaries else 'Activation must cross the first session and active-era transitions and execute a subsequent ordinary block after each'),
+            'reason': ('Exact production Wasm covered a maintenance gap of at least 24 hours and 24 actual epoch advances, migrated the completed state, crossed the first session and active-era transitions, and executed a subsequent block with checked async staking state, independent import and disk restoration'
+                       if boundaries else 'Activation requires a maintenance gap of at least 14,400 slots and 24 actual epoch advances, both session and active-era transitions, and a subsequent ordinary block after each'),
             'evidence': witness, 'productionReady': False}
 
 
@@ -105,6 +108,20 @@ def validate_boundaries(witness, blocks, details, first):
             and maintenance['checkpointEpoch'] <= maintenance['firstRecoveryEpoch'] <= maintenance['lastEpoch']
             and maintenance['checkpointActiveEra'] <= maintenance['checkpointCurrentEra'] <= maintenance['checkpointActiveEra'] + 1,
             'activation maintenance slots, epochs or frozen eras differ')
+    epoch_advance = maintenance['lastEpoch'] - maintenance['checkpointEpoch']
+    complete = (maintenance['maximumSlotGap'] >= MIN_MAINTENANCE_SLOT_GAP
+                and epoch_advance >= MIN_MAINTENANCE_EPOCH_ADVANCE)
+    coverage = maintenance.get('coverage')
+    # Older observers and short diagnostic runs remain inspectable, but cannot
+    # satisfy the release gate. Recompute rather than trust a completion flag.
+    if coverage is not None:
+        expected = {'minimumSlotGap': MIN_MAINTENANCE_SLOT_GAP,
+                    'minimumEpochAdvance': MIN_MAINTENANCE_EPOCH_ADVANCE,
+                    'observedEpochAdvance': epoch_advance, 'complete': complete}
+        require(isinstance(coverage, dict) and set(coverage) == set(expected)
+                and all(type(coverage[key]) is type(value) and coverage[key] == value
+                        for key, value in expected.items()),
+                'activation maintenance coverage differs from observed slots/epochs')
     observed = witness.get('rows')
     require(isinstance(observed, list) and len(observed) == len(blocks) - first,
             'activation state observation count differs')
@@ -195,5 +212,5 @@ def validate_boundaries(witness, blocks, details, first):
                 transitions['post' + transition[0].upper() + transition[1:] + 'Blocks'] += 1
         prior = row
     require(witness.get('transitions') == transitions, 'activation transition summary differs from observed state')
-    return all(transitions[name] is not None for name in ('firstSession', 'firstActiveEra')) and all(
+    return coverage is not None and complete and all(transitions[name] is not None for name in ('firstSession', 'firstActiveEra')) and all(
         transitions[name] >= 1 for name in ('postFirstSessionBlocks', 'postFirstActiveEraBlocks'))

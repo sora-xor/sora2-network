@@ -549,6 +549,12 @@ the Python checker does not turn a supplied JSON success flag into that evidence
 
 ### Supporting try-runtime state audit (implemented, execution pending)
 
+The normal and corrected-138 activation gates require a maintenance-child gap
+of at least 14,400 six-second slots and at least 24 actual BABE epoch advances
+before activation. The gap may occur in any maintenance child. Short diagnostic
+and older observer reports remain inspectable but cannot satisfy the activation
+gate; completeness is independently recomputed from observed slots and epochs.
+
 The exact production-Wasm activation replay remains the primary execution
 evidence. A separate supporting audit should build a runtime-138 companion from
 the same final source export, generated policy, resolved Cargo lockfile,
@@ -578,8 +584,9 @@ named runtime-138 companion. The utility, built with `bridge-fixture`, exposes
 `rehearse-try-runtime-companion --manifest FILE`. Its
 `sora-nexus-fixture-try-runtime-audit-v1` manifest binds both Wasm artifacts and
 their build receipts, original and active policy bytes, production replay,
-snapshot directory and exact ordinary blocks. A repaired companion binds its
-active policy while admission preserves the original lineage.
+snapshot directory and exact ordinary blocks. A repaired companion retains the
+compiled original lineage policy; admission separately checks the active work
+policy and its completed audits.
 
 This implemented route has not yet passed an exact-artifact execution. Paired
 receipts bind retained build inputs; the outer controller must authenticate the
