@@ -391,17 +391,45 @@ impl ElectionProvider for LocalElection {
     type DataProvider = Staking;
     fn elect(page: PageIndex) -> Result<BoundedSupportsOf<Self>, Self::Error> {
         frame_support::storage::with_transaction_unchecked(|| {
-            let result = <ElectionProviderMultiPhase as ElectionProvider>::elect(page)
-                .map_err(LocalElectionError::Provider)
-                .and_then(|supports| {
-                    let minimum =
-                        pallet_staking::legacy::MinimumValidatorCount::<Runtime>::get().max(1);
-                    if supports.len() < minimum as usize {
-                        Err(LocalElectionError::TooFewValidators)
-                    } else {
-                        Ok(supports)
-                    }
-                });
+            let result = (|| {
+                // A slot gap can skip both pull-based election windows. Once
+                // the prediction reaches `now`, that pallet cannot open either
+                // window, so an absent snapshot otherwise makes every retry
+                // fail forever. Build only a wholly absent, due round using
+                // its native bounded, self-weighing snapshot producer. Existing
+                // snapshots, queued solutions and signed submissions are never
+                // replaced. This work registers its native Mandatory weight;
+                // activation rehearsal checks the combined block budget.
+                if page == 0
+                    && State::<Runtime>::get()
+                        .election_deadline
+                        .is_some_and(|deadline| System::block_number() >= deadline)
+                    && pallet_election_provider_multi_phase::CurrentPhase::<Runtime>::get()
+                        == pallet_election_provider_multi_phase::Phase::Off
+                    && !pallet_election_provider_multi_phase::Snapshot::<Runtime>::exists()
+                    && !pallet_election_provider_multi_phase::SnapshotMetadata::<Runtime>::exists()
+                    && !pallet_election_provider_multi_phase::DesiredTargets::<Runtime>::exists()
+                    && !pallet_election_provider_multi_phase::QueuedSolution::<Runtime>::exists()
+                    && pallet_election_provider_multi_phase::SignedSubmissionIndices::<Runtime>::get()
+                        .is_empty()
+                    && pallet_election_provider_multi_phase::SignedSubmissionNextIndex::<Runtime>::get()
+                        == 0
+                {
+                    ElectionProviderMultiPhase::create_snapshot()
+                        .map_err(LocalElectionError::Provider)?;
+                }
+                <ElectionProviderMultiPhase as ElectionProvider>::elect(page)
+                    .map_err(LocalElectionError::Provider)
+                    .and_then(|supports| {
+                        let minimum =
+                            pallet_staking::legacy::MinimumValidatorCount::<Runtime>::get().max(1);
+                        if supports.len() < minimum as usize {
+                            Err(LocalElectionError::TooFewValidators)
+                        } else {
+                            Ok(supports)
+                        }
+                    })
+            })();
             if result.is_ok() {
                 frame_support::storage::TransactionOutcome::Commit(result)
             } else {

@@ -175,15 +175,30 @@ fn forced_elections_keep_immediate_deadline_and_failure_keeps_active_authorities
             let authorities = Session::validators();
             start_session(1, 11);
             assert_eq!(State::<Runtime>::get().election_deadline, Some(11));
-            // Force before the snapshot window: old multi-phase fallback fails
-            // closed too. Neither an empty set nor activation is manufactured.
-            pallet_election_provider_multi_phase::Snapshot::<Runtime>::kill();
+            // A forced election may build a missing snapshot, but an invalid
+            // winner count must still roll back that work and retain authorities.
+            pallet_election_provider_multi_phase::SnapshotWrapper::<Runtime>::kill();
             pallet_election_provider_multi_phase::QueuedSolution::<Runtime>::kill();
+            pallet_staking::legacy::MinimumValidatorCount::<Runtime>::put(
+                authorities.len() as u32 + 1,
+            );
+            let round = pallet_election_provider_multi_phase::Round::<Runtime>::get();
             assert!(
                 <LocalSession as pallet_session::SessionManager<crate::AccountId>>::new_session(2)
                     .is_none()
             );
             assert_eq!(Session::validators(), authorities);
+            assert_eq!(
+                pallet_election_provider_multi_phase::Round::<Runtime>::get(),
+                round
+            );
+            assert!(!pallet_election_provider_multi_phase::Snapshot::<Runtime>::exists());
+            assert!(!pallet_election_provider_multi_phase::SnapshotMetadata::<
+                Runtime,
+            >::exists());
+            assert!(!pallet_election_provider_multi_phase::DesiredTargets::<
+                Runtime,
+            >::exists());
             assert!(State::<Runtime>::get().queued_era.is_none());
             assert_eq!(
                 pallet_staking::ActiveEra::<Runtime>::get().unwrap().index,
@@ -390,4 +405,101 @@ fn actual_session_queue_announces_before_activating_async_election() {
         );
         assert!(State::<Runtime>::get().queued_era.is_none());
     });
+}
+
+#[test]
+fn sparse_slots_missing_both_election_windows_still_queue_then_activate() {
+    framenode_chain_spec::ext().execute_with(|| {
+        let period = Session::average_session_length();
+        let initial = Session::validators();
+        State::<Runtime>::kill();
+        pallet_staking::ForceEra::<Runtime>::put(pallet_staking::Forcing::NotForcing);
+        // Reproduce the rehearsal: only fifteen blocks per 600-slot epoch.
+        // Both signed and unsigned windows lie entirely inside skipped slots.
+        for index in 1..=6 {
+            let block = index * 15 + 1;
+            System::set_block_number(block);
+            pallet_babe::GenesisSlot::<Runtime>::put(sp_consensus_babe::Slot::from(1));
+            pallet_babe::CurrentSlot::<Runtime>::put(sp_consensus_babe::Slot::from(u64::from(
+                index * period + 1,
+            )));
+            pallet_babe::EpochIndex::<Runtime>::put(u64::from(index));
+            pallet_babe::Initialized::<Runtime>::put(None::<sp_consensus_babe::digests::PreDigest>);
+            if index <= 5 {
+                assert!(!pallet_election_provider_multi_phase::Snapshot::<Runtime>::exists());
+                assert_eq!(
+                    pallet_election_provider_multi_phase::CurrentPhase::<Runtime>::get(),
+                    pallet_election_provider_multi_phase::Phase::Off,
+                );
+            }
+            Session::rotate_session();
+            <ElectionProviderMultiPhase as Hooks<BlockNumber>>::on_initialize(block);
+            assert_eq!(Session::current_index(), index);
+            if index < 6 {
+                assert_eq!(
+                    pallet_staking::ActiveEra::<Runtime>::get().unwrap().index,
+                    0
+                );
+                assert_eq!(Session::validators(), initial);
+            }
+            if index == 5 {
+                assert_eq!(State::<Runtime>::get().queued_era, Some((6, 1)));
+                assert!(State::<Runtime>::get().election_deadline.is_none());
+                assert!(System::events().iter().any(|event| matches!(
+                    &event.event,
+                    crate::RuntimeEvent::Staking(pallet_staking::Event::PagedElectionProceeded {
+                        page: 0,
+                        result: Ok(_),
+                    })
+                )));
+            }
+        }
+        assert_eq!(
+            pallet_staking::ActiveEra::<Runtime>::get().unwrap().index,
+            1
+        );
+        assert_eq!(
+            pallet_staking::BondedEras::<Runtime>::get().last(),
+            Some(&(1, 6))
+        );
+        assert!(State::<Runtime>::get().queued_era.is_none());
+    });
+}
+
+#[test]
+fn missing_window_snapshot_requires_due_off_phase_and_no_partial_round() {
+    for scenario in 0..3 {
+        framenode_chain_spec::ext().execute_with(|| {
+            System::set_block_number(20);
+            State::<Runtime>::put(BridgeState {
+                election_deadline: Some(if scenario == 0 { 21 } else { 20 }),
+                ..Default::default()
+            });
+            pallet_election_provider_multi_phase::SnapshotWrapper::<Runtime>::kill();
+            if scenario == 1 {
+                pallet_election_provider_multi_phase::CurrentPhase::<Runtime>::put(
+                    pallet_election_provider_multi_phase::Phase::Signed,
+                );
+            } else if scenario == 2 {
+                pallet_election_provider_multi_phase::DesiredTargets::<Runtime>::put(1);
+            }
+            let round = pallet_election_provider_multi_phase::Round::<Runtime>::get();
+            let phase = pallet_election_provider_multi_phase::CurrentPhase::<Runtime>::get();
+            let desired = pallet_election_provider_multi_phase::DesiredTargets::<Runtime>::get();
+            assert!(LocalElection::elect(0).is_err());
+            assert_eq!(
+                pallet_election_provider_multi_phase::Round::<Runtime>::get(),
+                round
+            );
+            assert_eq!(
+                pallet_election_provider_multi_phase::CurrentPhase::<Runtime>::get(),
+                phase
+            );
+            assert_eq!(
+                pallet_election_provider_multi_phase::DesiredTargets::<Runtime>::get(),
+                desired
+            );
+            assert!(!pallet_election_provider_multi_phase::Snapshot::<Runtime>::exists());
+        });
+    }
 }
