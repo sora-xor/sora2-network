@@ -6,6 +6,9 @@ build/provenance records must already belong to the outer verified release.
 """
 import argparse
 import hashlib
+import importlib.util
+import sys
+sys.dont_write_bytecode = True
 import json
 from pathlib import Path
 import re
@@ -59,6 +62,23 @@ def generated_bytes(source, name):
     require(len(matches) == 1, f'noncanonical generated {name}')
     return bytes(int(x) for x in matches[0].split(',') if x.strip())
 
+def reviewed_amendments(binding, build, source):
+    assets = HERE.parent
+    def load(name, path):
+        spec = importlib.util.spec_from_file_location(name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    amendments = load('original_recorder_binding_amendments', assets/'binding_amendments.py')
+    amendments.reviewed_manifest(assets)
+    lock_path = assets/'repaired/lock/verify_lock.py'
+    existing = sys.modules.get('verify_lock')
+    require(existing is None or Path(existing.__file__) == lock_path, 'ambiguous reviewed lock validator')
+    lock = load('original_recorder_lock_validator', lock_path)
+    sys.modules['verify_lock'] = lock
+    repaired = load('original_recorder_repaired_validator', assets/'repaired/prepare.py')
+    return amendments.derive(binding, build, source, assets, repaired.feature_profile, lock.check)
+
 def validate(source, build_path, build_sha, wasm_path, wasm_sha, policy_path, policy_sha):
     require(source.is_absolute() and source.resolve() == source and source.is_dir(), 'canonical source required')
     build_bytes = pin_read(build_path, build_sha)
@@ -94,7 +114,7 @@ def validate(source, build_path, build_sha, wasm_path, wasm_sha, policy_path, po
     require(build['fixtureOnly'] == provenance['fixtureOnly'], 'contradictory fixture marker')
     fixture = build['fixtureOnly']
     require(build.get('productionReady') is False and provenance.get('releaseReady') is False, 'unexpected release assertion')
-    return inventory, {
+    binding = {
         'schema':'sora-nexus-native-operation-engine-binding-v1',
         'engineSha256':wasm_sha, 'engineBlake2':hashlib.blake2b(code,digest_size=32).hexdigest(),
         'policySha256':policy_sha, 'policyCommitment':policy_commitment.hex(),
@@ -104,6 +124,8 @@ def validate(source, build_path, build_sha, wasm_path, wasm_sha, policy_path, po
         'fixtureOnly':fixture, 'productionReady':False,
         'nativeCompilerProvenanceVerified':False, 'nativeExecutionVerified':False,
     }
+    binding, _ = reviewed_amendments(binding, build, source)
+    return inventory, binding
 
 def prepare(args):
     template_bytes = {}
@@ -131,6 +153,8 @@ def prepare(args):
             f.write(read(original))
     with (args.destination/'RECORDER-ORIGINAL-Cargo.lock').open('xb') as output:
         output.write(read(args.source/'Cargo.lock'))
+    _, host_lock = reviewed_amendments(binding, json_bytes(read(args.build_receipt)), args.source)
+    (args.destination/'Cargo.lock').write_bytes(host_lock)
     package = args.destination/PACKAGE
     require(not package.exists(), 'recorder package collision')
     for relative, data in template_bytes.items():
@@ -163,7 +187,7 @@ def prepare(args):
     validate(args.source,args.build_receipt,args.build_receipt_sha256,args.wasm,args.wasm_sha256,args.policy,args.policy_sha256)
     require({str(path.relative_to(HERE)):read(path) for path in sorted((HERE/'template').rglob('*')) if path.is_file()}
             == template_bytes, 'recorder templates changed during preparation')
-    changes={name:sha((args.destination/name).read_bytes()) for name in ('Cargo.toml','runtime/src/lib.rs')}
+    changes={name:sha((args.destination/name).read_bytes()) for name in ('Cargo.toml','Cargo.lock','runtime/src/lib.rs')}
     recorder_inventory={str(path.relative_to(args.destination)):{'sha256':sha(path.read_bytes()),'bytes':path.stat().st_size}
                         for path in sorted(args.destination.rglob('*')) if path.is_file()}
     with (args.destination/'RECORDER-SOURCE-FILES.json').open('x') as output:

@@ -1,7 +1,14 @@
 {
   "files": {
+    "binding_amendments.py": {
+      "reviewedAmendment": "Shared idempotent metadata derivation for original/repaired native preparers; actual current profile, lock and template manifest only.",
+      "sha256": "95b1cd991ff9a7e2fde719eb05d948fc95d6e9a96dbf562a5001ea15028dd95c",
+      "upstream": "misc/incident_recovery/production_native.py reviewed source-derived binding promotion"
+    },
     "original/prepare.py": {
-      "sha256": "b690d7685d9ae80772baf60a10e2bd5a06349f0f4ba182fef41bde0ce3a0c4e9",
+      "beforeBuildBindingAmendmentSha256": "b690d7685d9ae80772baf60a10e2bd5a06349f0f4ba182fef41bde0ce3a0c4e9",
+      "buildBindingAmendment": "Derive actual runtime feature profile, reviewed additive host lock and current SDK-template manifest before native compilation; embed identical JSON and install host lock during preparation.",
+      "sha256": "68bc98a44e9a0b10cbb086623276c6ccdbea50b22c276af5080fe7c9d4499f88",
       "upstream": "artifacts/recovery-28191817/fixtures/native-operation-recorder-candidate-v1/prepare.py"
     },
     "original/template/recorder/Cargo.toml": {

@@ -157,17 +157,9 @@ def validate_inputs(args):
             'known public GRANDPA identity')
     require(all(build.pin_bytes(operators)[key] == provenance['bindingEvidence']['operators'][key]
                 for key in ('sha256', 'blake2_256')), 'compiled operator binding differs')
-    profile = repaired_validator.feature_profile(report, source)
-    host_lock = read(ASSETS / 'repaired/lock/amended.lock')
-    lock_report = lock.check(read(source / 'Cargo.lock'), host_lock)
-    binding['runtimeFeatureProfile'] = profile
-    binding['hostLockAmendment'] = lock_report
-    if version == 134:
-        binding['sdkCompilationRepair'] = {'schema': 'sora-nexus-promoted-reviewed-native-sdk-repair-v1',
-            'assetManifestSha256': digest(ASSETS / 'UPSTREAM.json')['sha256'], 'runtimeBusinessSourcesChanged': False}
-    else:
-        binding['jsonConstructionRepair'] = {'schema': 'sora-nexus-promoted-reviewed-native-json-repair-v1',
-            'assetManifestSha256': digest(ASSETS / 'UPSTREAM.json')['sha256'], 'runtimeBusinessSourcesChanged': False}
+    amendments = load_module('production_native_binding_amendments', ASSETS / 'binding_amendments.py')
+    binding, host_lock = amendments.derive(binding, report, source, ASSETS,
+        repaired_validator.feature_profile, lock.check)
     for path in (build.build_helpers.ENVIRONMENT_HELPER, ROOT / 'scripts/with_llvm_env.sh',
                  args.wasm_build, args.wasm, args.policy, args.original_policy,
                  args.wasm_build.parent / 'source-files.json', args.wasm_build.parent / 'source-provenance.json',
