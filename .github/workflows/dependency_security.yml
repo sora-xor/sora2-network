@@ -112,6 +112,8 @@ jobs:
         run: |
           rustup toolchain install 1.99.1 --profile minimal
           python -m venv "$RUNNER_TEMP/runtime-tooling"
+          # The interpreter's bundled pip carries published advisories.
+          "$RUNNER_TEMP/runtime-tooling/bin/python" -m pip install --upgrade pip==26.2.2
           "$RUNNER_TEMP/runtime-tooling/bin/python" misc/runtime_upgrade/install_dependencies.py
           "$RUNNER_TEMP/runtime-tooling/bin/python" -m pip check
           "$RUNNER_TEMP/runtime-tooling/bin/python" -m unittest discover -s misc/runtime_upgrade/tests -v
