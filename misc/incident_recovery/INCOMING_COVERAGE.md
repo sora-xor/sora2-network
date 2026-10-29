@@ -299,3 +299,44 @@ The maintenance report exposes `incomingReplayBinding` only when it contains
 these authenticated audit proofs; it is copied from the same completed private
 certificate. Package coverage requires that binding to equal its certificate
 binding exactly. Neither serialized copy can create or replace the certificate.
+
+
+## Ordered control messages and source-attribution admission
+
+Manifest catch-up runs authenticated Substrate and Parachain
+`FinalizeAssetRegistration` messages through their native application handlers.
+These handlers establish inbound asset metadata without sending an outbound
+batch. Request registration, signer changes and abandoned transfer status reports
+remain journaled under the persistent outbound halt. The coverage decision for
+finalization is `applyAssetRegistration`; `journalControl` cannot admit it.
+
+A finalization followed by a transfer in the same commitment is evaluated in its
+original order. Bounded rollback-only previews use the native finalization
+handlers to derive the transfer's asset/precision expectations. Every preview
+storage write, event and temporary inbound context is rolled back. These handlers
+have no offchain or host-side effects. Three preflight passes are charged, in
+addition to actual native execution. A preview never authenticates the proof or
+consumes a nonce; the original signed channel commitment still must pass native
+verification before any effect is retained.
+
+Native control application errors, such as adding an existing peer or finalizing
+an asset without that network's prerequisite, consume the authenticated control
+message and retain its native failed dispatch event. They do not block later
+valid messages in the same batch. Recovery receipts distinguish deferred,
+applied and failed controls. Successful peer changes require their exact deferred
+acknowledgement; failed peer changes must have no acknowledgement. Admission,
+proof, replay, accounting and financial-delivery failures still roll back the
+whole recovery operation. The control consumption format is now version 3;
+previous fixture receipts remain evidence of their original artifact only and
+must not be relabeled as current execution.
+
+The existing mandatory `incomingPendingCoverage` gate rejects Substrate transfers
+with `GenericAccount::Unknown` or `Root`, and Parachain transfers with no sender.
+Its errors explicitly require an independently authenticated source-attribution
+adapter; neither an empty attacker list nor a beneficiary address proves the
+source actor is safe. Those deliveries cannot be promoted to process/exclude
+work or used to consume a batch nonce under this release. Preserve their original
+payloads and unresolved inventory decisions. This release has no such attribution
+adapter, and does not infer an actor from absent fields or silently weaken attacker
+screening. Authentic source evidence and an explicit reviewed disposition are
+required before this gate can clear any affected batch.

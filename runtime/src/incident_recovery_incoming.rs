@@ -267,6 +267,7 @@ impl IncomingOperation {
             .saturating_add(source_proof)
             .saturating_add(Weight::from_parts(100_000_000, MAX_CHUNK_BYTES as u64))
             .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().reads_writes(64, 64))
+            .saturating_add(audit::registration_preview_weight(self).saturating_mul(3))
             .saturating_add(audit::consumption_weight())
             .saturating_add(balance_audit::consumption_weight())
             .saturating_add(issuance_journal::consumption_weight())
@@ -292,6 +293,15 @@ struct ExpectedTransfer {
 pub enum ControlDisposition {
     Deferred,
     VerifierPeer,
+    /// Finalization writes local inbound asset metadata and sends no outbound work.
+    NativeRegistration,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking)]
+enum ControlOutcome {
+    Deferred,
+    Applied,
+    Failed,
 }
 
 #[derive(Clone, Debug, Encode, Decode, DecodeWithMemTracking)]
@@ -302,6 +312,7 @@ struct ExpectedControl {
     origin_hash: [u8; 32],
     disposition: ControlDisposition,
     delivered: bool,
+    outcome: Option<ControlOutcome>,
 }
 
 #[derive(Clone, Encode, Decode, DecodeWithMemTracking)]
@@ -635,23 +646,25 @@ fn validate_registries(
 }
 
 /// Only known Substrate control variants have an explicit recovery disposition.
-/// Registration and local signer changes need a separately reviewed reopening or
-/// setup action. Journal them so they cannot issue outbound work or reinterpret
-/// abandoned status reports. Verifier rotations must run natively so subsequent
-/// commitments can authenticate; their native outbound ACK is deferred.
+/// Registration requests and local signer changes need a separately reviewed
+/// reopening or setup action. Journal them so they cannot issue outbound work or
+/// reinterpret abandoned status reports. Inbound registration finalization and
+/// verifier rotations run natively so later messages can mint/authenticate. Native
+/// peer acknowledgements remain deferred by the outbound halt.
 fn control_disposition(call: &BridgeCall) -> Option<ControlDisposition> {
     match call {
         BridgeCall::MultisigVerifier(_) => Some(ControlDisposition::VerifierPeer),
+        BridgeCall::SubstrateApp(SubstrateAppCall::FinalizeAssetRegistration { .. })
+        | BridgeCall::ParachainApp(ParachainAppCall::FinalizeAssetRegistration { .. }) => {
+            Some(ControlDisposition::NativeRegistration)
+        }
         BridgeCall::DataSigner(_)
         | BridgeCall::SubstrateApp(
-            SubstrateAppCall::RegisterAsset { .. }
-            | SubstrateAppCall::FinalizeAssetRegistration { .. }
-            | SubstrateAppCall::ReportTransferResult { .. },
+            SubstrateAppCall::RegisterAsset { .. } | SubstrateAppCall::ReportTransferResult { .. },
         )
-        | BridgeCall::ParachainApp(
-            ParachainAppCall::FinalizeAssetRegistration { .. }
-            | ParachainAppCall::ReportXCMTransferResult { .. },
-        ) => Some(ControlDisposition::Deferred),
+        | BridgeCall::ParachainApp(ParachainAppCall::ReportXCMTransferResult { .. }) => {
+            Some(ControlDisposition::Deferred)
+        }
         _ => None,
     }
 }
@@ -688,6 +701,7 @@ fn expected_control(
             ),
             disposition,
             delivered: false,
+            outcome: None,
         }),
     )
 }
@@ -1554,11 +1568,19 @@ fn dispatch_authenticated(
             }
             let outcome = match entry.disposition {
                 ControlDisposition::Deferred => MessageDispatchOutcome::Applied,
-                ControlDisposition::VerifierPeer => forward(payload),
+                ControlDisposition::VerifierPeer | ControlDisposition::NativeRegistration => {
+                    forward(payload)
+                }
             };
-            if outcome != MessageDispatchOutcome::Applied {
-                return Err(RecoveryError::WrongPreimage);
-            }
+            // Native Substrate delivery consumes authenticated control messages
+            // even when the local application rejects them (e.g. PeerExists).
+            // Preserve that outcome and continue the batch; only admission,
+            // authentication or financial-delivery failures freeze recovery.
+            entry.outcome = Some(match (&entry.disposition, outcome) {
+                (ControlDisposition::Deferred, _) => ControlOutcome::Deferred,
+                (_, MessageDispatchOutcome::Applied) => ControlOutcome::Applied,
+                (_, MessageDispatchOutcome::Failed) => ControlOutcome::Failed,
+            });
             entry.delivered = true;
             sp_io::storage::set(
                 &key,

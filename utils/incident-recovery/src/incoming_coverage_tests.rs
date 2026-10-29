@@ -1494,6 +1494,7 @@ fn control_coverage_requires_explicit_nonfinancial_dispositions_without_claiming
         Action::Quarantine,
         Action::RetainConsumed,
         Action::ApplyVerifierPeer,
+        Action::ApplyAssetRegistration,
     ] {
         let mut invalid = control_fixture();
         invalid.review.decisions[0].action = action;
@@ -1609,5 +1610,49 @@ fn unattributed_transfer_coverage_never_promotes_an_unknown_sender_to_attacker_c
         .unwrap_err();
         assert!(error.contains("source-attribution adapter"));
         assert!(out.is_empty());
+    }
+}
+
+#[test]
+fn registration_control_coverage_requires_native_finalization_disposition() {
+    for parachain in [false, true] {
+        let mut fixture = control_fixture();
+        edit_source_operation(&mut fixture, |operation| {
+            let IncomingChannel::Substrate {
+                commitment: GenericCommitment::Sub(batch),
+                ..
+            } = &mut operation.channel
+            else {
+                unreachable!()
+            };
+            let call = if parachain {
+                BridgeCall::ParachainApp(ParachainAppCall::FinalizeAssetRegistration {
+                    asset_id: common::DAI.into(),
+                    asset_kind: bridge_types::types::AssetKind::Sidechain,
+                })
+            } else {
+                BridgeCall::SubstrateApp(SubstrateAppCall::FinalizeAssetRegistration {
+                    asset_id: bridge_types::GenericAssetId::Sora(common::DAI.into()),
+                    sidechain_asset: bridge_types::GenericAssetId::Sora(common::DAI.into()),
+                    asset_kind: bridge_types::types::AssetKind::Sidechain,
+                    precision: 18,
+                })
+            };
+            batch.messages[0].payload = call.encode().try_into().unwrap();
+        });
+        assert!(
+            fixture.verify().is_err(),
+            "finalization must not be marked journal-only"
+        );
+        fixture.review.decisions[0].action = Action::ApplyAssetRegistration;
+        let report = fixture.verify().unwrap();
+        assert_eq!(report.work_control_messages, 2);
+        assert!(
+            !report.authentication_verified
+                && !report.exact_artifact_execution_verified
+                && !report.production_ready
+        );
+        fixture.review.decisions[0].action = Action::ApplyVerifierPeer;
+        assert!(fixture.verify().is_err());
     }
 }

@@ -945,11 +945,9 @@ fn recovery_channels_mixed_controls_are_journaled_without_refunds_or_registratio
                         message_id: result_id,
                         message_status: MessageStatus::Failed,
                     }),
-                    BridgeCall::SubstrateApp(SubstrateAppCall::FinalizeAssetRegistration {
+                    BridgeCall::SubstrateApp(SubstrateAppCall::RegisterAsset {
                         asset_id: GenericAssetId::Sora(common::DAI.into()),
                         sidechain_asset: GenericAssetId::Sora(common::DAI.into()),
-                        asset_kind: AssetKind::Thischain,
-                        precision: 1,
                     }),
                     transfer,
                     BridgeCall::DataSigner(DataSignerCall::AddPeer { peer }),
@@ -1040,6 +1038,7 @@ fn recovery_channels_mixed_controls_are_journaled_without_refunds_or_registratio
                     assert!(actual.delivered);
                     assert_eq!(actual.payload, expected_control.payload);
                     assert_eq!(actual.disposition, ControlDisposition::Deferred);
+                    assert_eq!(actual.outcome, Some(ControlOutcome::Deferred));
                 }
                 if tamper {
                     sp_io::storage::clear(&control_receipt_key(
@@ -1180,32 +1179,360 @@ fn recovery_channels_control_only_peer_rotation_preserves_next_batch_authenticat
     }
 }
 
+fn control_result(entry: &ExpectedControl) -> ExpectedControl {
+    let bytes = sp_io::storage::get(&control_receipt_key(entry.network, entry.id)).unwrap();
+    let (_, _, _, actual): ([u8; 32], [u8; 32], [u8; 32], ExpectedControl) =
+        decode_bounded(&bytes).unwrap();
+    actual
+}
+
 #[test]
-fn recovery_channels_failed_control_rolls_back_the_whole_mixed_batch() {
+fn recovery_channels_failed_peer_control_consumes_and_preserves_later_valid_messages() {
     use bridge_types::substrate::MultisigVerifierCall;
+    for forged_ack in [false, true] {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
+            let transfer = transfer_call(&operation);
+            set_substrate_messages(
+                &mut operation,
+                vec![
+                    BridgeCall::MultisigVerifier(MultisigVerifierCall::AddPeer {
+                        peer: ecdsa::Pair::from_seed(&[1; 32]).public(),
+                    }),
+                    transfer,
+                    BridgeCall::SubstrateApp(SubstrateAppCall::ReportTransferResult {
+                        message_id: H256::repeat_byte(99),
+                        message_status: MessageStatus::Failed,
+                    }),
+                ],
+            );
+            policy.chunk_hashes = vec![operation.commitment()];
+            let expected = prepare(&operation, &policy).unwrap();
+            let audit = make_audit(&policy, &operation, 0);
+            policy.audit_chunk_hashes = vec![audit.commitment()];
+            crate::incident_recovery::with_test_policy(&policy, || {
+                recovery::storage::initialize(&policy).unwrap();
+                let peers = multisig_verifier::PeerKeys::<Runtime>::get(operation.network());
+                assert_ok!(apply_operation(&policy, &operation));
+                assert_eq!(native_nonce(&operation), 1);
+                assert_eq!(multisig_verifier::PeerKeys::<Runtime>::get(operation.network()), peers);
+                assert_eq!(crate::Assets::free_balance(&common::DAI, &replacement()).unwrap(), AMOUNT);
+                assert_eq!(control_result(&expected.controls[0]).outcome, Some(ControlOutcome::Failed));
+                assert_eq!(control_result(&expected.controls[1]).outcome, Some(ControlOutcome::Deferred));
+                let ack_key = multisig_verifier::recovery_peer_ack_key(SubNetworkId::Liberland, expected.controls[0].id);
+                assert!(!sp_io::storage::exists(&ack_key));
+                assert!(!sp_io::storage::exists(FAILED_KEY));
+                // Native dispatch preserves the actual application error event.
+                assert!(System::events().iter().any(|record| matches!(&record.event,
+                    crate::RuntimeEvent::SubstrateDispatch(dispatch::Event::MessageDispatched(id, Err(_)))
+                        if id.hash() == expected.controls[0].id)));
+                if forged_ack {
+                    sp_io::storage::set(&ack_key, &bridge_types::substrate::DataSignerCall::AddPeer {
+                        peer: ecdsa::Pair::from_seed(&[1; 32]).public(),
+                    }.encode());
+                    assert!(audit_encoded_with_policy(&policy, &audit.encode()).is_err());
+                } else {
+                    assert_ok!(audit_encoded_with_policy(&policy, &audit.encode()));
+                    assert!(apply_operation(&policy, &operation).is_err());
+                    assert_eq!(native_nonce(&operation), 1);
+                }
+            });
+        });
+    }
+}
+
+fn finalization_call(kind: ChannelKind) -> BridgeCall {
+    match kind {
+        ChannelKind::Substrate => {
+            BridgeCall::SubstrateApp(SubstrateAppCall::FinalizeAssetRegistration {
+                asset_id: GenericAssetId::Sora(common::DAI.into()),
+                sidechain_asset: GenericAssetId::Sora(common::DAI.into()),
+                asset_kind: AssetKind::Sidechain,
+                precision: 18,
+            })
+        }
+        ChannelKind::Parachain => {
+            BridgeCall::ParachainApp(ParachainAppCall::FinalizeAssetRegistration {
+                asset_id: common::DAI.into(),
+                asset_kind: AssetKind::Sidechain,
+            })
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn remove_registration(kind: ChannelKind) {
+    // Both native pallets use Identity for these two map keys. Keep their
+    // implementation-private aliases private; remove only this fixture's rows.
+    let clear = |pallet: &[u8], item: &[u8], network: SubNetworkId, asset: Vec<u8>| {
+        let mut key = frame_support::storage::storage_prefix(pallet, item).to_vec();
+        key.extend(network.encode());
+        key.extend(asset);
+        sp_io::storage::clear(&key);
+    };
+    match kind {
+        ChannelKind::Substrate => {
+            for item in [
+                b"AssetKinds".as_slice(),
+                b"SidechainPrecision",
+                b"SidechainAssetId",
+            ] {
+                clear(
+                    b"SubstrateBridgeApp",
+                    item,
+                    SubNetworkId::Liberland,
+                    common::DAI.encode(),
+                );
+            }
+            clear(
+                b"SubstrateBridgeApp",
+                b"ThischainAssetId",
+                SubNetworkId::Liberland,
+                GenericAssetId::Sora(common::DAI.into()).encode(),
+            );
+            assert!(
+                crate::SubstrateBridgeApp::asset_kind(SubNetworkId::Liberland, common::DAI)
+                    .is_none()
+            );
+        }
+        ChannelKind::Parachain => {
+            // Native finalization requires the preceding registration's precision.
+            clear(
+                b"ParachainBridgeApp",
+                b"AssetKinds",
+                SubNetworkId::Polkadot,
+                common::DAI.encode(),
+            );
+            assert!(
+                crate::ParachainBridgeApp::asset_kind(SubNetworkId::Polkadot, common::DAI)
+                    .is_none()
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn recovery_channels_native_finalization_precedes_first_asset_transfer_in_same_batch() {
+    for kind in [ChannelKind::Substrate, ChannelKind::Parachain] {
+        for bad_proof in [false, true] {
+            sp_io::TestExternalities::default().execute_with(|| {
+                let (mut policy, mut operation) = fixture(kind, old());
+                let transfer = transfer_call(&operation);
+                remove_registration(kind);
+                set_substrate_messages(&mut operation, vec![finalization_call(kind), transfer]);
+                if bad_proof {
+                    if let IncomingChannel::Substrate { proof, .. } = &mut operation.channel {
+                        *proof = empty_proof();
+                    }
+                }
+                policy.chunk_hashes = vec![operation.commitment()];
+                let before = batch_storage_without_status();
+                let audit = make_audit(&policy, &operation, 0);
+                // Derivation invokes the actual finalization in a rollback layer:
+                // neither registration nor events/context survive the preview.
+                assert_eq!(batch_storage_without_status(), before);
+                assert_eq!(audit.requests.len(), 1);
+                assert_eq!(audit.requests[0].as_ref().unwrap().amount, AMOUNT);
+                policy.audit_chunk_hashes = vec![audit.commitment()];
+                let control = prepare(&operation, &policy).unwrap().controls.remove(0);
+                crate::incident_recovery::with_test_policy(&policy, || {
+                    recovery::storage::initialize(&policy).unwrap();
+                    let before = batch_storage_without_status();
+                    if bad_proof {
+                        assert!(apply_operation(&policy, &operation).is_err());
+                        assert_eq!(native_nonce(&operation), 0);
+                        assert_eq!(batch_storage_without_status(), before);
+                    } else {
+                        assert_ok!(apply_operation(&policy, &operation));
+                        assert_eq!(native_nonce(&operation), 1);
+                        assert_eq!(
+                            crate::Assets::free_balance(&common::DAI, &replacement()).unwrap(),
+                            AMOUNT
+                        );
+                        assert_eq!(
+                            crate::Assets::free_balance(&common::DAI, &old()).unwrap(),
+                            0
+                        );
+                        assert_eq!(crate::Assets::total_issuance(&common::DAI).unwrap(), AMOUNT);
+                        assert_eq!(
+                            control_result(&control).outcome,
+                            Some(ControlOutcome::Applied)
+                        );
+                        assert_ok!(audit_encoded_with_policy(&policy, &audit.encode()));
+                    }
+                });
+            });
+        }
+    }
+}
+
+#[test]
+fn recovery_channels_registration_preview_weight_covers_success_and_failure_paths() {
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (_, mut operation) = fixture(ChannelKind::Substrate, old());
+        for kind in [ChannelKind::Substrate, ChannelKind::Parachain] {
+            set_substrate_messages(&mut operation, vec![finalization_call(kind)]);
+            let payload = finalization_call(kind).encode();
+            let expected = SubstrateDispatch::dispatch_weight(&payload)
+                .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().writes(1));
+            assert_eq!(audit::registration_preview_weight(&operation), expected);
+            assert!(expected
+                .saturating_mul(3)
+                .all_lte(operation.required_weight()));
+        }
+    });
+}
+
+#[test]
+fn recovery_channels_native_registration_does_not_anticipate_a_later_message() {
+    for kind in [ChannelKind::Substrate, ChannelKind::Parachain] {
+        sp_io::TestExternalities::default().execute_with(|| {
+            let (mut policy, mut operation) = fixture(kind, old());
+            let transfer = transfer_call(&operation);
+            remove_registration(kind);
+            set_substrate_messages(&mut operation, vec![transfer, finalization_call(kind)]);
+            policy.chunk_hashes = vec![operation.commitment()];
+            let before = batch_storage_without_status();
+            assert!(expected_requests(&operation, &policy).is_err());
+            assert_eq!(batch_storage_without_status(), before);
+            crate::incident_recovery::with_test_policy(&policy, || {
+                recovery::storage::initialize(&policy).unwrap();
+                let before = batch_storage_without_status();
+                assert!(apply_operation(&policy, &operation).is_err());
+                assert_eq!(native_nonce(&operation), 0);
+                assert_eq!(batch_storage_without_status(), before);
+            });
+        });
+    }
+}
+
+#[test]
+fn recovery_channels_failed_registration_consumes_while_following_valid_transfer_executes() {
     sp_io::TestExternalities::default().execute_with(|| {
         let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
         let transfer = transfer_call(&operation);
+        // Liberland has the Substrate asset registration, but no Parachain
+        // precision prerequisite. The native Parachain finalization must fail.
+        assert!(crate::ParachainBridgeApp::sidechain_precision(
+            SubNetworkId::Liberland,
+            common::DAI
+        )
+        .is_none());
         set_substrate_messages(
             &mut operation,
-            vec![
-                BridgeCall::SubstrateApp(SubstrateAppCall::ReportTransferResult {
-                    message_id: H256::repeat_byte(99),
-                    message_status: MessageStatus::Failed,
-                }),
-                transfer,
-                BridgeCall::MultisigVerifier(MultisigVerifierCall::AddPeer {
-                    peer: ecdsa::Pair::from_seed(&[1; 32]).public(),
-                }),
-            ],
+            vec![finalization_call(ChannelKind::Parachain), transfer],
         );
         policy.chunk_hashes = vec![operation.commitment()];
+        let control = prepare(&operation, &policy).unwrap().controls.remove(0);
+        let audit = make_audit(&policy, &operation, 0);
+        policy.audit_chunk_hashes = vec![audit.commitment()];
         crate::incident_recovery::with_test_policy(&policy, || {
             recovery::storage::initialize(&policy).unwrap();
-            let before = batch_storage_without_status();
-            assert!(apply_operation(&policy, &operation).is_err());
-            assert_eq!(native_nonce(&operation), 0);
-            assert_eq!(batch_storage_without_status(), before);
+            assert_ok!(apply_operation(&policy, &operation));
+            assert_eq!(native_nonce(&operation), 1);
+            assert_eq!(
+                control_result(&control).outcome,
+                Some(ControlOutcome::Failed)
+            );
+            assert!(
+                crate::ParachainBridgeApp::asset_kind(SubNetworkId::Liberland, common::DAI)
+                    .is_none()
+            );
+            assert_eq!(
+                crate::Assets::free_balance(&common::DAI, &replacement()).unwrap(),
+                AMOUNT
+            );
+            assert_ok!(audit_encoded_with_policy(&policy, &audit.encode()));
+        });
+    });
+}
+
+#[test]
+fn recovery_channels_finalization_enables_a_later_authenticated_batch() {
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
+        let transfer = transfer_call(&operation);
+        remove_registration(ChannelKind::Substrate);
+        set_substrate_messages(
+            &mut operation,
+            vec![finalization_call(ChannelKind::Substrate)],
+        );
+        let mut next = operation.clone();
+        next.index = 1;
+        set_substrate_messages(&mut next, vec![transfer.clone()]);
+        if let IncomingChannel::Substrate {
+            commitment: GenericCommitment::Sub(batch),
+            ..
+        } = &mut next.channel
+        {
+            batch.nonce = 2;
+        }
+        sign_existing_peers(&mut next.channel, &[1, 2, 3, 4]);
+        policy.chunk_hashes = vec![operation.commitment(), next.commitment()];
+        let first = make_audit(&policy, &operation, 0);
+        // Use the same ordered native preview to derive the later batch's request
+        // with its prerequisite, while preserving the original operation identity.
+        let mut preview = next.clone();
+        set_substrate_messages(
+            &mut preview,
+            vec![finalization_call(ChannelKind::Substrate), transfer],
+        );
+        let next_audit = IncomingAudit {
+            index: 1,
+            operation_index: next.index,
+            operation_commitment: next.commitment(),
+            requests: expected_requests(&preview, &policy).unwrap(),
+            prior_policy: None,
+        };
+        policy.audit_chunk_hashes = vec![first.commitment(), next_audit.commitment()];
+        crate::incident_recovery::with_test_policy(&policy, || {
+            recovery::storage::initialize(&policy).unwrap();
+            assert_ok!(apply_operation(&policy, &operation));
+            assert_eq!(native_nonce(&operation), 1);
+            assert_eq!(crate::Assets::total_issuance(&common::DAI).unwrap(), 0);
+            System::set_block_number(System::block_number() + 1);
+            assert_ok!(apply_operation(&policy, &next));
+            assert_eq!(native_nonce(&next), 2);
+            assert_eq!(
+                crate::Assets::free_balance(&common::DAI, &replacement()).unwrap(),
+                AMOUNT
+            );
+            assert_ok!(audit_encoded_with_policy(&policy, &first.encode()));
+            assert_ok!(audit_encoded_with_policy(&policy, &next_audit.encode()));
+        });
+    });
+}
+
+#[test]
+fn recovery_channels_successful_peer_change_requires_its_deferred_ack() {
+    use bridge_types::substrate::MultisigVerifierCall;
+    sp_io::TestExternalities::default().execute_with(|| {
+        let (mut policy, mut operation) = fixture(ChannelKind::Substrate, old());
+        set_substrate_messages(
+            &mut operation,
+            vec![BridgeCall::MultisigVerifier(
+                MultisigVerifierCall::AddPeer {
+                    peer: ecdsa::Pair::from_seed(&[9; 32]).public(),
+                },
+            )],
+        );
+        policy.chunk_hashes = vec![operation.commitment()];
+        let control = prepare(&operation, &policy).unwrap().controls.remove(0);
+        let audit = make_audit(&policy, &operation, 0);
+        policy.audit_chunk_hashes = vec![audit.commitment()];
+        crate::incident_recovery::with_test_policy(&policy, || {
+            recovery::storage::initialize(&policy).unwrap();
+            assert_ok!(apply_operation(&policy, &operation));
+            assert_eq!(
+                control_result(&control).outcome,
+                Some(ControlOutcome::Applied)
+            );
+            sp_io::storage::clear(&multisig_verifier::recovery_peer_ack_key(
+                SubNetworkId::Liberland,
+                control.id,
+            ));
+            assert!(audit_encoded_with_policy(&policy, &audit.encode()).is_err());
         });
     });
 }

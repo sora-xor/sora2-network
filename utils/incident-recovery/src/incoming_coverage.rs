@@ -466,6 +466,7 @@ pub enum Action {
     Quarantine,
     JournalControl,
     ApplyVerifierPeer,
+    ApplyAssetRegistration,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1360,18 +1361,19 @@ pub fn verify(
         if control.is_some()
             && !matches!(
                 decision.action,
-                Action::JournalControl | Action::ApplyVerifierPeer
+                Action::JournalControl | Action::ApplyVerifierPeer | Action::ApplyAssetRegistration
             )
         {
             return Err("incoming control requires its explicit non-financial disposition".into());
         }
         match decision.action {
-            Action::JournalControl | Action::ApplyVerifierPeer => {
+            Action::JournalControl | Action::ApplyVerifierPeer | Action::ApplyAssetRegistration => {
                 let control =
                     control.ok_or("control disposition has no executable control work")?;
                 let expected = match control.disposition {
                     ControlDisposition::Deferred => Action::JournalControl,
                     ControlDisposition::VerifierPeer => Action::ApplyVerifierPeer,
+                    ControlDisposition::NativeRegistration => Action::ApplyAssetRegistration,
                 };
                 if decision.action != expected
                     || original.is_some()

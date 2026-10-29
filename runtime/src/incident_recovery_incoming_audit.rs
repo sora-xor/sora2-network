@@ -245,6 +245,33 @@ fn payload_request(
     })
 }
 
+/// Three runtime preflight consumers derive request expectations before delivery.
+/// Charge each rollback-only registration preview in addition to native dispatch.
+pub(super) fn registration_preview_weight(operation: &IncomingOperation) -> Weight {
+    let IncomingChannel::Substrate {
+        commitment: GenericCommitment::Sub(batch),
+        ..
+    } = &operation.channel
+    else {
+        return Weight::zero();
+    };
+    batch
+        .messages
+        .iter()
+        .fold(Weight::zero(), |weight, message| {
+            if matches!(
+                classify_substrate_control(&message.payload),
+                Ok(Some(ControlDisposition::NativeRegistration))
+            ) {
+                weight
+                    .saturating_add(SubstrateDispatch::dispatch_weight(&message.payload))
+                    .saturating_add(<Runtime as frame_system::Config>::DbWeight::get().writes(1))
+            } else {
+                weight
+            }
+        })
+}
+
 /// Derived from original payloads, never from observed BridgeProxy request values.
 /// Authentication remains the native channel/HASHI execution's responsibility.
 pub fn expected_requests(
@@ -258,6 +285,74 @@ pub(super) fn derive_requests(
     operation: &IncomingOperation,
     active: &ActiveOperation,
 ) -> Result<Vec<Option<IncomingRequestExpectation>>, RecoveryError> {
+    if let IncomingChannel::Substrate {
+        network,
+        commitment: GenericCommitment::Sub(batch),
+        ..
+    } = &operation.channel
+    {
+        // Preview only the native, non-financial finalization handlers, in the
+        // original batch order. This supports finalize→mint in one commitment;
+        // using checkpoint registration or the batch's final precision would be
+        // wrong. All writes (including events/context) roll back. Authentication
+        // and committed effects still happen only in the native channel below.
+        return frame_support::storage::transactional::with_transaction_opaque_err(|| {
+            let result = (|| {
+                sp_io::storage::set(
+                    BRIDGE_INBOUND_CONTEXT_STORAGE_KEY,
+                    &System::block_number().encode(),
+                );
+                let mut requests = Vec::with_capacity(active.transfers.len());
+                for (index, message) in batch.messages.iter().enumerate() {
+                    let id = MessageId::batched(
+                        (*network).into(),
+                        ThisNetworkId::get(),
+                        batch.nonce,
+                        index as u64,
+                    );
+                    match control_disposition(&decode_call(&message.payload)?) {
+                        Some(ControlDisposition::NativeRegistration) => {
+                            // Failed finalization also has native consume-and-continue
+                            // semantics; a later transfer still must pass its own checks.
+                            let _ = SubstrateDispatch::dispatch(
+                                *network,
+                                id,
+                                message.timepoint,
+                                &message.payload,
+                                (),
+                            );
+                        }
+                        Some(_) => {}
+                        None => {
+                            let entry = active
+                                .transfers
+                                .get(requests.len())
+                                .ok_or(RecoveryError::WrongPreimage)?;
+                            if entry.id != id.hash() || entry.network != (*network).into() {
+                                return Err(RecoveryError::WrongPreimage);
+                            }
+                            requests.push(if entry.excluded {
+                                None
+                            } else {
+                                Some(payload_request(
+                                    entry.network,
+                                    &message.payload,
+                                    message.timepoint,
+                                    entry.beneficiary.clone(),
+                                )?)
+                            });
+                        }
+                    }
+                }
+                if requests.len() != active.transfers.len() {
+                    return Err(RecoveryError::WrongPreimage);
+                }
+                Ok(requests)
+            })();
+            frame_support::storage::TransactionOutcome::Rollback(result)
+        })
+        .map_err(|_| RecoveryError::WrongPhase)?;
+    }
     let mut result = Vec::with_capacity(active.transfers.len());
     for entry in &active.transfers {
         // Excluded callbacks authenticate assets/amounts in the native path, but
@@ -276,33 +371,6 @@ pub(super) fn derive_requests(
                     amount: transfer.amount,
                     start_timepoint: GenericTimepoint::EVM(transfer.at_height),
                 }
-            }
-            IncomingChannel::Substrate {
-                commitment: GenericCommitment::Sub(batch),
-                ..
-            } => {
-                let m = batch
-                    .messages
-                    .iter()
-                    .enumerate()
-                    .find_map(|(index, message)| {
-                        (MessageId::batched(
-                            entry.network,
-                            ThisNetworkId::get(),
-                            batch.nonce,
-                            index as u64,
-                        )
-                        .hash()
-                            == entry.id)
-                            .then_some(message)
-                    })
-                    .ok_or(RecoveryError::WrongPreimage)?;
-                payload_request(
-                    entry.network,
-                    &m.payload,
-                    m.timepoint,
-                    entry.beneficiary.clone(),
-                )?
             }
             IncomingChannel::Generic {
                 commitment: GenericCommitment::TON(bridge_types::ton::Commitment::Inbound(m)),
@@ -600,7 +668,7 @@ pub(super) fn prepare_consumption(
         });
     }
     let value = Consumption {
-        format_version: 2,
+        format_version: 3,
         lineage: active.lineage,
         policy: active.policy,
         operation: active.operation,
@@ -615,6 +683,7 @@ pub(super) fn prepare_consumption(
     if value
         .encoded_size()
         .saturating_add(value.transfers.len().saturating_mul(32))
+        .saturating_add(value.controls.len())
         > MAX_CHUNK_BYTES
     {
         return Err(RecoveryError::ChunkBounds);
@@ -673,6 +742,7 @@ pub(super) fn record_consumption(
     }
     for (stored, actual) in value.controls.iter_mut().zip(&active.controls) {
         stored.delivered = true;
+        stored.outcome = actual.outcome.clone();
         if stored.encode() != actual.encode() {
             return Err(RecoveryError::WrongPreimage);
         }
@@ -707,6 +777,14 @@ fn validate_controls(value: &Consumption, budget: &mut usize) -> Result<(), Reco
             || control.payload.len() > BridgeMaxMessagePayloadSize::get() as usize
             || call.encode() != control.payload
             || control_disposition(&call) != Some(control.disposition.clone())
+            || !matches!(
+                (&control.disposition, &control.outcome),
+                (ControlDisposition::Deferred, Some(ControlOutcome::Deferred))
+                    | (
+                        ControlDisposition::VerifierPeer | ControlDisposition::NativeRegistration,
+                        Some(ControlOutcome::Applied | ControlOutcome::Failed)
+                    )
+            )
             || !ids.insert((control.network.encode(), control.id))
         {
             return Err(RecoveryError::WrongPreimage);
@@ -722,10 +800,15 @@ fn validate_controls(value: &Consumption, budget: &mut usize) -> Result<(), Reco
                 MultisigVerifierCall::AddPeer { peer } => DataSignerCall::AddPeer { peer },
                 MultisigVerifierCall::RemovePeer { peer } => DataSignerCall::RemovePeer { peer },
             };
+            let expected_ack = if control.outcome == Some(ControlOutcome::Applied) {
+                Some(acknowledgement.encode())
+            } else {
+                None
+            };
             if read(
                 &multisig_verifier::recovery_peer_ack_key(*network, control.id),
                 budget,
-            )? != Some(acknowledgement.encode())
+            )? != expected_ack
             {
                 return Err(RecoveryError::WrongPreimage);
             }
@@ -827,7 +910,7 @@ fn validate_consumption_at(
         &companion_key(consumed_policy, audit.operation_commitment),
         &mut budget,
     )?;
-    if value.format_version != 2
+    if value.format_version != 3
         || value.lineage != status.policy
         || value.policy != consumed_policy
         || value.operation != audit.operation_commitment
@@ -969,7 +1052,7 @@ fn validate_companion(
         &companion_key(consumed_policy, audit.operation_commitment),
         &mut budget,
     )?;
-    if value.format_version != 2
+    if value.format_version != 3
         || value.lineage != status.policy
         || value.policy != consumed_policy
         || value.operation != audit.operation_commitment
