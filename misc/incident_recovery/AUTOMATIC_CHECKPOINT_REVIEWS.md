@@ -74,3 +74,25 @@ Keep every input, source pin, generation report and execution log in the bound
 release evidence. Generated data and successful generator exit codes do not
 replace native accounting, incoming-transfer authentication, finality/history,
 external reconciliation or exact-artifact rehearsal gates.
+
+To select the next public source captures, inventory the checkpoint's bridge
+registries without contacting any network:
+
+```sh
+node misc/incident_recovery/inventory_checkpoint_bridge_sources.mjs \
+  --capture /absolute/checkpoint \
+  --verification /absolute/fresh-capture-verification.json \
+  --metadata-witness /absolute/executed-metadata-witness.json \
+  --prepared-reviews /absolute/new-general-reviews \
+  --output /absolute/new-source-registry-inventory
+```
+
+Its report includes typed public contract/channel configuration, asset routes,
+nonce rows, data-signer and inbound-verifier peer sets, and counts of retained
+requests by exact protocol network identity. It also records absent registries.
+An internal HASHI `u32`/`EVMLegacy` ID is never converted into an external EVM
+chain ID. Generic `EVM(H256)` IDs are separate and retain the production app's
+`wip` qualification. Substrate network labels and TON channel/app addresses do
+not establish endpoint identity, external finality or current bridge activity.
+The report is an input to choosing authenticated source captures, not evidence
+that incoming-transfer reconciliation is complete.
